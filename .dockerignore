@@ -1,0 +1,10 @@
+# flyctl launch added from client\.gitignore
+client\**\node_modules
+client\**\.DS_Store
+client\**\dist
+client\**\dist-ssr
+client\**\*.local
+
+# flyctl launch added from server\.gitignore
+server\dist
+fly.toml
