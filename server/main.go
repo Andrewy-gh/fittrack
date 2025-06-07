@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 )
@@ -22,6 +23,31 @@ func main() {
 		if err != nil {
 			http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
 		}
+	})
+
+	router.HandleFunc("POST /api/workouts", func(w http.ResponseWriter, r *http.Request) {
+		// Read the raw JSON body
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body", http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		// Parse the JSON body
+		// var workout map[string]interface{}
+		// err = json.Unmarshal(body, &workout)
+		// if err != nil {
+		// 	http.Error(w, "Failed to parse JSON", http.StatusBadRequest)
+		// 	return
+		// }
+
+		log.Printf("Received work JSON: %s\n", string(body))
+
+		// Optionally, respond to the client
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"received"}`))
 	})
 
 	fileServer := http.FileServer(http.Dir("./dist"))
