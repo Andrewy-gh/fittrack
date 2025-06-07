@@ -73,7 +73,7 @@ function CommandAddItem({
   );
 }
 
-export function Combobox({
+export function ExerciseCombobox({
   options,
   selected,
   className,

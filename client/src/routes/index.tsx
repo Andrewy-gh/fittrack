@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { WorkoutEntryForm } from '@/components/workout-entry-form';
 
 export const Route = createFileRoute('/')({
   // loader: async () => {
@@ -22,6 +23,10 @@ export const Route = createFileRoute('/')({
 
 function App() {
   // const { message } = Route.useLoaderData();
- const exercises = Route.useLoaderData();
-  return <main className="container mx-auto p-12 space-y-4"></main>;
+  const exercises = Route.useLoaderData();
+  return (
+    <main className="container mx-auto p-12 space-y-4">
+      <WorkoutEntryForm exercises={exercises} />
+    </main>
+  );
 }
