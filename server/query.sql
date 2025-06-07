@@ -19,8 +19,8 @@ SELECT * FROM "set" ORDER BY id;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
-INSERT INTO workout (date, name, notes)
-VALUES ($1, $2, $3)
+INSERT INTO workout (date, notes)
+VALUES ($1, $2)
 RETURNING *;
 
 -- name: GetOrCreateExercise :one
@@ -44,7 +44,6 @@ VALUES ($1, $2, $3, $4, $5);
 SELECT 
     w.id as workout_id,
     w.date as workout_date,
-    w.name as workout_name,
     w.notes as workout_notes,
     s.id as set_id,
     s.weight,

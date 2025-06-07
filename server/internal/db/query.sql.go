@@ -56,25 +56,23 @@ type CreateSetsParams struct {
 }
 
 const createWorkout = `-- name: CreateWorkout :one
-INSERT INTO workout (date, name, notes)
-VALUES ($1, $2, $3)
-RETURNING id, date, name, notes, created_at, updated_at
+INSERT INTO workout (date, notes)
+VALUES ($1, $2)
+RETURNING id, date, notes, created_at, updated_at
 `
 
 type CreateWorkoutParams struct {
 	Date  pgtype.Timestamptz `json:"date"`
-	Name  string             `json:"name"`
 	Notes pgtype.Text        `json:"notes"`
 }
 
 // INSERT queries for form submission
 func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (Workout, error) {
-	row := q.db.QueryRow(ctx, createWorkout, arg.Date, arg.Name, arg.Notes)
+	row := q.db.QueryRow(ctx, createWorkout, arg.Date, arg.Notes)
 	var i Workout
 	err := row.Scan(
 		&i.ID,
 		&i.Date,
-		&i.Name,
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -154,7 +152,7 @@ func (q *Queries) GetSet(ctx context.Context, id int32) (Set, error) {
 }
 
 const getWorkout = `-- name: GetWorkout :one
-SELECT id, date, name, notes, created_at, updated_at FROM workout WHERE id = $1
+SELECT id, date, notes, created_at, updated_at FROM workout WHERE id = $1
 `
 
 // Basic SELECT queries
@@ -164,7 +162,6 @@ func (q *Queries) GetWorkout(ctx context.Context, id int32) (Workout, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Date,
-		&i.Name,
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -176,7 +173,6 @@ const getWorkoutWithSets = `-- name: GetWorkoutWithSets :many
 SELECT 
     w.id as workout_id,
     w.date as workout_date,
-    w.name as workout_name,
     w.notes as workout_notes,
     s.id as set_id,
     s.weight,
@@ -194,7 +190,6 @@ ORDER BY e.name, s.id
 type GetWorkoutWithSetsRow struct {
 	WorkoutID    int32              `json:"workout_id"`
 	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
-	WorkoutName  string             `json:"workout_name"`
 	WorkoutNotes pgtype.Text        `json:"workout_notes"`
 	SetID        int32              `json:"set_id"`
 	Weight       pgtype.Int4        `json:"weight"`
@@ -217,7 +212,6 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, id int32) ([]GetWorkou
 		if err := rows.Scan(
 			&i.WorkoutID,
 			&i.WorkoutDate,
-			&i.WorkoutName,
 			&i.WorkoutNotes,
 			&i.SetID,
 			&i.Weight,
@@ -299,7 +293,7 @@ func (q *Queries) ListSets(ctx context.Context) ([]Set, error) {
 }
 
 const listWorkouts = `-- name: ListWorkouts :many
-SELECT id, date, name, notes, created_at, updated_at FROM workout ORDER BY date DESC
+SELECT id, date, notes, created_at, updated_at FROM workout ORDER BY date DESC
 `
 
 func (q *Queries) ListWorkouts(ctx context.Context) ([]Workout, error) {
@@ -314,7 +308,6 @@ func (q *Queries) ListWorkouts(ctx context.Context) ([]Workout, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Date,
-			&i.Name,
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,

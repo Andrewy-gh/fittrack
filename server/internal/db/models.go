@@ -29,7 +29,6 @@ type Set struct {
 type Workout struct {
 	ID        int32              `json:"id"`
 	Date      pgtype.Timestamptz `json:"date"`
-	Name      string             `json:"name"`
 	Notes     pgtype.Text        `json:"notes"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
