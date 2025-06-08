@@ -11,6 +11,26 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/validation"
 )
 
+// ListWorkouts handles GET /api/workouts
+func (h *Handler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
+	workouts, err := h.workoutService.ListWorkouts(r.Context())
+	if err != nil {
+		log.Printf("Error listing workouts: %v", err)
+		http.Error(w, "Failed to retrieve workouts", http.StatusInternalServerError)
+		return
+	}
+
+	responseJSON, err := json.Marshal(workouts)
+	if err != nil {
+		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJSON)
+}
+
 // CreateWorkout handles POST /api/workouts
 func (h *Handler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	// Read the raw JSON body

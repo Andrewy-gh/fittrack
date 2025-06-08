@@ -21,8 +21,8 @@ func NewHandler(queries *db.Queries) *Handler {
 
 // RegisterRoutes registers all API routes
 func (h *Handler) RegisterRoutes(router *http.ServeMux) {
+	router.HandleFunc("GET /api/workouts", h.ListWorkouts)
 	router.HandleFunc("POST /api/workouts", h.CreateWorkout)
 	// Add other routes here as you build them
-	// router.HandleFunc("GET /api/workouts", h.ListWorkouts)
 	// router.HandleFunc("GET /api/workouts/{id}", h.GetWorkout)
 }
