@@ -122,6 +122,9 @@ export function ExerciseCombobox({
           disabled={disabled ?? false}
           aria-expanded={open}
           className={cn('w-80 font-normal', className)}
+          disabled={disalbed ?? false}
+          aria-expanded={open}
+          className={cn('w-full font-normal', className)}
         >
           {selected && selected.length > 0 ? (
             <div className="truncate mr-auto">
@@ -136,6 +139,7 @@ export function ExerciseCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
+      <PopoverContent className="w-full min-w-[500px] p-0">
         <Command
           filter={(value, search) => {
             const v = toHiragana(value.toLocaleLowerCase());
