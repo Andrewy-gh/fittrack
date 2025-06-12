@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/models"
 	"github.com/go-playground/validator/v10"
@@ -17,6 +18,21 @@ func init() {
 // ValidateWorkoutRequest validates a workout request
 func ValidateWorkoutRequest(req models.WorkoutRequest) error {
 	return validate.Struct(req)
+}
+
+func ValidateWorkoutID(idParam string) (int32, error) {
+	if idParam == "" {
+		return 0, fmt.Errorf("workout ID is required")
+	}
+
+	id, err := strconv.ParseInt(idParam, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid workout ID format")
+	}
+	if id <= 0 {
+		return 0, fmt.Errorf("workout ID must be a positive number")
+	}
+	return int32(id), nil
 }
 
 // FormatValidationErrors formats validation errors in a user-friendly way
