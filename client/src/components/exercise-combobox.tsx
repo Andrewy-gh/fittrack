@@ -122,9 +122,6 @@ export function ExerciseCombobox({
           disabled={disabled ?? false}
           aria-expanded={open}
           className={cn('w-80 font-normal', className)}
-          disabled={disalbed ?? false}
-          aria-expanded={open}
-          className={cn('w-full font-normal', className)}
         >
           {selected && selected.length > 0 ? (
             <div className="truncate mr-auto">
@@ -138,7 +135,7 @@ export function ExerciseCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
+      <PopoverContent className="w-80 p-0" align="start"/>
       <PopoverContent className="w-full min-w-[500px] p-0">
         <Command
           filter={(value, search) => {
@@ -189,7 +186,7 @@ export function ExerciseCombobox({
               )}
 
               {/* Select */}
-              {options.map((option, index) => (
+              {options.map((option) => (
                 <CommandItem
                   key={option.name}
                   tabIndex={0}
