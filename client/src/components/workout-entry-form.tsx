@@ -260,14 +260,16 @@ export function WorkoutEntryForm({
           }}
         </form.Field>
         {/* MARK: add exercise */}
-        <div className="space-y-2">
-          <Label>Exercise</Label>
-          <ExerciseCombobox
-            options={exercises}
-            selected={selectedExercise?.name ?? ''}
-            onChange={handleSelect}
-            onCreate={handleAppendGroup}
-          />
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="space-y-2">
+            <Label>Exercise</Label>
+            <ExerciseCombobox
+              options={exercises}
+              selected={selectedExercise?.name ?? ''}
+              onChange={handleSelect}
+              onCreate={handleAppendGroup}
+            />
+          </div>
           <form.Field name="exercises">
             {(field) => (
               <Button
@@ -278,6 +280,7 @@ export function WorkoutEntryForm({
                   })
                 }
                 type="button"
+                className="w-fit"
               >
                 Add exercise
               </Button>

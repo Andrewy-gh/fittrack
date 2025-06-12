@@ -31,6 +31,37 @@ func (h *Handler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseJSON)
 }
 
+func (h *Handler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
+	workoutID := r.PathValue("id")
+	if workoutID == "" {
+		http.Error(w, "Missing workout ID", http.StatusBadRequest)
+		return
+	}
+
+	workoutIDInt, err := validation.ValidateWorkoutID(workoutID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	workout, err := h.workoutService.GetWorkoutWithSets(r.Context(), workoutIDInt)
+	if err != nil {
+		log.Printf("Error getting workout with sets: %v", err)
+		http.Error(w, "Failed to retrieve workout with sets", http.StatusInternalServerError)
+		return
+	}
+
+	responseJSON, err := json.Marshal(workout)
+	if err != nil {
+		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJSON)
+}
+
 // CreateWorkout handles POST /api/workouts
 func (h *Handler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	// Read the raw JSON body

@@ -25,7 +25,7 @@ interface ComboboxProps {
   selected: ExerciseOption['name'];
   className?: string;
   placeholder?: string;
-  disalbed?: boolean;
+  disabled?: boolean;
   onChange: (option: ExerciseOption) => void;
   onCreate?: (label: ExerciseOption['name']) => void;
 }
@@ -78,7 +78,7 @@ export function ExerciseCombobox({
   selected,
   className,
   placeholder,
-  disalbed,
+  disabled,
   onChange,
   onCreate,
 }: ComboboxProps) {
@@ -119,6 +119,9 @@ export function ExerciseCombobox({
           type="button"
           variant="outline"
           role="combobox"
+          disabled={disabled ?? false}
+          aria-expanded={open}
+          className={cn('w-80 font-normal', className)}
           disabled={disalbed ?? false}
           aria-expanded={open}
           className={cn('w-full font-normal', className)}
@@ -135,6 +138,7 @@ export function ExerciseCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="start">
       <PopoverContent className="w-full min-w-[500px] p-0">
         <Command
           filter={(value, search) => {
