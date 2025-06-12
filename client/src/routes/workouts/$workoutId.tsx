@@ -10,10 +10,19 @@ export const Route = createFileRoute('/workouts/$workoutId')({
       return { workoutId };
     },
   },
+  loader: async ({ params }) => {
+    const workoutId = params.workoutId;
+    const res = await fetch(`/api/workouts/${workoutId}`);
+    if (!res.ok) {
+      throw new Error('Failed to fetch workout');
+    }
+    const workout = await res.json();
+    return workout;
+  },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { workoutId } = Route.useParams();
-  return <div>{workoutId}</div>;
+  const workout = Route.useLoaderData();
+  return <div>{JSON.stringify(workout)}</div>;
 }

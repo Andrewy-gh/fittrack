@@ -32,7 +32,7 @@ func (h *Handler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
-	workoutID := r.URL.Query().Get("id")
+	workoutID := r.PathValue("id")
 	if workoutID == "" {
 		http.Error(w, "Missing workout ID", http.StatusBadRequest)
 		return
