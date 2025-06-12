@@ -25,7 +25,7 @@ function App() {
   // const { message } = Route.useLoaderData();
   const exercises = Route.useLoaderData();
   return (
-    <main className="container mx-auto p-12 space-y-4">
+    <main className="container mx-auto space-y-4 p-4 md:p-12">
       <WorkoutEntryForm exercises={exercises} />
     </main>
   );
