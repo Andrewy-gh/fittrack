@@ -30,6 +30,14 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 	return workouts, nil
 }
 
+func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]db.GetWorkoutWithSetsRow, error) {
+	workouts, err := ws.queries.GetWorkoutWithSets(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
+	}
+	return workouts, nil
+}
+
 // CreateWorkout creates a new workout with exercises and sets
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, req models.WorkoutRequest) (*models.WorkoutResponse, error) {
 	// Parse the date
