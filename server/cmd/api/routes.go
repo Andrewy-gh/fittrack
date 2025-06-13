@@ -11,5 +11,6 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
+	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExercise)
 	return mux
 }

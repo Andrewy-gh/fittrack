@@ -28,3 +28,11 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	}
 	return exercises, nil
 }
+
+func (es *ExerciseService) GetExercise(ctx context.Context, id int32) (db.Exercise, error) {
+	exercise, err := es.queries.GetExercise(ctx, id)
+	if err != nil {
+		return exercise, fmt.Errorf("failed to get exercise: %w", err)
+	}
+	return exercise, nil
+}
