@@ -5,17 +5,17 @@ import (
 	"net/http"
 )
 
-type Handler struct {
+type WorkoutHandler struct {
 	workoutService *WorkoutService
 }
 
-func NewHandler(workoutService *WorkoutService) *Handler {
-	return &Handler{
+func NewHandler(workoutService *WorkoutService) *WorkoutHandler {
+	return &WorkoutHandler{
 		workoutService: workoutService,
 	}
 }
 
-func (h *Handler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
+func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	workouts, err := h.workoutService.ListWorkouts(r.Context())
 	if err != nil {
 		h.workoutService.logger.Error("failed to list workouts", "error", err)
