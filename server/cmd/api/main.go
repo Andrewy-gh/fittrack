@@ -31,7 +31,7 @@ func main() {
 
 	// Initialize dependencies
 	queries := db.New(conn)
-	workoutService := workout.NewService(logger, queries)
+	workoutService := workout.NewService(logger, queries, conn)
 	workoutHandler := workout.NewHandler(workoutService)
 	exerciseService := exercise.NewService(logger, queries)
 	exerciseHandler := exercise.NewHandler(exerciseService)
