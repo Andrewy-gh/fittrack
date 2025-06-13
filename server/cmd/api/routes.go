@@ -12,6 +12,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler)
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)
 	mux.HandleFunc("GET /api/workouts/{id}", wh.GetWorkoutWithSets)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
+	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExercise)
 	return mux
 }
