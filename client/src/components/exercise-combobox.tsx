@@ -84,7 +84,6 @@ export function ExerciseCombobox({
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-
   const [canCreate, setCanCreate] = useState(true);
   useEffect(() => {
     // Cannot create a new query if it is empty or has already been created
@@ -135,8 +134,7 @@ export function ExerciseCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start"/>
-      <PopoverContent className="w-full min-w-[500px] p-0">
+      <PopoverContent className="w-80 p-0" align="start" >
         <Command
           filter={(value, search) => {
             const v = toHiragana(value.toLocaleLowerCase());

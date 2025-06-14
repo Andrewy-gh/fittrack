@@ -38,15 +38,15 @@ const IndexRoute = IndexImport.update({
 } as any)
 
 const WorkoutsIndexRoute = WorkoutsIndexImport.update({
-  id: '/workouts/',
-  path: '/workouts/',
-  getParentRoute: () => rootRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => WorkoutsRoute,
 } as any)
 
 const WorkoutsWorkoutIdRoute = WorkoutsWorkoutIdImport.update({
-  id: '/workouts/$workoutId',
-  path: '/workouts/$workoutId',
-  getParentRoute: () => rootRoute,
+  id: '/$workoutId',
+  path: '/$workoutId',
+  getParentRoute: () => WorkoutsRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -67,30 +67,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
+    '/workouts': {
+      id: '/workouts'
+      path: '/workouts'
+      fullPath: '/workouts'
+      preLoaderRoute: typeof WorkoutsImport
+      parentRoute: typeof rootRoute
+    }
     '/workouts/$workoutId': {
       id: '/workouts/$workoutId'
-      path: '/workouts/$workoutId'
+      path: '/$workoutId'
       fullPath: '/workouts/$workoutId'
       preLoaderRoute: typeof WorkoutsWorkoutIdImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof WorkoutsImport
     }
     '/workouts/': {
       id: '/workouts/'
-      path: '/workouts'
-      fullPath: '/workouts'
+      path: '/'
+      fullPath: '/workouts/'
       preLoaderRoute: typeof WorkoutsIndexImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof WorkoutsImport
     }
   }
 }
 
 // Create and export the route tree
 
+interface WorkoutsRouteChildren {
+  WorkoutsWorkoutIdRoute: typeof WorkoutsWorkoutIdRoute
+  WorkoutsIndexRoute: typeof WorkoutsIndexRoute
+}
+
+const WorkoutsRouteChildren: WorkoutsRouteChildren = {
+  WorkoutsWorkoutIdRoute: WorkoutsWorkoutIdRoute,
+  WorkoutsIndexRoute: WorkoutsIndexRoute,
+}
+
+const WorkoutsRouteWithChildren = WorkoutsRoute._addFileChildren(
+  WorkoutsRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/workouts': typeof WorkoutsRouteWithChildren
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
-  '/workouts': typeof WorkoutsIndexRoute
+  '/workouts/': typeof WorkoutsIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -104,31 +126,41 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/workouts': typeof WorkoutsRouteWithChildren
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
   '/workouts/': typeof WorkoutsIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/workouts/$workoutId' | '/workouts'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/workouts'
+    | '/workouts/$workoutId'
+    | '/workouts/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/about' | '/workouts/$workoutId' | '/workouts'
-  id: '__root__' | '/' | '/about' | '/workouts/$workoutId' | '/workouts/'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/workouts'
+    | '/workouts/$workoutId'
+    | '/workouts/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  WorkoutsWorkoutIdRoute: typeof WorkoutsWorkoutIdRoute
-  WorkoutsIndexRoute: typeof WorkoutsIndexRoute
+  WorkoutsRoute: typeof WorkoutsRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  WorkoutsWorkoutIdRoute: WorkoutsWorkoutIdRoute,
-  WorkoutsIndexRoute: WorkoutsIndexRoute,
+  WorkoutsRoute: WorkoutsRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -143,8 +175,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/about",
-        "/workouts/$workoutId",
-        "/workouts/"
+        "/workouts"
       ]
     },
     "/": {
@@ -153,11 +184,20 @@ export const routeTree = rootRoute
     "/about": {
       "filePath": "about.tsx"
     },
+    "/workouts": {
+      "filePath": "workouts.tsx",
+      "children": [
+        "/workouts/$workoutId",
+        "/workouts/"
+      ]
+    },
     "/workouts/$workoutId": {
-      "filePath": "workouts/$workoutId.tsx"
+      "filePath": "workouts/$workoutId.tsx",
+      "parent": "/workouts"
     },
     "/workouts/": {
-      "filePath": "workouts/index.tsx"
+      "filePath": "workouts/index.tsx",
+      "parent": "/workouts"
     }
   }
 }
