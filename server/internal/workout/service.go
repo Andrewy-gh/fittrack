@@ -6,17 +6,17 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // WorkoutService handles workout business logic
 type WorkoutService struct {
 	logger  *slog.Logger
 	queries *db.Queries
-	conn    *pgx.Conn
+	conn    *pgxpool.Pool
 }
 
-func NewService(logger *slog.Logger, queries *db.Queries, conn *pgx.Conn) *WorkoutService {
+func NewService(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool) *WorkoutService {
 	return &WorkoutService{
 		logger:  logger,
 		queries: queries,

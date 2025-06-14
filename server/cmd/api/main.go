@@ -9,29 +9,35 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type api struct {
 	logger  *slog.Logger
 	queries *db.Queries
-	conn    *pgx.Conn
+	pool    *pgxpool.Pool
 }
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("failed to connect to database", "error", err.Error())
 		os.Exit(1)
 	}
-	defer conn.Close(ctx)
+	defer pool.Close()
+
+	// Test the connection pool
+	if err := pool.Ping(ctx); err != nil {
+		logger.Error("failed to ping database", "error", err)
+		os.Exit(1)
+	}
 
 	// Initialize dependencies
-	queries := db.New(conn)
-	workoutService := workout.NewService(logger, queries, conn)
+	queries := db.New(pool)
+	workoutService := workout.NewService(logger, queries, pool)
 	workoutHandler := workout.NewHandler(workoutService)
 	exerciseService := exercise.NewService(logger, queries)
 	exerciseHandler := exercise.NewHandler(exerciseService)
@@ -39,7 +45,7 @@ func main() {
 	api := &api{
 		logger:  logger,
 		queries: queries,
-		conn:    conn,
+		pool:    pool,
 	}
 
 	logger.Info("starting server", "addr", ":8080")
