@@ -31,13 +31,14 @@ export function WorkoutEntryForm({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to submit workout');
+          const errorText = await response.text()
+          throw new Error(errorText ?? 'Failed to submit workout');
         }
 
         const result = await response.json();
-        alert('Workout submitted! Server says: ' + JSON.stringify(result));
+        console.log('Workout submitted! Server says: ' + JSON.stringify(result));
       } catch (error) {
-        alert('Error: ' + error);
+        alert(error)
       }
     },
   });

@@ -24,7 +24,7 @@ export function SetTypeSelect({
         <SelectGroup>
           <SelectLabel>Set Type</SelectLabel>
           <SelectItem value="warmup">Warmup</SelectItem>
-          <SelectItem value="workout">Working</SelectItem>
+          <SelectItem value="working">Working</SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>

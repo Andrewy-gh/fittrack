@@ -11,19 +11,12 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as WorkoutsImport } from './routes/workouts'
 import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
 import { Route as WorkoutsIndexImport } from './routes/workouts/index'
 import { Route as WorkoutsWorkoutIdImport } from './routes/workouts/$workoutId'
 
 // Create/Update Routes
-
-const WorkoutsRoute = WorkoutsImport.update({
-  id: '/workouts',
-  path: '/workouts',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const AboutRoute = AboutImport.update({
   id: '/about',
