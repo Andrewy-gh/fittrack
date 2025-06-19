@@ -20,5 +20,5 @@ cat schema.sql | docker exec -i db psql -U ${DB_USER} -d ${DB_NAME}
 
 5. Run in the same terminal window:
 ```bash
-go run main.go
+go run ./cmd/api
 ```
