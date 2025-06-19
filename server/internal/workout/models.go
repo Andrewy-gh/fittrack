@@ -2,18 +2,21 @@ package workout
 
 import "time"
 
-// Incoming request structure
-type IncomingRequest struct {
-	Date      time.Time `json:"date"`
-	Exercises []struct {
-		Name string `json:"name"`
-		Sets []struct {
-			Weight  *int   `json:"weight"` // Pointer to handle null values
-			Reps    int    `json:"reps"`
-			SetType string `json:"setType"`
-		} `json:"sets"`
-	} `json:"exercises"`
-	Notes *string `json:"notes"` // Optional field
+type Set struct {
+	Weight  *int   `json:"weight" validate:"omitempty,gte=0"`
+	Reps    *int   `json:"reps" validate:"required,gte=1"`                       // Changed to pointer
+	SetType string `json:"setType" validate:"required,oneof=warmup working,ne="` // ne="not equal to empty string"
+}
+
+type Exercise struct {
+	Name string `json:"name" validate:"required"`
+	Sets []Set  `json:"sets" validate:"required,min=1"`
+}
+
+type CreateWorkoutRequest struct {
+	Date      time.Time  `json:"date" validate:"required"`
+	Exercises []Exercise `json:"exercises" validate:"required,min=1"`
+	Notes     *string    `json:"notes"`
 }
 
 // Reformatted structures for efficient DB operations

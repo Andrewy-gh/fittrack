@@ -3,9 +3,10 @@ package workout
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type WorkoutHandler struct {
@@ -68,29 +69,68 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 	w.Write(responseJSON)
 }
 
+func printValidationErrors(err error) {
+	fmt.Println("\n=== VALIDATION ERRORS ===")
+	if errs, ok := err.(validator.ValidationErrors); ok {
+		for _, e := range errs {
+			fmt.Printf("Field: %s\n", e.Namespace())
+			fmt.Printf("Tag: %s\n", e.Tag())
+			fmt.Printf("Type: %v\n", e.Type())
+			fmt.Printf("Value: %v\n", e.Value())
+			fmt.Printf("Param: %s\n\n", e.Param())
+		}
+	} else {
+		fmt.Printf("Non-validation error: %v\n", err)
+	}
+	fmt.Println("========================\n")
+}
+
 func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
-	// 1. Read the body
-	body, err := io.ReadAll(r.Body)
+	var request CreateWorkoutRequest
+
+	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		http.Error(w, "Failed to read body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	// 2. Print the raw body
-	fmt.Println("Raw body:", string(body))
-
-	// 3. Parse the body as JSON (into a generic map)
-	var parsedBody map[string]interface{}
-	if err := json.Unmarshal(body, &parsedBody); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		fmt.Printf("JSON decode error: %v\n", err)
+		return
+	}
+	fmt.Println("Decoded JSON:", request)
+
+	validate := validator.New()
+	if err := validate.Struct(request); err != nil {
+		fmt.Println("Validation error occurred:")
+		printValidationErrors(err)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// 4. Print the parsed JSON
-	fmt.Printf("Parsed JSON: %+v\n", parsedBody)
-
-	// 5. Respond with {"success": true}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
+
+// func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
+// 	// 1. Read the body
+// 	body, err := io.ReadAll(r.Body)
+// 	if err != nil {
+// 		http.Error(w, "Failed to read body", http.StatusBadRequest)
+// 		return
+// 	}
+// 	defer r.Body.Close()
+
+// 	// 2. Print the raw body
+// 	fmt.Println("Raw body:", string(body))
+
+// 	// 3. Parse the body as JSON (into a generic map)
+// 	var parsedBody map[string]interface{}
+// 	if err := json.Unmarshal(body, &parsedBody); err != nil {
+// 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	// 4. Print the parsed JSON
+// 	fmt.Printf("Parsed JSON: %+v\n", parsedBody)
+
+// 	// 5. Respond with {"success": true}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+// }
