@@ -69,20 +69,44 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 	w.Write(responseJSON)
 }
 
-func printValidationErrors(err error) {
-	fmt.Println("\n=== VALIDATION ERRORS ===")
-	if errs, ok := err.(validator.ValidationErrors); ok {
-		for _, e := range errs {
-			fmt.Printf("Field: %s\n", e.Namespace())
-			fmt.Printf("Tag: %s\n", e.Tag())
-			fmt.Printf("Type: %v\n", e.Type())
-			fmt.Printf("Value: %v\n", e.Value())
-			fmt.Printf("Param: %s\n\n", e.Param())
+// func printValidationErrors(err error) {
+// 	fmt.Println("\n=== VALIDATION ERRORS ===")
+// 	if errs, ok := err.(validator.ValidationErrors); ok {
+// 		for _, e := range errs {
+// 			fmt.Printf("Field: %s\n", e.Namespace())
+// 			fmt.Printf("Tag: %s\n", e.Tag())
+// 			fmt.Printf("Type: %v\n", e.Type())
+// 			fmt.Printf("Value: %v\n", e.Value())
+// 			fmt.Printf("Param: %s\n\n", e.Param())
+// 		}
+// 	} else {
+// 		fmt.Printf("Non-validation error: %v\n", err)
+// 	}
+// 	fmt.Println("========================\n")
+// }
+
+func FormatValidationErrors(err error) string {
+	if validationErrors, ok := err.(*validator.ValidationErrors); ok {
+		var messages []string
+		for _, fieldError := range *validationErrors {
+			switch fieldError.Tag() {
+			case "required":
+				messages = append(messages, fmt.Sprintf("%s is required", fieldError.Field()))
+			case "min":
+				messages = append(messages, fmt.Sprintf("%s must be at least %s characters", fieldError.Field(), fieldError.Param()))
+			case "max":
+				messages = append(messages, fmt.Sprintf("%s must be at most %s characters", fieldError.Field(), fieldError.Param()))
+			case "gte":
+				messages = append(messages, fmt.Sprintf("%s must be greater than or equal to %s", fieldError.Field(), fieldError.Param()))
+			case "datetime":
+				messages = append(messages, fmt.Sprintf("%s must be a valid datetime in RFC3339 format", fieldError.Field()))
+			default:
+				messages = append(messages, fmt.Sprintf("%s failed validation (%s)", fieldError.Field(), fieldError.Tag()))
+			}
 		}
-	} else {
-		fmt.Printf("Non-validation error: %v\n", err)
+		return fmt.Sprintf("Validation errors: %v", messages)
 	}
-	fmt.Println("========================\n")
+	return err.Error()
 }
 
 func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +122,15 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 
 	validate := validator.New()
 	if err := validate.Struct(request); err != nil {
-		fmt.Println("Validation error occurred:")
-		printValidationErrors(err)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		fmt.Println("Validation error occurred")
+		http.Error(w, FormatValidationErrors(err), http.StatusBadRequest)
+		return
+	}
+
+	// Call service with validated struct
+	if err := h.workoutService.CreateWorkout(r.Context(), request); err != nil {
+		// You can add error type checking here for different HTTP status codes
+		http.Error(w, "Failed to create workout", http.StatusInternalServerError)
 		return
 	}
 

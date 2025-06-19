@@ -21,7 +21,6 @@ export function WorkoutEntryForm({
       exercises: [] as Exercise[],
     },
     onSubmit: async ({ value }) => {
-      alert(JSON.stringify(value))
       try {
         const response = await fetch('/api/workouts', {
           method: 'POST',
@@ -32,13 +31,14 @@ export function WorkoutEntryForm({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to submit workout');
+          const errorText = await response.text()
+          throw new Error(errorText ?? 'Failed to submit workout');
         }
 
         const result = await response.json();
         console.log('Workout submitted! Server says: ' + JSON.stringify(result));
       } catch (error) {
-        alert('Error: ' + error);
+        alert(error)
       }
     },
   });
