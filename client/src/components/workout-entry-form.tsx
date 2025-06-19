@@ -21,6 +21,7 @@ export function WorkoutEntryForm({
       exercises: [] as Exercise[],
     },
     onSubmit: async ({ value }) => {
+      console.log('value',value)
       try {
         const response = await fetch('/api/workouts', {
           method: 'POST',

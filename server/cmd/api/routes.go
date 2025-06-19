@@ -10,6 +10,7 @@ import (
 func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)
+	mux.HandleFunc("POST /api/workouts", wh.CreateWorkout)
 	mux.HandleFunc("GET /api/workouts/{id}", wh.GetWorkoutWithSets)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)

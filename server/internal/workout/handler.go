@@ -2,6 +2,8 @@ package workout
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -64,4 +66,31 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(responseJSON)
+}
+
+func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
+	// 1. Read the body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// 2. Print the raw body
+	fmt.Println("Raw body:", string(body))
+
+	// 3. Parse the body as JSON (into a generic map)
+	var parsedBody map[string]interface{}
+	if err := json.Unmarshal(body, &parsedBody); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// 4. Print the parsed JSON
+	fmt.Printf("Parsed JSON: %+v\n", parsedBody)
+
+	// 5. Respond with {"success": true}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
