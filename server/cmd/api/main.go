@@ -40,13 +40,13 @@ func main() {
 
 	// Create repositories
 	workoutRepo := workout.NewRepository(queries, pool)
-	// exerciseRepo := exercise.NewRepository(queries, pool) // if you create one
+	exerciseRepo := exercise.NewRepository(queries, pool)
 
 	// Create services with repositories
 	workoutService := workout.NewService(logger, workoutRepo)
 	workoutHandler := workout.NewHandler(workoutService)
 
-	exerciseService := exercise.NewService(logger, queries) // keep existing until you create exercise repo
+	exerciseService := exercise.NewService(logger, exerciseRepo)
 	exerciseHandler := exercise.NewHandler(exerciseService)
 
 	api := &api{
