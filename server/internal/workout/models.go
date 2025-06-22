@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// Request/Response types
 type CreateWorkoutRequest struct {
 	Date      string          `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
 	Notes     *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
@@ -23,14 +24,15 @@ type SetInput struct {
 	SetType string `json:"setType" validate:"required,oneof=warmup working"`
 }
 
-// structs for db insertion
+// PostgreSQL-specific types
+
 type PGWorkoutData struct {
 	Date  pgtype.Timestamptz
 	Notes pgtype.Text
 }
 
 type PGExerciseData struct {
-	Name string // Already a string, no conversion needed
+	Name string
 }
 
 type PGSetData struct {
@@ -46,7 +48,8 @@ type PGReformattedRequest struct {
 	Sets      []PGSetData
 }
 
-// Reformatted structures for efficient DB operations
+// Internal data structures
+
 type WorkoutData struct {
 	Date  time.Time
 	Notes *string
@@ -57,14 +60,13 @@ type ExerciseData struct {
 }
 
 type SetData struct {
-	ExerciseName string // We'll use this to link to exercise after insertion
+	ExerciseName string
 	Weight       *int
 	Reps         int
 	SetType      string
 }
-
 type ReformattedRequest struct {
 	Workout   WorkoutData
-	Exercises []ExerciseData // Unique exercises only
-	Sets      []SetData      // All sets with exercise references
+	Exercises []ExerciseData
+	Sets      []SetData
 }

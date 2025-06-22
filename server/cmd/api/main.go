@@ -35,11 +35,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize dependencies
+	// Initialize dependencies with repository pattern
 	queries := db.New(pool)
-	workoutService := workout.NewService(logger, queries, pool)
+
+	// Create repositories
+	workoutRepo := workout.NewRepository(queries, pool)
+	// exerciseRepo := exercise.NewRepository(queries, pool) // if you create one
+
+	// Create services with repositories
+	workoutService := workout.NewService(logger, workoutRepo)
 	workoutHandler := workout.NewHandler(workoutService)
-	exerciseService := exercise.NewService(logger, queries)
+
+	exerciseService := exercise.NewService(logger, queries) // keep existing until you create exercise repo
 	exerciseHandler := exercise.NewHandler(exerciseService)
 
 	api := &api{
