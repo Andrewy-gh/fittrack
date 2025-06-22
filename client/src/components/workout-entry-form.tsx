@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SetTypeSelect } from '@/components/set-type-select';
+import { Textarea } from '@/components/ui/textarea';
 import { Trash2 } from 'lucide-react';
 
 export function WorkoutEntryForm({
@@ -18,6 +19,7 @@ export function WorkoutEntryForm({
   const form = useForm({
     defaultValues: {
       date: new Date(),
+      notes: '',
       exercises: [] as Exercise[],
     },
     onSubmit: async ({ value }) => {
@@ -84,6 +86,23 @@ export function WorkoutEntryForm({
                       field.handleChange(date);
                     }
                   }}
+                />
+              </div>
+            );
+          }}
+        </form.Field>
+        {/* MARK: notes */}
+        <form.Field name="notes">
+          {(field) => {
+            return (
+              <div className="w-full max-w-sm space-y-3">
+                <Label htmlFor={field.name}>Notes</Label>
+                <Textarea
+                  id={field.name}
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
                 />
               </div>
             );
