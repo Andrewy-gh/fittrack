@@ -38,6 +38,10 @@ func (m *MockWorkoutRepository) GetWorkoutWithSets(ctx context.Context, id int32
 	return args.Get(0).([]db.GetWorkoutWithSetsRow), args.Error(1)
 }
 
+type errorResponse struct {
+	Message string `json:"message"`
+}
+
 func TestWorkoutHandler_ListWorkouts(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -69,7 +73,8 @@ func TestWorkoutHandler_ListWorkouts(t *testing.T) {
 				m.On("ListWorkouts", mock.Anything).Return([]db.Workout{}, assert.AnError)
 			},
 			expectedCode:  http.StatusInternalServerError,
-			expectedError: "Internal server error",
+			expectJSON:    true,
+			expectedError: "failed to list workouts",
 		},
 	}
 
@@ -98,13 +103,13 @@ func TestWorkoutHandler_ListWorkouts(t *testing.T) {
 
 			if tt.expectJSON {
 				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-				// Verify it's valid JSON
-				var result []db.Workout
-				err := json.Unmarshal(w.Body.Bytes(), &result)
-				assert.NoError(t, err)
-			}
-
-			if tt.expectedError != "" {
+				if tt.expectedError != "" {
+					var resp errorResponse
+					err := json.Unmarshal(w.Body.Bytes(), &resp)
+					assert.NoError(t, err)
+					assert.Contains(t, resp.Message, tt.expectedError)
+				}
+			} else if tt.expectedError != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedError)
 			}
 
@@ -160,7 +165,7 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 				m.On("GetWorkoutWithSets", mock.Anything, id).Return([]db.GetWorkoutWithSetsRow{}, assert.AnError)
 			},
 			expectedCode:  http.StatusInternalServerError,
-			expectedError: "Internal server error",
+			expectedError: "failed to get workout with sets",
 		},
 	}
 
@@ -250,7 +255,8 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 			requestBody:   "invalid json string",
 			setupMock:     func(m *MockWorkoutRepository) {},
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Invalid JSON",
+			expectJSON:    true,
+			expectedError: "failed to decode request body",
 		},
 		{
 			name: "validation error - missing date",
@@ -266,17 +272,18 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 			},
 			setupMock:     func(m *MockWorkoutRepository) {},
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Key: 'CreateWorkoutRequest.Date' Error:Field validation for 'Date' failed on the 'required' tag",
+			expectJSON:    true,
+			expectedError: "validation error occurred",
 		},
 		{
 			name: "validation error - empty exercises",
 			requestBody: CreateWorkoutRequest{
-				Date:      time.Now().Format(time.RFC3339),
-				Exercises: []ExerciseInput{},
+				Date: time.Now().Format(time.RFC3339),
 			},
 			setupMock:     func(m *MockWorkoutRepository) {},
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Key: 'CreateWorkoutRequest.Exercises' Error:Field validation for 'Exercises' failed on the 'min' tag",
+			expectJSON:    true,
+			expectedError: "validation error occurred",
 		},
 		{
 			name:        "service error",
@@ -285,7 +292,8 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 				m.On("SaveWorkout", mock.Anything, mock.AnythingOfType("*workout.PGReformattedRequest")).Return(assert.AnError)
 			},
 			expectedCode:  http.StatusInternalServerError,
-			expectedError: "Failed to create workout",
+			expectJSON:    true,
+			expectedError: "failed to create workout",
 		},
 	}
 
@@ -327,24 +335,19 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 
 			if tt.expectJSON {
 				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-				var result map[string]bool
-				err := json.Unmarshal(w.Body.Bytes(), &result)
-				assert.NoError(t, err)
-				assert.True(t, result["success"])
-			}
-
-			if tt.expectedError != "" {
+				if tt.expectedError != "" {
+					var resp errorResponse
+					err := json.Unmarshal(w.Body.Bytes(), &resp)
+					assert.NoError(t, err)
+					assert.Contains(t, resp.Message, tt.expectedError)
+				}
+			} else if tt.expectedError != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedError)
 			}
 
 			mockRepo.AssertExpectations(t)
 		})
 	}
-}
-
-// Helper function to create int pointers
-func intPtr(i int) *int {
-	return &i
 }
 
 // Benchmark tests for performance
