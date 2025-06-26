@@ -3,6 +3,7 @@ package workout
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -10,11 +11,13 @@ import (
 )
 
 type WorkoutHandler struct {
+	logger         *slog.Logger
 	workoutService *WorkoutService
 }
 
-func NewHandler(workoutService *WorkoutService) *WorkoutHandler {
+func NewHandler(logger *slog.Logger, workoutService *WorkoutService) *WorkoutHandler {
 	return &WorkoutHandler{
+		logger:         logger,
 		workoutService: workoutService,
 	}
 }
@@ -22,13 +25,14 @@ func NewHandler(workoutService *WorkoutService) *WorkoutHandler {
 func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	workouts, err := h.workoutService.ListWorkouts(r.Context())
 	if err != nil {
-		h.workoutService.logger.Error("failed to list workouts", "error", err)
+		h.logger.Error("failed to list workouts", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	responseJSON, err := json.Marshal(workouts)
 	if err != nil {
+		h.logger.Error("failed to marshal response", "error", err)
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
 		return
 	}
@@ -41,25 +45,28 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
 	workoutID := r.PathValue("id")
 	if workoutID == "" {
+		h.logger.Error("missing workout ID", "error", "Missing workout ID")
 		http.Error(w, "Missing workout ID", http.StatusBadRequest)
 		return
 	}
 
 	workoutIDInt, err := strconv.ParseInt(workoutID, 10, 32)
 	if err != nil {
+		h.logger.Error("invalid workout ID", "error", err)
 		http.Error(w, "Invalid workout ID", http.StatusBadRequest)
 		return
 	}
 
 	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), int32(workoutIDInt))
 	if err != nil {
-		h.workoutService.logger.Error("failed to get workout with sets", "error", err)
+		h.logger.Error("failed to get workout with sets", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	responseJSON, err := json.Marshal(workoutWithSets)
 	if err != nil {
+		h.logger.Error("failed to marshal response", "error", err)
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
 		return
 	}
@@ -98,22 +105,22 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
+		h.logger.Error("failed to decode request body", "error", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		fmt.Printf("JSON decode error: %v\n", err)
 		return
 	}
 	fmt.Println("Decoded JSON:", request)
 
 	validate := validator.New()
 	if err := validate.Struct(request); err != nil {
-		fmt.Println("Validation error occurred")
+		h.logger.Error("validation error occurred", "error", err)
 		http.Error(w, FormatValidationErrors(err), http.StatusBadRequest)
 		return
 	}
 
 	// Call service with validated struct
 	if err := h.workoutService.CreateWorkout(r.Context(), request); err != nil {
-		// You can add error type checking here for different HTTP status codes
+		h.logger.Error("failed to create workout", "error", err)
 		http.Error(w, "Failed to create workout", http.StatusInternalServerError)
 		return
 	}

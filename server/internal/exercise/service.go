@@ -53,6 +53,7 @@ func (es *ExerciseService) GetExercise(ctx context.Context, id int32) (db.Exerci
 func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error) {
 	exercise, err := es.repo.GetOrCreateExercise(ctx, name)
 	if err != nil {
+		es.logger.Error("repository failed to get or create exercise", "exercise_name", name, "error", err)
 		return exercise, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return exercise, nil

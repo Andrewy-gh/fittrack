@@ -25,38 +25,52 @@ func NewService(logger *slog.Logger, repo WorkoutRepository) *WorkoutService {
 
 // Update other methods to use the repository similarly
 func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error) {
-	return ws.repo.ListWorkouts(ctx)
+	workouts, err := ws.repo.ListWorkouts(ctx)
+	if err != nil {
+		ws.logger.Error("failed to list workouts", "error", err)
+		return nil, fmt.Errorf("failed to list workouts: %w", err)
+	}
+	return workouts, nil
 }
 
 func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]db.GetWorkoutWithSetsRow, error) {
-	return ws.repo.GetWorkoutWithSets(ctx, id)
+	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id)
+	if err != nil {
+		ws.logger.Error("failed to get workout with sets", "error", err)
+		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
+	}
+	return workoutWithSets, nil
 }
 
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {
 	// Transform the request to our internal format
-	reformatted, err := transformRequest(requestBody)
+	reformatted, err := ws.transformRequest(requestBody)
 	if err != nil {
+		ws.logger.Error("failed to transform request", "error", err)
 		return fmt.Errorf("failed to transform request: %w", err)
 	}
 
 	// Convert to PG types
-	pgData, err := convertToPGTypes(reformatted)
+	pgData, err := ws.convertToPGTypes(reformatted)
 	if err != nil {
+		ws.logger.Error("failed to convert to PG types", "error", err)
 		return fmt.Errorf("failed to convert to PG types: %w", err)
 	}
 
 	// Use repository to save the workout
 	if err := ws.repo.SaveWorkout(ctx, pgData); err != nil {
+		ws.logger.Error("failed to save workout", "error", err)
 		return fmt.Errorf("failed to save workout: %w", err)
 	}
 
 	return nil
 }
 
-func transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error) {
+func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error) {
 	// Parse date
 	parsedDate, err := time.Parse("2006-01-02T15:04:05Z07:00", request.Date)
 	if err != nil {
+		ws.logger.Error("failed to parse date", "error", err)
 		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
 
@@ -96,7 +110,7 @@ func transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error)
 	}, nil
 }
 
-func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
+func (ws *WorkoutService) convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
 	// Convert workout
 	pgWorkout := PGWorkoutData{
 		Date: pgtype.Timestamptz{
