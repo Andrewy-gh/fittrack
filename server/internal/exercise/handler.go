@@ -30,8 +30,7 @@ func (eh *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = response.JSON(w, http.StatusOK, exercises)
-	if err != nil {
+	if err := response.JSON(w, http.StatusOK, exercises); err != nil {
 		eh.logger.Error("failed to write response", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -60,8 +59,7 @@ func (eh *ExerciseHandler) GetExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = response.JSON(w, http.StatusOK, exercise)
-	if err != nil {
+	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
 		eh.logger.Error("failed to write response", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -83,8 +81,7 @@ func (eh *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = response.JSON(w, http.StatusOK, exercise)
-	if err != nil {
+	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
 		eh.logger.Error("failed to write response", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return

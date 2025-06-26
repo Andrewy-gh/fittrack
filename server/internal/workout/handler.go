@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -30,16 +31,11 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseJSON, err := json.Marshal(workouts)
-	if err != nil {
-		h.logger.Error("failed to marshal response", "error", err)
-		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+	if err := response.JSON(w, http.StatusOK, workouts); err != nil {
+		h.logger.Error("failed to write response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
 }
 
 func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
@@ -64,16 +60,42 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	responseJSON, err := json.Marshal(workoutWithSets)
+	if err := response.JSON(w, http.StatusOK, workoutWithSets); err != nil {
+		h.logger.Error("failed to write response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
+	var request CreateWorkoutRequest
+
+	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		h.logger.Error("failed to marshal response", "error", err)
-		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		h.logger.Error("failed to decode request body", "error", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
+	validate := validator.New()
+	if err := validate.Struct(request); err != nil {
+		h.logger.Error("validation error occurred", "error", err)
+		http.Error(w, FormatValidationErrors(err), http.StatusBadRequest)
+		return
+	}
+
+	// Call service with validated struct
+	if err := h.workoutService.CreateWorkout(r.Context(), request); err != nil {
+		h.logger.Error("failed to create workout", "error", err)
+		http.Error(w, "Failed to create workout", http.StatusInternalServerError)
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, map[string]bool{"success": true}); err != nil {
+		h.logger.Error("failed to write response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func FormatValidationErrors(err error) string {
@@ -98,33 +120,4 @@ func FormatValidationErrors(err error) string {
 		return fmt.Sprintf("Validation errors: %v", messages)
 	}
 	return err.Error()
-}
-
-func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
-	var request CreateWorkoutRequest
-
-	err := json.NewDecoder(r.Body).Decode(&request)
-	if err != nil {
-		h.logger.Error("failed to decode request body", "error", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-	fmt.Println("Decoded JSON:", request)
-
-	validate := validator.New()
-	if err := validate.Struct(request); err != nil {
-		h.logger.Error("validation error occurred", "error", err)
-		http.Error(w, FormatValidationErrors(err), http.StatusBadRequest)
-		return
-	}
-
-	// Call service with validated struct
-	if err := h.workoutService.CreateWorkout(r.Context(), request); err != nil {
-		h.logger.Error("failed to create workout", "error", err)
-		http.Error(w, "Failed to create workout", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
