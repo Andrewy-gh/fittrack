@@ -85,7 +85,7 @@ func TestWorkoutHandler_ListWorkouts(t *testing.T) {
 				repo:   mockRepo,
 				logger: logger,
 			}
-			handler := NewHandler(service)
+			handler := NewHandler(logger, service)
 
 			req := httptest.NewRequest("GET", "/api/workouts", nil)
 			w := httptest.NewRecorder()
@@ -182,7 +182,7 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 				repo:   mockRepo,
 				logger: logger,
 			}
-			handler := NewHandler(service)
+			handler := NewHandler(logger, service)
 
 			req := httptest.NewRequest("GET", "/api/workouts/"+tt.workoutID, nil)
 			if tt.workoutID != "" {
@@ -300,7 +300,7 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 				repo:   mockRepo,
 				logger: logger,
 			}
-			handler := NewHandler(service)
+			handler := NewHandler(logger, service)
 
 			// Prepare request
 			var req *http.Request
@@ -356,7 +356,7 @@ func BenchmarkWorkoutHandler_ListWorkouts(b *testing.B) {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := &WorkoutService{repo: mockRepo, logger: logger}
-	handler := NewHandler(service)
+	handler := NewHandler(logger, service)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
