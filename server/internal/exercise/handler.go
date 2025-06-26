@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
 
 // ExerciseHandler handles exercise HTTP requests
@@ -28,15 +30,12 @@ func (eh *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	responseJSON, err := json.Marshal(exercises)
+	err = response.JSON(w, http.StatusOK, exercises)
 	if err != nil {
-		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		eh.logger.Error("failed to write response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
 }
 
 func (eh *ExerciseHandler) GetExercise(w http.ResponseWriter, r *http.Request) {
@@ -61,16 +60,12 @@ func (eh *ExerciseHandler) GetExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseJSON, err := json.Marshal(exercise)
+	err = response.JSON(w, http.StatusOK, exercise)
 	if err != nil {
-		eh.logger.Error("failed to marshal response", "error", err)
-		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		eh.logger.Error("failed to write response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
 }
 
 func (eh *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Request) {
@@ -88,14 +83,10 @@ func (eh *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	responseJSON, err := json.Marshal(exercise)
+	err = response.JSON(w, http.StatusOK, exercise)
 	if err != nil {
-		eh.logger.Error("failed to marshal response", "error", err)
-		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		eh.logger.Error("failed to write response", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
 }
