@@ -3,19 +3,22 @@ package exercise
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type exerciseRepository struct {
+	logger  *slog.Logger
 	queries *db.Queries
 	conn    *pgxpool.Pool
 }
 
 // NewRepository creates a new instance of ExerciseRepository
-func NewRepository(queries *db.Queries, conn *pgxpool.Pool) ExerciseRepository {
+func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool) ExerciseRepository {
 	return &exerciseRepository{
+		logger:  logger,
 		queries: queries,
 		conn:    conn,
 	}
@@ -24,6 +27,7 @@ func NewRepository(queries *db.Queries, conn *pgxpool.Pool) ExerciseRepository {
 func (er *exerciseRepository) ListExercises(ctx context.Context) ([]db.Exercise, error) {
 	exercises, err := er.queries.ListExercises(ctx)
 	if err != nil {
+		er.logger.Error("failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
 	return exercises, nil
@@ -32,6 +36,7 @@ func (er *exerciseRepository) ListExercises(ctx context.Context) ([]db.Exercise,
 func (er *exerciseRepository) GetExercise(ctx context.Context, id int32) (db.Exercise, error) {
 	exercise, err := er.queries.GetExercise(ctx, id)
 	if err != nil {
+		er.logger.Error("failed to get exercise", "error", err)
 		return db.Exercise{}, fmt.Errorf("failed to get exercise: %w", err)
 	}
 	return exercise, nil
@@ -40,6 +45,7 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32) (db.Exe
 func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error) {
 	exercise, err := er.queries.GetOrCreateExercise(ctx, name)
 	if err != nil {
+		er.logger.Error("failed to get or create exercise", "error", err)
 		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return exercise, nil
