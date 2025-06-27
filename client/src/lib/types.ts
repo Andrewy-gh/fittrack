@@ -18,3 +18,9 @@ export type Workout = {
   date: Date;
   exercises: Exercise[];
 };
+
+export type WorkoutFormValues = {
+  date: Date;
+  notes: string;
+  exercises: Exercise[];
+};
