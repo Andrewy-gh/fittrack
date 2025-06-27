@@ -1,7 +1,8 @@
 import { useForm } from '@tanstack/react-form';
-import { useState, useEffect } from 'react';
-import type { Exercise, ExerciseOption } from '@/lib/types';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { clearLocalStorage, loadFromLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
+import type { Exercise, ExerciseOption } from '@/lib/types';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/date-picker';
@@ -10,55 +11,8 @@ import { Label } from '@/components/ui/label';
 import { SetTypeSelect } from '@/components/set-type-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Trash2 } from 'lucide-react';
+import type { WorkoutFormValues } from '@/lib/types';
 
-const STORAGE_KEY = 'workout-entry-form-data';
-
-// Extract FormValues type from the default values
-type FormValues = {
-  date: Date;
-  notes: string;
-  exercises: Exercise[];
-};
-
-// Helper functions for localStorage
-const saveToLocalStorage = (data: FormValues) => {
-  try {
-    // Convert Date objects to ISO strings for JSON serialization
-    const serializedData = {
-      ...data,
-      date: data.date instanceof Date ? data.date.toISOString() : data.date,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializedData));
-  } catch (error) {
-    console.warn('Failed to save to localStorage:', error);
-  }
-};
-
-const loadFromLocalStorage = (): FormValues | null => {
-  console.log('Loading form data from localStorage');
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Convert ISO string back to Date object
-      if (parsed.date) {
-        parsed.date = new Date(parsed.date);
-      }
-      return parsed as FormValues;
-    }
-  } catch (error) {
-    console.warn('Failed to load from localStorage:', error);
-  }
-  return null;
-};
-
-const clearLocalStorage = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.warn('Failed to clear localStorage:', error);
-  }
-};
 
 export function WorkoutEntryForm({
   exercises,
@@ -66,7 +20,7 @@ export function WorkoutEntryForm({
   exercises: ExerciseOption[];
 }) {
   // Load initial values from localStorage
-  const getInitialValues = (): FormValues => {
+  const getInitialValues = (): WorkoutFormValues => {
     const saved = loadFromLocalStorage();
     return (
       saved || {
