@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useState } from 'react';
 
 type DatePickerProps = {
   value?: Date;
@@ -20,6 +21,8 @@ type DatePickerProps = {
 };
 
 export function DatePicker({ value, onChange }: DatePickerProps) {
+  const [open, setOpen] = useState(false);
+
   const handleSelect = (date: Date | undefined) => {
     if (!onChange) return;
 
@@ -27,12 +30,13 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
       // If onChange is a function that expects an updater function
       if (typeof onChange === 'function' && onChange.length === 1) {
         onChange(date);
+        setOpen(false);
       }
     }
   };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={'outline'}
@@ -46,12 +50,7 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={value}
-          onSelect={handleSelect}
-          initialFocus
-        />
+        <Calendar mode="single" selected={value} onSelect={handleSelect} />
       </PopoverContent>
     </Popover>
   );
