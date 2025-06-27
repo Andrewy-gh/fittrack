@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Exercise, ExerciseOption } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
@@ -11,16 +11,80 @@ import { SetTypeSelect } from '@/components/set-type-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Trash2 } from 'lucide-react';
 
+const STORAGE_KEY = 'workout-entry-form-data';
+
+// Extract FormValues type from the default values
+type FormValues = {
+  date: Date;
+  notes: string;
+  exercises: Exercise[];
+};
+
+// Helper functions for localStorage
+const saveToLocalStorage = (data: FormValues) => {
+  try {
+    // Convert Date objects to ISO strings for JSON serialization
+    const serializedData = {
+      ...data,
+      date: data.date instanceof Date ? data.date.toISOString() : data.date,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializedData));
+  } catch (error) {
+    console.warn('Failed to save to localStorage:', error);
+  }
+};
+
+const loadFromLocalStorage = (): FormValues | null => {
+  console.log('Loading form data from localStorage');
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Convert ISO string back to Date object
+      if (parsed.date) {
+        parsed.date = new Date(parsed.date);
+      }
+      return parsed as FormValues;
+    }
+  } catch (error) {
+    console.warn('Failed to load from localStorage:', error);
+  }
+  return null;
+};
+
+const clearLocalStorage = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn('Failed to clear localStorage:', error);
+  }
+};
+
 export function WorkoutEntryForm({
   exercises,
 }: {
   exercises: ExerciseOption[];
 }) {
+  // Load initial values from localStorage
+  const getInitialValues = (): FormValues => {
+    const saved = loadFromLocalStorage();
+    return (
+      saved || {
+        date: new Date(),
+        notes: '',
+        exercises: [] as Exercise[],
+      }
+    );
+  };
+
   const form = useForm({
-    defaultValues: {
-      date: new Date(),
-      notes: '',
-      exercises: [] as Exercise[],
+    defaultValues: getInitialValues(),
+    listeners: {
+      onChange: ({ formApi }) => {
+        console.log('Saving form data to localStorage');
+        saveToLocalStorage(formApi.state.values);
+      },
+      onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {
       try {
@@ -33,14 +97,22 @@ export function WorkoutEntryForm({
         });
 
         if (!response.ok) {
-          const errorText = await response.text()
+          const errorText = await response.text();
           throw new Error(errorText ?? 'Failed to submit workout');
         }
 
         const result = await response.json();
-        console.log('Workout submitted! Server says: ' + JSON.stringify(result));
+        console.log(
+          'Workout submitted! Server says: ' + JSON.stringify(result)
+        );
+
+        // Clear localStorage after successful submission
+        clearLocalStorage();
+
+        // Reset form to default values
+        form.reset();
       } catch (error) {
-        alert(error)
+        alert(error);
       }
     },
   });
@@ -63,6 +135,16 @@ export function WorkoutEntryForm({
     console.log(newExercise);
     handleSelect(newExercise);
   }
+
+  // Add a function to manually clear the form and localStorage
+  const handleClearForm = () => {
+    if (confirm('Are you sure you want to clear all form data?')) {
+      clearLocalStorage();
+      form.reset();
+      setSelectedExercise(undefined);
+    }
+  };
+
   return (
     <div>
       <form
@@ -112,7 +194,7 @@ export function WorkoutEntryForm({
           {(field) => {
             return (
               <div className="space-y-4">
-                {field.state.value.map((_, exerciseIndex) => {
+                {(field.state.value as Exercise[]).map((_, exerciseIndex) => {
                   return (
                     <div
                       key={`exercises[${exerciseIndex}]`}
@@ -156,105 +238,107 @@ export function WorkoutEntryForm({
                         {(field) => {
                           return (
                             <>
-                              {field.state.value.map((_, setIndex) => {
-                                return (
-                                  <div
-                                    key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
-                                    className="flex gap-3 items-end"
-                                  >
-                                    {/* MARK: set weight */}
-                                    <form.Field
-                                      name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
+                              {(field.state.value as any[]).map(
+                                (_, setIndex) => {
+                                  return (
+                                    <div
+                                      key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
+                                      className="flex gap-3 items-end"
                                     >
-                                      {(subField) => {
-                                        return (
-                                          <div className="grid w-full max-w-sm items-center gap-3">
-                                            <Label
-                                              className={cn(
-                                                setIndex !== 0 && 'sr-only'
-                                              )}
-                                            >
-                                              Weight
-                                            </Label>
-                                            <Input
-                                              type="number"
-                                              value={subField.state.value}
-                                              onChange={(e) =>
-                                                subField.handleChange(
-                                                  Number(e.target.value)
-                                                )
-                                              }
-                                              placeholder="Weight"
-                                            />
-                                          </div>
-                                        );
-                                      }}
-                                    </form.Field>
-                                    {/* MARK: set reps */}
-                                    <form.Field
-                                      name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
-                                    >
-                                      {(subField) => {
-                                        return (
-                                          <div className="grid w-full max-w-sm items-center gap-3">
-                                            <Label
-                                              className={cn(
-                                                setIndex !== 0 && 'sr-only'
-                                              )}
-                                            >
-                                              Reps
-                                            </Label>
-                                            <Input
-                                              type="number"
-                                              value={subField.state.value}
-                                              onChange={(e) =>
-                                                subField.handleChange(
-                                                  Number(e.target.value)
-                                                )
-                                              }
-                                              placeholder="Reps"
-                                            />
-                                          </div>
-                                        );
-                                      }}
-                                    </form.Field>
-                                    {/* MARK: set type */}
-                                    <form.Field
-                                      name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
-                                    >
-                                      {(subField) => {
-                                        return (
-                                          <div className="grid w-full max-w-sm items-center gap-3">
-                                            <Label
-                                              className={cn(
-                                                setIndex !== 0 && 'sr-only'
-                                              )}
-                                            >
-                                              Set Type
-                                            </Label>
-                                            <SetTypeSelect
-                                              value={subField.state.value}
-                                              onChange={subField.handleChange}
-                                            />
-                                          </div>
-                                        );
-                                      }}
-                                    </form.Field>
-                                    {/* MARK: remove set */}
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-full text-red-500 hover:text-red-700 hover:bg-red-100"
-                                      onClick={() =>
-                                        field.removeValue(setIndex)
-                                      }
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                );
-                              })}
+                                      {/* MARK: set weight */}
+                                      <form.Field
+                                        name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
+                                      >
+                                        {(subField) => {
+                                          return (
+                                            <div className="grid w-full max-w-sm items-center gap-3">
+                                              <Label
+                                                className={cn(
+                                                  setIndex !== 0 && 'sr-only'
+                                                )}
+                                              >
+                                                Weight
+                                              </Label>
+                                              <Input
+                                                type="number"
+                                                value={subField.state.value}
+                                                onChange={(e) =>
+                                                  subField.handleChange(
+                                                    Number(e.target.value)
+                                                  )
+                                                }
+                                                placeholder="Weight"
+                                              />
+                                            </div>
+                                          );
+                                        }}
+                                      </form.Field>
+                                      {/* MARK: set reps */}
+                                      <form.Field
+                                        name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
+                                      >
+                                        {(subField) => {
+                                          return (
+                                            <div className="grid w-full max-w-sm items-center gap-3">
+                                              <Label
+                                                className={cn(
+                                                  setIndex !== 0 && 'sr-only'
+                                                )}
+                                              >
+                                                Reps
+                                              </Label>
+                                              <Input
+                                                type="number"
+                                                value={subField.state.value}
+                                                onChange={(e) =>
+                                                  subField.handleChange(
+                                                    Number(e.target.value)
+                                                  )
+                                                }
+                                                placeholder="Reps"
+                                              />
+                                            </div>
+                                          );
+                                        }}
+                                      </form.Field>
+                                      {/* MARK: set type */}
+                                      <form.Field
+                                        name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
+                                      >
+                                        {(subField) => {
+                                          return (
+                                            <div className="grid w-full max-w-sm items-center gap-3">
+                                              <Label
+                                                className={cn(
+                                                  setIndex !== 0 && 'sr-only'
+                                                )}
+                                              >
+                                                Set Type
+                                              </Label>
+                                              <SetTypeSelect
+                                                value={subField.state.value}
+                                                onChange={subField.handleChange}
+                                              />
+                                            </div>
+                                          );
+                                        }}
+                                      </form.Field>
+                                      {/* MARK: remove set */}
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-full text-red-500 hover:text-red-700 hover:bg-red-100"
+                                        onClick={() =>
+                                          field.removeValue(setIndex)
+                                        }
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  );
+                                }
+                              )}
                               {/* MARK: add set */}
                               <Button
                                 onClick={() => {
@@ -307,14 +391,21 @@ export function WorkoutEntryForm({
             )}
           </form.Field>
         </div>
-        <form.Subscribe
-          selector={(state) => [state.canSubmit, state.isSubmitting]}
-          children={([canSubmit, isSubmitting]) => (
-            <Button type="submit" disabled={!canSubmit}>
-              {isSubmitting ? '...' : 'Submit'}
-            </Button>
-          )}
-        />
+
+        {/* Action buttons */}
+        <div className="flex gap-4">
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
+            children={([canSubmit, isSubmitting]) => (
+              <Button type="submit" disabled={!canSubmit}>
+                {isSubmitting ? '...' : 'Submit'}
+              </Button>
+            )}
+          />
+          <Button type="button" variant="outline" onClick={handleClearForm}>
+            Clear Form
+          </Button>
+        </div>
       </form>
     </div>
   );
