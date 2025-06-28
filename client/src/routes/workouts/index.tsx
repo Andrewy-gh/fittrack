@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,6 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(
     null
   );
-
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -410,8 +409,18 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                  Edit Session
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                  asChild
+                >
+                  <Link
+                    to="/workouts/$workoutId"
+                    params={{
+                      workoutId: selectedWorkout.id,
+                    }}
+                    >
+                    Edit Session
+                  </Link>
                 </Button>
                 <Button
                   variant="outline"
@@ -433,7 +442,6 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
     </div>
   );
 }
-
 
 export const Route = createFileRoute('/workouts/')({
   loader: async (): Promise<WorkoutData[]> => {
