@@ -39,18 +39,35 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={'outline'}
+          variant="outline"
           className={cn(
-            'w-[280px] justify-start text-left font-normal',
-            !value && 'text-muted-foreground'
+            'w-full justify-start text-left font-normal bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700 hover:text-white',
+            !value && 'text-neutral-400'
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {value ? format(value, 'PPP') : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar mode="single" selected={value} onSelect={handleSelect} />
+      <PopoverContent className="w-auto p-0 border-neutral-700 bg-neutral-800">
+        <Calendar 
+          mode="single" 
+          selected={value} 
+          onSelect={handleSelect} 
+          className="bg-neutral-800 text-white"
+          classNames={{
+            day: 'text-neutral-200 hover:bg-neutral-700 aria-selected:bg-neutral-600',
+            day_selected: 'bg-neutral-600 text-white',
+            day_today: 'font-bold',
+            day_outside: 'text-neutral-500',
+            day_disabled: 'text-neutral-500',
+            day_range_middle: 'bg-neutral-700',
+            head_cell: 'text-neutral-400',
+            caption_label: 'text-white',
+            nav_button: 'text-neutral-200 hover:bg-neutral-700',
+            dropdown: 'bg-neutral-800 border-neutral-700 text-white',
+          }}
+        />
       </PopoverContent>
     </Popover>
   );

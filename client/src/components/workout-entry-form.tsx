@@ -114,13 +114,13 @@ export function WorkoutEntryForm({
   };
 
   return (
-    <div className="p-6 space-y-6 bg-black min-h-screen">
+    <div className="min-h-screen space-y-4 bg-black p-2 lg:p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white tracking-wider mb-2">
-          WORKOUT ENTRY PROTOCOL
+      <div className="mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-white tracking-wider mb-1">
+          WORKOUT ENTRY
         </h1>
-        <p className="text-sm text-neutral-400">
+        <p className="text-xs md:text-sm text-neutral-400">
           Training session data input and management
         </p>
       </div>
@@ -131,7 +131,7 @@ export function WorkoutEntryForm({
           e.stopPropagation();
           form.handleSubmit();
         }}
-        className="space-y-6"
+        className="space-y-4"
       >
         {/* Session Information */}
         <Card className="bg-neutral-900 border-neutral-700">
@@ -141,7 +141,7 @@ export function WorkoutEntryForm({
               SESSION INFORMATION
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             {/* Date Field */}
             <form.Field name="date">
               {(field) => {
@@ -193,43 +193,47 @@ export function WorkoutEntryForm({
 
         {/* Exercise Selection */}
         <Card className="bg-neutral-900 border-neutral-700">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider flex items-center gap-2">
-              <Target className="w-4 h-4" />
+          <CardHeader className="p-4">
+            <CardTitle className="text-xs md:text-sm font-medium text-neutral-300 tracking-wider flex items-center gap-2">
+              <Target className="w-3.5 h-3.5 md:w-4 md:h-4" />
               EXERCISE SELECTION
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4 md:flex-row md:items-end">
-              <div className="space-y-3 flex-1">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3">
+              <div className="space-y-2">
                 <Label className="text-xs text-neutral-400 tracking-wider">
                   EXERCISE DATABASE
                 </Label>
-                <ExerciseCombobox
-                  options={exercises}
-                  selected={selectedExercise?.name ?? ''}
-                  onChange={handleSelect}
-                  onCreate={handleAppendGroup}
-                />
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <ExerciseCombobox
+                      options={exercises}
+                      selected={selectedExercise?.name ?? ''}
+                      onChange={handleSelect}
+                      onCreate={handleAppendGroup}
+                    />
+                  </div>
+                  <form.Field name="exercises">
+                    {(field) => (
+                      <Button
+                        onClick={() =>
+                          field.pushValue({
+                            name: selectedExercise?.name ?? '',
+                            sets: [],
+                          })
+                        }
+                        type="button"
+                        className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
+                        disabled={!selectedExercise?.name}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Exercise
+                      </Button>
+                    )}
+                  </form.Field>
+                </div>
               </div>
-              <form.Field name="exercises">
-                {(field) => (
-                  <Button
-                    onClick={() =>
-                      field.pushValue({
-                        name: selectedExercise?.name ?? '',
-                        sets: [],
-                      })
-                    }
-                    type="button"
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={!selectedExercise?.name}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Deploy Exercise
-                  </Button>
-                )}
-              </form.Field>
             </div>
           </CardContent>
         </Card>
@@ -332,137 +336,153 @@ export function WorkoutEntryForm({
                                   </div>
 
                                   {/* Sets Header */}
-                                  {(setsField.state.value as any[]).length >
-                                    0 && (
-                                    <div className="grid grid-cols-12 gap-3 text-xs text-neutral-400 tracking-wider px-2">
-                                      <div className="col-span-1">SET</div>
-                                      <div className="col-span-3">
-                                        WEIGHT (LBS)
-                                      </div>
-                                      <div className="col-span-2">REPS</div>
-                                      <div className="col-span-3">SET TYPE</div>
-                                      <div className="col-span-2">VOLUME</div>
-                                      <div className="col-span-1">ACTION</div>
-                                    </div>
-                                  )}
+                                  <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] text-neutral-400 tracking-wider px-1">
+                                    <div className="col-span-2 text-center">SET</div>
+                                    <div className="col-span-3 text-center">WEIGHT</div>
+                                    <div className="col-span-2 text-center">REPS</div>
+                                    <div className="col-span-3 text-center">TYPE</div>
+                                    <div className="col-span-1 text-center">VOL</div>
+                                    <div className="col-span-1"></div>
+                                  </div>
 
                                   {/* Sets List */}
-                                  {(setsField.state.value as any[]).map(
-                                    (set, setIndex) => {
-                                      const volume =
-                                        (set.weight || 0) * (set.reps || 0);
+                                  <div className="space-y-3">
+                                    {(setsField.state.value as any[]).map(
+                                      (set, setIndex) => {
+                                        const volume =
+                                          (set.weight || 0) * (set.reps || 0);
 
-                                      return (
-                                        <div
-                                          key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
-                                          className="grid grid-cols-12 gap-3 items-end p-2 bg-neutral-800 rounded border border-neutral-700"
-                                        >
-                                          {/* Set Number */}
-                                          <div className="col-span-1 text-center">
-                                            <div className="text-white font-mono text-sm">
-                                              #{setIndex + 1}
+                                        return (
+                                          <div key={`exercises[${exerciseIndex}].sets[${setIndex}]`}>
+                                            {/* Mobile Layout */}
+                                            <div className="p-3 bg-neutral-800 rounded-lg space-y-3 sm:hidden border border-neutral-700">
+                                              <div className="flex justify-between items-center">
+                                                <div className="font-mono text-sm text-white">
+                                                  Set #{setIndex + 1}
+                                                </div>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                                  onClick={() =>
+                                                    setsField.removeValue(setIndex)
+                                                  }
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-3">
+                                                <form.Field name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}>
+                                                  {(subField) => (
+                                                    <div className="space-y-1.5">
+                                                      <Label className="text-xs text-neutral-400">Weight</Label>
+                                                      <Input
+                                                        type="number"
+                                                        value={subField.state.value || ''}
+                                                        onChange={(e) => subField.handleChange(Number(e.target.value) || 0)}
+                                                        placeholder="0"
+                                                        className="bg-neutral-700 border-neutral-600 text-white text-center font-mono h-9"
+                                                      />
+                                                    </div>
+                                                  )}
+                                                </form.Field>
+                                                <form.Field name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}>
+                                                  {(subField) => (
+                                                    <div className="space-y-1.5">
+                                                      <Label className="text-xs text-neutral-400">Reps</Label>
+                                                      <Input
+                                                        type="number"
+                                                        value={subField.state.value || ''}
+                                                        onChange={(e) => subField.handleChange(Number(e.target.value) || 0)}
+                                                        placeholder="0"
+                                                        className="bg-neutral-700 border-neutral-600 text-white text-center font-mono h-9"
+                                                      />
+                                                    </div>
+                                                  )}
+                                                </form.Field>
+                                              </div>
+                                              <form.Field name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}>
+                                                {(subField) => (
+                                                  <div className="space-y-1.5">
+                                                    <Label className="text-xs text-neutral-400">Set Type</Label>
+                                                    <SetTypeSelect
+                                                      value={subField.state.value}
+                                                      onChange={subField.handleChange}
+                                                    />
+                                                  </div>
+                                                )}
+                                              </form.Field>
+                                              <div className="text-center text-sm text-neutral-400 pt-1">
+                                                Volume: <span className="font-mono text-orange-500">{volume > 0 ? volume.toLocaleString() : '-'}</span>
+                                              </div>
+                                            </div>
+
+                                            {/* Desktop Layout */}
+                                            <div className="hidden sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end">
+                                              <div className="col-span-2 text-center">
+                                                <div className="text-white font-mono text-sm h-9 flex items-center justify-center">
+                                                  #{setIndex + 1}
+                                                </div>
+                                              </div>
+                                              <form.Field name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}>
+                                                {(subField) => (
+                                                  <div className="col-span-3">
+                                                    <Input
+                                                      type="number"
+                                                      value={subField.state.value || ''}
+                                                      onChange={(e) => subField.handleChange(Number(e.target.value) || 0)}
+                                                      placeholder="0"
+                                                      className="bg-neutral-700 border-neutral-600 text-white text-center font-mono h-9"
+                                                    />
+                                                  </div>
+                                                )}
+                                              </form.Field>
+                                              <form.Field name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}>
+                                                {(subField) => (
+                                                  <div className="col-span-2">
+                                                    <Input
+                                                      type="number"
+                                                      value={subField.state.value || ''}
+                                                      onChange={(e) => subField.handleChange(Number(e.target.value) || 0)}
+                                                      placeholder="0"
+                                                      className="bg-neutral-700 border-neutral-600 text-white text-center font-mono h-9"
+                                                    />
+                                                  </div>
+                                                )}
+                                              </form.Field>
+                                              <form.Field name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}>
+                                                {(subField) => (
+                                                  <div className="col-span-3">
+                                                    <SetTypeSelect
+                                                      value={subField.state.value}
+                                                      onChange={subField.handleChange}
+                                                    />
+                                                  </div>
+                                                )}
+                                              </form.Field>
+                                              <div className="col-span-1 text-center">
+                                                <div className="text-orange-500 font-mono text-sm h-9 flex items-center justify-center">
+                                                  {volume > 0 ? volume.toLocaleString() : '-'}
+                                                </div>
+                                              </div>
+                                              <div className="col-span-1 text-center">
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                                  onClick={() => setsField.removeValue(setIndex)}
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </div>
                                             </div>
                                           </div>
-
-                                          {/* Weight */}
-                                          <form.Field
-                                            name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
-                                          >
-                                            {(subField) => {
-                                              return (
-                                                <div className="col-span-3">
-                                                  <Input
-                                                    type="number"
-                                                    value={
-                                                      subField.state.value || ''
-                                                    }
-                                                    onChange={(e) =>
-                                                      subField.handleChange(
-                                                        Number(
-                                                          e.target.value
-                                                        ) || 0
-                                                      )
-                                                    }
-                                                    placeholder="0"
-                                                    className="bg-neutral-700 border-neutral-600 text-white text-center font-mono"
-                                                  />
-                                                </div>
-                                              );
-                                            }}
-                                          </form.Field>
-
-                                          {/* Reps */}
-                                          <form.Field
-                                            name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
-                                          >
-                                            {(subField) => {
-                                              return (
-                                                <div className="col-span-2">
-                                                  <Input
-                                                    type="number"
-                                                    value={
-                                                      subField.state.value || ''
-                                                    }
-                                                    onChange={(e) =>
-                                                      subField.handleChange(
-                                                        Number(
-                                                          e.target.value
-                                                        ) || 0
-                                                      )
-                                                    }
-                                                    placeholder="0"
-                                                    className="bg-neutral-700 border-neutral-600 text-white text-center font-mono"
-                                                  />
-                                                </div>
-                                              );
-                                            }}
-                                          </form.Field>
-
-                                          {/* Set Type */}
-                                          <form.Field
-                                            name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
-                                          >
-                                            {(subField) => {
-                                              return (
-                                                <div className="col-span-3">
-                                                  <SetTypeSelect
-                                                    value={subField.state.value}
-                                                    onChange={
-                                                      subField.handleChange
-                                                    }
-                                                  />
-                                                </div>
-                                              );
-                                            }}
-                                          </form.Field>
-
-                                          {/* Volume */}
-                                          <div className="col-span-2 text-center">
-                                            <div className="text-orange-500 font-mono text-sm">
-                                              {volume > 0
-                                                ? volume.toLocaleString()
-                                                : '-'}
-                                            </div>
-                                          </div>
-
-                                          {/* Remove Set */}
-                                          <div className="col-span-1 text-center">
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                                              onClick={() =>
-                                                setsField.removeValue(setIndex)
-                                              }
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      );
-                                    }
-                                  )}
+                                        );
+                                      }
+                                    )}
+                                  </div>
 
                                   {/* Add Set Button */}
                                   <Button
@@ -496,19 +516,19 @@ export function WorkoutEntryForm({
 
         {/* Action Buttons */}
         <Card className="bg-neutral-900 border-neutral-700">
-          <CardContent className="pt-6">
-            <div className="flex gap-4 justify-between">
-              <div className="flex gap-4">
+          <CardContent className="p-2 sm:p-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-between items-stretch">
+              <div className="flex flex-col sm:flex-row gap-2 flex-1">
                 <form.Subscribe
                   selector={(state) => [state.canSubmit, state.isSubmitting]}
                   children={([canSubmit, isSubmitting]) => (
                     <Button
                       type="submit"
                       disabled={!canSubmit}
-                      className="bg-orange-500 hover:bg-orange-600 text-white"
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-1.5 h-auto text-sm"
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      {isSubmitting ? 'TRANSMITTING...' : 'SUBMIT WORKOUT'}
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {isSubmitting ? 'SAVING...' : 'SAVE'}
                     </Button>
                   )}
                 />
@@ -517,16 +537,17 @@ export function WorkoutEntryForm({
                   type="button"
                   variant="outline"
                   onClick={handleClearForm}
-                  className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
+                  className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent py-1.5 h-auto text-sm"
                 >
-                  <X className="w-4 h-4 mr-2" />
-                  Clear Form
+                  <X className="w-3.5 h-3.5 mr-1.5" />
+                  <span className="hidden sm:inline">Clear Form</span>
+                  <span className="sm:hidden">Clear</span>
                 </Button>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-neutral-500">
-                <AlertTriangle className="w-3 h-3" />
-                <span>Auto-save enabled</span>
+              <div className="hidden sm:flex items-center justify-end gap-2 text-[10px] sm:text-xs text-neutral-500 px-2">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                <span>Auto-save</span>
               </div>
             </div>
           </CardContent>
