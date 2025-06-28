@@ -1,177 +1,501 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, FileText, Dumbbell } from 'lucide-react';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import {
+  Search,
+  Filter,
+  Calendar,
+  Clock,
+  Target,
+  TrendingUp,
+  Plus,
+  MoreHorizontal,
+} from 'lucide-react';
 
-interface Workout {
-  id: number;
-  date: string;
-  notes: string | null;
+interface WorkoutData {
   created_at: string;
+  date: string;
+  id: number;
+  notes: string | null;
   updated_at: string | null;
 }
 
-function WorkoutDisplay({ workouts }: { workouts: Workout[] }) {
-  const formatWorkoutDate = (dateString: string) => {
-    const date = parseISO(dateString);
-    return format(date, 'EEEE, MMMM d, yyyy');
+function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(
+    null
+  );
+
+  // Sample workout data matching your structure
+  // const workouts: WorkoutData[] = [
+  //   {
+  //     created_at: '2025-06-26T20:52:52.808597-04:00',
+  //     date: '2025-06-26T20:28:36.944-04:00',
+  //     id: 11,
+  //     notes: 'Upper body strength training - focused on compound movements',
+  //     updated_at: null,
+  //   },
+  //   {
+  //     created_at: '2025-06-25T18:30:15.123456-04:00',
+  //     date: '2025-06-25T18:00:00.000-04:00',
+  //     id: 10,
+  //     notes: 'HIIT cardio session - 30 minutes high intensity intervals',
+  //     updated_at: '2025-06-25T19:15:22.456789-04:00',
+  //   },
+  //   {
+  //     created_at: '2025-06-24T07:45:30.987654-04:00',
+  //     date: '2025-06-24T07:30:00.000-04:00',
+  //     id: 9,
+  //     notes: 'Lower body power training - squats and deadlifts focus',
+  //     updated_at: null,
+  //   },
+  //   {
+  //     created_at: '2025-06-23T19:20:45.654321-04:00',
+  //     date: '2025-06-23T19:00:00.000-04:00',
+  //     id: 8,
+  //     notes: 'Recovery yoga session - flexibility and mobility work',
+  //     updated_at: '2025-06-23T20:10:15.789012-04:00',
+  //   },
+  //   {
+  //     created_at: '2025-06-22T16:15:12.345678-04:00',
+  //     date: '2025-06-22T16:00:00.000-04:00',
+  //     id: 7,
+  //     notes: 'Full body circuit training - endurance and strength combo',
+  //     updated_at: null,
+  //   },
+  //   {
+  //     created_at: '2025-06-21T08:30:00.111222-04:00',
+  //     date: '2025-06-21T08:15:00.000-04:00',
+  //     id: 6,
+  //     notes: 'Morning run - 5K steady pace with interval sprints',
+  //     updated_at: '2025-06-21T09:45:33.444555-04:00',
+  //   },
+  //   {
+  //     created_at: '2025-06-20T17:45:18.666777-04:00',
+  //     date: '2025-06-20T17:30:00.000-04:00',
+  //     id: 5,
+  //     notes: 'Push day - chest, shoulders, and triceps intensive',
+  //     updated_at: null,
+  //   },
+  //   {
+  //     created_at: '2025-06-19T12:00:00.888999-04:00',
+  //     date: '2025-06-19T11:45:00.000-04:00',
+  //     id: 4,
+  //     notes: 'Pull day - back and biceps with rowing emphasis',
+  //     updated_at: '2025-06-19T13:20:45.123456-04:00',
+  //   },
+  // ];
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    });
   };
 
-  const formatWorkoutTime = (dateString: string) => {
-    const date = parseISO(dateString);
-    return format(date, 'h:mm a');
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
   };
 
-  const getRelativeTime = (dateString: string) => {
-    const date = parseISO(dateString);
-    return formatDistanceToNow(date, { addSuffix: true });
+  const getWorkoutType = (notes: string) => {
+    const lowerNotes = notes.toLowerCase();
+    if (
+      lowerNotes.includes('cardio') ||
+      lowerNotes.includes('run') ||
+      lowerNotes.includes('hiit')
+    )
+      return 'cardio';
+    if (
+      lowerNotes.includes('strength') ||
+      lowerNotes.includes('power') ||
+      lowerNotes.includes('lift')
+    )
+      return 'strength';
+    if (
+      lowerNotes.includes('yoga') ||
+      lowerNotes.includes('recovery') ||
+      lowerNotes.includes('flexibility')
+    )
+      return 'recovery';
+    if (lowerNotes.includes('circuit') || lowerNotes.includes('full body'))
+      return 'circuit';
+    return 'general';
   };
 
-  const sortedWorkouts = [...workouts].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'cardio':
+        return 'bg-red-500/20 text-red-500';
+      case 'strength':
+        return 'bg-orange-500/20 text-orange-500';
+      case 'recovery':
+        return 'bg-white/20 text-white';
+      case 'circuit':
+        return 'bg-neutral-500/20 text-neutral-300';
+      default:
+        return 'bg-neutral-600/20 text-neutral-400';
+    }
+  };
+
+  const filteredWorkouts = workouts.filter(
+    (workout) =>
+      workout.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      workout.id.toString().includes(searchTerm)
+  );
+
+  // Calculate stats
+  const totalWorkouts = workouts.length;
+  const thisWeekWorkouts = workouts.filter((w) => {
+    const workoutDate = new Date(w.date);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return workoutDate >= weekAgo;
+  }).length;
+
+  const updatedWorkouts = workouts.filter((w) => w.updated_at !== null).length;
+  const workoutTypes = workouts.reduce(
+    (acc, workout) => {
+      const type = getWorkoutType(workout.notes ?? '');
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-blue-600 rounded-full">
-              <Dumbbell className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900">My Workouts</h1>
-          </div>
-          <p className="text-gray-600 text-lg">
-            Track your fitness journey with {workouts.length} recorded workouts
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-wider">
+            WORKOUT COMMAND
+          </h1>
+          <p className="text-sm text-neutral-400">
+            Training session monitoring and analysis
           </p>
         </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">
-                {workouts.length}
-              </div>
-              <div className="text-gray-600">Total Workouts</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">
-                {
-                  new Set(
-                    workouts.map((w) => format(parseISO(w.date), 'yyyy-MM-dd'))
-                  ).size
-                }
-              </div>
-              <div className="text-gray-600">Unique Days</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">
-                {getRelativeTime(
-                  sortedWorkouts[0]?.date || new Date().toISOString()
-                )}
-              </div>
-              <div className="text-gray-600">Last Workout</div>
-            </CardContent>
-          </Card>
+        <div className="flex gap-2">
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Plus className="w-4 h-4 mr-2" />
+            New Session
+          </Button>
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
         </div>
-
-        {/* Workouts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedWorkouts.map((workout) => (
-            <Card
-              key={workout.id}
-              className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-            >
-              <Link to={`/workouts/$workoutId`} params={{ workoutId: workout.id }}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-800">
-                      Workout #{workout.id}
-                    </CardTitle>
-                    <Badge
-                      variant="secondary"
-                      className="bg-blue-100 text-blue-800"
-                    >
-                      {getRelativeTime(workout.date)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Date */}
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    <div>
-                      <div className="font-medium">
-                        {formatWorkoutDate(workout.date)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {formatWorkoutTime(workout.date)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Created At */}
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <Clock className="h-4 w-4 text-green-600" />
-                    <div>
-                      <div className="text-sm font-medium">Created</div>
-                      <div className="text-sm text-gray-500">
-                        {format(parseISO(workout.created_at), 'MMM d, h:mm a')}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div className="flex items-start gap-3 text-gray-700">
-                    <FileText className="h-4 w-4 text-purple-600 mt-0.5" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">Notes</div>
-                      <div className="text-sm text-gray-500">
-                        {workout.notes || 'No notes added'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Updated Status */}
-                  {workout.updated_at && (
-                    <div className="pt-2 border-t border-gray-200">
-                      <div className="text-xs text-gray-500">
-                        Updated {getRelativeTime(workout.updated_at)}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Link>
-            </Card>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {workouts.length === 0 && (
-          <div className="text-center py-12">
-            <Dumbbell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              No workouts yet
-            </h3>
-            <p className="text-gray-500">
-              Start your fitness journey by adding your first workout!
-            </p>
-          </div>
-        )}
       </div>
+
+      {/* Search and Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <Card className="lg:col-span-2 bg-neutral-900 border-neutral-700">
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Input
+                placeholder="Search workouts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-neutral-800 border-neutral-600 text-white placeholder-neutral-400"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-neutral-900 border-neutral-700">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-neutral-400 tracking-wider">
+                  TOTAL SESSIONS
+                </p>
+                <p className="text-2xl font-bold text-white font-mono">
+                  {totalWorkouts}
+                </p>
+              </div>
+              <Target className="w-8 h-8 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-neutral-900 border-neutral-700">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-neutral-400 tracking-wider">
+                  THIS WEEK
+                </p>
+                <p className="text-2xl font-bold text-orange-500 font-mono">
+                  {thisWeekWorkouts}
+                </p>
+              </div>
+              <Calendar className="w-8 h-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-neutral-900 border-neutral-700">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-neutral-400 tracking-wider">
+                  MODIFIED
+                </p>
+                <p className="text-2xl font-bold text-white font-mono">
+                  {updatedWorkouts}
+                </p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Workout Types Overview */}
+      <Card className="bg-neutral-900 border-neutral-700">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
+            TRAINING DISTRIBUTION
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {Object.entries(workoutTypes).map(([type, count]) => (
+              <div key={type} className="text-center">
+                <div className="text-2xl font-bold text-white font-mono">
+                  {count}
+                </div>
+                <div className="text-xs text-neutral-400 uppercase tracking-wider">
+                  {type}
+                </div>
+                <Badge className={`${getTypeColor(type)} mt-1`}>
+                  {type.toUpperCase()}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Workout Sessions List */}
+      <Card className="bg-neutral-900 border-neutral-700">
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
+            TRAINING SESSIONS
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-neutral-700">
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    SESSION ID
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    DATE
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    TIME
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    TYPE
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    NOTES
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    STATUS
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                    ACTIONS
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredWorkouts.map((workout, index) => {
+                  const workoutType = getWorkoutType(workout.notes ?? '');
+                  return (
+                    <tr
+                      key={workout.id}
+                      className={`border-b border-neutral-800 hover:bg-neutral-800 transition-colors cursor-pointer ${
+                        index % 2 === 0 ? 'bg-neutral-900' : 'bg-neutral-850'
+                      }`}
+                      onClick={() => setSelectedWorkout(workout)}
+                    >
+                      <td className="py-3 px-4 text-sm text-white font-mono">
+                        WO-{workout.id.toString().padStart(3, '0')}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-white font-mono">
+                        {formatDate(workout.date)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3 text-neutral-400" />
+                          <span className="text-sm text-neutral-300 font-mono">
+                            {formatTime(workout.date)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={getTypeColor(workoutType)}>
+                          {workoutType.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-neutral-300 max-w-xs truncate">
+                        {workout.notes}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${
+                              workout.updated_at ? 'bg-orange-500' : 'bg-white'
+                            }`}
+                          ></div>
+                          <span className="text-xs text-neutral-300 uppercase tracking-wider">
+                            {workout.updated_at ? 'MODIFIED' : 'ORIGINAL'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-neutral-400 hover:text-orange-500"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Workout Detail Modal */}
+      {selectedWorkout && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="bg-neutral-900 border-neutral-700 w-full max-w-2xl">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold text-white tracking-wider">
+                  TRAINING SESSION WO-
+                  {selectedWorkout.id.toString().padStart(3, '0')}
+                </CardTitle>
+                <p className="text-sm text-neutral-400 font-mono">
+                  {formatDate(selectedWorkout.date)} at{' '}
+                  {formatTime(selectedWorkout.date)}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => setSelectedWorkout(null)}
+                className="text-neutral-400 hover:text-white"
+              >
+                ✕
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                    WORKOUT TYPE
+                  </p>
+                  <Badge
+                    className={getTypeColor(
+                      getWorkoutType(selectedWorkout.notes ?? '')
+                    )}
+                  >
+                    {getWorkoutType(selectedWorkout.notes ?? '').toUpperCase()}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                    STATUS
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        selectedWorkout.updated_at
+                          ? 'bg-orange-500'
+                          : 'bg-white'
+                      }`}
+                    ></div>
+                    <span className="text-sm text-white uppercase tracking-wider">
+                      {selectedWorkout.updated_at ? 'MODIFIED' : 'ORIGINAL'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                    CREATED
+                  </p>
+                  <p className="text-sm text-white font-mono">
+                    {formatDate(selectedWorkout.created_at)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                    LAST MODIFIED
+                  </p>
+                  <p className="text-sm text-white font-mono">
+                    {selectedWorkout.updated_at
+                      ? formatDate(selectedWorkout.updated_at)
+                      : 'Never'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-neutral-400 tracking-wider mb-2">
+                  TRAINING NOTES
+                </p>
+                <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                  <p className="text-sm text-white leading-relaxed">
+                    {selectedWorkout.notes}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                  Edit Session
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
+                >
+                  Duplicate
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
+                >
+                  Export Data
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
+
 export const Route = createFileRoute('/workouts/')({
-  loader: async (): Promise<Workout[]> => {
+  loader: async (): Promise<WorkoutData[]> => {
     const res = await fetch('/api/workouts');
     if (!res.ok) {
       throw new Error('Failed to fetch workouts');
@@ -184,5 +508,5 @@ export const Route = createFileRoute('/workouts/')({
 
 function RouteComponent() {
   const workouts = Route.useLoaderData();
-  return <WorkoutDisplay workouts={workouts} />;
+  return <WorkoutsDisplay workouts={workouts} />;
 }
