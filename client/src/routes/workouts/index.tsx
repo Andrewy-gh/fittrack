@@ -23,7 +23,7 @@ interface WorkoutData {
   updated_at: string | null;
 }
 
-function WorkoutDisplay({ workouts }: { workouts: WorkoutData[] }) {
+function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(
     null
@@ -508,5 +508,5 @@ export const Route = createFileRoute('/workouts/')({
 
 function RouteComponent() {
   const workouts = Route.useLoaderData();
-  return <WorkoutDisplay workouts={workouts} />;
+  return <WorkoutsDisplay workouts={workouts} />;
 }
