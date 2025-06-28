@@ -193,13 +193,13 @@ export function WorkoutEntryForm({
 
         {/* Exercise Selection */}
         <Card className="bg-neutral-900 border-neutral-700">
-          <CardHeader className="p-4">
+          <CardHeader className="py-0 md:py-4">
             <CardTitle className="text-xs md:text-sm font-medium text-neutral-300 tracking-wider flex items-center gap-2">
               <Target className="w-3.5 h-3.5 md:w-4 md:h-4" />
               EXERCISE SELECTION
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
+          <CardContent className="py-0 md:p-4">
             <div className="flex flex-col gap-3">
               <div className="space-y-2">
                 <Label className="text-xs text-neutral-400 tracking-wider">
