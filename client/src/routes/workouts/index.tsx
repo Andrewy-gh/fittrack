@@ -29,65 +29,6 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
     null
   );
 
-  // Sample workout data matching your structure
-  // const workouts: WorkoutData[] = [
-  //   {
-  //     created_at: '2025-06-26T20:52:52.808597-04:00',
-  //     date: '2025-06-26T20:28:36.944-04:00',
-  //     id: 11,
-  //     notes: 'Upper body strength training - focused on compound movements',
-  //     updated_at: null,
-  //   },
-  //   {
-  //     created_at: '2025-06-25T18:30:15.123456-04:00',
-  //     date: '2025-06-25T18:00:00.000-04:00',
-  //     id: 10,
-  //     notes: 'HIIT cardio session - 30 minutes high intensity intervals',
-  //     updated_at: '2025-06-25T19:15:22.456789-04:00',
-  //   },
-  //   {
-  //     created_at: '2025-06-24T07:45:30.987654-04:00',
-  //     date: '2025-06-24T07:30:00.000-04:00',
-  //     id: 9,
-  //     notes: 'Lower body power training - squats and deadlifts focus',
-  //     updated_at: null,
-  //   },
-  //   {
-  //     created_at: '2025-06-23T19:20:45.654321-04:00',
-  //     date: '2025-06-23T19:00:00.000-04:00',
-  //     id: 8,
-  //     notes: 'Recovery yoga session - flexibility and mobility work',
-  //     updated_at: '2025-06-23T20:10:15.789012-04:00',
-  //   },
-  //   {
-  //     created_at: '2025-06-22T16:15:12.345678-04:00',
-  //     date: '2025-06-22T16:00:00.000-04:00',
-  //     id: 7,
-  //     notes: 'Full body circuit training - endurance and strength combo',
-  //     updated_at: null,
-  //   },
-  //   {
-  //     created_at: '2025-06-21T08:30:00.111222-04:00',
-  //     date: '2025-06-21T08:15:00.000-04:00',
-  //     id: 6,
-  //     notes: 'Morning run - 5K steady pace with interval sprints',
-  //     updated_at: '2025-06-21T09:45:33.444555-04:00',
-  //   },
-  //   {
-  //     created_at: '2025-06-20T17:45:18.666777-04:00',
-  //     date: '2025-06-20T17:30:00.000-04:00',
-  //     id: 5,
-  //     notes: 'Push day - chest, shoulders, and triceps intensive',
-  //     updated_at: null,
-  //   },
-  //   {
-  //     created_at: '2025-06-19T12:00:00.888999-04:00',
-  //     date: '2025-06-19T11:45:00.000-04:00',
-  //     id: 4,
-  //     notes: 'Pull day - back and biceps with rowing emphasis',
-  //     updated_at: '2025-06-19T13:20:45.123456-04:00',
-  //   },
-  // ];
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
