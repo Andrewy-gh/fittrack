@@ -51,6 +51,15 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 	return exercise, nil
 }
 
+func (er *exerciseRepository) ListSetsByExerciseName(ctx context.Context, name string) ([]db.Set, error) {
+	sets, err := er.queries.ListSetsByExerciseName(ctx, name)
+	if err != nil {
+		er.logger.Error("failed to list sets by exercise name", "exercise_name", name, "error", err)
+		return nil, fmt.Errorf("failed to list sets by exercise name: %w", err)
+	}
+	return sets, nil
+}
+
 // func (er *exerciseRepository) CreateExercise(ctx context.Context, name string) (db.Exercise, error) {
 // 	exercise, err := er.queries.CreateExercise(ctx, name)
 // 	if err != nil {
