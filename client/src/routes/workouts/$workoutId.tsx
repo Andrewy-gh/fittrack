@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute, useRouter, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,175 +42,6 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
   const router = useRouter();
   const [selectedExercise, setSelectedExercise] =
     useState<ExerciseGroup | null>(null);
-
-  // Sample data based on your structure
-  // const workoutData: WorkoutSet[] = [
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 49,
-  //     weight: 130,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 23,
-  //     exercise_name: 'Cable rows',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 50,
-  //     weight: 130,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 23,
-  //     exercise_name: 'Cable rows',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 51,
-  //     weight: 130,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 23,
-  //     exercise_name: 'Cable rows',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 52,
-  //     weight: 45,
-  //     reps: 11,
-  //     set_type: 'working',
-  //     exercise_id: 24,
-  //     exercise_name: 'Chest supported row',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 53,
-  //     weight: 45,
-  //     reps: 11,
-  //     set_type: 'working',
-  //     exercise_id: 24,
-  //     exercise_name: 'Chest supported row',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 54,
-  //     weight: 55,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 24,
-  //     exercise_name: 'Chest supported row',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 58,
-  //     weight: 25,
-  //     reps: 7,
-  //     set_type: 'working',
-  //     exercise_id: 14,
-  //     exercise_name: 'Dumbbell Curls',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 59,
-  //     weight: 25,
-  //     reps: 7,
-  //     set_type: 'working',
-  //     exercise_id: 14,
-  //     exercise_name: 'Dumbbell Curls',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 60,
-  //     weight: 25,
-  //     reps: 7,
-  //     set_type: 'working',
-  //     exercise_id: 14,
-  //     exercise_name: 'Dumbbell Curls',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 46,
-  //     weight: 0,
-  //     reps: 8,
-  //     set_type: 'working',
-  //     exercise_id: 22,
-  //     exercise_name: 'Pull ups',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 47,
-  //     weight: 0,
-  //     reps: 7,
-  //     set_type: 'working',
-  //     exercise_id: 22,
-  //     exercise_name: 'Pull ups',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 48,
-  //     weight: 0,
-  //     reps: 7,
-  //     set_type: 'working',
-  //     exercise_id: 22,
-  //     exercise_name: 'Pull ups',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 55,
-  //     weight: 30,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 25,
-  //     exercise_name: 'Rear delt fly',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 56,
-  //     weight: 30,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 25,
-  //     exercise_name: 'Rear delt fly',
-  //   },
-  //   {
-  //     workout_id: 12,
-  //     workout_date: '2025-06-27T17:50:40.495-04:00',
-  //     workout_notes: 'Pull',
-  //     set_id: 57,
-  //     weight: 30,
-  //     reps: 10,
-  //     set_type: 'working',
-  //     exercise_id: 25,
-  //     exercise_name: 'Rear delt fly',
-  //   },
-  // ];
 
   // Group exercises and calculate stats
   const exerciseGroups: ExerciseGroup[] = workoutData.reduce((acc, set) => {
@@ -396,10 +227,18 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-sm font-bold text-white tracking-wider">
-                    {exercise.exercise_name.toUpperCase()}
+                    <Link 
+                      to="/exercises/$exerciseName" 
+                      params={{ exerciseName: exercise.exercise_name }}
+                      className="hover:text-orange-500 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {exercise.exercise_name.toUpperCase()}
+                    </Link>
                   </CardTitle>
                   <p className="text-xs text-neutral-400 font-mono">
-                    EX-{exercise.exercise_id.toString().padStart(3, '0')}
+                    EX-{exercise.exercise_id.toString().padStart(3, '0')}{' '}
+                    • {exercise.sets.length} Sets
                   </p>
                 </div>
                 <Badge className="bg-orange-500/20 text-orange-500">
@@ -471,7 +310,14 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-bold text-white tracking-wider">
-                  {selectedExercise.exercise_name.toUpperCase()}
+                  <Link 
+                    to="/exercises/$exerciseName" 
+                    params={{ exerciseName: selectedExercise.exercise_name }}
+                    className="hover:text-orange-500 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {selectedExercise.exercise_name.toUpperCase()}
+                  </Link>
                 </CardTitle>
                 <p className="text-sm text-neutral-400 font-mono">
                   EX-{selectedExercise.exercise_id.toString().padStart(3, '0')}{' '}
