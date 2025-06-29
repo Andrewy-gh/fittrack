@@ -237,7 +237,9 @@ export function WorkoutEntryForm({
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
+                      onChange={(e) =>
+                        field.handleChange(e.target.value)
+                      }
                       className="bg-neutral-800 border-neutral-600 text-white placeholder-neutral-500 min-h-[80px]"
                       placeholder="Enter workout notes, focus areas, or observations..."
                     />
@@ -245,19 +247,6 @@ export function WorkoutEntryForm({
                 );
               }}
             </form.Field>
-          </CardContent>
-        </Card>
-
-        {/* Exercise Selection - Desktop Only */}
-        <Card className="bg-neutral-900 border-neutral-700 hidden sm:block">
-          <CardHeader className="py-0 md:py-4">
-            <CardTitle className="text-xs md:text-sm font-medium text-neutral-300 tracking-wider flex items-center gap-2">
-              <Target className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              EXERCISE SELECTION
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="py-0 md:p-4">
-            <ExerciseSelectionComponent />
           </CardContent>
         </Card>
 
@@ -320,7 +309,9 @@ export function WorkoutEntryForm({
 
                         <CardContent className="space-y-4">
                           {/* Exercise Name Field */}
-                          <form.Field name={`exercises[${exerciseIndex}].name`}>
+                          <form.Field
+                            name={`exercises[${exerciseIndex}].name`}
+                          >
                             {(subField) => {
                               return (
                                 <div className="space-y-2">
@@ -628,8 +619,8 @@ export function WorkoutEntryForm({
         <Card className="bg-neutral-900 border-neutral-700">
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col gap-3">
-              {/* Mobile Add Exercise Button - Shows only on small screens */}
-              <div className="sm:hidden">
+              {/* Add Exercise Button */}
+              <div>
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                   <DialogTrigger asChild>
                     <Button
