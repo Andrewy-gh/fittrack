@@ -16,6 +16,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogOverlay,
+} from '@/components/ui/dialog';
+import {
   Trash2,
   Plus,
   Target,
@@ -86,6 +94,7 @@ export function WorkoutEntryForm({
   });
 
   const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   function handleSelect(option: ExerciseOption) {
     console.log('handleSelect');
@@ -116,8 +125,10 @@ export function WorkoutEntryForm({
   // Extract the exercise selection component for reuse
   const ExerciseSelectionComponent = ({
     showTitle = true,
+    onExerciseAdded,
   }: {
     showTitle?: boolean;
+    onExerciseAdded?: () => void;
   }) => (
     <div className="flex flex-col gap-3">
       <div className="space-y-2">
@@ -138,12 +149,13 @@ export function WorkoutEntryForm({
           <form.Field name="exercises">
             {(field) => (
               <Button
-                onClick={() =>
+                onClick={() => {
                   field.pushValue({
                     name: selectedExercise?.name ?? '',
                     sets: [],
-                  })
-                }
+                  });
+                  onExerciseAdded?.();
+                }}
                 type="button"
                 className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={!selectedExercise?.name}
@@ -616,17 +628,35 @@ export function WorkoutEntryForm({
         <Card className="bg-neutral-900 border-neutral-700">
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col gap-3">
-              {/* Mobile Exercise Selection - Shows only on small screens */}
+              {/* Mobile Add Exercise Button - Shows only on small screens */}
               <div className="sm:hidden">
-                <div className="space-y-3 p-3 bg-neutral-800 rounded-lg border border-neutral-700">
-                  <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-orange-500" />
-                    <Label className="text-xs text-neutral-300 tracking-wider font-medium">
-                      ADD EXERCISE
-                    </Label>
-                  </div>
-                  <ExerciseSelectionComponent showTitle={false} />
-                </div>
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full border-orange-500 text-orange-500 hover:bg-orange-500/10 hover:text-orange-400 bg-transparent"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Exercise
+                    </Button>
+                  </DialogTrigger>
+                  <DialogOverlay className="bg-black/80 backdrop-blur-sm" />
+                  <DialogContent className="bg-neutral-900 border-neutral-700 text-white">
+                    <DialogHeader>
+                      <DialogTitle className="text-sm font-medium text-neutral-300 tracking-wider flex items-center gap-2">
+                        <Target className="w-4 h-4" />
+                        EXERCISE SELECTION
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4">
+                      <ExerciseSelectionComponent
+                        showTitle={false}
+                        onExerciseAdded={() => setIsModalOpen(false)}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {/* Action Buttons Row */}
