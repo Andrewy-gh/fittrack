@@ -14,6 +14,9 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler)
 	mux.HandleFunc("GET /api/workouts/{id}", wh.GetWorkoutWithSets)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
+	// More specific route first
+	mux.HandleFunc("GET /api/exercises/{name}/sets", eh.ListSetsByExerciseName)
+	// More general route last
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExercise)
 	fileServer := http.FileServer(http.Dir("./dist"))
 	mux.Handle("/", fileServer)

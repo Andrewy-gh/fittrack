@@ -292,6 +292,55 @@ func (q *Queries) ListSets(ctx context.Context) ([]Set, error) {
 	return items, nil
 }
 
+const listSetsByExerciseName = `-- name: ListSetsByExerciseName :many
+SELECT
+    s.id,
+    s.exercise_id,
+    s.workout_id,
+    s.weight,
+    s.reps,
+    s.set_type,
+    s.created_at,
+    s.updated_at
+FROM
+    "set" s
+JOIN
+    exercise e ON s.exercise_id = e.id
+WHERE
+    e.name = $1
+ORDER BY
+    s.id
+`
+
+func (q *Queries) ListSetsByExerciseName(ctx context.Context, name string) ([]Set, error) {
+	rows, err := q.db.Query(ctx, listSetsByExerciseName, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Set
+	for rows.Next() {
+		var i Set
+		if err := rows.Scan(
+			&i.ID,
+			&i.ExerciseID,
+			&i.WorkoutID,
+			&i.Weight,
+			&i.Reps,
+			&i.SetType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkouts = `-- name: ListWorkouts :many
 SELECT id, date, notes, created_at, updated_at FROM workout ORDER BY date DESC
 `

@@ -13,6 +13,7 @@ type ExerciseRepository interface {
 	ListExercises(ctx context.Context) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32) (db.Exercise, error)
 	GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error)
+	ListSetsByExerciseName(ctx context.Context, name string) ([]db.Set, error)
 }
 
 // ExerciseService handles exercise business logic
@@ -57,4 +58,14 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 		return exercise, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return exercise, nil
+}
+
+// ListSetsByExerciseName retrieves all sets for a given exercise name
+func (es *ExerciseService) ListSetsByExerciseName(ctx context.Context, name string) ([]db.Set, error) {
+	sets, err := es.repo.ListSetsByExerciseName(ctx, name)
+	if err != nil {
+		es.logger.Error("repository failed to list sets by exercise name", "exercise_name", name, "error", err)
+		return nil, fmt.Errorf("failed to list sets by exercise name: %w", err)
+	}
+	return sets, nil
 }

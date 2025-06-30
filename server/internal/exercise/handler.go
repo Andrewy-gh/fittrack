@@ -78,3 +78,26 @@ func (eh *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Re
 		return
 	}
 }
+
+func (eh *ExerciseHandler) ListSetsByExerciseName(w http.ResponseWriter, r *http.Request) {
+	// Extract the exercise name from the URL path
+	exerciseName := r.PathValue("name")
+	if exerciseName == "" {
+		exerciseName = r.URL.Query().Get("name")
+		if exerciseName == "" {
+			response.ErrorJSON(w, r, eh.logger, http.StatusBadRequest, "Missing exercise name", nil)
+			return
+		}
+	}
+
+	sets, err := eh.exerciseService.ListSetsByExerciseName(r.Context(), exerciseName)
+	if err != nil {
+		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to list sets by exercise name", err)
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, sets); err != nil {
+		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to write response", err)
+		return
+	}
+}
