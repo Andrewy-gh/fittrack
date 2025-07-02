@@ -1,21 +1,24 @@
-import type { ExerciseSet, ExerciseOption } from '@/lib/types';
+import type { ExerciseWithSets, ExerciseOption } from '@/lib/types';
 
-export async function fetchExerciseSets(exerciseName: string): Promise<ExerciseSet[]> {
-  const response = await fetch(`/api/exercises/${encodeURIComponent(exerciseName)}/sets`);
-  
+export async function fetchExerciseWithSets(exerciseId: number): Promise<ExerciseWithSets[]> {
+  const response = await fetch(`/api/exercises/${exerciseId}`);
+
   if (!response.ok) {
-    throw new Error('Failed to fetch exercise sets');
+    throw new Error('Failed to fetch exercise with sets');
   }
-  
-  return response.json();
+
+  const data = await response.json();
+  return data;
 }
 
 export async function fetchExerciseOptions(): Promise<ExerciseOption[]> {
   const response = await fetch('/api/exercises');
-  
+
   if (!response.ok) {
-    throw new Error(`Failed to fetch exercise options: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch exercise options: ${response.status} ${response.statusText}`
+    );
   }
-  
+
   return response.json();
 }
