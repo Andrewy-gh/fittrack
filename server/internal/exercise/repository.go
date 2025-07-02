@@ -36,7 +36,7 @@ func (er *exerciseRepository) ListExercises(ctx context.Context) ([]db.Exercise,
 func (er *exerciseRepository) GetExercise(ctx context.Context, id int32) (db.Exercise, error) {
 	exercise, err := er.queries.GetExercise(ctx, id)
 	if err != nil {
-		er.logger.Error("failed to get exercise", "error", err)
+		er.logger.Error("failed to get exercise", "id", id, "error", err)
 		return db.Exercise{}, fmt.Errorf("failed to get exercise: %w", err)
 	}
 	return exercise, nil
@@ -51,13 +51,13 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 	return exercise, nil
 }
 
-func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32) (db.GetExerciseWithSetsRow, error) {
-	exerciseWithSets, err := er.queries.GetExerciseWithSets(ctx, id)
+func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error) {
+	sets, err := er.queries.GetExerciseWithSets(ctx, id)
 	if err != nil {
 		er.logger.Error("failed to get exercise with sets", "exercise_id", id, "error", err)
-		return db.GetExerciseWithSetsRow{}, fmt.Errorf("failed to get exercise with sets: %w", err)
+		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
-	return exerciseWithSets, nil
+	return sets, nil
 }
 
 // func (er *exerciseRepository) CreateExercise(ctx context.Context, name string) (db.Exercise, error) {

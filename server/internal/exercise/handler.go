@@ -48,13 +48,18 @@ func (eh *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	exercise, err := eh.exerciseService.GetExerciseWithSets(r.Context(), int32(exerciseIDInt))
+	sets, err := eh.exerciseService.GetExerciseWithSets(r.Context(), int32(exerciseIDInt))
 	if err != nil {
 		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to get exercise with sets", err)
 		return
 	}
 
-	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
+	if len(sets) == 0 {
+		response.ErrorJSON(w, r, eh.logger, http.StatusNotFound, "No sets found for this exercise", nil)
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, sets); err != nil {
 		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to write response", err)
 		return
 	}

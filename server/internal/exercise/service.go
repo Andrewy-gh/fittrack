@@ -13,7 +13,7 @@ type ExerciseRepository interface {
 	ListExercises(ctx context.Context) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32) (db.Exercise, error)
 	GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error)
-	GetExerciseWithSets(ctx context.Context, id int32) (db.GetExerciseWithSetsRow, error)
+	GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error)
 }
 
 // ExerciseService handles exercise business logic
@@ -40,13 +40,13 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	return exercises, nil
 }
 
-func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (db.GetExerciseWithSetsRow, error) {
-	exerciseWithSets, err := es.repo.GetExerciseWithSets(ctx, id)
+func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error) {
+	sets, err := es.repo.GetExerciseWithSets(ctx, id)
 	if err != nil {
-		es.logger.Error("repository failed to get exercise with sets", "exercise_id", id, "error", err)
-		return db.GetExerciseWithSetsRow{}, fmt.Errorf("failed to get exercise with sets: %w", err)
+		es.logger.Error("service failed to get exercise with sets", "exercise_id", id, "error", err)
+		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
-	return exerciseWithSets, nil
+	return sets, nil
 }
 
 // GetOrCreateExercise gets an existing exercise by name or creates a new one if it doesn't exist

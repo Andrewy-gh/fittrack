@@ -112,52 +112,64 @@ func (q *Queries) GetExerciseByName(ctx context.Context, name string) (Exercise,
 	return i, err
 }
 
-const getExerciseWithSets = `-- name: GetExerciseWithSets :one
+const getExerciseWithSets = `-- name: GetExerciseWithSets :many
 SELECT 
-    e.id as exercise_id,
-    e.name as exercise_name,
-    e.created_at as exercise_created_at,
-    e.updated_at as exercise_updated_at,
-    json_agg(
-        json_build_object(
-            'id', s.id,
-            'weight', s.weight,
-            'reps', s.reps,
-            'set_type', s.set_type,
-            'workout_id', s.workout_id,
-            'created_at', s.created_at,
-            'updated_at', s.updated_at
-        )
-    ) as sets
-FROM 
-    exercise e
-LEFT JOIN 
-    "set" s ON e.id = s.exercise_id
-WHERE 
-    e.id = $1
-GROUP BY 
-    e.id, e.name, e.created_at, e.updated_at
+    s.workout_id,
+    w.date as workout_date,
+    w.notes as workout_notes,
+    s.id as set_id,
+    s.weight,
+    s.reps,
+    s.set_type,
+    s.exercise_id,
+    e.name as exercise_name
+FROM "set" s
+JOIN exercise e ON e.id = s.exercise_id
+JOIN workout w ON w.id = s.workout_id
+WHERE s.exercise_id = $1  -- Changed from workout_id to exercise_id
+ORDER BY w.date DESC, s.created_at
 `
 
 type GetExerciseWithSetsRow struct {
-	ExerciseID        int32              `json:"exercise_id"`
-	ExerciseName      string             `json:"exercise_name"`
-	ExerciseCreatedAt pgtype.Timestamptz `json:"exercise_created_at"`
-	ExerciseUpdatedAt pgtype.Timestamptz `json:"exercise_updated_at"`
-	Sets              []byte             `json:"sets"`
+	WorkoutID    int32              `json:"workout_id"`
+	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
+	WorkoutNotes pgtype.Text        `json:"workout_notes"`
+	SetID        int32              `json:"set_id"`
+	Weight       pgtype.Int4        `json:"weight"`
+	Reps         int32              `json:"reps"`
+	SetType      string             `json:"set_type"`
+	ExerciseID   int32              `json:"exercise_id"`
+	ExerciseName string             `json:"exercise_name"`
 }
 
-func (q *Queries) GetExerciseWithSets(ctx context.Context, id int32) (GetExerciseWithSetsRow, error) {
-	row := q.db.QueryRow(ctx, getExerciseWithSets, id)
-	var i GetExerciseWithSetsRow
-	err := row.Scan(
-		&i.ExerciseID,
-		&i.ExerciseName,
-		&i.ExerciseCreatedAt,
-		&i.ExerciseUpdatedAt,
-		&i.Sets,
-	)
-	return i, err
+func (q *Queries) GetExerciseWithSets(ctx context.Context, exerciseID int32) ([]GetExerciseWithSetsRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseWithSets, exerciseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseWithSetsRow
+	for rows.Next() {
+		var i GetExerciseWithSetsRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.WorkoutNotes,
+			&i.SetID,
+			&i.Weight,
+			&i.Reps,
+			&i.SetType,
+			&i.ExerciseID,
+			&i.ExerciseName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
