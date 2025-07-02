@@ -13,7 +13,7 @@ type ExerciseRepository interface {
 	ListExercises(ctx context.Context) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32) (db.Exercise, error)
 	GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error)
-	ListSetsByExerciseName(ctx context.Context, name string) ([]db.Set, error)
+	GetExerciseWithSets(ctx context.Context, id int32) (db.GetExerciseWithSetsRow, error)
 }
 
 // ExerciseService handles exercise business logic
@@ -40,14 +40,13 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	return exercises, nil
 }
 
-// GetExercise retrieves a single exercise by ID
-func (es *ExerciseService) GetExercise(ctx context.Context, id int32) (db.Exercise, error) {
-	exercise, err := es.repo.GetExercise(ctx, id)
+func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (db.GetExerciseWithSetsRow, error) {
+	exerciseWithSets, err := es.repo.GetExerciseWithSets(ctx, id)
 	if err != nil {
-		es.logger.Error("failed to get exercise", "id", id, "error", err)
-		return db.Exercise{}, fmt.Errorf("failed to get exercise: %w", err)
+		es.logger.Error("repository failed to get exercise with sets", "exercise_id", id, "error", err)
+		return db.GetExerciseWithSetsRow{}, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
-	return exercise, nil
+	return exerciseWithSets, nil
 }
 
 // GetOrCreateExercise gets an existing exercise by name or creates a new one if it doesn't exist
@@ -58,14 +57,4 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 		return exercise, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return exercise, nil
-}
-
-// ListSetsByExerciseName retrieves all sets for a given exercise name
-func (es *ExerciseService) ListSetsByExerciseName(ctx context.Context, name string) ([]db.Set, error) {
-	sets, err := es.repo.ListSetsByExerciseName(ctx, name)
-	if err != nil {
-		es.logger.Error("repository failed to list sets by exercise name", "exercise_name", name, "error", err)
-		return nil, fmt.Errorf("failed to list sets by exercise name: %w", err)
-	}
-	return sets, nil
 }
