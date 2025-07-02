@@ -112,6 +112,66 @@ func (q *Queries) GetExerciseByName(ctx context.Context, name string) (Exercise,
 	return i, err
 }
 
+const getExerciseWithSets = `-- name: GetExerciseWithSets :many
+SELECT 
+    s.workout_id,
+    w.date as workout_date,
+    w.notes as workout_notes,
+    s.id as set_id,
+    s.weight,
+    s.reps,
+    s.set_type,
+    s.exercise_id,
+    e.name as exercise_name
+FROM "set" s
+JOIN exercise e ON e.id = s.exercise_id
+JOIN workout w ON w.id = s.workout_id
+WHERE s.exercise_id = $1  -- Changed from workout_id to exercise_id
+ORDER BY w.date DESC, s.created_at
+`
+
+type GetExerciseWithSetsRow struct {
+	WorkoutID    int32              `json:"workout_id"`
+	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
+	WorkoutNotes pgtype.Text        `json:"workout_notes"`
+	SetID        int32              `json:"set_id"`
+	Weight       pgtype.Int4        `json:"weight"`
+	Reps         int32              `json:"reps"`
+	SetType      string             `json:"set_type"`
+	ExerciseID   int32              `json:"exercise_id"`
+	ExerciseName string             `json:"exercise_name"`
+}
+
+func (q *Queries) GetExerciseWithSets(ctx context.Context, exerciseID int32) ([]GetExerciseWithSetsRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseWithSets, exerciseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseWithSetsRow
+	for rows.Next() {
+		var i GetExerciseWithSetsRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.WorkoutNotes,
+			&i.SetID,
+			&i.Weight,
+			&i.Reps,
+			&i.SetType,
+			&i.ExerciseID,
+			&i.ExerciseName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
 INSERT INTO exercise (name) 
 VALUES ($1)
@@ -265,55 +325,6 @@ SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_
 
 func (q *Queries) ListSets(ctx context.Context) ([]Set, error) {
 	rows, err := q.db.Query(ctx, listSets)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Set
-	for rows.Next() {
-		var i Set
-		if err := rows.Scan(
-			&i.ID,
-			&i.ExerciseID,
-			&i.WorkoutID,
-			&i.Weight,
-			&i.Reps,
-			&i.SetType,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSetsByExerciseName = `-- name: ListSetsByExerciseName :many
-SELECT
-    s.id,
-    s.exercise_id,
-    s.workout_id,
-    s.weight,
-    s.reps,
-    s.set_type,
-    s.created_at,
-    s.updated_at
-FROM
-    "set" s
-JOIN
-    exercise e ON s.exercise_id = e.id
-WHERE
-    e.name = $1
-ORDER BY
-    s.id
-`
-
-func (q *Queries) ListSetsByExerciseName(ctx context.Context, name string) ([]Set, error) {
-	rows, err := q.db.Query(ctx, listSetsByExerciseName, name)
 	if err != nil {
 		return nil, err
 	}

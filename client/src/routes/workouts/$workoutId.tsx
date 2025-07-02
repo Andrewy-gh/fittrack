@@ -228,8 +228,8 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
                 <div>
                   <CardTitle className="text-sm font-bold text-white tracking-wider">
                     <Link 
-                      to="/exercises/$exerciseName" 
-                      params={{ exerciseName: exercise.exercise_name }}
+                      to="/exercises/$exerciseId" 
+                      params={{ exerciseId: exercise.exercise_id }}
                       className="hover:text-orange-500 transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -311,8 +311,8 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
               <div>
                 <CardTitle className="text-xl font-bold text-white tracking-wider">
                   <Link 
-                    to="/exercises/$exerciseName" 
-                    params={{ exerciseName: selectedExercise.exercise_name }}
+                    to="/exercises/$exerciseId" 
+                    params={{ exerciseId: selectedExercise.exercise_id }}
                     className="hover:text-orange-500 transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >

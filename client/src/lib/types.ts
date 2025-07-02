@@ -27,14 +27,15 @@ export type WorkoutFormValues = {
   exercises: Exercise[];
 };
 
-// GET /exercises/:exerciseName/sets
-export interface ExerciseSet {
-  id: number;
-  exercise_id: number;
+// GET /exercises/$exerciseId
+export interface ExerciseWithSets {
   workout_id: number;
+  workout_date: string;
+  workout_notes: string | null;
+  set_id: number;
   weight: number;
   reps: number;
   set_type: string;
-  created_at: string;
-  updated_at: string | null;
+  exercise_id: number;
+  exercise_name: string;
 }

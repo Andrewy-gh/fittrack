@@ -17,24 +17,22 @@ SELECT * FROM "set" WHERE id = $1;
 -- name: ListSets :many
 SELECT * FROM "set" ORDER BY id;
 
--- name: ListSetsByExerciseName :many
-SELECT
-    s.id,
-    s.exercise_id,
+-- name: GetExerciseWithSets :many
+SELECT 
     s.workout_id,
+    w.date as workout_date,
+    w.notes as workout_notes,
+    s.id as set_id,
     s.weight,
     s.reps,
     s.set_type,
-    s.created_at,
-    s.updated_at
-FROM
-    "set" s
-JOIN
-    exercise e ON s.exercise_id = e.id
-WHERE
-    e.name = $1
-ORDER BY
-    s.id;
+    s.exercise_id,
+    e.name as exercise_name
+FROM "set" s
+JOIN exercise e ON e.id = s.exercise_id
+JOIN workout w ON w.id = s.workout_id
+WHERE s.exercise_id = $1  -- Changed from workout_id to exercise_id
+ORDER BY w.date DESC, s.created_at;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one

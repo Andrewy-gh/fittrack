@@ -17,12 +17,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { ExerciseSet } from '@/lib/types';
-import { fetchExerciseSets } from '@/lib/api/exercises';
+import type { ExerciseWithSets } from '@/lib/types';
+import { fetchExerciseWithSets } from '@/lib/api/exercises';
 
 interface WorkoutGroup {
   workout_id: number;
-  sets: ExerciseSet[];
+  sets: ExerciseWithSets[];
   date: string;
   totalVolume: number;
   maxWeight: number;
@@ -30,32 +30,42 @@ interface WorkoutGroup {
   setCount: number;
 }
 
-export const Route = createFileRoute('/exercises/$exerciseName')({
-  loader: ({ params }) => fetchExerciseSets(params.exerciseName),
+export const Route = createFileRoute('/exercises/$exerciseId')({
+  params: {
+    parse: (params) => {
+      const exerciseId = parseInt(params.exerciseId, 10);
+      if (isNaN(exerciseId) || !Number.isInteger(exerciseId)) {
+        throw new Error('Invalid exerciseId');
+      }
+      return { exerciseId };
+    },
+  },
+  loader: async ({ params }) => {
+    const exerciseId = params.exerciseId;
+    const exerciseData = await fetchExerciseWithSets(exerciseId);
+    return exerciseData;
+  },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const exerciseSets = Route.useLoaderData();
-  const { exerciseName } = Route.useParams();
 
   return (
-    <ExerciseDisplay exerciseName={exerciseName} exerciseSets={exerciseSets} />
+    <ExerciseDisplay exerciseSets={exerciseSets} />
   );
 }
 
 function ExerciseDisplay({
-  exerciseName,
   exerciseSets,
 }: {
-  exerciseName: string;
-  exerciseSets: ExerciseSet[];
+  exerciseSets: ExerciseWithSets[];
 }) {
   const router = useRouter();
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutGroup | null>(
     null
   );
-  const [selectedSet, setSelectedSet] = useState<ExerciseSet | null>(null);
+  const [selectedSet, setSelectedSet] = useState<ExerciseWithSets | null>(null);
 
   // Group sets by workout
   const workoutGroups: WorkoutGroup[] = exerciseSets.reduce((acc, set) => {
@@ -74,7 +84,7 @@ function ExerciseDisplay({
       acc.push({
         workout_id: set.workout_id,
         sets: [set],
-        date: set.created_at,
+        date: set.workout_date,
         totalVolume: set.weight * set.reps,
         maxWeight: set.weight,
         totalReps: set.reps,
@@ -148,7 +158,7 @@ function ExerciseDisplay({
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-white tracking-wider">
-              {exerciseName}
+              {exerciseSets[0]?.exercise_name}
             </h1>
             <p className="text-sm text-neutral-400">
               Exercise ID: EX-
@@ -376,7 +386,7 @@ function ExerciseDisplay({
                 <div className="mt-4 flex flex-wrap gap-2">
                   {workout.sets.map((set, index) => (
                     <div
-                      key={set.id}
+                      key={set.set_id}
                       className="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded text-xs cursor-pointer hover:bg-neutral-700"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -480,7 +490,7 @@ function ExerciseDisplay({
                   <tbody>
                     {selectedWorkout.sets.map((set, index) => (
                       <tr
-                        key={set.id}
+                        key={set.set_id}
                         className="border-b border-neutral-800 hover:bg-neutral-800 transition-colors"
                       >
                         <td className="py-3 px-4 text-sm text-white font-mono">
@@ -501,7 +511,7 @@ function ExerciseDisplay({
                           {(set.weight * set.reps).toLocaleString()}
                         </td>
                         <td className="py-3 px-4 text-sm text-neutral-300 font-mono">
-                          {formatTime(set.created_at)}
+                          {formatTime(set.workout_date)}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-1">
@@ -554,7 +564,7 @@ function ExerciseDisplay({
                   SET DETAILS
                 </CardTitle>
                 <p className="text-sm text-neutral-400 font-mono">
-                  SET-{selectedSet.id.toString().padStart(3, '0')}
+                  SET-{selectedSet.set_id.toString().padStart(3, '0')}
                 </p>
               </div>
               <Button
@@ -606,10 +616,10 @@ function ExerciseDisplay({
                   CREATED
                 </p>
                 <p className="text-sm text-white font-mono">
-                  {formatDate(selectedSet.created_at)}
+                  {formatDate(selectedSet.workout_date)}
                 </p>
                 <p className="text-sm text-neutral-400 font-mono">
-                  {formatTime(selectedSet.created_at)}
+                  {formatTime(selectedSet.workout_date)}
                 </p>
               </div>
 

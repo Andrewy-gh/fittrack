@@ -15,7 +15,7 @@ import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
 import { Route as WorkoutsIndexImport } from './routes/workouts/index'
 import { Route as WorkoutsWorkoutIdImport } from './routes/workouts/$workoutId'
-import { Route as ExercisesExerciseNameImport } from './routes/exercises/$exerciseName'
+import { Route as ExercisesExerciseIdImport } from './routes/exercises/$exerciseId'
 
 // Create/Update Routes
 
@@ -43,9 +43,9 @@ const WorkoutsWorkoutIdRoute = WorkoutsWorkoutIdImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const ExercisesExerciseNameRoute = ExercisesExerciseNameImport.update({
-  id: '/exercises/$exerciseName',
-  path: '/exercises/$exerciseName',
+const ExercisesExerciseIdRoute = ExercisesExerciseIdImport.update({
+  id: '/exercises/$exerciseId',
+  path: '/exercises/$exerciseId',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -67,11 +67,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
-    '/exercises/$exerciseName': {
-      id: '/exercises/$exerciseName'
-      path: '/exercises/$exerciseName'
-      fullPath: '/exercises/$exerciseName'
-      preLoaderRoute: typeof ExercisesExerciseNameImport
+    '/exercises/$exerciseId': {
+      id: '/exercises/$exerciseId'
+      path: '/exercises/$exerciseId'
+      fullPath: '/exercises/$exerciseId'
+      preLoaderRoute: typeof ExercisesExerciseIdImport
       parentRoute: typeof rootRoute
     }
     '/workouts/$workoutId': {
@@ -96,7 +96,7 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/exercises/$exerciseName': typeof ExercisesExerciseNameRoute
+  '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
   '/workouts': typeof WorkoutsIndexRoute
 }
@@ -104,7 +104,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/exercises/$exerciseName': typeof ExercisesExerciseNameRoute
+  '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
   '/workouts': typeof WorkoutsIndexRoute
 }
@@ -113,7 +113,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/exercises/$exerciseName': typeof ExercisesExerciseNameRoute
+  '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
   '/workouts/': typeof WorkoutsIndexRoute
 }
@@ -123,21 +123,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
-    | '/exercises/$exerciseName'
+    | '/exercises/$exerciseId'
     | '/workouts/$workoutId'
     | '/workouts'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
-    | '/exercises/$exerciseName'
+    | '/exercises/$exerciseId'
     | '/workouts/$workoutId'
     | '/workouts'
   id:
     | '__root__'
     | '/'
     | '/about'
-    | '/exercises/$exerciseName'
+    | '/exercises/$exerciseId'
     | '/workouts/$workoutId'
     | '/workouts/'
   fileRoutesById: FileRoutesById
@@ -146,7 +146,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  ExercisesExerciseNameRoute: typeof ExercisesExerciseNameRoute
+  ExercisesExerciseIdRoute: typeof ExercisesExerciseIdRoute
   WorkoutsWorkoutIdRoute: typeof WorkoutsWorkoutIdRoute
   WorkoutsIndexRoute: typeof WorkoutsIndexRoute
 }
@@ -154,7 +154,7 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  ExercisesExerciseNameRoute: ExercisesExerciseNameRoute,
+  ExercisesExerciseIdRoute: ExercisesExerciseIdRoute,
   WorkoutsWorkoutIdRoute: WorkoutsWorkoutIdRoute,
   WorkoutsIndexRoute: WorkoutsIndexRoute,
 }
@@ -171,7 +171,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/about",
-        "/exercises/$exerciseName",
+        "/exercises/$exerciseId",
         "/workouts/$workoutId",
         "/workouts/"
       ]
@@ -182,8 +182,8 @@ export const routeTree = rootRoute
     "/about": {
       "filePath": "about.tsx"
     },
-    "/exercises/$exerciseName": {
-      "filePath": "exercises/$exerciseName.tsx"
+    "/exercises/$exerciseId": {
+      "filePath": "exercises/$exerciseId.tsx"
     },
     "/workouts/$workoutId": {
       "filePath": "workouts/$workoutId.tsx"

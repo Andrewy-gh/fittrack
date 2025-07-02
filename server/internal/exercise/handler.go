@@ -35,7 +35,7 @@ func (eh *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (eh *ExerciseHandler) GetExercise(w http.ResponseWriter, r *http.Request) {
+func (eh *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Request) {
 	exerciseID := r.PathValue("id")
 	if exerciseID == "" {
 		response.ErrorJSON(w, r, eh.logger, http.StatusBadRequest, "Missing exercise ID", nil)
@@ -48,13 +48,18 @@ func (eh *ExerciseHandler) GetExercise(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exercise, err := eh.exerciseService.GetExercise(r.Context(), int32(exerciseIDInt))
+	sets, err := eh.exerciseService.GetExerciseWithSets(r.Context(), int32(exerciseIDInt))
 	if err != nil {
-		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to get exercise", err)
+		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to get exercise with sets", err)
 		return
 	}
 
-	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
+	if len(sets) == 0 {
+		response.ErrorJSON(w, r, eh.logger, http.StatusNotFound, "No sets found for this exercise", nil)
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, sets); err != nil {
 		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to write response", err)
 		return
 	}
@@ -74,29 +79,6 @@ func (eh *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Re
 	}
 
 	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
-		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to write response", err)
-		return
-	}
-}
-
-func (eh *ExerciseHandler) ListSetsByExerciseName(w http.ResponseWriter, r *http.Request) {
-	// Extract the exercise name from the URL path
-	exerciseName := r.PathValue("name")
-	if exerciseName == "" {
-		exerciseName = r.URL.Query().Get("name")
-		if exerciseName == "" {
-			response.ErrorJSON(w, r, eh.logger, http.StatusBadRequest, "Missing exercise name", nil)
-			return
-		}
-	}
-
-	sets, err := eh.exerciseService.ListSetsByExerciseName(r.Context(), exerciseName)
-	if err != nil {
-		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to list sets by exercise name", err)
-		return
-	}
-
-	if err := response.JSON(w, http.StatusOK, sets); err != nil {
 		response.ErrorJSON(w, r, eh.logger, http.StatusInternalServerError, "Failed to write response", err)
 		return
 	}
