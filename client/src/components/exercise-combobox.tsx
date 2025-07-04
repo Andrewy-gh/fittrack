@@ -30,20 +30,7 @@ interface ComboboxProps {
 }
 
 /**
- * Convert katakana to hiragana(Only Japanese)
- *
- * カタカナをひらがなに変換する
- */
-function toHiragana(value: string) {
-  return value.replace(/[\u30a1-\u30f6]/g, (match: string) =>
-    String.fromCharCode(match.charCodeAt(0) - 0x60)
-  );
-}
-
-/**
  * CommandItem to create a new query content
- *
- * クエリの内容を新規作成するCommandItem
  */
 function CommandAddItem({
   query,
@@ -110,8 +97,8 @@ function ExerciseList({
   return (
     <Command
       filter={(value, search) => {
-        const v = toHiragana(value.toLocaleLowerCase());
-        const s = toHiragana(search.toLocaleLowerCase());
+        const v = value.toLowerCase();
+        const s = search.toLowerCase();
         if (v.includes(s)) return 1;
         return 0;
       }}
@@ -196,9 +183,6 @@ export function ExerciseCombobox({
 
   useEffect(() => {
     // Cannot create a new query if it is empty or has already been created
-    // Unlike search, case sensitive here.
-    // クエリが空の場合、またはすでに作成済みの場合は新規作成できない
-    // 検索と違いここでは大文字小文字は区別する
     const queryExists = options.some((option) => option.name === query);
     setCanCreate(!!(query && !queryExists));
   }, [query, options]);
