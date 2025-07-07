@@ -20,7 +20,7 @@ type DatePickerProps = {
   placeholder?: string;
 };
 
-export function DatePicker({ value, onChange }: DatePickerProps) {
+export function DatePickerBase({ value, onChange }: DatePickerProps) {
   const [open, setOpen] = useState(false);
 
   const handleSelect = (date: Date | undefined) => {

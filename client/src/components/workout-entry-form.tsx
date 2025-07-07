@@ -1,4 +1,4 @@
-import { useForm } from '@tanstack/react-form';
+import { useAppForm } from '@/hooks/form';
 import { useState } from 'react';
 import {
   clearLocalStorage,
@@ -8,7 +8,6 @@ import {
 import type { Exercise, ExerciseOption } from '@/lib/types';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SetTypeSelect } from '@/components/set-type-select';
@@ -54,7 +53,7 @@ export function WorkoutEntryForm({
     );
   };
 
-  const form = useForm({
+  const form = useAppForm({
     defaultValues: getInitialValues(),
     listeners: {
       onChange: ({ formApi }) => {
@@ -122,7 +121,7 @@ export function WorkoutEntryForm({
     }
   };
 
-  // Extract the exercise selection component for reuse
+  // MARK: Exercise
   const ExerciseSelectionComponent = ({
     showTitle = true,
     onExerciseAdded,
@@ -199,54 +198,16 @@ export function WorkoutEntryForm({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Date Field */}
-            <form.Field name="date">
-              {(field) => {
-                return (
-                  <div className="space-y-3">
-                    <Label className="text-xs text-neutral-400 tracking-wider flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
-                      TRAINING DATE
-                    </Label>
-                    <DatePicker
-                      value={field.state.value}
-                      onChange={(date) => {
-                        if (date) {
-                          field.handleChange(date);
-                        }
-                      }}
-                    />
-                  </div>
-                );
-              }}
-            </form.Field>
-
-            {/* Notes Field */}
-            <form.Field name="notes">
-              {(field) => {
-                return (
-                  <div className="space-y-3">
-                    <Label
-                      htmlFor={field.name}
-                      className="text-xs text-neutral-400 tracking-wider"
-                    >
-                      SESSION NOTES
-                    </Label>
-                    <Textarea
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) =>
-                        field.handleChange(e.target.value)
-                      }
-                      className="bg-neutral-800 border-neutral-600 text-white placeholder-neutral-500 min-h-[80px]"
-                      placeholder="Enter workout notes, focus areas, or observations..."
-                    />
-                  </div>
-                );
-              }}
-            </form.Field>
+            {/* MARK: Date Field */}
+            <form.AppField
+              name="date"
+              children={(field) => <field.DatePicker />}
+            />
+            {/* MARK: Notes Field */}
+            <form.AppField
+              name="notes"
+              children={(field) => <field.NotesTextarea />}
+            />
           </CardContent>
         </Card>
 
@@ -308,33 +269,18 @@ export function WorkoutEntryForm({
                         </CardHeader>
 
                         <CardContent className="space-y-4">
-                          {/* Exercise Name Field */}
-                          <form.Field
+                          {/* MARK: Exercise Name */}
+                          <form.AppField
                             name={`exercises[${exerciseIndex}].name`}
-                          >
-                            {(subField) => {
-                              return (
-                                <div className="space-y-2">
-                                  <Label className="text-xs text-neutral-400 tracking-wider">
-                                    EXERCISE DESIGNATION
-                                  </Label>
-                                  <Input
-                                    id={subField.name}
-                                    name={subField.name}
-                                    value={subField.state.value}
-                                    onBlur={subField.handleBlur}
-                                    onChange={(e) =>
-                                      subField.handleChange(e.target.value)
-                                    }
-                                    className="bg-neutral-800 border-neutral-600 text-white placeholder-neutral-500"
-                                    placeholder="Enter exercise name..."
-                                  />
-                                </div>
-                              );
-                            }}
-                          </form.Field>
-
-                          {/* Sets */}
+                            children={(field) => (
+                              <field.InputField
+                                label="EXERCISE DESIGNATION"
+                                placeholder="Enter exercise name..."
+                                type="text"
+                              />
+                            )}
+                          />
+                          {/* MARK: Sets */}
                           <form.Field
                             name={`exercises[${exerciseIndex}].sets`}
                             mode="array"
@@ -401,80 +347,28 @@ export function WorkoutEntryForm({
                                                 </Button>
                                               </div>
                                               <div className="grid grid-cols-2 gap-3">
-                                                <form.Field
+                                                {/* MARK: Weight */}
+                                                <form.AppField
                                                   name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
-                                                >
-                                                  {(subField) => (
-                                                    <div className="space-y-1.5">
-                                                      <Label className="text-xs text-neutral-400">
-                                                        Weight
-                                                      </Label>
-                                                      <Input
-                                                        type="number"
-                                                        value={
-                                                          subField.state
-                                                            .value || ''
-                                                        }
-                                                        onChange={(e) =>
-                                                          subField.handleChange(
-                                                            Number(
-                                                              e.target.value
-                                                            ) || 0
-                                                          )
-                                                        }
-                                                        placeholder="0"
-                                                        className="bg-neutral-700 border-neutral-600 text-white text-center font-mono h-9"
-                                                      />
-                                                    </div>
+                                                  children={(field) => (
+                                                    <field.InputField label="Weight" type="number" />
                                                   )}
-                                                </form.Field>
-                                                <form.Field
+                                                />
+                                                {/* MARK: Reps */}
+                                                <form.AppField
                                                   name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
-                                                >
-                                                  {(subField) => (
-                                                    <div className="space-y-1.5">
-                                                      <Label className="text-xs text-neutral-400">
-                                                        Reps
-                                                      </Label>
-                                                      <Input
-                                                        type="number"
-                                                        value={
-                                                          subField.state
-                                                            .value || ''
-                                                        }
-                                                        onChange={(e) =>
-                                                          subField.handleChange(
-                                                            Number(
-                                                              e.target.value
-                                                            ) || 0
-                                                          )
-                                                        }
-                                                        placeholder="0"
-                                                        className="bg-neutral-700 border-neutral-600 text-white text-center font-mono h-9"
-                                                      />
-                                                    </div>
+                                                  children={(field) => (
+                                                    <field.InputField label="Reps" type="number" />
                                                   )}
-                                                </form.Field>
+                                                />
                                               </div>
-                                              <form.Field
+                                              {/* MARK: Set Type Field */}
+                                              <form.AppField
                                                 name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
-                                              >
-                                                {(subField) => (
-                                                  <div className="space-y-1.5">
-                                                    <Label className="text-xs text-neutral-400">
-                                                      Set Type
-                                                    </Label>
-                                                    <SetTypeSelect
-                                                      value={
-                                                        subField.state.value
-                                                      }
-                                                      onChange={
-                                                        subField.handleChange
-                                                      }
-                                                    />
-                                                  </div>
+                                                children={(field) => (
+                                                  <field.SetTypeSelect />
                                                 )}
-                                              </form.Field>
+                                              />
                                               <div className="text-center text-sm text-neutral-400 pt-1">
                                                 Volume:{' '}
                                                 <span className="font-mono text-orange-500">
@@ -486,7 +380,7 @@ export function WorkoutEntryForm({
                                             </div>
 
                                             {/* Desktop Layout */}
-                                            <div className="hidden sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end">
+                                            {/* <div className="hidden sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end">
                                               <div className="col-span-2 text-center">
                                                 <div className="text-white font-mono text-sm h-9 flex items-center justify-center">
                                                   #{setIndex + 1}
@@ -578,7 +472,7 @@ export function WorkoutEntryForm({
                                                   <Trash2 className="h-4 w-4" />
                                                 </Button>
                                               </div>
-                                            </div>
+                                            </div> */}
                                           </div>
                                         );
                                       }
@@ -619,7 +513,7 @@ export function WorkoutEntryForm({
         <Card className="bg-neutral-900 border-neutral-700">
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col gap-3">
-              {/* Add Exercise Button */}
+              {/* MARK: Add Exercise Button */}
               <div>
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                   <DialogTrigger asChild>
@@ -641,6 +535,7 @@ export function WorkoutEntryForm({
                       </DialogTitle>
                     </DialogHeader>
                     <div className="mt-4">
+                      {/* MARK: Exercise Selection */}
                       <ExerciseSelectionComponent
                         showTitle={false}
                         onExerciseAdded={() => setIsModalOpen(false)}
