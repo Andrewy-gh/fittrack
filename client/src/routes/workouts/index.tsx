@@ -14,6 +14,14 @@ import {
   Plus,
   MoreHorizontal,
 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface WorkoutData {
   created_at: string;
@@ -225,7 +233,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
         </CardContent>
       </Card>
 
-      {/* Workout Sessions List */}
+      {/* MARK: Table*/}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
@@ -234,66 +242,66 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-700">
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+            <Table className="w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     SESSION ID
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     DATE
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     TIME
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     TYPE
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     NOTES
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     STATUS
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
                     ACTIONS
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredWorkouts.map((workout, index) => {
                   const workoutType = getWorkoutType(workout.notes ?? '');
                   return (
-                    <tr
+                    <TableRow
                       key={workout.id}
                       className={`border-b border-neutral-800 hover:bg-neutral-800 transition-colors cursor-pointer ${
                         index % 2 === 0 ? 'bg-neutral-900' : 'bg-neutral-850'
                       }`}
                       onClick={() => setSelectedWorkout(workout)}
                     >
-                      <td className="py-3 px-4 text-sm text-white font-mono">
+                      <TableCell className="py-3 px-4 text-sm text-white font-mono">
                         WO-{workout.id.toString().padStart(3, '0')}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-white font-mono">
+                      </TableCell>
+                      <TableCell className="py-3 px-4 text-sm text-white font-mono">
                         {formatDate(workout.date)}
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <Clock className="w-3 h-3 text-neutral-400" />
                           <span className="text-sm text-neutral-300 font-mono">
                             {formatTime(workout.date)}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
                         <Badge className={getTypeColor(workoutType)}>
                           {workoutType.toUpperCase()}
                         </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-neutral-300 max-w-xs truncate">
+                      </TableCell>
+                      <TableCell className="py-3 px-4 text-sm text-neutral-300 max-w-xs truncate">
                         {workout.notes}
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-2 h-2 rounded-full ${
@@ -304,8 +312,8 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                             {workout.updated_at ? 'MODIFIED' : 'ORIGINAL'}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -313,12 +321,12 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                         >
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
