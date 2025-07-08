@@ -10,10 +10,10 @@ export type Exercise = {
   sets: Set[];
 };
 
-type Set = {
+export type Set = {
   weight: number | undefined;
   reps: number | undefined;
-  setType: string;
+  setType: "warmup" | "working";
 };
 
 export type Workout = {
