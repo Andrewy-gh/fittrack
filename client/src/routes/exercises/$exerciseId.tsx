@@ -181,7 +181,7 @@ function ExerciseDisplay({
 
       {/* MARK: Exercise Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -197,7 +197,7 @@ function ExerciseDisplay({
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -213,7 +213,7 @@ function ExerciseDisplay({
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -229,7 +229,7 @@ function ExerciseDisplay({
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -245,7 +245,7 @@ function ExerciseDisplay({
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -261,7 +261,7 @@ function ExerciseDisplay({
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -279,7 +279,7 @@ function ExerciseDisplay({
       </div>
 
       {/* MARK: Performance Progression */}
-      <Card className="bg-neutral-900 border-neutral-700">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
             PERFORMANCE PROGRESSION
@@ -322,7 +322,7 @@ function ExerciseDisplay({
       </Card>
 
       {/* MARK: Training Sessions */}
-      <Card className="bg-neutral-900 border-neutral-700">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
             TRAINING SESSIONS
@@ -412,7 +412,7 @@ function ExerciseDisplay({
       {/* Workout Detail Modal */}
       {selectedWorkout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="bg-neutral-900 border-neutral-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-bold text-white tracking-wider">
@@ -557,7 +557,7 @@ function ExerciseDisplay({
       {/* MARK: Set Detail Modal */}
       {selectedSet && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="bg-neutral-900 border-neutral-700 w-full max-w-md">
+          <Card className="w-full max-w-md">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg font-bold text-white tracking-wider">

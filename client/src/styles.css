@@ -19,10 +19,18 @@ code {
 }
 
 :root {
+  /* My styles */
+  --color-surface-900: var(--color-neutral-900);
+  --color-surface-800: var(--color-neutral-800);
+  --color-surface-700: var(--color-neutral-700);
+
+  --color-text-300: var(--color-neutral-300);
+
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
+  --card: var(--color-surface-900);
+  --card-foreground: var(--color-text-300);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
   --primary: oklch(0.21 0.006 285.885);
@@ -35,8 +43,8 @@ code {
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
+  --border: var(--color-surface-700);
+  --input: var(--color-surface-800);
   --ring: oklch(0.871 0.006 286.286);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);

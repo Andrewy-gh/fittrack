@@ -136,7 +136,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
 
       {/* Search and Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <Card className="lg:col-span-2 bg-neutral-900 border-neutral-700">
+        <Card className="lg:col-span-2">
           <CardContent className="p-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
@@ -150,7 +150,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -166,7 +166,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -182,7 +182,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -200,7 +200,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
       </div>
 
       {/* Workout Types Overview */}
-      <Card className="bg-neutral-900 border-neutral-700">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
             TRAINING DISTRIBUTION
@@ -226,7 +226,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
       </Card>
 
       {/* Workout Sessions List */}
-      <Card className="bg-neutral-900 border-neutral-700">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
             TRAINING SESSIONS
@@ -326,7 +326,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
       {/* Workout Detail Modal */}
       {selectedWorkout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="bg-neutral-900 border-neutral-700 w-full max-w-2xl">
+          <Card className="w-full max-w-2xl">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg font-bold text-white tracking-wider">
@@ -418,7 +418,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                     params={{
                       workoutId: selectedWorkout.id,
                     }}
-                    >
+                  >
                     Edit Session
                   </Link>
                 </Button>
