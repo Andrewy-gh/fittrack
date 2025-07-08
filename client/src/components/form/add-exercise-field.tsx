@@ -1,26 +1,40 @@
-import type { Exercise,ExerciseOption } from '@/lib/types';
+import type { Exercise, Set, ExerciseOption } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { useFieldContext } from '@/hooks/form';
+import { useState } from 'react';
 
 export default function AddExerciseField({
   showTitle = true,
   onExerciseAdded,
   exercises,
-  selectedExercise,
-  handleSelect,
-  handleAppendGroup,
 }: {
   showTitle?: boolean;
   onExerciseAdded?: () => void;
   exercises: ExerciseOption[];
-  selectedExercise?: ExerciseOption;
-  handleSelect: (option: ExerciseOption) => void;
-  handleAppendGroup: (label: ExerciseOption['name']) => void;
 }) {
-  const field = useFieldContext<Exercise>();
+  const field = useFieldContext<Exercise[]>();
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>();
+  
+  function handleSelect(option: ExerciseOption) {
+    console.log('handleSelect');
+    console.log(option);
+    setSelectedExercise(option);
+  }
+
+  function handleAppendGroup(name: ExerciseOption['name']) {
+    const newExercise = {
+      id: exercises.length + 1,
+      name,
+    };
+    exercises.push(newExercise);
+    console.log('handleAppendGroup');
+    console.log(newExercise);
+    handleSelect(newExercise);
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="space-y-2">

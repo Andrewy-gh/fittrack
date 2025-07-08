@@ -10,6 +10,7 @@ const SetTypeSelect = lazy(() => import('../components/form/set-type-select'));
 const InputField = lazy(() => import('../components/form/input-field'));
 const NumberInput = lazy(() => import('../components/form/number-input'));
 const TextInput = lazy(() => import('../components/form/text-input'));
+const AddExerciseField = lazy(() => import('../components/form/add-exercise-field'));
 
 export const { useAppForm, withForm } = createFormHook({
   fieldContext,
@@ -21,6 +22,7 @@ export const { useAppForm, withForm } = createFormHook({
     SetTypeSelect,
     TextInput,
     InputField,
+    AddExerciseField,
   },
   formComponents: {
     
