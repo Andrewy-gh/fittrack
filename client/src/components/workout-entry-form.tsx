@@ -7,12 +7,8 @@ import {
   saveToLocalStorage,
 } from '@/lib/local-storage';
 import type { Exercise, ExerciseOption } from '@/lib/types';
-import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SetTypeSelect } from '@/components/set-type-select';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,7 +23,6 @@ import {
   Trash2,
   Plus,
   Target,
-  Calendar,
   FileText,
   Dumbbell,
   RotateCcw,
@@ -56,6 +51,163 @@ const formOpts = formOptions({
       saveToLocalStorage(formApi.state.values);
     },
     onChangeDebounceMs: 500,
+  },
+});
+
+// MARK: Set Input Field
+const SetInputField = withForm({
+  ...formOpts,
+  props: {} as { exerciseIndex: number },
+  render: function Render({ form, exerciseIndex }) {
+    return (
+      <form.AppField name={`exercises[${exerciseIndex}].sets`} mode="array">
+        {(setsField) => {
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-neutral-400" />
+                <Label className="text-xs text-neutral-400 tracking-wider">
+                  SET CONFIGURATION
+                </Label>
+              </div>
+
+              {/* Sets Header */}
+              <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] text-neutral-400 tracking-wider px-1">
+                <div className="col-span-2 text-center">SET</div>
+                <div className="col-span-3 text-center">WEIGHT</div>
+                <div className="col-span-2 text-center">REPS</div>
+                <div className="col-span-3 text-center">TYPE</div>
+                <div className="col-span-1 text-center">VOL</div>
+                <div className="col-span-1"></div>
+              </div>
+
+              {/* Sets List */}
+              <div className="space-y-3">
+                {(setsField.state.value as any[]).map((set, setIndex) => {
+                  const volume = (set.weight || 0) * (set.reps || 0);
+
+                  return (
+                    <div key={`exercises[${exerciseIndex}].sets[${setIndex}]`}>
+                      {/* Mobile Layout (default) + Desktop Layout (sm:) */}
+                      <div
+                        className="space-y-3 rounded-lg border border-neutral-700 bg-neutral-800 p-3 
+                  sm:grid sm:grid-cols-12 sm:items-end sm:gap-2 sm:space-y-0 
+                  sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0"
+                      >
+                        {/* Mobile: Header with Set # and Delete Button */}
+                        <div className="flex justify-between items-center sm:hidden">
+                          <div className="font-mono text-sm text-white">
+                            Set #{setIndex + 1}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            onClick={() => setsField.removeValue(setIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Desktop: Set Number Column */}
+                        <div className="hidden sm:block sm:col-span-2 sm:text-center">
+                          <div className="text-white font-mono text-sm h-9 flex items-center justify-center">
+                            #{setIndex + 1}
+                          </div>
+                        </div>
+
+                        {/* Form Fields Container */}
+                        <div className="grid grid-cols-2 gap-3 sm:contents">
+                          {/* Weight Field */}
+                          <div className="sm:col-span-3">
+                            <form.AppField
+                              name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
+                              children={(field) => (
+                                <field.InputField
+                                  label="Weight"
+                                  type="number"
+                                  className="sm:bg-neutral-700 sm:border-neutral-600 sm:text-white sm:text-center sm:font-mono sm:h-9"
+                                />
+                              )}
+                            />
+                          </div>
+
+                          {/* Reps Field */}
+                          <div className="sm:col-span-2">
+                            <form.AppField
+                              name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
+                              children={(field) => (
+                                <field.InputField
+                                  label="Reps"
+                                  type="number"
+                                  className="sm:bg-neutral-700 sm:border-neutral-600 sm:text-white sm:text-center sm:font-mono sm:h-9"
+                                />
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Set Type Field */}
+                        <div className="sm:col-span-3">
+                          <form.AppField
+                            name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
+                            children={(field) => <field.SetTypeSelect />}
+                          />
+                        </div>
+
+                        {/* Volume Display */}
+                        <div
+                          className="text-center text-sm text-neutral-400 pt-1 
+                    sm:col-span-1 sm:text-center sm:pt-0"
+                        >
+                          <div className="sm:text-orange-500 sm:font-mono sm:text-sm sm:h-9 sm:flex sm:items-center sm:justify-center">
+                            <span className="sm:hidden">Volume: </span>
+                            <span className="font-mono text-orange-500 sm:text-orange-500">
+                              {volume > 0 ? volume.toLocaleString() : '-'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Desktop: Delete Button Column */}
+                        <div className="hidden sm:block sm:col-span-1 sm:text-center">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            onClick={() => setsField.removeValue(setIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add Set Button */}
+              <Button
+                onClick={() => {
+                  setsField.pushValue({
+                    weight: 0,
+                    reps: 0,
+                    setType: 'working',
+                  });
+                }}
+                type="button"
+                variant="outline"
+                className="w-full border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Set
+              </Button>
+            </div>
+          );
+        }}
+      </form.AppField>
+    );
   },
 });
 
@@ -133,185 +285,10 @@ const ExerciseInputField = withForm({
                           )}
                         />
                         {/* MARK: Sets */}
-                        <form.AppField
-                          name={`exercises[${exerciseIndex}].sets`}
-                          mode="array"
-                        >
-                          {(setsField) => {
-                            return (
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                  <RotateCcw className="w-4 h-4 text-neutral-400" />
-                                  <Label className="text-xs text-neutral-400 tracking-wider">
-                                    SET CONFIGURATION
-                                  </Label>
-                                </div>
-
-                                {/* Sets Header */}
-                                <div className="hidden sm:grid grid-cols-12 gap-2 text-[10px] text-neutral-400 tracking-wider px-1">
-                                  <div className="col-span-2 text-center">
-                                    SET
-                                  </div>
-                                  <div className="col-span-3 text-center">
-                                    WEIGHT
-                                  </div>
-                                  <div className="col-span-2 text-center">
-                                    REPS
-                                  </div>
-                                  <div className="col-span-3 text-center">
-                                    TYPE
-                                  </div>
-                                  <div className="col-span-1 text-center">
-                                    VOL
-                                  </div>
-                                  <div className="col-span-1"></div>
-                                </div>
-
-                                {/* Sets List */}
-                                <div className="space-y-3">
-                                  {(setsField.state.value as any[]).map(
-                                    (set, setIndex) => {
-                                      const volume =
-                                        (set.weight || 0) * (set.reps || 0);
-
-                                      return (
-                                        <div
-                                          key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
-                                        >
-                                          {/* Mobile Layout (default) + Desktop Layout (sm:) */}
-                                          <div
-                                            className="p-3 bg-neutral-800 rounded-lg space-y-3 border border-neutral-700 
-                  sm:p-0 sm:bg-transparent sm:rounded-none sm:space-y-0 sm:border-0 
-                  sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end"
-                                          >
-                                            {/* Mobile: Header with Set # and Delete Button */}
-                                            <div className="flex justify-between items-center sm:hidden">
-                                              <div className="font-mono text-sm text-white">
-                                                Set #{setIndex + 1}
-                                              </div>
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                                                onClick={() =>
-                                                  setsField.removeValue(
-                                                    setIndex
-                                                  )
-                                                }
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-
-                                            {/* Desktop: Set Number Column */}
-                                            <div className="hidden sm:block sm:col-span-2 sm:text-center">
-                                              <div className="text-white font-mono text-sm h-9 flex items-center justify-center">
-                                                #{setIndex + 1}
-                                              </div>
-                                            </div>
-
-                                            {/* Form Fields Container */}
-                                            <div className="grid grid-cols-2 gap-3 sm:contents">
-                                              {/* Weight Field */}
-                                              <div className="sm:col-span-3">
-                                                <form.AppField
-                                                  name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
-                                                  children={(field) => (
-                                                    <field.InputField
-                                                      label="Weight"
-                                                      type="number"
-                                                      className="sm:bg-neutral-700 sm:border-neutral-600 sm:text-white sm:text-center sm:font-mono sm:h-9"
-                                                    />
-                                                  )}
-                                                />
-                                              </div>
-
-                                              {/* Reps Field */}
-                                              <div className="sm:col-span-2">
-                                                <form.AppField
-                                                  name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
-                                                  children={(field) => (
-                                                    <field.InputField
-                                                      label="Reps"
-                                                      type="number"
-                                                      className="sm:bg-neutral-700 sm:border-neutral-600 sm:text-white sm:text-center sm:font-mono sm:h-9"
-                                                    />
-                                                  )}
-                                                />
-                                              </div>
-                                            </div>
-
-                                            {/* Set Type Field */}
-                                            <div className="sm:col-span-3">
-                                              <form.AppField
-                                                name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
-                                                children={(field) => (
-                                                  <field.SetTypeSelect />
-                                                )}
-                                              />
-                                            </div>
-
-                                            {/* Volume Display */}
-                                            <div
-                                              className="text-center text-sm text-neutral-400 pt-1 
-                    sm:col-span-1 sm:text-center sm:pt-0"
-                                            >
-                                              <div className="sm:text-orange-500 sm:font-mono sm:text-sm sm:h-9 sm:flex sm:items-center sm:justify-center">
-                                                <span className="sm:hidden">
-                                                  Volume:{' '}
-                                                </span>
-                                                <span className="font-mono text-orange-500 sm:text-orange-500">
-                                                  {volume > 0
-                                                    ? volume.toLocaleString()
-                                                    : '-'}
-                                                </span>
-                                              </div>
-                                            </div>
-
-                                            {/* Desktop: Delete Button Column */}
-                                            <div className="hidden sm:block sm:col-span-1 sm:text-center">
-                                              <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                                                onClick={() =>
-                                                  setsField.removeValue(
-                                                    setIndex
-                                                  )
-                                                }
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    }
-                                  )}
-                                </div>
-
-                                {/* Add Set Button */}
-                                <Button
-                                  onClick={() => {
-                                    setsField.pushValue({
-                                      weight: 0,
-                                      reps: 0,
-                                      setType: 'working',
-                                    });
-                                  }}
-                                  type="button"
-                                  variant="outline"
-                                  className="w-full border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
-                                >
-                                  <Plus className="w-4 h-4 mr-2" />
-                                  Add Set
-                                </Button>
-                              </div>
-                            );
-                          }}
-                        </form.AppField>
+                        <SetInputField
+                          form={form}
+                          exerciseIndex={exerciseIndex}
+                        />
                       </CardContent>
                     </Card>
                   );
@@ -355,7 +332,7 @@ export function WorkoutEntryForm({
     // },
     onSubmit: async ({ value }) => {
       console.log('value', value);
-      
+
       try {
         const response = await fetch('/api/workouts', {
           method: 'POST',
@@ -366,6 +343,7 @@ export function WorkoutEntryForm({
         });
 
         if (!response.ok) {
+          // ! TODO: Convert from text to json
           const errorText = await response.text();
           throw new Error(errorText ?? 'Failed to submit workout');
         }
@@ -392,57 +370,10 @@ export function WorkoutEntryForm({
     if (confirm('Are you sure you want to clear all form data?')) {
       clearLocalStorage();
       form.reset();
+      // ! TODO: Reset selected exercise
       // setSelectedExercise(undefined);
     }
   };
-
-  // MARK: Exercise
-  // const ExerciseSelectionComponent = ({
-  //   showTitle = true,
-  //   onExerciseAdded,
-  // }: {
-  //   showTitle?: boolean;
-  //   onExerciseAdded?: () => void;
-  // }) => (
-  //   <div className="flex flex-col gap-3">
-  //     <div className="space-y-2">
-  //       {showTitle && (
-  //         <Label className="text-xs text-neutral-400 tracking-wider">
-  //           EXERCISE DATABASE
-  //         </Label>
-  //       )}
-  //       <div className="flex flex-col sm:flex-row gap-3">
-  //         <div className="flex-1">
-  //           <ExerciseCombobox
-  //             options={exercises}
-  //             selected={selectedExercise?.name ?? ''}
-  //             onChange={handleSelect}
-  //             onCreate={handleAppendGroup}
-  //           />
-  //         </div>
-  //         <form.Field name="exercises">
-  //           {(field) => (
-  //             <Button
-  //               onClick={() => {
-  //                 field.pushValue({
-  //                   name: selectedExercise?.name ?? '',
-  //                   sets: [],
-  //                 });
-  //                 onExerciseAdded?.();
-  //               }}
-  //               type="button"
-  //               className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
-  //               disabled={!selectedExercise?.name}
-  //             >
-  //               <Plus className="w-4 h-4 mr-2" />
-  //               Add Exercise
-  //             </Button>
-  //           )}
-  //         </form.Field>
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
 
   return (
     <div className="min-h-screen space-y-4 bg-black p-2 lg:p-6">
@@ -486,7 +417,7 @@ export function WorkoutEntryForm({
           </CardContent>
         </Card>
 
-        {/* Exercises List */}
+        {/*MARK: Exercises List */}
         <ExerciseInputField form={form} />
 
         {/* Action Buttons */}
@@ -515,10 +446,6 @@ export function WorkoutEntryForm({
                       </DialogTitle>
                     </DialogHeader>
                     <div className="mt-4">
-                      {/* MARK: Exercise Selection */}
-                      {/* <ExerciseSelectionComponent
-                        showTitle={false}
-                      /> */}
                       <form.AppField
                         name="exercises"
                         mode="array"
