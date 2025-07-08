@@ -308,28 +308,8 @@ export function WorkoutEntryForm({
 }: {
   exercises: ExerciseOption[];
 }) {
-  // Load initial values from localStorage
-  // const getInitialValues = (): WorkoutFormValues => {
-  //   const saved = loadFromLocalStorage();
-  //   return (
-  //     saved || {
-  //       date: new Date(),
-  //       notes: '',
-  //       exercises: [] as Exercise[],
-  //     }
-  //   );
-  // };
-
   const form = useAppForm({
     ...formOpts,
-    // defaultValues: getInitialValues(),
-    // listeners: {
-    //   onChange: ({ formApi }) => {
-    //     console.log('Saving form data to localStorage');
-    //     saveToLocalStorage(formApi.state.values);
-    //   },
-    //   onChangeDebounceMs: 500,
-    // },
     onSubmit: async ({ value }) => {
       console.log('value', value);
 
