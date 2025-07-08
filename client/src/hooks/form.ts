@@ -8,8 +8,6 @@ const DatePicker = lazy(() => import('../components/form/date-picker'));
 const NotesTextarea = lazy(() => import('../components/form/notes-textarea'));
 const SetTypeSelect = lazy(() => import('../components/form/set-type-select'));
 const InputField = lazy(() => import('../components/form/input-field'));
-const NumberInput = lazy(() => import('../components/form/number-input'));
-const TextInput = lazy(() => import('../components/form/text-input'));
 const AddExerciseField = lazy(() => import('../components/form/add-exercise-field'));
 
 export const { useAppForm, withForm } = createFormHook({
@@ -18,9 +16,7 @@ export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {
     DatePicker,
     NotesTextarea,
-    NumberInput,
     SetTypeSelect,
-    TextInput,
     InputField,
     AddExerciseField,
   },
