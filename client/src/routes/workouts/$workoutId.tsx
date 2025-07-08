@@ -149,7 +149,7 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
       </div>
 
       {/* Workout Info */}
-      <Card className="bg-neutral-900 border-neutral-700">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
             SESSION OVERVIEW
@@ -220,7 +220,7 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
         {exerciseGroups.map((exercise, index) => (
           <Card
             key={exercise.exercise_id}
-            className="bg-neutral-900 border-neutral-700 hover:border-orange-500/50 transition-colors cursor-pointer"
+            className="hover:border-orange-500/50 transition-colors cursor-pointer"
             onClick={() => setSelectedExercise(exercise)}
           >
             <CardHeader className="pb-3">
@@ -306,7 +306,7 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
       {/* Exercise Detail Modal */}
       {selectedExercise && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="bg-neutral-900 border-neutral-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-bold text-white tracking-wider">

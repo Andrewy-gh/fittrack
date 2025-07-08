@@ -231,7 +231,7 @@ const ExerciseInputField = withForm({
                   return (
                     <Card
                       key={`exercises[${exerciseIndex}]`}
-                      className="bg-neutral-900 border-neutral-700 relative"
+                      className="relative"
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between">
@@ -376,9 +376,9 @@ export function WorkoutEntryForm({
         className="space-y-4"
       >
         {/* Session Information */}
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider flex items-center gap-2">
+            <CardTitle className="text-sm font-medium tracking-wider flex items-center gap-2">
               <FileText className="w-4 h-4" />
               SESSION INFORMATION
             </CardTitle>
@@ -401,7 +401,7 @@ export function WorkoutEntryForm({
         <ExerciseInputField form={form} />
 
         {/* Action Buttons */}
-        <Card className="bg-neutral-900 border-neutral-700">
+        <Card>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col gap-3">
               {/* MARK: Add Exercise Button */}
