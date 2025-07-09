@@ -13,7 +13,7 @@ export type Exercise = {
 export type Set = {
   weight: number | undefined;
   reps: number | undefined;
-  setType: "warmup" | "working";
+  setType: 'warmup' | 'working';
 };
 
 export type Workout = {
@@ -38,4 +38,5 @@ export interface ExerciseWithSets {
   set_type: string;
   exercise_id: number;
   exercise_name: string;
+  volume: number;
 }
