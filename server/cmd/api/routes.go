@@ -15,7 +15,20 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExerciseWithSets)
-	fileServer := http.FileServer(http.Dir("./dist"))
-	mux.Handle("/", fileServer)
+	mux.HandleFunc("GET /", api.handleStaticFiles())
+
 	return mux
+}
+
+func (api *api) handleStaticFiles() http.HandlerFunc {
+	fs := http.FileServer(http.Dir("./dist"))
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := http.Dir("./dist").Open(r.URL.Path)
+		if err != nil {
+			http.ServeFile(w, r, "./dist/index.html")
+			return
+		}
+		fs.ServeHTTP(w, r)
+	}
 }
