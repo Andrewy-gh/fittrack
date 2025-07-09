@@ -245,15 +245,11 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="hidden sm:table-cell">
-                    ID
-                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">ID</TableHead>
                   <TableHead className="font-medium tracking-wider">
                     Date
                   </TableHead>
-                  <TableHead className="hidden sm:table-cell">
-                    Time
-                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">Time</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead className="hidden sm:table-cell">Status</TableHead>
@@ -294,7 +290,9 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {workout.notes}
+                        {workout.notes && (
+                          <Badge variant="outline">{workout.notes}</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <div className="flex items-center gap-2">
@@ -414,21 +412,21 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                  asChild
+              {/* <div className="flex gap-2 pt-4"> */}
+              <Button
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+                asChild
+              >
+                <Link
+                  to="/workouts/$workoutId"
+                  params={{
+                    workoutId: selectedWorkout.id,
+                  }}
                 >
-                  <Link
-                    to="/workouts/$workoutId"
-                    params={{
-                      workoutId: selectedWorkout.id,
-                    }}
-                  >
-                    Edit Session
-                  </Link>
-                </Button>
-                <Button
+                  View Session
+                </Link>
+              </Button>
+              {/* <Button
                   variant="outline"
                   className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
                 >
@@ -439,8 +437,8 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                   className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
                 >
                   Export Data
-                </Button>
-              </div>
+                </Button> */}
+              {/* </div> */}
             </CardContent>
           </Card>
         </div>
