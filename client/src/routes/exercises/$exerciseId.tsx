@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { ExerciseWithSets } from '@/lib/types';
 import { fetchExerciseWithSets } from '@/lib/api/exercises';
+import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 
 interface WorkoutGroup {
   workout_id: number;
@@ -286,38 +287,7 @@ function ExerciseDisplay({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48 relative">
-            {/* Chart Grid */}
-            <div className="absolute inset-0 grid grid-cols-8 grid-rows-6 opacity-20">
-              {Array.from({ length: 48 }).map((_, i) => (
-                <div key={i} className="border border-neutral-700"></div>
-              ))}
-            </div>
-
-            {/* Chart Line - Max Weight Progression */}
-            <svg className="absolute inset-0 w-full h-full">
-              <polyline
-                points="0,180 100,160 200,140 300,120 400,100 500,80"
-                fill="none"
-                stroke="#f97316"
-                strokeWidth="3"
-              />
-              {/* Data points */}
-              {[0, 100, 200, 300, 400, 500].map((x, i) => (
-                <circle key={i} cx={x} cy={180 - i * 20} r="4" fill="#f97316" />
-              ))}
-            </svg>
-
-            {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-neutral-500 -ml-8 font-mono">
-              <span>250</span>
-              <span>200</span>
-              <span>150</span>
-              <span>100</span>
-              <span>50</span>
-              <span>0</span>
-            </div>
-          </div>
+          <ChartBarVol data={exerciseSets} />
         </CardContent>
       </Card>
 

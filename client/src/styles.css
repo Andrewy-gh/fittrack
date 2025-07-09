@@ -26,13 +26,12 @@ code {
 
   --color-text-300: var(--color-neutral-300);
 
-
   --background: oklch(1 0 0);
   --foreground: var(--color-text-300);
   --card: var(--color-surface-900);
   --card-foreground: var(--color-text-300);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
+  --popover-foreground: var(--color-neutral-300);
   --primary: oklch(0.21 0.006 285.885);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.967 0.001 286.375);

@@ -122,11 +122,12 @@ SELECT
     s.reps,
     s.set_type,
     s.exercise_id,
-    e.name as exercise_name
+    e.name as exercise_name,
+    (COALESCE(s.weight, 0) * s.reps) as volume
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
-WHERE s.exercise_id = $1  -- Changed from workout_id to exercise_id
+WHERE s.exercise_id = $1
 ORDER BY w.date DESC, s.created_at
 `
 
@@ -140,6 +141,7 @@ type GetExerciseWithSetsRow struct {
 	SetType      string             `json:"set_type"`
 	ExerciseID   int32              `json:"exercise_id"`
 	ExerciseName string             `json:"exercise_name"`
+	Volume       int32              `json:"volume"`
 }
 
 func (q *Queries) GetExerciseWithSets(ctx context.Context, exerciseID int32) ([]GetExerciseWithSetsRow, error) {
@@ -161,6 +163,7 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, exerciseID int32) ([]
 			&i.SetType,
 			&i.ExerciseID,
 			&i.ExerciseName,
+			&i.Volume,
 		); err != nil {
 			return nil, err
 		}
