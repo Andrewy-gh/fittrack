@@ -20,11 +20,6 @@ import {
 } from '@/components/ui/card';
 import type { ExerciseWithSets } from '@/lib/types';
 
-interface ChartDataPoint {
-  date: string;
-  volume: number;
-}
-
 interface ChartBarVolProps {
   data: ExerciseWithSets[];
 }
