@@ -14,6 +14,14 @@ import {
   Plus,
   MoreHorizontal,
 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface WorkoutData {
   created_at: string;
@@ -225,7 +233,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
         </CardContent>
       </Card>
 
-      {/* Workout Sessions List */}
+      {/* MARK: Table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
@@ -233,97 +241,93 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-700">
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    SESSION ID
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    DATE
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    TIME
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    TYPE
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    NOTES
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    STATUS
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                    ACTIONS
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredWorkouts.map((workout, index) => {
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="hidden sm:table-cell">ID</TableHead>
+                  <TableHead className="font-medium tracking-wider">
+                    Date
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">Time</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredWorkouts.map((workout) => {
                   const workoutType = getWorkoutType(workout.notes ?? '');
                   return (
-                    <tr
+                    <TableRow
                       key={workout.id}
-                      className={`border-b border-neutral-800 hover:bg-neutral-800 transition-colors cursor-pointer ${
-                        index % 2 === 0 ? 'bg-neutral-900' : 'bg-neutral-850'
-                      }`}
                       onClick={() => setSelectedWorkout(workout)}
                     >
-                      <td className="py-3 px-4 text-sm text-white font-mono">
+                      <TableCell className="hidden font-medium sm:table-cell">
                         WO-{workout.id.toString().padStart(3, '0')}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-white font-mono">
-                        {formatDate(workout.date)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3 h-3 text-neutral-400" />
-                          <span className="text-sm text-neutral-300 font-mono">
-                            {formatTime(workout.date)}
-                          </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {formatDate(workout.date)}
                         </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge className={getTypeColor(workoutType)}>
+                        <div className="text-sm text-muted-foreground sm:hidden">
+                          {formatTime(workout.date)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatTime(workout.date)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge
+                          variant="outline"
+                          className={getTypeColor(workoutType)}
+                        >
                           {workoutType.toUpperCase()}
                         </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-neutral-300 max-w-xs truncate">
-                        {workout.notes}
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {workout.notes && (
+                          <Badge variant="outline">{workout.notes}</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-2 h-2 rounded-full ${
                               workout.updated_at ? 'bg-orange-500' : 'bg-white'
                             }`}
-                          ></div>
-                          <span className="text-xs text-neutral-300 uppercase tracking-wider">
+                          />
+                          <span className="text-xs uppercase">
                             {workout.updated_at ? 'MODIFIED' : 'ORIGINAL'}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell>
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="text-neutral-400 hover:text-orange-500"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedWorkout(workout);
+                          }}
                         >
-                          <MoreHorizontal className="w-4 h-4" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Workout Detail Modal */}
+      {/* MARK: Modal */}
       {selectedWorkout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-2xl">
@@ -408,21 +412,21 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                  asChild
+              {/* <div className="flex gap-2 pt-4"> */}
+              <Button
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+                asChild
+              >
+                <Link
+                  to="/workouts/$workoutId"
+                  params={{
+                    workoutId: selectedWorkout.id,
+                  }}
                 >
-                  <Link
-                    to="/workouts/$workoutId"
-                    params={{
-                      workoutId: selectedWorkout.id,
-                    }}
-                  >
-                    Edit Session
-                  </Link>
-                </Button>
-                <Button
+                  View Session
+                </Link>
+              </Button>
+              {/* <Button
                   variant="outline"
                   className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
                 >
@@ -433,8 +437,8 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                   className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
                 >
                   Export Data
-                </Button>
-              </div>
+                </Button> */}
+              {/* </div> */}
             </CardContent>
           </Card>
         </div>

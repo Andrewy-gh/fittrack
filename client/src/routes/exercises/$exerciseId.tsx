@@ -354,6 +354,7 @@ function ExerciseDisplay({
                     </div>
                   </div>
 
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                     <div>
                       <div className="text-lg font-bold text-white font-mono">
@@ -382,12 +383,12 @@ function ExerciseDisplay({
                   </div>
                 </div>
 
-                {/* Sets Preview */}
-                <div className="mt-4 flex flex-wrap gap-2">
+                {/* MARK:Sets Preview */}
+                <div className="mt-4 flex flex-col gap-2 rounded-md sm:flex-row sm:flex-wrap sm:items-center">
                   {workout.sets.map((set, index) => (
                     <div
                       key={set.set_id}
-                      className="flex items-center gap-2 px-2 py-1 bg-neutral-800 rounded text-xs cursor-pointer hover:bg-neutral-700"
+                      className="flex cursor-pointer items-center justify-between gap-2 rounded bg-input px-2 py-1 text-xs hover:bg-neutral-700"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedSet(set);
@@ -400,6 +401,9 @@ function ExerciseDisplay({
                       <span className="text-white font-mono">
                         {set.weight}×{set.reps}
                       </span>
+                      <span className="text-orange-500 font-mono">
+                        {(set.weight * set.reps).toLocaleString()} vol
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -409,7 +413,7 @@ function ExerciseDisplay({
         </CardContent>
       </Card>
 
-      {/* Workout Detail Modal */}
+      {/* MARK: Modal */}
       {selectedWorkout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
