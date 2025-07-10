@@ -1,3 +1,4 @@
+import { UserButton } from '@stackframe/react';
 import { Link } from '@tanstack/react-router'
 
 export default function Header() {
@@ -11,6 +12,7 @@ export default function Header() {
           <Link to="/workouts">Workouts</Link>
         </div>
       </nav>
+      <UserButton/>
     </header>
   );
 }
