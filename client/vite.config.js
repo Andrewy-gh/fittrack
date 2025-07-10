@@ -12,6 +12,17 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('@stackframe/react')) {
+            return 'stackframe';
+          }
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
