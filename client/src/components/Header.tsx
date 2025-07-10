@@ -11,6 +11,9 @@ export default function Header() {
         <div className="px-2 font-bold">
           <Link to="/workouts">Workouts</Link>
         </div>
+        <div className="px-2 font-bold">
+          <Link to="/exercises">Exercises</Link>
+        </div>
       </nav>
       <UserButton/>
     </header>
