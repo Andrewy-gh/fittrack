@@ -13,6 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - name: Create client .env file
+        run: |
+          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" >> frontend/.env
+          echo "VITE_PUBLISHABLE_CLIENT_KEY=${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}" >> frontend/.env
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
