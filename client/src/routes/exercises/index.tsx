@@ -19,10 +19,19 @@ import {
 } from 'lucide-react';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
 import type { ExerciseOption } from '@/lib/types';
+import { useUser } from '@stackframe/react';
 
 export const Route = createFileRoute('/exercises/')({
   loader: async (): Promise<ExerciseOption[]> => {
-    const exercises = await fetchExerciseOptions();
+    const user = useUser();
+    if (!user) {
+      return [];
+    }
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+      return [];
+    }
+    const exercises = await fetchExerciseOptions(accessToken);
     return exercises;
   },
   component: RouteComponent,
