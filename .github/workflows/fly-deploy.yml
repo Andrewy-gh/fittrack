@@ -9,14 +9,14 @@ jobs:
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group # optional: ensure only one action runs at a time
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Create client .env file
         run: |
-          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" >> frontend/.env
-          echo "VITE_PUBLISHABLE_CLIENT_KEY=${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}" >> frontend/.env
+          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" >> client/.env
+          echo "VITE_PUBLISHABLE_CLIENT_KEY=${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}" >> client/.env
       - name: Deploy to Fly.io
         run: flyctl deploy --remote-only
         env:
