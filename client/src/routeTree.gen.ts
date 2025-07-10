@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
 import { Route as WorkoutsIndexImport } from './routes/workouts/index'
+import { Route as ExercisesIndexImport } from './routes/exercises/index'
 import { Route as WorkoutsWorkoutIdImport } from './routes/workouts/$workoutId'
 import { Route as HandlerSplatImport } from './routes/handler.$'
 import { Route as ExercisesExerciseIdImport } from './routes/exercises/$exerciseId'
@@ -35,6 +36,12 @@ const IndexRoute = IndexImport.update({
 const WorkoutsIndexRoute = WorkoutsIndexImport.update({
   id: '/workouts/',
   path: '/workouts/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ExercisesIndexRoute = ExercisesIndexImport.update({
+  id: '/exercises/',
+  path: '/exercises/',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -95,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkoutsWorkoutIdImport
       parentRoute: typeof rootRoute
     }
+    '/exercises/': {
+      id: '/exercises/'
+      path: '/exercises'
+      fullPath: '/exercises'
+      preLoaderRoute: typeof ExercisesIndexImport
+      parentRoute: typeof rootRoute
+    }
     '/workouts/': {
       id: '/workouts/'
       path: '/workouts'
@@ -113,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/handler/$': typeof HandlerSplatRoute
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
+  '/exercises': typeof ExercisesIndexRoute
   '/workouts': typeof WorkoutsIndexRoute
 }
 
@@ -122,6 +137,7 @@ export interface FileRoutesByTo {
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/handler/$': typeof HandlerSplatRoute
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
+  '/exercises': typeof ExercisesIndexRoute
   '/workouts': typeof WorkoutsIndexRoute
 }
 
@@ -132,6 +148,7 @@ export interface FileRoutesById {
   '/exercises/$exerciseId': typeof ExercisesExerciseIdRoute
   '/handler/$': typeof HandlerSplatRoute
   '/workouts/$workoutId': typeof WorkoutsWorkoutIdRoute
+  '/exercises/': typeof ExercisesIndexRoute
   '/workouts/': typeof WorkoutsIndexRoute
 }
 
@@ -143,6 +160,7 @@ export interface FileRouteTypes {
     | '/exercises/$exerciseId'
     | '/handler/$'
     | '/workouts/$workoutId'
+    | '/exercises'
     | '/workouts'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -151,6 +169,7 @@ export interface FileRouteTypes {
     | '/exercises/$exerciseId'
     | '/handler/$'
     | '/workouts/$workoutId'
+    | '/exercises'
     | '/workouts'
   id:
     | '__root__'
@@ -159,6 +178,7 @@ export interface FileRouteTypes {
     | '/exercises/$exerciseId'
     | '/handler/$'
     | '/workouts/$workoutId'
+    | '/exercises/'
     | '/workouts/'
   fileRoutesById: FileRoutesById
 }
@@ -169,6 +189,7 @@ export interface RootRouteChildren {
   ExercisesExerciseIdRoute: typeof ExercisesExerciseIdRoute
   HandlerSplatRoute: typeof HandlerSplatRoute
   WorkoutsWorkoutIdRoute: typeof WorkoutsWorkoutIdRoute
+  ExercisesIndexRoute: typeof ExercisesIndexRoute
   WorkoutsIndexRoute: typeof WorkoutsIndexRoute
 }
 
@@ -178,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExercisesExerciseIdRoute: ExercisesExerciseIdRoute,
   HandlerSplatRoute: HandlerSplatRoute,
   WorkoutsWorkoutIdRoute: WorkoutsWorkoutIdRoute,
+  ExercisesIndexRoute: ExercisesIndexRoute,
   WorkoutsIndexRoute: WorkoutsIndexRoute,
 }
 
@@ -196,6 +218,7 @@ export const routeTree = rootRoute
         "/exercises/$exerciseId",
         "/handler/$",
         "/workouts/$workoutId",
+        "/exercises/",
         "/workouts/"
       ]
     },
@@ -213,6 +236,9 @@ export const routeTree = rootRoute
     },
     "/workouts/$workoutId": {
       "filePath": "workouts/$workoutId.tsx"
+    },
+    "/exercises/": {
+      "filePath": "exercises/index.tsx"
     },
     "/workouts/": {
       "filePath": "workouts/index.tsx"
