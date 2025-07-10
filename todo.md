@@ -7,14 +7,34 @@ Auth Integration TODO list (Go backend)
   - `SECRET_SERVER_KEY`
 - [X] Expose them to the server process ( `.env`, Docker, CI, etc.).
 
-### 1. Database
-- [ ] Create migration `202507091_auth_user_table.sql`
-- [ ] Table users
-  - id (varchar / uuid, PK, from Stack Auth)
-  - email (varchar, nullable)
-  - name (varchar, nullable)
-  - created_at, updated_at
-- [ ] Run migration locally & in CI.
+### 1. Database Migration Strategy
+- [ ] **Create `app_user` Table:** The central table for users.
+  - `id` (VARCHAR/UUID, PK from Stack Auth)
+  - `email` (VARCHAR, nullable)
+  - `name` (VARCHAR, nullable)
+- [ ] **Add `user_id` to Root Tables:** Add a `user_id` foreign key to tables representing user-owned objects.
+  - `workout` table: Add `user_id INT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE`.
+  - `exercise` table: Add `user_id INT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE`.
+- [ ] **Update `exercise` Unique Constraint:** Change the unique constraint on the `exercise` table from `(name)` to `(user_id, name)` to allow different users to have exercises with the same name.
+- [ ] **Do Not Add `user_id` to Child Tables:** The `set` table does not need a `user_id` column, as ownership is inferred from the parent `workout`.
+- [ ] **Add Indexes for Performance:** Index the new foreign keys to ensure fast lookups.
+  - `CREATE INDEX idx_workout_user_id ON workout(user_id);`
+  - `CREATE INDEX idx_exercise_user_id ON exercise(user_id);`
+  - *Note:* For queries filtering by user and sorting by date, a composite index like `ON workout(user_id, date)` could be even more performant.
+- [ ] **Create and Run Migration Script:** Combine all schema changes into a single migration file and run it.
+
+### 1.5. Update SQL Queries (`server/query.sql`)
+- [ ] `GetWorkout`: Add `user_id` parameter to `WHERE` clause.
+- [ ] `ListWorkouts`: Add `user_id` parameter to `WHERE` clause.
+- [ ] `GetExercise`: Add `user_id` parameter to `WHERE` clause.
+- [ ] `ListExercises`: Add `user_id` parameter to `WHERE` clause.
+- [ ] `GetExerciseByName`: Add `user_id` parameter to `WHERE` clause.
+- [ ] `GetWorkoutWithSets`: Add `user_id` parameter to `WHERE` clause. Resolve duplicate query name.
+- [ ] `GetExerciseWithSets`: Add `user_id` parameter to `WHERE` clause.
+- [ ] `CreateWorkout`: Add `user_id` parameter to `INSERT` statement.
+- [ ] `GetOrCreateExercise`: Add `user_id` and update `ON CONFLICT` to use `(user_id, name)`.
+- [ ] `GetSet`: Secure query by joining on `workout` and filtering by `user_id`.
+- [ ] `ListSets`: Secure query by joining on `workout` and filtering by `user_id`.
 
 ### 2. Go auth middleware
 - [ ] File server/middleware/auth.go
