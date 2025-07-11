@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { WorkoutEntryForm } from '@/components/workout-entry-form'
 import type { ExerciseOption } from '@/lib/types';
-import { useUser } from '@stackframe/react';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
+import { stackClientApp } from '@/stack';
 
 export const Route = createFileRoute('/workouts/new')({
   loader: async (): Promise<ExerciseOption[]> => {
-    const user = useUser();
+    const user = await stackClientApp.getUser();
     if (!user) {
         throw new Error('User not found');
     }
