@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { WorkoutEntryForm } from '@/components/workout-entry-form'
 import type { ExerciseOption } from '@/lib/types';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
 import { stackClientApp } from '@/stack';
+import { WorkoutEntryForm } from '@/components/workout-entry-form'
 
 export const Route = createFileRoute('/workouts/new')({
   loader: async (): Promise<ExerciseOption[]> => {
