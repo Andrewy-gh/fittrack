@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,18 @@ import {
   Activity,
   BarChart3,
 } from 'lucide-react';
+import { UserButton } from '@stackframe/react';
+import { stackClientApp } from '@/stack';
+import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 
-function HomePage() {
+function HomePage({
+  user,
+}: {
+  user: CurrentUser | CurrentInternalUser | null;
+}) {
   const [selectedTestimonial, setSelectedTestimonial] = useState(null);
 
+  // MARK: Features
   const features = [
     {
       icon: Zap,
@@ -52,6 +60,7 @@ function HomePage() {
     },
   ];
 
+  // MARK: Testimonials
   const testimonials = [
     {
       id: 1,
@@ -105,17 +114,33 @@ function HomePage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
+      {/* MARK: Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="w-6 h-6 text-orange-500" />
             <span className="text-xl font-bold tracking-wider">FITTRACK</span>
+            {user && (
+              <>
+                <div className="px-2 font-bold">
+                  <Link to="/workouts/new">New Workout</Link>
+                </div>
+                <div className="px-2 font-bold">
+                  <Link to="/workouts">Workouts</Link>
+                </div>
+                <div className="px-2 font-bold">
+                  <Link to="/exercises">Exercises</Link>
+                </div>
+              </>
+            )}
           </div>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-            <Download className="w-4 h-4 mr-2" />
-            Deploy System
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+              <Download className="w-4 h-4 mr-2" />
+              Deploy System
+            </Button>
+            <UserButton />
+          </div>
         </div>
       </nav>
 
@@ -503,11 +528,17 @@ function HomePage() {
 }
 
 export const Route = createFileRoute('/')({
+  loader: async () => {
+    const user = await stackClientApp.getUser();
+    if (!user) {
+      return null;
+    }
+    return user;
+  },
   component: App,
 });
 
 function App() {
-  return (
-    <HomePage />
-  );
+  const user = Route.useLoaderData();
+  return <HomePage user={user} />;
 }

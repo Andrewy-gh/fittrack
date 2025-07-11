@@ -39,7 +39,6 @@ export const Route = createFileRoute('/exercises/')({
 
 function RouteComponent() {
   const exercises = Route.useLoaderData();
-  console.log('exercises', exercises);
   return <ExercisesDisplay exercises={exercises} />;
 }
 
