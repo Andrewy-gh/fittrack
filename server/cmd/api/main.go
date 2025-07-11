@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/auth"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -60,7 +61,9 @@ func main() {
 
 	logger.Info("starting server", "addr", ":8080")
 
-	err = http.ListenAndServe(":8080", api.routes(workoutHandler, exerciseHandler))
+	router := api.routes(workoutHandler, exerciseHandler)
+
+	err = http.ListenAndServe(":8080", auth.Middleware(router, api.logger))
 	if err != nil {
 		logger.Error("server failed", "error", err.Error())
 		os.Exit(1)

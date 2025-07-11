@@ -5,12 +5,18 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
 
-func WithAuth(next http.HandlerFunc, logger *slog.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Middleware(next http.Handler, logger *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
 			response.ErrorJSON(w, r, logger, http.StatusUnauthorized, "missing access token", nil)
@@ -59,5 +65,5 @@ func WithAuth(next http.HandlerFunc, logger *slog.Logger) http.HandlerFunc {
 		}
 
 		next.ServeHTTP(w, r)
-	}
+	})
 }
