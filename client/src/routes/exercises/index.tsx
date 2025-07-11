@@ -1,28 +1,37 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
-  Search,
-  Filter,
-  Plus,
-  MoreHorizontal,
-  Dumbbell,
   Calendar,
-  TrendingUp,
-  Target,
+  Dumbbell,
   Edit,
-  Trash2,
   Eye,
+  Filter,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Target,
+  Trash2,
+  TrendingUp,
 } from 'lucide-react';
-import { fetchExerciseOptions } from '@/lib/api/exercises';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ExerciseOption } from '@/lib/types';
+import { fetchExerciseOptions } from '@/lib/api/exercises';
+import { Input } from '@/components/ui/input';
+import { stackClientApp } from '@/stack';
 
 export const Route = createFileRoute('/exercises/')({
   loader: async (): Promise<ExerciseOption[]> => {
-    const exercises = await fetchExerciseOptions();
+    const user = await stackClientApp.getUser();
+    if (!user) {
+        throw new Error('User not found');
+    }
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+        throw new Error('Access token not found');
+    }
+    const exercises = await fetchExerciseOptions(accessToken);
     return exercises;
   },
   component: RouteComponent,

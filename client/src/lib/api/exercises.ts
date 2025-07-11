@@ -11,8 +11,12 @@ export async function fetchExerciseWithSets(exerciseId: number): Promise<Exercis
   return data;
 }
 
-export async function fetchExerciseOptions(): Promise<ExerciseOption[]> {
-  const response = await fetch('/api/exercises');
+export async function fetchExerciseOptions(accessToken: string): Promise<ExerciseOption[]> {
+  const response = await fetch('/api/exercises', {
+    headers: {
+      'x-stack-access-token': accessToken,
+    },
+  });
 
   if (!response.ok) {
     throw new Error(
