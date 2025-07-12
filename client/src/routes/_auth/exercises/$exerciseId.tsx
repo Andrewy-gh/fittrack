@@ -31,7 +31,7 @@ interface WorkoutGroup {
   setCount: number;
 }
 
-export const Route = createFileRoute('/exercises/$exerciseId')({
+export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
   params: {
     parse: (params) => {
       const exerciseId = parseInt(params.exerciseId, 10);

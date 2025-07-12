@@ -459,7 +459,7 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
   );
 }
 
-export const Route = createFileRoute('/workouts/$workoutId')({
+export const Route = createFileRoute('/_auth/workouts/$workoutId')({
   params: {
     parse: (params) => {
       const workoutId = parseInt(params.workoutId, 10);

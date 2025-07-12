@@ -4,7 +4,7 @@ import { fetchExerciseOptions } from '@/lib/api/exercises';
 import { stackClientApp } from '@/stack';
 import { WorkoutEntryForm } from '@/components/workout-entry-form'
 
-export const Route = createFileRoute('/workouts/new')({
+export const Route = createFileRoute('/_auth/workouts/new')({
   loader: async (): Promise<ExerciseOption[]> => {
     const user = await stackClientApp.getUser();
     if (!user) {

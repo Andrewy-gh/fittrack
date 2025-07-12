@@ -447,7 +447,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   );
 }
 
-export const Route = createFileRoute('/workouts/')({
+export const Route = createFileRoute('/_auth/workouts/')({
   loader: async (): Promise<WorkoutData[]> => {
     const res = await fetch('/api/workouts');
     if (!res.ok) {
