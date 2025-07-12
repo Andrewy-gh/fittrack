@@ -2,21 +2,30 @@ package auth
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
 
-func WithAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func Middleware(next http.Handler, logger *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+			response.ErrorJSON(w, r, logger, http.StatusUnauthorized, "missing access token", nil)
 			return
 		}
 
 		req, err := http.NewRequest("GET", "https://api.stack-auth.com/api/v1/users/me", nil)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			response.ErrorJSON(w, r, logger, http.StatusInternalServerError, "failed to create auth request", err)
 			return
 		}
 
@@ -31,13 +40,13 @@ func WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			response.ErrorJSON(w, r, logger, http.StatusInternalServerError, "failed to perform auth request", err)
 			return
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			w.WriteHeader(http.StatusUnauthorized)
+			response.ErrorJSON(w, r, logger, http.StatusUnauthorized, "invalid access token", nil)
 			return
 		}
 
@@ -46,15 +55,15 @@ func WithAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			response.ErrorJSON(w, r, logger, http.StatusInternalServerError, "failed to decode user from auth response", err)
 			return
 		}
 
 		if user.ID == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+			response.ErrorJSON(w, r, logger, http.StatusUnauthorized, "unauthorized", nil)
 			return
 		}
 
 		next.ServeHTTP(w, r)
-	}
+	})
 }

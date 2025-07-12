@@ -31,7 +31,7 @@ interface WorkoutGroup {
   setCount: number;
 }
 
-export const Route = createFileRoute('/exercises/$exerciseId')({
+export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
   params: {
     parse: (params) => {
       const exerciseId = parseInt(params.exerciseId, 10);
@@ -41,9 +41,17 @@ export const Route = createFileRoute('/exercises/$exerciseId')({
       return { exerciseId };
     },
   },
-  loader: async ({ params }) => {
+  loader: async ({ context, params }) => {
+    const user = context.user;
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+      throw new Error('Access token not found');
+    }
     const exerciseId = params.exerciseId;
-    const exerciseData = await fetchExerciseWithSets(exerciseId);
+    const exerciseData = await fetchExerciseWithSets(exerciseId, accessToken);
     return exerciseData;
   },
   component: RouteComponent,

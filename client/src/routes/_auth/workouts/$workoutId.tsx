@@ -16,18 +16,7 @@ import {
   Trash2,
   BarChart3,
 } from 'lucide-react';
-
-interface WorkoutSet {
-  workout_id: number;
-  workout_date: string;
-  workout_notes: string;
-  set_id: number;
-  weight: number;
-  reps: number;
-  set_type: string;
-  exercise_id: number;
-  exercise_name: string;
-}
+import { fetchWorkoutById, type WorkoutSet } from '@/lib/api/workouts';
 
 interface ExerciseGroup {
   exercise_id: number;
@@ -36,6 +25,37 @@ interface ExerciseGroup {
   totalVolume: number;
   maxWeight: number;
   totalReps: number;
+}
+
+export const Route = createFileRoute('/_auth/workouts/$workoutId')({
+  params: {
+    parse: (params) => {
+      const workoutId = parseInt(params.workoutId, 10);
+      if (isNaN(workoutId) || !Number.isInteger(workoutId)) {
+        throw new Error('Invalid workoutId');
+      }
+      return { workoutId };
+    },
+  },
+  loader: async ({ context, params }) => {
+    const user = context.user;
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+      throw new Error('Access token not found');
+    }
+    const workoutId = params.workoutId;
+    const workout = await fetchWorkoutById(workoutId, accessToken);
+    return workout;
+  },
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const workout = Route.useLoaderData();
+  return <IndividualWorkoutPage workoutData={workout} />;
 }
 
 function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
@@ -227,8 +247,8 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-sm font-bold text-white tracking-wider">
-                    <Link 
-                      to="/exercises/$exerciseId" 
+                    <Link
+                      to="/exercises/$exerciseId"
                       params={{ exerciseId: exercise.exercise_id }}
                       className="hover:text-orange-500 transition-colors"
                       onClick={(e) => e.stopPropagation()}
@@ -237,8 +257,8 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
                     </Link>
                   </CardTitle>
                   <p className="text-xs text-neutral-400 font-mono">
-                    EX-{exercise.exercise_id.toString().padStart(3, '0')}{' '}
-                    • {exercise.sets.length} Sets
+                    EX-{exercise.exercise_id.toString().padStart(3, '0')} •{' '}
+                    {exercise.sets.length} Sets
                   </p>
                 </div>
                 <Badge className="bg-orange-500/20 text-orange-500">
@@ -303,15 +323,15 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
         ))}
       </div>
 
-      {/* Exercise Detail Modal */}
+      {/* MARK: Modal */}
       {selectedExercise && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-bold text-white tracking-wider">
-                  <Link 
-                    to="/exercises/$exerciseId" 
+                  <Link
+                    to="/exercises/$exerciseId"
                     params={{ exerciseId: selectedExercise.exercise_id }}
                     className="hover:text-orange-500 transition-colors"
                     onClick={(e) => e.stopPropagation()}
@@ -457,31 +477,4 @@ function IndividualWorkoutPage({ workoutData }: { workoutData: WorkoutSet[] }) {
       )}
     </div>
   );
-}
-
-export const Route = createFileRoute('/workouts/$workoutId')({
-  params: {
-    parse: (params) => {
-      const workoutId = parseInt(params.workoutId, 10);
-      if (isNaN(workoutId) || !Number.isInteger(workoutId)) {
-        throw new Error('Invalid workoutId');
-      }
-      return { workoutId };
-    },
-  },
-  loader: async ({ params }) => {
-    const workoutId = params.workoutId;
-    const res = await fetch(`/api/workouts/${workoutId}`);
-    if (!res.ok) {
-      throw new Error('Failed to fetch workout');
-    }
-    const workout = await res.json();
-    return workout;
-  },
-  component: RouteComponent,
-});
-
-function RouteComponent() {
-  const workout = Route.useLoaderData();
-  return <IndividualWorkoutPage workoutData={workout} />;
 }

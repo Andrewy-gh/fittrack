@@ -305,8 +305,10 @@ const ExerciseInputField = withForm({
 // MARK: Main Workout Entry Form
 export function WorkoutEntryForm({
   exercises,
+  accessToken,
 }: {
   exercises: ExerciseOption[];
+  accessToken: string;
 }) {
   const form = useAppForm({
     ...formOpts,
@@ -317,6 +319,7 @@ export function WorkoutEntryForm({
         const response = await fetch('/api/workouts', {
           method: 'POST',
           headers: {
+            'x-stack-access-token': accessToken,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(value),

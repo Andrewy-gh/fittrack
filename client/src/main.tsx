@@ -1,9 +1,14 @@
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
-import { StackProvider, StackTheme } from '@stackframe/react';
+import {
+  StackProvider,
+  StackTheme,
+  type CurrentInternalUser,
+  type CurrentUser,
+} from '@stackframe/react';
 import { stackClientApp } from './stack.ts';
-
+import { useUser } from '@stackframe/react';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
 
@@ -13,7 +18,9 @@ import reportWebVitals from './reportWebVitals.ts';
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  context: {},
+  context: {
+    user: undefined!,
+  },
   defaultPreload: 'intent',
   scrollRestoration: true,
   defaultStructuralSharing: true,
@@ -27,6 +34,11 @@ declare module '@tanstack/react-router' {
   }
 }
 
+function App() {
+  const user = useUser();
+  return <RouterProvider router={router} context={{ user }} />;
+}
+
 // Render the app
 const rootElement = document.getElementById('app');
 if (rootElement && !rootElement.innerHTML) {
@@ -35,7 +47,7 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <StackProvider app={stackClientApp}>
         <StackTheme>
-          <RouterProvider router={router} />
+          <App />
         </StackTheme>
       </StackProvider>
     </StrictMode>
