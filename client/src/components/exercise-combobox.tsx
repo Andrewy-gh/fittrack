@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { ExerciseOption } from '@/lib/types';
+import type { ExerciseOption } from '@/lib/api/exercises';
 
 interface ComboboxProps {
   options: ExerciseOption[];

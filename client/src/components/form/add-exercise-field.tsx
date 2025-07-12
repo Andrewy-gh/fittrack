@@ -1,4 +1,5 @@
 import type { Exercise, Set, ExerciseOption } from '@/lib/types';
+import type { NewExerciseOption } from '@/lib/api/exercises';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -24,10 +25,13 @@ export default function AddExerciseField({
     setSelectedExercise(option);
   }
 
-  function handleAppendGroup(name: ExerciseOption['name']) {
-    const newExercise = {
+  // ! MARK: TODO
+  function handleAppendGroup(name: NewExerciseOption['name']) {
+    const newExercise: ExerciseOption = {
       id: exercises.length + 1,
       name,
+      created_at: new Date().toISOString(),
+      updated_at: null,
     };
     exercises.push(newExercise);
     console.log('handleAppendGroup');

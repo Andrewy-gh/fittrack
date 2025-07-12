@@ -41,9 +41,17 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
       return { exerciseId };
     },
   },
-  loader: async ({ params }) => {
+  loader: async ({ context, params }) => {
+    const user = context.user;
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+      throw new Error('Access token not found');
+    }
     const exerciseId = params.exerciseId;
-    const exerciseData = await fetchExerciseWithSets(exerciseId);
+    const exerciseData = await fetchExerciseWithSets(exerciseId, accessToken);
     return exerciseData;
   },
   component: RouteComponent,

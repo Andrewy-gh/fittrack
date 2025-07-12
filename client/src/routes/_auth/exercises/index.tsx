@@ -19,11 +19,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ExerciseOption } from '@/lib/types';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
 import { Input } from '@/components/ui/input';
-import { stackClientApp } from '@/stack';
 
 export const Route = createFileRoute('/_auth/exercises/')({
-  loader: async (): Promise<ExerciseOption[]> => {
-    const user = await stackClientApp.getUser();
+  loader: async ({ context }): Promise<ExerciseOption[]> => {
+    const user = context.user;
     if (!user) {
         throw new Error('User not found');
     }

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { fetchWorkouts } from '@/lib/api/workouts';
 import {
   Search,
   Filter,
@@ -22,14 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-interface WorkoutData {
-  created_at: string;
-  date: string;
-  id: number;
-  notes: string | null;
-  updated_at: string | null;
-}
+import { type WorkoutData } from '@/lib/api/workouts';
 
 function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -448,16 +442,20 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
 }
 
 export const Route = createFileRoute('/_auth/workouts/')({
-  loader: async (): Promise<WorkoutData[]> => {
-    const res = await fetch('/api/workouts');
-    if (!res.ok) {
-      throw new Error('Failed to fetch workouts');
+  loader: async ({ context }): Promise<WorkoutData[]> => {
+    const user = context.user;
+    if (!user) {
+      throw new Error('User not found');
     }
-    const data = await res.json();
-    return data;
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+      throw new Error('Access token not found');
+    }
+    return fetchWorkouts(accessToken);
   },
   component: RouteComponent,
 });
+
 
 function RouteComponent() {
   const workouts = Route.useLoaderData();
