@@ -9,6 +9,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -21,7 +22,7 @@ type api struct {
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo, // Set minimum log level
+		Level: slog.LevelInfo,
 	}))
 
 	ctx := context.Background()
@@ -29,27 +30,31 @@ func main() {
 	logger.Info("connecting to database")
 	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
-		logger.Error("failed to connect to database", "error", err.Error())
+		logger.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
 
-	// Test the connection pool
 	if err := pool.Ping(ctx); err != nil {
 		logger.Error("failed to ping database", "error", err)
 		os.Exit(1)
 	}
 	logger.Info("database connection successful")
 
-	// Initialize dependencies with repository pattern
+	// Initialize database queries
 	queries := db.New(pool)
 
+	// Initialize repositories
 	workoutRepo := workout.NewRepository(logger, queries, pool)
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	userRepo := user.NewRepository(logger, queries, pool)
 
+	// Initialize services
 	workoutService := workout.NewService(logger, workoutRepo)
 	exerciseService := exercise.NewService(logger, exerciseRepo)
+	userService := user.NewService(logger, userRepo)
 
+	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, workoutService)
 	exerciseHandler := exercise.NewHandler(logger, exerciseService)
 
@@ -61,11 +66,12 @@ func main() {
 
 	logger.Info("starting server", "addr", ":8080")
 
+	// Initialize router with auth middleware
 	router := api.routes(workoutHandler, exerciseHandler)
 
-	err = http.ListenAndServe(":8080", auth.Middleware(router, api.logger))
+	err = http.ListenAndServe(":8080", auth.Middleware(router, logger, userService))
 	if err != nil {
-		logger.Error("server failed", "error", err.Error())
+		logger.Error("server failed", "error", err)
 		os.Exit(1)
 	}
 }

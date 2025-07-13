@@ -55,6 +55,19 @@ type CreateSetsParams struct {
 	SetType    string      `json:"set_type"`
 }
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (user_id)
+VALUES ($1)
+RETURNING id, user_id, created_at
+`
+
+func (q *Queries) CreateUser(ctx context.Context, userID string) (Users, error) {
+	row := q.db.QueryRow(ctx, createUser, userID)
+	var i Users
+	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	return i, err
+}
+
 const createWorkout = `-- name: CreateWorkout :one
 INSERT INTO workout (date, notes)
 VALUES ($1, $2)
@@ -211,6 +224,29 @@ func (q *Queries) GetSet(ctx context.Context, id int32) (Set, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
+	return i, err
+}
+
+const getUser = `-- name: GetUser :one
+SELECT id, user_id, created_at FROM users WHERE id = $1
+`
+
+// User queries
+func (q *Queries) GetUser(ctx context.Context, id int32) (Users, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
+	var i Users
+	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	return i, err
+}
+
+const getUserByUserID = `-- name: GetUserByUserID :one
+SELECT id, user_id, created_at FROM users WHERE user_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (Users, error) {
+	row := q.db.QueryRow(ctx, getUserByUserID, userID)
+	var i Users
+	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
 	return i, err
 }
 
