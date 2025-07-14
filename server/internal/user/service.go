@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -24,14 +23,15 @@ func NewService(logger *slog.Logger, repo UserRepository) *Service {
 
 // EnsureUser retrieves a user by ID, creating them if they don't exist
 func (s *Service) EnsureUser(ctx context.Context, userID string) (db.Users, error) {
-	user, err := s.repo.GetUser(ctx, userID)
+	user, err := s.repo.CreateUser(ctx, userID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			s.logger.Info("user not found, creating new user", "user_id", userID)
-			return s.repo.CreateUser(ctx, userID)
+		if db.IsUniqueConstraintError(err) {
+			s.logger.Debug("user already exists, fetching", "user_id", userID)
+			return s.repo.GetUser(ctx, userID)
 		}
-		s.logger.Error("failed to get user", "error", err, "user_id", userID)
+		s.logger.Error("failed to create user", "error", err, "user_id", userID)
 		return db.Users{}, err
 	}
+	s.logger.Info("created new user", "user_id", userID)
 	return user, nil
 }
