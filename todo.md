@@ -37,7 +37,7 @@ Auth Integration TODO list (Go backend)
 - [ ] `ListSets`: Secure query by joining on `workout` and filtering by `user_id`.
 
 ### 2. Go auth middleware
-- [ ] File server/middleware/auth.go
+- [X] File server/middleware/auth.go
   1. Read x-stack-access-token header; abort 401 if missing.
   2. Build request to https://api.stack-auth.com/api/v1/users/me with headers:
     - `x-stack-access-type: server`
@@ -49,13 +49,13 @@ Auth Integration TODO list (Go backend)
   5. Attach user struct to context for downstream handlers.
 
 ### 3. Protected sample endpoint
-- [ ] File `server/handlers/me.go`
+- [X] File `server/handlers/me.go`
   - Route `/api/users/me` (or similar)
   - Wrapped with `AuthMiddleware`
   - Returns `{ "id": "..", "message": "auth OK", "dummy": true }` for now.
 
 ### 4. Client update (already started)
-- [ ] In `client/src/stack.ts` (or helper) add:
+- [X] In `client/src/stack.ts` (or helper) add:
 ```ts
 export async function fetchWithAuth(user: User) {
   const { accessToken } = await user.getAuthJson();
@@ -64,10 +64,10 @@ export async function fetchWithAuth(user: User) {
   });
 }
 ```
-- [ ]Consume above helper where needed (e.g. handler.$.tsx).
+- [X] Consume above helper where needed (e.g. handler.$.tsx).
 
 ### 5. Testing
-- [ ] Unit-test `AuthMiddleware` (happy path & failure cases).
+- [X] Unit-test `AuthMiddleware` (happy path & failure cases).
 - [ ] Integration test hitting `/api/users/me` with mock Stack Auth using httptest server.
 
 ### 6. Docs / housekeeping
