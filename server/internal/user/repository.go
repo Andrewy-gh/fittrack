@@ -10,14 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// UserRepository defines the interface for user data operations
-type UserRepository interface {
-	// GetUser retrieves a user by their ID
-	GetUser(ctx context.Context, id string) (db.Users, error)
-	// CreateUser inserts a new user into the database
-	CreateUser(ctx context.Context, userID string) (db.Users, error)
-}
-
 type userRepository struct {
 	logger  *slog.Logger
 	queries *db.Queries
@@ -40,8 +32,8 @@ func (r *userRepository) GetUser(ctx context.Context, id string) (db.Users, erro
 		if err.Error() == "no rows in result set" {
 			return db.Users{}, sql.ErrNoRows
 		}
-		r.logger.Error("failed to get user", "error", err, "user_id", id)
-		return db.Users{}, err
+		r.logger.Error("database error getting user", "error", err, "user_id", id)
+		return db.Users{}, fmt.Errorf("failed to get user %s: %w", id, err)
 	}
 	return user, nil
 }
@@ -50,11 +42,15 @@ func (r *userRepository) GetUser(ctx context.Context, id string) (db.Users, erro
 func (r *userRepository) CreateUser(ctx context.Context, userID string) (db.Users, error) {
 	user, err := r.queries.CreateUser(ctx, userID)
 	if err != nil {
-		r.logger.Error("failed to create user", "error", err, "user_id", userID)
-		return db.Users{}, fmt.Errorf("failed to create user: %w", err)
+		if db.IsUniqueConstraintError(err) {
+			r.logger.Debug("user creation failed due to unique constraint", "user_id", userID)
+		} else {
+			r.logger.Error("database error creating user", "error", err, "user_id", userID)
+		}
+		return db.Users{}, fmt.Errorf("failed to create user %s: %w", userID, err)
 	}
 	return user, nil
 }
 
-// Ensure the userRepository implements the UserRepository interface
+// compile-time interface check
 var _ UserRepository = (*userRepository)(nil)
