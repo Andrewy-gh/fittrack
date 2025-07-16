@@ -26,6 +26,12 @@ type Set struct {
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Users struct {
+	ID        int32              `json:"id"`
+	UserID    string             `json:"user_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Workout struct {
 	ID        int32              `json:"id"`
 	Date      pgtype.Timestamptz `json:"date"`

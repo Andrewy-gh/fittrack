@@ -77,3 +77,15 @@ ORDER BY e.name, s.id;
 
 -- name: GetExerciseByName :one
 SELECT * FROM exercise WHERE name = $1;
+
+-- User queries
+-- name: GetUser :one
+SELECT * FROM users WHERE id = $1;
+
+-- name: GetUserByUserID :one
+SELECT * FROM users WHERE user_id = $1 LIMIT 1;
+
+-- name: CreateUser :one
+INSERT INTO users (user_id)
+VALUES ($1)
+RETURNING *;
