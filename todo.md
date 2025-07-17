@@ -8,13 +8,13 @@ Auth Integration TODO list (Go backend)
 - [X] Expose them to the server process ( `.env`, Docker, CI, etc.).
 
 ### 1. Database Migration Strategy
-- [ ] **Create `app_user` Table:** The central table for users.
+- [ ] **Create `user` Table:** The central table for users.
   - `id` (VARCHAR/UUID, PK from Stack Auth)
   - `email` (VARCHAR, nullable)
   - `name` (VARCHAR, nullable)
 - [ ] **Add `user_id` to Root Tables:** Add a `user_id` foreign key to tables representing user-owned objects.
-  - `workout` table: Add `user_id INT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE`.
-  - `exercise` table: Add `user_id INT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE`.
+  - `workout` table: Add `user_id INT NOT NULL REFERENCES user(id) ON DELETE CASCADE`.
+  - `exercise` table: Add `user_id INT NOT NULL REFERENCES user(id) ON DELETE CASCADE`.
 - [ ] **Update `exercise` Unique Constraint:** Change the unique constraint on the `exercise` table from `(name)` to `(user_id, name)` to allow different users to have exercises with the same name.
 - [ ] **Do Not Add `user_id` to Child Tables:** The `set` table does not need a `user_id` column, as ownership is inferred from the parent `workout`.
 - [ ] **Add Indexes for Performance:** Index the new foreign keys to ensure fast lookups.
