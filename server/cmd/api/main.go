@@ -58,7 +58,7 @@ func main() {
 	userService := user.NewService(logger, userRepo)
 
 	// Initialize handlers
-	workoutHandler := workout.NewHandler(logger, workoutService)
+	workoutHandler := workout.NewHandler(logger, validator, workoutService)
 	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
 
 	api := &api{

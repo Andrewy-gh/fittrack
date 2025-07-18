@@ -7,10 +7,15 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
 
-// WorkoutService handles workout business logic
+type WorkoutRepository interface {
+	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
+	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
+	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
+}
+
 type WorkoutService struct {
 	logger *slog.Logger
 	repo   WorkoutRepository
@@ -23,9 +28,12 @@ func NewService(logger *slog.Logger, repo WorkoutRepository) *WorkoutService {
 	}
 }
 
-// Update other methods to use the repository similarly
 func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error) {
-	workouts, err := ws.repo.ListWorkouts(ctx)
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+	workouts, err := ws.repo.ListWorkouts(ctx, userID)
 	if err != nil {
 		ws.logger.Error("failed to list workouts", "error", err)
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
@@ -34,7 +42,11 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 }
 
 func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]db.GetWorkoutWithSetsRow, error) {
-	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id)
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
 	if err != nil {
 		ws.logger.Error("failed to get workout with sets", "error", err)
 		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
@@ -43,6 +55,10 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]d
 }
 
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return fmt.Errorf("user not authenticated")
+	}
 	// Transform the request to our internal format
 	reformatted, err := ws.transformRequest(requestBody)
 	if err != nil {
@@ -51,14 +67,9 @@ func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateW
 	}
 
 	// Convert to PG types
-	pgData, err := ws.convertToPGTypes(reformatted)
-	if err != nil {
-		ws.logger.Error("failed to convert to PG types", "error", err)
-		return fmt.Errorf("failed to convert to PG types: %w", err)
-	}
 
 	// Use repository to save the workout
-	if err := ws.repo.SaveWorkout(ctx, pgData); err != nil {
+	if err := ws.repo.SaveWorkout(ctx, reformatted, userID); err != nil {
 		ws.logger.Error("failed to save workout", "error", err)
 		return fmt.Errorf("failed to save workout: %w", err)
 	}
@@ -107,61 +118,5 @@ func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*Refor
 		Workout:   workout,
 		Exercises: exercises,
 		Sets:      sets,
-	}, nil
-}
-
-func (ws *WorkoutService) convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
-	// Convert workout
-	pgWorkout := PGWorkoutData{
-		Date: pgtype.Timestamptz{
-			Time:  reformatted.Workout.Date,
-			Valid: true,
-		},
-		Notes: pgtype.Text{
-			String: "",
-			Valid:  false,
-		},
-	}
-
-	if reformatted.Workout.Notes != nil {
-		pgWorkout.Notes = pgtype.Text{
-			String: *reformatted.Workout.Notes,
-			Valid:  true,
-		}
-	}
-
-	// Convert exercises
-	var pgExercises []PGExerciseData
-	for _, exercise := range reformatted.Exercises {
-		pgExercises = append(pgExercises, PGExerciseData(exercise))
-	}
-
-	// Convert sets
-	var pgSets []PGSetData
-	for _, set := range reformatted.Sets {
-		pgSet := PGSetData{
-			ExerciseName: set.ExerciseName,
-			Weight: pgtype.Int4{
-				Int32: 0,
-				Valid: false,
-			},
-			Reps:    int32(set.Reps),
-			SetType: set.SetType,
-		}
-
-		if set.Weight != nil {
-			pgSet.Weight = pgtype.Int4{
-				Int32: int32(*set.Weight),
-				Valid: true,
-			}
-		}
-
-		pgSets = append(pgSets, pgSet)
-	}
-
-	return &PGReformattedRequest{
-		Workout:   pgWorkout,
-		Exercises: pgExercises,
-		Sets:      pgSets,
 	}, nil
 }
