@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,8 +25,8 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 	}
 }
 
-func (er *exerciseRepository) ListExercises(ctx context.Context) ([]db.Exercise, error) {
-	exercises, err := er.queries.ListExercises(ctx)
+func (er *exerciseRepository) ListExercises(ctx context.Context, userID pgtype.Text) ([]db.Exercise, error) {
+	exercises, err := er.queries.ListExercises(ctx, userID)
 	if err != nil {
 		er.logger.Error("failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)

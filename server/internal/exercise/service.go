@@ -6,11 +6,14 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/helpers"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ExerciseRepository is an interface for exercise data access
 type ExerciseRepository interface {
-	ListExercises(ctx context.Context) ([]db.Exercise, error)
+	ListExercises(ctx context.Context, userID pgtype.Text) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32) (db.Exercise, error)
 	GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error)
@@ -30,11 +33,18 @@ func NewService(logger *slog.Logger, repo ExerciseRepository) *ExerciseService {
 	}
 }
 
-// ListExercises retrieves all exercises
+// ListExercises retrieves all exercises for the authenticated user
 func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, error) {
-	exercises, err := es.repo.ListExercises(ctx)
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, fmt.Errorf("user not authenticated")
+	}
+
+	pgUserID := helpers.ToPgText(userID)
+
+	exercises, err := es.repo.ListExercises(ctx, pgUserID)
 	if err != nil {
-		es.logger.Error("failed to list exercises", "error", err)
+		es.logger.Error("service failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
 	return exercises, nil
