@@ -11,6 +11,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -41,6 +42,8 @@ func main() {
 	}
 	logger.Info("database connection successful")
 
+	validator := validator.New()
+
 	// Initialize database queries
 	queries := db.New(pool)
 
@@ -56,7 +59,7 @@ func main() {
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, workoutService)
-	exerciseHandler := exercise.NewHandler(logger, exerciseService)
+	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
 
 	api := &api{
 		logger:  logger,
