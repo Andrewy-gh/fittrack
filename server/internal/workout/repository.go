@@ -27,11 +27,17 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 // MARK: ListWorkouts
 func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([]db.Workout, error) {
 	pgUserId := pgtype.Text{String: userId, Valid: true}
+
 	workouts, err := wr.queries.ListWorkouts(ctx, pgUserId)
 	if err != nil {
 		wr.logger.Error("list workouts query failed", "error", err)
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
 	}
+
+	if workouts == nil {
+		workouts = []db.Workout{}
+	}
+
 	return workouts, nil
 }
 
@@ -46,6 +52,11 @@ func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, u
 		wr.logger.Error("get workout with sets query failed", "workout_id", id, "error", err)
 		return nil, fmt.Errorf("failed to get workout with sets (id: %d): %w", id, err)
 	}
+
+	if workoutWithSets == nil {
+		workoutWithSets = []db.GetWorkoutWithSetsRow{}
+	}
+
 	return workoutWithSets, nil
 }
 

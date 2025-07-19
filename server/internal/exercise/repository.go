@@ -32,6 +32,11 @@ func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) 
 		er.logger.Error("failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
+
+	if exercises == nil {
+		exercises = []db.Exercise{}
+	}
+
 	return exercises, nil
 }
 
@@ -71,5 +76,10 @@ func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32,
 		er.logger.Error("failed to get exercise with sets", "exercise_id", id, "error", err)
 		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
+
+	if sets == nil {
+		sets = []db.GetExerciseWithSetsRow{}
+	}
+
 	return sets, nil
 }
