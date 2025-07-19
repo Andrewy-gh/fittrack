@@ -12,7 +12,8 @@ import (
 type ExerciseRepository interface {
 	ListExercises(ctx context.Context, userID string) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error)
-	GetOrCreateExercise(ctx context.Context, name string, userID string) (db.Exercise, error)
+	GetOrCreateExercise(ctx context.Context, name, userID string) (db.Exercise, error)
+	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
 }
 

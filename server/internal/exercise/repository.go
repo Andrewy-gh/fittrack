@@ -83,3 +83,29 @@ func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32,
 
 	return sets, nil
 }
+
+func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error) {
+	er.logger.Info("GetOrCreateExerciseTx called", "exercise_name", name, "user_id", userID)
+
+	params := db.GetOrCreateExerciseParams{
+		Name:   name,
+		UserID: pgtype.Text{String: userID, Valid: true},
+	}
+
+	er.logger.Info("calling GetOrCreateExercise with params", "params", params)
+	exercise, err := qtx.GetOrCreateExercise(ctx, params)
+	if err != nil {
+		er.logger.Error("failed to get or create exercise",
+			"error", err,
+			"exercise_name", name,
+			"user_id", userID)
+		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
+	}
+
+	er.logger.Info("successfully got/created exercise",
+		"exercise_id", exercise.ID,
+		"exercise_name", exercise.Name,
+		"user_id", exercise.UserID)
+
+	return exercise, nil
+}

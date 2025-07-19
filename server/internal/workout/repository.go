@@ -6,21 +6,24 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type workoutRepository struct {
-	logger  *slog.Logger
-	queries *db.Queries
-	conn    *pgxpool.Pool
+	logger       *slog.Logger
+	queries      *db.Queries
+	conn         *pgxpool.Pool
+	exerciseRepo exercise.ExerciseRepository
 }
 
-func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool) WorkoutRepository {
+func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool, exerciseRepo exercise.ExerciseRepository) WorkoutRepository {
 	return &workoutRepository{
-		logger:  logger,
-		queries: queries,
-		conn:    conn,
+		logger:       logger,
+		queries:      queries,
+		conn:         conn,
+		exerciseRepo: exerciseRepo,
 	}
 }
 
@@ -94,7 +97,7 @@ func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *Refor
 	}
 
 	// Step 3: Insert all sets
-	if err := wr.insertSets(ctx, qtx, pgData.Sets, workout.ID, exerciseMap); err != nil {
+	if err := wr.insertSets(ctx, qtx, pgData.Sets, workout.ID, exerciseMap, userID); err != nil {
 		wr.logger.Error("failed to insert sets", "error", err)
 		return fmt.Errorf("failed to insert sets: %w", err)
 	}
@@ -124,14 +127,13 @@ func (wr *workoutRepository) getOrCreateExercises(ctx context.Context, qtx *db.Q
 	exerciseMap := make(map[string]int32)
 
 	for _, exercise := range exercises {
-		dbExercise, err := qtx.GetOrCreateExercise(ctx, db.GetOrCreateExerciseParams{
-			Name:   exercise.Name,
-			UserID: pgtype.Text{String: userID, Valid: true},
-		})
+		wr.logger.Info("attempting to get or create exercise", "exercise_name", exercise.Name, "user_id", userID)
+		dbExercise, err := wr.exerciseRepo.GetOrCreateExerciseTx(ctx, qtx, exercise.Name, userID)
 		if err != nil {
 			wr.logger.Error("failed to get/create exercise", "exercise_name", exercise.Name, "error", err)
 			return nil, fmt.Errorf("failed to get/create exercise %s: %w", exercise.Name, err)
 		}
+		wr.logger.Info("successfully got/created exercise", "exercise_name", exercise.Name, "exercise_id", dbExercise.ID)
 		exerciseMap[exercise.Name] = dbExercise.ID
 	}
 
@@ -139,13 +141,23 @@ func (wr *workoutRepository) getOrCreateExercises(ctx context.Context, qtx *db.Q
 }
 
 // MARK: insertSets
-func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, sets []PGSetData, workoutID int32, exerciseMap map[string]int32) error {
+func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, sets []PGSetData, workoutID int32, exerciseMap map[string]int32, userID string) error {
 	for _, set := range sets {
 		exerciseID, exists := exerciseMap[set.ExerciseName]
 		if !exists {
-			wr.logger.Error("exercise not found", "exercise_name", set.ExerciseName)
+			errMsg := fmt.Sprintf("exercise not found in exercise map: %s", set.ExerciseName)
+			wr.logger.Error(errMsg, "exercise_name", set.ExerciseName, "available_exercises", exerciseMap)
 			return fmt.Errorf("exercise not found: %s", set.ExerciseName)
 		}
+
+		wr.logger.Info("attempting to create set",
+			"exercise_name", set.ExerciseName,
+			"exercise_id", exerciseID,
+			"workout_id", workoutID,
+			"reps", set.Reps,
+			"weight", set.Weight,
+			"set_type", set.SetType,
+			"user_id", userID)
 
 		_, err := qtx.CreateSet(ctx, db.CreateSetParams{
 			ExerciseID: exerciseID,
@@ -153,9 +165,11 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 			Weight:     set.Weight,
 			Reps:       set.Reps,
 			SetType:    set.SetType,
+			UserID:     pgtype.Text{String: userID, Valid: true},
 		})
 		if err != nil {
-			wr.logger.Error("failed to create set", "exercise_name", set.ExerciseName, "error", err)
+			errMsg := fmt.Sprintf("failed to create set for exercise %s (ID: %d)", set.ExerciseName, exerciseID)
+			wr.logger.Error(errMsg, "error", err, "set_details", set, "user_id", userID)
 			return fmt.Errorf("failed to create set for exercise %s: %w", set.ExerciseName, err)
 		}
 	}

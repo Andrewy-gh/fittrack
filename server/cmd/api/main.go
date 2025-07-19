@@ -48,8 +48,8 @@ func main() {
 	queries := db.New(pool)
 
 	// Initialize repositories
-	workoutRepo := workout.NewRepository(logger, queries, pool)
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
 	userRepo := user.NewRepository(logger, queries, pool)
 
 	// Initialize services

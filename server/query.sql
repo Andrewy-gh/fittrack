@@ -56,7 +56,10 @@ RETURNING *;
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type)
 SELECT $1, $2, $3, $4, $5
 FROM workout w
-WHERE w.id = $2 AND w.user_id = $6
+JOIN exercise e ON e.id = $1
+WHERE w.id = $2 
+  AND w.user_id = $6
+  AND e.user_id = $6
 RETURNING *;
 
 -- Complex queries for joining data
