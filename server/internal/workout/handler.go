@@ -2,11 +2,12 @@ package workout
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/go-playground/validator/v10"
 )
@@ -28,7 +29,12 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, workoutServi
 func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	workouts, err := h.workoutService.ListWorkouts(r.Context())
 	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to list workouts", err)
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to list workouts", err)
+		}
 		return
 	}
 
@@ -39,24 +45,26 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
-	workoutIDInt, err := request.ValidatePathID(r.PathValue("id"), "workout ID")
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
+	workoutID := r.PathValue("id")
+	if workoutID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing workout ID", nil)
 		return
 	}
 
-	req := GetWorkoutWithSetsRequest{
-		WorkoutID: int32(workoutIDInt),
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "validation error occurred", err)
+	workoutIDInt, err := strconv.Atoi(workoutID)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid workout ID", err)
 		return
 	}
 
-	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), req.WorkoutID)
+	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), int32(workoutIDInt))
 	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get workout with sets", err)
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get workout with sets", err)
+		}
 		return
 	}
 
@@ -68,9 +76,7 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 
 func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	var req CreateWorkoutRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
@@ -80,9 +86,13 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call service with validated struct
 	if err := h.workoutService.CreateWorkout(r.Context(), req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to create workout", err)
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to create workout", err)
+		}
 		return
 	}
 

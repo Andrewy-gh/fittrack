@@ -21,6 +21,14 @@ type WorkoutService struct {
 	repo   WorkoutRepository
 }
 
+type ErrUnauthorized struct {
+	Message string
+}
+
+func (e *ErrUnauthorized) Error() string {
+	return e.Message
+}
+
 func NewService(logger *slog.Logger, repo WorkoutRepository) *WorkoutService {
 	return &WorkoutService{
 		logger: logger,
@@ -31,7 +39,7 @@ func NewService(logger *slog.Logger, repo WorkoutRepository) *WorkoutService {
 func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, fmt.Errorf("user not authenticated")
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
 	}
 	workouts, err := ws.repo.ListWorkouts(ctx, userID)
 	if err != nil {
@@ -44,7 +52,7 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]db.GetWorkoutWithSetsRow, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, fmt.Errorf("user not authenticated")
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
 	}
 	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
 	if err != nil {
@@ -57,7 +65,7 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]d
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return fmt.Errorf("user not authenticated")
+		return &ErrUnauthorized{Message: "user not authenticated"}
 	}
 	// Transform the request to our internal format
 	reformatted, err := ws.transformRequest(requestBody)
