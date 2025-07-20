@@ -11,15 +11,18 @@ CREATE TABLE workout (
     date TIMESTAMPTZ NOT NULL,
     notes VARCHAR(256),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
+    user_id VARCHAR(256) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- Exercises table  
 CREATE TABLE exercise (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(256) NOT NULL UNIQUE,
+    name VARCHAR(256) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
+    user_id VARCHAR(256) REFERENCES users(user_id) ON DELETE CASCADE,
+    CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name)
 );
 
 -- Sets table
@@ -34,6 +37,11 @@ CREATE TABLE "set" (
     updated_at TIMESTAMPTZ
 );
 
--- Indexes for foreign keys (optional but recommended for performance)
+-- Indexes for foreign keys
 CREATE INDEX idx_set_exercise_id ON "set"(exercise_id);
 CREATE INDEX idx_set_workout_id ON "set"(workout_id);
+
+-- Additional indexes for performance
+CREATE INDEX idx_workout_user_id ON workout(user_id);
+CREATE INDEX idx_exercise_user_id ON exercise(user_id);
+CREATE INDEX idx_workout_user_date ON workout(user_id, date);

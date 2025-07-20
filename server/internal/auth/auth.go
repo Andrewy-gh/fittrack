@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,8 +41,7 @@ func Middleware(next http.Handler, logger *slog.Logger, userService *user.Servic
 			return
 		}
 
-		// Add the user to the context
-		ctx := context.WithValue(r.Context(), "user", dbUser)
+		ctx := user.WithContext(r.Context(), dbUser.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

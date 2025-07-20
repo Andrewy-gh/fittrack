@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,17 +25,27 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 	}
 }
 
-func (er *exerciseRepository) ListExercises(ctx context.Context) ([]db.Exercise, error) {
-	exercises, err := er.queries.ListExercises(ctx)
+func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) ([]db.Exercise, error) {
+	pgUserID := pgtype.Text{String: userID, Valid: true}
+	exercises, err := er.queries.ListExercises(ctx, pgUserID)
 	if err != nil {
 		er.logger.Error("failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
+
+	if exercises == nil {
+		exercises = []db.Exercise{}
+	}
+
 	return exercises, nil
 }
 
-func (er *exerciseRepository) GetExercise(ctx context.Context, id int32) (db.Exercise, error) {
-	exercise, err := er.queries.GetExercise(ctx, id)
+func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error) {
+	params := db.GetExerciseParams{
+		ID:     id,
+		UserID: pgtype.Text{String: userID, Valid: true},
+	}
+	exercise, err := er.queries.GetExercise(ctx, params)
 	if err != nil {
 		er.logger.Error("failed to get exercise", "id", id, "error", err)
 		return db.Exercise{}, fmt.Errorf("failed to get exercise: %w", err)
@@ -42,8 +53,12 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32) (db.Exe
 	return exercise, nil
 }
 
-func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error) {
-	exercise, err := er.queries.GetOrCreateExercise(ctx, name)
+func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name string, userID string) (db.Exercise, error) {
+	params := db.GetOrCreateExerciseParams{
+		Name:   name,
+		UserID: pgtype.Text{String: userID, Valid: true},
+	}
+	exercise, err := er.queries.GetOrCreateExercise(ctx, params)
 	if err != nil {
 		er.logger.Error("failed to get or create exercise", "error", err)
 		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
@@ -51,38 +66,46 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 	return exercise, nil
 }
 
-func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error) {
-	sets, err := er.queries.GetExerciseWithSets(ctx, id)
+func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error) {
+	params := db.GetExerciseWithSetsParams{
+		ExerciseID: id,
+		UserID:     pgtype.Text{String: userID, Valid: true},
+	}
+	sets, err := er.queries.GetExerciseWithSets(ctx, params)
 	if err != nil {
 		er.logger.Error("failed to get exercise with sets", "exercise_id", id, "error", err)
 		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
+
+	if sets == nil {
+		sets = []db.GetExerciseWithSetsRow{}
+	}
+
 	return sets, nil
 }
 
-// func (er *exerciseRepository) CreateExercise(ctx context.Context, name string) (db.Exercise, error) {
-// 	exercise, err := er.queries.CreateExercise(ctx, name)
-// 	if err != nil {
-// 		return db.Exercise{}, fmt.Errorf("failed to create exercise: %w", err)
-// 	}
-// 	return exercise, nil
-// }
+func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error) {
+	er.logger.Info("GetOrCreateExerciseTx called", "exercise_name", name, "user_id", userID)
 
-// func (er *exerciseRepository) UpdateExercise(ctx context.Context, id int32, name string) (db.Exercise, error) {
-// 	exercise, err := er.queries.UpdateExercise(ctx, db.UpdateExerciseParams{
-// 		ID:   id,
-// 		Name: name,
-// 	})
-// 	if err != nil {
-// 		return db.Exercise{}, fmt.Errorf("failed to update exercise: %w", err)
-// 	}
-// 	return exercise, nil
-// }
+	params := db.GetOrCreateExerciseParams{
+		Name:   name,
+		UserID: pgtype.Text{String: userID, Valid: true},
+	}
 
-// func (er *exerciseRepository) DeleteExercise(ctx context.Context, id int32) error {
-// 	err := er.queries.DeleteExercise(ctx, id)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to delete exercise: %w", err)
-// 	}
-// 	return nil
-// }
+	er.logger.Info("calling GetOrCreateExercise with params", "params", params)
+	exercise, err := qtx.GetOrCreateExercise(ctx, params)
+	if err != nil {
+		er.logger.Error("failed to get or create exercise",
+			"error", err,
+			"exercise_name", name,
+			"user_id", userID)
+		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
+	}
+
+	er.logger.Info("successfully got/created exercise",
+		"exercise_id", exercise.ID,
+		"exercise_name", exercise.Name,
+		"user_id", exercise.UserID)
+
+	return exercise, nil
+}

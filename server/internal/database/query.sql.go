@@ -13,7 +13,12 @@ import (
 
 const createSet = `-- name: CreateSet :one
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type)
-VALUES ($1, $2, $3, $4, $5)
+SELECT $1, $2, $3, $4, $5
+FROM workout w
+JOIN exercise e ON e.id = $1
+WHERE w.id = $2 
+  AND w.user_id = $6
+  AND e.user_id = $6
 RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at
 `
 
@@ -23,6 +28,7 @@ type CreateSetParams struct {
 	Weight     pgtype.Int4 `json:"weight"`
 	Reps       int32       `json:"reps"`
 	SetType    string      `json:"set_type"`
+	UserID     pgtype.Text `json:"user_id"`
 }
 
 func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, error) {
@@ -32,6 +38,7 @@ func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, erro
 		arg.Weight,
 		arg.Reps,
 		arg.SetType,
+		arg.UserID,
 	)
 	var i Set
 	err := row.Scan(
@@ -45,14 +52,6 @@ func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, erro
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-type CreateSetsParams struct {
-	ExerciseID int32       `json:"exercise_id"`
-	WorkoutID  int32       `json:"workout_id"`
-	Weight     pgtype.Int4 `json:"weight"`
-	Reps       int32       `json:"reps"`
-	SetType    string      `json:"set_type"`
 }
 
 const createUser = `-- name: CreateUser :one
@@ -69,19 +68,20 @@ func (q *Queries) CreateUser(ctx context.Context, userID string) (Users, error) 
 }
 
 const createWorkout = `-- name: CreateWorkout :one
-INSERT INTO workout (date, notes)
-VALUES ($1, $2)
-RETURNING id, date, notes, created_at, updated_at
+INSERT INTO workout (date, notes, user_id)
+VALUES ($1, $2, $3)
+RETURNING id, date, notes, created_at, updated_at, user_id
 `
 
 type CreateWorkoutParams struct {
-	Date  pgtype.Timestamptz `json:"date"`
-	Notes pgtype.Text        `json:"notes"`
+	Date   pgtype.Timestamptz `json:"date"`
+	Notes  pgtype.Text        `json:"notes"`
+	UserID pgtype.Text        `json:"user_id"`
 }
 
 // INSERT queries for form submission
 func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (Workout, error) {
-	row := q.db.QueryRow(ctx, createWorkout, arg.Date, arg.Notes)
+	row := q.db.QueryRow(ctx, createWorkout, arg.Date, arg.Notes, arg.UserID)
 	var i Workout
 	err := row.Scan(
 		&i.ID,
@@ -89,38 +89,51 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (W
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getExercise = `-- name: GetExercise :one
-SELECT id, name, created_at, updated_at FROM exercise WHERE id = $1
+SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetExercise(ctx context.Context, id int32) (Exercise, error) {
-	row := q.db.QueryRow(ctx, getExercise, id)
+type GetExerciseParams struct {
+	ID     int32       `json:"id"`
+	UserID pgtype.Text `json:"user_id"`
+}
+
+func (q *Queries) GetExercise(ctx context.Context, arg GetExerciseParams) (Exercise, error) {
+	row := q.db.QueryRow(ctx, getExercise, arg.ID, arg.UserID)
 	var i Exercise
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getExerciseByName = `-- name: GetExerciseByName :one
-SELECT id, name, created_at, updated_at FROM exercise WHERE name = $1
+SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE name = $1 AND user_id = $2
 `
 
-func (q *Queries) GetExerciseByName(ctx context.Context, name string) (Exercise, error) {
-	row := q.db.QueryRow(ctx, getExerciseByName, name)
+type GetExerciseByNameParams struct {
+	Name   string      `json:"name"`
+	UserID pgtype.Text `json:"user_id"`
+}
+
+func (q *Queries) GetExerciseByName(ctx context.Context, arg GetExerciseByNameParams) (Exercise, error) {
+	row := q.db.QueryRow(ctx, getExerciseByName, arg.Name, arg.UserID)
 	var i Exercise
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -140,9 +153,14 @@ SELECT
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
-WHERE s.exercise_id = $1
+WHERE s.exercise_id = $1 AND e.user_id = $2
 ORDER BY w.date DESC, s.created_at
 `
+
+type GetExerciseWithSetsParams struct {
+	ExerciseID int32       `json:"exercise_id"`
+	UserID     pgtype.Text `json:"user_id"`
+}
 
 type GetExerciseWithSetsRow struct {
 	WorkoutID    int32              `json:"workout_id"`
@@ -157,8 +175,8 @@ type GetExerciseWithSetsRow struct {
 	Volume       int32              `json:"volume"`
 }
 
-func (q *Queries) GetExerciseWithSets(ctx context.Context, exerciseID int32) ([]GetExerciseWithSetsRow, error) {
-	rows, err := q.db.Query(ctx, getExerciseWithSets, exerciseID)
+func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSetsParams) ([]GetExerciseWithSetsRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseWithSets, arg.ExerciseID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,30 +207,43 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, exerciseID int32) ([]
 }
 
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
-INSERT INTO exercise (name) 
-VALUES ($1)
-ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-RETURNING id, name, created_at, updated_at
+INSERT INTO exercise (name, user_id) 
+VALUES ($1, $2)
+ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id, name, created_at, updated_at, user_id
 `
 
-func (q *Queries) GetOrCreateExercise(ctx context.Context, name string) (Exercise, error) {
-	row := q.db.QueryRow(ctx, getOrCreateExercise, name)
+type GetOrCreateExerciseParams struct {
+	Name   string      `json:"name"`
+	UserID pgtype.Text `json:"user_id"`
+}
+
+func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerciseParams) (Exercise, error) {
+	row := q.db.QueryRow(ctx, getOrCreateExercise, arg.Name, arg.UserID)
 	var i Exercise
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getSet = `-- name: GetSet :one
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at FROM "set" WHERE id = $1
+SELECT s.id, s.exercise_id, s.workout_id, s.weight, s.reps, s.set_type, s.created_at, s.updated_at FROM "set" s
+JOIN workout w ON w.id = s.workout_id
+WHERE s.id = $1 AND w.user_id = $2
 `
 
-func (q *Queries) GetSet(ctx context.Context, id int32) (Set, error) {
-	row := q.db.QueryRow(ctx, getSet, id)
+type GetSetParams struct {
+	ID     int32       `json:"id"`
+	UserID pgtype.Text `json:"user_id"`
+}
+
+func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (Set, error) {
+	row := q.db.QueryRow(ctx, getSet, arg.ID, arg.UserID)
 	var i Set
 	err := row.Scan(
 		&i.ID,
@@ -251,12 +282,17 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (Users, er
 }
 
 const getWorkout = `-- name: GetWorkout :one
-SELECT id, date, notes, created_at, updated_at FROM workout WHERE id = $1
+SELECT id, date, notes, created_at, updated_at, user_id FROM workout WHERE id = $1 AND user_id = $2
 `
 
+type GetWorkoutParams struct {
+	ID     int32       `json:"id"`
+	UserID pgtype.Text `json:"user_id"`
+}
+
 // Basic SELECT queries
-func (q *Queries) GetWorkout(ctx context.Context, id int32) (Workout, error) {
-	row := q.db.QueryRow(ctx, getWorkout, id)
+func (q *Queries) GetWorkout(ctx context.Context, arg GetWorkoutParams) (Workout, error) {
+	row := q.db.QueryRow(ctx, getWorkout, arg.ID, arg.UserID)
 	var i Workout
 	err := row.Scan(
 		&i.ID,
@@ -264,6 +300,7 @@ func (q *Queries) GetWorkout(ctx context.Context, id int32) (Workout, error) {
 		&i.Notes,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -282,9 +319,14 @@ SELECT
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
-WHERE w.id = $1
+WHERE w.id = $1 AND w.user_id = $2
 ORDER BY e.name, s.id
 `
+
+type GetWorkoutWithSetsParams struct {
+	ID     int32       `json:"id"`
+	UserID pgtype.Text `json:"user_id"`
+}
 
 type GetWorkoutWithSetsRow struct {
 	WorkoutID    int32              `json:"workout_id"`
@@ -299,8 +341,8 @@ type GetWorkoutWithSetsRow struct {
 }
 
 // Complex queries for joining data
-func (q *Queries) GetWorkoutWithSets(ctx context.Context, id int32) ([]GetWorkoutWithSetsRow, error) {
-	rows, err := q.db.Query(ctx, getWorkoutWithSets, id)
+func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSetsParams) ([]GetWorkoutWithSetsRow, error) {
+	rows, err := q.db.Query(ctx, getWorkoutWithSets, arg.ID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -330,11 +372,11 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, id int32) ([]GetWorkou
 }
 
 const listExercises = `-- name: ListExercises :many
-SELECT id, name, created_at, updated_at FROM exercise ORDER BY name
+SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE user_id = $1 ORDER BY name
 `
 
-func (q *Queries) ListExercises(ctx context.Context) ([]Exercise, error) {
-	rows, err := q.db.Query(ctx, listExercises)
+func (q *Queries) ListExercises(ctx context.Context, userID pgtype.Text) ([]Exercise, error) {
+	rows, err := q.db.Query(ctx, listExercises, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -347,6 +389,7 @@ func (q *Queries) ListExercises(ctx context.Context) ([]Exercise, error) {
 			&i.Name,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -359,11 +402,14 @@ func (q *Queries) ListExercises(ctx context.Context) ([]Exercise, error) {
 }
 
 const listSets = `-- name: ListSets :many
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at FROM "set" ORDER BY id
+SELECT s.id, s.exercise_id, s.workout_id, s.weight, s.reps, s.set_type, s.created_at, s.updated_at FROM "set" s
+JOIN workout w ON w.id = s.workout_id
+WHERE w.user_id = $1
+ORDER BY s.id
 `
 
-func (q *Queries) ListSets(ctx context.Context) ([]Set, error) {
-	rows, err := q.db.Query(ctx, listSets)
+func (q *Queries) ListSets(ctx context.Context, userID pgtype.Text) ([]Set, error) {
+	rows, err := q.db.Query(ctx, listSets, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -392,11 +438,11 @@ func (q *Queries) ListSets(ctx context.Context) ([]Set, error) {
 }
 
 const listWorkouts = `-- name: ListWorkouts :many
-SELECT id, date, notes, created_at, updated_at FROM workout ORDER BY date DESC
+SELECT id, date, notes, created_at, updated_at, user_id FROM workout WHERE user_id = $1 ORDER BY date DESC
 `
 
-func (q *Queries) ListWorkouts(ctx context.Context) ([]Workout, error) {
-	rows, err := q.db.Query(ctx, listWorkouts)
+func (q *Queries) ListWorkouts(ctx context.Context, userID pgtype.Text) ([]Workout, error) {
+	rows, err := q.db.Query(ctx, listWorkouts, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -410,6 +456,7 @@ func (q *Queries) ListWorkouts(ctx context.Context) ([]Workout, error) {
 			&i.Notes,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}

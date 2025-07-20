@@ -6,23 +6,30 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
 
-// ExerciseRepository is an interface for exercise data access
 type ExerciseRepository interface {
-	ListExercises(ctx context.Context) ([]db.Exercise, error)
-	GetExercise(ctx context.Context, id int32) (db.Exercise, error)
-	GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error)
-	GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error)
+	ListExercises(ctx context.Context, userID string) ([]db.Exercise, error)
+	GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error)
+	GetOrCreateExercise(ctx context.Context, name, userID string) (db.Exercise, error)
+	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
+	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
 }
 
-// ExerciseService handles exercise business logic
+type ErrUnauthorized struct {
+	Message string
+}
+
+func (e *ErrUnauthorized) Error() string {
+	return e.Message
+}
+
 type ExerciseService struct {
 	logger *slog.Logger
 	repo   ExerciseRepository
 }
 
-// NewService creates a new ExerciseService
 func NewService(logger *slog.Logger, repo ExerciseRepository) *ExerciseService {
 	return &ExerciseService{
 		logger: logger,
@@ -30,9 +37,13 @@ func NewService(logger *slog.Logger, repo ExerciseRepository) *ExerciseService {
 	}
 }
 
-// ListExercises retrieves all exercises
 func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, error) {
-	exercises, err := es.repo.ListExercises(ctx)
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	exercises, err := es.repo.ListExercises(ctx, userID)
 	if err != nil {
 		es.logger.Error("failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
@@ -41,20 +52,29 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 }
 
 func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([]db.GetExerciseWithSetsRow, error) {
-	sets, err := es.repo.GetExerciseWithSets(ctx, id)
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	sets, err := es.repo.GetExerciseWithSets(ctx, id, userID)
 	if err != nil {
-		es.logger.Error("service failed to get exercise with sets", "exercise_id", id, "error", err)
+		es.logger.Error("failed to get exercise with sets", "error", err)
 		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
 	return sets, nil
 }
 
-// GetOrCreateExercise gets an existing exercise by name or creates a new one if it doesn't exist
-func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (db.Exercise, error) {
-	exercise, err := es.repo.GetOrCreateExercise(ctx, name)
+func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (*db.Exercise, error) {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	exercise, err := es.repo.GetOrCreateExercise(ctx, name, userID)
 	if err != nil {
 		es.logger.Error("repository failed to get or create exercise", "exercise_name", name, "error", err)
-		return exercise, fmt.Errorf("failed to get or create exercise: %w", err)
+		return nil, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
-	return exercise, nil
+	return &exercise, nil
 }
