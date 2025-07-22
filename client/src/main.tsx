@@ -4,8 +4,6 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import {
   StackProvider,
   StackTheme,
-  type CurrentInternalUser,
-  type CurrentUser,
 } from '@stackframe/react';
 import { stackClientApp } from './stack.ts';
 import { useUser } from '@stackframe/react';
