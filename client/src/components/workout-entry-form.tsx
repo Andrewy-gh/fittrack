@@ -32,19 +32,27 @@ import {
 } from 'lucide-react';
 import type { WorkoutFormValues } from '@/lib/types';
 
-const getInitialValues = (): WorkoutFormValues => {
-  const saved = loadFromLocalStorage();
+// MARK: Init values
+const MOCK_VALUES: WorkoutFormValues = {
+  date: new Date(),
+  notes: '',
+  exercises: [] as Exercise[],
+}
+
+const getInitialValues = (userId: string): WorkoutFormValues => {
+  const saved = loadFromLocalStorage(userId);
   return (
-    saved || {
-      date: new Date(),
-      notes: '',
-      exercises: [] as Exercise[],
-    }
+    saved || MOCK_VALUES
   );
 };
 
+const getMockValues = (): WorkoutFormValues => {
+  return MOCK_VALUES;
+};
+
+// MARK: Form opts
 const formOpts = formOptions({
-  defaultValues: getInitialValues(),
+  // defaultValues: getInitialValues
   listeners: {
     onChange: ({ formApi }) => {
       console.log('Saving form data to localStorage');
@@ -54,9 +62,20 @@ const formOpts = formOptions({
   },
 });
 
-// MARK: Set Input Field
+const formOptsMock = formOptions({
+  defaultValues: getMockValues(),
+  listeners: {
+    onChange: ({ formApi }) => {
+      console.log('Saving form data to localStorage');
+      saveToLocalStorage(formApi.state.values);
+    },
+    onChangeDebounceMs: 500,
+  },
+});
+
+// MARK: SUB Set Input Field
 const SetInputField = withForm({
-  ...formOpts,
+  ...formOptsMock,
   props: {} as { exerciseIndex: number },
   render: function Render({ form, exerciseIndex }) {
     return (
@@ -211,9 +230,9 @@ const SetInputField = withForm({
   },
 });
 
-// MARK: Exercise Input
+// MARK: SUB Exercise Input
 const ExerciseInputField = withForm({
-  ...formOpts,
+  ...formOptsMock,
   render: function Render({ form }) {
     return (
       <form.AppField name="exercises" mode="array">
@@ -306,12 +325,22 @@ const ExerciseInputField = withForm({
 export function WorkoutEntryForm({
   exercises,
   accessToken,
+  userId,
 }: {
   exercises: ExerciseOption[];
   accessToken: string;
+  userId: string;
 }) {
   const form = useAppForm({
-    ...formOpts,
+    ...formOpts,    
+    defaultValues: getInitialValues(userId),
+    listeners: {
+      onChange: ({ formApi }) => {
+        console.log('Saving form data to localStorage');
+        saveToLocalStorage(formApi.state.values , userId);
+      },
+      onChangeDebounceMs: 500,
+    },
     onSubmit: async ({ value }) => {
       console.log('value', value);
 
@@ -336,8 +365,8 @@ export function WorkoutEntryForm({
           'Workout submitted! Server says: ' + JSON.stringify(result)
         );
 
-        // Clear localStorage after successful submission
-        clearLocalStorage();
+        // MARK: localStorage clear after successful submission
+        clearLocalStorage(userId);
         // Reset form to default values
         form.reset();
       } catch (error) {
@@ -351,7 +380,7 @@ export function WorkoutEntryForm({
   // Add a function to manually clear the form and localStorage
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
-      clearLocalStorage();
+      clearLocalStorage(userId);
       form.reset();
       // ! TODO: Reset selected exercise
       // setSelectedExercise(undefined);
