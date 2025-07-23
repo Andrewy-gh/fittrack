@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,8 +25,7 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 }
 
 func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) ([]db.Exercise, error) {
-	pgUserID := pgtype.Text{String: userID, Valid: true}
-	exercises, err := er.queries.ListExercises(ctx, pgUserID)
+	exercises, err := er.queries.ListExercises(ctx, userID)
 	if err != nil {
 		er.logger.Error("failed to list exercises", "error", err)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
@@ -43,7 +41,7 @@ func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) 
 func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error) {
 	params := db.GetExerciseParams{
 		ID:     id,
-		UserID: pgtype.Text{String: userID, Valid: true},
+		UserID: userID,
 	}
 	exercise, err := er.queries.GetExercise(ctx, params)
 	if err != nil {
@@ -56,7 +54,7 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID 
 func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name string, userID string) (db.Exercise, error) {
 	params := db.GetOrCreateExerciseParams{
 		Name:   name,
-		UserID: pgtype.Text{String: userID, Valid: true},
+		UserID: userID,
 	}
 	exercise, err := er.queries.GetOrCreateExercise(ctx, params)
 	if err != nil {
@@ -69,7 +67,7 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error) {
 	params := db.GetExerciseWithSetsParams{
 		ExerciseID: id,
-		UserID:     pgtype.Text{String: userID, Valid: true},
+		UserID:     userID,
 	}
 	sets, err := er.queries.GetExerciseWithSets(ctx, params)
 	if err != nil {
@@ -89,7 +87,7 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 
 	params := db.GetOrCreateExerciseParams{
 		Name:   name,
-		UserID: pgtype.Text{String: userID, Valid: true},
+		UserID: userID,
 	}
 
 	er.logger.Info("calling GetOrCreateExercise with params", "params", params)

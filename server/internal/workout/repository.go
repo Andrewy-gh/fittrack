@@ -29,9 +29,7 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool,
 
 // MARK: ListWorkouts
 func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([]db.Workout, error) {
-	pgUserId := pgtype.Text{String: userId, Valid: true}
-
-	workouts, err := wr.queries.ListWorkouts(ctx, pgUserId)
+	workouts, err := wr.queries.ListWorkouts(ctx, userId)
 	if err != nil {
 		wr.logger.Error("list workouts query failed", "error", err)
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
@@ -48,7 +46,7 @@ func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([
 func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error) {
 	params := db.GetWorkoutWithSetsParams{
 		ID:     id,
-		UserID: pgtype.Text{String: userID, Valid: true},
+		UserID: userID,
 	}
 	workoutWithSets, err := wr.queries.GetWorkoutWithSets(ctx, params)
 	if err != nil {
@@ -118,7 +116,7 @@ func (wr *workoutRepository) insertWorkout(ctx context.Context, qtx *db.Queries,
 	return qtx.CreateWorkout(ctx, db.CreateWorkoutParams{
 		Date:   workout.Date,
 		Notes:  workout.Notes,
-		UserID: pgtype.Text{String: userID, Valid: true},
+		UserID: userID,
 	})
 }
 
@@ -165,7 +163,7 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 			Weight:     set.Weight,
 			Reps:       set.Reps,
 			SetType:    set.SetType,
-			UserID:     pgtype.Text{String: userID, Valid: true},
+			UserID:     userID,
 		})
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to create set for exercise %s (ID: %d)", set.ExerciseName, exerciseID)

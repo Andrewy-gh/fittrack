@@ -13,7 +13,7 @@ type Exercise struct {
 	Name      string             `json:"name"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	UserID    pgtype.Text        `json:"user_id"`
+	UserID    string             `json:"user_id"`
 }
 
 type Set struct {
@@ -39,5 +39,5 @@ type Workout struct {
 	Notes     pgtype.Text        `json:"notes"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	UserID    pgtype.Text        `json:"user_id"`
+	UserID    string             `json:"user_id"`
 }

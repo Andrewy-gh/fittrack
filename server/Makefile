@@ -48,7 +48,8 @@ endif
 
 migrate-up:
 	@if . ./setenv.sh && [ -n "$$DATABASE_URL" ]; then \
-		goose -dir server/migrations postgres "${DATABASE_URL}" up \
+		echo "DATABASE_URL: $$DATABASE_URL"; \
+		goose -dir migrations postgres "$$DATABASE_URL" up; \
 	else \
 		echo "DATABASE_URL does not exist"; \
 		exit 1; \
@@ -56,7 +57,7 @@ migrate-up:
 
 migrate-down:
 	@if . ./setenv.sh && [ -n "$$DATABASE_URL" ]; then \
-		goose -dir server/migrations postgres "${DATABASE_URL}" down \
+		goose -dir migrations postgres "$$DATABASE_URL" down; \
 	else \
 		echo "DATABASE_URL does not exist"; \
 		exit 1; \
