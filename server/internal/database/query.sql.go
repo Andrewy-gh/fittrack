@@ -28,7 +28,7 @@ type CreateSetParams struct {
 	Weight     pgtype.Int4 `json:"weight"`
 	Reps       int32       `json:"reps"`
 	SetType    string      `json:"set_type"`
-	UserID     pgtype.Text `json:"user_id"`
+	UserID     string      `json:"user_id"`
 }
 
 func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, error) {
@@ -76,7 +76,7 @@ RETURNING id, date, notes, created_at, updated_at, user_id
 type CreateWorkoutParams struct {
 	Date   pgtype.Timestamptz `json:"date"`
 	Notes  pgtype.Text        `json:"notes"`
-	UserID pgtype.Text        `json:"user_id"`
+	UserID string             `json:"user_id"`
 }
 
 // INSERT queries for form submission
@@ -99,8 +99,8 @@ SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE id = $1 AND
 `
 
 type GetExerciseParams struct {
-	ID     int32       `json:"id"`
-	UserID pgtype.Text `json:"user_id"`
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
 }
 
 func (q *Queries) GetExercise(ctx context.Context, arg GetExerciseParams) (Exercise, error) {
@@ -121,8 +121,8 @@ SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE name = $1 A
 `
 
 type GetExerciseByNameParams struct {
-	Name   string      `json:"name"`
-	UserID pgtype.Text `json:"user_id"`
+	Name   string `json:"name"`
+	UserID string `json:"user_id"`
 }
 
 func (q *Queries) GetExerciseByName(ctx context.Context, arg GetExerciseByNameParams) (Exercise, error) {
@@ -158,8 +158,8 @@ ORDER BY w.date DESC, s.created_at
 `
 
 type GetExerciseWithSetsParams struct {
-	ExerciseID int32       `json:"exercise_id"`
-	UserID     pgtype.Text `json:"user_id"`
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
 }
 
 type GetExerciseWithSetsRow struct {
@@ -214,8 +214,8 @@ RETURNING id, name, created_at, updated_at, user_id
 `
 
 type GetOrCreateExerciseParams struct {
-	Name   string      `json:"name"`
-	UserID pgtype.Text `json:"user_id"`
+	Name   string `json:"name"`
+	UserID string `json:"user_id"`
 }
 
 func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerciseParams) (Exercise, error) {
@@ -238,8 +238,8 @@ WHERE s.id = $1 AND w.user_id = $2
 `
 
 type GetSetParams struct {
-	ID     int32       `json:"id"`
-	UserID pgtype.Text `json:"user_id"`
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
 }
 
 func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (Set, error) {
@@ -286,8 +286,8 @@ SELECT id, date, notes, created_at, updated_at, user_id FROM workout WHERE id = 
 `
 
 type GetWorkoutParams struct {
-	ID     int32       `json:"id"`
-	UserID pgtype.Text `json:"user_id"`
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
 }
 
 // Basic SELECT queries
@@ -324,8 +324,8 @@ ORDER BY e.name, s.id
 `
 
 type GetWorkoutWithSetsParams struct {
-	ID     int32       `json:"id"`
-	UserID pgtype.Text `json:"user_id"`
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
 }
 
 type GetWorkoutWithSetsRow struct {
@@ -375,7 +375,7 @@ const listExercises = `-- name: ListExercises :many
 SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE user_id = $1 ORDER BY name
 `
 
-func (q *Queries) ListExercises(ctx context.Context, userID pgtype.Text) ([]Exercise, error) {
+func (q *Queries) ListExercises(ctx context.Context, userID string) ([]Exercise, error) {
 	rows, err := q.db.Query(ctx, listExercises, userID)
 	if err != nil {
 		return nil, err
@@ -408,7 +408,7 @@ WHERE w.user_id = $1
 ORDER BY s.id
 `
 
-func (q *Queries) ListSets(ctx context.Context, userID pgtype.Text) ([]Set, error) {
+func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
 	rows, err := q.db.Query(ctx, listSets, userID)
 	if err != nil {
 		return nil, err
@@ -441,7 +441,7 @@ const listWorkouts = `-- name: ListWorkouts :many
 SELECT id, date, notes, created_at, updated_at, user_id FROM workout WHERE user_id = $1 ORDER BY date DESC
 `
 
-func (q *Queries) ListWorkouts(ctx context.Context, userID pgtype.Text) ([]Workout, error) {
+func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]Workout, error) {
 	rows, err := q.db.Query(ctx, listWorkouts, userID)
 	if err != nil {
 		return nil, err
