@@ -11,6 +11,8 @@ RUN bun run build
 FROM golang:1.24.2-alpine AS server-build
 WORKDIR /app
 COPY --link server .
+RUN go vet -v ./...
+RUN go test -v ./...
 RUN CGO_ENABLED=0 go build -o api ./cmd/api
 
 FROM gcr.io/distroless/base
