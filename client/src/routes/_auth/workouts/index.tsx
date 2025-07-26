@@ -117,19 +117,19 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-wider">
+          <h1 className="text-2xl font-bold tracking-wider">
             WORKOUT COMMAND
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm">
             Training session monitoring and analysis
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+          <Button>
             <Plus className="w-4 h-4 mr-2" />
             New Session
           </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+          <Button>
             <Filter className="w-4 h-4 mr-2" />
             Filter
           </Button>
@@ -141,12 +141,12 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
         <Card className="lg:col-span-2">
           <CardContent className="p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" />
               <Input
                 placeholder="Search workouts..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-neutral-800 border-neutral-600 text-white placeholder-neutral-400"
+                className="pl-10"
               />
             </div>
           </CardContent>
@@ -156,14 +156,14 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
+                <p className="text-xs tracking-wider">
                   TOTAL SESSIONS
                 </p>
-                <p className="text-2xl font-bold text-white font-mono">
+                <p className="text-2xl font-bold font-mono">
                   {totalWorkouts}
                 </p>
               </div>
-              <Target className="w-8 h-8 text-white" />
+              <Target className="w-8 h-8" />
             </div>
           </CardContent>
         </Card>
@@ -172,14 +172,14 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
+                <p className="text-xs tracking-wider">
                   THIS WEEK
                 </p>
-                <p className="text-2xl font-bold text-orange-500 font-mono">
+                <p className="text-2xl font-bold font-mono">
                   {thisWeekWorkouts}
                 </p>
               </div>
-              <Calendar className="w-8 h-8 text-orange-500" />
+              <Calendar className="w-8 h-8" />
             </div>
           </CardContent>
         </Card>
@@ -188,14 +188,14 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
+                <p className="text-xs tracking-wider">
                   MODIFIED
                 </p>
-                <p className="text-2xl font-bold text-white font-mono">
+                <p className="text-2xl font-bold font-mono">
                   {updatedWorkouts}
                 </p>
               </div>
-              <TrendingUp className="w-8 h-8 text-white" />
+              <TrendingUp className="w-8 h-8" />
             </div>
           </CardContent>
         </Card>
@@ -204,7 +204,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
       {/* Workout Types Overview */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
+          <CardTitle className="text-sm font-medium tracking-wider">
             TRAINING DISTRIBUTION
           </CardTitle>
         </CardHeader>
@@ -212,13 +212,13 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {Object.entries(workoutTypes).map(([type, count]) => (
               <div key={type} className="text-center">
-                <div className="text-2xl font-bold text-white font-mono">
+                <div className="text-2xl font-bold font-mono">
                   {count}
                 </div>
-                <div className="text-xs text-neutral-400 uppercase tracking-wider">
+                <div className="text-xs uppercase tracking-wider">
                   {type}
                 </div>
-                <Badge className={`${getTypeColor(type)} mt-1`}>
+                <Badge className="mt-1">
                   {type.toUpperCase()}
                 </Badge>
               </div>
@@ -230,7 +230,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
       {/* MARK: Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
+          <CardTitle className="text-sm font-medium tracking-wider">
             TRAINING SESSIONS
           </CardTitle>
         </CardHeader>
@@ -265,7 +265,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                         <div className="font-medium">
                           {formatDate(workout.date)}
                         </div>
-                        <div className="text-sm text-muted-foreground sm:hidden">
+                        <div className="text-sm sm:hidden">
                           {formatTime(workout.date)}
                         </div>
                       </TableCell>
@@ -276,10 +276,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge
-                          variant="outline"
-                          className={getTypeColor(workoutType)}
-                        >
+                        <Badge variant="outline">
                           {workoutType.toUpperCase()}
                         </Badge>
                       </TableCell>
@@ -292,7 +289,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-2 h-2 rounded-full ${
-                              workout.updated_at ? 'bg-orange-500' : 'bg-white'
+                              workout.updated_at ? '' : ''
                             }`}
                           />
                           <span className="text-xs uppercase">
@@ -327,11 +324,11 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           <Card className="w-full max-w-2xl">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-bold text-white tracking-wider">
+                <CardTitle className="text-lg font-bold tracking-wider">
                   TRAINING SESSION WO-
                   {selectedWorkout.id.toString().padStart(3, '0')}
                 </CardTitle>
-                <p className="text-sm text-neutral-400 font-mono">
+                <p className="text-sm font-mono">
                   {formatDate(selectedWorkout.date)} at{' '}
                   {formatTime(selectedWorkout.date)}
                 </p>
@@ -339,7 +336,6 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
               <Button
                 variant="ghost"
                 onClick={() => setSelectedWorkout(null)}
-                className="text-neutral-400 hover:text-white"
               >
                 ✕
               </Button>
@@ -347,47 +343,41 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                  <p className="text-xs tracking-wider mb-1">
                     WORKOUT TYPE
                   </p>
-                  <Badge
-                    className={getTypeColor(
-                      getWorkoutType(selectedWorkout.notes ?? '')
-                    )}
-                  >
+                  <Badge>
                     {getWorkoutType(selectedWorkout.notes ?? '').toUpperCase()}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                  <p className="text-xs tracking-wider mb-1">
                     STATUS
                   </p>
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-2 h-2 rounded-full ${
-                        selectedWorkout.updated_at
-                          ? 'bg-orange-500'
-                          : 'bg-white'
+                        selectedWorkout.updated_at ? '' : ''
                       }`}
                     ></div>
-                    <span className="text-sm text-white uppercase tracking-wider">
+                    <span className="text-sm uppercase tracking-wider">
                       {selectedWorkout.updated_at ? 'MODIFIED' : 'ORIGINAL'}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                  <p className="text-xs tracking-wider mb-1">
                     CREATED
                   </p>
-                  <p className="text-sm text-white font-mono">
+                  <p className="text-sm font-mono">
                     {formatDate(selectedWorkout.created_at)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
+                  <p className="text-xs tracking-wider mb-1">
                     LAST MODIFIED
                   </p>
-                  <p className="text-sm text-white font-mono">
+                  <p className="text-sm font-mono">
                     {selectedWorkout.updated_at
                       ? formatDate(selectedWorkout.updated_at)
                       : 'Never'}
@@ -396,11 +386,11 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
               </div>
 
               <div>
-                <p className="text-xs text-neutral-400 tracking-wider mb-2">
+                <p className="text-xs tracking-wider mb-2">
                   TRAINING NOTES
                 </p>
                 <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
-                  <p className="text-sm text-white leading-relaxed">
+                  <p className="text-sm leading-relaxed">
                     {selectedWorkout.notes}
                   </p>
                 </div>
@@ -408,7 +398,7 @@ function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
 
               {/* <div className="flex gap-2 pt-4"> */}
               <Button
-                className="bg-orange-500 hover:bg-orange-600 text-white"
+                className=""
                 asChild
               >
                 <Link
@@ -455,7 +445,6 @@ export const Route = createFileRoute('/_auth/workouts/')({
   },
   component: RouteComponent,
 });
-
 
 function RouteComponent() {
   const workouts = Route.useLoaderData();

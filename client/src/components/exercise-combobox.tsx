@@ -49,8 +49,7 @@ function CommandAddItem({
         }
       }}
       className={cn(
-        'flex w-full text-neutral-200 cursor-pointer text-sm px-2 py-1.5 rounded-sm items-center focus:outline-none',
-        'hover:bg-neutral-700 focus:!bg-neutral-700'
+        'flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm focus:outline-none'
       )}
     >
       <CirclePlus className="mr-2 h-4 w-4" />
@@ -102,11 +101,9 @@ function ExerciseList({
         if (v.includes(s)) return 1;
         return 0;
       }}
-      className="bg-neutral-800 text-white"
     >
       <CommandInput
         placeholder="Search exercises..."
-        className="text-white placeholder-neutral-400"
         value={query}
         onValueChange={(value: string) => setQuery(value)}
         onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
@@ -121,11 +118,11 @@ function ExerciseList({
           <CommandAddItem query={query} onCreate={handleCreate} />
         )}
       </CommandEmpty>
-      <CommandList className="border-t border-neutral-700">
+      <CommandList>
         <CommandGroup className="p-1">
           {/* No options and no query */}
           {options.length === 0 && !query && (
-            <div className="py-1.5 pl-8 space-y-1 text-sm text-neutral-400">
+            <div className="py-1.5 pl-8 space-y-1 text-sm">
               <p>No items</p>
               <p>Enter a value to create a new one</p>
             </div>
@@ -147,10 +144,7 @@ function ExerciseList({
                   handleSelect(option);
                 }
               }}
-              className={cn(
-                'cursor-pointer',
-                'aria-selected:bg-neutral-700 aria-selected:text-white text-neutral-200 hover:bg-neutral-700 hover:text-white focus:!bg-neutral-700'
-              )}
+              className={cn('cursor-pointer')}
             >
               <Check
                 className={cn(
@@ -194,19 +188,14 @@ export function ExerciseCombobox({
       role="combobox"
       disabled={disabled ?? false}
       aria-expanded={open}
-      className={cn(
-        'w-full justify-between bg-neutral-800 font-normal text-white border-neutral-700 hover:bg-neutral-700 hover:text-white',
-        className
-      )}
+      className={cn('w-full justify-between font-normal', className)}
     >
       {selected && selected.length > 0 ? (
         <div className="truncate">
           {options.find((item) => item.name === selected)?.name}
         </div>
       ) : (
-        <div className="text-neutral-400">
-          {placeholder ?? 'Select exercise...'}
-        </div>
+        <div>{placeholder ?? 'Select exercise...'}</div>
       )}
       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
     </Button>
@@ -216,10 +205,7 @@ export function ExerciseCombobox({
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
-        <PopoverContent
-          className="w-full p-0 border-neutral-700 bg-neutral-800"
-          align="start"
-        >
+        <PopoverContent className="w-full p-0" align="start">
           <ExerciseList
             options={options}
             selected={selected}
@@ -238,8 +224,8 @@ export function ExerciseCombobox({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
-      <DrawerContent className="bg-neutral-900 border-neutral-700">
-        <div className="mt-4 border-t border-neutral-700">
+      <DrawerContent>
+        <div className="mt-4">
           <ExerciseList
             options={options}
             selected={selected}
