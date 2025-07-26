@@ -35,17 +35,15 @@ export default function InputField({
   };
 
   const getInputClassName = () => {
-    const baseClasses =
-      'bg-neutral-800 border-neutral-600 text-white placeholder-neutral-500';
-    const numberClasses = type === 'number' ? 'text-center font-mono h-9' : '';
+    const numberClasses = type === 'number' ? 'text-center h-9' : '';
     const customClasses = className || '';
 
-    return `${baseClasses} ${numberClasses} ${customClasses}`.trim();
+    return `${numberClasses} ${customClasses}`.trim();
   };
 
   return (
     <div className="space-y-2">
-      <Label className="text-xs text-neutral-400 tracking-wider">{label}</Label>
+      <Label className="text-xs tracking-wider">{label}</Label>
       <Input
         id={field.name}
         name={field.name}

@@ -6,6 +6,7 @@ import {
   StackTheme,
 } from '@stackframe/react';
 import { stackClientApp } from './stack.ts';
+import { ThemeProvider } from './components/theme-provider.tsx';
 import { useUser } from '@stackframe/react';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
@@ -45,7 +46,9 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <StackProvider app={stackClientApp}>
         <StackTheme>
-          <App />
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
         </StackTheme>
       </StackProvider>
     </StrictMode>

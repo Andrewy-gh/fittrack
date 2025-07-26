@@ -20,6 +20,7 @@ import {
 import { UserButton } from '@stackframe/react';
 import { stackClientApp } from '@/stack';
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import { ModeToggle } from '@/components/mode-toggle';
 
 function HomePage({
   user,
@@ -113,7 +114,7 @@ function HomePage({
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen">
       {/* MARK: Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -135,6 +136,7 @@ function HomePage({
             )}
           </div>
           <div className="flex items-center gap-4">
+            <ModeToggle />
             <Button className="bg-orange-500 hover:bg-orange-600 text-white">
               <Download className="w-4 h-4 mr-2" />
               Deploy System
