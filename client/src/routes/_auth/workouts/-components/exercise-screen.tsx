@@ -1,0 +1,180 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Plus } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { withForm } from '@/hooks/form';
+import { formOptsMock } from '../-components/form-options';
+import { AddSetModal2 } from '../-components/add-set-modal';
+
+type ExerciseScreenProps = {
+  exerciseIndex: number;
+  onBack: () => void;
+};
+
+// MARK: - ExerciseScreen
+export const ExerciseScreen2 = withForm({
+  ...formOptsMock,
+  props: {} as ExerciseScreenProps,
+  render: function Render({
+    form,
+    exerciseIndex,
+    onBack,
+  }) {
+    const [dialogOpenIndex, setDialogOpenIndex] = useState<number | null>(null);
+
+    return (
+      <div className="min-h-screen">
+        <div className="px-4 pb-8">
+          <div className="max-w-md mx-auto space-y-6">
+            {/* Header */}
+            <div className="gap-4 pt-6 pb-2">
+              <Button
+                variant="ghost"
+                onClick={onBack}
+                className="p-0 h-auto text-primary hover:text-primary/80"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </Button>
+              <form.AppField
+                name={`exercises[${exerciseIndex}].name`}
+                children={(field) => (
+                  <h1 className="font-bold text-3xl tracking-tight text-foreground flex-1 text-center">
+                    {field.state.value}
+                  </h1>
+                )}
+              />
+            </div>
+            <form.AppField
+              name={`exercises[${exerciseIndex}].sets`}
+              mode="array"
+              children={(setsField) => {
+                const totalSets = setsField.state.value.length;
+                const totalVolume = setsField.state.value.reduce(
+                  (acc, set) => acc + (set.weight || 0) * (set.reps || 0),
+                  0
+                );
+                return (
+                  <>
+                    {/* MARK: Stats Overview */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <Card className="bg-card border border-border shadow-sm p-6">
+                        <div className="text-center">
+                          <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground mb-2">
+                            TOTAL SETS
+                          </div>
+                          <div className="font-bold text-lg text-primary">
+                            {totalSets}
+                          </div>
+                        </div>
+                      </Card>
+                      <Card className="bg-card border border-border shadow-sm p-6">
+                        <div className="text-center">
+                          <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground mb-2">
+                            TOTAL VOLUME
+                          </div>
+                          <div className="font-bold text-lg text-primary">
+                            {totalVolume}
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+
+                    {/* Sets List */}
+                    <div>
+                      <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
+                        Sets
+                      </h2>
+                      <div className="space-y-3">
+                        {setsField.state.value.map((set, setIndex) => {
+                          // MARK: Dialog
+                          const isDialogOpen = dialogOpenIndex === setIndex;
+                          if (isDialogOpen) {
+                            return (
+                              <AddSetModal2
+                                key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
+                                form={form}
+                                exerciseIndex={exerciseIndex}
+                                setIndex={setIndex}
+                                onSaveSet={() => {
+                                  setDialogOpenIndex(null);
+                                }}
+                                onClose={() => {
+                                  setDialogOpenIndex(null);
+                                }}
+                                onRemoveSet={() => {
+                                  setsField.removeValue(setIndex);
+                                  setDialogOpenIndex(null);
+                                }}
+                              />
+                            );
+                          }
+                          return (
+                            // MARK: Set Cards
+                            <Card
+                              key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
+                              className="bg-card border border-border shadow-sm p-4"
+                              onClick={() => {
+                                setDialogOpenIndex(setIndex);
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="font-bold text-lg">
+                                    #{setIndex + 1}
+                                  </div>
+                                  <div>
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                        set.setType === 'working'
+                                          ? 'bg-primary/20 text-primary'
+                                          : 'bg-muted text-muted-foreground'
+                                      }`}
+                                    >
+                                      {set.setType}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-card-foreground font-bold text-lg">
+                                    {set.weight}lb &#215; {set.reps}
+                                  </div>
+                                  <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
+                                    {set.weight &&
+                                      set.reps &&
+                                      set.weight * set.reps}{' '}
+                                    volume
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Add Set Button */}
+                    <div className="pt-4">
+                      <Button
+                        className="hover:bg-primary/90 w-full py-4 text-base font-semibold"
+                        onClick={() => {
+                          setsField.pushValue({
+                            weight: 0,
+                            reps: 0,
+                            setType: 'working',
+                          });
+                          setDialogOpenIndex(setsField.state.value.length - 1);
+                        }}
+                      >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add Set
+                      </Button>
+                    </div>
+                  </> // MARK: Bottom
+                );
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  },
+});

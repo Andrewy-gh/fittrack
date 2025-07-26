@@ -1,15 +1,19 @@
 import { UserButton } from '@stackframe/react';
-import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router';
+import { ModeToggle } from './mode-toggle';
 
 export default function Header() {
   return (
-    <header className="flex justify-between gap-2 border-b border-neutral-700 bg-neutral-800 p-2 text-white">
-      <nav className="flex flex-row">
+    <header className="flex flex-wrap justify-between gap-2 border-b p-2">
+      <nav className="flex flex-wrap flex-row">
         <div className="px-2 font-bold">
           <Link to="/">Home</Link>
         </div>
         <div className="px-2 font-bold">
-          <Link to="/workouts/new">New Workout</Link>
+          <Link to="/workouts/new">New</Link> 
+        </div>
+        <div className="px-2 font-bold">
+          <Link to="/workouts/new-2">New 2</Link>
         </div>
         <div className="px-2 font-bold">
           <Link to="/workouts">Workouts</Link>
@@ -18,7 +22,10 @@ export default function Header() {
           <Link to="/exercises">Exercises</Link>
         </div>
       </nav>
-      <UserButton/>
+      <div className="flex flex-row gap-2">
+        <ModeToggle />
+        <UserButton />
+      </div>
     </header>
   );
 }
