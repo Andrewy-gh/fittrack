@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
@@ -44,12 +44,6 @@ export interface ExerciseNew {
   sets: number;
   volume: number;
   lastUpdated: string;
-}
-
-interface WorkoutSession {
-  date: string;
-  notes: string;
-  exercises: ExerciseNew[];
 }
 
 // MARK: - WorkoutTracker
@@ -287,6 +281,7 @@ export default function WorkoutTracker() {
               {/* Add Exercise Button */}
               <div className="pt-6">
                 <Button
+                  type="button"
                   className="bg-primary text-primary-foreground hover:bg-primary/90 w-full py-4 text-base font-semibold rounded-lg"
                   onClick={() => setCurrentView('add-exercise')}
                 >
@@ -296,7 +291,19 @@ export default function WorkoutTracker() {
               </div>
               {/* ! TODO: Save and Cancel buttons */}
               <div className="flex gap-2 mt-4">
-                <Button>Save</Button>
+                <form.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <Button
+                      type="submit"
+                      disabled={!canSubmit}
+                      className="flex-1 py-1.5 h-auto text-sm"
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {isSubmitting ? 'SAVING...' : 'SAVE'}
+                    </Button>
+                  )}
+                />
                 <Button
                   type="button"
                   variant="outline"
