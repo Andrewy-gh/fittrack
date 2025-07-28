@@ -63,9 +63,13 @@ export const AddExerciseScreen = withForm({
                             <Button
                               variant="ghost"
                               className="h-auto w-full text-sm font-medium whitespace-normal text-card-foreground hover:bg-transparent"
-                              onClick={() =>
-                                onAddExercise(field.state.value.length - 1)
-                              }
+                              onClick={() => {
+                                field.pushValue({
+                                  name: exercise.name,
+                                  sets: [],
+                                });
+                                onAddExercise(field.state.value.length - 1);
+                              }}
                             >
                               {exercise.name}
                             </Button>
@@ -76,7 +80,6 @@ export const AddExerciseScreen = withForm({
                 </>
               )}
             />
-            {/* Common Exercises */}
           </div>
         </div>
       </div>

@@ -15,11 +15,7 @@ type ExerciseScreenProps = {
 export const ExerciseScreen2 = withForm({
   ...formOptsMock,
   props: {} as ExerciseScreenProps,
-  render: function Render({
-    form,
-    exerciseIndex,
-    onBack,
-  }) {
+  render: function Render({ form, exerciseIndex, onBack }) {
     const [dialogOpenIndex, setDialogOpenIndex] = useState<number | null>(null);
 
     return (
@@ -48,9 +44,10 @@ export const ExerciseScreen2 = withForm({
               name={`exercises[${exerciseIndex}].sets`}
               mode="array"
               children={(setsField) => {
-                const totalSets = setsField.state.value.length;
-                const totalVolume = setsField.state.value.reduce(
-                  (acc, set) => acc + (set.weight || 0) * (set.reps || 0),
+                const sets = setsField.state.value || [];
+                const totalSets = sets.length;
+                const totalVolume = sets.reduce(
+                  (acc, set) => acc + (set?.weight || 0) * (set?.reps || 0),
                   0
                 );
                 return (
@@ -85,7 +82,7 @@ export const ExerciseScreen2 = withForm({
                         Sets
                       </h2>
                       <div className="space-y-3">
-                        {setsField.state.value.map((set, setIndex) => {
+                        {sets.map((set, setIndex) => {
                           // MARK: Dialog
                           const isDialogOpen = dialogOpenIndex === setIndex;
                           if (isDialogOpen) {
@@ -161,7 +158,7 @@ export const ExerciseScreen2 = withForm({
                             reps: 0,
                             setType: 'working',
                           });
-                          setDialogOpenIndex(setsField.state.value.length - 1);
+                          setDialogOpenIndex(sets.length - 1);
                         }}
                       >
                         <Plus className="w-5 h-5 mr-2" />

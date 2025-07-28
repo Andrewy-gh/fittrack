@@ -38,18 +38,9 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
   component: WorkoutTracker,
 });
 
-export interface ExerciseNew {
-  id: string;
-  name: string;
-  sets: number;
-  volume: number;
-  lastUpdated: string;
-}
-
 // MARK: - WorkoutTracker
 export default function WorkoutTracker() {
   const { accessToken, exercises, userId } = Route.useLoaderData();
-  console.log('exercises', exercises);
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
   >('main');
@@ -231,9 +222,10 @@ export default function WorkoutTracker() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
-                                  onClick={() =>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     field.removeValue(exerciseIndex)
-                                  }
+                                  }}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
