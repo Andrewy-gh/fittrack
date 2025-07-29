@@ -158,7 +158,8 @@ export const ExerciseScreen2 = withForm({
                             reps: 0,
                             setType: 'working',
                           });
-                          setDialogOpenIndex(sets.length - 1);
+                          const updatedSets = setsField.state.value || [];
+                          setDialogOpenIndex(updatedSets.length - 1);
                         }}
                       >
                         <Plus className="w-5 h-5 mr-2" />
