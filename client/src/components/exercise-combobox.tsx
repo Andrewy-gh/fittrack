@@ -48,9 +48,7 @@ function CommandAddItem({
           onCreate();
         }
       }}
-      className={cn(
-        'flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm focus:outline-none'
-      )}
+      className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 focus:outline-none"
     >
       <CirclePlus className="mr-2 h-4 w-4" />
       Create "{query}"
@@ -122,7 +120,7 @@ function ExerciseList({
         <CommandGroup className="p-1">
           {/* No options and no query */}
           {options.length === 0 && !query && (
-            <div className="py-1.5 pl-8 space-y-1 text-sm">
+            <div className="py-1.5 pl-8 space-y-1">
               <p>No items</p>
               <p>Enter a value to create a new one</p>
             </div>
