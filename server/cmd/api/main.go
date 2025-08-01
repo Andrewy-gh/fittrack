@@ -72,7 +72,19 @@ func main() {
 	// Initialize router with auth middleware
 	router := api.routes(workoutHandler, exerciseHandler)
 
-	err = http.ListenAndServe(":8080", auth.Middleware(router, logger, userService))
+	projectID := os.Getenv("PROJECT_ID")
+	if projectID == "" {
+		logger.Error("missing required environment variables", "has_project_id", projectID != "")
+		os.Exit(1)
+	}
+
+	jwks, err := auth.NewJWKSCache(ctx, projectID)
+	if err != nil {
+		logger.Error("failed to create JWKS", "error", err)
+		os.Exit(1)
+	}
+
+	err = http.ListenAndServe(":8080", auth.Middleware(router, logger, jwks, userService))
 	if err != nil {
 		logger.Error("server failed", "error", err)
 		os.Exit(1)
