@@ -4,41 +4,57 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 )
 
 const (
-	jwksURL     = "https://api.stack-auth.com/api/v1/projects/<project_id>/.well-known/jwks.json"
+	jwksURL     = "https://api.stack-auth.com/api/v1/projects/project_id/.well-known/jwks.json"
 	accessToken = "token"
 )
 
 func main() {
-	// Create a context
 	ctx := context.Background()
 
-	// Fetch the JWKS from the remote URL
-	keySet, err := jwk.Fetch(ctx, jwksURL)
+	// 1. Build the cache (HTTP client + background refresh)
+	cache, err := jwk.NewCache(ctx, httprc.NewClient())
 	if err != nil {
-		log.Fatalf("failed to fetch JWKS: %v", err)
+		log.Fatalf("cannot create JWKS cache: %v", err)
 	}
 
-	// Parse and verify the JWT token
-	token, err := jwt.ParseString(accessToken,
-		jwt.WithKeySet(keySet),
-		jwt.WithValidate(true),
-	)
+	// 2. Register the URL with refresh policy
+	if err := cache.Register(ctx, jwksURL,
+		jwk.WithMinInterval(15*time.Minute), // never refresh more often
+		jwk.WithMaxInterval(24*time.Hour),   // refresh at least once a day
+	); err != nil {
+		log.Fatalf("cannot register JWKS URL: %v", err)
+	}
 
+	// 3. Wrap the cache as a jwk.Set you can pass around
+	cachedSet, err := cache.CachedSet(jwksURL)
 	if err != nil {
-		log.Printf("Failed to verify token: %v\n", err)
-		log.Println("Invalid user")
+		log.Fatalf("cannot obtain cached keyset: %v", err)
+	}
+
+	// 4. Parse the token using the cached (auto-refreshed) JWKS
+	token, err := jwt.ParseString(
+		accessToken,
+		jwt.WithKeySet(cachedSet),
+		jwt.WithValidate(true), // verify exp/nbf/aud etc.
+	)
+	if err != nil {
+		log.Printf("invalid token: %v", err)
 		return
 	}
 
-	// If we get here, the token is valid
-	fmt.Printf("Token payload: %+v\n", token)
-	if id, ok := token.Subject(); ok {
-		fmt.Println(id)
+	id, ok := token.Subject()
+	if !ok {
+		log.Println("Invalid user")
+		return
 	}
+	fmt.Printf("Authenticated user ID: %s\n", id)
+
 }
