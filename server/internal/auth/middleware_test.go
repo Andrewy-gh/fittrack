@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockJWKSCache implements the JWKSProvider interface for testing
 type MockJWKSCache struct {
 	mock.Mock
 }
@@ -25,7 +24,6 @@ func (m *MockJWKSCache) GetUserIDFromToken(tokenString string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-// MockUserService implements the UserServiceProvider interface for testing
 type MockUserService struct {
 	mock.Mock
 }
@@ -36,7 +34,6 @@ func (m *MockUserService) EnsureUser(ctx context.Context, userID string) (db.Use
 }
 
 func TestAuthenticator_Middleware(t *testing.T) {
-	// Create a test logger that discards output
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	tests := []struct {
@@ -113,48 +110,39 @@ func TestAuthenticator_Middleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
 			mockJWKSCache := &MockJWKSCache{}
 			mockUserService := &MockUserService{}
 			tt.setupMocks(mockJWKSCache, mockUserService)
 
-			// Create authenticator
 			auth := &Authenticator{
 				logger:      logger,
 				jwkCache:    mockJWKSCache,
 				userService: mockUserService,
 			}
 
-			// Create test handler that verifies context
 			var capturedContext context.Context
 			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				capturedContext = r.Context()
 				w.WriteHeader(http.StatusOK)
 			})
 
-			// Create test request
 			req := httptest.NewRequest("GET", tt.path, nil)
 			for key, value := range tt.headers {
 				req.Header.Set(key, value)
 			}
 
-			// Create response recorder
 			w := httptest.NewRecorder()
 
-			// Execute middleware
 			auth.Middleware(nextHandler).ServeHTTP(w, req)
 
-			// Assert status code
 			assert.Equal(t, tt.expectedStatus, w.Code)
 
-			// Assert context
 			if tt.expectContext {
 				userID, ok := user.Current(capturedContext)
 				assert.True(t, ok, "Expected user ID in context")
 				assert.Equal(t, tt.expectedUserID, userID)
 			}
 
-			// Assert mocks
 			mockJWKSCache.AssertExpectations(t)
 			mockUserService.AssertExpectations(t)
 		})
@@ -162,50 +150,39 @@ func TestAuthenticator_Middleware(t *testing.T) {
 }
 
 func TestAuthenticator_Middleware_UserCreationFlow(t *testing.T) {
-	// Create a test logger that discards output
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	// Create mocks
 	mockJWKSCache := &MockJWKSCache{}
 	mockUserService := &MockUserService{}
 
-	// Setup expectations for user creation flow
 	mockJWKSCache.On("GetUserIDFromToken", "valid-token").Return("new-user-456", nil)
 	mockUserService.On("EnsureUser", mock.Anything, "new-user-456").Return(db.Users{UserID: "new-user-456"}, nil)
 
-	// Create authenticator
 	auth := &Authenticator{
 		logger:      logger,
 		jwkCache:    mockJWKSCache,
 		userService: mockUserService,
 	}
 
-	// Create test handler that verifies context
 	var capturedContext context.Context
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedContext = r.Context()
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Create test request
 	req := httptest.NewRequest("GET", "/api/test", nil)
 	req.Header.Set("x-stack-access-token", "valid-token")
 
-	// Create response recorder
 	w := httptest.NewRecorder()
 
-	// Execute middleware
 	auth.Middleware(nextHandler).ServeHTTP(w, req)
 
-	// Assert status code
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Assert context contains the new user ID
 	userID, ok := user.Current(capturedContext)
 	assert.True(t, ok, "Expected user ID in context")
 	assert.Equal(t, "new-user-456", userID)
 
-	// Assert mocks
 	mockJWKSCache.AssertExpectations(t)
 	mockUserService.AssertExpectations(t)
 }
@@ -220,21 +197,15 @@ func TestJWKSCache_GetUserIDFromToken(t *testing.T) {
 	var _ JWKSProvider = (*JWKSCache)(nil)
 }
 
-// TestErrorResponse verifies that error responses are properly formatted
 func TestErrorResponse(t *testing.T) {
-	// Create a test logger that discards output
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	// Create test response recorder and request
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/test", nil)
 
-	// Call ErrorJSON directly to verify format
 	response.ErrorJSON(w, req, logger, http.StatusUnauthorized, "test error", nil)
 
-	// Assert status code
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	// Assert content type
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 }
