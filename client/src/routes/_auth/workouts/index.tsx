@@ -116,8 +116,8 @@ export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
           <CardTitle className="text-xl font-semibold">
             Workout Distribution
           </CardTitle>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="px-0">
+            <div className="flex flex-wrap gap-4">
               {Object.entries(workoutTypes).map(([type, count]) => (
                 <div key={type} className="text-center p-4 rounded-xl">
                   <p className="font-semibold text-lg">{count}</p>

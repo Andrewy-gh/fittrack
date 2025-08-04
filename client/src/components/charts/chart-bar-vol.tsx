@@ -50,7 +50,7 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
         <CardTitle>Daily Volume</CardTitle>
         <CardDescription>Total training volume per day.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         {/* Responsive container ensures the chart fits its parent */}
         <div className="h-80 w-full">
           {/* ResponsiveContainer makes the chart responsive */}
@@ -63,14 +63,14 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
               margin={{
                 top: 5,
                 right: 30, // Extra space for right-side labels
-                left: 20, // Space for Y-axis labels
+                // left: 20, // Space for Y-axis labels
                 bottom: 5, // Space for X-axis labels
               }}
             >
               {/* Grid lines for better readability */}
               <CartesianGrid
                 strokeDasharray="3 3" // Dashed lines
-                stroke="hsl(var(--muted))" // Muted color from theme
+                stroke="var(--color-muted)" // Muted color from theme
               />
 
               {/* X-Axis Configuration */}
@@ -85,7 +85,7 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
                 // Style for axis ticks
                 tick={{
                   fill: 'currentColor',
-                  className: 'text-neutral-300',
+                  // className: 'text-neutral-300',
                 }}
               />
 
@@ -99,7 +99,7 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
                 tickFormatter={(value) => `${value}`}
                 tick={{
                   fill: 'currentColor',
-                  className: 'text-neutral-300',
+                  // className: 'text-neutral-300',
                 }}
               />
 
@@ -108,24 +108,22 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
                 cursor={false}
                 // Styling for the tooltip container
                 contentStyle={{
-                  backgroundColor: '	hsl(0, 0%, 20.5%)', // Dark background
-                  border: '1px solid hsl(240 3.7% 15.9%)',
+                  backgroundColor: 'var(--color-background)', // Dark background
+                  border: 'var(--border-popover)', // Border color
                   borderRadius: '0.5rem',
-                  color: 'hsl(0 0% 98%)', // Light text
+                  // color: 'hsl(0 0% 98%)', // Light text
                   boxShadow:
                     '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
                 }}
                 // Style for individual items in the tooltip
                 itemStyle={{
-                  color: 'hsl(0 0% 98%)',
-                  textTransform: 'capitalize',
+                  color: 'var(--color-foreground)',
                   fontSize: '0.875rem',
-                  fontWeight: 600,
+                  textTransform: 'capitalize',
                 }}
                 // Style for the label at the top of the tooltip
                 labelStyle={{
-                  color: 'hsl(0 0% 98%)',
-                  fontWeight: 600,
+                  color: 'var(--color-foreground)',
                   fontSize: '0.875rem',
                   marginBottom: '0.25rem',
                 }}
@@ -136,7 +134,7 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
               {/* Bar Series */}
               <Bar
                 dataKey="volume" // Key in data object for Y values
-                fill="#f97316" // Default bar color (orange-500)
+                fill="var(--color-primary)"
                 radius={4} // Rounded top corners
               />
 
@@ -144,12 +142,14 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
               <Brush
                 dataKey="date" // Key to brush on
                 height={30} // Height of the brush area
-                stroke="oklch(87% 0 0)" // Color of the brush handles (neutral-300)
-                fill="oklch(20.5% 0 0)" // Background of the brush area (neutral-900)
+                stroke="var(--color-foreground)" // Color of the brush handles
+                fill="var(--color-background)" // Background of the brush area
                 // Format dates in the brush
                 tickFormatter={(str) => format(parseISO(str), 'MMM d')}
-
-                // Optional: If you want to style the selected area text
+                role="slider"
+                className="text-xs"
+                // x={50} // move brush 50px from left edge
+                // width={380}
               />
             </BarChart>
           </ResponsiveContainer>

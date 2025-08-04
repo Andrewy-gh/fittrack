@@ -169,7 +169,12 @@ export default function WorkoutTracker() {
             </h1>
           </div>
           <div>
-            <Button type="button" variant="ghost" onClick={handleClearForm}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleClearForm}
+              size="sm"
+            >
               <X className="w-3.5 h-3.5 mr-1.5" />
               <span>Clear</span>
             </Button>

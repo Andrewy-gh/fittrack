@@ -1,21 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
+  Activity,
+  BarChart3,
+  Calendar,
   Edit,
   Hash,
-  Calendar,
-  Weight,
   TrendingUp,
-  BarChart3,
-  Activity,
+  Weight,
 } from 'lucide-react';
-import { formatDate, formatTime } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartBarVol } from '@/components/charts/chart-bar-vol';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { ExerciseWithSets } from '@/lib/types';
 import { fetchExerciseWithSets } from '@/lib/api/exercises';
-// ! TODO - Implement chart component
-// import { ChartBarVol } from '@/components/charts/chart-bar-vol';
+import { formatDate, formatTime } from '@/lib/utils';
 
 function ExerciseDisplay({
   exerciseSets,
@@ -142,6 +141,7 @@ function ExerciseDisplay({
             </div>
           </Card>
         </div>
+        <ChartBarVol data={exerciseSets} />
 
         {/* MARK: Workouts */}
         <div className="space-y-4">
