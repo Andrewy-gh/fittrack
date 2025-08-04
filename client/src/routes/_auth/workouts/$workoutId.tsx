@@ -157,11 +157,11 @@ export function IndividualWorkoutPage({
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="font-medium">{set.weight} lbs</span>
-                          <span>×</span>
+                          <span>&times;</span>
                           <span className="font-medium">{set.reps} reps</span>
                         </div>
                       </div>
-                      <div className="text-sm">
+                      <div className="text-sm text-muted-foreground">
                         {set.volume.toLocaleString()} vol
                       </div>
                     </div>

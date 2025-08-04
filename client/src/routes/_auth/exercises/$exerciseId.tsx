@@ -1,34 +1,225 @@
-import { useState } from 'react';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
-import {
-  Activity,
-  ArrowLeft,
-  BarChart3,
-  Calendar,
-  Download,
-  Edit,
-  Filter,
-  RotateCcw,
-  Target,
-  Trash2,
-  TrendingUp,
-  Weight,
-} from 'lucide-react';
+import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Edit,
+  Hash,
+  Calendar,
+  Weight,
+  TrendingUp,
+  BarChart3,
+  Activity,
+} from 'lucide-react';
+import { formatDate, formatTime } from '@/lib/utils';
 import type { ExerciseWithSets } from '@/lib/types';
 import { fetchExerciseWithSets } from '@/lib/api/exercises';
-import { ChartBarVol } from '@/components/charts/chart-bar-vol';
+// ! TODO - Implement chart component
+// import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 
-interface WorkoutGroup {
-  workout_id: number;
-  sets: ExerciseWithSets[];
-  date: string;
-  totalVolume: number;
-  maxWeight: number;
-  totalReps: number;
-  setCount: number;
+function ExerciseDisplay({
+  exerciseSets,
+}: {
+  exerciseSets: ExerciseWithSets[];
+}) {
+  // Calculate summary statistics
+  const totalSets = exerciseSets.length;
+  const uniqueWorkouts = new Set(exerciseSets.map((set) => set.workout_id))
+    .size;
+  const weights = exerciseSets.map((set) => set.weight);
+  const volumes = exerciseSets.map((set) => set.volume);
+
+  const averageWeight = Math.round(
+    weights.reduce((sum, weight) => sum + weight, 0) / weights.length
+  );
+  const maxWeight = Math.max(...weights);
+  const averageVolume = Math.round(
+    volumes.reduce((sum, volume) => sum + volume, 0) / volumes.length
+  );
+  const maxVolume = Math.max(...volumes);
+
+  // Group sets by workout
+  const workoutGroups = exerciseSets.reduce(
+    (acc, set) => {
+      if (!acc[set.workout_id]) {
+        acc[set.workout_id] = {
+          date: set.workout_date,
+          notes: set.workout_notes,
+          sets: [],
+        };
+      }
+      acc[set.workout_id].sets.push(set);
+      return acc;
+    },
+    {} as Record<
+      number,
+      { date: string; notes: string | null; sets: typeof exerciseSets }
+    >
+  );
+
+  const exerciseName = exerciseSets[0]?.exercise_name || 'Exercise';
+
+  return (
+    <main>
+      <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
+        {/* Header */}
+        <div className="flex items-center justify-between pt-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {exerciseName}
+            </h1>
+          </div>
+          <Button size="sm">
+            <Edit className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+        </div>
+
+        {/* MARK: Summary Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Hash className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold">Total Sets</span>
+            </div>
+            <div className="text-2xl text-card-foreground font-bold">
+              {totalSets}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold">Workouts</span>
+            </div>
+            <div className="text-2xl text-card-foreground font-bold">
+              {uniqueWorkouts}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Weight className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold">Average Weight</span>
+            </div>
+            <div className="text-2xl text-card-foreground font-bold">
+              {averageWeight} lbs
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold">Max Weight</span>
+            </div>
+            <div className="text-2xl text-card-foreground font-bold">
+              {maxWeight} lbs
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold hidden md:inline">
+                Average Volume
+              </span>
+              <span className="text-sm font-semibold md:hidden">
+                Avg. Volume
+              </span>
+            </div>
+            <div className="text-2xl text-card-foreground font-bold">
+              {averageVolume.toLocaleString()}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold">Max Volume</span>
+            </div>
+            <div className="text-2xl text-card-foreground font-bold">
+              {maxVolume.toLocaleString()}
+            </div>
+          </Card>
+        </div>
+
+        {/* MARK: Workouts */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Workouts</h2>
+          {Object.entries(workoutGroups).map(([workoutId, workout]) => {
+            const exerciseReps = workout.sets.reduce(
+              (sum, set) => sum + set.reps,
+              0
+            );
+            const exerciseVolume = workout.sets.reduce(
+              (sum, set) => sum + set.volume,
+              0
+            );
+            return (
+              <Card
+                key={workoutId}
+                className="border-0 shadow-sm backdrop-blur-sm"
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg font-semibold">
+                        {formatDate(workout.date)}
+                      </CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm text-muted-foreground">
+                          {formatTime(workout.date)}
+                        </p>
+                        {workout.notes && (
+                          <>
+                            <span className="text-muted-foreground">•</span>
+                            <Badge
+                              variant="outline"
+                              className="border-border bg-muted text-xs"
+                            >
+                              {workout.notes.toUpperCase()}
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>{exerciseReps} reps</span>
+                      <span className="text-primary">
+                        {exerciseVolume.toLocaleString()} vol
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {workout.sets.map((set, index) => (
+                    <div
+                      key={set.set_id}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <span className="text-sm font-medium text-muted-foreground w-8">
+                          {index + 1}
+                        </span>
+                        <div className="flex items-center space-x-4 text-sm">
+                          <span className="font-medium">{set.weight} lbs</span>
+                          <span>&times;</span>
+                          <span className="font-medium">{set.reps} reps</span>
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {set.volume.toLocaleString()} vol
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </main>
+  );
 }
 
 export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
@@ -59,568 +250,5 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
 
 function RouteComponent() {
   const exerciseSets = Route.useLoaderData();
-
-  return (
-    <ExerciseDisplay exerciseSets={exerciseSets} />
-  );
-}
-
-function ExerciseDisplay({
-  exerciseSets,
-}: {
-  exerciseSets: ExerciseWithSets[];
-}) {
-  const router = useRouter();
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutGroup | null>(
-    null
-  );
-  const [selectedSet, setSelectedSet] = useState<ExerciseWithSets | null>(null);
-
-  // Group sets by workout
-  const workoutGroups: WorkoutGroup[] = exerciseSets.reduce((acc, set) => {
-    const existingWorkout = acc.find((w) => w.workout_id === set.workout_id);
-
-    if (existingWorkout) {
-      existingWorkout.sets.push(set);
-      existingWorkout.totalVolume += set.weight * set.reps;
-      existingWorkout.maxWeight = Math.max(
-        existingWorkout.maxWeight,
-        set.weight
-      );
-      existingWorkout.totalReps += set.reps;
-      existingWorkout.setCount += 1;
-    } else {
-      acc.push({
-        workout_id: set.workout_id,
-        sets: [set],
-        date: set.workout_date,
-        totalVolume: set.weight * set.reps,
-        maxWeight: set.weight,
-        totalReps: set.reps,
-        setCount: 1,
-      });
-    }
-
-    return acc;
-  }, [] as WorkoutGroup[]);
-
-  // Sort by date (most recent first)
-  workoutGroups.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  };
-
-  const getSetTypeColor = (setType: string) => {
-    switch (setType) {
-      case 'working':
-        return 'bg-white/20 text-white';
-      case 'warmup':
-        return 'bg-orange-500/20 text-orange-500';
-      case 'workout':
-        return 'bg-white/20 text-white';
-      case 'dropset':
-        return 'bg-red-500/20 text-red-500';
-      default:
-        return 'bg-neutral-500/20 text-neutral-300';
-    }
-  };
-
-  // Calculate overall stats
-  const totalSets = exerciseSets.length;
-  const totalVolume = exerciseSets.reduce(
-    (sum, set) => sum + set.weight * set.reps,
-    0
-  );
-  const maxWeight = Math.max(...exerciseSets.map((set) => set.weight));
-  const totalReps = exerciseSets.reduce((sum, set) => sum + set.reps, 0);
-  const avgWeight =
-    exerciseSets.reduce((sum, set) => sum + set.weight, 0) /
-    exerciseSets.length;
-  const workoutCount = workoutGroups.length;
-
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => router.history.back()}
-            className="text-neutral-400 hover:text-orange-500 p-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-wider">
-              {exerciseSets[0]?.exercise_name}
-            </h1>
-            <p className="text-sm text-neutral-400">
-              Exercise ID: EX-
-              {exerciseSets[0]?.exercise_id.toString().padStart(3, '0')} •
-              Performance Analysis
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Analytics
-          </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </Button>
-        </div>
-      </div>
-
-      {/* MARK: Exercise Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
-                  TOTAL SETS
-                </p>
-                <p className="text-2xl font-bold text-white font-mono">
-                  {totalSets}
-                </p>
-              </div>
-              <RotateCcw className="w-8 h-8 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
-                  WORKOUTS
-                </p>
-                <p className="text-2xl font-bold text-white font-mono">
-                  {workoutCount}
-                </p>
-              </div>
-              <Calendar className="w-8 h-8 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
-                  MAX WEIGHT
-                </p>
-                <p className="text-2xl font-bold text-orange-500 font-mono">
-                  {maxWeight}
-                </p>
-              </div>
-              <Weight className="w-8 h-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
-                  TOTAL VOLUME
-                </p>
-                <p className="text-2xl font-bold text-white font-mono">
-                  {totalVolume.toLocaleString()}
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
-                  TOTAL REPS
-                </p>
-                <p className="text-2xl font-bold text-white font-mono">
-                  {totalReps}
-                </p>
-              </div>
-              <Target className="w-8 h-8 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider">
-                  AVG WEIGHT
-                </p>
-                <p className="text-2xl font-bold text-white font-mono">
-                  {avgWeight.toFixed(0)}
-                </p>
-              </div>
-              <Activity className="w-8 h-8 text-white" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* MARK: Performance Progression */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
-            PERFORMANCE PROGRESSION
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartBarVol data={exerciseSets} />
-        </CardContent>
-      </Card>
-
-      {/* MARK: Training Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-neutral-300 tracking-wider">
-            TRAINING SESSIONS
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {workoutGroups.map((workout) => (
-              <div
-                key={workout.workout_id}
-                className="border border-neutral-700 rounded p-4 hover:border-orange-500/50 transition-colors cursor-pointer"
-                onClick={() => setSelectedWorkout(workout)}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-white font-mono">
-                        WO-{workout.workout_id.toString().padStart(3, '0')}
-                      </div>
-                      <div className="text-xs text-neutral-400">SESSION</div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-white">
-                        {formatDate(workout.date)}
-                      </div>
-                      <div className="text-xs text-neutral-400 font-mono">
-                        {formatTime(workout.date)}
-                      </div>
-                    </div>
-                  </div>
-
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                      <div className="text-lg font-bold text-white font-mono">
-                        {workout.setCount}
-                      </div>
-                      <div className="text-xs text-neutral-400">SETS</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-orange-500 font-mono">
-                        {workout.maxWeight}
-                      </div>
-                      <div className="text-xs text-neutral-400">MAX LBS</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-white font-mono">
-                        {workout.totalReps}
-                      </div>
-                      <div className="text-xs text-neutral-400">REPS</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-white font-mono">
-                        {workout.totalVolume.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-neutral-400">VOLUME</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* MARK:Sets Preview */}
-                <div className="mt-4 flex flex-col gap-2 rounded-md sm:flex-row sm:flex-wrap sm:items-center">
-                  {workout.sets.map((set, index) => (
-                    <div
-                      key={set.set_id}
-                      className="flex cursor-pointer items-center justify-between gap-2 rounded bg-input px-2 py-1 text-xs hover:bg-neutral-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedSet(set);
-                      }}
-                    >
-                      <span className="text-neutral-400">#{index + 1}</span>
-                      <Badge className={getSetTypeColor(set.set_type)}>
-                        {set.set_type.toUpperCase()}
-                      </Badge>
-                      <span className="text-white font-mono">
-                        {set.weight}×{set.reps}
-                      </span>
-                      <span className="text-orange-500 font-mono">
-                        {(set.weight * set.reps).toLocaleString()} vol
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* MARK: Modal */}
-      {selectedWorkout && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-xl font-bold text-white tracking-wider">
-                  WORKOUT SESSION WO-
-                  {selectedWorkout.workout_id.toString().padStart(3, '0')}
-                </CardTitle>
-                <p className="text-sm text-neutral-400">
-                  {formatDate(selectedWorkout.date)} at{' '}
-                  {formatTime(selectedWorkout.date)}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => setSelectedWorkout(null)}
-                className="text-neutral-400 hover:text-white"
-              >
-                ✕
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white font-mono">
-                    {selectedWorkout.setCount}
-                  </div>
-                  <div className="text-xs text-neutral-400">TOTAL SETS</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-500 font-mono">
-                    {selectedWorkout.maxWeight}
-                  </div>
-                  <div className="text-xs text-neutral-400">MAX WEIGHT</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white font-mono">
-                    {selectedWorkout.totalReps}
-                  </div>
-                  <div className="text-xs text-neutral-400">TOTAL REPS</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white font-mono">
-                    {selectedWorkout.totalVolume.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-neutral-400">TOTAL VOLUME</div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-neutral-700">
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        SET
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        TYPE
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        WEIGHT
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        REPS
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        VOLUME
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        TIME
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium text-neutral-400 tracking-wider">
-                        ACTIONS
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedWorkout.sets.map((set, index) => (
-                      <tr
-                        key={set.set_id}
-                        className="border-b border-neutral-800 hover:bg-neutral-800 transition-colors"
-                      >
-                        <td className="py-3 px-4 text-sm text-white font-mono">
-                          #{index + 1}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge className={getSetTypeColor(set.set_type)}>
-                            {set.set_type.toUpperCase()}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-white font-mono">
-                          {set.weight} lbs
-                        </td>
-                        <td className="py-3 px-4 text-sm text-white font-mono">
-                          {set.reps}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-orange-500 font-mono">
-                          {(set.weight * set.reps).toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-neutral-300 font-mono">
-                          {formatTime(set.workout_date)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-neutral-400 hover:text-orange-500"
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-neutral-400 hover:text-red-500"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex gap-2 pt-4 border-t border-neutral-700">
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Data
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 bg-transparent"
-                >
-                  View Full Workout
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* MARK: Set Detail Modal */}
-      {selectedSet && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-bold text-white tracking-wider">
-                  SET DETAILS
-                </CardTitle>
-                <p className="text-sm text-neutral-400 font-mono">
-                  SET-{selectedSet.set_id.toString().padStart(3, '0')}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => setSelectedSet(null)}
-                className="text-neutral-400 hover:text-white"
-              >
-                ✕
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
-                    WEIGHT
-                  </p>
-                  <p className="text-lg font-bold text-white font-mono">
-                    {selectedSet.weight} lbs
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
-                    REPS
-                  </p>
-                  <p className="text-lg font-bold text-white font-mono">
-                    {selectedSet.reps}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
-                    SET TYPE
-                  </p>
-                  <Badge className={getSetTypeColor(selectedSet.set_type)}>
-                    {selectedSet.set_type.toUpperCase()}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-neutral-400 tracking-wider mb-1">
-                    VOLUME
-                  </p>
-                  <p className="text-lg font-bold text-orange-500 font-mono">
-                    {(selectedSet.weight * selectedSet.reps).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-neutral-400 tracking-wider mb-1">
-                  CREATED
-                </p>
-                <p className="text-sm text-white font-mono">
-                  {formatDate(selectedSet.workout_date)}
-                </p>
-                <p className="text-sm text-neutral-400 font-mono">
-                  {formatTime(selectedSet.workout_date)}
-                </p>
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white flex-1">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Set
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-red-700 text-red-400 hover:bg-red-900/20 hover:text-red-300 bg-transparent"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
+  return <ExerciseDisplay exerciseSets={exerciseSets} />;
 }
