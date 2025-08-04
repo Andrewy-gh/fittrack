@@ -25,9 +25,7 @@ export default function NotesTextarea2() {
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-              NOTES
-            </span>
+            <span className="font-semibold text-sm tracking-tight">Notes</span>
           </div>
           <div className="text-card-foreground font-semibold">
             {field.state.value ?? 'Enter notes'}

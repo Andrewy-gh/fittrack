@@ -27,12 +27,12 @@ export default function DatePicker2() {
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <CalendarIcon className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-              WORKOUT DATE
-            </span>
+            <span className="font-semibold text-sm tracking-tight">Date</span>
           </div>
           <div className="text-card-foreground font-semibold">
-            {field.state.value ? format(field.state.value, 'PPP') : 'Pick a date'}
+            {field.state.value
+              ? format(field.state.value, 'PPP')
+              : 'Pick a date'}
           </div>
         </Card>
       </PopoverTrigger>
