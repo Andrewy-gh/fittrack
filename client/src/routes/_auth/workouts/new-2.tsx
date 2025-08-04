@@ -161,154 +161,146 @@ export default function WorkoutTracker() {
         </div>
       }
     >
-      <div>
-        <div className="px-4 pb-8">
-          <div className="max-w-md mx-auto space-y-6">
-            {/* Header */}
-            <div className="pt-6 pb-2">
-              <h1 className="font-bold text-3xl tracking-tight text-foreground">
-                Summary
-              </h1>
-            </div>
-
-            {/* Quick Stats */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                form.handleSubmit();
-              }}
-            >
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {/* MARK: Date/Notes*/}
-                <form.AppField
-                  name="date"
-                  children={(field) => <field.DatePicker2 />}
-                />
-                <form.AppField
-                  name="notes"
-                  children={(field) => <field.NotesTextarea2 />}
-                />
-              </div>
-
-              {/* MARK: Exercise Cards */}
-              <form.AppField
-                name="exercises"
-                mode="array"
-                children={(field) => {
-                  console.log('field', field.state.value);
-                  return (
-                    <div className="space-y-3">
-                      {field.state.value.map((exercise, exerciseIndex) => (
-                        <Card
-                          key={`exercise-${exerciseIndex}`}
-                          className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
-                          onClick={() => handleExerciseClick(exerciseIndex)} // MARK: ! TODO index
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                  <span className="text-primary font-medium text-sm">
-                                    {exercise.name}
-                                  </span>
-                                  {/* <span className="font-semibold text-sm tracking-tight uppercase text-muted-foreground ml-auto">
-                                  {exercise.lastUpdated}
-                                  </span> */}
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    field.removeValue(exerciseIndex)
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-
-                              <div className="flex items-end justify-between">
-                                <div>
-                                  <div className="font-bold text-lg text-card-foreground">
-                                    {exercise.sets.length}
-                                  </div>
-                                  <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                                    sets
-                                  </div>
-                                </div>
-
-                                <div className="flex items-end gap-4">
-                                  <div className="text-right">
-                                    <div className="text-card-foreground font-bold text-lg">
-                                      {exercise.sets.reduce(
-                                        (acc, set) =>
-                                          acc +
-                                          (set.reps || 0) * (set.weight || 0),
-                                        0
-                                      )}
-                                    </div>
-                                    <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                                      volume
-                                    </div>
-                                  </div>
-                                  <MiniChart
-                                    data={[3, 5, 2, 4, 6, 3, 4]}
-                                    activeIndex={6}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  );
-                }}
-              />
-
-              {/* Add Exercise Button */}
-              <div className="pt-6">
-                <Button
-                  type="button"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 w-full py-4 text-base font-semibold rounded-lg"
-                  onClick={() => setCurrentView('add-exercise')}
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Add Exercise
-                </Button>
-              </div>
-              {/* ! TODO: Save and Cancel buttons */}
-              <div className="flex gap-2 mt-4">
-                <form.Subscribe
-                  selector={(state) => [state.canSubmit, state.isSubmitting]}
-                  children={([canSubmit, isSubmitting]) => (
-                    <Button
-                      type="submit"
-                      disabled={!canSubmit}
-                      className="flex-1 py-1.5 h-auto text-sm"
-                    >
-                      <Save className="w-3.5 h-3.5 mr-1.5" />
-                      {isSubmitting ? 'SAVING...' : 'SAVE'}
-                    </Button>
-                  )}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClearForm}
-                >
-                  <X className="w-3.5 h-3.5 mr-1.5" />
-                  <span className="hidden sm:inline">Clear Form</span>
-                  <span className="sm:hidden">Clear</span>
-                </Button>
-              </div>
-            </form>
+      <div className="max-w-md mx-auto space-y-6 px-4 pb-8">
+        <div className="flex items-center justify-between pt-6 pb-2">
+          <div>
+            <h1 className="font-bold text-2xl tracking-tight text-foreground">
+              Today's Training
+            </h1>
+          </div>
+          <div>
+            <Button type="button" variant="ghost" onClick={handleClearForm}>
+              <X className="w-3.5 h-3.5 mr-1.5" />
+              <span>Clear</span>
+            </Button>
           </div>
         </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+        >
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* MARK: Date/Notes*/}
+            <form.AppField
+              name="date"
+              children={(field) => <field.DatePicker2 />}
+            />
+            <form.AppField
+              name="notes"
+              children={(field) => <field.NotesTextarea2 />}
+            />
+          </div>
+
+          {/* MARK: Exercise Cards */}
+          <form.AppField
+            name="exercises"
+            mode="array"
+            children={(field) => {
+              console.log('field', field.state.value);
+              return (
+                <div className="space-y-3">
+                  {field.state.value.map((exercise, exerciseIndex) => (
+                    <Card
+                      key={`exercise-${exerciseIndex}`}
+                      className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
+                      onClick={() => handleExerciseClick(exerciseIndex)} // MARK: ! TODO index
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-2 h-2 bg-primary rounded-full"></div>
+                              <span className="text-primary font-medium text-sm">
+                                {exercise.name}
+                              </span>
+                              {/* <span className="font-semibold text-sm tracking-tight uppercase text-muted-foreground ml-auto">
+                                  {exercise.lastUpdated}
+                                  </span> */}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                field.removeValue(exerciseIndex);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <div className="font-bold text-lg text-card-foreground">
+                                {exercise.sets.length}
+                              </div>
+                              <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
+                                sets
+                              </div>
+                            </div>
+
+                            <div className="flex items-end gap-4">
+                              <div className="text-right">
+                                <div className="text-card-foreground font-bold text-lg">
+                                  {exercise.sets.reduce(
+                                    (acc, set) =>
+                                      acc + (set.reps || 0) * (set.weight || 0),
+                                    0
+                                  )}
+                                </div>
+                                <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
+                                  volume
+                                </div>
+                              </div>
+                              <MiniChart
+                                data={[3, 5, 2, 4, 6, 3, 4]}
+                                activeIndex={6}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              );
+            }}
+          />
+
+          {/* Add Exercise Button */}
+          <div className="pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-base font-semibold rounded-lg"
+              onClick={() => setCurrentView('add-exercise')}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add Exercise
+            </Button>
+          </div>
+          {/* ! TODO: Save and Cancel buttons */}
+          <div className="flex gap-2 mt-4">
+            <form.Subscribe
+              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              children={([canSubmit, isSubmitting]) => (
+                <Button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className="w-full text-base font-semibold rounded-lg"
+                >
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  {isSubmitting ? 'Saving...' : 'Save'}
+                </Button>
+              )}
+            />
+          </div>
+        </form>
       </div>
     </Suspense>
   );
