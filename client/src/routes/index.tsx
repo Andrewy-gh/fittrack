@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,37 +26,35 @@ function HomePage({
 }: {
   user: CurrentUser | CurrentInternalUser | null;
 }) {
-  const [selectedTestimonial, setSelectedTestimonial] = useState(null);
-
   // MARK: Features
   const features = [
     {
       icon: Zap,
-      title: 'Lightning Fast',
+      title: 'Never Miss a Rep',
       description:
-        'Always responsive and efficient. Never compromises operational speed.',
-      highlight: 'TACTICAL SPEED',
+        'Log workouts in seconds, not minutes. Our streamlined interface captures every set while you focus on crushing your goals.',
+      highlight: 'LIGHTNING FAST',
     },
     {
       icon: Target,
-      title: 'Precision Interface',
+      title: 'Smart Progress Tracking',
       description:
-        'Large touch zones optimized for field conditions and tactical gear.',
-      highlight: 'FIELD READY',
+        'See exactly how each workout builds toward your bigger goals. Visual progress that keeps you motivated to push harder.',
+      highlight: 'RESULTS FOCUSED',
     },
     {
       icon: Eye,
-      title: 'High Visibility',
+      title: 'Your Wins Made Visible',
       description:
-        'Maximum readability in all lighting conditions, from bunker to daylight.',
-      highlight: 'ALL CONDITIONS',
+        'Transform scattered workouts into clear victories. Beautiful charts show your strength gains and consistency streaks.',
+      highlight: 'SEE YOUR SUCCESS',
     },
     {
       icon: Wifi,
-      title: 'Offline Operations',
+      title: 'Works Everywhere',
       description:
-        'Full functionality without network dependency. Mission critical reliability.',
-      highlight: 'ZERO DEPENDENCY',
+        'Gym, home, or outdoors - your progress syncs seamlessly. Never lose a workout, even when offline.',
+      highlight: 'ALWAYS READY',
     },
   ];
 
@@ -65,71 +62,57 @@ function HomePage({
   const testimonials = [
     {
       id: 1,
-      name: 'Agent Phoenix',
-      role: 'Field Operative',
+      name: 'Alex Strong',
+      role: 'Fitness Enthusiast',
       rating: 5,
-      text: "An elite and powerful tactical system. I've deployed many mission trackers over the years and this one is by far the best. The interface doesn't get in your way, and the design is so intuitive to work with. Best of all, the data are responsive and ultra quick to access even when bugs as they come up!",
-      date: 'Nov 2023',
+      text: "Finally, a fitness app that doesn't get in my way. FitTrack makes logging workouts so fast I actually stick with it. My consistency has never been better.",
+      date: 'July 2025',
     },
     {
       id: 2,
-      name: 'Commander Steel',
-      role: 'Operations Director',
+      name: 'Jordan Peak',
+      role: 'Personal Trainer',
       rating: 5,
-      text: 'Outstanding system and service. Command HQ and our field teams have recommended it to operatives of all different training levels and they have found it useful and intuitive. When I thought being able to sync data in real-time was just a dream, this system made it reality and notified me this was a feature in the works. Within 2 weeks of the communication the live export feature was live.',
-      date: 'Oct 2023',
+      text: "I recommend FitTrack to all my clients. It's the only app that makes tracking feel effortless while showing real progress. Game changer for habit building.",
+      date: 'June 2025',
     },
     {
       id: 3,
-      name: 'Operative Ghost',
-      role: 'Tactical Specialist',
+      name: 'Taylor Lift',
+      role: 'Powerlifter',
       rating: 5,
-      text: "Mission critical! Very refreshing to see a tactical system that keeps mission logging quick and simple. Love the minimalistic design keeping only the essential functions in mind. I think linking on Command ID should be optional as it's not a necessity for keeping info on our local device (unless some would prefer a cloud backup). Looks like the system is still in its early days with the mission catalogue, but I'm excited to see where this system goes. Nice work!",
-      date: 'Sep 2023',
+      text: 'The progress visualization is incredible. Seeing my strength gains mapped out keeps me motivated through tough training blocks. Worth every download.',
+      date: 'May 2025',
     },
     {
       id: 4,
-      name: 'Agent Viper',
-      role: 'Intelligence Analyst',
+      name: 'Chris Endurance',
+      role: 'Runner',
       rating: 5,
-      text: "Best tactical tracker. I started working out beginning of this year and was writing all my progress down in notebooks and on the notes app on my phone. Had this system pop up as an ad on instagram and I'm so glad I downloaded it. Its so easy to use, so clearly laid out, the team are constantly interacting with people and taking onboard feedback and its great to see. I use this every time I go to the gym and have recommended it to others because I think its so damn good.",
-      date: 'Aug 2023',
-    },
-    {
-      id: 5,
-      name: 'Commander Raven',
-      role: 'Strategic Operations',
-      rating: 5,
-      text: "Exceptional attention to detail and simplicity of the system. There's no bloat, easy to understand (unlike most tactical systems I've tried). Definitely sticking with this one. Incredible work.",
-      date: 'Jul 2023',
-    },
-    {
-      id: 6,
-      name: 'Specialist Hawk',
-      role: 'Field Commander',
-      rating: 5,
-      text: "Best Tracker I've Used. Has everything you need: all exercises, equipment, tracks weight, reps, etc. Future suggestion is to add a social aspect where you can share workouts with friends, kind of like the Apple Watch app.",
-      date: 'Jun 2023',
+      text: "Love how FitTrack is expanding beyond weightlifting. The foundation is rock solid, and I'm excited to track my runs here soon!",
+      date: 'April 2025',
     },
   ];
 
   return (
     <div className="min-h-screen">
       {/* MARK: Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-neutral-800">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="w-6 h-6 text-orange-500" />
-            <span className="text-xl font-bold tracking-wider">FITTRACK</span>
+            <Shield className="w-6 h-6 text-primary" />
+            <span className="text-xl font-bold tracking-wide text-foreground">
+              FITTRACK
+            </span>
             {user && (
               <>
-                <div className="px-2 font-bold">
+                <div className="px-2 font-bold text-foreground">
                   <Link to="/workouts/new">New Workout</Link>
                 </div>
-                <div className="px-2 font-bold">
+                <div className="px-2 font-bold text-foreground">
                   <Link to="/workouts">Workouts</Link>
                 </div>
-                <div className="px-2 font-bold">
+                <div className="px-2 font-bold text-foreground">
                   <Link to="/exercises">Exercises</Link>
                 </div>
               </>
@@ -137,126 +120,131 @@ function HomePage({
           </div>
           <div className="flex items-center gap-4">
             <ModeToggle />
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="w-4 h-4 mr-2" />
-              Deploy System
+              Get Started Free
             </Button>
             <UserButton />
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* MARK: Hero Section */}
       <section className="pt-24 pb-16 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <Badge className="bg-orange-500/20 text-orange-500 mb-6 px-4 py-2">
-              <Shield className="w-4 h-4 mr-2" />
-              Elite Operations Platform
+          <div className="text-center mb-12 space-y-6">
+            <Badge className="bg-primary/20 text-primary mb-6 px-4 py-2">
+              <Shield className="w-4 h-4 mr-2 fill-primary" />
+              Turn Fitness Into Your Daily Win
             </Badge>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-wider mb-6">
-              Serious tracking
+            <h1 className="mb-6 text-5xl leading-snug font-bold tracking-wide text-foreground md:text-7xl">
+              Build Your Strongest
               <br />
-              for serious <span className="text-orange-500">fitness</span>
+              <span className="text-primary">Habit</span> Yet
               <br />
-              operations.
+              With FitTrack.
             </h1>
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <Badge className="bg-neutral-800 text-white px-4 py-2">
-                <Star className="w-4 h-4 mr-2 text-orange-500" />
-                Elite Systems Award 2024
-              </Badge>
+            <p className="text-muted-foreground leading-relaxed">
+              Stop starting over. FitTrack transforms scattered workouts into
+              lasting habits through smart tracking, visual progress, and a
+              community that keeps you accountable. Finally see the results
+              you're working for.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+              <Button
+                size="lg"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Download Free Today
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
+              >
+                See How It Works
+              </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-4">
-                <h3 className="text-xl font-medium text-neutral-300">
-                  Mission Control
+                <h3 className="text-xl font-medium text-muted-foreground">
+                  Your Progress, Simplified
                 </h3>
-                <p className="text-neutral-400 leading-relaxed">
-                  Advanced fitness operations management system designed for
-                  elite athletes. Track workouts, manage training programs, and
-                  coordinate fitness activities with military-grade precision
-                  and reliability.
+                <p className="text-muted-foreground leading-relaxed">
+                  FitTrack makes every workout count by showing you exactly how
+                  each session builds toward your bigger goals. No more guessing
+                  if you're making progress.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-neutral-900 border border-neutral-700 rounded">
-                  <div className="text-2xl font-bold text-orange-500 font-mono">
-                    847
+                <div className="text-center p-4 bg-card border border-border rounded space-y-3">
+                  <div className="text-2xl font-bold text-primary">
+                    250K+
                   </div>
-                  <div className="text-xs text-neutral-400">ACTIVE AGENTS</div>
+                  <div className="text-xs text-muted-foreground">
+                    ACTIVE USERS
+                  </div>
                 </div>
-                <div className="text-center p-4 bg-neutral-900 border border-neutral-700 rounded">
-                  <div className="text-2xl font-bold text-white font-mono">
-                    23
+                <div className="text-center p-4 bg-card border border-border rounded space-y-3">
+                  <div className="text-2xl font-bold text-foreground">
+                    85%
                   </div>
-                  <div className="text-xs text-neutral-400">ONGOING OPS</div>
+                  <div className="text-xs text-muted-foreground">
+                    STILL ACTIVE AFTER 6 MONTHS
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-center">
               <div className="relative">
-                <div className="w-80 h-96 bg-neutral-900 border border-neutral-700 rounded-3xl p-6 shadow-2xl">
+                <div className="w-80 h-96 bg-card border border-border rounded-3xl p-6 shadow-2xl">
                   <div className="text-center mb-6">
-                    <div className="text-xs text-neutral-400 mb-2">
-                      TACTICAL COMMAND
+                    <div className="text-xs text-muted-foreground mb-2">
+                      CURRENT WORKOUT
                     </div>
-                    <div className="text-2xl font-bold text-white font-mono">
-                      4:44
+                    <div className="text-2xl font-bold text-foreground">
+                      30:15
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                    <div className="bg-card border border-border rounded p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">
-                          Mission Alpha
+                        <span className="text-sm text-foreground">
+                          Bench Press
                         </span>
-                        <Badge className="bg-orange-500/20 text-orange-500 text-xs">
-                          ACTIVE
+                        <Badge className="bg-primary/20 text-primary text-xs">
+                          CRUSHING IT
                         </Badge>
                       </div>
-                      <div className="text-xs text-neutral-400">
-                        190 lbs • 5 reps
+                      <div className="text-xs text-muted-foreground">
+                        200 lbs • 8 reps • +5 lbs from last week
                       </div>
                     </div>
 
-                    <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                    <div className="bg-card border border-border rounded p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">Recon Beta</span>
-                        <Badge className="bg-white/20 text-white text-xs">
-                          STANDBY
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-neutral-400">
-                        Body weight • 21 min ago
-                      </div>
-                    </div>
-
-                    <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">
-                          Extraction Gamma
-                        </span>
-                        <Badge className="bg-white/20 text-white text-xs">
+                        <span className="text-sm text-foreground">Squats</span>
+                        <Badge className="bg-secondary/20 text-secondary-foreground text-xs">
                           COMPLETE
                         </Badge>
                       </div>
-                      <div className="text-xs text-neutral-400">
-                        3,200 lbs total volume
+                      <div className="text-xs text-muted-foreground">
+                        300 lbs • 10 reps • New PR! 🎉
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Floating notification */}
-                <div className="absolute -top-4 -right-4 bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
-                  1
+                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4">
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                      Log Next Set
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -264,41 +252,40 @@ function HomePage({
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 px-6 bg-neutral-950">
+      {/* MARK: Features Section */}
+      <section className="py-16 px-6 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-4">
-              Tactical
+            <h2 className="mb-4 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
+              Simple
               <br />
-              <span className="text-neutral-500">by design.</span>
+              <span className="text-muted-foreground">by design.</span>
             </h2>
-            <p className="text-xl text-neutral-400">
-              Built exclusively for operational excellence.
+            <p className="text-xl text-muted-foreground">
+              Built for people who want results, not complexity.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {features.map((feature, index) => (
-              <Card
-                key={index}
-                className="bg-neutral-900 border-neutral-700 p-6"
-              >
+              <Card key={index} className="bg-card border border-border p-6">
                 <CardContent className="p-0">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-orange-500/20 rounded">
-                      <feature.icon className="w-6 h-6 text-orange-500" />
+                    <div className="p-3 bg-primary/20 rounded">
+                      <feature.icon className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-white">
+                        <h3 className="text-lg font-bold text-foreground">
                           {feature.title}
                         </h3>
-                        <Badge className="bg-orange-500/20 text-orange-500 text-xs">
+                        <Badge className="bg-primary/20 text-primary text-xs">
                           {feature.highlight}
                         </Badge>
                       </div>
-                      <p className="text-neutral-400">{feature.description}</p>
+                      <p className="text-muted-foreground">
+                        {feature.description}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -308,99 +295,105 @@ function HomePage({
         </div>
       </section>
 
-      {/* Advanced Features */}
+      {/* MARK: Advanced Features */}
       <section className="py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-6">
-                Not just
+              <h2 className="mb-6 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
+                More than
                 <br />
-                <span className="text-neutral-500">missions.</span>
+                <span className="text-muted-foreground">just logging.</span>
               </h2>
-              <p className="text-xl text-neutral-400 mb-8 leading-relaxed">
-                Advanced coordination protocols, real-time intelligence sharing,
-                multi-vector analysis, tactical planning tools, resource
-                allocation - all integrated into one comprehensive command
-                system designed for maximum operational effectiveness.
+              <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+                Smart goal setting that evolves with you. Community challenges
+                that turn solo workouts into shared victories. Nutrition
+                insights that fuel your performance. Everything you need to
+                build the fitness habit that actually sticks.
               </p>
 
-              <div className="space-y-4 text-neutral-400">
+              <div className="space-y-4 text-muted-foreground">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
-                  <span>Real-time coordination</span>
+                  <CheckCircle className="w-5 h-5 text-primary" />
+                  <span>AI-powered goal recommendations</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
-                  <span>Intelligence integration</span>
+                  <CheckCircle className="w-5 h-5 text-primary" />
+                  <span>Weekly community challenges</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
-                  <span>Resource optimization</span>
+                  <CheckCircle className="w-5 h-5 text-primary" />
+                  <span>Integrated nutrition tracking</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
-                  <span>Mission analytics</span>
+                  <CheckCircle className="w-5 h-5 text-primary" />
+                  <span>Habit streak visualization</span>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-center">
-              <div className="w-80 h-96 bg-neutral-900 border border-neutral-700 rounded-3xl p-6 shadow-2xl">
+              <div className="w-80 h-96 bg-card border border-border rounded-3xl p-6 shadow-2xl">
                 <div className="text-center mb-6">
-                  <div className="text-xs text-neutral-400 mb-2">
-                    OPERATION TIMER
+                  <div className="text-xs text-muted-foreground mb-2">
+                    THIS WEEK'S CHALLENGE
                   </div>
-                  <div className="text-4xl font-bold text-white font-mono">
-                    32:08
+                  <div className="text-4xl font-bold text-foreground">
+                    7/10
                   </div>
-                  <div className="text-xs text-neutral-400">
-                    Mission in progress
+                  <div className="text-xs text-muted-foreground">
+                    Workouts completed
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-orange-500" />
-                      <span className="text-sm text-white">Infiltration</span>
+                      <Target className="w-4 h-4 text-primary" />
+                      <span className="text-sm text-foreground">
+                        Upper Body
+                      </span>
                     </div>
-                    <span className="text-xs text-neutral-400">
-                      5 km • 2:30 min/km
+                    <span className="text-xs text-muted-foreground">
+                      45 min • Complete ✓
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-white" />
-                      <span className="text-sm text-white">Surveillance</span>
+                      <Activity className="w-4 h-4 text-foreground" />
+                      <span className="text-sm text-foreground">
+                        Lower Body
+                      </span>
                     </div>
-                    <span className="text-xs text-neutral-400">
-                      12 targets completed
+                    <span className="text-xs text-muted-foreground">
+                      50 min • Complete ✓
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-white" />
-                      <span className="text-sm text-white">Security</span>
+                      <Shield className="w-4 h-4 text-foreground" />
+                      <span className="text-sm text-foreground">Cardio</span>
                     </div>
-                    <span className="text-xs text-neutral-400">3 x 30 sec</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-white" />
-                      <span className="text-sm text-white">Analysis</span>
-                    </div>
-                    <span className="text-xs text-neutral-400">
-                      Real-time data
+                    <span className="text-xs text-muted-foreground">
+                      30 min • Complete ✓
                     </span>
                   </div>
 
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white mt-4">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-primary" />
+                      <span className="text-sm text-foreground">Rest Day</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Recovery earned
+                    </span>
+                  </div>
+
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4">
                     <ArrowRight className="w-4 h-4 mr-2" />
-                    Next Phase
+                    Join Challenge
                   </Button>
                 </div>
               </div>
@@ -409,17 +402,17 @@ function HomePage({
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-16 px-6 bg-neutral-950">
+      {/* MARK: Testimonials */}
+      <section className="py-16 px-6 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-4">
-              What elite
+            <h2 className="mb-4 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
+              Real people,
               <br />
-              operatives think.
+              <span className="text-muted-foreground">real results.</span>
             </h2>
-            <p className="text-xl text-neutral-400">
-              Reviews from our field agents.
+            <p className="text-xl text-muted-foreground">
+              Join 250,000+ people building their strongest habits yet.
             </p>
           </div>
 
@@ -427,27 +420,27 @@ function HomePage({
             {testimonials.slice(0, 4).map((testimonial) => (
               <Card
                 key={testimonial.id}
-                className="bg-neutral-900 border-neutral-700 p-6"
+                className="bg-card border border-border p-6"
               >
                 <CardContent className="p-0">
                   <div className="flex items-center gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className="w-4 h-4 fill-orange-500 text-orange-500"
+                        className="w-4 h-4 fill-primary text-primary"
                       />
                     ))}
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2">
+                  <h3 className="text-lg font-bold text-foreground mb-2">
                     {testimonial.name}
                   </h3>
-                  <p className="text-sm text-neutral-400 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {testimonial.role}
                   </p>
-                  <p className="text-neutral-300 leading-relaxed mb-4">
-                    {testimonial.text}
+                  <p className="text-muted-foreground leading-relaxed mb-4">
+                    "{testimonial.text}"
                   </p>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-muted-foreground">
                     {testimonial.date}
                   </div>
                 </CardContent>
@@ -455,30 +448,31 @@ function HomePage({
             ))}
           </div>
 
-          {/* Video Testimonial */}
-          <Card className="bg-neutral-900 border-neutral-700 overflow-hidden">
+          {/* MARK: Video Testimonial */}
+          <Card className="bg-card border border-border overflow-hidden">
             <CardContent className="p-0">
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 <div className="p-8">
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    Agent Phantom on
+                  <h3 className="text-2xl font-bold text-foreground mb-2">
+                    "FitTrack changed
                     <br />
-                    using FitTrack.
+                    how I see progress."
                   </h3>
-                  <p className="text-neutral-400 mb-6">
-                    How he uses FitTrack to coordinate his training operations.
+                  <p className="text-muted-foreground mb-6">
+                    Watch Alex share how FitTrack helped her build a 6-month
+                    workout streak and hit her strength goals.
                   </p>
                 </div>
-                <div className="relative bg-neutral-800 aspect-video flex items-center justify-center">
-                  <div className="w-64 h-64 bg-neutral-700 rounded-full flex items-center justify-center">
+                <div className="relative bg-card aspect-video flex items-center justify-center">
+                  <div className="w-64 h-64 bg-card rounded-full flex items-center justify-center">
                     <Button
                       size="lg"
-                      className="bg-white hover:bg-neutral-200 text-black rounded-full w-16 h-16"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-16 h-16"
                     >
                       <Play className="w-6 h-6 ml-1" />
                     </Button>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent" />
                 </div>
               </div>
             </CardContent>
@@ -486,42 +480,40 @@ function HomePage({
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* MARK: CTA Section */}
       <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-6">
-            Deploy from
+          <h2 className="mb-6 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
+            Ready to build your
             <br />
-            FitTrack HQ.
+            <span className="text-muted-foreground">strongest habit yet?</span>
           </h2>
-          <p className="text-xl text-neutral-400 mb-8 leading-relaxed">
-            FitTrack is available for deployment and field testing. After
-            initial assessment, full access requires fitness clearance and
-            training approval. Designed by Elite Fitness Command, Stockholm.
-            Advanced training systems since 2020. Contact Command with training
-            requirements or fitness feedback at{' '}
-            <span className="text-orange-500">command@fittrack.app</span>
+          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+            Download FitTrack free and join thousands who've transformed
+            scattered workouts into consistent progress. Your future self will
+            thank you.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             <Button
               size="lg"
-              className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
             >
               <Download className="w-5 h-5 mr-2" />
-              Request Deployment
+              Download Free
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="border-neutral-700 text-neutral-300 hover:bg-neutral-800 px-8 py-4 bg-transparent"
+              className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
             >
-              View Documentation
+              See Features
             </Button>
           </div>
 
-          <div className="text-sm text-neutral-500">
-            Classification Level: CONFIDENTIAL • 2024
+          <div className="text-sm text-muted-foreground">
+            ✓ Free download • ✓ No credit card required • ✓ Works on iPhone &
+            Android
           </div>
         </div>
       </section>
