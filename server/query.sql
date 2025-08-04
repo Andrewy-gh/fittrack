@@ -73,7 +73,8 @@ SELECT
     s.reps,
     s.set_type,
     e.id as exercise_id,
-    e.name as exercise_name
+    e.name as exercise_name,
+    (COALESCE(s.weight, 0) * s.reps) as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id

@@ -22,22 +22,23 @@ export async function fetchWorkouts(
   return data;
 }
 
-export interface WorkoutSet {
+export interface WorkoutWithSets {
   workout_id: number;
   workout_date: string;
   workout_notes: string;
   exercise_id: number;
   exercise_name: string;
   set_id: number;
+  set_type: string;
   weight: number;
   reps: number;
-  set_type: string;
+  volume: number;
 }
 
 export async function fetchWorkoutById(
   workoutId: number,
   accessToken: string
-): Promise<WorkoutSet[]> {
+): Promise<WorkoutWithSets[]> {
   const res = await fetch(`/api/workouts/${workoutId}`, {
     headers: {
       'x-stack-access-token': accessToken,

@@ -315,7 +315,8 @@ SELECT
     s.reps,
     s.set_type,
     e.id as exercise_id,
-    e.name as exercise_name
+    e.name as exercise_name,
+    (COALESCE(s.weight, 0) * s.reps) as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
@@ -338,6 +339,7 @@ type GetWorkoutWithSetsRow struct {
 	SetType      string             `json:"set_type"`
 	ExerciseID   int32              `json:"exercise_id"`
 	ExerciseName string             `json:"exercise_name"`
+	Volume       int32              `json:"volume"`
 }
 
 // Complex queries for joining data
@@ -360,6 +362,7 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 			&i.SetType,
 			&i.ExerciseID,
 			&i.ExerciseName,
+			&i.Volume,
 		); err != nil {
 			return nil, err
 		}
