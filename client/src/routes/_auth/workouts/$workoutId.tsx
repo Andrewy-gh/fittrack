@@ -60,7 +60,7 @@ export function IndividualWorkoutPage({
               )}
             </div>
           </div>
-          <Button>
+          <Button size="sm">
             <Edit className="w-4 h-4 mr-2" />
             Edit
           </Button>
