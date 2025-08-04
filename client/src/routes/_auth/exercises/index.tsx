@@ -24,11 +24,11 @@ export const Route = createFileRoute('/_auth/exercises/')({
   loader: async ({ context }): Promise<ExerciseOption[]> => {
     const user = context.user;
     if (!user) {
-        throw new Error('User not found');
+      throw new Error('User not found');
     }
     const { accessToken } = await user.getAuthJson();
     if (!accessToken) {
-        throw new Error('Access token not found');
+      throw new Error('Access token not found');
     }
     const exercises = await fetchExerciseOptions(accessToken);
     return exercises;
