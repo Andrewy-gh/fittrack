@@ -116,20 +116,20 @@ function HomePage({
   return (
     <div className="min-h-screen">
       {/* MARK: Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-neutral-800">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="w-6 h-6 text-orange-500" />
-            <span className="text-xl font-bold tracking-wider">FITTRACK</span>
+            <Shield className="w-6 h-6 text-primary" />
+            <span className="text-xl font-bold tracking-wider text-foreground">FITTRACK</span>
             {user && (
               <>
-                <div className="px-2 font-bold">
+                <div className="px-2 font-bold text-foreground">
                   <Link to="/workouts/new">New Workout</Link>
                 </div>
-                <div className="px-2 font-bold">
+                <div className="px-2 font-bold text-foreground">
                   <Link to="/workouts">Workouts</Link>
                 </div>
-                <div className="px-2 font-bold">
+                <div className="px-2 font-bold text-foreground">
                   <Link to="/exercises">Exercises</Link>
                 </div>
               </>
@@ -137,7 +137,7 @@ function HomePage({
           </div>
           <div className="flex items-center gap-4">
             <ModeToggle />
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="w-4 h-4 mr-2" />
               Deploy System
             </Button>
@@ -150,20 +150,20 @@ function HomePage({
       <section className="pt-24 pb-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <Badge className="bg-orange-500/20 text-orange-500 mb-6 px-4 py-2">
-              <Shield className="w-4 h-4 mr-2" />
+            <Badge className="bg-primary/20 text-primary mb-6 px-4 py-2">
+              <Shield className="w-4 h-4 mr-2 fill-primary" />
               Elite Operations Platform
             </Badge>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-wider mb-6">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-wider mb-6 text-foreground">
               Serious tracking
               <br />
-              for serious <span className="text-orange-500">fitness</span>
+              for serious <span className="text-primary">fitness</span>
               <br />
               operations.
             </h1>
             <div className="flex items-center justify-center gap-4 mb-8">
-              <Badge className="bg-neutral-800 text-white px-4 py-2">
-                <Star className="w-4 h-4 mr-2 text-orange-500" />
+              <Badge className="bg-secondary text-secondary-foreground px-4 py-2">
+                <Star className="w-4 h-4 mr-2 text-primary" />
                 Elite Systems Award 2024
               </Badge>
             </div>
@@ -172,10 +172,10 @@ function HomePage({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-4">
-                <h3 className="text-xl font-medium text-neutral-300">
+                <h3 className="text-xl font-medium text-muted-foreground">
                   Mission Control
                 </h3>
-                <p className="text-neutral-400 leading-relaxed">
+                <p className="text-muted-foreground leading-relaxed">
                   Advanced fitness operations management system designed for
                   elite athletes. Track workouts, manage training programs, and
                   coordinate fitness activities with military-grade precision
@@ -184,70 +184,70 @@ function HomePage({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-neutral-900 border border-neutral-700 rounded">
-                  <div className="text-2xl font-bold text-orange-500 font-mono">
+                <div className="text-center p-4 bg-card border border-border rounded">
+                  <div className="text-2xl font-bold text-primary font-mono">
                     847
                   </div>
-                  <div className="text-xs text-neutral-400">ACTIVE AGENTS</div>
+                  <div className="text-xs text-muted-foreground">ACTIVE AGENTS</div>
                 </div>
-                <div className="text-center p-4 bg-neutral-900 border border-neutral-700 rounded">
-                  <div className="text-2xl font-bold text-white font-mono">
+                <div className="text-center p-4 bg-card border border-border rounded">
+                  <div className="text-2xl font-bold text-foreground font-mono">
                     23
                   </div>
-                  <div className="text-xs text-neutral-400">ONGOING OPS</div>
+                  <div className="text-xs text-muted-foreground">ONGOING OPS</div>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-center">
               <div className="relative">
-                <div className="w-80 h-96 bg-neutral-900 border border-neutral-700 rounded-3xl p-6 shadow-2xl">
+                <div className="w-80 h-96 bg-card border border-border rounded-3xl p-6 shadow-2xl">
                   <div className="text-center mb-6">
-                    <div className="text-xs text-neutral-400 mb-2">
+                    <div className="text-xs text-muted-foreground mb-2">
                       TACTICAL COMMAND
                     </div>
-                    <div className="text-2xl font-bold text-white font-mono">
+                    <div className="text-2xl font-bold text-foreground font-mono">
                       4:44
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                    <div className="bg-card border border-border rounded p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">
+                        <span className="text-sm text-foreground">
                           Mission Alpha
                         </span>
-                        <Badge className="bg-orange-500/20 text-orange-500 text-xs">
+                        <Badge className="bg-primary/20 text-primary text-xs">
                           ACTIVE
                         </Badge>
                       </div>
-                      <div className="text-xs text-neutral-400">
+                      <div className="text-xs text-muted-foreground">
                         190 lbs • 5 reps
                       </div>
                     </div>
 
-                    <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                    <div className="bg-card border border-border rounded p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">Recon Beta</span>
-                        <Badge className="bg-white/20 text-white text-xs">
+                        <span className="text-sm text-foreground">Recon Beta</span>
+                        <Badge className="bg-secondary/20 text-secondary-foreground text-xs">
                           STANDBY
                         </Badge>
                       </div>
-                      <div className="text-xs text-neutral-400">
+                      <div className="text-xs text-muted-foreground">
                         Body weight • 21 min ago
                       </div>
                     </div>
 
-                    <div className="bg-neutral-800 border border-neutral-700 rounded p-3">
+                    <div className="bg-card border border-border rounded p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">
+                        <span className="text-sm text-foreground">
                           Extraction Gamma
                         </span>
-                        <Badge className="bg-white/20 text-white text-xs">
+                        <Badge className="bg-secondary/20 text-secondary-foreground text-xs">
                           COMPLETE
                         </Badge>
                       </div>
-                      <div className="text-xs text-neutral-400">
+                      <div className="text-xs text-muted-foreground">
                         3,200 lbs total volume
                       </div>
                     </div>
@@ -255,7 +255,7 @@ function HomePage({
                 </div>
 
                 {/* Floating notification */}
-                <div className="absolute -top-4 -right-4 bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
+                <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">
                   1
                 </div>
               </div>
@@ -265,15 +265,15 @@ function HomePage({
       </section>
 
       {/* Features Section */}
-      <section className="py-16 px-6 bg-neutral-950">
+      <section className="py-16 px-6 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-4">
+            <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-4 text-foreground">
               Tactical
               <br />
-              <span className="text-neutral-500">by design.</span>
+              <span className="text-muted-foreground">by design.</span>
             </h2>
-            <p className="text-xl text-neutral-400">
+            <p className="text-xl text-muted-foreground">
               Built exclusively for operational excellence.
             </p>
           </div>
@@ -282,23 +282,23 @@ function HomePage({
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className="bg-neutral-900 border-neutral-700 p-6"
+                className="bg-card border border-border p-6"
               >
                 <CardContent className="p-0">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-orange-500/20 rounded">
-                      <feature.icon className="w-6 h-6 text-orange-500" />
+                    <div className="p-3 bg-primary/20 rounded">
+                      <feature.icon className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-white">
+                        <h3 className="text-lg font-bold text-foreground">
                           {feature.title}
                         </h3>
-                        <Badge className="bg-orange-500/20 text-orange-500 text-xs">
+                        <Badge className="bg-primary/20 text-primary text-xs">
                           {feature.highlight}
                         </Badge>
                       </div>
-                      <p className="text-neutral-400">{feature.description}</p>
+                      <p className="text-muted-foreground">{feature.description}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -313,92 +313,92 @@ function HomePage({
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-6">
+              <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-6 text-foreground">
                 Not just
                 <br />
-                <span className="text-neutral-500">missions.</span>
+                <span className="text-muted-foreground">missions.</span>
               </h2>
-              <p className="text-xl text-neutral-400 mb-8 leading-relaxed">
+              <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
                 Advanced coordination protocols, real-time intelligence sharing,
                 multi-vector analysis, tactical planning tools, resource
                 allocation - all integrated into one comprehensive command
                 system designed for maximum operational effectiveness.
               </p>
 
-              <div className="space-y-4 text-neutral-400">
+              <div className="space-y-4 text-muted-foreground">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
+                  <CheckCircle className="w-5 h-5 text-primary" />
                   <span>Real-time coordination</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
+                  <CheckCircle className="w-5 h-5 text-primary" />
                   <span>Intelligence integration</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
+                  <CheckCircle className="w-5 h-5 text-primary" />
                   <span>Resource optimization</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-orange-500" />
+                  <CheckCircle className="w-5 h-5 text-primary" />
                   <span>Mission analytics</span>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-center">
-              <div className="w-80 h-96 bg-neutral-900 border border-neutral-700 rounded-3xl p-6 shadow-2xl">
+              <div className="w-80 h-96 bg-card border border-border rounded-3xl p-6 shadow-2xl">
                 <div className="text-center mb-6">
-                  <div className="text-xs text-neutral-400 mb-2">
+                  <div className="text-xs text-muted-foreground mb-2">
                     OPERATION TIMER
                   </div>
-                  <div className="text-4xl font-bold text-white font-mono">
+                  <div className="text-4xl font-bold text-foreground font-mono">
                     32:08
                   </div>
-                  <div className="text-xs text-neutral-400">
+                  <div className="text-xs text-muted-foreground">
                     Mission in progress
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-orange-500" />
-                      <span className="text-sm text-white">Infiltration</span>
+                      <Target className="w-4 h-4 text-primary" />
+                      <span className="text-sm text-foreground">Infiltration</span>
                     </div>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-muted-foreground">
                       5 km • 2:30 min/km
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-white" />
-                      <span className="text-sm text-white">Surveillance</span>
+                      <Activity className="w-4 h-4 text-foreground" />
+                      <span className="text-sm text-foreground">Surveillance</span>
                     </div>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-muted-foreground">
                       12 targets completed
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-white" />
-                      <span className="text-sm text-white">Security</span>
+                      <Shield className="w-4 h-4 text-foreground" />
+                      <span className="text-sm text-foreground">Security</span>
                     </div>
-                    <span className="text-xs text-neutral-400">3 x 30 sec</span>
+                    <span className="text-xs text-muted-foreground">3 x 30 sec</span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 bg-neutral-800 rounded">
+                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
                     <div className="flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-white" />
-                      <span className="text-sm text-white">Analysis</span>
+                      <BarChart3 className="w-4 h-4 text-foreground" />
+                      <span className="text-sm text-foreground">Analysis</span>
                     </div>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-muted-foreground">
                       Real-time data
                     </span>
                   </div>
 
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white mt-4">
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4">
                     <ArrowRight className="w-4 h-4 mr-2" />
                     Next Phase
                   </Button>
@@ -410,15 +410,15 @@ function HomePage({
       </section>
 
       {/* Testimonials */}
-      <section className="py-16 px-6 bg-neutral-950">
+      <section className="py-16 px-6 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-4">
+            <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-4 text-foreground">
               What elite
               <br />
               operatives think.
             </h2>
-            <p className="text-xl text-neutral-400">
+            <p className="text-xl text-muted-foreground">
               Reviews from our field agents.
             </p>
           </div>
@@ -427,27 +427,27 @@ function HomePage({
             {testimonials.slice(0, 4).map((testimonial) => (
               <Card
                 key={testimonial.id}
-                className="bg-neutral-900 border-neutral-700 p-6"
+                className="bg-card border border-border p-6"
               >
                 <CardContent className="p-0">
                   <div className="flex items-center gap-1 mb-4">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className="w-4 h-4 fill-orange-500 text-orange-500"
+                        className="w-4 h-4 fill-primary text-primary"
                       />
                     ))}
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-2">
+                  <h3 className="text-lg font-bold text-foreground mb-2">
                     {testimonial.name}
                   </h3>
-                  <p className="text-sm text-neutral-400 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {testimonial.role}
                   </p>
-                  <p className="text-neutral-300 leading-relaxed mb-4">
+                  <p className="text-muted-foreground leading-relaxed mb-4">
                     {testimonial.text}
                   </p>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-muted-foreground">
                     {testimonial.date}
                   </div>
                 </CardContent>
@@ -456,29 +456,29 @@ function HomePage({
           </div>
 
           {/* Video Testimonial */}
-          <Card className="bg-neutral-900 border-neutral-700 overflow-hidden">
+          <Card className="bg-card border border-border overflow-hidden">
             <CardContent className="p-0">
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 <div className="p-8">
-                  <h3 className="text-2xl font-bold text-white mb-2">
+                  <h3 className="text-2xl font-bold text-foreground mb-2">
                     Agent Phantom on
                     <br />
                     using FitTrack.
                   </h3>
-                  <p className="text-neutral-400 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     How he uses FitTrack to coordinate his training operations.
                   </p>
                 </div>
-                <div className="relative bg-neutral-800 aspect-video flex items-center justify-center">
-                  <div className="w-64 h-64 bg-neutral-700 rounded-full flex items-center justify-center">
+                <div className="relative bg-card aspect-video flex items-center justify-center">
+                  <div className="w-64 h-64 bg-card rounded-full flex items-center justify-center">
                     <Button
                       size="lg"
-                      className="bg-white hover:bg-neutral-200 text-black rounded-full w-16 h-16"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-16 h-16"
                     >
                       <Play className="w-6 h-6 ml-1" />
                     </Button>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent" />
                 </div>
               </div>
             </CardContent>
@@ -489,24 +489,24 @@ function HomePage({
       {/* CTA Section */}
       <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-6">
+          <h2 className="text-4xl md:text-6xl font-bold tracking-wider mb-6 text-foreground">
             Deploy from
             <br />
             FitTrack HQ.
           </h2>
-          <p className="text-xl text-neutral-400 mb-8 leading-relaxed">
+          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
             FitTrack is available for deployment and field testing. After
             initial assessment, full access requires fitness clearance and
             training approval. Designed by Elite Fitness Command, Stockholm.
             Advanced training systems since 2020. Contact Command with training
             requirements or fitness feedback at{' '}
-            <span className="text-orange-500">command@fittrack.app</span>
+            <span className="text-primary">command@fittrack.app</span>
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             <Button
               size="lg"
-              className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
             >
               <Download className="w-5 h-5 mr-2" />
               Request Deployment
@@ -514,13 +514,13 @@ function HomePage({
             <Button
               size="lg"
               variant="outline"
-              className="border-neutral-700 text-neutral-300 hover:bg-neutral-800 px-8 py-4 bg-transparent"
+              className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
             >
               View Documentation
             </Button>
           </div>
 
-          <div className="text-sm text-neutral-500">
+          <div className="text-sm text-muted-foreground">
             Classification Level: CONFIDENTIAL • 2024
           </div>
         </div>
