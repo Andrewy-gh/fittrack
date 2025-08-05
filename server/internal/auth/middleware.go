@@ -35,14 +35,16 @@ type Authenticator struct {
 	logger      *slog.Logger
 	jwkCache    JWKSProvider
 	userService UserServiceProvider
+	dbPool      db.DBTX
 }
 
 // NewAuthenticator creates a new Authenticator
-func NewAuthenticator(logger *slog.Logger, jwkCache JWKSProvider, userService UserServiceProvider) *Authenticator {
+func NewAuthenticator(logger *slog.Logger, jwkCache JWKSProvider, userService UserServiceProvider, dbPool db.DBTX) *Authenticator {
 	return &Authenticator{
 		logger:      logger,
 		jwkCache:    jwkCache,
 		userService: userService,
+		dbPool:      dbPool,
 	}
 }
 
@@ -70,6 +72,17 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 		if err != nil {
 			response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to ensure user", err)
 			return
+		}
+
+		// Set the current user ID as a session variable for RLS
+		// This must be done for each request when using connection pooling
+		// to ensure proper user context isolation
+		if a.dbPool != nil {
+			_, err = a.dbPool.Exec(r.Context(), "SELECT set_config('app.current_user_id', $1, false)", userID)
+			if err != nil {
+				response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to set user context", err)
+				return
+			}
 		}
 
 		ctx := user.WithContext(r.Context(), dbUser.UserID)

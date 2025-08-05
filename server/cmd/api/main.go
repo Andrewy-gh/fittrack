@@ -79,7 +79,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	authenticator := auth.NewAuthenticator(logger, jwks, userService)
+	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
 	router := api.routes(workoutHandler, exerciseHandler)
 
 	logger.Info("starting server", "addr", ":8080")
