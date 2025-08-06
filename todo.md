@@ -33,8 +33,8 @@
   - **IMPORTANT:** RLS policies do not apply to superuser roles (by design)
   - Production deployment should use non-superuser database role for RLS to take effect
 - [x] **Context Propagation:** User ID extraction from JWT and context propagation is implemented
-- [ ] **Session Variable Validation:** Add optional logging/validation to verify `app.current_user_id` is set correctly
-- [ ] **Error Handling:** Enhance error handling for RLS-related failures
+- [x] **Session Variable Validation:** Add optional logging/validation to verify `app.current_user_id` is set correctly
+- [x] **Error Handling:** Enhance error handling for RLS-related failures
 
 ## 4. Testing
 
