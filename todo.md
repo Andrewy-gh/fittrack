@@ -20,12 +20,18 @@
   ```bash
   sqlc generate
   ```
-- [-] **Query Validation:** Ensure existing queries work correctly with RLS enabled
+- [x] **Query Validation:** Ensure existing queries work correctly with RLS enabled
 
 ## 3. Database Connection Layer
 
 - [x] **Middleware:** The `server/internal/auth/middleware.go` file already contains the necessary logic to set the `app.current_user_id` for each request
-- [ ] **Connection Pool Validation:** Verify `pgxpool` correctly isolates user context between concurrent requests
+- [x] **Connection Pool Validation:** Verify `pgxpool` correctly isolates user context between concurrent requests
+  **NOTE:** Test completed successfully. Key findings:
+  - Connection pool properly isolates session variables between connections
+  - RLS policies are correctly applied per connection
+  - Session variable `app.current_user_id` is set correctly on each connection
+  - **IMPORTANT:** RLS policies do not apply to superuser roles (by design)
+  - Production deployment should use non-superuser database role for RLS to take effect
 - [x] **Context Propagation:** User ID extraction from JWT and context propagation is implemented
 - [ ] **Session Variable Validation:** Add optional logging/validation to verify `app.current_user_id` is set correctly
 - [ ] **Error Handling:** Enhance error handling for RLS-related failures
