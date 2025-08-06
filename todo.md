@@ -9,7 +9,7 @@
 
 ### 2. SQLC Configuration
 
-- [ ] Update `sqlc.yaml` to ignore the new `app.current_user_id` setting.
+- [x] Update `sqlc.yaml` to ignore the new `app.current_user_id` setting.
 - [ ] Regenerate SQLC code to reflect any schema changes.
     ```bash
     sqlc generate

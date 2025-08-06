@@ -3,6 +3,17 @@ sql:
   - engine: "postgresql"
     queries: "query.sql"
     schema: "schema.sql"
+    database:
+      uri: "user=postgres password=postgres dbname=postgres sslmode=disable"
+    overrides:
+      go:
+        # The pgx/v5 driver must be used to support the app.current_user_id session parameter
+        # which is used for row-level security.
+        # The session parameter is set in the db.New function.
+        # The sql_package: "pgx/v5" setting is required to use the pgx/v5 driver.
+        sql_package: "pgx/v5"
+    rules:
+      - sqlc/db-prepare
     gen:
       go:
         package: "db"
