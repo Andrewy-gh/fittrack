@@ -46,6 +46,7 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	exercises, err := es.repo.ListExercises(ctx, userID)
 	if err != nil {
 		es.logger.Error("failed to list exercises", "error", err)
+		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
 	return exercises, nil
@@ -60,6 +61,7 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([
 	sets, err := es.repo.GetExerciseWithSets(ctx, id, userID)
 	if err != nil {
 		es.logger.Error("failed to get exercise with sets", "error", err)
+		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
 		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
 	return sets, nil
@@ -74,6 +76,7 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 	exercise, err := es.repo.GetOrCreateExercise(ctx, name, userID)
 	if err != nil {
 		es.logger.Error("repository failed to get or create exercise", "exercise_name", name, "error", err)
+		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_name", name, "user_id", userID)
 		return nil, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return &exercise, nil

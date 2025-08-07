@@ -59,10 +59,12 @@ func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) err
 				"error", err,
 				"userID", userID,
 				"error_type", "rls_context")
+			a.logger.Debug("raw RLS context error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "userID", userID)
 		} else {
 			a.logger.Error("failed to set session variable",
 				"error", err,
 				"userID", userID)
+			a.logger.Debug("raw session variable error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "userID", userID)
 		}
 		return fmt.Errorf("failed to set user context: %w", err)
 	}

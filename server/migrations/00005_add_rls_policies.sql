@@ -15,95 +15,160 @@ ALTER TABLE workout ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exercise ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "set" ENABLE ROW LEVEL SECURITY;
 
--- Create policies for users table
-CREATE POLICY users_policy ON users
-    FOR ALL TO PUBLIC
-    USING (user_id = current_user_id())
-    WITH CHECK (user_id = current_user_id());
+-- Create policies for users table (idempotent)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'users_policy') THEN
+        CREATE POLICY users_policy ON users
+            FOR ALL TO PUBLIC
+            USING (user_id = current_user_id())
+            WITH CHECK (user_id = current_user_id());
+    END IF;
+END $$;
 
--- Create policies for workout table
-CREATE POLICY workout_select_policy ON workout
-    FOR SELECT TO PUBLIC
-    USING (user_id = current_user_id());
+-- Create policies for workout table (idempotent)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'workout' AND policyname = 'workout_select_policy') THEN
+        CREATE POLICY workout_select_policy ON workout
+            FOR SELECT TO PUBLIC
+            USING (user_id = current_user_id());
+    END IF;
+END $$;
 
-CREATE POLICY workout_insert_policy ON workout
-    FOR INSERT TO PUBLIC
-    WITH CHECK (user_id = current_user_id());
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'workout' AND policyname = 'workout_insert_policy') THEN
+        CREATE POLICY workout_insert_policy ON workout
+            FOR INSERT TO PUBLIC
+            WITH CHECK (user_id = current_user_id());
+    END IF;
+END $$;
 
-CREATE POLICY workout_update_policy ON workout
-    FOR UPDATE TO PUBLIC
-    USING (user_id = current_user_id())
-    WITH CHECK (user_id = current_user_id());
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'workout' AND policyname = 'workout_update_policy') THEN
+        CREATE POLICY workout_update_policy ON workout
+            FOR UPDATE TO PUBLIC
+            USING (user_id = current_user_id())
+            WITH CHECK (user_id = current_user_id());
+    END IF;
+END $$;
 
-CREATE POLICY workout_delete_policy ON workout
-    FOR DELETE TO PUBLIC
-    USING (user_id = current_user_id());
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'workout' AND policyname = 'workout_delete_policy') THEN
+        CREATE POLICY workout_delete_policy ON workout
+            FOR DELETE TO PUBLIC
+            USING (user_id = current_user_id());
+    END IF;
+END $$;
 
--- Create policies for exercise table
-CREATE POLICY exercise_select_policy ON exercise
-    FOR SELECT TO PUBLIC
-    USING (user_id = current_user_id());
+-- Create policies for exercise table (idempotent)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'exercise' AND policyname = 'exercise_select_policy') THEN
+        CREATE POLICY exercise_select_policy ON exercise
+            FOR SELECT TO PUBLIC
+            USING (user_id = current_user_id());
+    END IF;
+END $$;
 
-CREATE POLICY exercise_insert_policy ON exercise
-    FOR INSERT TO PUBLIC
-    WITH CHECK (user_id = current_user_id());
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'exercise' AND policyname = 'exercise_insert_policy') THEN
+        CREATE POLICY exercise_insert_policy ON exercise
+            FOR INSERT TO PUBLIC
+            WITH CHECK (user_id = current_user_id());
+    END IF;
+END $$;
 
-CREATE POLICY exercise_update_policy ON exercise
-    FOR UPDATE TO PUBLIC
-    USING (user_id = current_user_id())
-    WITH CHECK (user_id = current_user_id());
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'exercise' AND policyname = 'exercise_update_policy') THEN
+        CREATE POLICY exercise_update_policy ON exercise
+            FOR UPDATE TO PUBLIC
+            USING (user_id = current_user_id())
+            WITH CHECK (user_id = current_user_id());
+    END IF;
+END $$;
 
-CREATE POLICY exercise_delete_policy ON exercise
-    FOR DELETE TO PUBLIC
-    USING (user_id = current_user_id());
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'exercise' AND policyname = 'exercise_delete_policy') THEN
+        CREATE POLICY exercise_delete_policy ON exercise
+            FOR DELETE TO PUBLIC
+            USING (user_id = current_user_id());
+    END IF;
+END $$;
 
--- Create policies for set table
-CREATE POLICY set_select_policy ON "set"
-    FOR SELECT TO PUBLIC
-    USING (
-        EXISTS (
-            SELECT 1 FROM workout w 
-            WHERE w.id = "set".workout_id 
-            AND w.user_id = current_user_id()
-        )
-    );
+-- Create policies for set table (idempotent)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'set' AND policyname = 'set_select_policy') THEN
+        CREATE POLICY set_select_policy ON "set"
+            FOR SELECT TO PUBLIC
+            USING (
+                EXISTS (
+                    SELECT 1 FROM workout w 
+                    WHERE w.id = "set".workout_id 
+                    AND w.user_id = current_user_id()
+                )
+            );
+    END IF;
+END $$;
 
-CREATE POLICY set_insert_policy ON "set"
-    FOR INSERT TO PUBLIC
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM workout w 
-            WHERE w.id = "set".workout_id 
-            AND w.user_id = current_user_id()
-        )
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'set' AND policyname = 'set_insert_policy') THEN
+        CREATE POLICY set_insert_policy ON "set"
+            FOR INSERT TO PUBLIC
+            WITH CHECK (
+                EXISTS (
+                    SELECT 1 FROM workout w 
+                    WHERE w.id = "set".workout_id 
+                    AND w.user_id = current_user_id()
+                )
+            );
+    END IF;
+END $$;
 
-CREATE POLICY set_update_policy ON "set"
-    FOR UPDATE TO PUBLIC
-    USING (
-        EXISTS (
-            SELECT 1 FROM workout w 
-            WHERE w.id = "set".workout_id 
-            AND w.user_id = current_user_id()
-        )
-    )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM workout w 
-            WHERE w.id = "set".workout_id 
-            AND w.user_id = current_user_id()
-        )
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'set' AND policyname = 'set_update_policy') THEN
+        CREATE POLICY set_update_policy ON "set"
+            FOR UPDATE TO PUBLIC
+            USING (
+                EXISTS (
+                    SELECT 1 FROM workout w 
+                    WHERE w.id = "set".workout_id 
+                    AND w.user_id = current_user_id()
+                )
+            )
+            WITH CHECK (
+                EXISTS (
+                    SELECT 1 FROM workout w 
+                    WHERE w.id = "set".workout_id 
+                    AND w.user_id = current_user_id()
+                )
+            );
+    END IF;
+END $$;
 
-CREATE POLICY set_delete_policy ON "set"
-    FOR DELETE TO PUBLIC
-    USING (
-        EXISTS (
-            SELECT 1 FROM workout w 
-            WHERE w.id = "set".workout_id 
-            AND w.user_id = current_user_id()
-        )
-    );
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'set' AND policyname = 'set_delete_policy') THEN
+        CREATE POLICY set_delete_policy ON "set"
+            FOR DELETE TO PUBLIC
+            USING (
+                EXISTS (
+                    SELECT 1 FROM workout w 
+                    WHERE w.id = "set".workout_id 
+                    AND w.user_id = current_user_id()
+                )
+            );
+    END IF;
+END $$;
 
 -- Grant necessary permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO PUBLIC;

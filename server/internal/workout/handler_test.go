@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -648,23 +647,13 @@ func setupRLS(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 
-	// Check if current_user_id function exists
+	// Check if current_user_id function exists (should exist from migration)
 	var exists bool
 	err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'current_user_id')").Scan(&exists)
 	require.NoError(t, err, "Failed to check if current_user_id function exists")
+	require.True(t, exists, "current_user_id function should exist from migration")
 
-	if !exists {
-		// Create the current_user_id function
-		_, err = pool.Exec(ctx, `
-			CREATE OR REPLACE FUNCTION current_user_id() 
-			RETURNS TEXT AS $$
-			    SELECT current_setting('app.current_user_id', true);
-			$$ LANGUAGE SQL STABLE;
-		`)
-		require.NoError(t, err, "Failed to create current_user_id function")
-	}
-
-	// Ensure RLS is enabled on tables
+	// Ensure RLS is enabled on tables (should be enabled from migration)
 	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY")
 	require.NoError(t, err, "Failed to enable RLS on users table")
 
@@ -677,72 +666,14 @@ func setupRLS(t *testing.T, pool *pgxpool.Pool) {
 	_, err = pool.Exec(ctx, "ALTER TABLE \"set\" ENABLE ROW LEVEL SECURITY")
 	require.NoError(t, err, "Failed to enable RLS on set table")
 
-	// Create or replace policies (in case they already exist)
-	policies := []string{
-		// Users policies
-		`CREATE POLICY users_policy ON users
-		    FOR ALL TO PUBLIC
-		    USING (user_id = current_user_id())
-		    WITH CHECK (user_id = current_user_id())`,
-		
-		// Workout policies
-		`CREATE POLICY workout_select_policy ON workout
-		    FOR SELECT TO PUBLIC
-		    USING (user_id = current_user_id())`,
-		    
-		`CREATE POLICY workout_insert_policy ON workout
-		    FOR INSERT TO PUBLIC
-		    WITH CHECK (user_id = current_user_id())`,
-		    
-		`CREATE POLICY workout_update_policy ON workout
-		    FOR UPDATE TO PUBLIC
-		    USING (user_id = current_user_id())
-		    WITH CHECK (user_id = current_user_id())`,
-		    
-		`CREATE POLICY workout_delete_policy ON workout
-		    FOR DELETE TO PUBLIC
-		    USING (user_id = current_user_id())`,
-		    
-		// Exercise policies
-		`CREATE POLICY exercise_select_policy ON exercise
-		    FOR SELECT TO PUBLIC
-		    USING (user_id = current_user_id())`,
-		    
-		`CREATE POLICY exercise_insert_policy ON exercise
-		    FOR INSERT TO PUBLIC
-		    WITH CHECK (user_id = current_user_id())`,
-		    
-		`CREATE POLICY exercise_update_policy ON exercise
-		    FOR UPDATE TO PUBLIC
-		    USING (user_id = current_user_id())
-		    WITH CHECK (user_id = current_user_id())`,
-		    
-		`CREATE POLICY exercise_delete_policy ON exercise
-		    FOR DELETE TO PUBLIC
-		    USING (user_id = current_user_id())`,
-	}
-
-	for _, policy := range policies {
-		_, err = pool.Exec(ctx, "DROP POLICY IF EXISTS "+extractPolicyName(policy))
-		// Ignore errors for non-existent policies
-		
-		_, err = pool.Exec(ctx, policy)
-		require.NoError(t, err, "Failed to create policy: %s", policy)
-	}
+	// RLS policies should already exist from migration - no need to recreate them
+	// Just verify they exist
+	var policyCount int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM pg_policies WHERE tablename IN ('users', 'workout', 'exercise', 'set')").Scan(&policyCount)
+	require.NoError(t, err, "Failed to count RLS policies")
+	require.Greater(t, policyCount, 0, "RLS policies should exist from migration")
 }
 
-func extractPolicyName(policy string) string {
-	// Simple extraction of policy name from CREATE POLICY statement
-	// This is a basic implementation - in practice you might want something more robust
-	if len(policy) > 50 {
-		// Extract policy name from "CREATE POLICY policy_name ON table..."
-		parts := strings.Fields(policy)
-		if len(parts) >= 3 {
-			return parts[2] + " ON " + parts[4] // "policy_name ON table_name"
-		}
-	}
-	return "unknown_policy ON unknown_table"
-}
 
 func setupTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
