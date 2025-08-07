@@ -101,6 +101,16 @@ func TestIsRowLevelSecurityError(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "postgres permission denied error",
+			err:      errors.New("ERROR: permission denied for table workout (SQLSTATE 42501)"),
+			expected: true,
+		},
+		{
+			name:     "insufficient privilege error",
+			err:      errors.New("ERROR: insufficient privilege to access table"),
+			expected: true,
+		},
+		{
 			name:     "other error",
 			err:      errors.New("some other error"),
 			expected: false,
@@ -116,6 +126,47 @@ func TestIsRowLevelSecurityError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsRowLevelSecurityError(tt.err)
 			assert.Equal(t, tt.expected, result, "IsRowLevelSecurityError() = %v, want %v", result, tt.expected)
+		})
+	}
+}
+
+func TestIsRLSContextError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "RLS context error",
+			err:      ErrRLSContext,
+			expected: true,
+		},
+		{
+			name:     "set_config error",
+			err:      errors.New("ERROR: failed to set_config('app.current_user_id', 'user123', false)"),
+			expected: true,
+		},
+		{
+			name:     "session variable error",
+			err:      errors.New("ERROR: invalid session variable app.current_user_id"),
+			expected: true,
+		},
+		{
+			name:     "other error",
+			err:      errors.New("some other error"),
+			expected: false,
+		},
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsRLSContextError(tt.err)
+			assert.Equal(t, tt.expected, result, "IsRLSContextError() = %v, want %v", result, tt.expected)
 		})
 	}
 }

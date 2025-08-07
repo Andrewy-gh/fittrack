@@ -98,7 +98,14 @@
 
 ## 5. Error Handling & Monitoring
 
-- [ ] **RLS-Specific Logging:** Add specific logging for RLS policy violations to aid debugging
+- [x] **RLS-Specific Logging:** Add specific logging for RLS policy violations to aid debugging
+  - ✅ Enhanced `internal/database/errors.go` with RLS-specific error detection functions
+  - ✅ Added `IsRLSContextError()` for detecting RLS context setup failures
+  - ✅ Enhanced `IsRowLevelSecurityError()` for detecting permission denied and RLS violations
+  - ✅ Updated middleware to use RLS-aware error logging for context setup
+  - ✅ Enhanced workout repository with RLS-aware logging for database operations
+  - ✅ Added structured logging for empty results that may indicate RLS filtering
+  - ✅ Simple, maintainable approach using existing logger with RLS error classification
 - [ ] **Error Messages:** Ensure error messages don't leak sensitive information
 - [ ] **Monitoring:** Consider adding metrics for RLS-related operations
 

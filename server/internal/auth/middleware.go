@@ -53,10 +53,21 @@ func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) err
 		setUserIDQuery,
 		userID)
 	if err != nil {
+		// Check if this is an RLS context error
+		if db.IsRLSContextError(err) {
+			a.logger.Error("RLS context setup failed",
+				"error", err,
+				"userID", userID,
+				"error_type", "rls_context")
+		} else {
+			a.logger.Error("failed to set session variable",
+				"error", err,
+				"userID", userID)
+		}
 		return fmt.Errorf("failed to set user context: %w", err)
 	}
 
-	a.logger.Debug("session variable set successfully",
+	a.logger.Debug("RLS context set successfully",
 		"userID", userID)
 	return nil
 }
