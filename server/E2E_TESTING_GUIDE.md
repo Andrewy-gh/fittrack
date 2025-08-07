@@ -43,7 +43,7 @@ curl -X POST http://localhost:8080/api/workouts \
 #### Step 1.2: Retrieve workouts as User A
 ```bash
 curl -X GET http://localhost:8080/api/workouts \
-  -H "Authorization: Bearer YOUR_USER_A_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_A_JWT_TOKEN"
 ```
 
 **Expected Result:**
@@ -54,7 +54,7 @@ curl -X GET http://localhost:8080/api/workouts \
 #### Step 1.3: Get specific workout by ID as User A
 ```bash
 curl -X GET http://localhost:8080/api/workouts/{WORKOUT_ID} \
-  -H "Authorization: Bearer YOUR_USER_A_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_A_JWT_TOKEN"
 ```
 *(Replace `{WORKOUT_ID}` with the ID from Step 1.1)*
 
@@ -69,7 +69,7 @@ curl -X GET http://localhost:8080/api/workouts/{WORKOUT_ID} \
 #### Step 2.1: Try to list workouts as User B
 ```bash
 curl -X GET http://localhost:8080/api/workouts \
-  -H "Authorization: Bearer YOUR_USER_B_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_B_JWT_TOKEN"
 ```
 
 **Expected Result:**
@@ -80,7 +80,7 @@ curl -X GET http://localhost:8080/api/workouts \
 #### Step 2.2: Try to access User A's specific workout by ID as User B
 ```bash
 curl -X GET http://localhost:8080/api/workouts/{USER_A_WORKOUT_ID} \
-  -H "Authorization: Bearer YOUR_USER_B_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_B_JWT_TOKEN"
 ```
 
 **Expected Result:**
@@ -95,7 +95,7 @@ curl -X GET http://localhost:8080/api/workouts/{USER_A_WORKOUT_ID} \
 #### Step 3.1: Create a workout as User B
 ```bash
 curl -X POST http://localhost:8080/api/workouts \
-  -H "Authorization: Bearer YOUR_USER_B_JWT_TOKEN" \
+  -H "x-stack-access-token: YOUR_USER_B_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "date": "2025-01-07T14:00:00Z",
@@ -110,7 +110,7 @@ curl -X POST http://localhost:8080/api/workouts \
 #### Step 3.2: Verify User B can see their own data
 ```bash
 curl -X GET http://localhost:8080/api/workouts \
-  -H "Authorization: Bearer YOUR_USER_B_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_B_JWT_TOKEN"
 ```
 
 **Expected Result:**
@@ -121,7 +121,7 @@ curl -X GET http://localhost:8080/api/workouts \
 #### Step 3.3: Verify User A still cannot see User B's data
 ```bash
 curl -X GET http://localhost:8080/api/workouts \
-  -H "Authorization: Bearer YOUR_USER_A_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_A_JWT_TOKEN"
 ```
 
 **Expected Result:**
@@ -145,7 +145,7 @@ curl -X GET http://localhost:8080/api/workouts
 #### Step 4.2: Try to access with invalid/expired token
 ```bash
 curl -X GET http://localhost:8080/api/workouts \
-  -H "Authorization: Bearer invalid.jwt.token"
+  -H "x-stack-access-token: invalid.jwt.token"
 ```
 
 **Expected Result:**
@@ -160,7 +160,7 @@ curl -X GET http://localhost:8080/api/workouts \
 ```bash
 # Create exercise as User A
 curl -X POST http://localhost:8080/api/exercises \
-  -H "Authorization: Bearer YOUR_USER_A_JWT_TOKEN" \
+  -H "x-stack-access-token: YOUR_USER_A_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "User A Exercise",
@@ -169,13 +169,13 @@ curl -X POST http://localhost:8080/api/exercises \
 
 # List exercises as User A
 curl -X GET http://localhost:8080/api/exercises \
-  -H "Authorization: Bearer YOUR_USER_A_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_A_JWT_TOKEN"
 ```
 
 #### Step 5.2: Verify User B cannot see User A's exercises
 ```bash
 curl -X GET http://localhost:8080/api/exercises \
-  -H "Authorization: Bearer YOUR_USER_B_JWT_TOKEN"
+  -H "x-stack-access-token: YOUR_USER_B_JWT_TOKEN"
 ```
 
 **Expected Result:**
@@ -216,7 +216,7 @@ curl -X GET http://localhost:8080/api/exercises \
 - Check middleware is setting `app.current_user_id` correctly
 
 #### "Authentication Errors"
-- Verify JWT token format: `Authorization: Bearer TOKEN`
+- Verify JWT token format: `x-stack-access-token: TOKEN`
 - Check token is not expired
 - Ensure JWKS URL is accessible and correct
 
@@ -244,8 +244,8 @@ Create a simple checklist to track your results:
 
 ### Concurrent User Testing
 Test multiple users simultaneously using tools like:
-- **Apache Bench (ab)**: `ab -n 100 -c 10 -H "Authorization: Bearer TOKEN" http://localhost:8080/api/workouts`
-- **Hey**: `hey -n 100 -c 10 -H "Authorization: Bearer TOKEN" http://localhost:8080/api/workouts`
+- **Apache Bench (ab)**: `ab -n 100 -c 10 -H "x-stack-access-token: TOKEN" http://localhost:8080/api/workouts`
+- **Hey**: `hey -n 100 -c 10 -H "x-stack-access-token: TOKEN" http://localhost:8080/api/workouts`
 
 ### Token Edge Cases
 - Test with malformed JWT tokens
