@@ -5,3 +5,4 @@
 /tmp
 
 .env
+example_e2e_test.go
