@@ -31,12 +31,27 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool,
 func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([]db.Workout, error) {
 	workouts, err := wr.queries.ListWorkouts(ctx, userId)
 	if err != nil {
-		wr.logger.Error("list workouts query failed", "error", err)
+		// Check if this might be an RLS-related error
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("list workouts query failed - RLS policy violation",
+				"error", err,
+				"user_id", userId,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("list workouts query failed", "error", err, "user_id", userId)
+		}
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
 	}
 
 	if workouts == nil {
 		workouts = []db.Workout{}
+	}
+
+	// Log empty results that might indicate RLS filtering
+	if len(workouts) == 0 {
+		wr.logger.Debug("list workouts returned empty results",
+			"user_id", userId,
+			"potential_rls_filtering", true)
 	}
 
 	return workouts, nil
@@ -50,12 +65,32 @@ func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, u
 	}
 	workoutWithSets, err := wr.queries.GetWorkoutWithSets(ctx, params)
 	if err != nil {
-		wr.logger.Error("get workout with sets query failed", "workout_id", id, "error", err)
+		// Check if this might be an RLS-related error
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("get workout with sets query failed - RLS policy violation",
+				"error", err,
+				"workout_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("get workout with sets query failed",
+				"workout_id", id,
+				"user_id", userID,
+				"error", err)
+		}
 		return nil, fmt.Errorf("failed to get workout with sets (id: %d): %w", id, err)
 	}
 
 	if workoutWithSets == nil {
 		workoutWithSets = []db.GetWorkoutWithSetsRow{}
+	}
+
+	// Log empty results that might indicate RLS filtering
+	if len(workoutWithSets) == 0 {
+		wr.logger.Debug("get workout with sets returned empty results",
+			"workout_id", id,
+			"user_id", userID,
+			"potential_rls_filtering", true)
 	}
 
 	return workoutWithSets, nil

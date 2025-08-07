@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -36,6 +37,7 @@ func (s *Service) EnsureUser(ctx context.Context, userID string) (db.Users, erro
 
 	if !errors.Is(err, sql.ErrNoRows) {
 		s.logger.Error("failed to get user", "error", err, "user_id", userID)
+		s.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return db.Users{}, err
 	}
 
@@ -47,6 +49,7 @@ func (s *Service) EnsureUser(ctx context.Context, userID string) (db.Users, erro
 			return s.repo.GetUser(ctx, userID)
 		}
 		s.logger.Error("failed to create user", "error", err, "user_id", userID)
+		s.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return db.Users{}, err
 	}
 

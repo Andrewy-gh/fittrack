@@ -44,6 +44,7 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 	workouts, err := ws.repo.ListWorkouts(ctx, userID)
 	if err != nil {
 		ws.logger.Error("failed to list workouts", "error", err)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
 	}
 	return workouts, nil
@@ -57,6 +58,7 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]d
 	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
 	if err != nil {
 		ws.logger.Error("failed to get workout with sets", "error", err)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "workout_id", id, "user_id", userID)
 		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
 	}
 	return workoutWithSets, nil
@@ -79,6 +81,7 @@ func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateW
 	// Use repository to save the workout
 	if err := ws.repo.SaveWorkout(ctx, reformatted, userID); err != nil {
 		ws.logger.Error("failed to save workout", "error", err)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return fmt.Errorf("failed to save workout: %w", err)
 	}
 

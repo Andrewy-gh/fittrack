@@ -22,3 +22,7 @@ cat schema.sql | docker exec -i db psql -U ${DB_USER} -d ${DB_NAME}
 ```bash
 go run ./cmd/api
 ```
+
+## Documentation
+
+- [Row Level Security (RLS)](docs/rls.md) - Multi-tenant data isolation and security
