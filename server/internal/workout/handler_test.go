@@ -4,20 +4,30 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MockWorkoutRepository implements the WorkoutRepository interface for testing
@@ -400,6 +410,175 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 	}
 }
 
+// === INTEGRATION TESTS (RLS Testing) ===
+// These tests use a real database connection to test Row Level Security policies
+
+func TestWorkoutHandlerRLSIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Setup real database connection
+	pool, cleanup := setupTestDatabase(t)
+	defer cleanup()
+
+	// Initialize components with real database
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	validator := validator.New()
+	queries := db.New(pool)
+	
+	// Initialize repositories
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	workoutRepo := NewRepository(logger, queries, pool, exerciseRepo)
+	workoutService := NewService(logger, workoutRepo)
+	handler := NewHandler(logger, validator, workoutService)
+
+	// Test data
+	userAID := "test-user-a"
+	userBID := "test-user-b"
+
+	// Create test data with proper RLS context
+	workoutAID := setupTestWorkout(t, pool, userAID, "User A's workout")
+	workoutBID := setupTestWorkout(t, pool, userBID, "User B's workout")
+
+	t.Run("Scenario1_UserA_CanRetrieveOwnWorkout", func(t *testing.T) {
+		// Set RLS context for User A
+		ctx := setTestUserContext(context.Background(), t, pool, userAID)
+		ctx = user.WithContext(ctx, userAID)
+
+		req := httptest.NewRequest("GET", "/api/workouts", nil).WithContext(ctx)
+		w := httptest.NewRecorder()
+
+		handler.ListWorkouts(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var workouts []db.Workout
+		err := json.Unmarshal(w.Body.Bytes(), &workouts)
+		assert.NoError(t, err)
+
+		// User A should see only their own workout
+		assert.Len(t, workouts, 1)
+		assert.Equal(t, workoutAID, workouts[0].ID)
+		assert.Equal(t, userAID, workouts[0].UserID)
+	})
+
+	t.Run("Scenario2_UserB_CannotRetrieveUserAWorkout", func(t *testing.T) {
+		// Set RLS context for User B
+		ctx := setTestUserContext(context.Background(), t, pool, userBID)
+		ctx = user.WithContext(ctx, userBID)
+
+		req := httptest.NewRequest("GET", "/api/workouts", nil).WithContext(ctx)
+		w := httptest.NewRecorder()
+
+		handler.ListWorkouts(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var workouts []db.Workout
+		err := json.Unmarshal(w.Body.Bytes(), &workouts)
+		assert.NoError(t, err)
+
+		// User B should see only their own workout, not User A's
+		assert.Len(t, workouts, 1)
+		assert.Equal(t, workoutBID, workouts[0].ID)
+		assert.Equal(t, userBID, workouts[0].UserID)
+		assert.NotEqual(t, workoutAID, workouts[0].ID, "User B should not see User A's workout")
+	})
+
+	t.Run("Scenario3_AnonymousUser_CannotAccessWorkouts", func(t *testing.T) {
+		// No user context set (anonymous user)
+		ctx := context.Background()
+
+		req := httptest.NewRequest("GET", "/api/workouts", nil).WithContext(ctx)
+		w := httptest.NewRecorder()
+
+		handler.ListWorkouts(w, req)
+
+		// Should get unauthorized
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		var resp errorResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Contains(t, resp.Message, "user not authenticated")
+	})
+
+	t.Run("Scenario4_GetSpecificWorkout_UserB_CannotAccessUserAWorkout", func(t *testing.T) {
+		// User B tries to access User A's specific workout
+		ctx := setTestUserContext(context.Background(), t, pool, userBID)
+		ctx = user.WithContext(ctx, userBID)
+
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/workouts/%d", workoutAID), nil).WithContext(ctx)
+		req.SetPathValue("id", fmt.Sprintf("%d", workoutAID))
+		w := httptest.NewRecorder()
+
+		handler.GetWorkoutWithSets(w, req)
+
+		// Should succeed but return empty results due to RLS
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result []db.GetWorkoutWithSetsRow
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Empty(t, result, "User B should not see User A's workout data")
+	})
+
+	t.Run("Scenario5_ConcurrentRequests_ProperIsolation", func(t *testing.T) {
+		// Test concurrent requests from different users
+		var wg sync.WaitGroup
+		results := make(map[string][]db.Workout)
+		mu := sync.Mutex{}
+
+		// User A request
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx := setTestUserContext(context.Background(), t, pool, userAID)
+			ctx = user.WithContext(ctx, userAID)
+
+			req := httptest.NewRequest("GET", "/api/workouts", nil).WithContext(ctx)
+			w := httptest.NewRecorder()
+			handler.ListWorkouts(w, req)
+
+			if w.Code == http.StatusOK {
+				var workouts []db.Workout
+				json.Unmarshal(w.Body.Bytes(), &workouts)
+				mu.Lock()
+				results[userAID] = workouts
+				mu.Unlock()
+			}
+		}()
+
+		// User B request
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx := setTestUserContext(context.Background(), t, pool, userBID)
+			ctx = user.WithContext(ctx, userBID)
+
+			req := httptest.NewRequest("GET", "/api/workouts", nil).WithContext(ctx)
+			w := httptest.NewRecorder()
+			handler.ListWorkouts(w, req)
+
+			if w.Code == http.StatusOK {
+				var workouts []db.Workout
+				json.Unmarshal(w.Body.Bytes(), &workouts)
+				mu.Lock()
+				results[userBID] = workouts
+				mu.Unlock()
+			}
+		}()
+
+		wg.Wait()
+
+		// Verify isolation - each user should only see their own workouts
+		assert.Len(t, results[userAID], 1)
+		assert.Equal(t, workoutAID, results[userAID][0].ID)
+		assert.Equal(t, userAID, results[userAID][0].UserID)
+
+		assert.Len(t, results[userBID], 1)
+		assert.Equal(t, workoutBID, results[userBID][0].ID)
+		assert.Equal(t, userBID, results[userBID][0].UserID)
+	})
+}
+
 func BenchmarkWorkoutHandler_ListWorkouts(b *testing.B) {
 	userID := "test-user-id"
 	mockRepo := &MockWorkoutRepository{}
@@ -409,7 +588,10 @@ func BenchmarkWorkoutHandler_ListWorkouts(b *testing.B) {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	validator := validator.New()
-	service := &WorkoutService{repo: mockRepo, logger: logger}
+	service := &WorkoutService{
+		repo:   mockRepo,
+		logger: logger,
+	}
 	handler := NewHandler(logger, validator, service)
 
 	ctx := context.WithValue(context.Background(), user.UserIDKey, userID)
@@ -419,5 +601,214 @@ func BenchmarkWorkoutHandler_ListWorkouts(b *testing.B) {
 		req := httptest.NewRequest("GET", "/api/workouts", nil).WithContext(ctx)
 		w := httptest.NewRecorder()
 		handler.ListWorkouts(w, req)
+	}
+}
+
+// === HELPER FUNCTIONS FOR INTEGRATION TESTS ===
+
+func getTestDatabaseURL() string {
+	// Load environment variables from .env file
+	if err := godotenv.Load("../../.env"); err != nil {
+		log.Printf("Warning: .env file not found: %v", err)
+	}
+
+	// Try to get from environment, fallback to default test database
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://postgres:password@localhost:5432/fittrack_test?sslmode=disable"
+	}
+	return dbURL
+}
+
+func setupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Create connection pool
+	pool, err := pgxpool.New(ctx, getTestDatabaseURL())
+	require.NoError(t, err, "Failed to create database pool")
+
+	// Test connectivity
+	err = pool.Ping(ctx)
+	require.NoError(t, err, "Failed to ping database")
+
+	// Setup RLS policies
+	setupRLS(t, pool)
+
+	// Setup users table entries
+	setupTestUsers(t, pool)
+
+	return pool, func() {
+		cleanupTestData(t, pool)
+		pool.Close()
+	}
+}
+
+func setupRLS(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Check if current_user_id function exists
+	var exists bool
+	err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'current_user_id')").Scan(&exists)
+	require.NoError(t, err, "Failed to check if current_user_id function exists")
+
+	if !exists {
+		// Create the current_user_id function
+		_, err = pool.Exec(ctx, `
+			CREATE OR REPLACE FUNCTION current_user_id() 
+			RETURNS TEXT AS $$
+			    SELECT current_setting('app.current_user_id', true);
+			$$ LANGUAGE SQL STABLE;
+		`)
+		require.NoError(t, err, "Failed to create current_user_id function")
+	}
+
+	// Ensure RLS is enabled on tables
+	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY")
+	require.NoError(t, err, "Failed to enable RLS on users table")
+
+	_, err = pool.Exec(ctx, "ALTER TABLE workout ENABLE ROW LEVEL SECURITY")
+	require.NoError(t, err, "Failed to enable RLS on workout table")
+
+	_, err = pool.Exec(ctx, "ALTER TABLE exercise ENABLE ROW LEVEL SECURITY")
+	require.NoError(t, err, "Failed to enable RLS on exercise table")
+
+	_, err = pool.Exec(ctx, "ALTER TABLE \"set\" ENABLE ROW LEVEL SECURITY")
+	require.NoError(t, err, "Failed to enable RLS on set table")
+
+	// Create or replace policies (in case they already exist)
+	policies := []string{
+		// Users policies
+		`CREATE POLICY users_policy ON users
+		    FOR ALL TO PUBLIC
+		    USING (user_id = current_user_id())
+		    WITH CHECK (user_id = current_user_id())`,
+		
+		// Workout policies
+		`CREATE POLICY workout_select_policy ON workout
+		    FOR SELECT TO PUBLIC
+		    USING (user_id = current_user_id())`,
+		    
+		`CREATE POLICY workout_insert_policy ON workout
+		    FOR INSERT TO PUBLIC
+		    WITH CHECK (user_id = current_user_id())`,
+		    
+		`CREATE POLICY workout_update_policy ON workout
+		    FOR UPDATE TO PUBLIC
+		    USING (user_id = current_user_id())
+		    WITH CHECK (user_id = current_user_id())`,
+		    
+		`CREATE POLICY workout_delete_policy ON workout
+		    FOR DELETE TO PUBLIC
+		    USING (user_id = current_user_id())`,
+		    
+		// Exercise policies
+		`CREATE POLICY exercise_select_policy ON exercise
+		    FOR SELECT TO PUBLIC
+		    USING (user_id = current_user_id())`,
+		    
+		`CREATE POLICY exercise_insert_policy ON exercise
+		    FOR INSERT TO PUBLIC
+		    WITH CHECK (user_id = current_user_id())`,
+		    
+		`CREATE POLICY exercise_update_policy ON exercise
+		    FOR UPDATE TO PUBLIC
+		    USING (user_id = current_user_id())
+		    WITH CHECK (user_id = current_user_id())`,
+		    
+		`CREATE POLICY exercise_delete_policy ON exercise
+		    FOR DELETE TO PUBLIC
+		    USING (user_id = current_user_id())`,
+	}
+
+	for _, policy := range policies {
+		_, err = pool.Exec(ctx, "DROP POLICY IF EXISTS "+extractPolicyName(policy))
+		// Ignore errors for non-existent policies
+		
+		_, err = pool.Exec(ctx, policy)
+		require.NoError(t, err, "Failed to create policy: %s", policy)
+	}
+}
+
+func extractPolicyName(policy string) string {
+	// Simple extraction of policy name from CREATE POLICY statement
+	// This is a basic implementation - in practice you might want something more robust
+	if len(policy) > 50 {
+		// Extract policy name from "CREATE POLICY policy_name ON table..."
+		parts := strings.Fields(policy)
+		if len(parts) >= 3 {
+			return parts[2] + " ON " + parts[4] // "policy_name ON table_name"
+		}
+	}
+	return "unknown_policy ON unknown_table"
+}
+
+func setupTestUsers(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Temporarily disable RLS for setup
+	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY")
+	require.NoError(t, err, "Failed to disable RLS for setup")
+
+	// Create test users
+	userIDs := []string{"test-user-a", "test-user-b"}
+	for _, userID := range userIDs {
+		_, err = pool.Exec(ctx, "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID)
+		require.NoError(t, err, "Failed to create test user: %s", userID)
+	}
+
+	// Re-enable RLS
+	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY")
+	require.NoError(t, err, "Failed to re-enable RLS")
+}
+
+func setupTestWorkout(t *testing.T, pool *pgxpool.Pool, userID, notes string) int32 {
+	t.Helper()
+	ctx := context.Background()
+
+	// Set user context for RLS
+	ctx = testutils.SetTestUserContext(ctx, t, pool, userID)
+
+	// Create workout
+	var workoutID int32
+	err := pool.QueryRow(ctx, 
+		"INSERT INTO workout (date, notes, user_id) VALUES (NOW(), $1, $2) RETURNING id",
+		notes, userID).Scan(&workoutID)
+	require.NoError(t, err, "Failed to create test workout for user %s", userID)
+
+	return workoutID
+}
+
+func setTestUserContext(ctx context.Context, t *testing.T, pool *pgxpool.Pool, userID string) context.Context {
+	t.Helper()
+	return testutils.SetTestUserContext(ctx, t, pool, userID)
+}
+
+func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
+	ctx := context.Background()
+
+	// Disable RLS temporarily for cleanup
+	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY; ALTER TABLE workout DISABLE ROW LEVEL SECURITY;")
+	if err != nil {
+		t.Logf("Warning: Failed to disable RLS for cleanup: %v", err)
+	}
+
+	// Clean up test data
+	_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id IN ('test-user-a', 'test-user-b')")
+	if err != nil {
+		t.Logf("Warning: Failed to clean up workout data: %v", err)
+	}
+
+	_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id IN ('test-user-a', 'test-user-b')")
+	if err != nil {
+		t.Logf("Warning: Failed to clean up user data: %v", err)
+	}
+
+	// Re-enable RLS
+	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY;")
+	if err != nil {
+		t.Logf("Warning: Failed to re-enable RLS after cleanup: %v", err)
 	}
 }

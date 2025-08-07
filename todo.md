@@ -40,19 +40,20 @@
 
 ### Unit Tests:
 
-- [ ] **Middleware Tests (`server/internal/auth/middleware_test.go`):**
+- [x] **Middleware Tests (`server/internal/auth/middleware_test.go`):**
   - Verify `app.current_user_id` is set correctly in database session
   - Test error scenarios (invalid tokens, missing headers, database failures)
   - Mock database connection to verify SQL queries
 
 ### Integration Tests:
 
-- [ ] **Workout Handler Tests (`server/internal/workout/handler_test.go`):**
+- [x] **Workout Handler Tests (`server/internal/workout/handler_test.go`):**
 
-  - **Scenario 1:** User A creates a workout → User A can retrieve it
-  - **Scenario 2:** User B attempts to retrieve User A's workout → Request denied/empty result
-  - **Scenario 3:** Anonymous user attempts to access workout data → Request denied
-  - **Scenario 4:** Concurrent requests from different users maintain proper isolation
+  - **Scenario 1:** User A creates a workout → User A can retrieve it ✅
+  - **Scenario 2:** User B attempts to retrieve User A's workout → Request denied/empty result ✅
+  - **Scenario 3:** Anonymous user attempts to access workout data → Request denied ✅
+  - **Scenario 4:** Concurrent requests from different users maintain proper isolation ✅
+  - **Scenario 5:** User B attempts to access User A's specific workout by ID → Request returns empty results ✅
 
 - [ ] **Exercise Handler Tests (`server/internal/exercise/handler_test.go`):**
   - Similar multi-user scenarios for exercise data
