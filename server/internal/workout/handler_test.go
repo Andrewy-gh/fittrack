@@ -606,14 +606,21 @@ func BenchmarkWorkoutHandler_ListWorkouts(b *testing.B) {
 // === HELPER FUNCTIONS FOR INTEGRATION TESTS ===
 
 func getTestDatabaseURL() string {
-	// Load environment variables from .env file
+	// Try to get from environment first (for CI/CD)
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL != "" {
+		return dbURL
+	}
+
+	// Load environment variables from .env file for local development
 	if err := godotenv.Load("../../.env"); err != nil {
 		log.Printf("Warning: .env file not found: %v", err)
 	}
 
-	// Try to get from environment, fallback to default test database
-	dbURL := os.Getenv("DATABASE_URL")
+	// Try again after loading .env
+	dbURL = os.Getenv("DATABASE_URL")
 	if dbURL == "" {
+		// Final fallback to default test database
 		dbURL = "postgres://postgres:password@localhost:5432/fittrack_test?sslmode=disable"
 	}
 	return dbURL
