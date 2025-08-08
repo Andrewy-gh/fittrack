@@ -666,7 +666,6 @@ func setupRLS(t *testing.T, pool *pgxpool.Pool) {
 	require.Greater(t, policyCount, 0, "RLS policies should exist from migration")
 }
 
-
 func setupTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
