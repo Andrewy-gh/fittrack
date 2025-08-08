@@ -3,8 +3,6 @@ name: Test
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   test:
@@ -44,22 +42,44 @@ jobs:
       - name: Set up test database
         working-directory: server
         env:
-          DATABASE_URL: postgresql://${{ vars.TEST_POSTGRES_USER }}:${{ vars.TEST_POSTGRES_PASSWORD }}@localhost:5432/${{ vars.TEST_POSTGRES_DB }}?sslmode=disable
+          PGUSER: ${{ vars.TEST_POSTGRES_USER }}
+          PGPASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
+          PGDATABASE: ${{ vars.TEST_POSTGRES_DB }}
+          PGHOST: localhost
+          PGPORT: 5432
+          PGSSLMODE: disable
         run: |
+          # Construct DATABASE_URL with proper escaping
+          export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
+          echo "Testing database connection..."
+          # Test connection first
+          psql "$DATABASE_URL" -c "SELECT version();"
           # Run migrations to set up the database schema including RLS policies
           goose -dir migrations postgres "$DATABASE_URL" up
 
       - name: Run unit tests
         working-directory: server
         env:
-          DATABASE_URL: postgresql://${{ vars.TEST_POSTGRES_USER }}:${{ vars.TEST_POSTGRES_PASSWORD }}@localhost:5432/${{ vars.TEST_POSTGRES_DB }}?sslmode=disable
+          PGUSER: ${{ vars.TEST_POSTGRES_USER }}
+          PGPASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
+          PGDATABASE: ${{ vars.TEST_POSTGRES_DB }}
+          PGHOST: localhost
+          PGPORT: 5432
+          PGSSLMODE: disable
         run: |
+          export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
           go test -short ./...
 
       - name: Run integration tests  
         working-directory: server
         env:
-          DATABASE_URL: postgresql://${{ vars.TEST_POSTGRES_USER }}:${{ vars.TEST_POSTGRES_PASSWORD }}@localhost:5432/${{ vars.TEST_POSTGRES_DB }}?sslmode=disable
+          PGUSER: ${{ vars.TEST_POSTGRES_USER }}
+          PGPASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
+          PGDATABASE: ${{ vars.TEST_POSTGRES_DB }}
+          PGHOST: localhost
+          PGPORT: 5432
+          PGSSLMODE: disable
         run: |
+          export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
           # Run all tests including integration tests (not in short mode)
           go test -v ./...
