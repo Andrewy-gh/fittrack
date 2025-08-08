@@ -1,19 +1,18 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Plus } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { withForm } from '@/hooks/form';
-import { formOptsMock } from '../-components/form-options';
-import { AddSetModal2 } from '../-components/add-set-modal';
+import { useState } from 'react';
+import { AddSetDialog } from '../-components/add-set-dialog';
+import { ArrowLeft, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { MOCK_VALUES } from '../-components/form-options';
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
   onBack: () => void;
 };
 
-// MARK: - ExerciseScreen
 export const ExerciseScreen2 = withForm({
-  ...formOptsMock,
+  defaultValues: MOCK_VALUES,
   props: {} as ExerciseScreenProps,
   render: function Render({ form, exerciseIndex, onBack }) {
     const [dialogOpenIndex, setDialogOpenIndex] = useState<number | null>(null);
@@ -23,7 +22,7 @@ export const ExerciseScreen2 = withForm({
         <div className="px-4 pb-8">
           <div className="max-w-md mx-auto space-y-6">
             {/* Header */}
-            <div className="gap-4 pt-6 pb-2">
+            <div className="flex items-center pt-6 pb-2">
               <Button
                 variant="ghost"
                 onClick={onBack}
@@ -87,7 +86,7 @@ export const ExerciseScreen2 = withForm({
                           const isDialogOpen = dialogOpenIndex === setIndex;
                           if (isDialogOpen) {
                             return (
-                              <AddSetModal2
+                              <AddSetDialog
                                 key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
                                 form={form}
                                 exerciseIndex={exerciseIndex}
@@ -166,7 +165,7 @@ export const ExerciseScreen2 = withForm({
                         Add Set
                       </Button>
                     </div>
-                  </> // MARK: Bottom
+                  </>
                 );
               }}
             />

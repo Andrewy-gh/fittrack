@@ -42,8 +42,8 @@ export default function InputField({
   };
 
   return (
-    <div className="space-y-2">
-      <Label className="text-xs tracking-wider">{label}</Label>
+    <div className="space-y-4">
+      <Label className="tracking-wider">{label}</Label>
       <Input
         id={field.name}
         name={field.name}

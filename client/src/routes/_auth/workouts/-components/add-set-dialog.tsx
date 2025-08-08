@@ -1,15 +1,15 @@
-import { Button } from '@/components/ui/button';
-import { formOptsMock } from './form-options';
+import { Suspense } from 'react';
 import { withForm } from '@/hooks/form';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Suspense } from 'react';
+import { MOCK_VALUES } from './form-options';
 
-type AddSetModalProps = {
+type AddSetDialogProps = {
   exerciseIndex: number;
   setIndex: number;
   onSaveSet: () => void;
@@ -17,9 +17,9 @@ type AddSetModalProps = {
   onRemoveSet: () => void;
 };
 
-export const AddSetModal2 = withForm({
-  ...formOptsMock,
-  props: {} as AddSetModalProps,
+export const AddSetDialog = withForm({
+  defaultValues: MOCK_VALUES,
+  props: {} as AddSetDialogProps,
   render: function Render({
     form,
     exerciseIndex,
@@ -38,10 +38,10 @@ export const AddSetModal2 = withForm({
         }}
       >
         <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
-          <DialogHeader>
-            <DialogTitle>Add Set</DialogTitle>
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-semibold">Add Set</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <form.AppField
               name={`exercises[${exerciseIndex}].sets[${setIndex}].weight`}
               children={(field) => (
@@ -76,7 +76,7 @@ export const AddSetModal2 = withForm({
             </Button>
             <Button
               variant="outline"
-              className="w-full py-4 mt-6 text-base font-semibold rounded-lg"
+              className="w-full mt-6 text-base font-semibold rounded-lg"
               onClick={onRemoveSet}
             >
               Remove Set

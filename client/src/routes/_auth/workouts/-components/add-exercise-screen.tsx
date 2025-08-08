@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { withForm } from '@/hooks/form';
 import type { ExerciseOption } from '@/lib/types';
-import { formOptsMock } from '../-components/form-options';
+import { MOCK_VALUES } from '../-components/form-options';
 
 type AddExerciseScreenProps = {
   exercises: ExerciseOption[];
@@ -12,7 +12,7 @@ type AddExerciseScreenProps = {
 };
 
 export const AddExerciseScreen = withForm({
-  ...formOptsMock,
+  defaultValues: MOCK_VALUES,
   props: {} as AddExerciseScreenProps,
   render: function Render({ form, exercises, onAddExercise, onBack }) {
     return (
@@ -20,7 +20,7 @@ export const AddExerciseScreen = withForm({
         <div className="px-4 pb-8">
           <div className="max-w-md mx-auto space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-2 pt-6 pb-2">
+            <div className="flex items-center pt-6 pb-2">
               <Button
                 variant="ghost"
                 onClick={onBack}
