@@ -51,6 +51,8 @@ jobs:
 
       - name: Run unit tests
         working-directory: server
+        env:
+          DATABASE_URL: postgresql://${{ vars.TEST_POSTGRES_USER }}:${{ vars.TEST_POSTGRES_PASSWORD }}@localhost:5432/${{ vars.TEST_POSTGRES_DB }}?sslmode=disable
         run: |
           go test -short ./...
 
