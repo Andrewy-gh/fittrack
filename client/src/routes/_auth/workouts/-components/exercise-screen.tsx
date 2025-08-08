@@ -23,7 +23,7 @@ export const ExerciseScreen2 = withForm({
         <div className="px-4 pb-8">
           <div className="max-w-md mx-auto space-y-6">
             {/* Header */}
-            <div className="gap-4 pt-6 pb-2">
+            <div className="flex items-center pt-6 pb-2">
               <Button
                 variant="ghost"
                 onClick={onBack}

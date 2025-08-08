@@ -20,7 +20,7 @@ export const AddExerciseScreen = withForm({
         <div className="px-4 pb-8">
           <div className="max-w-md mx-auto space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-2 pt-6 pb-2">
+            <div className="flex items-center pt-6 pb-2">
               <Button
                 variant="ghost"
                 onClick={onBack}

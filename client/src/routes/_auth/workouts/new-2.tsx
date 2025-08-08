@@ -211,7 +211,7 @@ export default function WorkoutTracker() {
                     <Card
                       key={`exercise-${exerciseIndex}`}
                       className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
-                      onClick={() => handleExerciseClick(exerciseIndex)} // MARK: ! TODO index
+                      onClick={() => handleExerciseClick(exerciseIndex)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -277,8 +277,8 @@ export default function WorkoutTracker() {
             }}
           />
 
-          {/* Add Exercise Button */}
-          <div className="pt-6">
+          {/* MARK: Buttons */}
+          <div className="py-6">
             <Button
               type="button"
               variant="outline"
@@ -289,8 +289,7 @@ export default function WorkoutTracker() {
               Add Exercise
             </Button>
           </div>
-          {/* ! TODO: Save and Cancel buttons */}
-          <div className="flex gap-2 mt-4">
+          <div className="mt-8">
             <form.Subscribe
               selector={(state) => [state.canSubmit, state.isSubmitting]}
               children={([canSubmit, isSubmitting]) => (

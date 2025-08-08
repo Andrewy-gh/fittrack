@@ -76,7 +76,7 @@ export const AddSetModal2 = withForm({
             </Button>
             <Button
               variant="outline"
-              className="w-full py-4 mt-6 text-base font-semibold rounded-lg"
+              className="w-full mt-6 text-base font-semibold rounded-lg"
               onClick={onRemoveSet}
             >
               Remove Set
