@@ -49,7 +49,20 @@ jobs:
           PGPORT: 5432
           PGSSLMODE: disable
         run: |
-          export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
+          # Debug: Show raw variable values
+          echo "Raw PGUSER length: ${#PGUSER}"
+          echo "PGUSER bytes:" | cat -v
+          printf '%s' "$PGUSER" | od -c
+          
+          # Clean variables by removing all control characters
+          CLEAN_PGUSER=$(printf '%s' "$PGUSER" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          CLEAN_PGPASSWORD=$(printf '%s' "$PGPASSWORD" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          CLEAN_PGDATABASE=$(printf '%s' "$PGDATABASE" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          
+          echo "Cleaned PGUSER length: ${#CLEAN_PGUSER}"
+          echo "Cleaned PGUSER: '$CLEAN_PGUSER'"
+          
+          export DATABASE_URL="postgresql://${CLEAN_PGUSER}:${CLEAN_PGPASSWORD}@${PGHOST}:${PGPORT}/${CLEAN_PGDATABASE}?sslmode=${PGSSLMODE}"
           echo "Testing database connection..."
           psql "$DATABASE_URL" -c "SELECT version();"
           goose -dir migrations postgres "$DATABASE_URL" up
@@ -64,7 +77,11 @@ jobs:
           PGPORT: 5432
           PGSSLMODE: disable
         run: |
-          export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
+          # Clean variables
+          CLEAN_PGUSER=$(printf '%s' "$PGUSER" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          CLEAN_PGPASSWORD=$(printf '%s' "$PGPASSWORD" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          CLEAN_PGDATABASE=$(printf '%s' "$PGDATABASE" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          export DATABASE_URL="postgresql://${CLEAN_PGUSER}:${CLEAN_PGPASSWORD}@${PGHOST}:${PGPORT}/${CLEAN_PGDATABASE}?sslmode=${PGSSLMODE}"
           go test -short ./...
 
       - name: Run integration tests  
@@ -77,5 +94,9 @@ jobs:
           PGPORT: 5432
           PGSSLMODE: disable
         run: |
-          export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
+          # Clean variables
+          CLEAN_PGUSER=$(printf '%s' "$PGUSER" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          CLEAN_PGPASSWORD=$(printf '%s' "$PGPASSWORD" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          CLEAN_PGDATABASE=$(printf '%s' "$PGDATABASE" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
+          export DATABASE_URL="postgresql://${CLEAN_PGUSER}:${CLEAN_PGPASSWORD}@${PGHOST}:${PGPORT}/${CLEAN_PGDATABASE}?sslmode=${PGSSLMODE}"
           go test -v ./...
