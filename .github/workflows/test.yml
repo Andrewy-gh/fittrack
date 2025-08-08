@@ -49,12 +49,9 @@ jobs:
           PGPORT: 5432
           PGSSLMODE: disable
         run: |
-          # Construct DATABASE_URL with proper escaping
           export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
           echo "Testing database connection..."
-          # Test connection first
           psql "$DATABASE_URL" -c "SELECT version();"
-          # Run migrations to set up the database schema including RLS policies
           goose -dir migrations postgres "$DATABASE_URL" up
 
       - name: Run unit tests
@@ -81,5 +78,4 @@ jobs:
           PGSSLMODE: disable
         run: |
           export DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE}"
-          # Run all tests including integration tests (not in short mode)
           go test -v ./...
