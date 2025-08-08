@@ -14,8 +14,8 @@ import {
 export default function SetTypeSelect({ className }: { className?: string }) {
   const field = useFieldContext<string>();
   return (
-    <div className="space-y-2">
-      <Label className="text-xs">Set Type</Label>
+    <div className="space-y-4">
+      <Label>Set Type</Label>
       <div>
         <Select value={field.state.value} onValueChange={field.handleChange}>
           <SelectTrigger
@@ -29,8 +29,8 @@ export default function SetTypeSelect({ className }: { className?: string }) {
           </SelectTrigger>
           <SelectContent position="popper" className="w-full">
             <SelectGroup>
-              <SelectLabel className="text-xs px-2 py-1.5">
-                SET TYPE
+              <SelectLabel>
+                Set Type
               </SelectLabel>
               <SelectItem value="warmup" className="text-sm cursor-pointer">
                 Warmup

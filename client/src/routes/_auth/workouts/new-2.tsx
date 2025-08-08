@@ -8,9 +8,9 @@ import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import { useAppForm } from '@/hooks/form';
 import type { ExerciseOption } from '@/lib/types';
 import { MiniChart } from './-components/mini-chart';
-import { formOpts, getInitialValues } from './-components/form-options';
+import { getInitialValues } from './-components/form-options';
 import { ExerciseScreen2 } from './-components/exercise-screen';
-import { AddExerciseScreen } from './-components/add-exercise';
+import { AddExerciseScreen } from './-components/add-exercise-screen';
 import { Spinner } from '@/components/ui/spinner';
 
 export const Route = createFileRoute('/_auth/workouts/new-2')({
@@ -50,7 +50,6 @@ export default function WorkoutTracker() {
 
   // MARK: useForm
   const form = useAppForm({
-    ...formOpts,
     defaultValues: getInitialValues(userId),
     listeners: {
       onChange: ({ formApi }) => {
@@ -204,7 +203,6 @@ export default function WorkoutTracker() {
             name="exercises"
             mode="array"
             children={(field) => {
-              console.log('field', field.state.value);
               return (
                 <div className="space-y-3">
                   {field.state.value.map((exercise, exerciseIndex) => (
@@ -221,9 +219,6 @@ export default function WorkoutTracker() {
                               <span className="text-primary font-medium text-sm">
                                 {exercise.name}
                               </span>
-                              {/* <span className="font-semibold text-sm tracking-tight uppercase text-muted-foreground ml-auto">
-                                  {exercise.lastUpdated}
-                                  </span> */}
                             </div>
                             <Button
                               type="button"
