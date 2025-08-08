@@ -13,9 +13,9 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
-          POSTGRES_USER: ${{ vars.TEST_POSTGRES_USER }}
-          POSTGRES_DB: ${{ vars.TEST_POSTGRES_DB }}
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: fittrack_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -42,27 +42,8 @@ jobs:
       - name: Set up test database
         working-directory: server
         env:
-          PGUSER: ${{ vars.TEST_POSTGRES_USER }}
-          PGPASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
-          PGDATABASE: ${{ vars.TEST_POSTGRES_DB }}
-          PGHOST: localhost
-          PGPORT: 5432
-          PGSSLMODE: disable
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
         run: |
-          # Debug: Show raw variable values
-          echo "Raw PGUSER length: ${#PGUSER}"
-          echo "PGUSER bytes:" | cat -v
-          printf '%s' "$PGUSER" | od -c
-          
-          # Clean variables by removing all control characters
-          CLEAN_PGUSER=$(printf '%s' "$PGUSER" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          CLEAN_PGPASSWORD=$(printf '%s' "$PGPASSWORD" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          CLEAN_PGDATABASE=$(printf '%s' "$PGDATABASE" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          
-          echo "Cleaned PGUSER length: ${#CLEAN_PGUSER}"
-          echo "Cleaned PGUSER: '$CLEAN_PGUSER'"
-          
-          export DATABASE_URL="postgresql://${CLEAN_PGUSER}:${CLEAN_PGPASSWORD}@${PGHOST}:${PGPORT}/${CLEAN_PGDATABASE}?sslmode=${PGSSLMODE}"
           echo "Testing database connection..."
           psql "$DATABASE_URL" -c "SELECT version();"
           goose -dir migrations postgres "$DATABASE_URL" up
@@ -70,33 +51,13 @@ jobs:
       - name: Run unit tests
         working-directory: server
         env:
-          PGUSER: ${{ vars.TEST_POSTGRES_USER }}
-          PGPASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
-          PGDATABASE: ${{ vars.TEST_POSTGRES_DB }}
-          PGHOST: localhost
-          PGPORT: 5432
-          PGSSLMODE: disable
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
         run: |
-          # Clean variables
-          CLEAN_PGUSER=$(printf '%s' "$PGUSER" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          CLEAN_PGPASSWORD=$(printf '%s' "$PGPASSWORD" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          CLEAN_PGDATABASE=$(printf '%s' "$PGDATABASE" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          export DATABASE_URL="postgresql://${CLEAN_PGUSER}:${CLEAN_PGPASSWORD}@${PGHOST}:${PGPORT}/${CLEAN_PGDATABASE}?sslmode=${PGSSLMODE}"
           go test -short ./...
 
       - name: Run integration tests  
         working-directory: server
         env:
-          PGUSER: ${{ vars.TEST_POSTGRES_USER }}
-          PGPASSWORD: ${{ vars.TEST_POSTGRES_PASSWORD }}
-          PGDATABASE: ${{ vars.TEST_POSTGRES_DB }}
-          PGHOST: localhost
-          PGPORT: 5432
-          PGSSLMODE: disable
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
         run: |
-          # Clean variables
-          CLEAN_PGUSER=$(printf '%s' "$PGUSER" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          CLEAN_PGPASSWORD=$(printf '%s' "$PGPASSWORD" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          CLEAN_PGDATABASE=$(printf '%s' "$PGDATABASE" | tr -d '\r\n\t' | tr -d '[:cntrl:]')
-          export DATABASE_URL="postgresql://${CLEAN_PGUSER}:${CLEAN_PGPASSWORD}@${PGHOST}:${PGPORT}/${CLEAN_PGDATABASE}?sslmode=${PGSSLMODE}"
           go test -v ./...
