@@ -1,21 +1,22 @@
 import { queryOptions } from '@tanstack/react-query';
 import { WorkoutsService } from '../../generated';
-import type { workout_CreateWorkoutRequest } from '../../generated';
+import type { 
+  workout_CreateWorkoutRequest,
+  workout_WorkoutResponse,
+  workout_WorkoutWithSetsResponse
+} from '../../generated';
 
-// Type alias for better compatibility with existing code
+// Type aliases for better compatibility with existing code
 export type WorkoutFormValues = workout_CreateWorkoutRequest;
-export interface WorkoutData {
-  id: number;
-  date: string;
-  notes: string | null;
-  created_at: string;
-  updated_at: string | null;
-}
+export type WorkoutData = workout_WorkoutResponse;
+export type WorkoutWithSets = workout_WorkoutWithSetsResponse;
 
 // Delegated functions using generated service
 export const getWorkouts = () => WorkoutsService.getWorkouts();
 export const createWorkout = (data: WorkoutFormValues) =>
   WorkoutsService.postWorkouts(data);
+export const getWorkoutWithSets = (id: number) =>
+  WorkoutsService.getWorkouts1(id);
 
 export async function fetchWorkouts(
   accessToken: string
@@ -32,23 +33,10 @@ export async function fetchWorkouts(
 }
 
 export function workoutsQueryOptions(accessToken: string) {
-  return queryOptions({
+  return queryOptions<WorkoutData[], Error>({
     queryKey: ['workouts', 'list'],
     queryFn: () => fetchWorkouts(accessToken),
   });
-}
-
-export interface WorkoutWithSets {
-  workout_id: number;
-  workout_date: string;
-  workout_notes: string;
-  exercise_id: number;
-  exercise_name: string;
-  set_id: number;
-  set_type: string;
-  weight: number;
-  reps: number;
-  volume: number;
 }
 
 export async function fetchWorkoutById(
@@ -85,7 +73,7 @@ export interface Exercise {
 export function transformToWorkoutFormValues(workouts: WorkoutWithSets[]): WorkoutFormValues {
   if (workouts.length === 0) {
     return {
-      date: new Date(),
+      date: new Date().toISOString(),
       notes: '',
       exercises: [],
     };
@@ -95,48 +83,28 @@ export function transformToWorkoutFormValues(workouts: WorkoutWithSets[]): Worko
   const exercisesMap = new Map<number, Exercise>();
   
   // Sort all workouts by set_id first to ensure consistent ordering
-  const sortedWorkouts = [...workouts].sort((a, b) => a.set_id - b.set_id);
+  const sortedWorkouts = [...workouts].sort((a, b) => (a.set_id || 0) - (b.set_id || 0));
 
   for (const workout of sortedWorkouts) {
-    if (!exercisesMap.has(workout.exercise_id)) {
-      exercisesMap.set(workout.exercise_id, {
-        name: workout.exercise_name,
+    const exerciseId = workout.exercise_id || 0;
+    if (!exercisesMap.has(exerciseId)) {
+      exercisesMap.set(exerciseId, {
+        name: workout.exercise_name || '',
         sets: [],
       });
     }
 
-    const exercise = exercisesMap.get(workout.exercise_id)!;
+    const exercise = exercisesMap.get(exerciseId)!;
     exercise.sets.push({
-      weight: workout.weight,
-      reps: workout.reps,
-      setType: workout.set_type as 'warmup' | 'working',
+      weight: workout.weight || 0,
+      reps: workout.reps || 0,
+      setType: (workout.set_type as 'warmup' | 'working') || 'working',
     });
   }
 
   return {
-    date: new Date(workouts[0].workout_date),
+    date: workouts[0].workout_date || new Date().toISOString(),
     notes: workouts[0].workout_notes || '',
     exercises: Array.from(exercisesMap.values()),
   };
 }
-
-// export async function createWorkout(
-//   workoutData: WorkoutFormValues,
-//   accessToken: string
-// ): Promise<any> {
-//   const response = await fetch('/api/workouts', {
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/json',
-//       'x-stack-access-token': accessToken,
-//     },
-//     body: JSON.stringify(workoutData),
-//   });
-
-//   if (!response.ok) {
-//     const errorText = await response.text();
-//     throw new Error(errorText ?? 'Failed to submit workout');
-//   }
-
-//   return response.json();
-// }
