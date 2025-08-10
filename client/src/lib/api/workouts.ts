@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 
-// import type { WorkoutFormValues } from '@/lib/types';
+import type { WorkoutFormValues } from '@/lib/types';
+
 export interface WorkoutData {
   id: number;
   date: string;
@@ -63,6 +64,53 @@ export function workoutByIdQueryOptions(workoutId: number, accessToken: string) 
     queryKey: ['workouts', 'details', workoutId],
     queryFn: () => fetchWorkoutById(workoutId, accessToken),
   });
+}
+
+export interface Exercise {
+  name: string;
+  sets: {
+    weight: number;
+    reps: number;
+    setType: 'warmup' | 'working';
+  }[];
+}
+
+export function transformToWorkoutFormValues(workouts: WorkoutWithSets[]): WorkoutFormValues {
+  if (workouts.length === 0) {
+    return {
+      date: new Date(),
+      notes: '',
+      exercises: [],
+    };
+  }
+
+  // Group sets by exercise
+  const exercisesMap = new Map<number, Exercise>();
+  
+  // Sort all workouts by set_id first to ensure consistent ordering
+  const sortedWorkouts = [...workouts].sort((a, b) => a.set_id - b.set_id);
+
+  for (const workout of sortedWorkouts) {
+    if (!exercisesMap.has(workout.exercise_id)) {
+      exercisesMap.set(workout.exercise_id, {
+        name: workout.exercise_name,
+        sets: [],
+      });
+    }
+
+    const exercise = exercisesMap.get(workout.exercise_id)!;
+    exercise.sets.push({
+      weight: workout.weight,
+      reps: workout.reps,
+      setType: workout.set_type as 'warmup' | 'working',
+    });
+  }
+
+  return {
+    date: new Date(workouts[0].workout_date),
+    notes: workouts[0].workout_notes || '',
+    exercises: Array.from(exercisesMap.values()),
+  };
 }
 
 // export async function createWorkout(

@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
 import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
-import { workoutByIdQueryOptions, type WorkoutWithSets } from '@/lib/api/workouts';
+import {
+  workoutByIdQueryOptions,
+  type WorkoutWithSets,
+} from '@/lib/api/workouts';
 
 export function IndividualWorkoutPage({
   workout,
@@ -61,9 +64,14 @@ export function IndividualWorkoutPage({
               )}
             </div>
           </div>
-          <Button size="sm">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
+          <Button size="sm" asChild>
+            <Link
+              to="/workouts/$workoutId/edit"
+              params={{ workoutId: workout[0]?.workout_id }}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </Link>
           </Button>
         </div>
 
@@ -177,7 +185,7 @@ export function IndividualWorkoutPage({
   );
 }
 
-export const Route = createFileRoute('/_auth/workouts/$workoutId')({
+export const Route = createFileRoute('/_auth/workouts/$workoutId/')({
   params: {
     parse: (params) => {
       const workoutId = parseInt(params.workoutId, 10);
@@ -200,6 +208,8 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId')({
 
 function RouteComponent() {
   const { accessToken, workoutId } = Route.useLoaderData();
-  const { data: workout } = useSuspenseQuery(workoutByIdQueryOptions(workoutId, accessToken));
+  const { data: workout } = useSuspenseQuery(
+    workoutByIdQueryOptions(workoutId, accessToken)
+  );
   return <IndividualWorkoutPage workout={workout} />;
 }
