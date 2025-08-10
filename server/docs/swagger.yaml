@@ -1,0 +1,167 @@
+basePath: /api
+definitions:
+  response.ErrorResponse:
+    properties:
+      message:
+        example: Error message
+        type: string
+    type: object
+  response.SuccessResponse:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  workout.CreateWorkoutRequest:
+    properties:
+      date:
+        type: string
+      exercises:
+        items:
+          $ref: '#/definitions/workout.ExerciseInput'
+        minItems: 1
+        type: array
+      notes:
+        maxLength: 256
+        type: string
+    required:
+    - date
+    - exercises
+    type: object
+  workout.ExerciseInput:
+    properties:
+      name:
+        maxLength: 256
+        minLength: 1
+        type: string
+      sets:
+        items:
+          $ref: '#/definitions/workout.SetInput'
+        minItems: 1
+        type: array
+    required:
+    - name
+    - sets
+    type: object
+  workout.SetInput:
+    properties:
+      reps:
+        minimum: 1
+        type: integer
+      setType:
+        enum:
+        - warmup
+        - working
+        type: string
+      weight:
+        minimum: 0
+        type: integer
+    required:
+    - reps
+    - setType
+    type: object
+  workout.WorkoutResponse:
+    properties:
+      created_at:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      date:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      notes:
+        example: Great workout today
+        type: string
+      updated_at:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      user_id:
+        example: user-123
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A fitness tracking application API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: FitTrack API
+  version: "1.0"
+paths:
+  /workouts:
+    get:
+      consumes:
+      - application/json
+      description: Get all workouts for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/workout.WorkoutResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List workouts
+      tags:
+      - workouts
+    post:
+      consumes:
+      - application/json
+      description: Create a new workout with exercises and sets
+      parameters:
+      - description: Workout data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/workout.CreateWorkoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new workout
+      tags:
+      - workouts
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: x-stack-access-token
+    type: apiKey
+swagger: "2.0"

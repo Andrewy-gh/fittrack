@@ -5,6 +5,7 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler) *http.ServeMux {
@@ -15,6 +16,8 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExerciseWithSets)
+	// Swagger documentation
+	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 	mux.HandleFunc("GET /", api.handleStaticFiles())
 
 	return mux
