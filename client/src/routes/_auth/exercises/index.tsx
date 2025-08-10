@@ -3,7 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Plus, Search } from 'lucide-react';
-import type { ExerciseOption } from '@/lib/types';
+import type { ExerciseOption } from '@/lib/api/exercises';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
 import { getAccessToken } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import type { ExerciseOption } from '@/lib/types';
+import type { ExerciseOption } from '@/lib/api/exercises';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
 import { WorkoutEntryForm } from '@/components/workout-entry-form';
 

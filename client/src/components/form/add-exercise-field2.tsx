@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import type { Exercise, ExerciseOption } from '@/lib/types';
+import type { Exercise, ExerciseOption } from '@/lib/api/exercises';
 import { Plus } from 'lucide-react';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { useFieldContext } from '@/hooks/form';

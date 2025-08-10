@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { ExerciseWithSets } from '@/lib/types';
+import type { ExerciseWithSets } from '@/lib/api/exercises';
 
 interface ChartBarVolProps {
   data: ExerciseWithSets[];

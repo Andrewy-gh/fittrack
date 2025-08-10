@@ -1,5 +1,4 @@
-import type { Exercise, Set, ExerciseOption } from '@/lib/types';
-import type { NewExerciseOption } from '@/lib/api/exercises';
+import type { ExerciseOption, NewExerciseOption, Exercise } from '@/lib/api/exercises';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
