@@ -9,7 +9,7 @@
     "prebuild": "bun run generate:api",
     "serve": "vite preview",
     "test": "vitest run",
-    "generate:api": "openapi --input ../server/docs/swagger.json --output src/generated --client axios"
+    "generate:api": "openapi --input ../server/docs/swagger.json --output src/generated --client fetch"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",

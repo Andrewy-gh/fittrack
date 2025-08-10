@@ -55,6 +55,19 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetWorkoutWithSets godoc
+// @Summary Get workout with sets
+// @Description Get a specific workout with all its sets and exercises
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Workout ID"
+// @Success 200 {array} workout.WorkoutWithSetsResponse
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts/{id} [get]
 func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
 	workoutID := r.PathValue("id")
 	if workoutID == "" {

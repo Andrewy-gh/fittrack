@@ -26,6 +26,17 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, exerciseServ
 	}
 }
 
+// ListExercises godoc
+// @Summary List exercises
+// @Description Get all exercises for the authenticated user
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} exercise.ExerciseResponse
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises [get]
 func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) {
 	exercises, err := h.exerciseService.ListExercises(r.Context())
 	if err != nil {
@@ -44,6 +55,20 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// GetExerciseWithSets godoc
+// @Summary Get exercise with sets
+// @Description Get a specific exercise with all its sets from workouts
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Exercise ID"
+// @Success 200 {array} exercise.ExerciseWithSetsResponse
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 404 {object} response.ErrorResponse "Not Found"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises/{id} [get]
 func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Request) {
 	exerciseID := r.PathValue("id")
 	if exerciseID == "" {
@@ -88,6 +113,19 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// GetOrCreateExercise godoc
+// @Summary Get or create exercise
+// @Description Get an existing exercise by name or create it if it doesn't exist
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body exercise.CreateExerciseRequest true "Exercise data"
+// @Success 200 {object} exercise.CreateExerciseResponse
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises [post]
 func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Request) {
 	var req CreateExerciseRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

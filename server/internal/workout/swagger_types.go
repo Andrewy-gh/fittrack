@@ -32,3 +32,17 @@ type ExerciseResponse struct {
 	UpdatedAt time.Time  `json:"updated_at" example:"2023-01-01T15:04:05Z"`
 	UserID    string     `json:"user_id" example:"user-123"`
 }
+
+// WorkoutWithSetsResponse represents a workout with sets response for swagger documentation
+type WorkoutWithSetsResponse struct {
+	WorkoutID    int32      `json:"workout_id" example:"1"`
+	WorkoutDate  time.Time  `json:"workout_date" example:"2023-01-01T15:04:05Z"`
+	WorkoutNotes *string    `json:"workout_notes,omitempty" example:"Great workout today"`
+	SetID        int32      `json:"set_id" example:"1"`
+	Weight       *int32     `json:"weight,omitempty" example:"225"`
+	Reps         int32      `json:"reps" example:"10"`
+	SetType      string     `json:"set_type" example:"working"`
+	ExerciseID   int32      `json:"exercise_id" example:"1"`
+	ExerciseName string     `json:"exercise_name" example:"Bench Press"`
+	Volume       int32      `json:"volume" example:"2250"`
+}
