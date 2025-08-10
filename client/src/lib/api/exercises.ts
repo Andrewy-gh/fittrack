@@ -1,18 +1,41 @@
 import { queryOptions } from '@tanstack/react-query';
+import { ExercisesService } from '../../generated';
+import type { 
+  exercise_ExerciseResponse,
+  exercise_ExerciseWithSetsResponse,
+  exercise_CreateExerciseRequest,
+  exercise_CreateExerciseResponse
+} from '../../generated';
 
-// API response type for exercise details
-export interface ExerciseWithSets {
-  workout_id: number;
-  workout_date: string;
-  workout_notes: string | null;
-  set_id: number;
-  weight: number;
-  reps: number;
-  set_type: string;
-  exercise_id: number;
-  exercise_name: string;
-  volume: number;
+// Type aliases for better compatibility with existing code
+export type ExerciseWithSets = exercise_ExerciseWithSetsResponse;
+export type ExerciseOption = exercise_ExerciseResponse;
+export type CreateExerciseRequest = exercise_CreateExerciseRequest;
+export type CreateExerciseResponse = exercise_CreateExerciseResponse;
+
+export type NewExerciseOption = Omit<
+  ExerciseOption,
+  'created_at' | 'updated_at'
+>;
+
+// Form types for workout creation
+export interface Set {
+  weight?: number;
+  reps?: number;
+  type?: string;
 }
+
+export interface Exercise {
+  name: string;
+  sets: Set[];
+}
+
+// Delegated functions using generated service
+export const getExercises = () => ExercisesService.getExercises();
+export const createExercise = (data: CreateExerciseRequest) =>
+  ExercisesService.postExercises(data);
+export const getExerciseWithSets = (id: number) =>
+  ExercisesService.getExercises1(id);
 
 export async function fetchExerciseWithSets(
   exerciseId: number,
@@ -37,30 +60,6 @@ export function exerciseWithSetsQueryOptions(
     queryKey: ['exercises', 'details', exerciseId],
     queryFn: () => fetchExerciseWithSets(exerciseId, accessToken),
   });
-}
-
-export interface ExerciseOption {
-  id: number;
-  name: string;
-  created_at: string;
-  updated_at: string | null;
-}
-
-export type NewExerciseOption = Omit<
-  ExerciseOption,
-  'created_at' | 'updated_at'
->;
-
-// Form types for workout creation
-export interface Set {
-  weight?: number;
-  reps?: number;
-  type?: string;
-}
-
-export interface Exercise {
-  name: string;
-  sets: Set[];
 }
 
 export async function fetchExerciseOptions(

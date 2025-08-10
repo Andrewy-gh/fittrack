@@ -1,22 +1,22 @@
 import { queryOptions } from '@tanstack/react-query';
 import { WorkoutsService } from '../../generated';
-import type { workout_CreateWorkoutRequest } from '../../generated';
+import type { 
+  workout_CreateWorkoutRequest,
+  workout_WorkoutResponse,
+  workout_WorkoutWithSetsResponse
+} from '../../generated';
 
-// Type alias for better compatibility with existing code
+// Type aliases for better compatibility with existing code
 export type WorkoutFormValues = workout_CreateWorkoutRequest;
-
-export interface WorkoutData {
-  id: number;
-  date: string;
-  notes: string | null;
-  created_at: string;
-  updated_at: string | null;
-}
+export type WorkoutData = workout_WorkoutResponse;
+export type WorkoutWithSets = workout_WorkoutWithSetsResponse;
 
 // Delegated functions using generated service
 export const getWorkouts = () => WorkoutsService.getWorkouts();
 export const createWorkout = (data: WorkoutFormValues) =>
   WorkoutsService.postWorkouts(data);
+export const getWorkoutWithSets = (id: number) =>
+  WorkoutsService.getWorkouts1(id);
 
 export async function fetchWorkouts(
   accessToken: string
@@ -33,23 +33,10 @@ export async function fetchWorkouts(
 }
 
 export function workoutsQueryOptions(accessToken: string) {
-  return queryOptions({
+  return queryOptions<WorkoutData[], Error>({
     queryKey: ['workouts', 'list'],
     queryFn: () => fetchWorkouts(accessToken),
   });
-}
-
-export interface WorkoutWithSets {
-  workout_id: number;
-  workout_date: string;
-  workout_notes: string;
-  exercise_id: number;
-  exercise_name: string;
-  set_id: number;
-  set_type: string;
-  weight: number;
-  reps: number;
-  volume: number;
 }
 
 export async function fetchWorkoutById(
@@ -73,24 +60,3 @@ export function workoutByIdQueryOptions(workoutId: number, accessToken: string) 
     queryFn: () => fetchWorkoutById(workoutId, accessToken),
   });
 }
-
-// export async function createWorkout(
-//   workoutData: WorkoutFormValues,
-//   accessToken: string
-// ): Promise<any> {
-//   const response = await fetch('/api/workouts', {
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/json',
-//       'x-stack-access-token': accessToken,
-//     },
-//     body: JSON.stringify(workoutData),
-//   });
-
-//   if (!response.ok) {
-//     const errorText = await response.text();
-//     throw new Error(errorText ?? 'Failed to submit workout');
-//   }
-
-//   return response.json();
-// }
