@@ -20,7 +20,7 @@ export function exerciseWithSetsQueryOptions(
   exerciseId: number,
   accessToken: string
 ) {
-  return queryOptions({
+  return queryOptions<ExerciseWithSets[], Error>({
     queryKey: ['exercises', 'details', exerciseId],
     queryFn: () => fetchExerciseWithSets(exerciseId, accessToken),
   });

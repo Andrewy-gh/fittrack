@@ -58,6 +58,13 @@ export async function fetchWorkoutById(
   return res.json();
 }
 
+export function workoutByIdQueryOptions(workoutId: number, accessToken: string) {
+  return queryOptions<WorkoutWithSets[], Error>({
+    queryKey: ['workouts', 'details', workoutId],
+    queryFn: () => fetchWorkoutById(workoutId, accessToken),
+  });
+}
+
 // export async function createWorkout(
 //   workoutData: WorkoutFormValues,
 //   accessToken: string
