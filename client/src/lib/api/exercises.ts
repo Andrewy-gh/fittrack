@@ -16,6 +16,16 @@ export async function fetchExerciseWithSets(
   return response.json();
 }
 
+export function exerciseWithSetsQueryOptions(
+  exerciseId: number,
+  accessToken: string
+) {
+  return queryOptions({
+    queryKey: ['exercises', 'details', exerciseId],
+    queryFn: () => fetchExerciseWithSets(exerciseId, accessToken),
+  });
+}
+
 export interface ExerciseOption {
   id: number;
   name: string;
@@ -45,7 +55,7 @@ export async function fetchExerciseOptions(
 }
 
 export function exercisesQueryOptions(accessToken: string) {
-  return queryOptions({
+  return queryOptions<ExerciseOption[], Error>({
     queryKey: ['exercises', 'list'],
     queryFn: () => fetchExerciseOptions(accessToken),
   });
