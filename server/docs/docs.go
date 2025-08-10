@@ -24,6 +24,168 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/exercises": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all exercises for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "List exercises",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/exercise.ExerciseResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get an existing exercise by name or create it if it doesn't exist",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Get or create exercise",
+                "parameters": [
+                    {
+                        "description": "Exercise data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/exercise.CreateExerciseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/exercise.CreateExerciseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/exercises/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a specific exercise with all its sets from workouts",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Get exercise with sets",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/exercise.ExerciseWithSetsResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/workouts": {
             "get": {
                 "security": [
@@ -121,9 +283,173 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/workouts/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a specific workout with all its sets and exercises",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workouts"
+                ],
+                "summary": "Get workout with sets",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Workout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/workout.WorkoutWithSetsResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "exercise.CreateExerciseRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "exercise.CreateExerciseResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Bench Press"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "user-123"
+                }
+            }
+        },
+        "exercise.ExerciseResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Bench Press"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "user-123"
+                }
+            }
+        },
+        "exercise.ExerciseWithSetsResponse": {
+            "type": "object",
+            "properties": {
+                "exercise_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "exercise_name": {
+                    "type": "string",
+                    "example": "Bench Press"
+                },
+                "reps": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "set_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "set_type": {
+                    "type": "string",
+                    "example": "working"
+                },
+                "volume": {
+                    "type": "integer",
+                    "example": 2250
+                },
+                "weight": {
+                    "type": "integer",
+                    "example": 225
+                },
+                "workout_date": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "workout_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "workout_notes": {
+                    "type": "string",
+                    "example": "Great workout today"
+                }
+            }
+        },
         "response.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -238,6 +564,51 @@ const docTemplate = `{
                     "example": "user-123"
                 }
             }
+        },
+        "workout.WorkoutWithSetsResponse": {
+            "type": "object",
+            "properties": {
+                "exercise_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "exercise_name": {
+                    "type": "string",
+                    "example": "Bench Press"
+                },
+                "reps": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "set_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "set_type": {
+                    "type": "string",
+                    "example": "working"
+                },
+                "volume": {
+                    "type": "integer",
+                    "example": 2250
+                },
+                "weight": {
+                    "type": "integer",
+                    "example": 225
+                },
+                "workout_date": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "workout_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "workout_notes": {
+                    "type": "string",
+                    "example": "Great workout today"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -259,6 +630,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "A fitness tracking application API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

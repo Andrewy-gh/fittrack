@@ -7,11 +7,17 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { exercise_CreateExerciseRequest } from './models/exercise_CreateExerciseRequest';
+export type { exercise_CreateExerciseResponse } from './models/exercise_CreateExerciseResponse';
+export type { exercise_ExerciseResponse } from './models/exercise_ExerciseResponse';
+export type { exercise_ExerciseWithSetsResponse } from './models/exercise_ExerciseWithSetsResponse';
 export type { response_ErrorResponse } from './models/response_ErrorResponse';
 export type { response_SuccessResponse } from './models/response_SuccessResponse';
 export type { workout_CreateWorkoutRequest } from './models/workout_CreateWorkoutRequest';
 export type { workout_ExerciseInput } from './models/workout_ExerciseInput';
 export { workout_SetInput } from './models/workout_SetInput';
 export type { workout_WorkoutResponse } from './models/workout_WorkoutResponse';
+export type { workout_WorkoutWithSetsResponse } from './models/workout_WorkoutWithSetsResponse';
 
+export { ExercisesService } from './services/ExercisesService';
 export { WorkoutsService } from './services/WorkoutsService';
