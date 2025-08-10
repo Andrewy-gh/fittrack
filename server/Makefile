@@ -1,4 +1,4 @@
-.PHONY: help build clean docker-up docker-down migrate-create migrate-up migrate-down sqlc run test vet
+.PHONY: help build clean docker-up docker-down migrate-create migrate-up migrate-down sqlc swagger run test vet
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -18,6 +18,7 @@ help:
 	@echo "  migrate-up   - Run database migrations up"
 	@echo "  migrate-down - Rollback database migrations"
 	@echo "  sqlc         - Generate SQL code"
+	@echo "  swagger      - Generate OpenAPI documentation"
 
 build:
 	$(GOBUILD) -o bin/$(BINARY_NAME) ./cmd/$(BINARY_NAME)
@@ -68,6 +69,9 @@ run:
 
 sqlc:
 	sqlc generate
+
+swagger:
+	swag init -g cmd/api/main.go -o docs
 
 test:
 	$(GOTEST) -v ./...
