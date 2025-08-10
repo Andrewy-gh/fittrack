@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { fetchWorkoutById, type WorkoutWithSets } from '@/lib/api/workouts';
-
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
+import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
+import { workoutByIdQueryOptions, type WorkoutWithSets } from '@/lib/api/workouts';
 
 export function IndividualWorkoutPage({
   workout,
@@ -187,22 +188,18 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId')({
     },
   },
   loader: async ({ context, params }) => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
+    const accessToken = await getAccessToken(context.user);
     const workoutId = params.workoutId;
-    const workout = await fetchWorkoutById(workoutId, accessToken);
-    return workout;
+    context.queryClient.ensureQueryData(
+      workoutByIdQueryOptions(workoutId, accessToken)
+    );
+    return { accessToken, workoutId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const workout = Route.useLoaderData();
+  const { accessToken, workoutId } = Route.useLoaderData();
+  const { data: workout } = useSuspenseQuery(workoutByIdQueryOptions(workoutId, accessToken));
   return <IndividualWorkoutPage workout={workout} />;
 }

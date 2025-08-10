@@ -1,22 +1,16 @@
 import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ChevronRight, Plus, Search } from 'lucide-react';
 import type { ExerciseOption } from '@/lib/types';
 import { fetchExerciseOptions } from '@/lib/api/exercises';
-import { Card, CardContent } from '@/components/ui/card';
+import { getAccessToken } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Search, Plus, ChevronRight } from 'lucide-react';
 
 export const Route = createFileRoute('/_auth/exercises/')({
   loader: async ({ context }): Promise<ExerciseOption[]> => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
+    const accessToken = await getAccessToken(context.user);
     const exercises = await fetchExerciseOptions(accessToken);
     return exercises;
   },

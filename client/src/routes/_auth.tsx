@@ -7,6 +7,9 @@ export const Route = createFileRoute('/_auth')({
     if (!user) {
       throw new Error('User not found');
     }
+    if (!user.id || typeof user.id !== 'string') {
+      throw new Error('User ID not found');
+    }
     const { accessToken } = await user.getAuthJson();
     if (!accessToken) {
       throw new Error('Access token not found');

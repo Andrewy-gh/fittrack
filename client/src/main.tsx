@@ -1,10 +1,9 @@
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
-import { RouterProvider, createRouter } from '@tanstack/react-router';
-import {
-  StackProvider,
-  StackTheme,
-} from '@stackframe/react';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { queryClient } from './lib/api/api.ts';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { StackProvider, StackTheme } from '@stackframe/react';
 import { stackClientApp } from './stack.ts';
 import { ThemeProvider } from './components/theme-provider.tsx';
 import { useUser } from '@stackframe/react';
@@ -19,6 +18,7 @@ const router = createRouter({
   routeTree,
   context: {
     user: undefined!,
+    queryClient,
   },
   defaultPreload: 'intent',
   scrollRestoration: true,
@@ -35,7 +35,11 @@ declare module '@tanstack/react-router' {
 
 function App() {
   const user = useUser();
-  return <RouterProvider router={router} context={{ user }} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} context={{ user }} />
+    </QueryClientProvider>
+  );
 }
 
 // Render the app

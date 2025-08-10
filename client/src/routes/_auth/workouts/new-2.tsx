@@ -1,46 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
-import { Plus, Save, Trash2, X } from 'lucide-react';
+import { useAppForm } from '@/hooks/form';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { fetchExerciseOptions } from '@/lib/api/exercises';
-import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
-import { useAppForm } from '@/hooks/form';
-import type { ExerciseOption } from '@/lib/types';
 import { MiniChart } from './-components/mini-chart';
+import { Plus, Save, Trash2, X } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
+import type { ExerciseOption } from '@/lib/types';
+import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
 import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
-import { Spinner } from '@/components/ui/spinner';
+import { useSuspenseQuery } from '@tanstack/react-query';
 
-export const Route = createFileRoute('/_auth/workouts/new-2')({
-  loader: async ({
-    context,
-  }): Promise<{
+function WorkoutTracker({
+    accessToken,
+    userId,
+    exercises
+  }: {
     accessToken: string;
     userId: string;
     exercises: ExerciseOption[];
-  }> => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    if (!user.id || typeof user.id !== 'string') {
-      throw new Error('User ID not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
-    const exercises = await fetchExerciseOptions(accessToken);
-    return { accessToken, userId: user.id, exercises };
-  },
-  component: WorkoutTracker,
-});
-
-// MARK: - WorkoutTracker
-export default function WorkoutTracker() {
-  const { accessToken, exercises, userId } = Route.useLoaderData();
+  }) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
   >('main');
@@ -48,7 +30,6 @@ export default function WorkoutTracker() {
     number | null
   >(null);
 
-  // MARK: useForm
   const form = useAppForm({
     defaultValues: getInitialValues(userId),
     listeners: {
@@ -71,7 +52,7 @@ export default function WorkoutTracker() {
         });
 
         if (!response.ok) {
-          // ! TODO: Convert from text to json
+          // MARK: TODO: Convert from text to json
           const errorText = await response.text();
           throw new Error(errorText ?? 'Failed to submit workout');
         }
@@ -303,4 +284,36 @@ export default function WorkoutTracker() {
       </div>
     </Suspense>
   );
+}
+
+export const Route = createFileRoute('/_auth/workouts/new-2')({
+  loader: async ({
+    context,
+  }): Promise<{
+    accessToken: string;
+    userId: string;
+  }> => {
+    const user = context.user;
+    if (!user) {
+      throw new Error('User not found');
+    }
+    if (!user.id || typeof user.id !== 'string') {
+      throw new Error('User ID not found');
+    }
+    const { accessToken } = await user.getAuthJson();
+    if (!accessToken) {
+      throw new Error('Access token not found');
+    }
+    context.queryClient.ensureQueryData(exercisesQueryOptions(accessToken));
+    return { accessToken, userId: user.id };
+  },
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const { accessToken, userId } = Route.useLoaderData();
+  const { data: exercises } = useSuspenseQuery(
+    exercisesQueryOptions(accessToken)
+  );
+  return <WorkoutTracker accessToken={accessToken} userId={userId} exercises={exercises} />;
 }

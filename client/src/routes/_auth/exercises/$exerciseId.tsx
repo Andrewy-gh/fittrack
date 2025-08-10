@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import {
   Activity,
   BarChart3,
@@ -13,8 +14,9 @@ import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ExerciseWithSets } from '@/lib/types';
-import { fetchExerciseWithSets } from '@/lib/api/exercises';
+import { exerciseWithSetsQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
+import { getAccessToken } from '@/lib/api/auth';
 
 function ExerciseDisplay({
   exerciseSets,
@@ -233,22 +235,20 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
     },
   },
   loader: async ({ context, params }) => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
+    const accessToken = await getAccessToken(context.user);
     const exerciseId = params.exerciseId;
-    const exerciseData = await fetchExerciseWithSets(exerciseId, accessToken);
-    return exerciseData;
+    context.queryClient.ensureQueryData(
+      exerciseWithSetsQueryOptions(exerciseId, accessToken)
+    );
+    return { accessToken, exerciseId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const exerciseSets = Route.useLoaderData();
+  const { accessToken, exerciseId } = Route.useLoaderData();
+  const { data: exerciseSets } = useSuspenseQuery(
+    exerciseWithSetsQueryOptions(exerciseId, accessToken)
+  );
   return <ExerciseDisplay exerciseSets={exerciseSets} />;
 }
