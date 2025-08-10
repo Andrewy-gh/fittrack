@@ -1,3 +1,5 @@
+import { queryOptions } from '@tanstack/react-query';
+
 // import type { WorkoutFormValues } from '@/lib/types';
 export interface WorkoutData {
   id: number;
@@ -18,8 +20,14 @@ export async function fetchWorkouts(
   if (!res.ok) {
     throw new Error('Failed to fetch workouts');
   }
-  const data = await res.json();
-  return data;
+  return res.json();
+}
+
+export function workoutsQueryOptions(accessToken: string) {
+  return queryOptions({
+    queryKey: ['workouts', 'list'],
+    queryFn: () => fetchWorkouts(accessToken),
+  });
 }
 
 export interface WorkoutWithSets {

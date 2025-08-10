@@ -3,10 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
-import { fetchWorkouts } from '@/lib/api/workouts';
+import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
 import { getAccessToken } from '@/lib/api/auth';
 import { type WorkoutData } from '@/lib/api/workouts';
+import { useSuspenseQuery } from '@tanstack/react-query';
 
 export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   const totalWorkouts = workouts.length;
@@ -67,15 +68,9 @@ export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
         {/* MARK: List */}
         <Card className="border-0 shadow-sm backdrop-blur-sm">
           <CardHeader>
-            {/* <div className="flex items-center justify-between"> */}
             <CardTitle className="text-xl font-semibold">
               Recent Workouts
             </CardTitle>
-            {/* <Button variant="ghost" size="sm">
-                Show All
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div> */}
           </CardHeader>
           <CardContent className="space-y-3">
             {workouts.map((workout) => (
@@ -134,14 +129,16 @@ export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
 }
 
 export const Route = createFileRoute('/_auth/workouts/')({
-  loader: async ({ context }): Promise<WorkoutData[]> => {
+  loader: async ({ context }): Promise<string> => {
     const accessToken = await getAccessToken(context.user);
-    return fetchWorkouts(accessToken);
+    context.queryClient.ensureQueryData(workoutsQueryOptions(accessToken))
+    return accessToken
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const workouts = Route.useLoaderData();
+  const accessToken = Route.useLoaderData();
+  const {data: workouts} = useSuspenseQuery(workoutsQueryOptions(accessToken))
   return <WorkoutsDisplay workouts={workouts} />;
 }
