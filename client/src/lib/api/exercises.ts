@@ -1,4 +1,5 @@
 import type { ExerciseWithSets } from '@/lib/types';
+import { queryOptions } from '@tanstack/react-query';
 
 export async function fetchExerciseWithSets(
   exerciseId: number,
@@ -9,11 +10,9 @@ export async function fetchExerciseWithSets(
       'x-stack-access-token': accessToken,
     },
   });
-
   if (!response.ok) {
     throw new Error('Failed to fetch exercise sets');
   }
-
   return response.json();
 }
 
@@ -37,12 +36,17 @@ export async function fetchExerciseOptions(
       'x-stack-access-token': accessToken,
     },
   });
-
   if (!response.ok) {
     throw new Error(
       `Failed to fetch exercise options: ${response.status} ${response.statusText}`
     );
   }
-
   return response.json();
+}
+
+export function exercisesQueryOptions(accessToken: string) {
+  return queryOptions({
+    queryKey: ['exercises', 'list'],
+    queryFn: () => fetchExerciseOptions(accessToken),
+  });
 }

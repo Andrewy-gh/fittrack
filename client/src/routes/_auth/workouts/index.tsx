@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,6 @@ import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
 import { getAccessToken } from '@/lib/api/auth';
 import { type WorkoutData } from '@/lib/api/workouts';
-import { useSuspenseQuery } from '@tanstack/react-query';
 
 export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   const totalWorkouts = workouts.length;
