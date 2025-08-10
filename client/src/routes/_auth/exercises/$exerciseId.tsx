@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import type { ExerciseWithSets } from '@/lib/types';
 import { fetchExerciseWithSets } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
+import { getAccessToken } from '@/lib/api/auth';
 
 function ExerciseDisplay({
   exerciseSets,
@@ -233,14 +234,7 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
     },
   },
   loader: async ({ context, params }) => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
+    const  accessToken = await getAccessToken(context.user);
     const exerciseId = params.exerciseId;
     const exerciseData = await fetchExerciseWithSets(exerciseId, accessToken);
     return exerciseData;

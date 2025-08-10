@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { fetchWorkouts } from '@/lib/api/workouts';
-import { type WorkoutData } from '@/lib/api/workouts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Calendar, ChevronRight, Dumbbell } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
+import { fetchWorkouts } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
+import { getAccessToken } from '@/lib/api/auth';
+import { type WorkoutData } from '@/lib/api/workouts';
 
 export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
   const totalWorkouts = workouts.length;
@@ -134,14 +135,7 @@ export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
 
 export const Route = createFileRoute('/_auth/workouts/')({
   loader: async ({ context }): Promise<WorkoutData[]> => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
+    const accessToken = await getAccessToken(context.user);
     return fetchWorkouts(accessToken);
   },
   component: RouteComponent,

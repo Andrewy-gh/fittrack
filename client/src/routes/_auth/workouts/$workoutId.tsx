@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { fetchWorkoutById, type WorkoutWithSets } from '@/lib/api/workouts';
-
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
+import { fetchWorkoutById, type WorkoutWithSets } from '@/lib/api/workouts';
+import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
 
 export function IndividualWorkoutPage({
@@ -187,14 +187,7 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId')({
     },
   },
   loader: async ({ context, params }) => {
-    const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
+    const accessToken = await getAccessToken(context.user);
     const workoutId = params.workoutId;
     const workout = await fetchWorkoutById(workoutId, accessToken);
     return workout;
