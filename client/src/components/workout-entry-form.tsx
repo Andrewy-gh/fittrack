@@ -6,7 +6,7 @@ import {
   loadFromLocalStorage,
   saveToLocalStorage,
 } from '@/lib/local-storage';
-import type { Exercise, ExerciseOption } from '@/lib/types';
+import type { workout_ExerciseInput, workout_CreateWorkoutRequest } from '@/generated';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,23 +30,30 @@ import {
   X,
   AlertTriangle,
 } from 'lucide-react';
-import type { WorkoutFormValues } from '@/lib/types';
 
-// MARK: Init values
-const MOCK_VALUES: WorkoutFormValues = {
-  date: new Date(),
-  notes: '',
-  exercises: [] as Exercise[],
+// TODO: This should be generated from the API or kept as a separate type
+interface ExerciseOption {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string | null;
 }
 
-const getInitialValues = (userId: string): WorkoutFormValues => {
+// MARK: Init values
+const MOCK_VALUES: workout_CreateWorkoutRequest = {
+  date: new Date().toISOString(),
+  notes: '',
+  exercises: [] as workout_ExerciseInput[],
+}
+
+const getInitialValues = (userId: string): workout_CreateWorkoutRequest => {
   const saved = loadFromLocalStorage(userId);
   return (
     saved || MOCK_VALUES
   );
 };
 
-const getMockValues = (): WorkoutFormValues => {
+const getMockValues = (): workout_CreateWorkoutRequest => {
   return MOCK_VALUES;
 };
 
@@ -239,7 +246,7 @@ const ExerciseInputField = withForm({
         {(field) => {
           return (
             <div className="space-y-4">
-              {(field.state.value as Exercise[]).map(
+              {(field.state.value as workout_ExerciseInput[]).map(
                 (exercise, exerciseIndex) => {
                   const exerciseSets = exercise.sets || [];
                   const totalVolume = exerciseSets.reduce(

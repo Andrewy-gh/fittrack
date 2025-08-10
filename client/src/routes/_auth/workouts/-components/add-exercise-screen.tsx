@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { withForm } from '@/hooks/form';
-import type { ExerciseOption } from '@/lib/types';
+import type { ExerciseOption } from '@/lib/api/exercises';
 import { MOCK_VALUES } from '../-components/form-options';
 
 type AddExerciseScreenProps = {

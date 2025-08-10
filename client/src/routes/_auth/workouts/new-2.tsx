@@ -6,9 +6,9 @@ import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
-import type { ExerciseOption } from '@/lib/types';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
-import { exercisesQueryOptions } from '@/lib/api/exercises';
+import { exercisesQueryOptions, type ExerciseOption } from '@/lib/api/exercises';
+import { createWorkout } from '@/lib/api/workouts';
 import { getInitialValues } from './-components/form-options';
 import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
@@ -42,22 +42,7 @@ function WorkoutTracker({
     onSubmit: async ({ value }) => {
       console.log('value', value);
       try {
-        const response = await fetch('/api/workouts', {
-          method: 'POST',
-          headers: {
-            'x-stack-access-token': accessToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(value),
-        });
-
-        if (!response.ok) {
-          // MARK: TODO: Convert from text to json
-          const errorText = await response.text();
-          throw new Error(errorText ?? 'Failed to submit workout');
-        }
-
-        const result = await response.json();
+        const result = await createWorkout(value);
         console.log(
           'Workout submitted! Server says: ' + JSON.stringify(result)
         );

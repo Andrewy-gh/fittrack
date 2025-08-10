@@ -1,5 +1,18 @@
-import type { ExerciseWithSets } from '@/lib/types';
 import { queryOptions } from '@tanstack/react-query';
+
+// API response type for exercise details
+export interface ExerciseWithSets {
+  workout_id: number;
+  workout_date: string;
+  workout_notes: string | null;
+  set_id: number;
+  weight: number;
+  reps: number;
+  set_type: string;
+  exercise_id: number;
+  exercise_name: string;
+  volume: number;
+}
 
 export async function fetchExerciseWithSets(
   exerciseId: number,
@@ -37,6 +50,18 @@ export type NewExerciseOption = Omit<
   ExerciseOption,
   'created_at' | 'updated_at'
 >;
+
+// Form types for workout creation
+export interface Set {
+  weight?: number;
+  reps?: number;
+  type?: string;
+}
+
+export interface Exercise {
+  name: string;
+  sets: Set[];
+}
 
 export async function fetchExerciseOptions(
   accessToken: string

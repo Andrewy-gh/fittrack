@@ -1,7 +1,9 @@
 import { queryOptions } from '@tanstack/react-query';
+import { WorkoutsService } from '../../generated';
+import type { workout_CreateWorkoutRequest } from '../../generated';
 
-import type { WorkoutFormValues } from '@/lib/types';
-
+// Type alias for better compatibility with existing code
+export type WorkoutFormValues = workout_CreateWorkoutRequest;
 export interface WorkoutData {
   id: number;
   date: string;
@@ -9,6 +11,11 @@ export interface WorkoutData {
   created_at: string;
   updated_at: string | null;
 }
+
+// Delegated functions using generated service
+export const getWorkouts = () => WorkoutsService.getWorkouts();
+export const createWorkout = (data: WorkoutFormValues) =>
+  WorkoutsService.postWorkouts(data);
 
 export async function fetchWorkouts(
   accessToken: string
