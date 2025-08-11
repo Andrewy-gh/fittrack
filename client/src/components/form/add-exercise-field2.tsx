@@ -19,13 +19,10 @@ export default function AddExerciseField2({
     setSelectedExercise(option);
   }
 
-  // ! MARK: TODO handle id
   function handleAppendGroup(name: ExerciseOption['name']) {
     const newExercise: ExerciseOption = {
       id: exercises.length + 1,
       name,
-      created_at: new Date().toISOString(),
-      updated_at: null,
     };
     exercises.push(newExercise);
     handleSelect(newExercise);

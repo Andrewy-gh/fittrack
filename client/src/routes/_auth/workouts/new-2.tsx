@@ -9,11 +9,11 @@ import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
+import type { exercise_ExerciseResponse } from '@/generated';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
 import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
-import type { exercise_ExerciseResponse } from '@/generated';
 
 function WorkoutTracker({
   accessToken,

@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { ExerciseWithSets } from '@/lib/api/exercises';
+import type { exercise_ExerciseWithSetsResponse } from '@/generated';
 import { exerciseWithSetsQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
 import { getAccessToken } from '@/lib/api/auth';
@@ -21,7 +21,7 @@ import { getAccessToken } from '@/lib/api/auth';
 function ExerciseDisplay({
   exerciseSets,
 }: {
-  exerciseSets: ExerciseWithSets[];
+  exerciseSets: exercise_ExerciseWithSetsResponse[];
 }) {
   // Calculate summary statistics
   const totalSets = exerciseSets.length;

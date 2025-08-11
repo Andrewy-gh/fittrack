@@ -5,10 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { exercisesQueryOptions, type ExerciseOption } from '@/lib/api/exercises';
+import type { exercise_ExerciseResponse } from '@/generated';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { getAccessToken } from '@/lib/api/auth';
 
-function ExercisesDisplay({ exercises }: { exercises: ExerciseOption[] }) {
+function ExercisesDisplay({
+  exercises,
+}: {
+  exercises: exercise_ExerciseResponse[];
+}) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredExercises = exercises.filter((exercise) =>
