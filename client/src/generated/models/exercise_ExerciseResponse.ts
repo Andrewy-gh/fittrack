@@ -3,10 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 export type exercise_ExerciseResponse = {
-    created_at?: string;
-    id?: number;
-    name?: string;
-    updated_at?: string;
-    user_id?: string;
+    created_at: string;
+    id: number;
+    name: string;
+    updated_at: string;
+    user_id: string;
 };
 
