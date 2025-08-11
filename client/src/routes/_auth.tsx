@@ -3,7 +3,7 @@ import { stackClientApp } from '@/stack';
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: async () => {
-    const user = await stackClientApp.getUser();
+    const user = await stackClientApp.getUser({ or: 'redirect' });
     if (!user) {
       throw new Error('User not found');
     }

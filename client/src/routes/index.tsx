@@ -107,9 +107,6 @@ function HomePage({
             {user && (
               <>
                 <div className="px-2 font-bold text-foreground">
-                  <Link to="/workouts/new">New Workout</Link>
-                </div>
-                <div className="px-2 font-bold text-foreground">
                   <Link to="/workouts">Workouts</Link>
                 </div>
                 <div className="px-2 font-bold text-foreground">
@@ -120,11 +117,11 @@ function HomePage({
           </div>
           <div className="flex items-center gap-4">
             <ModeToggle />
+            <UserButton />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="w-4 h-4 mr-2" />
               Get Started Free
             </Button>
-            <UserButton />
           </div>
         </div>
       </nav>
