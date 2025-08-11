@@ -38,11 +38,6 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      configure: (proxy) => {
-        proxy.on('error', (err, req, res) => {
-          console.error('Proxy error:', err);
-        });
-      },
     },
   },
 });
