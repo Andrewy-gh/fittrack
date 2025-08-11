@@ -1,28 +1,29 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
+import { useSaveWorkoutMutation } from '@/lib/api/workouts';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
-import { exercisesQueryOptions, type ExerciseOption } from '@/lib/api/exercises';
-import { createWorkout } from '@/lib/api/workouts';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
 import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import type { exercise_ExerciseResponse } from '@/generated';
 
 function WorkoutTracker({
-    accessToken,
-    userId,
-    exercises
-  }: {
-    accessToken: string;
-    userId: string;
-    exercises: ExerciseOption[];
-  }) {
+  accessToken,
+  userId,
+  exercises,
+}: {
+  accessToken: string;
+  userId: string;
+  exercises: exercise_ExerciseResponse[];
+}) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
   >('main');
@@ -30,6 +31,7 @@ function WorkoutTracker({
     number | null
   >(null);
 
+  const saveWorkout = useSaveWorkoutMutation(accessToken);
   const form = useAppForm({
     defaultValues: getInitialValues(userId),
     listeners: {
@@ -39,21 +41,31 @@ function WorkoutTracker({
       },
       onChangeDebounceMs: 500,
     },
-    onSubmit: async ({ value }) => {
-      console.log('value', value);
-      try {
-        const result = await createWorkout(value);
-        console.log(
-          'Workout submitted! Server says: ' + JSON.stringify(result)
-        );
+    onSubmit: ({ value }) => {
+      console.log('value', { value });
+      saveWorkout.mutate(value, {
+        onSuccess: () => {
+          clearLocalStorage(userId);
+          form.reset();
+          setSelectedExerciseIndex(null);
+        },
+        onError: (error) => {
+          alert(error);
+        },
+      });
+      // try {
+      //   const result = await createWorkout({});
+      //   console.log(
+      //     'Workout submitted! Server says: ' + JSON.stringify(result)
+      //   );
 
-        // localStorage clear after successful submission
-        clearLocalStorage(userId);
-        // Reset form to default values
-        form.reset();
-      } catch (error) {
-        alert(error);
-      }
+      //   // localStorage clear after successful submission
+      //   clearLocalStorage(userId);
+      //   // Reset form to default values
+      //   form.reset();
+      // } catch (error) {
+      //   alert(error);
+      // }
     },
   });
 
@@ -290,7 +302,7 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
       throw new Error('Access token not found');
     }
     context.queryClient.ensureQueryData(exercisesQueryOptions(accessToken));
-    return { accessToken, userId: user.id };
+    return { accessToken, userId: user.id }; // need userId so not using getAccessToken
   },
   component: RouteComponent,
 });
@@ -300,5 +312,11 @@ function RouteComponent() {
   const { data: exercises } = useSuspenseQuery(
     exercisesQueryOptions(accessToken)
   );
-  return <WorkoutTracker accessToken={accessToken} userId={userId} exercises={exercises} />;
+  return (
+    <WorkoutTracker
+      accessToken={accessToken}
+      userId={userId}
+      exercises={exercises}
+    />
+  );
 }

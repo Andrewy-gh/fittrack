@@ -3,8 +3,6 @@ import { ExercisesService, OpenAPI } from '../../generated';
 import type { 
   exercise_ExerciseResponse,
   exercise_ExerciseWithSetsResponse,
-  exercise_CreateExerciseRequest,
-  exercise_CreateExerciseResponse
 } from '../../generated';
 
 // Re-export generated types directly
@@ -33,41 +31,25 @@ export interface Exercise {
   sets: Set[];
 }
 
-// Wrapper functions for backward compatibility
-export async function fetchExerciseOptions(
-  accessToken: string
-): Promise<ExerciseOption[]> {
-  OpenAPI.HEADERS = {
-    'x-stack-access-token': accessToken,
-  };
-  return ExercisesService.getExercises();
+export function exercisesQueryOptions(accessToken: string) {
+  return queryOptions<exercise_ExerciseResponse[], Error>({
+    queryKey: ['exercises', 'list'],
+    queryFn: async () => {
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return ExercisesService.getExercises();
+    },
+  });
 }
-
-export async function fetchExerciseWithSets(
-  exerciseId: number,
-  accessToken: string
-): Promise<ExerciseWithSets[]> {
-  OpenAPI.HEADERS = {
-    'x-stack-access-token': accessToken,
-  };
-  return ExercisesService.getExercises1(exerciseId);
-}
-
-// Delegated functions using generated service
-export const getExercises = () => ExercisesService.getExercises();
-export const createExercise = (data: CreateExerciseRequest) =>
-  ExercisesService.postExercises(data);
-export const getExerciseWithSets = (id: number) =>
-  ExercisesService.getExercises1(id);
 
 export function exerciseWithSetsQueryOptions(
   exerciseId: number,
   accessToken: string
 ) {
-  return queryOptions<ExerciseWithSets[], Error>({
+  return queryOptions<exercise_ExerciseWithSetsResponse[], Error>({
     queryKey: ['exercises', 'details', exerciseId],
     queryFn: async () => {
-      // Set the custom header for this request
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };
@@ -76,15 +58,3 @@ export function exerciseWithSetsQueryOptions(
   });
 }
 
-export function exercisesQueryOptions(accessToken: string) {
-  return queryOptions<ExerciseOption[], Error>({
-    queryKey: ['exercises', 'list'],
-    queryFn: async () => {
-      // Set the custom header for this request
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return ExercisesService.getExercises();
-    },
-  });
-}

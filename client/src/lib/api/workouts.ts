@@ -1,23 +1,12 @@
-import { queryOptions } from '@tanstack/react-query';
-import { WorkoutsService, OpenAPI } from '../../generated';
-import type { 
+import { queryClient } from './api';
+import { queryOptions , useMutation } from '@tanstack/react-query';
+import { WorkoutsService, OpenAPI } from '@/generated';
+import type {
   workout_CreateWorkoutRequest,
   workout_WorkoutResponse,
-  workout_WorkoutWithSetsResponse
-} from '../../generated';
+  workout_WorkoutWithSetsResponse,
+} from '@/generated';
 
-// Re-export generated types directly
-export type { 
-  workout_CreateWorkoutRequest as WorkoutFormValues,
-  workout_WorkoutResponse as WorkoutData,
-  workout_WorkoutWithSetsResponse as WorkoutWithSets
-} from '../../generated';
-
-export const getWorkouts = () => WorkoutsService.getWorkouts();
-export const createWorkout = (data: workout_CreateWorkoutRequest) =>
-  WorkoutsService.postWorkouts(data);
-export const getWorkoutWithSets = (id: number) =>
-  WorkoutsService.getWorkouts1(id);
 
 export function workoutsQueryOptions(accessToken: string) {
   return queryOptions<workout_WorkoutResponse[], Error>({
@@ -31,7 +20,10 @@ export function workoutsQueryOptions(accessToken: string) {
   });
 }
 
-export function workoutByIdQueryOptions(workoutId: number, accessToken: string) {
+export function workoutByIdQueryOptions(
+  workoutId: number,
+  accessToken: string
+) {
   return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
     queryKey: ['workouts', 'details', workoutId],
     queryFn: async () => {
@@ -52,7 +44,7 @@ export interface Exercise {
   }[];
 }
 
-export function transformToWorkoutFormValues(workouts: WorkoutWithSets[]): WorkoutFormValues {
+export function transformToWorkoutFormValues(workouts: workout_WorkoutWithSetsResponse[]): workout_CreateWorkoutRequest {
   if (workouts.length === 0) {
     return {
       date: new Date().toISOString(),
@@ -89,4 +81,20 @@ export function transformToWorkoutFormValues(workouts: WorkoutWithSets[]): Worko
     notes: workouts[0].workout_notes || '',
     exercises: Array.from(exercisesMap.values()),
   };
+}
+
+export function useSaveWorkoutMutation(accessToken: string) {
+  return useMutation({
+    mutationFn: async (data: workout_CreateWorkoutRequest) => {
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return WorkoutsService.postWorkouts(data);
+    },
+    onSuccess: () => {
+       queryClient.invalidateQueries({
+         queryKey: ['workouts', 'list'],
+       });
+    },
+  });
 }

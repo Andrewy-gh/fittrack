@@ -7,9 +7,9 @@ import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
 import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
 import { getAccessToken } from '@/lib/api/auth';
-import { type WorkoutData } from '@/lib/api/workouts';
+import type { workout_WorkoutResponse } from '@/generated';
 
-export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
+function WorkoutsDisplay({ workouts }: { workouts: workout_WorkoutResponse[] }) {
   const totalWorkouts = workouts.length;
   const thisWeekWorkouts = workouts.filter((workout) => {
     const workoutDate = new Date(workout.date);
@@ -131,14 +131,16 @@ export function WorkoutsDisplay({ workouts }: { workouts: WorkoutData[] }) {
 export const Route = createFileRoute('/_auth/workouts/')({
   loader: async ({ context }): Promise<string> => {
     const accessToken = await getAccessToken(context.user);
-    context.queryClient.ensureQueryData(workoutsQueryOptions(accessToken))
-    return accessToken
+    context.queryClient.ensureQueryData(workoutsQueryOptions(accessToken));
+    return accessToken;
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const accessToken = Route.useLoaderData();
-  const {data: workouts} = useSuspenseQuery(workoutsQueryOptions(accessToken))
+  const { data: workouts } = useSuspenseQuery(
+    workoutsQueryOptions(accessToken)
+  );
   return <WorkoutsDisplay workouts={workouts} />;
 }
