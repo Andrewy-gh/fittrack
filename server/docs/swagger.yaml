@@ -24,6 +24,12 @@ definitions:
       user_id:
         example: user-123
         type: string
+    required:
+    - created_at
+    - id
+    - name
+    - updated_at
+    - user_id
     type: object
   exercise.ExerciseResponse:
     properties:
@@ -42,6 +48,12 @@ definitions:
       user_id:
         example: user-123
         type: string
+    required:
+    - created_at
+    - id
+    - name
+    - updated_at
+    - user_id
     type: object
   exercise.ExerciseWithSetsResponse:
     properties:
@@ -75,6 +87,15 @@ definitions:
       workout_notes:
         example: Great workout today
         type: string
+    required:
+    - exercise_id
+    - exercise_name
+    - reps
+    - set_id
+    - set_type
+    - volume
+    - workout_date
+    - workout_id
     type: object
   response.ErrorResponse:
     properties:
@@ -137,6 +158,7 @@ definitions:
     - setType
     type: object
   workout.WorkoutResponse:
+    description: Workout response model
     properties:
       created_at:
         example: "2023-01-01T15:04:05Z"
@@ -156,6 +178,12 @@ definitions:
       user_id:
         example: user-123
         type: string
+    required:
+    - created_at
+    - date
+    - id
+    - updated_at
+    - user_id
     type: object
   workout.WorkoutWithSetsResponse:
     properties:
@@ -189,6 +217,15 @@ definitions:
       workout_notes:
         example: Great workout today
         type: string
+    required:
+    - exercise_id
+    - exercise_name
+    - reps
+    - set_id
+    - set_type
+    - volume
+    - workout_date
+    - workout_id
     type: object
 host: localhost:8080
 info:
@@ -227,7 +264,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
-      - BearerAuth: []
+      - StackAuth: []
       summary: List exercises
       tags:
       - exercises
@@ -262,7 +299,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
-      - BearerAuth: []
+      - StackAuth: []
       summary: Get or create exercise
       tags:
       - exercises
@@ -303,7 +340,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
-      - BearerAuth: []
+      - StackAuth: []
       summary: Get exercise with sets
       tags:
       - exercises
@@ -330,7 +367,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
-      - BearerAuth: []
+      - StackAuth: []
       summary: List workouts
       tags:
       - workouts
@@ -365,7 +402,7 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
-      - BearerAuth: []
+      - StackAuth: []
       summary: Create a new workout
       tags:
       - workouts
@@ -402,14 +439,14 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
-      - BearerAuth: []
+      - StackAuth: []
       summary: Get workout with sets
       tags:
       - workouts
 schemes:
 - http
 securityDefinitions:
-  BearerAuth:
+  StackAuth:
     in: header
     name: x-stack-access-token
     type: apiKey

@@ -32,7 +32,7 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, exerciseServ
 // @Tags exercises
 // @Accept json
 // @Produce json
-// @Security BearerAuth
+// @Security StackAuth
 // @Success 200 {array} exercise.ExerciseResponse
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
@@ -61,7 +61,7 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 // @Tags exercises
 // @Accept json
 // @Produce json
-// @Security BearerAuth
+// @Security StackAuth
 // @Param id path int true "Exercise ID"
 // @Success 200 {array} exercise.ExerciseWithSetsResponse
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
@@ -119,7 +119,7 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 // @Tags exercises
 // @Accept json
 // @Produce json
-// @Security BearerAuth
+// @Security StackAuth
 // @Param request body exercise.CreateExerciseRequest true "Exercise data"
 // @Success 200 {object} exercise.CreateExerciseResponse
 // @Failure 400 {object} response.ErrorResponse "Bad Request"

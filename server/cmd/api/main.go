@@ -14,7 +14,7 @@
 // @BasePath /api
 // @schemes http
 
-// @securityDefinitions.apikey BearerAuth
+// @securityDefinitions.apikey StackAuth
 // @in header
 // @name x-stack-access-token
 

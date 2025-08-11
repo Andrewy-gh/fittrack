@@ -28,7 +28,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "StackAuth": []
                     }
                 ],
                 "description": "Get all exercises for the authenticated user",
@@ -69,7 +69,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "StackAuth": []
                     }
                 ],
                 "description": "Get an existing exercise by name or create it if it doesn't exist",
@@ -126,7 +126,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "StackAuth": []
                     }
                 ],
                 "description": "Get a specific exercise with all its sets from workouts",
@@ -190,7 +190,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "StackAuth": []
                     }
                 ],
                 "description": "Get all workouts for the authenticated user",
@@ -231,7 +231,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "StackAuth": []
                     }
                 ],
                 "description": "Create a new workout with exercises and sets",
@@ -288,7 +288,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "StackAuth": []
                     }
                 ],
                 "description": "Get a specific workout with all its sets and exercises",
@@ -357,6 +357,13 @@ const docTemplate = `{
         },
         "exercise.CreateExerciseResponse": {
             "type": "object",
+            "required": [
+                "created_at",
+                "id",
+                "name",
+                "updated_at",
+                "user_id"
+            ],
             "properties": {
                 "created_at": {
                     "type": "string",
@@ -382,6 +389,13 @@ const docTemplate = `{
         },
         "exercise.ExerciseResponse": {
             "type": "object",
+            "required": [
+                "created_at",
+                "id",
+                "name",
+                "updated_at",
+                "user_id"
+            ],
             "properties": {
                 "created_at": {
                     "type": "string",
@@ -407,6 +421,16 @@ const docTemplate = `{
         },
         "exercise.ExerciseWithSetsResponse": {
             "type": "object",
+            "required": [
+                "exercise_id",
+                "exercise_name",
+                "reps",
+                "set_id",
+                "set_type",
+                "volume",
+                "workout_date",
+                "workout_id"
+            ],
             "properties": {
                 "exercise_id": {
                     "type": "integer",
@@ -537,7 +561,15 @@ const docTemplate = `{
             }
         },
         "workout.WorkoutResponse": {
+            "description": "Workout response model",
             "type": "object",
+            "required": [
+                "created_at",
+                "date",
+                "id",
+                "updated_at",
+                "user_id"
+            ],
             "properties": {
                 "created_at": {
                     "type": "string",
@@ -567,6 +599,16 @@ const docTemplate = `{
         },
         "workout.WorkoutWithSetsResponse": {
             "type": "object",
+            "required": [
+                "exercise_id",
+                "exercise_name",
+                "reps",
+                "set_id",
+                "set_type",
+                "volume",
+                "workout_date",
+                "workout_id"
+            ],
             "properties": {
                 "exercise_id": {
                     "type": "integer",
@@ -612,7 +654,7 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
-        "BearerAuth": {
+        "StackAuth": {
             "type": "apiKey",
             "name": "x-stack-access-token",
             "in": "header"
