@@ -3,15 +3,15 @@
 /* tslint:disable */
 /* eslint-disable */
 export type exercise_ExerciseWithSetsResponse = {
-    exercise_id?: number;
-    exercise_name?: string;
-    reps?: number;
-    set_id?: number;
-    set_type?: string;
-    volume?: number;
+    exercise_id: number;
+    exercise_name: string;
+    reps: number;
+    set_id: number;
+    set_type: string;
+    volume: number;
     weight?: number;
-    workout_date?: string;
-    workout_id?: number;
+    workout_date: string;
+    workout_id: number;
     workout_notes?: string;
 };
 
