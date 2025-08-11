@@ -27,7 +27,7 @@ function ExerciseDisplay({
   const totalSets = exerciseSets.length;
   const uniqueWorkouts = new Set(exerciseSets.map((set) => set.workout_id))
     .size;
-  const weights = exerciseSets.map((set) => set.weight);
+  const weights = exerciseSets.map((set) => set.weight || 0);
   const volumes = exerciseSets.map((set) => set.volume);
 
   const averageWeight = Math.round(
@@ -45,7 +45,7 @@ function ExerciseDisplay({
       if (!acc[set.workout_id]) {
         acc[set.workout_id] = {
           date: set.workout_date,
-          notes: set.workout_notes,
+          notes: set.workout_notes || null,
           sets: [],
         };
       }

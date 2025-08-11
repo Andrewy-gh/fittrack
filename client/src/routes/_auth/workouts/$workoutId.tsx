@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
 import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
-import { workoutByIdQueryOptions, type WorkoutWithSets } from '@/lib/api/workouts';
+import { workoutByIdQueryOptions } from '@/lib/api/workouts';
+import type { workout_WorkoutWithSetsResponse } from '@/generated';
 
-export function IndividualWorkoutPage({
+function IndividualWorkoutPage({
   workout,
 }: {
-  workout: WorkoutWithSets[];
+  workout: workout_WorkoutWithSetsResponse[];
 }) {
   // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
@@ -200,6 +201,8 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId')({
 
 function RouteComponent() {
   const { accessToken, workoutId } = Route.useLoaderData();
-  const { data: workout } = useSuspenseQuery(workoutByIdQueryOptions(workoutId, accessToken));
+  const { data: workout } = useSuspenseQuery(
+    workoutByIdQueryOptions(workoutId, accessToken)
+  );
   return <IndividualWorkoutPage workout={workout} />;
 }
