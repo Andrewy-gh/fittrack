@@ -81,6 +81,12 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Allow OPTIONS requests (CORS preflight) to pass through without authentication
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
 			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method)
