@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
-import type { Exercise, ExerciseOption } from '@/lib/api/exercises';
+import type { ExerciseOption } from '@/lib/api/exercises';
 import { Plus } from 'lucide-react';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { useFieldContext } from '@/hooks/form';
 import { useState } from 'react';
+import type { workout_ExerciseInput } from '@/generated';
 
 export default function AddExerciseField2({
   exercises,
@@ -12,14 +13,14 @@ export default function AddExerciseField2({
   exercises: ExerciseOption[];
   onAddExercise: (exerciseIndex: number) => void;
 }) {
-  const field = useFieldContext<Exercise[]>();
+  const field = useFieldContext<workout_ExerciseInput[]>();
   const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>();
 
   function handleSelect(option: ExerciseOption) {
     setSelectedExercise(option);
   }
 
-  function handleAppendGroup(name: ExerciseOption['name']) {
+  function handleAppendGroup(name: string) {
     const newExercise: ExerciseOption = {
       id: exercises.length + 1,
       name,
