@@ -1,62 +1,35 @@
-import type { ExerciseWithSets } from '@/lib/types';
 import { queryOptions } from '@tanstack/react-query';
+import { ExercisesService, OpenAPI } from '@/generated';
+import type {
+  exercise_ExerciseResponse,
+  exercise_ExerciseWithSetsResponse,
+} from '@/generated';
 
-export async function fetchExerciseWithSets(
-  exerciseId: number,
-  accessToken: string
-): Promise<ExerciseWithSets[]> {
-  const response = await fetch(`/api/exercises/${exerciseId}`, {
-    headers: {
-      'x-stack-access-token': accessToken,
+export type ExerciseOption = Pick<exercise_ExerciseResponse, 'id' | 'name'>;
+
+export function exercisesQueryOptions(accessToken: string) {
+  return queryOptions<exercise_ExerciseResponse[], Error>({
+    queryKey: ['exercises', 'list'],
+    queryFn: async () => {
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return ExercisesService.getExercises();
     },
   });
-  if (!response.ok) {
-    throw new Error('Failed to fetch exercise sets');
-  }
-  return response.json();
 }
 
 export function exerciseWithSetsQueryOptions(
   exerciseId: number,
   accessToken: string
 ) {
-  return queryOptions<ExerciseWithSets[], Error>({
+  return queryOptions<exercise_ExerciseWithSetsResponse[], Error>({
     queryKey: ['exercises', 'details', exerciseId],
-    queryFn: () => fetchExerciseWithSets(exerciseId, accessToken),
-  });
-}
-
-export interface ExerciseOption {
-  id: number;
-  name: string;
-  created_at: string;
-  updated_at: string | null;
-}
-
-export type NewExerciseOption = Omit<
-  ExerciseOption,
-  'created_at' | 'updated_at'
->;
-
-export async function fetchExerciseOptions(
-  accessToken: string
-): Promise<ExerciseOption[]> {
-  const response = await fetch('/api/exercises', {
-    headers: {
-      'x-stack-access-token': accessToken,
+    queryFn: async () => {
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return ExercisesService.getExercises1(exerciseId);
     },
-  });
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch exercise options: ${response.status} ${response.statusText}`
-    );
-  }
-  return response.json();
-}
-
-export function exercisesQueryOptions(accessToken: string) {
-  return queryOptions<ExerciseOption[], Error>({
-    queryKey: ['exercises', 'list'],
-    queryFn: () => fetchExerciseOptions(accessToken),
   });
 }

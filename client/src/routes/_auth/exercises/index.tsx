@@ -1,28 +1,19 @@
-import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Plus, Search } from 'lucide-react';
-import type { ExerciseOption } from '@/lib/types';
-import { fetchExerciseOptions } from '@/lib/api/exercises';
-import { getAccessToken } from '@/lib/api/auth';
 import { Input } from '@/components/ui/input';
+import type { exercise_ExerciseResponse } from '@/generated';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
+import { getAccessToken } from '@/lib/api/auth';
 
-export const Route = createFileRoute('/_auth/exercises/')({
-  loader: async ({ context }): Promise<ExerciseOption[]> => {
-    const accessToken = await getAccessToken(context.user);
-    const exercises = await fetchExerciseOptions(accessToken);
-    return exercises;
-  },
-  component: RouteComponent,
-});
-
-function RouteComponent() {
-  const exercises = Route.useLoaderData();
-  return <ExercisesDisplay exercises={exercises} />;
-}
-
-function ExercisesDisplay({ exercises }: { exercises: ExerciseOption[] }) {
+function ExercisesDisplay({
+  exercises,
+}: {
+  exercises: exercise_ExerciseResponse[];
+}) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredExercises = exercises.filter((exercise) =>
@@ -87,4 +78,21 @@ function ExercisesDisplay({ exercises }: { exercises: ExerciseOption[] }) {
       </div>
     </main>
   );
+}
+
+export const Route = createFileRoute('/_auth/exercises/')({
+  loader: async ({ context }): Promise<string> => {
+    const accessToken = await getAccessToken(context.user);
+    context.queryClient.ensureQueryData(exercisesQueryOptions(accessToken));
+    return accessToken;
+  },
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const accessToken = Route.useLoaderData();
+  const { data: exercises } = useSuspenseQuery(
+    exercisesQueryOptions(accessToken)
+  );
+  return <ExercisesDisplay exercises={exercises} />;
 }

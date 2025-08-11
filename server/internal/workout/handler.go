@@ -26,6 +26,17 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, workoutServi
 	}
 }
 
+// ListWorkouts godoc
+// @Summary List workouts
+// @Description Get all workouts for the authenticated user
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Success 200 {array} workout.WorkoutResponse
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts [get]
 func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	workouts, err := h.workoutService.ListWorkouts(r.Context())
 	if err != nil {
@@ -44,6 +55,19 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetWorkoutWithSets godoc
+// @Summary Get workout with sets
+// @Description Get a specific workout with all its sets and exercises
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Workout ID"
+// @Success 200 {array} workout.WorkoutWithSetsResponse
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts/{id} [get]
 func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
 	workoutID := r.PathValue("id")
 	if workoutID == "" {
@@ -74,6 +98,19 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// CreateWorkout godoc
+// @Summary Create a new workout
+// @Description Create a new workout with exercises and sets
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param request body workout.CreateWorkoutRequest true "Workout data"
+// @Success 200 {object} response.SuccessResponse
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts [post]
 func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	var req CreateWorkoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

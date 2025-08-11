@@ -6,32 +6,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
 import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
-import {
-  workoutByIdQueryOptions,
-  type WorkoutWithSets,
-} from '@/lib/api/workouts';
+import { workoutByIdQueryOptions } from '@/lib/api/workouts';
+import type { workout_WorkoutWithSetsResponse } from '@/generated';
 
-export function IndividualWorkoutPage({
+function IndividualWorkoutPage({
   workout,
 }: {
-  workout: WorkoutWithSets[];
+  workout: workout_WorkoutWithSetsResponse[];
 }) {
   // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
   const totalSets = workout.length;
-  const totalReps = workout.reduce((sum, w) => sum + w.reps, 0);
-  const totalVolume = workout.reduce((sum, w) => sum + w.volume, 0);
+  const totalReps = workout.reduce((sum, w) => sum + (w.reps || 0), 0);
+  const totalVolume = workout.reduce((sum, w) => sum + (w.volume || 0), 0);
 
   // Group exercises
   const exerciseGroups = workout.reduce(
     (acc, w) => {
-      if (!acc[w.exercise_id]) {
-        acc[w.exercise_id] = {
-          name: w.exercise_name,
+      const exerciseId = w.exercise_id || 0;
+      if (!acc[exerciseId]) {
+        acc[exerciseId] = {
+          name: w.exercise_name || 'Unknown Exercise',
           sets: [],
         };
       }
-      acc[w.exercise_id].sets.push(w);
+      acc[exerciseId].sets.push(w);
       return acc;
     },
     {} as Record<number, { name: string; sets: typeof workout }>
@@ -123,11 +122,11 @@ export function IndividualWorkoutPage({
           <h2 className="text-2xl font-semibold">Exercises</h2>
           {Object.entries(exerciseGroups).map(([exerciseId, exercise]) => {
             const exerciseReps = exercise.sets.reduce(
-              (sum, set) => sum + set.reps,
+              (sum, set) => sum + (set.reps || 0),
               0
             );
             const exerciseVolume = exercise.sets.reduce(
-              (sum, set) => sum + set.volume,
+              (sum, set) => sum + (set.volume || 0),
               0
             );
 
@@ -165,13 +164,13 @@ export function IndividualWorkoutPage({
                           {index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
-                          <span className="font-medium">{set.weight} lbs</span>
+                          <span className="font-medium">{set.weight || 0} lbs</span>
                           <span>&times;</span>
-                          <span className="font-medium">{set.reps} reps</span>
+                          <span className="font-medium">{set.reps || 0} reps</span>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {set.volume.toLocaleString()} vol
+                        {(set.volume || 0).toLocaleString()} vol
                       </div>
                     </div>
                   ))}

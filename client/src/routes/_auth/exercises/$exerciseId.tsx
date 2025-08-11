@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { ExerciseWithSets } from '@/lib/types';
+import type { exercise_ExerciseWithSetsResponse } from '@/generated';
 import { exerciseWithSetsQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
 import { getAccessToken } from '@/lib/api/auth';
@@ -21,13 +21,13 @@ import { getAccessToken } from '@/lib/api/auth';
 function ExerciseDisplay({
   exerciseSets,
 }: {
-  exerciseSets: ExerciseWithSets[];
+  exerciseSets: exercise_ExerciseWithSetsResponse[];
 }) {
   // Calculate summary statistics
   const totalSets = exerciseSets.length;
   const uniqueWorkouts = new Set(exerciseSets.map((set) => set.workout_id))
     .size;
-  const weights = exerciseSets.map((set) => set.weight);
+  const weights = exerciseSets.map((set) => set.weight || 0);
   const volumes = exerciseSets.map((set) => set.volume);
 
   const averageWeight = Math.round(
@@ -45,7 +45,7 @@ function ExerciseDisplay({
       if (!acc[set.workout_id]) {
         acc[set.workout_id] = {
           date: set.workout_date,
-          notes: set.workout_notes,
+          notes: set.workout_notes || null,
           sets: [],
         };
       }

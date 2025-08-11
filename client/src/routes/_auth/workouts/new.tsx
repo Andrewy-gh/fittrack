@@ -1,12 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import type { ExerciseOption } from '@/lib/types';
-import { fetchExerciseOptions } from '@/lib/api/exercises';
-import { WorkoutEntryForm } from '@/components/workout-entry-form';
 
 export const Route = createFileRoute('/_auth/workouts/new')({
-  loader: async ({
-    context,
-  }): Promise<{ accessToken: string; userId: string; exercises: ExerciseOption[] }> => {
+  loader: async ({ context }) => {
     const user = context.user;
     if (!user) {
       throw new Error('User not found');
@@ -18,17 +13,14 @@ export const Route = createFileRoute('/_auth/workouts/new')({
     if (!accessToken) {
       throw new Error('Access token not found');
     }
-    const exercises = await fetchExerciseOptions(accessToken);
-    return { accessToken, userId: user.id, exercises };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { accessToken, exercises, userId } = Route.useLoaderData();
   return (
     <div className="container mx-auto space-y-4 p-4 md:p-12">
-      <WorkoutEntryForm exercises={exercises} accessToken={accessToken} userId={userId} />
+      <h1 className="text-3xl font-bold tracking-tight">New Workout</h1>
     </div>
   );
 }

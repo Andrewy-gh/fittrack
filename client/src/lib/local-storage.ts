@@ -1,4 +1,4 @@
-import type { WorkoutFormValues } from '@/lib/types';
+import type { workout_CreateWorkoutRequest } from '@/generated';
 
 const STORAGE_KEY = 'workout-entry-form-data';
 
@@ -6,7 +6,7 @@ const getStorageKey = (userId?: string): string => {
   return userId ? `${STORAGE_KEY}-${userId}` : STORAGE_KEY;
 };
 
-export const saveToLocalStorage = (data: WorkoutFormValues, userId?: string) => {
+export const saveToLocalStorage = (data: workout_CreateWorkoutRequest, userId?: string) => {
   try {
     // Convert Date objects to ISO strings for JSON serialization
     const serializedData = {
@@ -19,7 +19,7 @@ export const saveToLocalStorage = (data: WorkoutFormValues, userId?: string) => 
   }
 };
 
-export const loadFromLocalStorage = (userId?: string): WorkoutFormValues | null => {
+export const loadFromLocalStorage = (userId?: string): workout_CreateWorkoutRequest | null => {
   console.log('Loading form data from localStorage');
   try {
     const saved = localStorage.getItem(getStorageKey(userId));
@@ -29,7 +29,7 @@ export const loadFromLocalStorage = (userId?: string): WorkoutFormValues | null 
       if (parsed.date) {
         parsed.date = new Date(parsed.date);
       }
-      return parsed as WorkoutFormValues;
+      return parsed as workout_CreateWorkoutRequest;
     }
   } catch (error) {
     console.warn('Failed to load from localStorage:', error);

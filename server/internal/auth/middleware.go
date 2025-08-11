@@ -76,14 +76,22 @@ func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) err
 
 func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers for all API requests
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-stack-access-token")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// Allow OPTIONS requests (CORS preflight) to pass through without authentication
+		// Handle CORS preflight requests
 		if r.Method == http.MethodOptions {
-			next.ServeHTTP(w, r)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 
