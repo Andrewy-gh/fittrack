@@ -6,7 +6,6 @@
     "dev": "bunx --bun vite",
     "start": "vite --port 3000",
     "build": "bunx --bun vite build",
-    "prebuild": "bun run generate:api",
     "serve": "vite preview",
     "test": "vitest run",
     "generate:api": "openapi --input ../server/docs/swagger.json --output src/generated --client fetch"
