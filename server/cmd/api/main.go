@@ -32,6 +32,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	_ "github.com/Andrewy-gh/fittrack/server/docs" // This line is necessary for go-swagger to find docs
@@ -51,7 +52,18 @@ func main() {
 	ctx := context.Background()
 
 	logger.Info("connecting to database")
-	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	dbURL := os.Getenv("DATABASE_URL")
+	poolConfig, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		logger.Error("failed to parse database config", "error", err)
+		os.Exit(1)
+	}
+	// Disable prepared statements (simple protocol) for PgBouncer transaction pooling / Supabase pooler
+	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	// Optional: set sensible max connections; tune as needed
+	// poolConfig.MaxConns = 20
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		logger.Error("failed to connect to database", "error", err)
 		os.Exit(1)
