@@ -41,9 +41,8 @@ function WorkoutTracker({
       },
       onChangeDebounceMs: 500,
     },
-    onSubmit: ({ value }) => {
-      console.log('value', { value });
-      saveWorkout.mutate(value, {
+    onSubmit: async ({ value }) => {
+      await saveWorkout.mutateAsync(value, {
         onSuccess: () => {
           clearLocalStorage(userId);
           form.reset();

@@ -88,7 +88,7 @@ export function useSaveWorkoutMutation(accessToken: string) {
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };
-      return WorkoutsService.postWorkouts(data);
+      return await WorkoutsService.postWorkouts(data); // await for form.Subscribe to update
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
