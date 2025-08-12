@@ -25,6 +25,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -38,10 +40,39 @@ import (
 	_ "github.com/Andrewy-gh/fittrack/server/docs" // This line is necessary for go-swagger to find docs
 )
 
+const (
+	defaultMaxConns       = int32(15)
+	defaultMinConns       = int32(2)
+)
+
+var (
+	defaultMaxConnIdle     = 30 * time.Second
+	defaultMaxConnLifetime = 30 * time.Minute
+	defaultHealthCheck     = 30 * time.Second
+)
+
 type api struct {
 	logger  *slog.Logger
 	queries *db.Queries
 	pool    *pgxpool.Pool
+}
+
+func envInt32(name string, def int32) int32 {
+	if v := os.Getenv(name); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i >= 0 {
+			return int32(i)
+		}
+	}
+	return def
+}
+
+func envDuration(name string, def time.Duration) time.Duration {
+	if v := os.Getenv(name); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return def
 }
 
 func main() {
@@ -60,8 +91,13 @@ func main() {
 	}
 	// Disable prepared statements (simple protocol) for PgBouncer transaction pooling / Supabase pooler
 	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-	// Optional: set sensible max connections; tune as needed
-	// poolConfig.MaxConns = 20
+
+	// Configure pool caps with env overrides
+	poolConfig.MaxConns = envInt32("DB_MAX_CONNS", defaultMaxConns)
+	poolConfig.MinConns = envInt32("DB_MIN_CONNS", defaultMinConns)
+	poolConfig.MaxConnIdleTime = envDuration("DB_MAX_CONN_IDLE", defaultMaxConnIdle)
+	poolConfig.MaxConnLifetime = envDuration("DB_MAX_CONN_LIFE", defaultMaxConnLifetime)
+	poolConfig.HealthCheckPeriod = envDuration("DB_HEALTHCHECK", defaultHealthCheck)
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
