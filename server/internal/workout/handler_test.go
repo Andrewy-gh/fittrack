@@ -39,6 +39,11 @@ func (m *MockWorkoutRepository) SaveWorkout(ctx context.Context, reformatted *Re
 	return args.Error(0)
 }
 
+func (m *MockWorkoutRepository) GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error) {
+	args := m.Called(ctx, id, userID)
+	return args.Get(0).(db.Workout), args.Error(1)
+}
+
 func (m *MockWorkoutRepository) ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).([]db.Workout), args.Error(1)

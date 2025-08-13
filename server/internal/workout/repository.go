@@ -57,6 +57,33 @@ func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([
 	return workouts, nil
 }
 
+// MARK: GetWorkout
+func (wr *workoutRepository) GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error) {
+	params := db.GetWorkoutParams{
+		ID:     id,
+		UserID: userID,
+	}
+	workout, err := wr.queries.GetWorkout(ctx, params)
+	if err != nil {
+		// Check if this might be an RLS-related error
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("get workout query failed - RLS policy violation",
+				"error", err,
+				"workout_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("get workout query failed",
+				"workout_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return workout, fmt.Errorf("failed to get workout (id: %d): %w", id, err)
+	}
+
+	return workout, nil
+}
+
 // MARK: GetWorkoutWithSets
 func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error) {
 	params := db.GetWorkoutWithSetsParams{

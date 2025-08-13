@@ -12,6 +12,7 @@ import (
 
 type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
+	GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
 	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
@@ -105,13 +106,9 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 
 	// First, validate that the workout exists and belongs to the user
 	// This helps provide better error messages (404 vs generic error)
-	existing, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
+	_, err := ws.repo.GetWorkout(ctx, id, userID)
 	if err != nil {
-		ws.logger.Error("failed to fetch existing workout for update", "error", err, "workout_id", id, "user_id", userID)
-		return fmt.Errorf("failed to fetch existing workout: %w", err)
-	}
-	if len(existing) == 0 {
-		ws.logger.Debug("workout not found for update", "workout_id", id, "user_id", userID)
+		ws.logger.Debug("workout not found for update", "workout_id", id, "user_id", userID, "error", err)
 		return &ErrNotFound{Message: "workout not found"}
 	}
 
@@ -193,5 +190,5 @@ func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*Refor
 }
 
 func (ws *WorkoutService) transformUpdateRequest(request UpdateWorkoutRequest) (*ReformattedRequest, error) {
-	return transformWorkoutRequest(ws.logger, request, true) // Date is optional, but we require it from client
+	return transformWorkoutRequest(ws.logger, request, false) // Date is optional for updates (partial updates allowed)
 }

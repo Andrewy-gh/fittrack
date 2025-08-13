@@ -186,7 +186,7 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 		// Handle different error types with appropriate HTTP status codes
 		var errUnauthorized *ErrUnauthorized
 		var errNotFound *ErrNotFound
-		
+
 		switch {
 		case errors.As(err, &errUnauthorized):
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
