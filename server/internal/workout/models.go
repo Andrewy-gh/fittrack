@@ -70,3 +70,11 @@ type ReformattedRequest struct {
 	Exercises []ExerciseData
 	Sets      []SetData
 }
+
+// UPDATE endpoint types for PUT /api/workouts/{id}
+// Returns 204 No Content on success
+type UpdateWorkoutRequest struct {
+	Date      *string         `json:"date,omitempty" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	Notes     *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
+	Exercises []ExerciseInput `json:"exercises,omitempty" validate:"omitempty,dive"`
+}

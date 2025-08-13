@@ -157,6 +157,18 @@ definitions:
     - reps
     - setType
     type: object
+  workout.UpdateWorkoutRequest:
+    properties:
+      date:
+        type: string
+      exercises:
+        items:
+          $ref: '#/definitions/workout.ExerciseInput'
+        type: array
+      notes:
+        maxLength: 256
+        type: string
+    type: object
   workout.WorkoutResponse:
     description: Workout response model
     properties:
@@ -441,6 +453,49 @@ paths:
       security:
       - StackAuth: []
       summary: Get workout with sets
+      tags:
+      - workouts
+    put:
+      consumes:
+      - application/json
+      description: Update workout metadata (date/notes) for the authenticated user.
+        Returns 204 No Content on success.
+      parameters:
+      - description: Workout ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated workout data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/workout.UpdateWorkoutRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content - Workout updated successfully
+        "400":
+          description: Bad Request - Invalid input or validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid token
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found - Workout not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Update an existing workout
       tags:
       - workouts
 schemes:

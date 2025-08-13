@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
@@ -139,6 +140,81 @@ func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *Refor
 	if err := tx.Commit(ctx); err != nil {
 		wr.logger.Error("failed to commit transaction", "error", err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// MARK: UpdateWorkout (PUT endpoint)
+// For now, this only updates workout metadata (date/notes)
+// Exercise/set updates can be added later as a separate enhancement
+func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, req *UpdateWorkoutRequest, userID string) error {
+	// Convert request to PG types for the update
+	var pgDate pgtype.Timestamptz
+	var pgNotes pgtype.Text
+
+	// Handle date update
+	if req.Date != nil {
+		parsedDate, err := time.Parse("2006-01-02T15:04:05Z07:00", *req.Date)
+		if err != nil {
+			wr.logger.Error("failed to parse date for update", "error", err, "date", *req.Date)
+			return fmt.Errorf("invalid date format: %w", err)
+		}
+		pgDate = pgtype.Timestamptz{
+			Time:  parsedDate,
+			Valid: true,
+		}
+	}
+	// If req.Date is nil, pgDate will be invalid and COALESCE will keep existing value
+
+	// Handle notes update
+	if req.Notes != nil {
+		pgNotes = pgtype.Text{
+			String: *req.Notes,
+			Valid:  true,
+		}
+	}
+	// If req.Notes is nil, pgNotes will be invalid and COALESCE will keep existing value
+
+	// Perform the update using our generated sqlc function
+	updatedWorkout, err := wr.queries.UpdateWorkout(ctx, db.UpdateWorkoutParams{
+		ID:     id,
+		Date:   pgDate,
+		Notes:  pgNotes,
+		UserID: userID,
+	})
+	if err != nil {
+		// Check for RLS violations
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("update workout failed - RLS policy violation",
+				"error", err,
+				"workout_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("update workout failed",
+				"workout_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return fmt.Errorf("failed to update workout (id: %d): %w", id, err)
+	}
+
+	wr.logger.Info("workout metadata updated successfully",
+		"workout_id", updatedWorkout.ID,
+		"updated_at", updatedWorkout.UpdatedAt,
+		"user_id", userID)
+
+	// TODO: Handle exercise/set updates if req.Exercises is provided
+	// This will be implemented in a future enhancement
+	if req.Exercises != nil && len(req.Exercises) > 0 {
+		wr.logger.Debug("exercise updates requested but not yet implemented",
+			"workout_id", id,
+			"exercise_count", len(req.Exercises))
+		// For now, we'll just log this. In the future, we can implement:
+		// 1. Delete existing sets for this workout
+		// 2. Recreate exercises and sets based on req.Exercises
+		// This would use the same logic as SaveWorkout but with updates
 	}
 
 	return nil

@@ -14,6 +14,7 @@ type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
+	UpdateWorkout(ctx context.Context, id int32, req *UpdateWorkoutRequest, userID string) error
 }
 
 type WorkoutService struct {
@@ -26,6 +27,14 @@ type ErrUnauthorized struct {
 }
 
 func (e *ErrUnauthorized) Error() string {
+	return e.Message
+}
+
+type ErrNotFound struct {
+	Message string
+}
+
+func (e *ErrNotFound) Error() string {
 	return e.Message
 }
 
@@ -85,6 +94,37 @@ func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateW
 		return fmt.Errorf("failed to save workout: %w", err)
 	}
 
+	return nil
+}
+
+// UpdateWorkout updates an existing workout (PUT endpoint)
+// Returns 204 No Content on success
+func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req UpdateWorkoutRequest) error {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	// First, validate that the workout exists and belongs to the user
+	// This helps provide better error messages (404 vs generic error)
+	existing, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
+	if err != nil {
+		ws.logger.Error("failed to fetch existing workout for update", "error", err, "workout_id", id, "user_id", userID)
+		return fmt.Errorf("failed to fetch existing workout: %w", err)
+	}
+	if len(existing) == 0 {
+		ws.logger.Debug("workout not found for update", "workout_id", id, "user_id", userID)
+		return &ErrNotFound{Message: "workout not found"}
+	}
+
+	// Perform the update
+	if err := ws.repo.UpdateWorkout(ctx, id, &req, userID); err != nil {
+		ws.logger.Error("failed to update workout", "error", err, "workout_id", id, "user_id", userID)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err))
+		return fmt.Errorf("failed to update workout: %w", err)
+	}
+
+	ws.logger.Info("workout updated successfully", "workout_id", id, "user_id", userID)
 	return nil
 }
 
