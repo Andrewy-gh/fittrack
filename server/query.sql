@@ -95,3 +95,47 @@ SELECT * FROM users WHERE user_id = $1 LIMIT 1;
 INSERT INTO users (user_id)
 VALUES ($1)
 RETURNING *;
+
+-- UPDATE queries for PUT endpoint
+-- name: UpdateWorkout :one
+UPDATE workout 
+SET 
+    date = COALESCE($2, date),
+    notes = COALESCE($3, notes),
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $4
+RETURNING *;
+
+-- name: UpdateSet :one
+UPDATE "set" 
+SET 
+    weight = COALESCE($2, weight),
+    reps = COALESCE($3, reps),
+    set_type = COALESCE($4, set_type),
+    updated_at = NOW()
+WHERE "set".id = $1 
+  AND EXISTS (
+    SELECT 1 FROM workout w 
+    WHERE w.id = "set".workout_id 
+      AND w.user_id = $5
+  )
+RETURNING *;
+
+-- name: DeleteSetsByWorkout :exec
+DELETE FROM "set" 
+WHERE workout_id = $1 
+  AND EXISTS (
+    SELECT 1 FROM workout w 
+    WHERE w.id = workout_id 
+      AND w.user_id = $2
+  );
+
+-- name: DeleteSetsByWorkoutAndExercise :exec
+DELETE FROM "set" 
+WHERE workout_id = $1 
+  AND exercise_id = $2
+  AND EXISTS (
+    SELECT 1 FROM workout w 
+    WHERE w.id = workout_id 
+      AND w.user_id = $3
+  );

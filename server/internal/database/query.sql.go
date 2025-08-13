@@ -94,6 +94,48 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (W
 	return i, err
 }
 
+const deleteSetsByWorkout = `-- name: DeleteSetsByWorkout :exec
+DELETE FROM "set" 
+WHERE workout_id = $1 
+  AND EXISTS (
+    SELECT 1 FROM workout w 
+    WHERE w.id = workout_id 
+      AND w.user_id = $2
+  )
+`
+
+type DeleteSetsByWorkoutParams struct {
+	WorkoutID int32  `json:"workout_id"`
+	UserID    string `json:"user_id"`
+}
+
+func (q *Queries) DeleteSetsByWorkout(ctx context.Context, arg DeleteSetsByWorkoutParams) error {
+	_, err := q.db.Exec(ctx, deleteSetsByWorkout, arg.WorkoutID, arg.UserID)
+	return err
+}
+
+const deleteSetsByWorkoutAndExercise = `-- name: DeleteSetsByWorkoutAndExercise :exec
+DELETE FROM "set" 
+WHERE workout_id = $1 
+  AND exercise_id = $2
+  AND EXISTS (
+    SELECT 1 FROM workout w 
+    WHERE w.id = workout_id 
+      AND w.user_id = $3
+  )
+`
+
+type DeleteSetsByWorkoutAndExerciseParams struct {
+	WorkoutID  int32  `json:"workout_id"`
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+func (q *Queries) DeleteSetsByWorkoutAndExercise(ctx context.Context, arg DeleteSetsByWorkoutAndExerciseParams) error {
+	_, err := q.db.Exec(ctx, deleteSetsByWorkoutAndExercise, arg.WorkoutID, arg.ExerciseID, arg.UserID)
+	return err
+}
+
 const getExercise = `-- name: GetExercise :one
 SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE id = $1 AND user_id = $2
 `
@@ -469,4 +511,87 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]Workout, e
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateSet = `-- name: UpdateSet :one
+UPDATE "set" 
+SET 
+    weight = COALESCE($2, weight),
+    reps = COALESCE($3, reps),
+    set_type = COALESCE($4, set_type),
+    updated_at = NOW()
+WHERE "set".id = $1 
+  AND EXISTS (
+    SELECT 1 FROM workout w 
+    WHERE w.id = "set".workout_id 
+      AND w.user_id = $5
+  )
+RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at
+`
+
+type UpdateSetParams struct {
+	ID      int32       `json:"id"`
+	Weight  pgtype.Int4 `json:"weight"`
+	Reps    int32       `json:"reps"`
+	SetType string      `json:"set_type"`
+	UserID  string      `json:"user_id"`
+}
+
+func (q *Queries) UpdateSet(ctx context.Context, arg UpdateSetParams) (Set, error) {
+	row := q.db.QueryRow(ctx, updateSet,
+		arg.ID,
+		arg.Weight,
+		arg.Reps,
+		arg.SetType,
+		arg.UserID,
+	)
+	var i Set
+	err := row.Scan(
+		&i.ID,
+		&i.ExerciseID,
+		&i.WorkoutID,
+		&i.Weight,
+		&i.Reps,
+		&i.SetType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateWorkout = `-- name: UpdateWorkout :one
+UPDATE workout 
+SET 
+    date = COALESCE($2, date),
+    notes = COALESCE($3, notes),
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $4
+RETURNING id, date, notes, created_at, updated_at, user_id
+`
+
+type UpdateWorkoutParams struct {
+	ID     int32              `json:"id"`
+	Date   pgtype.Timestamptz `json:"date"`
+	Notes  pgtype.Text        `json:"notes"`
+	UserID string             `json:"user_id"`
+}
+
+// UPDATE queries for PUT endpoint
+func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (Workout, error) {
+	row := q.db.QueryRow(ctx, updateWorkout,
+		arg.ID,
+		arg.Date,
+		arg.Notes,
+		arg.UserID,
+	)
+	var i Workout
+	err := row.Scan(
+		&i.ID,
+		&i.Date,
+		&i.Notes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+	)
+	return i, err
 }
