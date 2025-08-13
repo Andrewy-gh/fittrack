@@ -14,7 +14,7 @@ type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
-	UpdateWorkout(ctx context.Context, id int32, req *UpdateWorkoutRequest, userID string) error
+	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
 }
 
 type WorkoutService struct {
@@ -85,8 +85,6 @@ func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateW
 		return fmt.Errorf("failed to transform request: %w", err)
 	}
 
-	// Convert to PG types
-
 	// Use repository to save the workout
 	if err := ws.repo.SaveWorkout(ctx, reformatted, userID); err != nil {
 		ws.logger.Error("failed to save workout", "error", err)
@@ -117,8 +115,15 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 		return &ErrNotFound{Message: "workout not found"}
 	}
 
+	// Transform the request to our internal format (same as CreateWorkout)
+	reformatted, err := ws.transformUpdateRequest(req)
+	if err != nil {
+		ws.logger.Error("failed to transform update request", "error", err, "workout_id", id, "user_id", userID)
+		return fmt.Errorf("failed to transform update request: %w", err)
+	}
+
 	// Perform the update
-	if err := ws.repo.UpdateWorkout(ctx, id, &req, userID); err != nil {
+	if err := ws.repo.UpdateWorkout(ctx, id, reformatted, userID); err != nil {
 		ws.logger.Error("failed to update workout", "error", err, "workout_id", id, "user_id", userID)
 		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err))
 		return fmt.Errorf("failed to update workout: %w", err)
@@ -128,39 +133,49 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 	return nil
 }
 
-func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error) {
+// Generic transform function that works with both request types
+func transformWorkoutRequest[T WorkoutRequestTransformable](logger *slog.Logger, request T, requireDate bool) (*ReformattedRequest, error) {
 	// Parse date
-	parsedDate, err := time.Parse("2006-01-02T15:04:05Z07:00", request.Date)
-	if err != nil {
-		ws.logger.Error("failed to parse date", "error", err)
-		return nil, fmt.Errorf("invalid date format: %w", err)
+	datePtr := request.GetDate()
+	if requireDate && datePtr == nil {
+		return nil, fmt.Errorf("date is required")
+	}
+	
+	var parsedDate time.Time
+	var err error
+	if datePtr != nil {
+		parsedDate, err = time.Parse("2006-01-02T15:04:05Z07:00", *datePtr)
+		if err != nil {
+			logger.Error("failed to parse date", "error", err)
+			return nil, fmt.Errorf("invalid date format: %w", err)
+		}
 	}
 
 	// Create workout data
 	workout := WorkoutData{
 		Date:  parsedDate,
-		Notes: request.Notes,
+		Notes: request.GetNotes(),
 	}
 
-	// Process exercises and sets (your existing logic)
+	// Process exercises and sets
 	exerciseMap := make(map[string]bool)
 	var exercises []ExerciseData
 	var sets []SetData
 
-	for _, exercise := range request.Exercises {
-		if !exerciseMap[exercise.Name] {
-			exerciseMap[exercise.Name] = true
+	for _, exercise := range request.GetExercises() {
+		if !exerciseMap[exercise.GetName()] {
+			exerciseMap[exercise.GetName()] = true
 			exercises = append(exercises, ExerciseData{
-				Name: exercise.Name,
+				Name: exercise.GetName(),
 			})
 		}
 
-		for _, set := range exercise.Sets {
+		for _, set := range exercise.GetSets() {
 			sets = append(sets, SetData{
-				ExerciseName: exercise.Name,
-				Weight:       set.Weight,
-				Reps:         set.Reps,
-				SetType:      set.SetType,
+				ExerciseName: exercise.GetName(),
+				Weight:       set.GetWeight(),
+				Reps:         set.GetReps(),
+				SetType:      set.GetSetType(),
 			})
 		}
 	}
@@ -170,4 +185,13 @@ func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*Refor
 		Exercises: exercises,
 		Sets:      sets,
 	}, nil
+}
+
+// Convenience wrappers
+func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error) {
+	return transformWorkoutRequest(ws.logger, request, false) // Date is required in struct, not optional
+}
+
+func (ws *WorkoutService) transformUpdateRequest(request UpdateWorkoutRequest) (*ReformattedRequest, error) {
+	return transformWorkoutRequest(ws.logger, request, true) // Date is optional, but we require it from client
 }

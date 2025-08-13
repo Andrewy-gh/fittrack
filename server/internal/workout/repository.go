@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
@@ -145,42 +144,33 @@ func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *Refor
 	return nil
 }
 
-// MARK: UpdateWorkout (PUT endpoint)
-// For now, this only updates workout metadata (date/notes)
-// Exercise/set updates can be added later as a separate enhancement
-func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, req *UpdateWorkoutRequest, userID string) error {
-	// Convert request to PG types for the update
-	var pgDate pgtype.Timestamptz
-	var pgNotes pgtype.Text
-
-	// Handle date update
-	if req.Date != nil {
-		parsedDate, err := time.Parse("2006-01-02T15:04:05Z07:00", *req.Date)
-		if err != nil {
-			wr.logger.Error("failed to parse date for update", "error", err, "date", *req.Date)
-			return fmt.Errorf("invalid date format: %w", err)
-		}
-		pgDate = pgtype.Timestamptz{
-			Time:  parsedDate,
-			Valid: true,
-		}
+// MARK: UpdateWorkout (PUT endpoint) 
+// Updates workout metadata (date/notes) and exercises/sets
+// Uses a replace strategy for exercises/sets (deletes existing and recreates)
+func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error {
+	// Convert to PG types
+	pgData, err := wr.convertToPGTypes(reformatted)
+	if err != nil {
+		wr.logger.Error("failed to convert to PG types for update", "error", err)
+		return fmt.Errorf("failed to convert to PG types: %w", err)
 	}
-	// If req.Date is nil, pgDate will be invalid and COALESCE will keep existing value
 
-	// Handle notes update
-	if req.Notes != nil {
-		pgNotes = pgtype.Text{
-			String: *req.Notes,
-			Valid:  true,
-		}
+	// Start transaction
+	tx, err := wr.conn.Begin(ctx)
+	if err != nil {
+		wr.logger.Error("failed to begin transaction for update", "error", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	// If req.Notes is nil, pgNotes will be invalid and COALESCE will keep existing value
+	defer tx.Rollback(ctx)
 
-	// Perform the update using our generated sqlc function
-	updatedWorkout, err := wr.queries.UpdateWorkout(ctx, db.UpdateWorkoutParams{
+	// Create queries instance with transaction
+	qtx := wr.queries.WithTx(tx)
+
+	// Step 1: Update workout metadata
+	updatedWorkout, err := qtx.UpdateWorkout(ctx, db.UpdateWorkoutParams{
 		ID:     id,
-		Date:   pgDate,
-		Notes:  pgNotes,
+		Date:   pgData.Workout.Date,
+		Notes:  pgData.Workout.Notes,
 		UserID: userID,
 	})
 	if err != nil {
@@ -205,16 +195,45 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, req *U
 		"updated_at", updatedWorkout.UpdatedAt,
 		"user_id", userID)
 
-	// TODO: Handle exercise/set updates if req.Exercises is provided
-	// This will be implemented in a future enhancement
-	if req.Exercises != nil && len(req.Exercises) > 0 {
-		wr.logger.Debug("exercise updates requested but not yet implemented",
+	// Step 2: Handle exercise/set updates (replace strategy - delete all and recreate)
+	if len(reformatted.Exercises) > 0 {
+		wr.logger.Info("processing exercise/set updates",
 			"workout_id", id,
-			"exercise_count", len(req.Exercises))
-		// For now, we'll just log this. In the future, we can implement:
-		// 1. Delete existing sets for this workout
-		// 2. Recreate exercises and sets based on req.Exercises
-		// This would use the same logic as SaveWorkout but with updates
+			"exercise_count", len(reformatted.Exercises))
+
+		// Delete all existing sets for this workout
+		if err := qtx.DeleteSetsByWorkout(ctx, db.DeleteSetsByWorkoutParams{
+			WorkoutID: id,
+			UserID:    userID,
+		}); err != nil {
+			wr.logger.Error("failed to delete existing sets", "error", err, "workout_id", id)
+			return fmt.Errorf("failed to delete existing sets: %w", err)
+		}
+		wr.logger.Info("deleted existing sets for workout", "workout_id", id)
+
+		// Get or create exercises and build exercise name->ID mapping
+		exerciseMap, err := wr.getOrCreateExercises(ctx, qtx, pgData.Exercises, userID)
+		if err != nil {
+			wr.logger.Error("failed to get/create exercises for update", "error", err)
+			return fmt.Errorf("failed to get/create exercises: %w", err)
+		}
+
+		// Insert new sets
+		if err := wr.insertSets(ctx, qtx, pgData.Sets, id, exerciseMap, userID); err != nil {
+			wr.logger.Error("failed to insert new sets", "error", err)
+			return fmt.Errorf("failed to insert new sets: %w", err)
+		}
+
+		wr.logger.Info("successfully updated exercises and sets",
+			"workout_id", id,
+			"exercises_processed", len(reformatted.Exercises),
+			"sets_created", len(pgData.Sets))
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(ctx); err != nil {
+		wr.logger.Error("failed to commit update transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -285,6 +304,7 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 
 	return nil
 }
+
 
 // MARK: convertToPGTypes
 func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {

@@ -49,8 +49,8 @@ func (m *MockWorkoutRepository) GetWorkoutWithSets(ctx context.Context, id int32
 	return args.Get(0).([]db.GetWorkoutWithSetsRow), args.Error(1)
 }
 
-func (m *MockWorkoutRepository) UpdateWorkout(ctx context.Context, id int32, req *UpdateWorkoutRequest, userID string) error {
-	args := m.Called(ctx, id, req, userID)
+func (m *MockWorkoutRepository) UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error {
+	args := m.Called(ctx, id, reformatted, userID)
 	return args.Error(0)
 }
 
