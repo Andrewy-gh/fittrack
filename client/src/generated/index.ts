@@ -16,6 +16,7 @@ export type { response_SuccessResponse } from './models/response_SuccessResponse
 export type { workout_CreateWorkoutRequest } from './models/workout_CreateWorkoutRequest';
 export type { workout_ExerciseInput } from './models/workout_ExerciseInput';
 export { workout_SetInput } from './models/workout_SetInput';
+export type { workout_UpdateWorkoutRequest } from './models/workout_UpdateWorkoutRequest';
 export type { workout_WorkoutResponse } from './models/workout_WorkoutResponse';
 export type { workout_WorkoutWithSetsResponse } from './models/workout_WorkoutWithSetsResponse';
 
