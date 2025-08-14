@@ -47,3 +47,11 @@ type WorkoutWithSetsResponse struct {
 	ExerciseName string     `json:"exercise_name" validate:"required" example:"Bench Press"`
 	Volume       int32      `json:"volume" validate:"required" example:"2250"`
 }
+
+// UpdateWorkoutRequest represents an update workout request for swagger documentation
+// @Description Request model for updating existing workout metadata
+type UpdateWorkoutRequestSwagger struct {
+	Date      *string         `json:"date,omitempty" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00" example:"2023-01-15T10:00:00Z"`
+	Notes     *string         `json:"notes,omitempty" validate:"omitempty,max=256" example:"Updated workout notes"`
+	Exercises []ExerciseInput `json:"exercises,omitempty" validate:"omitempty,dive" example:"[]"`
+}
