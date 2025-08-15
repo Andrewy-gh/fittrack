@@ -11,6 +11,8 @@ env:
   # Set these to your Fly.io organization and preferred region.
   FLY_REGION: ${{ vars.FLY_REGION }}
   FLY_ORG: ${{ vars.FLY_ORG }}
+  # Use preview database URL for preview deployments
+  DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
 
 jobs:
   review_app:
