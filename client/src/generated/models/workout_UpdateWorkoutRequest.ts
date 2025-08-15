@@ -2,10 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { workout_ExerciseInput } from './workout_ExerciseInput';
+import type { workout_UpdateExercise } from './workout_UpdateExercise';
 export type workout_UpdateWorkoutRequest = {
-    date?: string;
-    exercises?: Array<workout_ExerciseInput>;
+    date: string;
+    exercises: Array<workout_UpdateExercise>;
     notes?: string;
 };
 

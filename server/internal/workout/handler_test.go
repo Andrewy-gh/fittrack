@@ -738,24 +738,45 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 	ctx := context.Background()
 
 	// Disable RLS temporarily for cleanup
-	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY; ALTER TABLE workout DISABLE ROW LEVEL SECURITY;")
+	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY; ALTER TABLE workout DISABLE ROW LEVEL SECURITY; ALTER TABLE exercise DISABLE ROW LEVEL SECURITY; ALTER TABLE \"set\" DISABLE ROW LEVEL SECURITY;")
 	if err != nil {
 		t.Logf("Warning: Failed to disable RLS for cleanup: %v", err)
 	}
 
-	// Clean up test data
-	_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id IN ('test-user-a', 'test-user-b')")
+	// More thorough cleanup - remove ALL test data
+	// This helps prevent test pollution between runs
+	testUserPattern := "test-user-%"
+	
+	// Start with dependent tables first
+	_, err = pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id LIKE $1)", testUserPattern)
+	if err != nil {
+		t.Logf("Warning: Failed to clean up set data: %v", err)
+	}
+
+	_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id LIKE $1", testUserPattern)
 	if err != nil {
 		t.Logf("Warning: Failed to clean up workout data: %v", err)
 	}
 
-	_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id IN ('test-user-a', 'test-user-b')")
+	_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id LIKE $1", testUserPattern)
+	if err != nil {
+		t.Logf("Warning: Failed to clean up exercise data: %v", err)
+	}
+
+	_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id LIKE $1", testUserPattern)
 	if err != nil {
 		t.Logf("Warning: Failed to clean up user data: %v", err)
 	}
 
+	// Log cleanup results
+	var remainingWorkouts int
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM workout WHERE user_id LIKE $1", testUserPattern).Scan(&remainingWorkouts)
+	if err == nil {
+		t.Logf("Cleanup complete. Remaining test workouts: %d", remainingWorkouts)
+	}
+
 	// Re-enable RLS
-	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY;")
+	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY; ALTER TABLE exercise ENABLE ROW LEVEL SECURITY; ALTER TABLE \"set\" ENABLE ROW LEVEL SECURITY;")
 	if err != nil {
 		t.Logf("Warning: Failed to re-enable RLS after cleanup: %v", err)
 	}
