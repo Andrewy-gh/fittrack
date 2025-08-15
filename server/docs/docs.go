@@ -625,16 +625,66 @@ const docTemplate = `{
                 }
             }
         },
+        "workout.UpdateExercise": {
+            "type": "object",
+            "required": [
+                "name",
+                "sets"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 256,
+                    "minLength": 1
+                },
+                "sets": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/workout.UpdateSet"
+                    }
+                }
+            }
+        },
+        "workout.UpdateSet": {
+            "type": "object",
+            "required": [
+                "reps",
+                "setType"
+            ],
+            "properties": {
+                "reps": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "setType": {
+                    "type": "string",
+                    "enum": [
+                        "warmup",
+                        "working"
+                    ]
+                },
+                "weight": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
         "workout.UpdateWorkoutRequest": {
             "type": "object",
+            "required": [
+                "date",
+                "exercises"
+            ],
             "properties": {
                 "date": {
                     "type": "string"
                 },
                 "exercises": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/workout.ExerciseInput"
+                        "$ref": "#/definitions/workout.UpdateExercise"
                     }
                 },
                 "notes": {

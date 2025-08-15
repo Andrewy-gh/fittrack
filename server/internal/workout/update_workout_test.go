@@ -42,7 +42,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "successful full update",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
-				Date:  stringPtr("2023-01-15T10:00:00Z"),
+				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Updated workout notes"),
 				Exercises: []UpdateExercise{
 					{
@@ -66,6 +66,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "successful partial update - notes only",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
+				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Just updating notes"),
 			},
 			setupMock: func(m *MockWorkoutRepository) {
@@ -80,7 +81,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "successful partial update - date only",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
-				Date: stringPtr("2023-01-15T15:30:00Z"),
+				Date: "2023-01-15T15:30:00Z",
 			},
 			setupMock: func(m *MockWorkoutRepository) {
 				m.On("GetWorkout", mock.Anything, workoutID, userID).Return(db.Workout{ID: workoutID}, nil)
@@ -121,7 +122,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "validation error - invalid date format",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
-				Date: stringPtr("invalid-date-format"),
+				Date: "invalid-date-format",
 			},
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
@@ -132,6 +133,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "validation error - notes too long",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
+				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr(string(make([]byte, 500))), // Exceeds 256 char limit
 			},
 			setupMock:     func(m *MockWorkoutRepository) {},
@@ -143,6 +145,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "validation error - exercise missing name",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
+				Date:      "2023-01-15T10:00:00Z",
 				Exercises: []UpdateExercise{
 					{
 						// Missing Name field
@@ -161,6 +164,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "validation error - set missing required fields",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
+				Date:      "2023-01-15T10:00:00Z",
 				Exercises: []UpdateExercise{
 					{
 						Name: "Valid Exercise",
@@ -181,6 +185,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "service error - workout not found",
 			workoutID: "999",
 			requestBody: UpdateWorkoutRequest{
+				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Updating non-existent workout"),
 			},
 			setupMock: func(m *MockWorkoutRepository) {
@@ -196,6 +201,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "service error - database failure",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
+				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Valid update"),
 			},
 			setupMock: func(m *MockWorkoutRepository) {
@@ -210,7 +216,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 		{
 			name:          "unauthenticated user",
 			workoutID:     "1",
-			requestBody:   UpdateWorkoutRequest{Notes: stringPtr("Unauthorized update")},
+			requestBody:   UpdateWorkoutRequest{
+				Date:  "2023-01-15T10:00:00Z",
+				Notes: stringPtr("Unauthorized update"),
+			},
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
@@ -304,6 +313,7 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		ctx = user.WithContext(ctx, userAID)
 
 		updateReq := UpdateWorkoutRequest{
+			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Updated notes via integration test"),
 		}
 
@@ -333,6 +343,7 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		ctx = user.WithContext(ctx, userBID)
 
 		updateReq := UpdateWorkoutRequest{
+			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Malicious update attempt from User B"),
 		}
 
@@ -366,6 +377,7 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 
 		// Create a complex update with exercises and sets
 		updateReq := UpdateWorkoutRequest{
+			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Updated with new exercises"),
 			Exercises: []UpdateExercise{
 				{

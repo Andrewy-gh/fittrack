@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { getAccessToken } from '@/lib/api/auth';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { useSuspenseQueries } from '@tanstack/react-query';
-import { workoutByIdQueryOptions } from '@/lib/api/workouts';
+import { workoutByIdQueryOptions, useUpdateWorkoutMutation } from '@/lib/api/workouts';
 import { transformToWorkoutFormValues } from '@/lib/api/workouts';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
@@ -20,10 +20,12 @@ function EditWorkoutForm({
   accessToken,
   exercises,
   workout,
+  workoutId,
 }: {
   accessToken: string;
   exercises: exercise_ExerciseResponse[];
   workout: workout_UpdateWorkoutRequest;
+  workoutId: number;
 }) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
@@ -32,35 +34,22 @@ function EditWorkoutForm({
     number | null
   >(null);
 
+  const updateWorkoutMutation = useUpdateWorkoutMutation(accessToken);
+
   const form = useAppForm({
     defaultValues: workout,
     onSubmit: async ({ value }) => {
-      console.log('value', value);
+      console.log('Updating workout with value:', value);
       try {
-        const response = await fetch('/api/workouts', {
-          method: 'POST',
-          headers: {
-            'x-stack-access-token': accessToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(value),
+        await updateWorkoutMutation.mutateAsync({
+          id: workoutId,
+          data: value,
         });
-
-        if (!response.ok) {
-          // MARK: TODO: Convert from text to json
-          const errorText = await response.text();
-          throw new Error(errorText ?? 'Failed to submit workout');
-        }
-
-        const result = await response.json();
-        console.log(
-          'Workout submitted! Server says: ' + JSON.stringify(result)
-        );
-
-        // Reset form to default values
-        form.reset();
+        console.log('Workout updated successfully!');
+        // Don't reset form on update, just show success
       } catch (error) {
-        alert(error);
+        console.error('Failed to update workout:', error);
+        alert(`Failed to update workout: ${error}`);
       }
     },
   });
@@ -309,5 +298,5 @@ function RouteComponent() {
     ],
   });
   const workoutFormValues = transformToWorkoutFormValues(workout);
-  return <EditWorkoutForm accessToken={accessToken} exercises={exercises} workout={workoutFormValues} />;
+  return <EditWorkoutForm accessToken={accessToken} exercises={exercises} workout={workoutFormValues} workoutId={workoutId} />;
 }

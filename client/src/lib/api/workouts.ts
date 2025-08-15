@@ -6,8 +6,9 @@ import type {
   workout_WorkoutResponse,
   workout_WorkoutWithSetsResponse,
   workout_UpdateWorkoutRequest,
+  workout_UpdateExercise,
+  workout_UpdateSet,
 } from '@/generated';
-import type { workout_ExerciseInput, workout_SetInput } from '@/generated';
 
 export function workoutsQueryOptions(accessToken: string) {
   return queryOptions<workout_WorkoutResponse[], Error>({
@@ -36,14 +37,46 @@ export function workoutByIdQueryOptions(
   });
 }
 
-// export interface Exercise {
-//   name: string;
-//   sets: {
-//     weight: number;
-//     reps: number;
-//     setType: 'warmup' | 'working';
-//   }[];
-// }
+export function useSaveWorkoutMutation(accessToken: string) {
+  return useMutation({
+    mutationFn: async (data: workout_CreateWorkoutRequest) => {
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return await WorkoutsService.postWorkouts(data); // await for form.Subscribe to update
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['workouts', 'list'],
+      });
+    },
+  });
+}
+
+export function useUpdateWorkoutMutation(accessToken: string) {
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: workout_UpdateWorkoutRequest;
+    }) => {
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return await WorkoutsService.putWorkouts(id, data);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({
+        queryKey: ['workouts', 'list'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['workouts', 'details', id],
+      });
+    },
+  });
+}
 
 export function transformToWorkoutFormValues(
   workouts: workout_WorkoutWithSetsResponse[]
@@ -57,7 +90,7 @@ export function transformToWorkoutFormValues(
   }
 
   // Group sets by exercise
-  const exercisesMap = new Map<number, workout_ExerciseInput>();
+  const exercisesMap = new Map<number, workout_UpdateExercise>();
 
   // Sort all workouts by set_id first to ensure consistent ordering
   const sortedWorkouts = [...workouts].sort(
@@ -77,7 +110,7 @@ export function transformToWorkoutFormValues(
     exercise.sets.push({
       weight: workout.weight || 0,
       reps: workout.reps || 0,
-      setType: workout.set_type as workout_SetInput.setType,
+      setType: workout.set_type as workout_UpdateSet.setType,
     });
   }
 
@@ -88,18 +121,4 @@ export function transformToWorkoutFormValues(
   };
 }
 
-export function useSaveWorkoutMutation(accessToken: string) {
-  return useMutation({
-    mutationFn: async (data: workout_CreateWorkoutRequest) => {
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return await WorkoutsService.postWorkouts(data); // await for form.Subscribe to update
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['workouts', 'list'],
-      });
-    },
-  });
-}
+

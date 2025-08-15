@@ -74,7 +74,7 @@ type ReformattedRequest struct {
 // Interfaces for generic transformation
 type WorkoutRequestTransformable interface {
 	GetDate() *string
-	GetNotes() *string 
+	GetNotes() *string
 	GetExercises() []ExerciseTransformable
 }
 
@@ -92,9 +92,9 @@ type SetTransformable interface {
 // UPDATE endpoint types for PUT /api/workouts/{id}
 // Returns 204 No Content on success
 type UpdateWorkoutRequest struct {
-	Date      *string         `json:"date,omitempty" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes     *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
-	Exercises []UpdateExercise `json:"exercises,omitempty" validate:"omitempty,dive"`
+	Date      string           `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
+	Notes     *string          `json:"notes,omitempty" validate:"omitempty,max=256"`
+	Exercises []UpdateExercise `json:"exercises" validate:"required,min=1,dive"`
 }
 
 type UpdateExercise struct {
@@ -127,7 +127,7 @@ func (c CreateWorkoutRequest) GetExercises() []ExerciseTransformable {
 
 // Interface implementations for UpdateWorkoutRequest
 func (u UpdateWorkoutRequest) GetDate() *string {
-	return u.Date
+	return &u.Date
 }
 
 func (u UpdateWorkoutRequest) GetNotes() *string {

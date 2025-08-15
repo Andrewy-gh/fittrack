@@ -157,17 +157,53 @@ definitions:
     - reps
     - setType
     type: object
+  workout.UpdateExercise:
+    properties:
+      name:
+        maxLength: 256
+        minLength: 1
+        type: string
+      sets:
+        items:
+          $ref: '#/definitions/workout.UpdateSet'
+        minItems: 1
+        type: array
+    required:
+    - name
+    - sets
+    type: object
+  workout.UpdateSet:
+    properties:
+      reps:
+        minimum: 1
+        type: integer
+      setType:
+        enum:
+        - warmup
+        - working
+        type: string
+      weight:
+        minimum: 0
+        type: integer
+    required:
+    - reps
+    - setType
+    type: object
   workout.UpdateWorkoutRequest:
     properties:
       date:
         type: string
       exercises:
         items:
-          $ref: '#/definitions/workout.ExerciseInput'
+          $ref: '#/definitions/workout.UpdateExercise'
+        minItems: 1
         type: array
       notes:
         maxLength: 256
         type: string
+    required:
+    - date
+    - exercises
     type: object
   workout.WorkoutResponse:
     description: Workout response model
