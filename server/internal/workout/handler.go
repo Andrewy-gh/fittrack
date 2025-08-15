@@ -140,14 +140,14 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateWorkout godoc
-// @Summary Update an existing workout
-// @Description Update workout metadata (date/notes) for the authenticated user. Returns 204 No Content on success.
+// @Summary Update an existing workout (full replacement)
+// @Description Updates a workout using full replacement semantics. The client must provide the complete workout data including date and at least one exercise with sets. This endpoint replaces the entire workout, deleting existing exercises/sets and creating new ones. For partial updates, PATCH will be implemented in a future version. Returns 204 No Content on success.
 // @Tags workouts
 // @Accept json
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Workout ID"
-// @Param request body workout.UpdateWorkoutRequest true "Updated workout data"
+// @Param request body workout.UpdateWorkoutRequest true "Complete workout data for replacement"
 // @Success 204 "No Content - Workout updated successfully"
 // @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid input or validation error"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
