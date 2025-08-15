@@ -46,10 +46,18 @@ jobs:
         run: |
           goose -dir server/migrations postgres "${{ secrets.PREVIEW_DATABASE_URL }}" up
 
+      - name: Set client environment variables
+        run: |
+          # Set client env vars for Docker build
+          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" > client/.env
+          echo "VITE_PUBLISHABLE_CLIENT_KEY=${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}" >> client/.env
+
       - name: Deploy PR app to Fly.io
         id: deploy
         uses: superfly/fly-pr-review-apps@1.2.1
         with:
           name: fittrack-pr-${{ github.event.number }}
-          secrets: DATABASE_URL=${{ secrets.PREVIEW_DATABASE_URL }}
+          secrets: |
+            DATABASE_URL=${{ secrets.PREVIEW_DATABASE_URL }}
+            PROJECT_ID=${{ secrets.PROJECT_ID }}
 
