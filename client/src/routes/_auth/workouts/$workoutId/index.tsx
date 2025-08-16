@@ -1,19 +1,24 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
+import { Edit, Dumbbell, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
 import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
 import { workoutByIdQueryOptions } from '@/lib/api/workouts';
 import type { workout_WorkoutWithSetsResponse } from '@/generated';
+import { DeleteDialog } from '../-components/delete-dialog';
 
 function IndividualWorkoutPage({
   workout,
+  accessToken,
 }: {
   workout: workout_WorkoutWithSetsResponse[];
+  accessToken: string;
 }) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
   const totalSets = workout.length;
@@ -39,17 +44,25 @@ function IndividualWorkoutPage({
   const workoutDate = workout[0]?.workout_date;
   const workoutNotes = workout[0]?.workout_notes;
 
+  const handleOpenDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
   return (
     <main>
       <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
         {/* Header */}
         <div className="flex items-center justify-between pt-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {formatDate(workoutDate)}
-            </h1>
+            <div className="mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                {formatDate(workoutDate)}
+              </h1>
+            </div>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-muted-foreground">{formatTime(workoutDate)}</p>
+              <p className="text-sm md:text-base text-muted-foreground">
+                {formatTime(workoutDate)}
+              </p>
               {workoutNotes && (
                 <>
                   <span className="text-muted-foreground">•</span>
@@ -63,15 +76,25 @@ function IndividualWorkoutPage({
               )}
             </div>
           </div>
-          <Button size="sm" asChild>
-            <Link
-              to="/workouts/$workoutId/edit"
-              params={{ workoutId: workout[0]?.workout_id }}
+          <div className="flex flex-col items-center gap-3 md:flex-row">
+            <Button size="sm" variant="outline" asChild>
+              <Link
+                to="/workouts/$workoutId/edit"
+                params={{ workoutId: workout[0]?.workout_id }}
+              >
+                <Edit className="mr-2 hidden h-4 w-4 md:block" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleOpenDeleteDialog}
             >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
+              <Trash className="mr-2 hidden h-4 w-4 md:block" />
+              Delete
+            </Button>
+          </div>
         </div>
 
         {/* MARK: Summary Cards */}
@@ -164,9 +187,13 @@ function IndividualWorkoutPage({
                           {index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
-                          <span className="font-medium">{set.weight || 0} lbs</span>
+                          <span className="font-medium">
+                            {set.weight || 0} lbs
+                          </span>
                           <span>&times;</span>
-                          <span className="font-medium">{set.reps || 0} reps</span>
+                          <span className="font-medium">
+                            {set.reps || 0} reps
+                          </span>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -179,6 +206,13 @@ function IndividualWorkoutPage({
             );
           })}
         </div>
+        {/* MARK: Dialog */}
+        <DeleteDialog 
+          isOpen={isDeleteDialogOpen} 
+          onOpenChange={setIsDeleteDialogOpen}
+          workoutId={workout[0]?.workout_id || 0}
+          accessToken={accessToken}
+        />
       </div>
     </main>
   );
@@ -210,5 +244,5 @@ function RouteComponent() {
   const { data: workout } = useSuspenseQuery(
     workoutByIdQueryOptions(workoutId, accessToken)
   );
-  return <IndividualWorkoutPage workout={workout} />;
+  return <IndividualWorkoutPage workout={workout} accessToken={accessToken} />;
 }

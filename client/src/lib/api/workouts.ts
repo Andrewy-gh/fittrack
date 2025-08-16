@@ -78,6 +78,17 @@ export function useUpdateWorkoutMutation(accessToken: string) {
   });
 }
 
+export async function deleteWorkout(
+  workoutId: number,
+  accessToken: string
+): Promise<void> {
+  OpenAPI.HEADERS = {
+    'x-stack-access-token': accessToken,
+  };
+  
+  return WorkoutsService.deleteWorkouts(workoutId);
+}
+
 export function transformToWorkoutFormValues(
   workouts: workout_WorkoutWithSetsResponse[]
 ): workout_UpdateWorkoutRequest {
