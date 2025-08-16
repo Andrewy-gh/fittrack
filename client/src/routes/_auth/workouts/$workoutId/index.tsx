@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
+import { Edit, Dumbbell, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
 import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
 import { workoutByIdQueryOptions } from '@/lib/api/workouts';
@@ -45,11 +45,15 @@ function IndividualWorkoutPage({
         {/* Header */}
         <div className="flex items-center justify-between pt-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {formatDate(workoutDate)}
-            </h1>
+            <div className="mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                {formatDate(workoutDate)}
+              </h1>
+            </div>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-muted-foreground">{formatTime(workoutDate)}</p>
+              <p className="text-sm md:text-base text-muted-foreground">
+                {formatTime(workoutDate)}
+              </p>
               {workoutNotes && (
                 <>
                   <span className="text-muted-foreground">•</span>
@@ -63,15 +67,26 @@ function IndividualWorkoutPage({
               )}
             </div>
           </div>
-          <Button size="sm" asChild>
-            <Link
-              to="/workouts/$workoutId/edit"
-              params={{ workoutId: workout[0]?.workout_id }}
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
+          <div className="flex flex-col items-center gap-3 md:flex-row">
+            <Button size="sm" variant="outline" asChild>
+              <Link
+                to="/workouts/$workoutId/edit"
+                params={{ workoutId: workout[0]?.workout_id }}
+              >
+                <Edit className="mr-2 hidden h-4 w-4 md:block" />
+                Edit
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link
+                to="/workouts/$workoutId/edit"
+                params={{ workoutId: workout[0]?.workout_id }}
+              >
+                <Trash className="mr-2 hidden h-4 w-4 md:block" />
+                Delete
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* MARK: Summary Cards */}
@@ -164,9 +179,13 @@ function IndividualWorkoutPage({
                           {index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
-                          <span className="font-medium">{set.weight || 0} lbs</span>
+                          <span className="font-medium">
+                            {set.weight || 0} lbs
+                          </span>
                           <span>&times;</span>
-                          <span className="font-medium">{set.reps || 0} reps</span>
+                          <span className="font-medium">
+                            {set.reps || 0} reps
+                          </span>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">
