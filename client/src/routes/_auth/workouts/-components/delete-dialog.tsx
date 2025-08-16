@@ -28,7 +28,7 @@ export function DeleteDialog({ isOpen, onOpenChange, workoutId, accessToken }: D
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      return deleteWorkout(workoutId.toString(), accessToken);
+      return deleteWorkout(workoutId, accessToken);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workouts'] });

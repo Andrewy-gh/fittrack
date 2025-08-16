@@ -79,7 +79,7 @@ export function useUpdateWorkoutMutation(accessToken: string) {
 }
 
 export async function deleteWorkout(
-  workoutId: string,
+  workoutId: number,
   accessToken: string
 ): Promise<void> {
   OpenAPI.HEADERS = {
