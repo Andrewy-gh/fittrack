@@ -86,15 +86,7 @@ export async function deleteWorkout(
     'x-stack-access-token': accessToken,
   };
   
-  const response = await fetch(`${OpenAPI.BASE}/api/workouts/${workoutId}`, {
-    method: 'DELETE',
-    headers: OpenAPI.HEADERS,
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || 'Failed to delete workout');
-  }
+  return WorkoutsService.deleteWorkouts(workoutId);
 }
 
 export function transformToWorkoutFormValues(

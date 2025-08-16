@@ -347,7 +347,7 @@ const docTemplate = `{
                         "StackAuth": []
                     }
                 ],
-                "description": "Update workout metadata (date/notes) for the authenticated user. Returns 204 No Content on success.",
+                "description": "Updates a workout using full replacement semantics. The client must provide the complete workout data including date and at least one exercise with sets. This endpoint replaces the entire workout, deleting existing exercises/sets and creating new ones. For partial updates, PATCH will be implemented in a future version. Returns 204 No Content on success.",
                 "consumes": [
                     "application/json"
                 ],
@@ -357,7 +357,7 @@ const docTemplate = `{
                 "tags": [
                     "workouts"
                 ],
-                "summary": "Update an existing workout",
+                "summary": "Update an existing workout (full replacement)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -367,7 +367,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Updated workout data",
+                        "description": "Complete workout data for replacement",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -382,6 +382,62 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request - Invalid input or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Workout not found or doesn't belong to user",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Delete a specific workout and all its associated sets. Only the owner of the workout can delete it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workouts"
+                ],
+                "summary": "Delete a workout",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Workout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content - Workout deleted successfully"
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid workout ID",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }

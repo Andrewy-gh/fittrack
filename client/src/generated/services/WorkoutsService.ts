@@ -72,10 +72,10 @@ export class WorkoutsService {
         });
     }
     /**
-     * Update an existing workout
-     * Update workout metadata (date/notes) for the authenticated user. Returns 204 No Content on success.
+     * Update an existing workout (full replacement)
+     * Updates a workout using full replacement semantics. The client must provide the complete workout data including date and at least one exercise with sets. This endpoint replaces the entire workout, deleting existing exercises/sets and creating new ones. For partial updates, PATCH will be implemented in a future version. Returns 204 No Content on success.
      * @param id Workout ID
-     * @param request Updated workout data
+     * @param request Complete workout data for replacement
      * @returns void
      * @throws ApiError
      */
@@ -92,6 +92,30 @@ export class WorkoutsService {
             body: request,
             errors: {
                 400: `Bad Request - Invalid input or validation error`,
+                401: `Unauthorized - Invalid token`,
+                404: `Not Found - Workout not found or doesn't belong to user`,
+                500: `Internal Server Error`,
+            },
+        });
+    }
+    /**
+     * Delete a workout
+     * Delete a specific workout and all its associated sets. Only the owner of the workout can delete it.
+     * @param id Workout ID
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteWorkouts(
+        id: number,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/workouts/{id}',
+            path: {
+                'id': id,
+            },
+            errors: {
+                400: `Bad Request - Invalid workout ID`,
                 401: `Unauthorized - Invalid token`,
                 404: `Not Found - Workout not found or doesn't belong to user`,
                 500: `Internal Server Error`,
