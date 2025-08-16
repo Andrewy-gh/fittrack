@@ -78,6 +78,25 @@ export function useUpdateWorkoutMutation(accessToken: string) {
   });
 }
 
+export async function deleteWorkout(
+  workoutId: string,
+  accessToken: string
+): Promise<void> {
+  OpenAPI.HEADERS = {
+    'x-stack-access-token': accessToken,
+  };
+  
+  const response = await fetch(`${OpenAPI.BASE}/api/workouts/${workoutId}`, {
+    method: 'DELETE',
+    headers: OpenAPI.HEADERS,
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Failed to delete workout');
+  }
+}
+
 export function transformToWorkoutFormValues(
   workouts: workout_WorkoutWithSetsResponse[]
 ): workout_UpdateWorkoutRequest {

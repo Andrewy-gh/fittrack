@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,12 +9,16 @@ import { getAccessToken } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
 import { workoutByIdQueryOptions } from '@/lib/api/workouts';
 import type { workout_WorkoutWithSetsResponse } from '@/generated';
+import { DeleteDialog } from '../-components/delete-dialog';
 
 function IndividualWorkoutPage({
   workout,
+  accessToken,
 }: {
   workout: workout_WorkoutWithSetsResponse[];
+  accessToken: string;
 }) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
   const totalSets = workout.length;
@@ -38,6 +43,10 @@ function IndividualWorkoutPage({
 
   const workoutDate = workout[0]?.workout_date;
   const workoutNotes = workout[0]?.workout_notes;
+
+  const handleOpenDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
+  };
 
   return (
     <main>
@@ -77,14 +86,13 @@ function IndividualWorkoutPage({
                 Edit
               </Link>
             </Button>
-            <Button size="sm" asChild>
-              <Link
-                to="/workouts/$workoutId/edit"
-                params={{ workoutId: workout[0]?.workout_id }}
-              >
-                <Trash className="mr-2 hidden h-4 w-4 md:block" />
-                Delete
-              </Link>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleOpenDeleteDialog}
+            >
+              <Trash className="mr-2 hidden h-4 w-4 md:block" />
+              Delete
             </Button>
           </div>
         </div>
@@ -198,6 +206,13 @@ function IndividualWorkoutPage({
             );
           })}
         </div>
+        {/* MARK: Dialog */}
+        <DeleteDialog 
+          isOpen={isDeleteDialogOpen} 
+          onOpenChange={setIsDeleteDialogOpen}
+          workoutId={workout[0]?.workout_id || 0}
+          accessToken={accessToken}
+        />
       </div>
     </main>
   );
@@ -229,5 +244,5 @@ function RouteComponent() {
   const { data: workout } = useSuspenseQuery(
     workoutByIdQueryOptions(workoutId, accessToken)
   );
-  return <IndividualWorkoutPage workout={workout} />;
+  return <IndividualWorkoutPage workout={workout} accessToken={accessToken} />;
 }
