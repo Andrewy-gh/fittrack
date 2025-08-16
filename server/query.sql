@@ -12,15 +12,13 @@ SELECT * FROM exercise WHERE id = $1 AND user_id = $2;
 SELECT * FROM exercise WHERE user_id = $1 ORDER BY name;
 
 -- name: GetSet :one
-SELECT s.* FROM "set" s
-JOIN workout w ON w.id = s.workout_id
-WHERE s.id = $1 AND w.user_id = $2;
+SELECT * FROM "set" 
+WHERE id = $1 AND user_id = $2;
 
 -- name: ListSets :many
-SELECT s.* FROM "set" s
-JOIN workout w ON w.id = s.workout_id
-WHERE w.user_id = $1
-ORDER BY s.id;
+SELECT * FROM "set" 
+WHERE user_id = $1
+ORDER BY id;
 
 -- name: GetExerciseWithSets :many
 SELECT 
@@ -37,7 +35,7 @@ SELECT
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
-WHERE s.exercise_id = $1 AND e.user_id = $2
+WHERE s.exercise_id = $1 AND s.user_id = $2
 ORDER BY w.date DESC, s.created_at;
 
 -- INSERT queries for form submission
@@ -53,13 +51,8 @@ ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
 RETURNING *;
 
 -- name: CreateSet :one
-INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type)
-SELECT $1, $2, $3, $4, $5
-FROM workout w
-JOIN exercise e ON e.id = $1
-WHERE w.id = $2 
-  AND w.user_id = $6
-  AND e.user_id = $6
+INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- Complex queries for joining data
@@ -113,32 +106,18 @@ SET
     reps = COALESCE($3, reps),
     set_type = COALESCE($4, set_type),
     updated_at = NOW()
-WHERE "set".id = $1 
-  AND EXISTS (
-    SELECT 1 FROM workout w 
-    WHERE w.id = "set".workout_id 
-      AND w.user_id = $5
-  )
+WHERE id = $1 AND user_id = $5
 RETURNING *;
 
 -- name: DeleteSetsByWorkout :exec
 DELETE FROM "set" 
-WHERE workout_id = $1 
-  AND EXISTS (
-    SELECT 1 FROM workout w 
-    WHERE w.id = workout_id 
-      AND w.user_id = $2
-  );
+WHERE workout_id = $1 AND user_id = $2;
 
 -- name: DeleteSetsByWorkoutAndExercise :exec
 DELETE FROM "set" 
 WHERE workout_id = $1 
   AND exercise_id = $2
-  AND EXISTS (
-    SELECT 1 FROM workout w 
-    WHERE w.id = workout_id 
-      AND w.user_id = $3
-  );
+  AND user_id = $3;
 
 -- name: DeleteWorkout :exec
 DELETE FROM workout 

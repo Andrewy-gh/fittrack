@@ -25,6 +25,7 @@ type Set struct {
 	SetType    string             `json:"set_type"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	UserID     string             `json:"user_id"`
 }
 
 type Users struct {

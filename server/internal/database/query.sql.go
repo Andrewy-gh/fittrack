@@ -12,14 +12,9 @@ import (
 )
 
 const createSet = `-- name: CreateSet :one
-INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type)
-SELECT $1, $2, $3, $4, $5
-FROM workout w
-JOIN exercise e ON e.id = $1
-WHERE w.id = $2 
-  AND w.user_id = $6
-  AND e.user_id = $6
-RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at
+INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id
 `
 
 type CreateSetParams struct {
@@ -50,6 +45,7 @@ func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, erro
 		&i.SetType,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -96,12 +92,7 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (W
 
 const deleteSetsByWorkout = `-- name: DeleteSetsByWorkout :exec
 DELETE FROM "set" 
-WHERE workout_id = $1 
-  AND EXISTS (
-    SELECT 1 FROM workout w 
-    WHERE w.id = workout_id 
-      AND w.user_id = $2
-  )
+WHERE workout_id = $1 AND user_id = $2
 `
 
 type DeleteSetsByWorkoutParams struct {
@@ -118,11 +109,7 @@ const deleteSetsByWorkoutAndExercise = `-- name: DeleteSetsByWorkoutAndExercise 
 DELETE FROM "set" 
 WHERE workout_id = $1 
   AND exercise_id = $2
-  AND EXISTS (
-    SELECT 1 FROM workout w 
-    WHERE w.id = workout_id 
-      AND w.user_id = $3
-  )
+  AND user_id = $3
 `
 
 type DeleteSetsByWorkoutAndExerciseParams struct {
@@ -147,7 +134,6 @@ type DeleteWorkoutParams struct {
 	UserID string `json:"user_id"`
 }
 
-// DELETE queries
 func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) error {
 	_, err := q.db.Exec(ctx, deleteWorkout, arg.ID, arg.UserID)
 	return err
@@ -212,7 +198,7 @@ SELECT
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
-WHERE s.exercise_id = $1 AND e.user_id = $2
+WHERE s.exercise_id = $1 AND s.user_id = $2
 ORDER BY w.date DESC, s.created_at
 `
 
@@ -291,9 +277,8 @@ func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerci
 }
 
 const getSet = `-- name: GetSet :one
-SELECT s.id, s.exercise_id, s.workout_id, s.weight, s.reps, s.set_type, s.created_at, s.updated_at FROM "set" s
-JOIN workout w ON w.id = s.workout_id
-WHERE s.id = $1 AND w.user_id = $2
+SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id FROM "set" 
+WHERE id = $1 AND user_id = $2
 `
 
 type GetSetParams struct {
@@ -313,6 +298,7 @@ func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (Set, error) {
 		&i.SetType,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -464,10 +450,9 @@ func (q *Queries) ListExercises(ctx context.Context, userID string) ([]Exercise,
 }
 
 const listSets = `-- name: ListSets :many
-SELECT s.id, s.exercise_id, s.workout_id, s.weight, s.reps, s.set_type, s.created_at, s.updated_at FROM "set" s
-JOIN workout w ON w.id = s.workout_id
-WHERE w.user_id = $1
-ORDER BY s.id
+SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id FROM "set" 
+WHERE user_id = $1
+ORDER BY id
 `
 
 func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
@@ -488,6 +473,7 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
 			&i.SetType,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -537,13 +523,8 @@ SET
     reps = COALESCE($3, reps),
     set_type = COALESCE($4, set_type),
     updated_at = NOW()
-WHERE "set".id = $1 
-  AND EXISTS (
-    SELECT 1 FROM workout w 
-    WHERE w.id = "set".workout_id 
-      AND w.user_id = $5
-  )
-RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at
+WHERE id = $1 AND user_id = $5
+RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id
 `
 
 type UpdateSetParams struct {
@@ -572,6 +553,7 @@ func (q *Queries) UpdateSet(ctx context.Context, arg UpdateSetParams) (Set, erro
 		&i.SetType,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
