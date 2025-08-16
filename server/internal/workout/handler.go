@@ -203,6 +203,56 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 	// No body content for 204 response
 }
 
+// DeleteWorkout godoc
+// @Summary Delete a workout
+// @Description Delete a specific workout and all its associated sets. Only the owner of the workout can delete it.
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Workout ID"
+// @Success 204 "No Content - Workout deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid workout ID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
+// @Failure 404 {object} response.ErrorResponse "Not Found - Workout not found or doesn't belong to user"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts/{id} [delete]
+func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
+	// Extract and validate workout ID from path
+	workoutID := r.PathValue("id")
+	if workoutID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing workout ID", nil)
+		return
+	}
+
+	workoutIDInt, err := strconv.Atoi(workoutID)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid workout ID", err)
+		return
+	}
+
+	// Delegate to service layer for business logic
+	if err := h.workoutService.DeleteWorkout(r.Context(), int32(workoutIDInt)); err != nil {
+		// Handle different error types with appropriate HTTP status codes
+		var errUnauthorized *ErrUnauthorized
+		var errNotFound *ErrNotFound
+
+		switch {
+		case errors.As(err, &errUnauthorized):
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		case errors.As(err, &errNotFound):
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+		default:
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to delete workout", err)
+		}
+		return
+	}
+
+	// Success: Return 204 No Content
+	w.WriteHeader(http.StatusNoContent)
+	// No body content for 204 response
+}
+
 func FormatValidationErrors(err error) string {
 	if validationErrors, ok := err.(*validator.ValidationErrors); ok {
 		var messages []string

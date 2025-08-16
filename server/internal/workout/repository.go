@@ -266,6 +266,65 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 	return nil
 }
 
+// MARK: DeleteWorkout
+// Deletes a workout and all associated sets (cascade delete)
+func (wr *workoutRepository) DeleteWorkout(ctx context.Context, id int32, userID string) error {
+	// Start transaction
+	tx, err := wr.conn.Begin(ctx)
+	if err != nil {
+		wr.logger.Error("failed to begin transaction for delete", "error", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Create queries instance with transaction
+	qtx := wr.queries.WithTx(tx)
+
+	// Step 1: Delete all sets associated with this workout first
+	// This is necessary because there's no ON DELETE CASCADE on the foreign key
+	if err := qtx.DeleteSetsByWorkout(ctx, db.DeleteSetsByWorkoutParams{
+		WorkoutID: id,
+		UserID:    userID,
+	}); err != nil {
+		wr.logger.Error("failed to delete sets for workout", "error", err, "workout_id", id, "user_id", userID)
+		return fmt.Errorf("failed to delete sets for workout: %w", err)
+	}
+	wr.logger.Debug("deleted sets for workout", "workout_id", id, "user_id", userID)
+
+	// Step 2: Delete the workout itself
+	if err := qtx.DeleteWorkout(ctx, db.DeleteWorkoutParams{
+		ID:     id,
+		UserID: userID,
+	}); err != nil {
+		// Check for RLS violations
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("delete workout failed - RLS policy violation",
+				"error", err,
+				"workout_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("delete workout failed",
+				"workout_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return fmt.Errorf("failed to delete workout (id: %d): %w", id, err)
+	}
+
+	wr.logger.Info("workout deleted successfully",
+		"workout_id", id,
+		"user_id", userID)
+
+	// Commit the transaction
+	if err := tx.Commit(ctx); err != nil {
+		wr.logger.Error("failed to commit delete transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // MARK: Utilities
 
 // MARK: insertWorkout
