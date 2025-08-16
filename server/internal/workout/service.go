@@ -16,6 +16,7 @@ type WorkoutRepository interface {
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
 	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
+	DeleteWorkout(ctx context.Context, id int32, userID string) error
 }
 
 type WorkoutService struct {
@@ -127,6 +128,33 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 	}
 
 	ws.logger.Info("workout updated successfully", "workout_id", id, "user_id", userID)
+	return nil
+}
+
+// DeleteWorkout deletes an existing workout (DELETE endpoint)
+// Returns 204 No Content on success
+func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	// First, validate that the workout exists and belongs to the user
+	// This helps provide better error messages (404 vs generic error)
+	_, err := ws.repo.GetWorkout(ctx, id, userID)
+	if err != nil {
+		ws.logger.Debug("workout not found for delete", "workout_id", id, "user_id", userID, "error", err)
+		return &ErrNotFound{Message: "workout not found"}
+	}
+
+	// Call repository to delete the workout
+	if err := ws.repo.DeleteWorkout(ctx, id, userID); err != nil {
+		ws.logger.Error("failed to delete workout", "error", err, "workout_id", id, "user_id", userID)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err))
+		return fmt.Errorf("failed to delete workout: %w", err)
+	}
+
+	ws.logger.Info("workout deleted successfully", "workout_id", id, "user_id", userID)
 	return nil
 }
 

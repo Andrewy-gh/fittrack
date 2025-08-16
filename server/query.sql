@@ -139,3 +139,8 @@ WHERE workout_id = $1
     WHERE w.id = workout_id 
       AND w.user_id = $3
   );
+
+-- name: DeleteWorkout :exec
+DELETE FROM workout 
+WHERE id = $1 
+  AND user_id = $2;

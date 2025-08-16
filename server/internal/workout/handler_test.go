@@ -59,6 +59,11 @@ func (m *MockWorkoutRepository) UpdateWorkout(ctx context.Context, id int32, ref
 	return args.Error(0)
 }
 
+func (m *MockWorkoutRepository) DeleteWorkout(ctx context.Context, id int32, userID string) error {
+	args := m.Called(ctx, id, userID)
+	return args.Error(0)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }
@@ -412,6 +417,135 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 				}
 			} else if tt.expectedError != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedError)
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestWorkoutHandler_DeleteWorkout(t *testing.T) {
+	userID := "test-user-id"
+
+	tests := []struct {
+		name          string
+		workoutID     string
+		setupMock     func(*MockWorkoutRepository, int32)
+		ctx           context.Context
+		expectedCode  int
+		expectedError string
+	}{
+		{
+			name:      "successful deletion",
+			workoutID: "1",
+			setupMock: func(m *MockWorkoutRepository, id int32) {
+				// First call for existence check
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{
+					ID:     id,
+					UserID: userID,
+				}, nil)
+				// Second call for actual deletion
+				m.On("DeleteWorkout", mock.Anything, id, userID).Return(nil)
+			},
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusNoContent,
+		},
+		{
+			name:          "missing workout ID",
+			workoutID:     "",
+			setupMock:     func(m *MockWorkoutRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectedError: "Missing workout ID",
+		},
+		{
+			name:          "invalid workout ID",
+			workoutID:     "invalid",
+			setupMock:     func(m *MockWorkoutRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectedError: "Invalid workout ID",
+		},
+		{
+			name:      "workout not found",
+			workoutID: "999",
+			setupMock: func(m *MockWorkoutRepository, id int32) {
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{}, assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusNotFound,
+			expectedError: "workout not found",
+		},
+		{
+			name:      "service error during deletion",
+			workoutID: "2",
+			setupMock: func(m *MockWorkoutRepository, id int32) {
+				// First call succeeds (workout exists)
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{
+					ID:     id,
+					UserID: userID,
+				}, nil)
+				// Second call fails (deletion error)
+				m.On("DeleteWorkout", mock.Anything, id, userID).Return(assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectedError: "failed to delete workout",
+		},
+		{
+			name:          "unauthenticated user",
+			workoutID:     "1",
+			setupMock:     func(m *MockWorkoutRepository, id int32) {},
+			ctx:           context.Background(),
+			expectedCode:  http.StatusUnauthorized,
+			expectedError: "user not authenticated",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			mockRepo := new(MockWorkoutRepository)
+			var id int32
+			if tt.workoutID != "" {
+				parsedID, err := strconv.Atoi(tt.workoutID)
+				if err == nil {
+					id = int32(parsedID)
+				}
+			}
+			tt.setupMock(mockRepo, id)
+
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			validator := validator.New()
+			service := &WorkoutService{
+				repo:   mockRepo,
+				logger: logger,
+			}
+			handler := NewHandler(logger, validator, service)
+
+			req := httptest.NewRequest("DELETE", "/api/workouts/"+tt.workoutID, nil).WithContext(tt.ctx)
+			if tt.workoutID != "" {
+				req.SetPathValue("id", tt.workoutID)
+			}
+			w := httptest.NewRecorder()
+
+			// Execute
+			handler.DeleteWorkout(w, req)
+
+			// Assert
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			// Check for expected errors (if any)
+			if tt.expectedError != "" {
+				var resp errorResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Contains(t, resp.Message, tt.expectedError)
+			}
+
+			// Ensure no content for successful deletion
+			if tt.expectedCode == http.StatusNoContent {
+				assert.Empty(t, w.Body.String())
 			}
 
 			mockRepo.AssertExpectations(t)

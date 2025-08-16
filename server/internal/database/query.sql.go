@@ -136,6 +136,23 @@ func (q *Queries) DeleteSetsByWorkoutAndExercise(ctx context.Context, arg Delete
 	return err
 }
 
+const deleteWorkout = `-- name: DeleteWorkout :exec
+DELETE FROM workout 
+WHERE id = $1 
+  AND user_id = $2
+`
+
+type DeleteWorkoutParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+// DELETE queries
+func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) error {
+	_, err := q.db.Exec(ctx, deleteWorkout, arg.ID, arg.UserID)
+	return err
+}
+
 const getExercise = `-- name: GetExercise :one
 SELECT id, name, created_at, updated_at, user_id FROM exercise WHERE id = $1 AND user_id = $2
 `
