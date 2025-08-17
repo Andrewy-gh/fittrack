@@ -1,6 +1,7 @@
 import { queryClient } from './api';
 import { queryOptions, useMutation } from '@tanstack/react-query';
 import { WorkoutsService, OpenAPI } from '@/generated';
+import { getAccessToken, type User } from './auth';
 import type {
   workout_CreateWorkoutRequest,
   workout_WorkoutResponse,
@@ -10,6 +11,7 @@ import type {
   workout_UpdateSet,
 } from '@/generated';
 
+// Legacy function for backward compatibility
 export function workoutsQueryOptions(accessToken: string) {
   return queryOptions<workout_WorkoutResponse[], Error>({
     queryKey: ['workouts', 'list'],
@@ -22,13 +24,30 @@ export function workoutsQueryOptions(accessToken: string) {
   });
 }
 
+// New function that gets fresh tokens
+export function workoutsQueryOptionsWithUser(user: User) {
+  return queryOptions<workout_WorkoutResponse[], Error>({
+    queryKey: ['workouts', 'list'],
+    queryFn: async () => {
+      // Get a fresh token right before making the API call
+      const accessToken = await getAccessToken(user);
+      OpenAPI.HEADERS = {
+        'x-stack-access-token': accessToken,
+      };
+      return WorkoutsService.getWorkouts();
+    },
+  });
+}
+
 export function workoutByIdQueryOptions(
   workoutId: number,
-  accessToken: string
+  user: User
 ) {
   return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
     queryKey: ['workouts', 'details', workoutId],
     queryFn: async () => {
+      // Get a fresh token right before making the API call
+      const accessToken = await getAccessToken(user);
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };
@@ -37,9 +56,11 @@ export function workoutByIdQueryOptions(
   });
 }
 
-export function useSaveWorkoutMutation(accessToken: string) {
+export function useSaveWorkoutMutation(user: User) {
   return useMutation({
     mutationFn: async (data: workout_CreateWorkoutRequest) => {
+      // Get a fresh token right before making the API call
+      const accessToken = await getAccessToken(user);
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };
@@ -53,7 +74,7 @@ export function useSaveWorkoutMutation(accessToken: string) {
   });
 }
 
-export function useUpdateWorkoutMutation(accessToken: string) {
+export function useUpdateWorkoutMutation(user: User) {
   return useMutation({
     mutationFn: async ({
       id,
@@ -62,6 +83,8 @@ export function useUpdateWorkoutMutation(accessToken: string) {
       id: number;
       data: workout_UpdateWorkoutRequest;
     }) => {
+      // Get a fresh token right before making the API call
+      const accessToken = await getAccessToken(user);
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };
@@ -80,8 +103,10 @@ export function useUpdateWorkoutMutation(accessToken: string) {
 
 export async function deleteWorkout(
   workoutId: number,
-  accessToken: string
+  user: User
 ): Promise<void> {
+  // Get a fresh token right before making the API call
+  const accessToken = await getAccessToken(user);
   OpenAPI.HEADERS = {
     'x-stack-access-token': accessToken,
   };
