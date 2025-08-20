@@ -18,6 +18,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExerciseWithSets)
+	mux.HandleFunc("GET /api/exercises/{id}/recent-sets", eh.HandleGetRecentSetsForExercise)
 	// Swagger documentation
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 	mux.HandleFunc("GET /", api.handleStaticFiles())
