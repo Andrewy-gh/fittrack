@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { exercise_ExerciseResponse } from '@/generated';
-import { exercisesQueryOptionsWithUser } from '@/lib/api/exercises';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { checkUser, type User } from '@/lib/api/auth';
 
 function ExercisesDisplay({
@@ -85,8 +85,8 @@ export const Route = createFileRoute('/_auth/exercises/')({
     user: Exclude<User, null>;
   }> => {
     const user = context.user;
-    checkUser(user); // Validate user and ensure non-null typing
-    context.queryClient.ensureQueryData(exercisesQueryOptionsWithUser(user));
+    checkUser(user); 
+    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
     return { user };
   },
   component: RouteComponent,
@@ -95,7 +95,7 @@ export const Route = createFileRoute('/_auth/exercises/')({
 function RouteComponent() {
   const { user } = Route.useLoaderData();
   const { data: exercises } = useSuspenseQuery(
-    exercisesQueryOptionsWithUser(user)
+    exercisesQueryOptions(user)
   );
   return <ExercisesDisplay exercises={exercises} />;
 }

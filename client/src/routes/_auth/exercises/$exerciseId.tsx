@@ -14,9 +14,9 @@ import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { exercise_ExerciseWithSetsResponse } from '@/generated';
-import { exerciseWithSetsQueryOptions } from '@/lib/api/exercises';
+import { exerciseQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
-import { getAccessToken } from '@/lib/api/auth';
+import { checkUser, type User } from '@/lib/api/auth';
 
 function ExerciseDisplay({
   exerciseSets,
@@ -234,21 +234,25 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
       return { exerciseId };
     },
   },
-  loader: async ({ context, params }) => {
-    const accessToken = await getAccessToken(context.user);
+  loader: async ({ context, params }): Promise<{
+    user: Exclude<User, null>;
+    exerciseId: number;
+  }> => {
+    const user = context.user;
+    checkUser(user);
     const exerciseId = params.exerciseId;
     context.queryClient.ensureQueryData(
-      exerciseWithSetsQueryOptions(exerciseId, accessToken)
+      exerciseQueryOptions(exerciseId, user)
     );
-    return { accessToken, exerciseId };
+    return { user, exerciseId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { accessToken, exerciseId } = Route.useLoaderData();
+  const { user, exerciseId } = Route.useLoaderData();
   const { data: exerciseSets } = useSuspenseQuery(
-    exerciseWithSetsQueryOptions(exerciseId, accessToken)
+    exerciseQueryOptions(exerciseId, user)
   );
   return <ExerciseDisplay exerciseSets={exerciseSets} />;
 }

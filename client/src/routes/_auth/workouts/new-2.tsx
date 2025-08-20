@@ -8,13 +8,13 @@ import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { checkUser, type User } from '@/lib/api/auth';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import type { exercise_ExerciseResponse } from '@/generated';
-import { exercisesQueryOptionsWithUser } from '@/lib/api/exercises';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
 import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
-import type { User } from '@/lib/api/auth';
 
 function WorkoutTracker({
   user,
@@ -276,17 +276,8 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
     user: Exclude<User, null>;
   }> => {
     const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    if (!user.id || typeof user.id !== 'string') {
-      throw new Error('User ID not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
-    context.queryClient.ensureQueryData(exercisesQueryOptionsWithUser(user));
+    checkUser(user);
+    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
     return { user };
   },
   component: RouteComponent,
@@ -295,7 +286,7 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
 function RouteComponent() {
   const { user } = Route.useLoaderData();
   const { data: exercises } = useSuspenseQuery(
-    exercisesQueryOptionsWithUser(user)
+    exercisesQueryOptions(user)
   );
   return <WorkoutTracker user={user} exercises={exercises} />;
 }

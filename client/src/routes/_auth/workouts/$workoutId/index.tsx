@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
 import { checkUser, type User } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
-import { workoutByIdQueryOptions } from '@/lib/api/workouts';
+import { workoutQueryOptions } from '@/lib/api/workouts';
 import type { workout_WorkoutWithSetsResponse } from '@/generated';
 import { DeleteDialog } from '../-components/delete-dialog';
 
@@ -233,10 +233,10 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/')({
     workoutId: number;
   }> => {
     const user = context.user;
-    checkUser(user); // Validate user and ensure non-null typing
+    checkUser(user);
     const workoutId = params.workoutId;
     context.queryClient.ensureQueryData(
-      workoutByIdQueryOptions(workoutId, user)
+      workoutQueryOptions(workoutId, user)
     );
     return { user, workoutId };
   },
@@ -246,7 +246,7 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/')({
 function RouteComponent() {
   const { user, workoutId } = Route.useLoaderData();
   const { data: workout } = useSuspenseQuery(
-    workoutByIdQueryOptions(workoutId, user)
+    workoutQueryOptions(workoutId, user)
   );
   return <IndividualWorkoutPage workout={workout} user={user} />;
 }

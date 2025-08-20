@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { checkUser, type User } from '@/lib/api/auth';
-import { exercisesQueryOptionsWithUser } from '@/lib/api/exercises';
+import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { useSuspenseQueries } from '@tanstack/react-query';
 import {
-  workoutByIdQueryOptions,
+  workoutQueryOptions,
   useUpdateWorkoutMutation,
 } from '@/lib/api/workouts';
 import { transformToWorkoutFormValues } from '@/lib/api/workouts';
@@ -287,12 +287,12 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/edit')({
     workoutId: number;
   }> => {
     const user = context.user;
-    checkUser(user); // Validate user and ensure non-null typing
+    checkUser(user); 
     const workoutId = params.workoutId;
     context.queryClient.ensureQueryData(
-      workoutByIdQueryOptions(workoutId, user)
+      workoutQueryOptions(workoutId, user)
     );
-    context.queryClient.ensureQueryData(exercisesQueryOptionsWithUser(user));
+    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
     return { user, workoutId };
   },
   component: RouteComponent,
@@ -302,8 +302,8 @@ function RouteComponent() {
   const { user, workoutId } = Route.useLoaderData();
   const [{ data: exercises }, { data: workout }] = useSuspenseQueries({
     queries: [
-      exercisesQueryOptionsWithUser(user),
-      workoutByIdQueryOptions(workoutId, user),
+      exercisesQueryOptions(user),
+      workoutQueryOptions(workoutId, user),
     ],
   });
   const workoutFormValues = transformToWorkoutFormValues(workout);
