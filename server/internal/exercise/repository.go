@@ -166,3 +166,39 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 
 	return exercise, nil
 }
+
+func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error) {
+	params := db.GetRecentSetsForExerciseParams{
+		ExerciseID: id,
+		UserID:     userID,
+	}
+	sets, err := er.queries.GetRecentSetsForExercise(ctx, params)
+	if err != nil {
+		if db.IsRowLevelSecurityError(err) {
+			er.logger.Error("get recent sets for exercise query failed - RLS policy violation",
+				"error", err,
+				"exercise_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			er.logger.Error("get recent sets for exercise query failed",
+				"exercise_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return nil, fmt.Errorf("failed to get recent sets for exercise (id: %d): %w", id, err)
+	}
+
+	if sets == nil {
+		sets = []db.GetRecentSetsForExerciseRow{}
+	}
+
+	if len(sets) == 0 {
+		er.logger.Debug("get recent sets for exercise returned empty results",
+			"exercise_id", id,
+			"user_id", userID,
+			"potential_rls_filtering", true)
+	}
+
+	return sets, nil
+}

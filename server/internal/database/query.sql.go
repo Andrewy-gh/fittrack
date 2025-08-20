@@ -276,6 +276,59 @@ func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerci
 	return i, err
 }
 
+const getRecentSetsForExercise = `-- name: GetRecentSetsForExercise :many
+SELECT 
+    s.id AS set_id,
+    w.date AS workout_date,
+    s.weight,
+    s.reps,
+    s.created_at
+FROM "set" s
+JOIN workout w ON w.id = s.workout_id
+WHERE s.exercise_id = $1 AND s.user_id = $2
+ORDER BY s.created_at DESC
+LIMIT 3
+`
+
+type GetRecentSetsForExerciseParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetRecentSetsForExerciseRow struct {
+	SetID       int32              `json:"set_id"`
+	WorkoutDate pgtype.Timestamptz `json:"workout_date"`
+	Weight      pgtype.Int4        `json:"weight"`
+	Reps        int32              `json:"reps"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSetsForExerciseParams) ([]GetRecentSetsForExerciseRow, error) {
+	rows, err := q.db.Query(ctx, getRecentSetsForExercise, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentSetsForExerciseRow
+	for rows.Next() {
+		var i GetRecentSetsForExerciseRow
+		if err := rows.Scan(
+			&i.SetID,
+			&i.WorkoutDate,
+			&i.Weight,
+			&i.Reps,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSet = `-- name: GetSet :one
 SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id FROM "set" 
 WHERE id = $1 AND user_id = $2

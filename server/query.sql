@@ -123,3 +123,16 @@ WHERE workout_id = $1
 DELETE FROM workout 
 WHERE id = $1 
   AND user_id = $2;
+
+-- name: GetRecentSetsForExercise :many
+SELECT 
+    s.id AS set_id,
+    w.date AS workout_date,
+    s.weight,
+    s.reps,
+    s.created_at
+FROM "set" s
+JOIN workout w ON w.id = s.workout_id
+WHERE s.exercise_id = $1 AND s.user_id = $2
+ORDER BY s.created_at DESC
+LIMIT 3;

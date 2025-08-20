@@ -56,6 +56,11 @@ func (m *MockExerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx 
 	return args.Get(0).(db.Exercise), args.Error(1)
 }
 
+func (m *MockExerciseRepository) GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error) {
+	args := m.Called(ctx, id, userID)
+	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }
@@ -222,6 +227,98 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 
 			// Execute
 			handler.GetExerciseWithSets(w, req)
+
+			// Assert
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			if tt.expectJSON {
+				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+				if tt.expectedError != "" {
+					assertJSONError(t, w, tt.expectedError)
+				}
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestExerciseHandler_GetRecentSetsForExercise(t *testing.T) {
+	userID := "test-user-id"
+
+	tests := []struct {
+		name          string
+		exerciseID    string
+		setupMock     func(*MockExerciseRepository, int32)
+		ctx           context.Context
+		expectedCode  int
+		expectJSON    bool
+		expectedError string
+	}{
+		{
+			name:       "successful fetch",
+			exerciseID: "1",
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetRecentSetsForExercise", mock.Anything, id, userID).Return([]db.GetRecentSetsForExerciseRow{
+					{SetID: 1, Reps: 10},
+				}, nil)
+			},
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusOK,
+			expectJSON:   true,
+		},
+		{
+			name:          "invalid exercise ID",
+			exerciseID:    "invalid",
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectedError: "Invalid exercise ID",
+		},
+		{
+			name:       "service error",
+			exerciseID: "999",
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetRecentSetsForExercise", mock.Anything, id, userID).Return([]db.GetRecentSetsForExerciseRow{}, assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectedError: "Failed to get recent sets for exercise",
+		},
+		{
+			name:          "unauthenticated user",
+			exerciseID:    "1",
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.Background(),
+			expectedCode:  http.StatusUnauthorized,
+			expectedError: "user not authenticated",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			mockRepo := &MockExerciseRepository{}
+			var id int32
+			if tt.exerciseID != "" {
+				idInt, err := strconv.Atoi(tt.exerciseID)
+				if err == nil {
+					id = int32(idInt)
+				}
+			}
+			tt.setupMock(mockRepo, id)
+
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			validator := validator.New()
+			service := NewService(logger, mockRepo)
+			handler := NewHandler(logger, validator, service)
+
+			req := httptest.NewRequest("GET", "/api/exercises/"+tt.exerciseID+"/recent-sets", nil).WithContext(tt.ctx)
+			req.SetPathValue("id", tt.exerciseID)
+			w := httptest.NewRecorder()
+
+			// Execute
+			handler.HandleGetRecentSetsForExercise(w, req)
 
 			// Assert
 			assert.Equal(t, tt.expectedCode, w.Code)

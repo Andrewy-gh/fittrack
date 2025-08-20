@@ -154,3 +154,33 @@ func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Req
 		return
 	}
 }
+
+func (h *ExerciseHandler) HandleGetRecentSetsForExercise(w http.ResponseWriter, r *http.Request) {
+	exerciseID := r.PathValue("id")
+	if exerciseID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+		return
+	}
+
+	exerciseIDInt, err := strconv.Atoi(exerciseID)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+		return
+	}
+
+	sets, err := h.exerciseService.GetRecentSetsForExercise(r.Context(), int32(exerciseIDInt))
+	if err != nil {
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get recent sets for exercise", err)
+		}
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, sets); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		return
+	}
+}
