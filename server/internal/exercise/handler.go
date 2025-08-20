@@ -57,16 +57,15 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 
 // GetExerciseWithSets godoc
 // @Summary Get exercise with sets
-// @Description Get a specific exercise with all its sets from workouts
+// @Description Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.
 // @Tags exercises
 // @Accept json
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Exercise ID"
-// @Success 200 {array} exercise.ExerciseWithSetsResponse
+// @Success 200 {array} exercise.ExerciseWithSetsResponse "Success (may be empty array)"
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 404 {object} response.ErrorResponse "Not Found"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id} [get]
 func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Request) {
@@ -99,11 +98,6 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise with sets", err)
 		}
-		return
-	}
-
-	if len(exerciseWithSets) == 0 {
-		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, "No sets found for this exercise", nil)
 		return
 	}
 
@@ -150,6 +144,58 @@ func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		return
+	}
+}
+
+// GetRecentSetsForExercise godoc
+// @Summary Get recent sets for exercise
+// @Description Get the 3 most recent sets for a specific exercise. Returns empty array when exercise has no sets.
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Exercise ID"
+// @Success 200 {array} exercise.RecentSetsResponse "Success (may be empty array)"
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises/{id}/recent-sets [get]
+func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *http.Request) {
+	exerciseID := r.PathValue("id")
+	if exerciseID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+		return
+	}
+
+	exerciseIDInt, err := strconv.Atoi(exerciseID)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+		return
+	}
+
+	req := GetRecentSetsRequest{
+		ExerciseID: int32(exerciseIDInt),
+	}
+
+	if err := h.validator.Struct(req); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID: must be positive", err)
+		return
+	}
+
+	sets, err := h.exerciseService.GetRecentSetsForExercise(r.Context(), req.ExerciseID)
+	if err != nil {
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get recent sets for exercise", err)
+		}
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, sets); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
 		return
 	}

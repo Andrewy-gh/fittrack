@@ -97,6 +97,29 @@ definitions:
     - workout_date
     - workout_id
     type: object
+  exercise.RecentSetsResponse:
+    properties:
+      created_at:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      reps:
+        example: 10
+        type: integer
+      set_id:
+        example: 1
+        type: integer
+      weight:
+        example: 225
+        type: integer
+      workout_date:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+    required:
+    - created_at
+    - reps
+    - set_id
+    - workout_date
+    type: object
   response.ErrorResponse:
     properties:
       message:
@@ -355,7 +378,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get a specific exercise with all its sets from workouts
+      description: Get a specific exercise with all its sets from workouts. Returns
+        empty array when exercise has no sets.
       parameters:
       - description: Exercise ID
         in: path
@@ -366,7 +390,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Success (may be empty array)
           schema:
             items:
               $ref: '#/definitions/exercise.ExerciseWithSetsResponse'
@@ -379,8 +403,42 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-        "404":
-          description: Not Found
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Get exercise with sets
+      tags:
+      - exercises
+  /exercises/{id}/recent-sets:
+    get:
+      consumes:
+      - application/json
+      description: Get the 3 most recent sets for a specific exercise. Returns empty
+        array when exercise has no sets.
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success (may be empty array)
+          schema:
+            items:
+              $ref: '#/definitions/exercise.RecentSetsResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
@@ -389,7 +447,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
       security:
       - StackAuth: []
-      summary: Get exercise with sets
+      summary: Get recent sets for exercise
       tags:
       - exercises
   /workouts:

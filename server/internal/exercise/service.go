@@ -15,6 +15,7 @@ type ExerciseRepository interface {
 	GetOrCreateExercise(ctx context.Context, name, userID string) (db.Exercise, error)
 	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
+	GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error)
 }
 
 type ErrUnauthorized struct {
@@ -80,4 +81,19 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 		return nil, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return &exercise, nil
+}
+
+func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int32) ([]db.GetRecentSetsForExerciseRow, error) {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	sets, err := es.repo.GetRecentSetsForExercise(ctx, id, userID)
+	if err != nil {
+		es.logger.Error("failed to get recent sets for exercise", "error", err)
+		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
+		return nil, fmt.Errorf("failed to get recent sets for exercise: %w", err)
+	}
+	return sets, nil
 }
