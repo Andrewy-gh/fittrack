@@ -129,7 +129,7 @@ const docTemplate = `{
                         "StackAuth": []
                     }
                 ],
-                "description": "Get a specific exercise with all its sets from workouts",
+                "description": "Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.",
                 "consumes": [
                     "application/json"
                 ],
@@ -151,7 +151,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Success (may be empty array)",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -171,8 +171,60 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/exercises/{id}/recent-sets": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Get the 3 most recent sets for a specific exercise. Returns empty array when exercise has no sets.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Get recent sets for exercise",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success (may be empty array)",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/exercise.RecentSetsResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -592,6 +644,37 @@ const docTemplate = `{
                 "workout_notes": {
                     "type": "string",
                     "example": "Great workout today"
+                }
+            }
+        },
+        "exercise.RecentSetsResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "reps",
+                "set_id",
+                "workout_date"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "reps": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "set_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "weight": {
+                    "type": "integer",
+                    "example": 225
+                },
+                "workout_date": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
                 }
             }
         },

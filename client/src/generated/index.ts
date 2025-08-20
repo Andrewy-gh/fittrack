@@ -11,6 +11,7 @@ export type { exercise_CreateExerciseRequest } from './models/exercise_CreateExe
 export type { exercise_CreateExerciseResponse } from './models/exercise_CreateExerciseResponse';
 export type { exercise_ExerciseResponse } from './models/exercise_ExerciseResponse';
 export type { exercise_ExerciseWithSetsResponse } from './models/exercise_ExerciseWithSetsResponse';
+export type { exercise_RecentSetsResponse } from './models/exercise_RecentSetsResponse';
 export type { response_ErrorResponse } from './models/response_ErrorResponse';
 export type { response_SuccessResponse } from './models/response_SuccessResponse';
 export type { workout_CreateWorkoutRequest } from './models/workout_CreateWorkoutRequest';
