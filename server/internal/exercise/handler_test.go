@@ -182,15 +182,14 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			expectedError: "Failed to get exercise with sets",
 		},
 		{
-			name:       "exercise not found",
+			name:       "empty results - returns 200 with empty array",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{}, nil)
 			},
-			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
-			expectedCode:  http.StatusNotFound,
-			expectJSON:    true,
-			expectedError: "No sets found for this exercise",
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusOK,
+			expectJSON:   true,
 		},
 		{
 			name:          "unauthenticated user",
@@ -318,7 +317,7 @@ func TestExerciseHandler_GetRecentSetsForExercise(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			// Execute
-			handler.HandleGetRecentSetsForExercise(w, req)
+			handler.GetRecentSetsForExercise(w, req)
 
 			// Assert
 			assert.Equal(t, tt.expectedCode, w.Code)
@@ -566,12 +565,12 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 
 		handler.GetExerciseWithSets(w, req)
 
-		// Should return 404 (no sets found) due to RLS filtering
-		assert.Equal(t, http.StatusNotFound, w.Code)
-		var resp errorResponse
-		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		// Should return 200 with empty array due to RLS filtering (no sets visible)
+		assert.Equal(t, http.StatusOK, w.Code)
+		var exerciseWithSets []db.GetExerciseWithSetsRow
+		err := json.Unmarshal(w.Body.Bytes(), &exerciseWithSets)
 		assert.NoError(t, err)
-		assert.Contains(t, resp.Message, "No sets found for this exercise")
+		assert.Empty(t, exerciseWithSets, "User B should not see User A's exercise sets due to RLS")
 	})
 
 	t.Run("Scenario5_CreateExercise_UserIsolation", func(t *testing.T) {
