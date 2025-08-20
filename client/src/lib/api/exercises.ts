@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import { ExercisesService, OpenAPI } from '@/generated';
+import { ensureUser, getAccessToken, type User } from './auth';
 import type {
   exercise_ExerciseResponse,
   exercise_ExerciseWithSetsResponse,
@@ -7,10 +8,12 @@ import type {
 
 export type ExerciseOption = Pick<exercise_ExerciseResponse, 'id' | 'name'>;
 
-export function exercisesQueryOptions(accessToken: string) {
+export function exercisesQueryOptions(user: User) {
+  const validatedUser = ensureUser(user);
   return queryOptions<exercise_ExerciseResponse[], Error>({
     queryKey: ['exercises', 'list'],
     queryFn: async () => {
+      const accessToken = await getAccessToken(validatedUser);
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };
@@ -19,13 +22,16 @@ export function exercisesQueryOptions(accessToken: string) {
   });
 }
 
-export function exerciseWithSetsQueryOptions(
+export function exerciseQueryOptions(
   exerciseId: number,
-  accessToken: string
+  user: User
 ) {
+  const validatedUser = ensureUser(user);
   return queryOptions<exercise_ExerciseWithSetsResponse[], Error>({
     queryKey: ['exercises', 'details', exerciseId],
     queryFn: async () => {
+      // Get a fresh token right before making the API call
+      const accessToken = await getAccessToken(validatedUser);
       OpenAPI.HEADERS = {
         'x-stack-access-token': accessToken,
       };

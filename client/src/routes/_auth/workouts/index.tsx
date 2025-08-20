@@ -6,10 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
 import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
-import { getAccessToken } from '@/lib/api/auth';
+import { checkUser, type User } from '@/lib/api/auth';
 import type { workout_WorkoutResponse } from '@/generated';
 
-function WorkoutsDisplay({ workouts }: { workouts: workout_WorkoutResponse[] }) {
+function WorkoutsDisplay({
+  workouts,
+}: {
+  workouts: workout_WorkoutResponse[];
+}) {
   const totalWorkouts = workouts.length;
   const thisWeekWorkouts = workouts.filter((workout) => {
     const workoutDate = new Date(workout.date);
@@ -129,18 +133,20 @@ function WorkoutsDisplay({ workouts }: { workouts: workout_WorkoutResponse[] }) 
 }
 
 export const Route = createFileRoute('/_auth/workouts/')({
-  loader: async ({ context }): Promise<string> => {
-    const accessToken = await getAccessToken(context.user);
-    context.queryClient.ensureQueryData(workoutsQueryOptions(accessToken));
-    return accessToken;
+  loader: async ({ context }): Promise<{ user: Exclude<User, null> }> => {
+    const user = context.user;
+    checkUser(user);
+
+    context.queryClient.ensureQueryData(workoutsQueryOptions(user));
+    return { user };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const accessToken = Route.useLoaderData();
+  const { user } = Route.useLoaderData();
   const { data: workouts } = useSuspenseQuery(
-    workoutsQueryOptions(accessToken)
+    workoutsQueryOptions(user)
   );
   return <WorkoutsDisplay workouts={workouts} />;
 }

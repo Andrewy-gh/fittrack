@@ -12,15 +12,16 @@ import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deleteWorkout } from '@/lib/api/workouts';
+import type { User } from '@/lib/api/auth';
 
 interface DeleteDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   workoutId: number;
-  accessToken: string;
+  user: Exclude<User, null>;
 }
 
-export function DeleteDialog({ isOpen, onOpenChange, workoutId, accessToken }: DeleteDialogProps) {
+export function DeleteDialog({ isOpen, onOpenChange, workoutId, user }: DeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -28,7 +29,7 @@ export function DeleteDialog({ isOpen, onOpenChange, workoutId, accessToken }: D
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      return deleteWorkout(workoutId, accessToken);
+      return deleteWorkout(workoutId, user);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workouts'] });

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import { checkUser, type User } from '@/lib/api/auth';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import type { exercise_ExerciseResponse } from '@/generated';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
@@ -16,12 +17,10 @@ import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
 
 function WorkoutTracker({
-  accessToken,
-  userId,
+  user,
   exercises,
 }: {
-  accessToken: string;
-  userId: string;
+  user: Exclude<User, null>; // Use Exclude to remove null from the union type
   exercises: exercise_ExerciseResponse[];
 }) {
   const [currentView, setCurrentView] = useState<
@@ -31,20 +30,20 @@ function WorkoutTracker({
     number | null
   >(null);
 
-  const saveWorkout = useSaveWorkoutMutation(accessToken);
+  const saveWorkout = useSaveWorkoutMutation(user);
   const form = useAppForm({
-    defaultValues: getInitialValues(userId),
+    defaultValues: getInitialValues(user.id),
     listeners: {
       onChange: ({ formApi }) => {
         console.log('Saving form data to localStorage');
-        saveToLocalStorage(formApi.state.values, userId);
+        saveToLocalStorage(formApi.state.values, user.id);
       },
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {
       await saveWorkout.mutateAsync(value, {
         onSuccess: () => {
-          clearLocalStorage(userId);
+          clearLocalStorage(user.id);
           form.reset();
           setSelectedExerciseIndex(null);
         },
@@ -52,19 +51,7 @@ function WorkoutTracker({
           alert(error);
         },
       });
-      // try {
-      //   const result = await createWorkout({});
-      //   console.log(
-      //     'Workout submitted! Server says: ' + JSON.stringify(result)
-      //   );
-
-      //   // localStorage clear after successful submission
-      //   clearLocalStorage(userId);
-      //   // Reset form to default values
-      //   form.reset();
-      // } catch (error) {
-      //   alert(error);
-      // }
+   
     },
   });
 
@@ -80,7 +67,7 @@ function WorkoutTracker({
 
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
-      clearLocalStorage(userId);
+      clearLocalStorage(user.id);
       form.reset();
       setSelectedExerciseIndex(null);
     }
@@ -286,36 +273,20 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
   loader: async ({
     context,
   }): Promise<{
-    accessToken: string;
-    userId: string;
+    user: Exclude<User, null>;
   }> => {
     const user = context.user;
-    if (!user) {
-      throw new Error('User not found');
-    }
-    if (!user.id || typeof user.id !== 'string') {
-      throw new Error('User ID not found');
-    }
-    const { accessToken } = await user.getAuthJson();
-    if (!accessToken) {
-      throw new Error('Access token not found');
-    }
-    context.queryClient.ensureQueryData(exercisesQueryOptions(accessToken));
-    return { accessToken, userId: user.id }; // need userId so not using getAccessToken
+    checkUser(user);
+    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
+    return { user };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { accessToken, userId } = Route.useLoaderData();
+  const { user } = Route.useLoaderData();
   const { data: exercises } = useSuspenseQuery(
-    exercisesQueryOptions(accessToken)
+    exercisesQueryOptions(user)
   );
-  return (
-    <WorkoutTracker
-      accessToken={accessToken}
-      userId={userId}
-      exercises={exercises}
-    />
-  );
+  return <WorkoutTracker user={user} exercises={exercises} />;
 }

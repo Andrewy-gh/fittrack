@@ -7,7 +7,7 @@ import { ChevronRight, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { exercise_ExerciseResponse } from '@/generated';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
-import { getAccessToken } from '@/lib/api/auth';
+import { checkUser, type User } from '@/lib/api/auth';
 
 function ExercisesDisplay({
   exercises,
@@ -81,18 +81,21 @@ function ExercisesDisplay({
 }
 
 export const Route = createFileRoute('/_auth/exercises/')({
-  loader: async ({ context }): Promise<string> => {
-    const accessToken = await getAccessToken(context.user);
-    context.queryClient.ensureQueryData(exercisesQueryOptions(accessToken));
-    return accessToken;
+  loader: async ({ context }): Promise<{
+    user: Exclude<User, null>;
+  }> => {
+    const user = context.user;
+    checkUser(user); 
+    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
+    return { user };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const accessToken = Route.useLoaderData();
+  const { user } = Route.useLoaderData();
   const { data: exercises } = useSuspenseQuery(
-    exercisesQueryOptions(accessToken)
+    exercisesQueryOptions(user)
   );
   return <ExercisesDisplay exercises={exercises} />;
 }

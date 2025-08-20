@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { getAccessToken } from '@/lib/api/auth';
+import { checkUser, type User } from '@/lib/api/auth';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { useSuspenseQueries } from '@tanstack/react-query';
-import { workoutByIdQueryOptions, useUpdateWorkoutMutation } from '@/lib/api/workouts';
+import {
+  workoutQueryOptions,
+  useUpdateWorkoutMutation,
+} from '@/lib/api/workouts';
 import { transformToWorkoutFormValues } from '@/lib/api/workouts';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
@@ -17,13 +20,13 @@ import { AddExerciseScreen } from '../-components/add-exercise-screen';
 import type { workout_UpdateWorkoutRequest } from '@/generated';
 
 function EditWorkoutForm({
-  accessToken,
   exercises,
+  user,
   workout,
   workoutId,
 }: {
-  accessToken: string;
   exercises: exercise_ExerciseResponse[];
+  user: Exclude<User, null>;
   workout: workout_UpdateWorkoutRequest;
   workoutId: number;
 }) {
@@ -34,7 +37,7 @@ function EditWorkoutForm({
     number | null
   >(null);
 
-  const updateWorkoutMutation = useUpdateWorkoutMutation(accessToken);
+  const updateWorkoutMutation = useUpdateWorkoutMutation(user);
 
   const form = useAppForm({
     defaultValues: workout,
@@ -46,7 +49,6 @@ function EditWorkoutForm({
           data: value,
         });
         console.log('Workout updated successfully!');
-        // Don't reset form on update, just show success
       } catch (error) {
         console.error('Failed to update workout:', error);
         alert(`Failed to update workout: ${error}`);
@@ -277,26 +279,40 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/edit')({
       return { workoutId };
     },
   },
-  loader: async ({ context, params }) => {
-    const accessToken = await getAccessToken(context.user);
+  loader: async ({
+    context,
+    params,
+  }): Promise<{
+    user: Exclude<User, null>;
+    workoutId: number;
+  }> => {
+    const user = context.user;
+    checkUser(user); 
     const workoutId = params.workoutId;
     context.queryClient.ensureQueryData(
-      workoutByIdQueryOptions(workoutId, accessToken)
+      workoutQueryOptions(workoutId, user)
     );
-    context.queryClient.ensureQueryData(exercisesQueryOptions(accessToken));
-    return { accessToken, workoutId };
+    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
+    return { user, workoutId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { accessToken, workoutId } = Route.useLoaderData();
+  const { user, workoutId } = Route.useLoaderData();
   const [{ data: exercises }, { data: workout }] = useSuspenseQueries({
     queries: [
-      exercisesQueryOptions(accessToken),
-      workoutByIdQueryOptions(workoutId, accessToken),
+      exercisesQueryOptions(user),
+      workoutQueryOptions(workoutId, user),
     ],
   });
   const workoutFormValues = transformToWorkoutFormValues(workout);
-  return <EditWorkoutForm accessToken={accessToken} exercises={exercises} workout={workoutFormValues} workoutId={workoutId} />;
+  return (
+    <EditWorkoutForm
+      exercises={exercises}
+      user={user}
+      workout={workoutFormValues}
+      workoutId={workoutId}
+    />
+  );
 }
