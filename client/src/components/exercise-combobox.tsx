@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import type { ExerciseOption } from '@/lib/api/exercises';
 
 interface ComboboxProps {
-  options: ExerciseOption[];
+  options: ExerciseOption[]; // Can include both DB exercises and manually created ones
   selected: ExerciseOption['name'];
   className?: string;
   placeholder?: string;
@@ -66,7 +66,7 @@ function ExerciseList({
   onChange,
   onCreate,
 }: {
-  options: ExerciseOption[];
+  options: ExerciseOption[]; // Can include both DB exercises and manually created ones
   selected: ExerciseOption['name'];
   query: string;
   setQuery: (query: string) => void;
@@ -132,7 +132,7 @@ function ExerciseList({
           {/* Select options */}
           {options.map((option) => (
             <CommandItem
-              key={option.id || option.name}
+              key={option.name} // Use name as key instead of ID
               value={option.name}
               tabIndex={0}
               onSelect={() => handleSelect(option)}

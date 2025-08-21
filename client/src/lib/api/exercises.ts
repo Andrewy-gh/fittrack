@@ -7,7 +7,19 @@ import type {
   exercise_RecentSetsResponse,
 } from '@/generated';
 
-export type ExerciseOption = Pick<exercise_ExerciseResponse, 'id' | 'name'>;
+/**
+ * Exercise data as returned by the API - always has a database ID
+ */
+export type DbExercise = Pick<exercise_ExerciseResponse, 'id' | 'name'>;
+
+/**
+ * Exercise option for form components - may include manually created exercises without IDs
+ * Used in dropdowns and forms where users can create new exercises on-the-fly
+ */
+export type ExerciseOption = {
+  id: number | null; // null for manually created exercises, number for DB exercises
+  name: string;
+};
 
 export function exercisesQueryOptions(user: User) {
   const validatedUser = ensureUser(user);

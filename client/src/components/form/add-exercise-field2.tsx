@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import type { ExerciseOption } from '@/lib/api/exercises';
+import type { DbExercise, ExerciseOption } from '@/lib/api/exercises';
 import { Plus } from 'lucide-react';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { useFieldContext } from '@/hooks/form';
@@ -10,29 +10,35 @@ export default function AddExerciseField2({
   exercises,
   onAddExercise,
 }: {
-  exercises: ExerciseOption[];
-  onAddExercise: (exerciseIndex: number) => void;
+  exercises: DbExercise[]; // Input: exercises from the database with guaranteed IDs
+  onAddExercise: (exerciseIndex: number, exerciseId?: number) => void;
 }) {
   const field = useFieldContext<workout_ExerciseInput[]>();
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>();
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>(); // State: may include manually created exercises
+  
+  // Working list of exercises that can include both DB and manually created ones
+  const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
+    exercises.map(ex => ({ id: ex.id, name: ex.name }))
+  );
 
   function handleSelect(option: ExerciseOption) {
     setSelectedExercise(option);
   }
 
   function handleAppendGroup(name: string) {
+    // For new exercises, use null ID to indicate they're not in the database
     const newExercise: ExerciseOption = {
-      id: exercises.length + 1,
+      id: null, // null ID for new exercises not yet in the database
       name,
     };
-    exercises.push(newExercise);
+    setWorkingExercises(prev => [...prev, newExercise]);
     handleSelect(newExercise);
   }
 
   return (
     <div className="space-y-4">
       <ExerciseCombobox
-        options={exercises}
+        options={workingExercises} // Use working list that can include manually created exercises
         selected={selectedExercise?.name ?? ''}
         onChange={handleSelect}
         onCreate={handleAppendGroup}
@@ -45,7 +51,10 @@ export default function AddExerciseField2({
             name: selectedExercise?.name ?? '',
             sets: [],
           });
-          onAddExercise(field.state.value.length - 1);
+          const exerciseIndex = field.state.value.length - 1;
+          // Only pass exerciseId if it's not null (real DB ID)
+          const exerciseId = selectedExercise?.id || undefined;
+          onAddExercise(exerciseIndex, exerciseId);
           setSelectedExercise(undefined);
         }}
       >

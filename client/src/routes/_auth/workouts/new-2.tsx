@@ -10,8 +10,7 @@ import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { checkUser, type User } from '@/lib/api/auth';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
-import type { exercise_ExerciseResponse } from '@/generated';
-import { exercisesQueryOptions } from '@/lib/api/exercises';
+import { exercisesQueryOptions, type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
 // import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
@@ -27,8 +26,8 @@ function WorkoutTracker({
   user,
   exercises,
 }: {
-  user: Exclude<User, null>; // Use Exclude to remove null from the union type
-  exercises: exercise_ExerciseResponse[];
+  user: Exclude<User, null>; 
+  exercises: DbExercise[];
 }) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
@@ -68,8 +67,8 @@ function WorkoutTracker({
     return exercise?.id || null;
   };
 
-  const handleAddExercise = (index: number, exerciseId: number) => {
-    setSelectedExercise({ index, exerciseId });
+  const handleAddExercise = (index: number, exerciseId?: number) => {
+    setSelectedExercise({ index, exerciseId: exerciseId || null });
     setCurrentView('exercise');
   };
 
@@ -313,6 +312,13 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
 
 function RouteComponent() {
   const { user } = Route.useLoaderData();
-  const { data: exercises } = useSuspenseQuery(exercisesQueryOptions(user));
+  const { data: exercisesResponse } = useSuspenseQuery(exercisesQueryOptions(user));
+  
+  // Convert API response to our cleaner DbExercise type
+  const exercises: DbExercise[] = exercisesResponse.map(ex => ({
+    id: ex.id,
+    name: ex.name
+  }));
+  
   return <WorkoutTracker user={user} exercises={exercises} />;
 }

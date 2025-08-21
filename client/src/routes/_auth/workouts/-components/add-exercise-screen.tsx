@@ -1,13 +1,13 @@
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { withForm } from '@/hooks/form';
-import type { ExerciseOption } from '@/lib/api/exercises';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import type { DbExercise } from '@/lib/api/exercises';
 import { MOCK_VALUES } from '../-components/form-options';
 
 type AddExerciseScreenProps = {
-  exercises: ExerciseOption[];
-  onAddExercise: (exerciseIndex: number, exerciseId: number) => void;
+  exercises: DbExercise[]; // Database exercises with guaranteed IDs
+  onAddExercise: (exerciseIndex: number, exerciseId?: number) => void;
   onBack: () => void;
 };
 
