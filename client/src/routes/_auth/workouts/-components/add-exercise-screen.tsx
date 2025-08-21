@@ -7,7 +7,7 @@ import { MOCK_VALUES } from '../-components/form-options';
 
 type AddExerciseScreenProps = {
   exercises: ExerciseOption[];
-  onAddExercise: (exerciseIndex: number) => void;
+  onAddExercise: (exerciseIndex: number, exerciseId: number) => void;
   onBack: () => void;
 };
 
@@ -68,7 +68,8 @@ export const AddExerciseScreen = withForm({
                                   name: exercise.name,
                                   sets: [],
                                 });
-                                onAddExercise(field.state.value.length - 1);
+                                const exerciseIndex = field.state.value.length - 1;
+                                onAddExercise(exerciseIndex, exercise.id);
                               }}
                             >
                               {exercise.name}

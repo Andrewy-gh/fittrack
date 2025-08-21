@@ -1,11 +1,13 @@
 import { withForm } from '@/hooks/form';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { AddSetDialog } from '../-components/add-set-dialog';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MOCK_VALUES } from '../-components/form-options';
 import type { workout_SetInput } from '@/generated';
+import { RecentSetsDisplay } from './recent-sets-display';
+import type { User } from '@/lib/api/auth';
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
@@ -41,7 +43,7 @@ export const ExerciseHeader = withForm({
 
 export const ExerciseSets = withForm({
   defaultValues: MOCK_VALUES,
-  props: {} as { exerciseIndex: number },
+  props: {} as Pick<ExerciseScreenProps, 'exerciseIndex'>,
   render: function Render({ form, exerciseIndex }) {
     const [dialogOpenIndex, setDialogOpenIndex] = useState<number | null>(null);
 
@@ -59,6 +61,9 @@ export const ExerciseSets = withForm({
           return (
             <>
               {/* MARK: Stats Overview */}
+              <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
+                Today's Sets
+              </h2>
               <div className="grid grid-cols-2 gap-4">
                 <Card className="bg-card border border-border shadow-sm p-6">
                   <div className="text-center">
@@ -84,9 +89,6 @@ export const ExerciseSets = withForm({
 
               {/* Sets List */}
               <div>
-                <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
-                  Sets
-                </h2>
                 <div className="space-y-3">
                   {sets.map((set, setIndex) => {
                     // MARK: Dialog
@@ -178,6 +180,38 @@ export const ExerciseSets = withForm({
   },
 });
 
+// Helper component to wrap recent sets with proper error boundaries
+export function RecentSets({
+  exerciseId,
+  user,
+}: {
+  exerciseId: number | null;
+  user: User;
+}) {
+  if (!exerciseId) {
+    return null
+  }
+
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
+            Recent Sets
+          </h2>
+          <div className="text-center py-8">
+            <p className="text-muted-foreground text-sm">
+              Loading recent sets...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <RecentSetsDisplay exerciseId={exerciseId} user={user} />
+    </Suspense>
+  );
+}
+
 export function ExerciseScreen({
   header,
   recentSets,
@@ -191,7 +225,6 @@ export function ExerciseScreen({
     <div className="min-h-screen">
       <div className="px-4 pb-8">
         <div className="max-w-md mx-auto space-y-6">
-          {/* Header */}
           {header}
           {recentSets}
           {sets}

@@ -20,6 +20,7 @@ import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
+  RecentSets,
 } from './-components/exercise-screen';
 
 function WorkoutTracker({
@@ -32,9 +33,10 @@ function WorkoutTracker({
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
   >('main');
-  const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<
-    number | null
-  >(null);
+  const [selectedExercise, setSelectedExercise] = useState<{
+    index: number;
+    exerciseId: number | null;
+  } | null>(null);
 
   const saveWorkout = useSaveWorkoutMutation(user);
   const form = useAppForm({
@@ -51,7 +53,7 @@ function WorkoutTracker({
         onSuccess: () => {
           clearLocalStorage(user.id);
           form.reset();
-          setSelectedExerciseIndex(null);
+          setSelectedExercise(null);
         },
         onError: (error) => {
           alert(error);
@@ -60,13 +62,21 @@ function WorkoutTracker({
     },
   });
 
-  const handleAddExercise = (index: number) => {
-    setSelectedExerciseIndex(index);
+  // Helper to get exercise ID from exercises list
+  const getExerciseId = (exerciseName: string): number | null => {
+    const exercise = exercises.find(ex => ex.name === exerciseName);
+    return exercise?.id || null;
+  };
+
+  const handleAddExercise = (index: number, exerciseId: number) => {
+    setSelectedExercise({ index, exerciseId });
     setCurrentView('exercise');
   };
 
   const handleExerciseClick = (index: number) => {
-    setSelectedExerciseIndex(index);
+    const exerciseName = form.state.values.exercises[index]?.name;
+    const exerciseId = getExerciseId(exerciseName);
+    setSelectedExercise({ index, exerciseId });
     setCurrentView('exercise');
   };
 
@@ -74,7 +84,7 @@ function WorkoutTracker({
     if (confirm('Are you sure you want to clear all form data?')) {
       clearLocalStorage(user.id);
       form.reset();
-      setSelectedExerciseIndex(null);
+      setSelectedExercise(null);
     }
   };
 
@@ -100,7 +110,7 @@ function WorkoutTracker({
 
   if (
     currentView === 'exercise' &&
-    selectedExerciseIndex !== null &&
+    selectedExercise !== null &&
     form.state.values.exercises.length > 0
   ) {
     return (
@@ -115,15 +125,19 @@ function WorkoutTracker({
           header={
             <ExerciseHeader
               form={form}
-              exerciseIndex={selectedExerciseIndex}
+              exerciseIndex={selectedExercise.index}
               onBack={() => setCurrentView('main')}
             />
           }
-          sets={
-            <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
+          recentSets={
+            <RecentSets
+              exerciseId={selectedExercise.exerciseId}
+              user={user}
+            />
           }
-          // exerciseIndex={selectedExerciseIndex}
-          // onBack={() => setCurrentView('main')}
+          sets={
+            <ExerciseSets form={form} exerciseIndex={selectedExercise.index} />
+          }
         />
       </Suspense>
     );
