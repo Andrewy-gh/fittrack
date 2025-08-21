@@ -13,8 +13,14 @@ import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import type { exercise_ExerciseResponse } from '@/generated';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
-import { ExerciseScreen2 } from './-components/exercise-screen';
+// import { ExerciseScreen2 } from './-components/exercise-screen';
 import { AddExerciseScreen } from './-components/add-exercise-screen';
+
+import {
+  ExerciseHeader,
+  ExerciseScreen,
+  ExerciseSets,
+} from './-components/exercise-screen';
 
 function WorkoutTracker({
   user,
@@ -51,7 +57,6 @@ function WorkoutTracker({
           alert(error);
         },
       });
-   
     },
   });
 
@@ -106,10 +111,19 @@ function WorkoutTracker({
           </div>
         }
       >
-        <ExerciseScreen2
-          form={form}
-          exerciseIndex={selectedExerciseIndex}
-          onBack={() => setCurrentView('main')}
+        <ExerciseScreen
+          header={
+            <ExerciseHeader
+              form={form}
+              exerciseIndex={selectedExerciseIndex}
+              onBack={() => setCurrentView('main')}
+            />
+          }
+          sets={
+            <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
+          }
+          // exerciseIndex={selectedExerciseIndex}
+          // onBack={() => setCurrentView('main')}
         />
       </Suspense>
     );
@@ -285,8 +299,6 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
 
 function RouteComponent() {
   const { user } = Route.useLoaderData();
-  const { data: exercises } = useSuspenseQuery(
-    exercisesQueryOptions(user)
-  );
+  const { data: exercises } = useSuspenseQuery(exercisesQueryOptions(user));
   return <WorkoutTracker user={user} exercises={exercises} />;
 }

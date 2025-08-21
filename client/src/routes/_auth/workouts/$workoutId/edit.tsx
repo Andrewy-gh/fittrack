@@ -15,7 +15,7 @@ import { MiniChart } from '../-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import type { exercise_ExerciseResponse } from '@/generated';
-import { ExerciseScreen2 } from '../-components/exercise-screen';
+import { ExerciseHeader, ExerciseScreen, ExerciseSets } from '../-components/exercise-screen';
 import { AddExerciseScreen } from '../-components/add-exercise-screen';
 import type { workout_UpdateWorkoutRequest } from '@/generated';
 
@@ -106,11 +106,18 @@ function EditWorkoutForm({
           </div>
         }
       >
-        <ExerciseScreen2
-          form={form}
-          exerciseIndex={selectedExerciseIndex}
-          onBack={() => setCurrentView('main')}
-        />
+          <ExerciseScreen
+            header={
+              <ExerciseHeader
+                form={form}
+                exerciseIndex={selectedExerciseIndex}
+                onBack={() => setCurrentView('main')}
+              />
+            }
+            sets={
+              <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
+            }
+          />
       </Suspense>
     );
   }
