@@ -17,6 +17,7 @@ import type { exercise_ExerciseWithSetsResponse } from '@/generated';
 import { exerciseQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
 import { checkUser, type User } from '@/lib/api/auth';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 function ExerciseDisplay({
   exerciseSets,
@@ -39,19 +40,7 @@ function ExerciseDisplay({
   );
   const maxVolume = Math.max(...volumes);
 
-  // Sort all exercise sets by workout date (desc), then by set order within workout
-  const sortedExerciseSets = [...exerciseSets].sort((a, b) => {
-    // First sort by workout date (descending - newest first)
-    const dateA = new Date(a.workout_date).getTime();
-    const dateB = new Date(b.workout_date).getTime();
-    if (dateA !== dateB) {
-      return dateB - dateA; // Descending order (newest first)
-    }
-    // Then sort by set_order within the same workout
-    const setOrderA = a.set_order ?? a.set_id ?? 0;
-    const setOrderB = b.set_order ?? b.set_id ?? 0;
-    return setOrderA - setOrderB;
-  });
+  const sortedExerciseSets = sortByExerciseAndSetOrder(exerciseSets);
 
   // Group sets by workout while preserving order
   const workoutGroups = sortedExerciseSets.reduce(

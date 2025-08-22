@@ -4,6 +4,7 @@ import { recentExerciseSetsQueryOptions } from '@/lib/api/exercises';
 import { formatDate } from '@/lib/utils';
 import type { User } from '@/lib/api/auth';
 import type { exercise_RecentSetsResponse } from '@/generated';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
@@ -22,19 +23,7 @@ export function RecentSetsDisplay({
     return null;
   }
 
-  // Sort recent sets by workout date (desc), then by set order within workout
-  const sortedRecentSets = [...recentSets].sort((a, b) => {
-    // First sort by workout date (descending - newest first)
-    const dateA = new Date(a.workout_date).getTime();
-    const dateB = new Date(b.workout_date).getTime();
-    if (dateA !== dateB) {
-      return dateB - dateA;
-    }
-    // Then sort by set_order within the same workout
-    const setOrderA = a.set_order ?? a.set_id ?? 0;
-    const setOrderB = b.set_order ?? b.set_id ?? 0;
-    return setOrderA - setOrderB;
-  });
+  const sortedRecentSets = sortByExerciseAndSetOrder(recentSets)
 
   // Group sets by workout_date, preserving order
   const groupedSets = sortedRecentSets.reduce(
@@ -75,7 +64,7 @@ export function RecentSetsDisplay({
                   >
                     <div className="flex items-center space-x-4">
                       <span className="text-sm font-medium text-muted-foreground w-8">
-                        {index + 1}
+                        {set.set_order ?? index + 1}
                       </span>
                       <div className="flex items-center space-x-4 text-sm">
                         <span className="font-medium">

@@ -10,6 +10,7 @@ import { formatDate, formatTime } from '@/lib/utils';
 import { workoutQueryOptions } from '@/lib/api/workouts';
 import type { workout_WorkoutWithSetsResponse } from '@/generated';
 import { DeleteDialog } from '../-components/delete-dialog';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 function IndividualWorkoutPage({
   workout,
@@ -25,19 +26,7 @@ function IndividualWorkoutPage({
   const totalReps = workout.reduce((sum, w) => sum + (w.reps || 0), 0);
   const totalVolume = workout.reduce((sum, w) => sum + (w.volume || 0), 0);
 
-  // Sort workouts by exercise_order, then set_order
-  const sortedWorkouts = [...workout].sort((a, b) => {
-    // First sort by exercise_order (or exercise_id if order is null)
-    const exerciseOrderA = a.exercise_order ?? a.exercise_id ?? 0;
-    const exerciseOrderB = b.exercise_order ?? b.exercise_id ?? 0;
-    if (exerciseOrderA !== exerciseOrderB) {
-      return exerciseOrderA - exerciseOrderB;
-    }
-    // Then sort by set_order (or set_id if order is null)
-    const setOrderA = a.set_order ?? a.set_id ?? 0;
-    const setOrderB = b.set_order ?? b.set_id ?? 0;
-    return setOrderA - setOrderB;
-  });
+  const sortedWorkouts = sortByExerciseAndSetOrder(workout);
 
   // Group exercises while preserving order
   const exerciseGroups = sortedWorkouts.reduce(

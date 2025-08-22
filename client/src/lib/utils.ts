@@ -31,3 +31,23 @@ export const formatTime = (dateString: string) => {
     hour12: true,
   });
 };
+
+export function sortByExerciseAndSetOrder<
+  T extends {
+    exercise_order?: number;
+    set_order?: number;
+    exercise_id?: number;
+    set_id: number;
+  },
+>(data: T[]): T[] {
+  return [...data].sort((a, b) => {
+    const exerciseOrderA = a.exercise_order ?? a.exercise_id ?? 0;
+    const exerciseOrderB = b.exercise_order ?? b.exercise_id ?? 0;
+    if (exerciseOrderA !== exerciseOrderB) {
+      return exerciseOrderA - exerciseOrderB;
+    }
+    const setOrderA = a.set_order ?? a.set_id ?? 0;
+    const setOrderB = b.set_order ?? b.set_id ?? 0;
+    return setOrderA - setOrderB;
+  });
+}

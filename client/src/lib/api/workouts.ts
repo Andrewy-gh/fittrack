@@ -10,6 +10,7 @@ import type {
   workout_UpdateExercise,
   workout_UpdateSet,
 } from '@/generated';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 export function workoutsQueryOptions(user: User) {
   const validatedUser = ensureUser(user);
@@ -25,10 +26,7 @@ export function workoutsQueryOptions(user: User) {
   });
 }
 
-export function workoutQueryOptions(
-  workoutId: number,
-  user: User
-) {
+export function workoutQueryOptions(workoutId: number, user: User) {
   const validatedUser = ensureUser(user);
   return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
     queryKey: ['workouts', 'details', workoutId],
@@ -96,42 +94,22 @@ export async function deleteWorkout(
   OpenAPI.HEADERS = {
     'x-stack-access-token': accessToken,
   };
-  
+
   return WorkoutsService.deleteWorkouts(workoutId);
 }
 
-export function transformToWorkoutFormValues(
-  workouts: workout_WorkoutWithSetsResponse[]
-): workout_UpdateWorkoutRequest {
-  if (workouts.length === 0) {
-    return {
-      date: new Date().toISOString(),
-      notes: '',
-      exercises: [],
-    };
-  }
-
-  // Sort all workouts by exercise_order, then set_order to maintain proper ordering
-  const sortedWorkouts = [...workouts].sort((a, b) => {
-    // First sort by exercise_order (or exercise_id if order is null)
-    const exerciseOrderA = a.exercise_order ?? a.exercise_id ?? 0;
-    const exerciseOrderB = b.exercise_order ?? b.exercise_id ?? 0;
-    if (exerciseOrderA !== exerciseOrderB) {
-      return exerciseOrderA - exerciseOrderB;
-    }
-    // Then sort by set_order (or set_id if order is null)
-    const setOrderA = a.set_order ?? a.set_id ?? 0;
-    const setOrderB = b.set_order ?? b.set_id ?? 0;
-    return setOrderA - setOrderB;
-  });
-
-  // Group sets by exercise, preserving order
-  const exercisesMap = new Map<number, { exercise: workout_UpdateExercise; order: number }>();
+function groupSetsByExercise(
+  sortedWorkouts: workout_WorkoutWithSetsResponse[]
+): Map<number, { exercise: workout_UpdateExercise; order: number }> {
+  const exercisesMap = new Map<
+    number,
+    { exercise: workout_UpdateExercise; order: number }
+  >();
 
   for (const workout of sortedWorkouts) {
     const exerciseId = workout.exercise_id || 0;
     const exerciseOrder = workout.exercise_order ?? workout.exercise_id ?? 0;
-    
+
     if (!exercisesMap.has(exerciseId)) {
       exercisesMap.set(exerciseId, {
         exercise: {
@@ -150,10 +128,31 @@ export function transformToWorkoutFormValues(
     });
   }
 
-  // Sort exercises by their order and extract just the exercise data
-  const orderedExercises = Array.from(exercisesMap.values())
+  return exercisesMap;
+}
+
+function extractOrderedExercises(
+  exercisesMap: Map<number, { exercise: workout_UpdateExercise; order: number }>
+): workout_UpdateExercise[] {
+  return Array.from(exercisesMap.values())
     .sort((a, b) => a.order - b.order)
-    .map(entry => entry.exercise);
+    .map((entry) => entry.exercise);
+}
+
+export function transformToWorkoutFormValues(
+  workouts: workout_WorkoutWithSetsResponse[]
+): workout_UpdateWorkoutRequest {
+  if (workouts.length === 0) {
+    return {
+      date: new Date().toISOString(),
+      notes: '',
+      exercises: [],
+    };
+  }
+
+  const sortedWorkouts = sortByExerciseAndSetOrder(workouts);
+  const exercisesMap = groupSetsByExercise(sortedWorkouts);
+  const orderedExercises = extractOrderedExercises(exercisesMap);
 
   return {
     date: workouts[0].workout_date || new Date().toISOString(),
@@ -161,5 +160,3 @@ export function transformToWorkoutFormValues(
     exercises: orderedExercises,
   };
 }
-
-
