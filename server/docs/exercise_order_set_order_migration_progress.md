@@ -237,3 +237,46 @@ This ensures that:
 •  ✅ All tests pass, including integration tests
 
 The implementation is now ready for use and the backend can be deployed with these changes to properly support exercise and set ordering in workout creation requests.
+
+The UpdateSet query (lines 104-112) looks fine - it only updates the basic set fields (weight, reps, set_type) and doesn't touch the ordering columns, which is correct. The ordering should only be set during creation and shouldn't change during updates to preserve the original exercise/set order.
+
+📊 Final Summary: Exercise Repository & Ordering Columns Status
+
+✅ Successfully Updated:
+
+1. GetExerciseWithSets query:
+•  ✅ Now includes ordering columns: s.exercise_order, s.set_order in SELECT
+•  ✅ Updated ordering: ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id
+•  ✅ Generated struct updated: GetExerciseWithSetsRow now includes ExerciseOrder pgtype.Int4 and SetOrder pgtype.Int4
+2. GetRecentSetsForExercise query:
+•  ✅ Now includes ordering columns: s.exercise_order, s.set_order in SELECT
+•  ✅ Improved ordering: ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at DESC
+•  ✅ Generated struct updated: GetRecentSetsForExerciseRow now includes ExerciseOrder pgtype.Int4 and SetOrder pgtype.Int4
+3. Other queries already correctly implemented:
+•  ✅ GetSet: Uses SELECT * which includes ordering columns
+•  ✅ ListSets: Already uses ORDER BY exercise_order NULLS LAST, set_order NULLS LAST, id
+•  ✅ GetWorkoutWithSets: Already uses ORDER BY s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.id
+•  ✅ CreateSet: Already includes exercise_order, set_order columns
+•  ✅ UpdateSet: Correctly preserves ordering columns (doesn't modify them)
+
+🎯 Impact:
+
+1. Exercise endpoints now return ordering data:
+•  GET /api/exercises/{id} (GetExerciseWithSets) ✅ Returns exercise_order and set_order
+•  GET /api/exercises/{id}/recent-sets ✅ Returns exercise_order and set_order
+2. Proper ordering is enforced:
+•  Sets within each exercise are properly ordered by their logical sequence
+•  Recent sets maintain contextual ordering information
+•  Queries gracefully handle NULL ordering values with NULLS LAST
+3. Frontend compatibility:
+•  ✅ Frontend now receives ordering information for all exercise-related queries
+•  ✅ Can use this data to maintain consistent set display order
+•  ✅ Recent sets include context about their original workout position
+
+🧪 Testing Status:
+•  ✅ All exercise tests pass
+•  ✅ All workout tests pass  
+•  ✅ Backend builds successfully
+•  ✅ SQL generation completed successfully
+
+The exercise repository is now fully updated and properly handles the new exercise_order and set_order columns for both fetching and creating sets. The ordering functionality is now comprehensive across both workout and exercise endpoints.
