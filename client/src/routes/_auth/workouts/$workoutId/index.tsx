@@ -203,7 +203,7 @@ function IndividualWorkoutPage({
                     >
                       <div className="flex items-center space-x-4">
                         <span className="text-sm font-medium text-muted-foreground w-8">
-                          {index + 1}
+                          {set.set_order ?? index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="font-medium">
