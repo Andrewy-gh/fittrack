@@ -36,7 +36,7 @@ FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id;
+ORDER BY w.date DESC, s.set_order NULLS LAST, s.created_at, s.id;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
@@ -51,8 +51,8 @@ ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
 RETURNING *;
 
 -- name: CreateSet :one
-INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- Complex queries for joining data

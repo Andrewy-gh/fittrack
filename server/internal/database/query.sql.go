@@ -12,18 +12,20 @@ import (
 )
 
 const createSet = `-- name: CreateSet :one
-INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id, exercise_order, set_order
 `
 
 type CreateSetParams struct {
-	ExerciseID int32       `json:"exercise_id"`
-	WorkoutID  int32       `json:"workout_id"`
-	Weight     pgtype.Int4 `json:"weight"`
-	Reps       int32       `json:"reps"`
-	SetType    string      `json:"set_type"`
-	UserID     string      `json:"user_id"`
+	ExerciseID    int32       `json:"exercise_id"`
+	WorkoutID     int32       `json:"workout_id"`
+	Weight        pgtype.Int4 `json:"weight"`
+	Reps          int32       `json:"reps"`
+	SetType       string      `json:"set_type"`
+	UserID        string      `json:"user_id"`
+	ExerciseOrder pgtype.Int4 `json:"exercise_order"`
+	SetOrder      pgtype.Int4 `json:"set_order"`
 }
 
 func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, error) {
@@ -34,6 +36,8 @@ func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, erro
 		arg.Reps,
 		arg.SetType,
 		arg.UserID,
+		arg.ExerciseOrder,
+		arg.SetOrder,
 	)
 	var i Set
 	err := row.Scan(
@@ -201,7 +205,7 @@ FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id
+ORDER BY w.date DESC, s.set_order NULLS LAST, s.created_at, s.id
 `
 
 type GetExerciseWithSetsParams struct {

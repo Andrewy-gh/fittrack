@@ -343,15 +343,19 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 			"reps", set.Reps,
 			"weight", set.Weight,
 			"set_type", set.SetType,
+			"exercise_order", set.ExerciseOrder,
+			"set_order", set.SetOrder,
 			"user_id", userID)
 
 		_, err := qtx.CreateSet(ctx, db.CreateSetParams{
-			ExerciseID: exerciseID,
-			WorkoutID:  workoutID,
-			Weight:     set.Weight,
-			Reps:       set.Reps,
-			SetType:    set.SetType,
-			UserID:     userID,
+			ExerciseID:    exerciseID,
+			WorkoutID:     workoutID,
+			Weight:        set.Weight,
+			Reps:          set.Reps,
+			SetType:       set.SetType,
+			UserID:        userID,
+			ExerciseOrder: set.ExerciseOrder,
+			SetOrder:      set.SetOrder,
 		})
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to create set for exercise %s (ID: %d)", set.ExerciseName, exerciseID)
@@ -391,17 +395,38 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 		pgExercises = append(pgExercises, PGExerciseData(exercise))
 	}
 
-	// Convert sets
+	// Convert sets with ordering information
 	var pgSets []PGSetData
+	
+	// Create exercise name to order mapping
+	exerciseOrderMap := make(map[string]int32)
+	for i, exercise := range reformatted.Exercises {
+		exerciseOrderMap[exercise.Name] = int32(i + 1) // 1-based ordering
+	}
+	
+	// Create set order counters per exercise
+	setOrderCounters := make(map[string]int32)
+	
 	for _, set := range reformatted.Sets {
+		// Increment set counter for this exercise
+		setOrderCounters[set.ExerciseName]++
+		
 		pgSet := PGSetData{
-			ExerciseName: set.ExerciseName,
+			ExerciseName:  set.ExerciseName,
 			Weight: pgtype.Int4{
 				Int32: 0,
 				Valid: false,
 			},
-			Reps:    int32(set.Reps),
-			SetType: set.SetType,
+			Reps:          int32(set.Reps),
+			SetType:       set.SetType,
+			ExerciseOrder: pgtype.Int4{
+				Int32: exerciseOrderMap[set.ExerciseName],
+				Valid: true,
+			},
+			SetOrder: pgtype.Int4{
+				Int32: setOrderCounters[set.ExerciseName],
+				Valid: true,
+			},
 		}
 
 		if set.Weight != nil {
