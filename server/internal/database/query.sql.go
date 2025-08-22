@@ -200,12 +200,14 @@ SELECT
     s.set_type,
     s.exercise_id,
     e.name as exercise_name,
+    s.exercise_order,
+    s.set_order,
     (COALESCE(s.weight, 0) * s.reps) as volume
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.set_order NULLS LAST, s.created_at, s.id
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id
 `
 
 type GetExerciseWithSetsParams struct {
@@ -214,16 +216,18 @@ type GetExerciseWithSetsParams struct {
 }
 
 type GetExerciseWithSetsRow struct {
-	WorkoutID    int32              `json:"workout_id"`
-	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
-	WorkoutNotes pgtype.Text        `json:"workout_notes"`
-	SetID        int32              `json:"set_id"`
-	Weight       pgtype.Int4        `json:"weight"`
-	Reps         int32              `json:"reps"`
-	SetType      string             `json:"set_type"`
-	ExerciseID   int32              `json:"exercise_id"`
-	ExerciseName string             `json:"exercise_name"`
-	Volume       int32              `json:"volume"`
+	WorkoutID     int32              `json:"workout_id"`
+	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
+	SetID         int32              `json:"set_id"`
+	Weight        pgtype.Int4        `json:"weight"`
+	Reps          int32              `json:"reps"`
+	SetType       string             `json:"set_type"`
+	ExerciseID    int32              `json:"exercise_id"`
+	ExerciseName  string             `json:"exercise_name"`
+	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
+	SetOrder      pgtype.Int4        `json:"set_order"`
+	Volume        int32              `json:"volume"`
 }
 
 func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSetsParams) ([]GetExerciseWithSetsRow, error) {
@@ -245,6 +249,8 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 			&i.SetType,
 			&i.ExerciseID,
 			&i.ExerciseName,
+			&i.ExerciseOrder,
+			&i.SetOrder,
 			&i.Volume,
 		); err != nil {
 			return nil, err
@@ -288,11 +294,13 @@ SELECT
     w.date AS workout_date,
     s.weight,
     s.reps,
+    s.exercise_order,
+    s.set_order,
     s.created_at
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY s.created_at DESC
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at DESC
 LIMIT 3
 `
 
@@ -302,11 +310,13 @@ type GetRecentSetsForExerciseParams struct {
 }
 
 type GetRecentSetsForExerciseRow struct {
-	SetID       int32              `json:"set_id"`
-	WorkoutDate pgtype.Timestamptz `json:"workout_date"`
-	Weight      pgtype.Int4        `json:"weight"`
-	Reps        int32              `json:"reps"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	SetID         int32              `json:"set_id"`
+	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	Weight        pgtype.Int4        `json:"weight"`
+	Reps          int32              `json:"reps"`
+	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
+	SetOrder      pgtype.Int4        `json:"set_order"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSetsForExerciseParams) ([]GetRecentSetsForExerciseRow, error) {
@@ -323,6 +333,8 @@ func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSet
 			&i.WorkoutDate,
 			&i.Weight,
 			&i.Reps,
+			&i.ExerciseOrder,
+			&i.SetOrder,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

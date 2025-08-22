@@ -31,12 +31,14 @@ SELECT
     s.set_type,
     s.exercise_id,
     e.name as exercise_name,
+    s.exercise_order,
+    s.set_order,
     (COALESCE(s.weight, 0) * s.reps) as volume
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.set_order NULLS LAST, s.created_at, s.id;
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
@@ -130,9 +132,11 @@ SELECT
     w.date AS workout_date,
     s.weight,
     s.reps,
+    s.exercise_order,
+    s.set_order,
     s.created_at
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY s.created_at DESC
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at DESC
 LIMIT 3;
