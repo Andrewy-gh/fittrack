@@ -63,10 +63,16 @@ definitions:
       exercise_name:
         example: Bench Press
         type: string
+      exercise_order:
+        example: 0
+        type: integer
       reps:
         example: 10
         type: integer
       set_id:
+        example: 1
+        type: integer
+      set_order:
         example: 1
         type: integer
       set_type:
@@ -102,11 +108,17 @@ definitions:
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string
+      exercise_order:
+        example: 0
+        type: integer
       reps:
         example: 10
         type: integer
       set_id:
         example: 1
+        type: integer
+      set_order:
+        example: 2
         type: integer
       weight:
         example: 225
@@ -264,10 +276,16 @@ definitions:
       exercise_name:
         example: Bench Press
         type: string
+      exercise_order:
+        example: 0
+        type: integer
       reps:
         example: 10
         type: integer
       set_id:
+        example: 1
+        type: integer
+      set_order:
         example: 1
         type: integer
       set_type:

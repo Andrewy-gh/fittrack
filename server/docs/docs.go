@@ -613,11 +613,19 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Bench Press"
                 },
+                "exercise_order": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "reps": {
                     "type": "integer",
                     "example": 10
                 },
                 "set_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "set_order": {
                     "type": "integer",
                     "example": 1
                 },
@@ -660,6 +668,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
                 },
+                "exercise_order": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "reps": {
                     "type": "integer",
                     "example": 10
@@ -667,6 +679,10 @@ const docTemplate = `{
                 "set_id": {
                     "type": "integer",
                     "example": 1
+                },
+                "set_order": {
+                    "type": "integer",
+                    "example": 2
                 },
                 "weight": {
                     "type": "integer",
@@ -890,11 +906,19 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Bench Press"
                 },
+                "exercise_order": {
+                    "type": "integer",
+                    "example": 0
+                },
                 "reps": {
                     "type": "integer",
                     "example": 10
                 },
                 "set_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "set_order": {
                     "type": "integer",
                     "example": 1
                 },

@@ -38,9 +38,11 @@ type CreateExerciseResponse struct {
 
 // RecentSetsResponse represents recent sets response for swagger documentation
 type RecentSetsResponse struct {
-	SetID       int32     `json:"set_id" validate:"required" example:"1"`
-	WorkoutDate time.Time `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
-	Weight      *int32    `json:"weight,omitempty" example:"225"`
-	Reps        int32     `json:"reps" validate:"required" example:"10"`
-	CreatedAt   time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	SetID         int32     `json:"set_id" validate:"required" example:"1"`
+	WorkoutDate   time.Time `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
+	Weight        *int32    `json:"weight,omitempty" example:"225"`
+	Reps          int32     `json:"reps" validate:"required" example:"10"`
+	ExerciseOrder *int32    `json:"exercise_order,omitempty" example:"0"`
+	SetOrder      *int32    `json:"set_order,omitempty" example:"2"`
+	CreatedAt     time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
 }
