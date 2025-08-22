@@ -434,6 +434,8 @@ SELECT
     s.set_type,
     e.id as exercise_id,
     e.name as exercise_name,
+    s.exercise_order,
+    s.set_order,
     (COALESCE(s.weight, 0) * s.reps) as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
@@ -448,16 +450,18 @@ type GetWorkoutWithSetsParams struct {
 }
 
 type GetWorkoutWithSetsRow struct {
-	WorkoutID    int32              `json:"workout_id"`
-	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
-	WorkoutNotes pgtype.Text        `json:"workout_notes"`
-	SetID        int32              `json:"set_id"`
-	Weight       pgtype.Int4        `json:"weight"`
-	Reps         int32              `json:"reps"`
-	SetType      string             `json:"set_type"`
-	ExerciseID   int32              `json:"exercise_id"`
-	ExerciseName string             `json:"exercise_name"`
-	Volume       int32              `json:"volume"`
+	WorkoutID     int32              `json:"workout_id"`
+	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
+	SetID         int32              `json:"set_id"`
+	Weight        pgtype.Int4        `json:"weight"`
+	Reps          int32              `json:"reps"`
+	SetType       string             `json:"set_type"`
+	ExerciseID    int32              `json:"exercise_id"`
+	ExerciseName  string             `json:"exercise_name"`
+	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
+	SetOrder      pgtype.Int4        `json:"set_order"`
+	Volume        int32              `json:"volume"`
 }
 
 // Complex queries for joining data
@@ -480,6 +484,8 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 			&i.SetType,
 			&i.ExerciseID,
 			&i.ExerciseName,
+			&i.ExerciseOrder,
+			&i.SetOrder,
 			&i.Volume,
 		); err != nil {
 			return nil, err

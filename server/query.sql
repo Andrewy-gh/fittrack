@@ -69,6 +69,8 @@ SELECT
     s.set_type,
     e.id as exercise_id,
     e.name as exercise_name,
+    s.exercise_order,
+    s.set_order,
     (COALESCE(s.weight, 0) * s.reps) as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
