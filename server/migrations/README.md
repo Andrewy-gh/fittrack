@@ -5,10 +5,49 @@ This directory contains the database migration files for the FitTrack applicatio
 ## Migration Files
 
 1. `00001_create_users_table.sql` - Creates the users table
-2. `00002_add_user_id_to_workout_exercise_table.sql` - Adds user_id foreign keys to workout and exercise tables
-3. `00003_remove_exercise_name_unique_constraint.sql` - Removes the unique constraint on exercise names
-4. `00004_make_user_id_not_nullable.sql` - Makes user_id columns NOT NULL
-5. `00005_add_rls_policies.sql` - Adds Row Level Security (RLS) policies
+2. `00002_create_base_tables.sql` - Creates the workout, exercise, and "set" tables
+3. `00003_add_user_id_to_workout_exercise_table.sql` - Adds user_id foreign keys to workout and exercise tables
+4. `00004_remove_exercise_name_unique_constraint.sql` - Removes the unique constraint on exercise names
+5. `00005_make_user_id_not_nullable.sql` - Makes user_id columns NOT NULL
+6. `00006_add_rls_policies.sql` - Adds Row Level Security (RLS) policies
+7. `00007_add_user_id_to_sets.sql` - Adds user_id column to the "set" table
+8. `00008_add_order_columns_to_set_table.sql` - Adds exercise_order and set_order columns to "set" table
+
+## Set Ordering (Migration 00008)
+
+The `00008_add_order_columns_to_set_table.sql` migration adds explicit ordering columns to control the sequence of exercises within workouts and sets within exercises.
+
+### Columns Added
+
+- `exercise_order INTEGER` - Position of this exercise within the workout (1, 2, 3, etc.)
+- `set_order INTEGER` - Position of this set within the exercise (1, 2, 3, etc.)
+
+### Important Notes
+
+- **Nullable Initially**: Columns are intentionally nullable to allow safe deployment to production
+- **1-indexed Convention**: Values start at 1 (not 0) for user-friendly ordering
+- **No Indexes**: Pure ordering columns with no filtering, so no indexes added initially
+- **Backfill Required**: Existing data needs to be populated before making columns NOT NULL
+
+### Backfilling Data
+
+After applying migration 00008, use the backfill script `server/scripts/backfill-set-order-columns.sql` to populate existing data:
+
+```bash
+# Run the backfill script
+psql -d your_database -f server/scripts/backfill-set-order-columns.sql
+```
+
+The backfill maintains previous ordering behavior:
+- Exercises ordered by name within each workout
+- Sets ordered by created_at and id within each exercise
+
+### Future Migration
+
+A follow-up migration will:
+- Make columns NOT NULL with appropriate defaults
+- Add CHECK constraints ensuring values ≥ 1
+- Optionally add indexes if query patterns require them
 
 ## Row Level Security (RLS)
 

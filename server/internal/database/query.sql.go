@@ -14,7 +14,7 @@ import (
 const createSet = `-- name: CreateSet :one
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id
+RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id, exercise_order, set_order
 `
 
 type CreateSetParams struct {
@@ -46,6 +46,8 @@ func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
+		&i.ExerciseOrder,
+		&i.SetOrder,
 	)
 	return i, err
 }
@@ -199,7 +201,7 @@ FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.created_at
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id
 `
 
 type GetExerciseWithSetsParams struct {
@@ -330,7 +332,7 @@ func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSet
 }
 
 const getSet = `-- name: GetSet :one
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id FROM "set" 
+SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id, exercise_order, set_order FROM "set" 
 WHERE id = $1 AND user_id = $2
 `
 
@@ -352,6 +354,8 @@ func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (Set, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
+		&i.ExerciseOrder,
+		&i.SetOrder,
 	)
 	return i, err
 }
@@ -419,7 +423,7 @@ FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
 WHERE w.id = $1 AND w.user_id = $2
-ORDER BY e.name, s.id
+ORDER BY s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.id
 `
 
 type GetWorkoutWithSetsParams struct {
@@ -503,9 +507,9 @@ func (q *Queries) ListExercises(ctx context.Context, userID string) ([]Exercise,
 }
 
 const listSets = `-- name: ListSets :many
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id FROM "set" 
+SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id, exercise_order, set_order FROM "set" 
 WHERE user_id = $1
-ORDER BY id
+ORDER BY exercise_order NULLS LAST, set_order NULLS LAST, id
 `
 
 func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
@@ -527,6 +531,8 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserID,
+			&i.ExerciseOrder,
+			&i.SetOrder,
 		); err != nil {
 			return nil, err
 		}
@@ -577,7 +583,7 @@ SET
     set_type = COALESCE($4, set_type),
     updated_at = NOW()
 WHERE id = $1 AND user_id = $5
-RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id
+RETURNING id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id, exercise_order, set_order
 `
 
 type UpdateSetParams struct {
@@ -607,6 +613,8 @@ func (q *Queries) UpdateSet(ctx context.Context, arg UpdateSetParams) (Set, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
+		&i.ExerciseOrder,
+		&i.SetOrder,
 	)
 	return i, err
 }
