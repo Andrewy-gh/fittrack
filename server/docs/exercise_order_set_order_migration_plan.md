@@ -141,3 +141,21 @@ Include in the PR description:
 - Backfill exercise_order and set_order in each environment
 - Monitor logs for queries touching "set" to ensure no regressions
 - Later: add a new migration to set DEFAULTs, enforce NOT NULL, and possibly add a CHECK (exercise_order &gt;= 1, set_order &gt;= 1)
+
+**Summary of the Plan**
+
+Goal: Add two 1-indexed nullable INTEGER columns (exercise_order and set_order) to the "set" table to control ordering of exercises within workouts and sets within exercises.
+
+Key Features:
+•  ✅ Nullable columns initially - Safe for production deployment since you have existing data
+•  ✅ 1-indexed ordering - Natural for users (1, 2, 3, etc.)
+•  ✅ Preserves existing behavior - Uses NULLS LAST with id tie-breaker during transition
+•  ✅ Updates 3 key queries that currently order by e.name or s.id
+•  ✅ Comprehensive test updates - Ensures deterministic ordering in tests
+•  ✅ Includes backfill strategy - Script to populate existing data based on current ordering logic
+
+Migration Strategy:
+1. Phase 1 (this plan): Add nullable columns, update queries, test
+2. Phase 2 (future): Backfill production data, make columns NOT NULL
+
+The plan includes 12 detailed tasks covering migration creation, query updates, code generation, testing, and deployment guidance.
