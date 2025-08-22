@@ -26,8 +26,8 @@ type Set struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	UserID        string             `json:"user_id"`
-	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
-	SetOrder      pgtype.Int4        `json:"set_order"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
 }
 
 type Users struct {

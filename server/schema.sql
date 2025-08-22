@@ -36,8 +36,8 @@ CREATE TABLE "set" (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    exercise_order INTEGER,
-    set_order INTEGER
+    exercise_order INTEGER NOT NULL,
+    set_order INTEGER NOT NULL
 );
 
 -- Indexes for foreign keys
