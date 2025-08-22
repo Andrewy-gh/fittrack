@@ -18,7 +18,7 @@ WHERE id = $1 AND user_id = $2;
 -- name: ListSets :many
 SELECT * FROM "set" 
 WHERE user_id = $1
-ORDER BY id;
+ORDER BY exercise_order NULLS LAST, set_order NULLS LAST, id;
 
 -- name: GetExerciseWithSets :many
 SELECT 
@@ -31,12 +31,14 @@ SELECT
     s.set_type,
     s.exercise_id,
     e.name as exercise_name,
+    s.exercise_order,
+    s.set_order,
     (COALESCE(s.weight, 0) * s.reps) as volume
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.created_at;
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
@@ -51,8 +53,8 @@ ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
 RETURNING *;
 
 -- name: CreateSet :one
-INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- Complex queries for joining data
@@ -67,12 +69,14 @@ SELECT
     s.set_type,
     e.id as exercise_id,
     e.name as exercise_name,
+    s.exercise_order,
+    s.set_order,
     (COALESCE(s.weight, 0) * s.reps) as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
 WHERE w.id = $1 AND w.user_id = $2
-ORDER BY e.name, s.id;
+ORDER BY s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.id;
 
 -- name: GetExerciseByName :one
 SELECT * FROM exercise WHERE name = $1 AND user_id = $2;
@@ -130,9 +134,11 @@ SELECT
     w.date AS workout_date,
     s.weight,
     s.reps,
+    s.exercise_order,
+    s.set_order,
     s.created_at
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY s.created_at DESC
+ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at DESC
 LIMIT 3;

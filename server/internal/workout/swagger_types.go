@@ -15,14 +15,16 @@ type WorkoutResponse struct {
 
 // SetResponse represents a set response for swagger documentation
 type SetResponse struct {
-	ID         int32      `json:"id" example:"1"`
-	ExerciseID int32      `json:"exercise_id" example:"1"`
-	WorkoutID  int32      `json:"workout_id" example:"1"`
-	Weight     *int32     `json:"weight,omitempty" example:"225"`
-	Reps       int32      `json:"reps" example:"10"`
-	SetType    string     `json:"set_type" example:"working"`
-	CreatedAt  time.Time  `json:"created_at" example:"2023-01-01T15:04:05Z"`
-	UpdatedAt  time.Time  `json:"updated_at" example:"2023-01-01T15:04:05Z"`
+	ID            int32      `json:"id" example:"1"`
+	ExerciseID    int32      `json:"exercise_id" example:"1"`
+	WorkoutID     int32      `json:"workout_id" example:"1"`
+	Weight        *int32     `json:"weight,omitempty" example:"225"`
+	Reps          int32      `json:"reps" example:"10"`
+	SetType       string     `json:"set_type" example:"working"`
+	ExerciseOrder *int32     `json:"exercise_order,omitempty" example:"0"`
+	SetOrder      *int32     `json:"set_order,omitempty" example:"1"`
+	CreatedAt     time.Time  `json:"created_at" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt     time.Time  `json:"updated_at" example:"2023-01-01T15:04:05Z"`
 }
 
 // ExerciseResponse represents an exercise response for swagger documentation
@@ -36,16 +38,18 @@ type ExerciseResponse struct {
 
 // WorkoutWithSetsResponse represents a workout with sets response for swagger documentation
 type WorkoutWithSetsResponse struct {
-	WorkoutID    int32      `json:"workout_id" validate:"required" example:"1"`
-	WorkoutDate  time.Time  `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
-	WorkoutNotes *string    `json:"workout_notes,omitempty" example:"Great workout today"`
-	SetID        int32      `json:"set_id" validate:"required" example:"1"`
-	Weight       *int32     `json:"weight,omitempty" example:"225"`
-	Reps         int32      `json:"reps" validate:"required" example:"10"`
-	SetType      string     `json:"set_type" validate:"required" example:"working"`
-	ExerciseID   int32      `json:"exercise_id" validate:"required" example:"1"`
-	ExerciseName string     `json:"exercise_name" validate:"required" example:"Bench Press"`
-	Volume       int32      `json:"volume" validate:"required" example:"2250"`
+	WorkoutID     int32      `json:"workout_id" validate:"required" example:"1"`
+	WorkoutDate   time.Time  `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
+	WorkoutNotes  *string    `json:"workout_notes,omitempty" example:"Great workout today"`
+	SetID         int32      `json:"set_id" validate:"required" example:"1"`
+	Weight        *int32     `json:"weight,omitempty" example:"225"`
+	Reps          int32      `json:"reps" validate:"required" example:"10"`
+	SetType       string     `json:"set_type" validate:"required" example:"working"`
+	ExerciseID    int32      `json:"exercise_id" validate:"required" example:"1"`
+	ExerciseName  string     `json:"exercise_name" validate:"required" example:"Bench Press"`
+	ExerciseOrder *int32     `json:"exercise_order,omitempty" example:"0"`
+	SetOrder      *int32     `json:"set_order,omitempty" example:"1"`
+	Volume        int32      `json:"volume" validate:"required" example:"2250"`
 }
 
 // UpdateWorkoutRequest represents an update workout request for swagger documentation

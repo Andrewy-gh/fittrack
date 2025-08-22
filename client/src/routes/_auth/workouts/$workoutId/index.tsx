@@ -10,6 +10,7 @@ import { formatDate, formatTime } from '@/lib/utils';
 import { workoutQueryOptions } from '@/lib/api/workouts';
 import type { workout_WorkoutWithSetsResponse } from '@/generated';
 import { DeleteDialog } from '../-components/delete-dialog';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 function IndividualWorkoutPage({
   workout,
@@ -25,20 +26,25 @@ function IndividualWorkoutPage({
   const totalReps = workout.reduce((sum, w) => sum + (w.reps || 0), 0);
   const totalVolume = workout.reduce((sum, w) => sum + (w.volume || 0), 0);
 
-  // Group exercises
-  const exerciseGroups = workout.reduce(
+  const sortedWorkouts = sortByExerciseAndSetOrder(workout);
+
+  // Group exercises while preserving order
+  const exerciseGroups = sortedWorkouts.reduce(
     (acc, w) => {
       const exerciseId = w.exercise_id || 0;
+      const exerciseOrder = w.exercise_order ?? w.exercise_id ?? 0;
+      
       if (!acc[exerciseId]) {
         acc[exerciseId] = {
           name: w.exercise_name || 'Unknown Exercise',
           sets: [],
+          order: exerciseOrder,
         };
       }
       acc[exerciseId].sets.push(w);
       return acc;
     },
-    {} as Record<number, { name: string; sets: typeof workout }>
+    {} as Record<number, { name: string; sets: typeof workout; order: number }>
   );
 
   const workoutDate = workout[0]?.workout_date;
@@ -143,7 +149,9 @@ function IndividualWorkoutPage({
         {/* MARK: Exercises */}
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Exercises</h2>
-          {Object.entries(exerciseGroups).map(([exerciseId, exercise]) => {
+          {Object.entries(exerciseGroups)
+            .sort(([, a], [, b]) => a.order - b.order)
+            .map(([exerciseId, exercise]) => {
             const exerciseReps = exercise.sets.reduce(
               (sum, set) => sum + (set.reps || 0),
               0
@@ -184,7 +192,7 @@ function IndividualWorkoutPage({
                     >
                       <div className="flex items-center space-x-4">
                         <span className="text-sm font-medium text-muted-foreground w-8">
-                          {index + 1}
+                          {set.set_order ?? index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="font-medium">

@@ -36,10 +36,12 @@ type PGExerciseData struct {
 }
 
 type PGSetData struct {
-	ExerciseName string
-	Weight       pgtype.Int4
-	Reps         int32
-	SetType      string
+	ExerciseName  string
+	Weight        pgtype.Int4
+	Reps          int32
+	SetType       string
+	ExerciseOrder pgtype.Int4
+	SetOrder      pgtype.Int4
 }
 
 type PGReformattedRequest struct {

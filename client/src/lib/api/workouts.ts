@@ -10,6 +10,7 @@ import type {
   workout_UpdateExercise,
   workout_UpdateSet,
 } from '@/generated';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 export function workoutsQueryOptions(user: User) {
   const validatedUser = ensureUser(user);
@@ -25,10 +26,7 @@ export function workoutsQueryOptions(user: User) {
   });
 }
 
-export function workoutQueryOptions(
-  workoutId: number,
-  user: User
-) {
+export function workoutQueryOptions(workoutId: number, user: User) {
   const validatedUser = ensureUser(user);
   return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
     queryKey: ['workouts', 'details', workoutId],
@@ -96,8 +94,49 @@ export async function deleteWorkout(
   OpenAPI.HEADERS = {
     'x-stack-access-token': accessToken,
   };
-  
+
   return WorkoutsService.deleteWorkouts(workoutId);
+}
+
+function groupSetsByExercise(
+  sortedWorkouts: workout_WorkoutWithSetsResponse[]
+): Map<number, { exercise: workout_UpdateExercise; order: number }> {
+  const exercisesMap = new Map<
+    number,
+    { exercise: workout_UpdateExercise; order: number }
+  >();
+
+  for (const workout of sortedWorkouts) {
+    const exerciseId = workout.exercise_id || 0;
+    const exerciseOrder = workout.exercise_order ?? workout.exercise_id ?? 0;
+
+    if (!exercisesMap.has(exerciseId)) {
+      exercisesMap.set(exerciseId, {
+        exercise: {
+          name: workout.exercise_name || '',
+          sets: [],
+        },
+        order: exerciseOrder,
+      });
+    }
+
+    const exerciseEntry = exercisesMap.get(exerciseId)!;
+    exerciseEntry.exercise.sets.push({
+      weight: workout.weight || 0,
+      reps: workout.reps || 0,
+      setType: workout.set_type as workout_UpdateSet.setType,
+    });
+  }
+
+  return exercisesMap;
+}
+
+function extractOrderedExercises(
+  exercisesMap: Map<number, { exercise: workout_UpdateExercise; order: number }>
+): workout_UpdateExercise[] {
+  return Array.from(exercisesMap.values())
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => entry.exercise);
 }
 
 export function transformToWorkoutFormValues(
@@ -111,36 +150,13 @@ export function transformToWorkoutFormValues(
     };
   }
 
-  // Group sets by exercise
-  const exercisesMap = new Map<number, workout_UpdateExercise>();
-
-  // Sort all workouts by set_id first to ensure consistent ordering
-  const sortedWorkouts = [...workouts].sort(
-    (a, b) => (a.set_id || 0) - (b.set_id || 0)
-  );
-
-  for (const workout of sortedWorkouts) {
-    const exerciseId = workout.exercise_id || 0;
-    if (!exercisesMap.has(exerciseId)) {
-      exercisesMap.set(exerciseId, {
-        name: workout.exercise_name || '',
-        sets: [],
-      });
-    }
-
-    const exercise = exercisesMap.get(exerciseId)!;
-    exercise.sets.push({
-      weight: workout.weight || 0,
-      reps: workout.reps || 0,
-      setType: workout.set_type as workout_UpdateSet.setType,
-    });
-  }
+  const sortedWorkouts = sortByExerciseAndSetOrder(workouts);
+  const exercisesMap = groupSetsByExercise(sortedWorkouts);
+  const orderedExercises = extractOrderedExercises(exercisesMap);
 
   return {
     date: workouts[0].workout_date || new Date().toISOString(),
     notes: workouts[0].workout_notes || '',
-    exercises: Array.from(exercisesMap.values()),
+    exercises: orderedExercises,
   };
 }
-
-

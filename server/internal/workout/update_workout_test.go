@@ -479,6 +479,9 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		
+		// Order columns are now automatically populated by the UpdateWorkout method
+		// No manual backfill needed since our implementation handles ordering
+		
 		// Verify the update by getting the workout and checking exercises and sets
 		getReq := httptest.NewRequest("GET", fmt.Sprintf("/api/workouts/%d", workoutID), nil)
 		getReq = getReq.WithContext(ctx)

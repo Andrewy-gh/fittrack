@@ -787,6 +787,10 @@ func setupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 
 	// Setup users table entries
 	setupTestUsers(t, pool)
+	
+	// Backfill order columns for existing test data if they exist
+	// This ensures tests work with both old and new database schemas
+	backfillOrderColumnsForTests(t, pool)
 
 	return pool, func() {
 		cleanupTestData(t, pool)
@@ -913,5 +917,22 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY; ALTER TABLE exercise ENABLE ROW LEVEL SECURITY; ALTER TABLE \"set\" ENABLE ROW LEVEL SECURITY;")
 	if err != nil {
 		t.Logf("Warning: Failed to re-enable RLS after cleanup: %v", err)
+	}
+}
+
+func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	
+	// Backfill order columns for all test users
+	// This ensures tests work whether or not the migration has been applied
+	testUsers := []string{"test-user-a", "test-user-b"}
+	
+	for _, userID := range testUsers {
+		// Set user context for RLS
+		ctxUser := testutils.SetTestUserContext(ctx, t, pool, userID)
+		
+		// Backfill order columns for this user
+		testutils.BackfillSetOrderColumns(ctxUser, t, pool, userID)
 	}
 }

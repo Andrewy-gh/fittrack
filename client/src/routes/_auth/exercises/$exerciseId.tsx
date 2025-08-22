@@ -17,6 +17,7 @@ import type { exercise_ExerciseWithSetsResponse } from '@/generated';
 import { exerciseQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
 import { checkUser, type User } from '@/lib/api/auth';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 function ExerciseDisplay({
   exerciseSets,
@@ -39,8 +40,10 @@ function ExerciseDisplay({
   );
   const maxVolume = Math.max(...volumes);
 
-  // Group sets by workout
-  const workoutGroups = exerciseSets.reduce(
+  const sortedExerciseSets = sortByExerciseAndSetOrder(exerciseSets);
+
+  // Group sets by workout while preserving order
+  const workoutGroups = sortedExerciseSets.reduce(
     (acc, set) => {
       if (!acc[set.workout_id]) {
         acc[set.workout_id] = {
@@ -201,7 +204,7 @@ function ExerciseDisplay({
                     >
                       <div className="flex items-center space-x-4">
                         <span className="text-sm font-medium text-muted-foreground w-8">
-                          {index + 1}
+                          {set.set_order ?? index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="font-medium">{set.weight} lbs</span>
