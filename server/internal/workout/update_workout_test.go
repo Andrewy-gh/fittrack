@@ -14,7 +14,6 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
-	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
@@ -480,9 +479,8 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		
-		// Backfill order columns for the sets we just created
-		// This ensures the subsequent GetWorkoutWithSets query works correctly
-		testutils.BackfillSetOrderColumns(ctx, t, pool, userAID)
+		// Order columns are now automatically populated by the UpdateWorkout method
+		// No manual backfill needed since our implementation handles ordering
 		
 		// Verify the update by getting the workout and checking exercises and sets
 		getReq := httptest.NewRequest("GET", fmt.Sprintf("/api/workouts/%d", workoutID), nil)
