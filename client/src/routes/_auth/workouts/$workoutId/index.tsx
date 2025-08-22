@@ -25,20 +25,37 @@ function IndividualWorkoutPage({
   const totalReps = workout.reduce((sum, w) => sum + (w.reps || 0), 0);
   const totalVolume = workout.reduce((sum, w) => sum + (w.volume || 0), 0);
 
-  // Group exercises
-  const exerciseGroups = workout.reduce(
+  // Sort workouts by exercise_order, then set_order
+  const sortedWorkouts = [...workout].sort((a, b) => {
+    // First sort by exercise_order (or exercise_id if order is null)
+    const exerciseOrderA = a.exercise_order ?? a.exercise_id ?? 0;
+    const exerciseOrderB = b.exercise_order ?? b.exercise_id ?? 0;
+    if (exerciseOrderA !== exerciseOrderB) {
+      return exerciseOrderA - exerciseOrderB;
+    }
+    // Then sort by set_order (or set_id if order is null)
+    const setOrderA = a.set_order ?? a.set_id ?? 0;
+    const setOrderB = b.set_order ?? b.set_id ?? 0;
+    return setOrderA - setOrderB;
+  });
+
+  // Group exercises while preserving order
+  const exerciseGroups = sortedWorkouts.reduce(
     (acc, w) => {
       const exerciseId = w.exercise_id || 0;
+      const exerciseOrder = w.exercise_order ?? w.exercise_id ?? 0;
+      
       if (!acc[exerciseId]) {
         acc[exerciseId] = {
           name: w.exercise_name || 'Unknown Exercise',
           sets: [],
+          order: exerciseOrder,
         };
       }
       acc[exerciseId].sets.push(w);
       return acc;
     },
-    {} as Record<number, { name: string; sets: typeof workout }>
+    {} as Record<number, { name: string; sets: typeof workout; order: number }>
   );
 
   const workoutDate = workout[0]?.workout_date;
@@ -143,7 +160,9 @@ function IndividualWorkoutPage({
         {/* MARK: Exercises */}
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Exercises</h2>
-          {Object.entries(exerciseGroups).map(([exerciseId, exercise]) => {
+          {Object.entries(exerciseGroups)
+            .sort(([, a], [, b]) => a.order - b.order)
+            .map(([exerciseId, exercise]) => {
             const exerciseReps = exercise.sets.reduce(
               (sum, set) => sum + (set.reps || 0),
               0

@@ -39,8 +39,22 @@ function ExerciseDisplay({
   );
   const maxVolume = Math.max(...volumes);
 
-  // Group sets by workout
-  const workoutGroups = exerciseSets.reduce(
+  // Sort all exercise sets by workout date (desc), then by set order within workout
+  const sortedExerciseSets = [...exerciseSets].sort((a, b) => {
+    // First sort by workout date (descending - newest first)
+    const dateA = new Date(a.workout_date).getTime();
+    const dateB = new Date(b.workout_date).getTime();
+    if (dateA !== dateB) {
+      return dateB - dateA; // Descending order (newest first)
+    }
+    // Then sort by set_order within the same workout
+    const setOrderA = a.set_order ?? a.set_id ?? 0;
+    const setOrderB = b.set_order ?? b.set_id ?? 0;
+    return setOrderA - setOrderB;
+  });
+
+  // Group sets by workout while preserving order
+  const workoutGroups = sortedExerciseSets.reduce(
     (acc, set) => {
       if (!acc[set.workout_id]) {
         acc[set.workout_id] = {

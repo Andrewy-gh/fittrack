@@ -111,35 +111,54 @@ export function transformToWorkoutFormValues(
     };
   }
 
-  // Group sets by exercise
-  const exercisesMap = new Map<number, workout_UpdateExercise>();
+  // Sort all workouts by exercise_order, then set_order to maintain proper ordering
+  const sortedWorkouts = [...workouts].sort((a, b) => {
+    // First sort by exercise_order (or exercise_id if order is null)
+    const exerciseOrderA = a.exercise_order ?? a.exercise_id ?? 0;
+    const exerciseOrderB = b.exercise_order ?? b.exercise_id ?? 0;
+    if (exerciseOrderA !== exerciseOrderB) {
+      return exerciseOrderA - exerciseOrderB;
+    }
+    // Then sort by set_order (or set_id if order is null)
+    const setOrderA = a.set_order ?? a.set_id ?? 0;
+    const setOrderB = b.set_order ?? b.set_id ?? 0;
+    return setOrderA - setOrderB;
+  });
 
-  // Sort all workouts by set_id first to ensure consistent ordering
-  const sortedWorkouts = [...workouts].sort(
-    (a, b) => (a.set_id || 0) - (b.set_id || 0)
-  );
+  // Group sets by exercise, preserving order
+  const exercisesMap = new Map<number, { exercise: workout_UpdateExercise; order: number }>();
 
   for (const workout of sortedWorkouts) {
     const exerciseId = workout.exercise_id || 0;
+    const exerciseOrder = workout.exercise_order ?? workout.exercise_id ?? 0;
+    
     if (!exercisesMap.has(exerciseId)) {
       exercisesMap.set(exerciseId, {
-        name: workout.exercise_name || '',
-        sets: [],
+        exercise: {
+          name: workout.exercise_name || '',
+          sets: [],
+        },
+        order: exerciseOrder,
       });
     }
 
-    const exercise = exercisesMap.get(exerciseId)!;
-    exercise.sets.push({
+    const exerciseEntry = exercisesMap.get(exerciseId)!;
+    exerciseEntry.exercise.sets.push({
       weight: workout.weight || 0,
       reps: workout.reps || 0,
       setType: workout.set_type as workout_UpdateSet.setType,
     });
   }
 
+  // Sort exercises by their order and extract just the exercise data
+  const orderedExercises = Array.from(exercisesMap.values())
+    .sort((a, b) => a.order - b.order)
+    .map(entry => entry.exercise);
+
   return {
     date: workouts[0].workout_date || new Date().toISOString(),
     notes: workouts[0].workout_notes || '',
-    exercises: Array.from(exercisesMap.values()),
+    exercises: orderedExercises,
   };
 }
 

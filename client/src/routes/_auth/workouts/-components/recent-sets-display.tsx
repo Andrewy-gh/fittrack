@@ -22,8 +22,22 @@ export function RecentSetsDisplay({
     return null;
   }
 
-  // Group sets by workout_date (since this is recent sets, we don't have workout IDs)
-  const groupedSets = recentSets.reduce(
+  // Sort recent sets by workout date (desc), then by set order within workout
+  const sortedRecentSets = [...recentSets].sort((a, b) => {
+    // First sort by workout date (descending - newest first)
+    const dateA = new Date(a.workout_date).getTime();
+    const dateB = new Date(b.workout_date).getTime();
+    if (dateA !== dateB) {
+      return dateB - dateA;
+    }
+    // Then sort by set_order within the same workout
+    const setOrderA = a.set_order ?? a.set_id ?? 0;
+    const setOrderB = b.set_order ?? b.set_id ?? 0;
+    return setOrderA - setOrderB;
+  });
+
+  // Group sets by workout_date, preserving order
+  const groupedSets = sortedRecentSets.reduce(
     (acc, set) => {
       const dateKey = set.workout_date;
       if (!acc[dateKey]) {
