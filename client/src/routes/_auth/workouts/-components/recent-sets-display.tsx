@@ -21,7 +21,7 @@ export function RecentSetsDisplay({
   const { data: recentSets } = useSuspenseQuery(
     recentExerciseSetsQueryOptions(exerciseId, user)
   );
-  console.log('recentSets', recentSets);
+  
   if (recentSets.length === 0) {
     return null;
   }
