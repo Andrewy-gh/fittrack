@@ -5,6 +5,9 @@ import { formatDate } from '@/lib/utils';
 import type { User } from '@/lib/api/auth';
 import type { exercise_RecentSetsResponse } from '@/generated';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
+import { Link } from '@tanstack/react-router';
+import { ChevronRight } from 'lucide-react';
+
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
@@ -18,12 +21,12 @@ export function RecentSetsDisplay({
   const { data: recentSets } = useSuspenseQuery(
     recentExerciseSetsQueryOptions(exerciseId, user)
   );
-
+  
   if (recentSets.length === 0) {
     return null;
   }
 
-  const sortedRecentSets = sortByExerciseAndSetOrder(recentSets)
+  const sortedRecentSets = sortByExerciseAndSetOrder(recentSets);
 
   // Group sets by workout_date, preserving order
   const groupedSets = sortedRecentSets.reduce(
@@ -51,17 +54,22 @@ export function RecentSetsDisplay({
           <Card key={dateKey} className="border-0 shadow-sm backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
-                {formatDate(group.date)}
+                <Link
+                  key={group.sets[0].workout_id}
+                  to="/workouts/$workoutId"
+                  params={{ workoutId: group.sets[0].workout_id }}
+                  className="flex cursor-pointer items-center justify-between"
+                >
+                  {formatDate(group.date)}
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </Link>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {group.sets.map((set, index) => {
                 const volume = (set.weight || 0) * set.reps;
                 return (
-                  <div
-                    key={set.set_id}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
-                  >
+                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors">
                     <div className="flex items-center space-x-4">
                       <span className="text-sm font-medium text-muted-foreground w-8">
                         {set.set_order ?? index + 1}

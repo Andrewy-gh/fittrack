@@ -26,6 +26,7 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, workoutServi
 	}
 }
 
+// MARK: ListWorkouts
 // ListWorkouts godoc
 // @Summary List workouts
 // @Description Get all workouts for the authenticated user
@@ -55,6 +56,7 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// MARK: GetWorkoutWithSets
 // GetWorkoutWithSets godoc
 // @Summary Get workout with sets
 // @Description Get a specific workout with all its sets and exercises
@@ -98,6 +100,7 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// MARK: CreateWorkout
 // CreateWorkout godoc
 // @Summary Create a new workout
 // @Description Create a new workout with exercises and sets
@@ -139,6 +142,7 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// MARK: UpdateWorkout
 // UpdateWorkout godoc
 // @Summary Update an existing workout (full replacement)
 // @Description Updates a workout using full replacement semantics. The client must provide the complete workout data including date and at least one exercise with sets. This endpoint replaces the entire workout, deleting existing exercises/sets and creating new ones. For partial updates, PATCH will be implemented in a future version. Returns 204 No Content on success.
@@ -203,6 +207,7 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 	// No body content for 204 response
 }
 
+// MARK: DeleteWorkout
 // DeleteWorkout godoc
 // @Summary Delete a workout
 // @Description Delete a specific workout and all its associated sets. Only the owner of the workout can delete it.
@@ -253,6 +258,7 @@ func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
 	// No body content for 204 response
 }
 
+// MARK: FormatValidationErrors
 func FormatValidationErrors(err error) string {
 	if validationErrors, ok := err.(*validator.ValidationErrors); ok {
 		var messages []string

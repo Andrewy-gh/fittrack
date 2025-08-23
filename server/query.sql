@@ -131,6 +131,7 @@ WHERE id = $1
 -- name: GetRecentSetsForExercise :many
 SELECT 
     s.id AS set_id,
+    w.id AS workout_id,
     w.date AS workout_date,
     s.weight,
     s.reps,

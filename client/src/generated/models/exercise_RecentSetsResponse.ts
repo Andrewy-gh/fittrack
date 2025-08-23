@@ -10,5 +10,6 @@ export type exercise_RecentSetsResponse = {
     set_order?: number;
     weight?: number;
     workout_date: string;
+    workout_id: number;
 };
 

@@ -26,6 +26,7 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, exerciseServ
 	}
 }
 
+// MARK: ListExercises
 // ListExercises godoc
 // @Summary List exercises
 // @Description Get all exercises for the authenticated user
@@ -55,6 +56,7 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// MARK: GetExerciseWithSets
 // GetExerciseWithSets godoc
 // @Summary Get exercise with sets
 // @Description Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.
@@ -107,6 +109,7 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// MARK: GetOrCreateExercise
 // GetOrCreateExercise godoc
 // @Summary Get or create exercise
 // @Description Get an existing exercise by name or create it if it doesn't exist
@@ -149,6 +152,7 @@ func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// MARK: GetRecentSetsForExercise
 // GetRecentSetsForExercise godoc
 // @Summary Get recent sets for exercise
 // @Description Get the 3 most recent sets for a specific exercise. Returns empty array when exercise has no sets.

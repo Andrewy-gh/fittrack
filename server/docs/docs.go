@@ -661,7 +661,8 @@ const docTemplate = `{
                 "created_at",
                 "reps",
                 "set_id",
-                "workout_date"
+                "workout_date",
+                "workout_id"
             ],
             "properties": {
                 "created_at": {
@@ -691,6 +692,10 @@ const docTemplate = `{
                 "workout_date": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
+                },
+                "workout_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
