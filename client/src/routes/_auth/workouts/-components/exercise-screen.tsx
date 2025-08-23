@@ -1,7 +1,7 @@
 import { withForm } from '@/hooks/form';
 import { useState, Suspense } from 'react';
 import { AddSetDialog } from '../-components/add-set-dialog';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MOCK_VALUES } from '../-components/form-options';
@@ -14,28 +14,26 @@ type ExerciseScreenProps = {
   onBack: () => void;
 };
 
+// MARK: Header
 export const ExerciseHeader = withForm({
   defaultValues: MOCK_VALUES,
   props: {} as ExerciseScreenProps,
   render: function Render({ form, exerciseIndex, onBack }) {
     return (
-      <div className="flex items-center pt-6 pb-2">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="p-0 h-auto text-primary hover:text-primary/80"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </Button>
+      <div className="flex items-center justify-between pt-6 pb-2">
+        <button onClick={onBack}>
+          <ChevronLeft className="text-primary" />
+        </button>
         <form.AppField
           name={`exercises[${exerciseIndex}].name`}
           children={(field) => (
-            <h1 className="font-bold text-3xl tracking-tight text-foreground flex-1 text-center">
-              {field.state.value}
-            </h1>
+            <div>
+              <h1 className="font-bold text-2xl tracking-tight text-foreground flex-1 ">
+                {field.state.value}
+              </h1>
+            </div>
           )}
         />
-        {/* New component goes here */}
       </div>
     );
   },
@@ -59,9 +57,9 @@ export const ExerciseSets = withForm({
             0
           );
           return (
+            // MARK: Stats
             <>
-              {/* MARK: Stats Overview */}
-              <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
+              <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
                 Today's Sets
               </h2>
               <div className="grid grid-cols-2 gap-4">
@@ -180,6 +178,7 @@ export const ExerciseSets = withForm({
   },
 });
 
+// MARK: Recent Susp.
 // Helper component to wrap recent sets with proper error boundaries
 export function RecentSets({
   exerciseId,
@@ -189,14 +188,14 @@ export function RecentSets({
   user: User;
 }) {
   if (!exerciseId) {
-    return null
+    return null;
   }
 
   return (
     <Suspense
       fallback={
         <div className="space-y-4">
-          <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
+          <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
             Recent Sets
           </h2>
           <div className="text-center py-8">
@@ -212,6 +211,7 @@ export function RecentSets({
   );
 }
 
+// MARK: Exercise Screen
 export function ExerciseScreen({
   header,
   recentSets,

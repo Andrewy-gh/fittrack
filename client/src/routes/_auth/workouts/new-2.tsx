@@ -12,8 +12,7 @@ import { checkUser, type User } from '@/lib/api/auth';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import { exercisesQueryOptions, type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
-// import { ExerciseScreen2 } from './-components/exercise-screen';
-import { AddExerciseScreen } from './-components/add-exercise-screen';
+import {  AddExerciseScreen } from './-components/add-exercise-screen';
 
 import {
   ExerciseHeader,

@@ -46,14 +46,14 @@ export function RecentSetsDisplay({
 
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-2xl tracking-tight text-foreground mb-4">
+      <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
         Recent Sets
       </h2>
       {Object.entries(groupedSets).map(([dateKey, group]) => {
         return (
           <Card key={dateKey} className="border-0 shadow-sm backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">
+              <CardTitle className="text-medium font-semibold">
                 <Link
                   key={group.sets[0].workout_id}
                   to="/workouts/$workoutId"
