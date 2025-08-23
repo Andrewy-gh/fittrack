@@ -291,6 +291,7 @@ func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerci
 const getRecentSetsForExercise = `-- name: GetRecentSetsForExercise :many
 SELECT 
     s.id AS set_id,
+    w.id AS workout_id,
     w.date AS workout_date,
     s.weight,
     s.reps,
@@ -311,6 +312,7 @@ type GetRecentSetsForExerciseParams struct {
 
 type GetRecentSetsForExerciseRow struct {
 	SetID         int32              `json:"set_id"`
+	WorkoutID     int32              `json:"workout_id"`
 	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
 	Weight        pgtype.Int4        `json:"weight"`
 	Reps          int32              `json:"reps"`
@@ -330,6 +332,7 @@ func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSet
 		var i GetRecentSetsForExerciseRow
 		if err := rows.Scan(
 			&i.SetID,
+			&i.WorkoutID,
 			&i.WorkoutDate,
 			&i.Weight,
 			&i.Reps,

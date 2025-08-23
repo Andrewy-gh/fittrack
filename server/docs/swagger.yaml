@@ -126,11 +126,15 @@ definitions:
       workout_date:
         example: "2023-01-01T15:04:05Z"
         type: string
+      workout_id:
+        example: 1
+        type: integer
     required:
     - created_at
     - reps
     - set_id
     - workout_date
+    - workout_id
     type: object
   response.ErrorResponse:
     properties:
