@@ -24,8 +24,8 @@ type CreateSetParams struct {
 	Reps          int32       `json:"reps"`
 	SetType       string      `json:"set_type"`
 	UserID        string      `json:"user_id"`
-	ExerciseOrder pgtype.Int4 `json:"exercise_order"`
-	SetOrder      pgtype.Int4 `json:"set_order"`
+	ExerciseOrder int32       `json:"exercise_order"`
+	SetOrder      int32       `json:"set_order"`
 }
 
 func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (Set, error) {
@@ -198,7 +198,7 @@ SELECT
     s.weight,
     s.reps,
     s.set_type,
-    s.exercise_id,
+    e.id as exercise_id,
     e.name as exercise_name,
     s.exercise_order,
     s.set_order,
@@ -207,7 +207,7 @@ FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id
+ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at, s.id
 `
 
 type GetExerciseWithSetsParams struct {
@@ -225,8 +225,8 @@ type GetExerciseWithSetsRow struct {
 	SetType       string             `json:"set_type"`
 	ExerciseID    int32              `json:"exercise_id"`
 	ExerciseName  string             `json:"exercise_name"`
-	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
-	SetOrder      pgtype.Int4        `json:"set_order"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
 	Volume        int32              `json:"volume"`
 }
 
@@ -300,7 +300,7 @@ SELECT
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at DESC
+ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at DESC
 LIMIT 3
 `
 
@@ -314,8 +314,8 @@ type GetRecentSetsForExerciseRow struct {
 	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
 	Weight        pgtype.Int4        `json:"weight"`
 	Reps          int32              `json:"reps"`
-	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
-	SetOrder      pgtype.Int4        `json:"set_order"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
@@ -441,7 +441,7 @@ FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
 WHERE w.id = $1 AND w.user_id = $2
-ORDER BY s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.id
+ORDER BY s.exercise_order, s.set_order, s.id
 `
 
 type GetWorkoutWithSetsParams struct {
@@ -459,8 +459,8 @@ type GetWorkoutWithSetsRow struct {
 	SetType       string             `json:"set_type"`
 	ExerciseID    int32              `json:"exercise_id"`
 	ExerciseName  string             `json:"exercise_name"`
-	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
-	SetOrder      pgtype.Int4        `json:"set_order"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
 	Volume        int32              `json:"volume"`
 }
 
@@ -531,7 +531,7 @@ func (q *Queries) ListExercises(ctx context.Context, userID string) ([]Exercise,
 const listSets = `-- name: ListSets :many
 SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, user_id, exercise_order, set_order FROM "set" 
 WHERE user_id = $1
-ORDER BY exercise_order NULLS LAST, set_order NULLS LAST, id
+ORDER BY exercise_order, set_order, id
 `
 
 func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {

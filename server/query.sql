@@ -18,7 +18,7 @@ WHERE id = $1 AND user_id = $2;
 -- name: ListSets :many
 SELECT * FROM "set" 
 WHERE user_id = $1
-ORDER BY exercise_order NULLS LAST, set_order NULLS LAST, id;
+ORDER BY exercise_order, set_order, id;
 
 -- name: GetExerciseWithSets :many
 SELECT 
@@ -29,7 +29,7 @@ SELECT
     s.weight,
     s.reps,
     s.set_type,
-    s.exercise_id,
+    e.id as exercise_id,
     e.name as exercise_name,
     s.exercise_order,
     s.set_order,
@@ -38,7 +38,7 @@ FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at, s.id;
+ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at, s.id;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
@@ -76,7 +76,7 @@ FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
 WHERE w.id = $1 AND w.user_id = $2
-ORDER BY s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.id;
+ORDER BY s.exercise_order, s.set_order, s.id;
 
 -- name: GetExerciseByName :one
 SELECT * FROM exercise WHERE name = $1 AND user_id = $2;
@@ -140,5 +140,5 @@ SELECT
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.created_at DESC
+ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at DESC
 LIMIT 3;
