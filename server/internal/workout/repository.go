@@ -419,14 +419,8 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 			},
 			Reps:          int32(set.Reps),
 			SetType:       set.SetType,
-			ExerciseOrder: pgtype.Int4{
-				Int32: exerciseOrderMap[set.ExerciseName],
-				Valid: true,
-			},
-			SetOrder: pgtype.Int4{
-				Int32: setOrderCounters[set.ExerciseName],
-				Valid: true,
-			},
+			ExerciseOrder: exerciseOrderMap[set.ExerciseName],
+			SetOrder:      setOrderCounters[set.ExerciseName],
 		}
 
 		if set.Weight != nil {

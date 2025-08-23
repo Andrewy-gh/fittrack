@@ -40,8 +40,8 @@ type PGSetData struct {
 	Weight        pgtype.Int4
 	Reps          int32
 	SetType       string
-	ExerciseOrder pgtype.Int4
-	SetOrder      pgtype.Int4
+	ExerciseOrder int32
+	SetOrder      int32
 }
 
 type PGReformattedRequest struct {

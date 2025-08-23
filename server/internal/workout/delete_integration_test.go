@@ -406,8 +406,8 @@ func setupCompleteWorkoutWithSets(t *testing.T, pool *pgxpool.Pool, userID, note
 	for i := 0; i < 3; i++ {
 		var setID int32
 		err = pool.QueryRow(ctx,
-			"INSERT INTO \"set\" (exercise_id, workout_id, weight, reps, set_type, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-			exerciseID, workoutID, 100+i*10, 8+i, "working", userID).Scan(&setID)
+			"INSERT INTO \"set\" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+			exerciseID, workoutID, 100+i*10, 8+i, "working", userID, 1, i+1).Scan(&setID)
 		require.NoError(t, err, "Failed to create set %d", i+1)
 		setIDs = append(setIDs, setID)
 	}
