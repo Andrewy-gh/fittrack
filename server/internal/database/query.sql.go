@@ -441,7 +441,7 @@ FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
 WHERE w.id = $1 AND w.user_id = $2
-ORDER BY s.exercise_order NULLS LAST, s.set_order NULLS LAST, s.id
+ORDER BY s.exercise_order, s.set_order, s.id
 `
 
 type GetWorkoutWithSetsParams struct {
