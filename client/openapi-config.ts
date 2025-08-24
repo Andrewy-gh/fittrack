@@ -1,6 +1,9 @@
-import type { Config } from 'openapi-typescript-codegen';
+/**
+ * Configuration for the OpenAPI TypeScript Codegen
+ * @see https://github.com/ferdikoomen/openapi-typescript-codegen
+ */
 
-const config: Config = {
+const config = {
   // Input and output paths
   input: '../server/docs/swagger.json',
   output: 'src/generated',
