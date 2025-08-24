@@ -195,3 +195,12 @@ func (u UpdateSet) GetReps() int {
 func (u UpdateSet) GetSetType() string {
 	return u.SetType
 }
+
+var (
+	_ WorkoutRequestTransformable = CreateWorkoutRequest{}
+	_ WorkoutRequestTransformable = UpdateWorkoutRequest{}
+	_ ExerciseTransformable       = ExerciseInput{}
+	_ ExerciseTransformable       = UpdateExercise{}
+	_ SetTransformable            = SetInput{}
+	_ SetTransformable            = UpdateSet{}
+)

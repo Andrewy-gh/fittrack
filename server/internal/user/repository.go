@@ -52,5 +52,4 @@ func (r *userRepository) CreateUser(ctx context.Context, userID string) (db.User
 	return user, nil
 }
 
-// compile-time interface check
 var _ UserRepository = (*userRepository)(nil)

@@ -171,7 +171,7 @@ func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *Refor
 	return nil
 }
 
-// MARK: UpdateWorkout (PUT endpoint) 
+// MARK: UpdateWorkout (PUT endpoint)
 // Updates workout metadata (date/notes) and exercises/sets
 // Uses a replace strategy for exercises/sets (deletes existing and recreates)
 func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error {
@@ -367,7 +367,6 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 	return nil
 }
 
-
 // MARK: convertToPGTypes
 func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
 	// Convert workout
@@ -397,22 +396,22 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 
 	// Convert sets with ordering information
 	var pgSets []PGSetData
-	
+
 	// Create exercise name to order mapping
 	exerciseOrderMap := make(map[string]int32)
 	for i, exercise := range reformatted.Exercises {
 		exerciseOrderMap[exercise.Name] = int32(i + 1) // 1-based ordering
 	}
-	
+
 	// Create set order counters per exercise
 	setOrderCounters := make(map[string]int32)
-	
+
 	for _, set := range reformatted.Sets {
 		// Increment set counter for this exercise
 		setOrderCounters[set.ExerciseName]++
-		
+
 		pgSet := PGSetData{
-			ExerciseName:  set.ExerciseName,
+			ExerciseName: set.ExerciseName,
 			Weight: pgtype.Int4{
 				Int32: 0,
 				Valid: false,
@@ -439,3 +438,5 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 		Sets:      pgSets,
 	}, nil
 }
+
+var _ WorkoutRepository = (*workoutRepository)(nil)

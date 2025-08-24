@@ -181,3 +181,8 @@ func (j *JWKSCache) GetUserIDFromToken(tokenString string) (string, error) {
 
 	return userID, nil
 }
+
+var (
+	_ JWKSProvider        = (*JWKSCache)(nil)
+	_ UserServiceProvider = (*user.Service)(nil)
+)

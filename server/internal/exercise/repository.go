@@ -202,3 +202,5 @@ func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id i
 
 	return sets, nil
 }
+
+var _ ExerciseRepository = (*exerciseRepository)(nil)
