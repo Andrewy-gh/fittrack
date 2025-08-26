@@ -1,6 +1,6 @@
 # Migration Plan v2: Minimal Component Changes
 
-This plan focuses on migrating to Hey API's TanStack Query plugin with zero breaking changes to your existing components.
+This plan focuses on migrating to Hey API's TanStack Query plugin with zero breaking changes to your existing components. You've already generated the Hey API code, so now we'll integrate it properly with your authentication flow.
 
 ## 1. Configuration Overview
 
@@ -25,8 +25,8 @@ Your current configuration in `openapi-ts.config.ts` is already well-suited for 
 }
 ```
 
-This will generate functions like:
-- `getWorkoutsOptions()` (for queries)
+This generates functions like:
+- `getWorkoutsQueryOptions()` (for queries)
 - `postWorkoutsMutation()` (for mutations)
 
 ### 1.1 Tags Benefit
@@ -235,41 +235,8 @@ When using the generated mutation functions, you have two approaches for handlin
 
 The first approach is recommended as it leverages the generated mutation options while still allowing you to customize the `onSuccess` handler.
 
-## 3. Implementation Steps
-
-### Step 1: Verify Configuration
-Your configuration already has tags enabled, which is great for future cache invalidation capabilities.
-
-### Step 2: Set Up Client Interceptor for Authentication
-Based on your interceptor plan, you should set up a client interceptor to handle the `x-stack-access-token` header. Since you're currently using `openapi-typescript-codegen`, you'll need to modify your approach slightly:
-
-**File: `src/lib/api/client-config.ts`**
-```typescript
-import { stackClientApp } from '@/stack';
-import { OpenAPI } from '@/generated';
-
-// Helper function to get current access token
-export const getAccessToken = async (): Promise<string | null> => {
-  try {
-    const user = await stackClientApp.getUser();
-    if (!user) return null;
-    
-    const { accessToken } = await user.getAuthJson();
-    return accessToken || null;
-  } catch (error) {
-    console.warn('Failed to get access token:', error);
-    return null;
-  }
-};
-
-// Configure the service client
-OpenAPI.BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-
-// You can set default headers here, but we'll set the auth header dynamically in each request
-// For now, we'll continue with your current approach of setting headers per request
-```
-
-Update your `main.tsx` to import this configuration:
+### Step 3: Update Main.tsx
+Update your `main.tsx` to import the client configuration:
 
 **File: `src/main.tsx`**
 ```typescript
@@ -305,24 +272,22 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 ```
 
-### Step 3: Generate the Code
+### Step 4: Generate the Code
 Run your OpenAPI generation command:
 ```bash
-bun run openapi:generate  # or whatever command you use
+bun run openapi-ts  # or whatever command you use
 ```
 
-Note: After you switch to Hey API, you can then implement the client interceptor approach described in the interceptor plan document.
-
-### Step 4: Create Wrapper Files
+### Step 5: Create Wrapper Files
 Create the wrapper files as shown above:
 - `src/lib/api/client-config.ts`
 - `src/lib/api/workouts-queries.ts`
 - `src/lib/api/workouts-mutations.ts`
 
-### Step 5: Update Imports
+### Step 6: Update Imports
 In your components, you don't need to change anything because the wrapper functions maintain the same API as your current functions.
 
-### Step 6: Verify and Test
+### Step 7: Verify and Test
 Test all your components to ensure they work exactly as before.
 
 ## 4. Benefits of This Approach
@@ -332,7 +297,7 @@ Test all your components to ensure they work exactly as before.
 3. **Future-Proof**: When your API changes, simply regenerate and the types will update automatically
 4. **Better Query Keys**: Hey API generates normalized query keys which are more robust
 5. **Enhanced Cache Invalidation**: With tags already enabled, you can invalidate queries by tags rather than specific keys
-6. **Preparation for Centralized Authentication**: Sets up the foundation for implementing client interceptors when you switch to Hey API
+6. **Centralized Authentication**: Client interceptors handle authentication automatically
 7. **Consistency**: All query/mutation patterns will be consistent across your codebase
 
 ## 5. Future Enhancements (Optional)
@@ -366,7 +331,7 @@ This migration plan provides:
 1. **Zero breaking changes** to your existing components
 2. **Immediate benefits** of type safety and consistent query/mutation patterns
 3. **Future flexibility** to leverage advanced features like tags-based cache invalidation
-4. **Foundation for centralized authentication** through client interceptors when you switch to Hey API
+4. **Centralized authentication** through client interceptors
 5. **Safe rollback** capability if needed
 
-The wrapper function approach allows you to enjoy the benefits of Hey API's generated code while maintaining complete control over your authentication logic and cache invalidation strategies. Once you switch to Hey API, you can then implement the client interceptor approach described in your interceptor plan document for even cleaner authentication handling.
+The wrapper function approach allows you to enjoy the benefits of Hey API's generated code while maintaining complete control over your authentication logic and cache invalidation strategies. The client interceptor approach handles authentication automatically, making your code cleaner and more maintainable.

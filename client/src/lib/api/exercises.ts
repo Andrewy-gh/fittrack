@@ -7,6 +7,8 @@ import type {
   exercise_RecentSetsResponse,
 } from '@/generated';
 
+import { getExercisesQueryOptions } from '@/client/@tanstack/react-query.gen';
+
 /**
  * Exercise data as returned by the API - always has a database ID
  */
@@ -22,23 +24,29 @@ export type ExerciseOption = {
 };
 
 export function exercisesQueryOptions(user: User) {
-  const validatedUser = ensureUser(user);
-  return queryOptions<exercise_ExerciseResponse[], Error>({
-    queryKey: ['exercises', 'list'],
-    queryFn: async () => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return ExercisesService.getExercises();
-    },
-  });
+  ensureUser(user);
+  console.log('user ensured');
+  // Get the base options from generated code
+  const baseOptions = getExercisesQueryOptions();
+  // The interceptor will automatically add the auth token
+  return baseOptions;
 }
 
-export function exerciseQueryOptions(
-  exerciseId: number,
-  user: User
-) {
+// export function exercisesQueryOptions(user: User) {
+//   const validatedUser = ensureUser(user);
+//   return queryOptions<exercise_ExerciseResponse[], Error>({
+//     queryKey: ['exercises', 'list'],
+//     queryFn: async () => {
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return ExercisesService.getExercises();
+//     },
+//   });
+// }
+
+export function exerciseQueryOptions(exerciseId: number, user: User) {
   const validatedUser = ensureUser(user);
   return queryOptions<exercise_ExerciseWithSetsResponse[], Error>({
     queryKey: ['exercises', 'details', exerciseId],
@@ -53,10 +61,7 @@ export function exerciseQueryOptions(
   });
 }
 
-export function recentExerciseSetsQueryOptions(
-  exerciseId: number,
-  user: User
-) {
+export function recentExerciseSetsQueryOptions(exerciseId: number, user: User) {
   const validatedUser = ensureUser(user);
   return queryOptions<exercise_RecentSetsResponse[], Error>({
     queryKey: ['exercises', 'recent-sets', exerciseId],

@@ -1,21 +1,21 @@
 import '@/openapi-runtime';
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
-import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { createRouter } from '@tanstack/react-router';
 import { queryClient } from './lib/api/api.ts';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { StackProvider, StackTheme } from '@stackframe/react';
 import { stackClientApp } from './stack.ts';
 import { ThemeProvider } from './components/theme-provider.tsx';
-import { useUser } from '@stackframe/react';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
 
 import './styles.css';
 import reportWebVitals from './reportWebVitals.ts';
 
+import { App } from './app.tsx';
+
 // Create a new router instance
-const router = createRouter({
+export const router = createRouter({
   routeTree,
   context: {
     user: undefined!,
@@ -32,15 +32,6 @@ declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router;
   }
-}
-
-function App() {
-  const user = useUser();
-  return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} context={{ user }} />
-    </QueryClientProvider>
-  );
 }
 
 // Render the app
