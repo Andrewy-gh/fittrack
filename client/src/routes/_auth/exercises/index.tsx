@@ -85,7 +85,7 @@ export const Route = createFileRoute('/_auth/exercises/')({
     user: Exclude<User, null>;
   }> => {
     const user = context.user;
-    checkUser(user); 
+    // checkUser(user); 
     context.queryClient.ensureQueryData(exercisesQueryOptions(user));
     return { user };
   },
