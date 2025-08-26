@@ -42,7 +42,7 @@ export default defineConfig({
         // Enable metadata if you want operation info
         meta: false, // or customize as needed
         // Use "Options" suffix to match your current naming
-        name: '{{name}}Options',
+        name: '{{name}}QueryOptions',
       },
     },
   ],
