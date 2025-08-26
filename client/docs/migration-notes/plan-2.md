@@ -27,6 +27,7 @@ Your current configuration in `openapi-ts.config.ts` is already well-suited for 
 
 This generates functions like:
 - `getWorkoutsQueryOptions()` (for queries)
+- `getWorkoutsQueryKey()` (for query keys)
 - `postWorkoutsMutation()` (for mutations)
 
 ### 1.1 Tags Benefit
@@ -46,69 +47,79 @@ queryClient.invalidateQueries({
 });
 ```
 
+### 1.2 Using Generated Query Keys
+
+The Hey API plugin generates both query options and query keys. You can access query keys in two ways:
+
+1. From query options:
+   ```ts
+   const { queryKey } = getWorkoutsQueryOptions();
+   ```
+
+2. Directly from query key functions:
+   ```ts
+   const queryKey = getWorkoutsQueryKey();
+   ```
+
+Using generated query keys ensures consistency and type safety. They contain normalized parameters and metadata that make cache management more robust.
+
 ## 2. Migration Strategy by Function Type
 
 ### 2.1 Queries - Wrapper Function Approach
 
-Create wrapper functions that maintain your current API but use the generated Hey API functions internally.
+Create wrapper functions that maintain your current API but use the generated Hey API functions internally. Since you've implemented a client interceptor in `client-config.ts`, the auth headers will be automatically added to each request. See `src/lib/api/exercises.ts` for a working example.
+
+For consistency with your existing pattern, you can also export the generated query keys alongside query options. This makes it easier to use them for cache invalidation.
 
 **File: `src/lib/api/workouts-queries.ts`**
 
 ```typescript
 import { 
   getWorkoutsOptions,
-  getWorkouts1Options
+  getWorkoutsQueryKey,
+  getWorkouts1Options,
+  getWorkoutsByIdQueryKey
 } from '@/generated/@tanstack/react-query';
-import { ensureUser, getAccessToken, type User } from './auth';
-import { OpenAPI } from '@/generated';
+import { ensureUser, type User } from './auth';
 import type {
   workout_WorkoutResponse,
   workout_WorkoutWithSetsResponse,
 } from '@/generated';
 
+// Export generated query keys for easier cache invalidation
+export { 
+  getWorkoutsQueryKey,
+  getWorkoutsByIdQueryKey
+};
+
 // Wrapper functions that maintain your current API but use generated options
 export function workoutsQueryOptions(user: User) {
-  const validatedUser = ensureUser(user);
+  ensureUser(user);
   
   // Get the base options from generated code
   const baseOptions = getWorkoutsOptions();
   
-  // Override the queryFn to add your auth logic
-  return {
-    ...baseOptions,
-    queryFn: async () => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return baseOptions.queryFn();
-    },
-  };
+  // The interceptor will automatically add the auth token
+  return baseOptions;
 }
 
 export function workoutQueryOptions(workoutId: number, user: User) {
-  const validatedUser = ensureUser(user);
+  ensureUser(user);
   
   const baseOptions = getWorkouts1Options({ 
     path: { id: workoutId } // Adjust parameter name as per generated function
   });
   
-  return {
-    ...baseOptions,
-    queryFn: async () => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return baseOptions.queryFn();
-    },
-  };
+  // The interceptor will automatically add the auth token
+  return baseOptions;
 }
 ```
 
 ### 2.2 Mutations - Wrapper Function Approach
 
-Similarly for mutations, create wrapper functions that preserve your current API:
+Similarly for mutations, create wrapper functions that preserve your current API. See `src/lib/api/exercises.ts` for examples of how to structure these functions.
+
+When handling cache invalidation in `onSuccess`, you can use the generated query keys for more precise invalidation. This ensures consistency with the query key structure used by the generated code.
 
 **File: `src/lib/api/workouts-mutations.ts`**
 
@@ -116,12 +127,14 @@ Similarly for mutations, create wrapper functions that preserve your current API
 import { 
   postWorkoutsMutation,
   putWorkoutsMutation,
-  deleteWorkoutsMutation
+  deleteWorkoutsMutation,
+  getWorkoutsQueryKey,
+  getWorkoutsByIdQueryKey
 } from '@/generated/@tanstack/react-query';
 import { queryClient } from './api';
 import { useMutation } from '@tanstack/react-query';
-import { WorkoutsService, OpenAPI } from '@/generated';
-import { ensureUser, getAccessToken, type User } from './auth';
+import { WorkoutsService } from '@/generated';
+import { ensureUser, type User } from './auth';
 import type {
   workout_CreateWorkoutRequest,
   workout_UpdateWorkoutRequest,
@@ -129,23 +142,17 @@ import type {
 
 // Wrapper for save workout mutation
 export function useSaveWorkoutMutation(user: User) {
-  const validatedUser = ensureUser(user);
+  ensureUser(user);
   
   // Get the base mutation options from generated code
   const baseOptions = postWorkoutsMutation();
   
   return useMutation({
     ...baseOptions,
-    mutationFn: async (data: workout_CreateWorkoutRequest) => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return await WorkoutsService.postWorkouts(data);
-    },
     onSuccess: () => {
+      // Use generated query key for consistency
       queryClient.invalidateQueries({
-        queryKey: ['workouts', 'list'],
+        queryKey: getWorkoutsQueryKey(),
       });
     },
   });
@@ -153,32 +160,20 @@ export function useSaveWorkoutMutation(user: User) {
 
 // Wrapper for update workout mutation
 export function useUpdateWorkoutMutation(user: User) {
-  const validatedUser = ensureUser(user);
+  ensureUser(user);
   
   // Get the base mutation options from generated code
   const baseOptions = putWorkoutsMutation();
   
   return useMutation({
     ...baseOptions,
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: workout_UpdateWorkoutRequest;
-    }) => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return await WorkoutsService.putWorkouts(id, data);
-    },
     onSuccess: (_, { id }) => {
+      // Use generated query keys for consistency
       queryClient.invalidateQueries({
-        queryKey: ['workouts', 'list'],
+        queryKey: getWorkoutsQueryKey(),
       });
       queryClient.invalidateQueries({
-        queryKey: ['workouts', 'details', id],
+        queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
       });
     },
   });
@@ -189,22 +184,17 @@ export async function deleteWorkout(
   workoutId: number,
   user: User
 ): Promise<void> {
-  const validatedUser = ensureUser(user);
-  const accessToken = await getAccessToken(validatedUser);
-  OpenAPI.HEADERS = {
-    'x-stack-access-token': accessToken,
-  };
-
-  // You could also use the generated deleteWorkoutsMutation() here if needed
+  ensureUser(user);
+  // The interceptor will automatically add the auth token
   return WorkoutsService.deleteWorkouts(workoutId);
 }
 ```
 
 ### 2.3 Handling Query and Validation on Success
 
-When using the generated mutation functions, you have two approaches for handling query invalidation and validation on success:
+When using the generated mutation functions, you can leverage the generated mutation options while still customizing the `onSuccess` handler. The client interceptor will automatically handle authentication for all requests.
 
-1. **Spread Approach** (used in the examples above):
+**Recommended Approach** (used in the examples above):
    ```typescript
    return useMutation({
      ...postWorkoutsMutation(), // Spread the generated options
@@ -215,25 +205,11 @@ When using the generated mutation functions, you have two approaches for handlin
    });
    ```
 
-2. **Direct SDK Call Approach**:
-   ```typescript
-   return useMutation({
-     mutationFn: async (data: workout_CreateWorkoutRequest) => {
-       // Your auth setup
-       const accessToken = await getAccessToken(validatedUser);
-       OpenAPI.HEADERS = {
-         'x-stack-access-token': accessToken,
-       };
-       // Direct call to the generated SDK
-       return await WorkoutsService.postWorkouts(data);
-     },
-     onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ['workouts', 'list'] });
-     },
-   });
-   ```
-
-The first approach is recommended as it leverages the generated mutation options while still allowing you to customize the `onSuccess` handler.
+This approach is recommended because it:
+- Leverages the generated mutation options for type safety
+- Allows you to customize the `onSuccess` handler for cache invalidation
+- Automatically uses the client interceptor for authentication
+- Maintains consistency with the pattern shown in `src/lib/api/exercises.ts`
 
 ### Step 3: Update Main.tsx
 Update your `main.tsx` to import the client configuration:
@@ -280,9 +256,9 @@ bun run openapi-ts  # or whatever command you use
 
 ### Step 5: Create Wrapper Files
 Create the wrapper files as shown above:
-- `src/lib/api/client-config.ts`
-- `src/lib/api/workouts-queries.ts`
-- `src/lib/api/workouts-mutations.ts`
+- `src/lib/api/workouts-queries.ts` (demonstrates query options and key usage)
+- `src/lib/api/workouts-mutations.ts` (demonstrates mutation usage with proper cache invalidation)
+- `src/lib/api/exercises.ts` (already updated to show proper patterns)
 
 ### Step 6: Update Imports
 In your components, you don't need to change anything because the wrapper functions maintain the same API as your current functions.
@@ -297,15 +273,63 @@ Test all your components to ensure they work exactly as before.
 3. **Future-Proof**: When your API changes, simply regenerate and the types will update automatically
 4. **Better Query Keys**: Hey API generates normalized query keys which are more robust
 5. **Enhanced Cache Invalidation**: With tags already enabled, you can invalidate queries by tags rather than specific keys
-6. **Centralized Authentication**: Client interceptors handle authentication automatically
+6. **Centralized Authentication**: Client interceptors handle authentication automatically (see `src/lib/api/client-config.ts`)
 7. **Consistency**: All query/mutation patterns will be consistent across your codebase
+
+### 4.1 Benefits of Generated Query Keys
+
+Using the generated query keys provides several advantages over manually crafted keys:
+
+1. **Consistency**: Generated keys follow the same structure as used in the queries themselves
+2. **Type Safety**: Full TypeScript support with proper typing of parameters
+3. **Automatic Normalization**: Parameters are automatically normalized, making cache hits more reliable
+4. **Future-Proof**: When API changes occur, query keys update automatically with regeneration
+5. **Metadata Support**: Generated keys include operation metadata like tags for advanced invalidation
+
+For example, a generated query key includes all relevant information:
+```ts
+const queryKey = [{
+  _id: 'getWorkouts',
+  baseUrl: '/api',
+  tags: ['workouts', 'get']
+}];
+```
+
+This is more robust than manually crafted keys like `['workouts', 'list']` because it includes metadata that can be used for more sophisticated cache management.
+
+### 4.2 Exporting Query Keys
+
+As demonstrated in `src/lib/api/workouts-queries.ts` and `src/lib/api/exercises.ts`, exporting the generated query keys from your API modules provides several benefits:
+
+1. **Easy Cache Invalidation**: Consumers can use the exact same query keys that the queries use
+2. **Consistency**: Ensures the same key structure is used for both queries and invalidation
+3. **Type Safety**: Full TypeScript support when invalidating queries
+4. **Maintainability**: When query signatures change, both queries and invalidation update together
+
+Example usage in mutations:
+```ts
+// In a mutation's onSuccess handler
+onSuccess: () => {
+  // Use generated query keys for consistent cache invalidation
+  queryClient.invalidateQueries({
+    queryKey: getWorkoutsQueryKey(),
+  });
+}
+```
 
 ## 5. Future Enhancements (Optional)
 
 Once you're comfortable with the migration, you can gradually:
 
 1. Move away from wrapper functions and use generated functions directly
-2. Use the generated query keys for more precise cache invalidation
+2. Use the generated query keys for more precise cache invalidation:
+   ```ts
+   // Instead of manually crafted keys like ['workouts', 'list']
+   queryClient.invalidateQueries({ queryKey: getWorkoutsQueryKey() });
+   
+   // For specific items
+   queryClient.invalidateQueries({ queryKey: getWorkoutsByIdQueryKey({ path: { id: workoutId } }) });
+   ```
 3. Take advantage of tag-based cache invalidation that you already have enabled:
    ```ts
    // You can invalidate by tags (since tags are already enabled)
@@ -332,6 +356,7 @@ This migration plan provides:
 2. **Immediate benefits** of type safety and consistent query/mutation patterns
 3. **Future flexibility** to leverage advanced features like tags-based cache invalidation
 4. **Centralized authentication** through client interceptors
-5. **Safe rollback** capability if needed
+5. **Robust cache management** through generated query keys
+6. **Safe rollback** capability if needed
 
-The wrapper function approach allows you to enjoy the benefits of Hey API's generated code while maintaining complete control over your authentication logic and cache invalidation strategies. The client interceptor approach handles authentication automatically, making your code cleaner and more maintainable.
+The wrapper function approach allows you to enjoy the benefits of Hey API's generated code while maintaining the same API surface for your components. The client interceptor approach handles authentication automatically, making your code cleaner and more maintainable. See `src/lib/api/exercises.ts`, `src/lib/api/workouts-queries.ts`, and `src/lib/api/workouts-mutations.ts` for working implementations of this pattern that demonstrate proper usage of generated query keys and cache invalidation.
