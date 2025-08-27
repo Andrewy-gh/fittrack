@@ -15,7 +15,7 @@ import {
   getExercisesByIdRecentSetsQueryOptions,
   getExercisesByIdQueryOptions
 } from '@/client/@tanstack/react-query.gen';
-
+import { queryClient } from './api';
 /**
  * Exercise data as returned by the API - always has a database ID
  */
