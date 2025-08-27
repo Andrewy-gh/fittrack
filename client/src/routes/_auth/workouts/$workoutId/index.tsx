@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Edit, Dumbbell, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
-import { checkUser, type User } from '@/lib/api/auth';
+// import { checkUser, type User } from '@/lib/api/auth';
 import { formatDate, formatTime } from '@/lib/utils';
 import { workoutQueryOptions } from '@/lib/api/workouts';
 import type { workout_WorkoutWithSetsResponse } from '@/generated';
@@ -14,10 +14,10 @@ import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 function IndividualWorkoutPage({
   workout,
-  user,
+  // user,
 }: {
   workout: workout_WorkoutWithSetsResponse[];
-  user: Exclude<User, null>;
+  // user: Exclude<User, null>;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
@@ -219,7 +219,7 @@ function IndividualWorkoutPage({
           isOpen={isDeleteDialogOpen} 
           onOpenChange={setIsDeleteDialogOpen}
           workoutId={workout[0]?.workout_id || 0}
-          user={user}
+          // user={user}
         />
       </div>
     </main>
@@ -237,24 +237,24 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/')({
     },
   },
   loader: async ({ context, params }): Promise<{
-    user: Exclude<User, null>;
+    // user: Exclude<User, null>;
     workoutId: number;
   }> => {
-    const user = context.user;
-    checkUser(user);
+    // const user = context.user;
+    // checkUser(user);
     const workoutId = params.workoutId;
     context.queryClient.ensureQueryData(
-      workoutQueryOptions(workoutId, user)
+      workoutQueryOptions(workoutId)
     );
-    return { user, workoutId };
+    return { workoutId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user, workoutId } = Route.useLoaderData();
+  const { workoutId } = Route.useLoaderData();
   const { data: workout } = useSuspenseQuery(
-    workoutQueryOptions(workoutId, user)
+    workoutQueryOptions(workoutId)
   );
-  return <IndividualWorkoutPage workout={workout} user={user} />;
+  return <IndividualWorkoutPage workout={workout} />;
 }

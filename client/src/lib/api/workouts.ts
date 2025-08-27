@@ -12,92 +12,130 @@ import type {
 } from '@/generated';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
-export function workoutsQueryOptions(user: User) {
-  const validatedUser = ensureUser(user);
-  return queryOptions<workout_WorkoutResponse[], Error>({
-    queryKey: ['workouts', 'list'],
-    queryFn: async () => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return WorkoutsService.getWorkouts();
-    },
-  });
+import {
+  getWorkoutsQueryOptions,
+  getWorkoutsByIdQueryOptions,
+  postWorkoutsMutation,
+  putWorkoutsByIdMutation,
+  deleteWorkoutsByIdMutation,
+} from '@/client/@tanstack/react-query.gen';
+
+export function workoutsQueryOptions() {
+  return getWorkoutsQueryOptions();
 }
 
-export function workoutQueryOptions(workoutId: number, user: User) {
-  const validatedUser = ensureUser(user);
-  return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
-    queryKey: ['workouts', 'details', workoutId],
-    queryFn: async () => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return WorkoutsService.getWorkouts1(workoutId);
-    },
-  });
+
+export function workoutQueryOptions(id: number) {
+  return getWorkoutsByIdQueryOptions({ path: { id } });
 }
 
-export function useSaveWorkoutMutation(user: User) {
-  const validatedUser = ensureUser(user);
+
+export function useSaveWorkoutMutation() {
   return useMutation({
-    mutationFn: async (data: workout_CreateWorkoutRequest) => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return await WorkoutsService.postWorkouts(data); // await for form.Subscribe to update
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['workouts', 'list'],
-      });
-    },
+    ...postWorkoutsMutation(),
   });
 }
 
-export function useUpdateWorkoutMutation(user: User) {
-  const validatedUser = ensureUser(user);
+export function useUpdateWorkoutMutation() {
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: workout_UpdateWorkoutRequest;
-    }) => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return await WorkoutsService.putWorkouts(id, data);
-    },
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({
-        queryKey: ['workouts', 'list'],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['workouts', 'details', id],
-      });
-    },
+    ...putWorkoutsByIdMutation(),
   });
 }
 
-export async function deleteWorkout(
-  workoutId: number,
-  user: User
-): Promise<void> {
-  const validatedUser = ensureUser(user);
-  const accessToken = await getAccessToken(validatedUser);
-  OpenAPI.HEADERS = {
-    'x-stack-access-token': accessToken,
-  };
-
-  return WorkoutsService.deleteWorkouts(workoutId);
+export function useDeleteWorkoutMutation() {
+  return useMutation({
+    ...deleteWorkoutsByIdMutation(),
+  });
 }
 
+// export function useUpdateWorkoutMutation(user: User) {
+//   const validatedUser = ensureUser(user);
+//   return useMutation({
+//     mutationFn: async ({
+//       id,
+//       data,
+//     }: {
+//       id: number;
+//       data: workout_UpdateWorkoutRequest;
+//     }) => {
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return await WorkoutsService.putWorkouts(id, data);
+//     },
+//     onSuccess: (_, { id }) => {
+//       queryClient.invalidateQueries({
+//         queryKey: ['workouts', 'list'],
+//       });
+//       queryClient.invalidateQueries({
+//         queryKey: ['workouts', 'details', id],
+//       });
+//     },
+//   });
+// }
+
+// export function workoutsQueryOptions(user: User) {
+//   const validatedUser = ensureUser(user);
+//   return queryOptions<workout_WorkoutResponse[], Error>({
+//     queryKey: ['workouts', 'list'],
+//     queryFn: async () => {
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return WorkoutsService.getWorkouts();
+//     },
+//   });
+// }
+
+// export function workoutQueryOptions(workoutId: number, user: User) {
+//   const validatedUser = ensureUser(user);
+//   return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
+//     queryKey: ['workouts', 'details', workoutId],
+//     queryFn: async () => {
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return WorkoutsService.getWorkouts1(workoutId);
+//     },
+//   });
+// }
+
+// export function useSaveWorkoutMutation(user: User) {
+//   const validatedUser = ensureUser(user);
+//   return useMutation({
+//     mutationFn: async (data: workout_CreateWorkoutRequest) => {
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return await WorkoutsService.postWorkouts(data); // await for form.Subscribe to update
+//     },
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({
+//         queryKey: ['workouts', 'list'],
+//       });
+//     },
+//   });
+// }
+
+// export async function deleteWorkout(
+  //   workoutId: number,
+//   user: User
+// ): Promise<void> {
+//   const validatedUser = ensureUser(user);
+//   const accessToken = await getAccessToken(validatedUser);
+//   OpenAPI.HEADERS = {
+//     'x-stack-access-token': accessToken,
+//   };
+
+//   return WorkoutsService.deleteWorkouts(workoutId);
+// }
+
+
+// MARK: Utils
 function groupSetsByExercise(
   sortedWorkouts: workout_WorkoutWithSetsResponse[]
 ): Map<number, { exercise: workout_UpdateExercise; order: number }> {

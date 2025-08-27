@@ -2,24 +2,22 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { recentExerciseSetsQueryOptions } from '@/lib/api/exercises';
 import { formatDate } from '@/lib/utils';
-import type { User } from '@/lib/api/auth';
 import type { exercise_RecentSetsResponse } from '@/generated';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
+import { Suspense } from 'react';
 
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
-  user: User;
 }
 
-export function RecentSetsDisplay({
+function RecentSetsDisplay({
   exerciseId,
-  user,
 }: RecentSetsDisplayProps) {
   const { data: recentSets } = useSuspenseQuery(
-    recentExerciseSetsQueryOptions(exerciseId, user)
+    recentExerciseSetsQueryOptions(exerciseId)
   );
   
   if (recentSets.length === 0) {
@@ -93,5 +91,37 @@ export function RecentSetsDisplay({
         );
       })}
     </div>
+  );
+}
+
+
+// MARK: Recent Susp.
+// Helper component to wrap recent sets with proper error boundaries
+export function RecentSets({
+  exerciseId,
+}: {
+  exerciseId: number | null;
+}) {
+  if (!exerciseId) {
+    return null;
+  }
+
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
+            Recent Sets
+          </h2>
+          <div className="text-center py-8">
+            <p className="text-muted-foreground text-sm">
+              Loading recent sets...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <RecentSetsDisplay exerciseId={exerciseId} />
+    </Suspense>
   );
 }

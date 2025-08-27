@@ -15,19 +15,26 @@ import { MiniChart } from '../-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import type { exercise_ExerciseResponse } from '@/generated';
-import { ExerciseHeader, ExerciseScreen, ExerciseSets } from '../-components/exercise-screen';
+import {
+  ExerciseHeader,
+  ExerciseScreen,
+  ExerciseSets,
+} from '../-components/exercise-screen';
 import { AddExerciseScreen } from '../-components/add-exercise-screen';
-import type { workout_UpdateWorkoutRequest } from '@/generated';
+import type {
+  ExerciseExerciseResponse,
+  WorkoutUpdateWorkoutRequest,
+} from '@/client';
 
 function EditWorkoutForm({
   exercises,
-  user,
+  // user,
   workout,
   workoutId,
 }: {
-  exercises: exercise_ExerciseResponse[];
-  user: Exclude<User, null>;
-  workout: workout_UpdateWorkoutRequest;
+  exercises: ExerciseExerciseResponse[];
+  // user: Exclude<User, null>;
+  workout: WorkoutUpdateWorkoutRequest;
   workoutId: number;
 }) {
   const [currentView, setCurrentView] = useState<
@@ -37,7 +44,7 @@ function EditWorkoutForm({
     number | null
   >(null);
 
-  const updateWorkoutMutation = useUpdateWorkoutMutation(user);
+  const updateWorkoutMutation = useUpdateWorkoutMutation();
 
   const form = useAppForm({
     defaultValues: workout,
@@ -45,8 +52,8 @@ function EditWorkoutForm({
       console.log('Updating workout with value:', value);
       try {
         await updateWorkoutMutation.mutateAsync({
-          id: workoutId,
-          data: value,
+          path: { id: workoutId },
+          body: value,
         });
         console.log('Workout updated successfully!');
       } catch (error) {
@@ -106,18 +113,18 @@ function EditWorkoutForm({
           </div>
         }
       >
-          <ExerciseScreen
-            header={
-              <ExerciseHeader
-                form={form}
-                exerciseIndex={selectedExerciseIndex}
-                onBack={() => setCurrentView('main')}
-              />
-            }
-            sets={
-              <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
-            }
-          />
+        <ExerciseScreen
+          header={
+            <ExerciseHeader
+              form={form}
+              exerciseIndex={selectedExerciseIndex}
+              onBack={() => setCurrentView('main')}
+            />
+          }
+          sets={
+            <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
+          }
+        />
       </Suspense>
     );
   }
@@ -290,34 +297,25 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/edit')({
     context,
     params,
   }): Promise<{
-    user: Exclude<User, null>;
     workoutId: number;
   }> => {
-    const user = context.user;
-    checkUser(user); 
     const workoutId = params.workoutId;
-    context.queryClient.ensureQueryData(
-      workoutQueryOptions(workoutId, user)
-    );
-    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
-    return { user, workoutId };
+    context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
+    context.queryClient.ensureQueryData(exercisesQueryOptions());
+    return { workoutId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user, workoutId } = Route.useLoaderData();
+  const { workoutId } = Route.useLoaderData();
   const [{ data: exercises }, { data: workout }] = useSuspenseQueries({
-    queries: [
-      exercisesQueryOptions(user),
-      workoutQueryOptions(workoutId, user),
-    ],
+    queries: [exercisesQueryOptions(), workoutQueryOptions(workoutId)],
   });
   const workoutFormValues = transformToWorkoutFormValues(workout);
   return (
     <EditWorkoutForm
       exercises={exercises}
-      user={user}
       workout={workoutFormValues}
       workoutId={workoutId}
     />

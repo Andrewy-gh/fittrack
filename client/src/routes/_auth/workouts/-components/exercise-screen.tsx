@@ -1,13 +1,11 @@
 import { withForm } from '@/hooks/form';
-import { useState, Suspense } from 'react';
+import { useState } from 'react';
 import { AddSetDialog } from '../-components/add-set-dialog';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MOCK_VALUES } from '../-components/form-options';
 import type { workout_SetInput } from '@/generated';
-import { RecentSetsDisplay } from './recent-sets-display';
-import type { User } from '@/lib/api/auth';
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
@@ -178,38 +176,7 @@ export const ExerciseSets = withForm({
   },
 });
 
-// MARK: Recent Susp.
-// Helper component to wrap recent sets with proper error boundaries
-export function RecentSets({
-  exerciseId,
-  user,
-}: {
-  exerciseId: number | null;
-  user: User;
-}) {
-  if (!exerciseId) {
-    return null;
-  }
 
-  return (
-    <Suspense
-      fallback={
-        <div className="space-y-4">
-          <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
-            Recent Sets
-          </h2>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground text-sm">
-              Loading recent sets...
-            </p>
-          </div>
-        </div>
-      }
-    >
-      <RecentSetsDisplay exerciseId={exerciseId} user={user} />
-    </Suspense>
-  );
-}
 
 // MARK: Exercise Screen
 export function ExerciseScreen({

@@ -11,7 +11,9 @@ import {
   getExercisesQueryOptions,
   getExercisesQueryKey,
   getExercisesByIdQueryKey,
-  getExercisesByIdRecentSetsQueryKey
+  getExercisesByIdRecentSetsQueryKey,
+  getExercisesByIdRecentSetsQueryOptions,
+  getExercisesByIdQueryOptions
 } from '@/client/@tanstack/react-query.gen';
 
 /**
@@ -36,12 +38,19 @@ export {
   getExercisesByIdRecentSetsQueryKey
 };
 
-export function exercisesQueryOptions(user: User) {
-  ensureUser(user);
+export function exercisesQueryOptions() {
   // Get the base options from generated code
   const baseOptions = getExercisesQueryOptions();
   // The interceptor will automatically add the auth token
   return baseOptions;
+}
+
+export function exerciseByIdQueryOptions(id: number) {
+  return getExercisesByIdQueryOptions({ path: { id } });
+}
+
+export function recentExerciseSetsQueryOptions(id: number) {
+  return getExercisesByIdRecentSetsQueryOptions({ path: { id } });
 }
 
 // Example of how to use generated query keys in a mutation for cache invalidation
@@ -62,31 +71,33 @@ export function useSomeExerciseMutation() {
 }
 */
 
-export function exerciseQueryOptions(exerciseId: number, user: User) {
-  const validatedUser = ensureUser(user);
-  return queryOptions<exercise_ExerciseWithSetsResponse[], Error>({
-    queryKey: ['exercises', 'details', exerciseId],
-    queryFn: async () => {
-      // Get a fresh token right before making the API call
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return ExercisesService.getExercises1(exerciseId);
-    },
-  });
-}
+// export function exerciseQueryOptions(exerciseId: number, user: User) {
+//   const validatedUser = ensureUser(user);
+//   return queryOptions<exercise_ExerciseWithSetsResponse[], Error>({
+//     queryKey: ['exercises', 'details', exerciseId],
+//     queryFn: async () => {
+//       // Get a fresh token right before making the API call
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return ExercisesService.getExercises1(exerciseId);
+//     },
+//   });
+// }
 
-export function recentExerciseSetsQueryOptions(exerciseId: number, user: User) {
-  const validatedUser = ensureUser(user);
-  return queryOptions<exercise_RecentSetsResponse[], Error>({
-    queryKey: ['exercises', 'recent-sets', exerciseId],
-    queryFn: async () => {
-      const accessToken = await getAccessToken(validatedUser);
-      OpenAPI.HEADERS = {
-        'x-stack-access-token': accessToken,
-      };
-      return ExercisesService.getExercisesRecentSets(exerciseId);
-    },
-  });
-}
+
+
+// export function recentExerciseSetsQueryOptions(exerciseId: number, user: User) {
+//   const validatedUser = ensureUser(user);
+//   return queryOptions<exercise_RecentSetsResponse[], Error>({
+//     queryKey: ['exercises', 'recent-sets', exerciseId],
+//     queryFn: async () => {
+//       const accessToken = await getAccessToken(validatedUser);
+//       OpenAPI.HEADERS = {
+//         'x-stack-access-token': accessToken,
+//       };
+//       return ExercisesService.getExercisesRecentSets(exerciseId);
+//     },
+//   });
+// }

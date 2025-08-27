@@ -83,6 +83,8 @@ export const getExercisesQueryKey = (options?: Options<GetExercisesData>) =>
 export const getExercisesQueryOptions = (
   options?: Options<GetExercisesData>,
 ) => {
+  const queryKeyLog = getExercisesQueryKey(options);
+  console.log('queryKeyLog', queryKeyLog);
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
       const { data } = await getExercises({
@@ -208,6 +210,8 @@ export const getWorkoutsQueryKey = (options?: Options<GetWorkoutsData>) =>
  * Get all workouts for the authenticated user
  */
 export const getWorkoutsQueryOptions = (options?: Options<GetWorkoutsData>) => {
+  const queryKeyLog =  getWorkoutsQueryKey(options);
+  console.log('queryKeyLog', queryKeyLog)
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
       const { data } = await getWorkouts({
@@ -313,6 +317,8 @@ export const getWorkoutsByIdQueryKey = (
 export const getWorkoutsByIdQueryOptions = (
   options: Options<GetWorkoutsByIdData>,
 ) => {
+  const queryKeyLog = getWorkoutsByIdQueryKey(options);
+  console.log('queryKeyLog', queryKeyLog);
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
       const { data } = await getWorkoutsById({
