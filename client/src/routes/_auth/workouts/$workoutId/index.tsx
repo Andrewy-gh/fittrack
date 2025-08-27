@@ -4,20 +4,17 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Edit, Dumbbell, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
-// import { checkUser, type User } from '@/lib/api/auth';
+import { Dumbbell, Edit, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/utils';
-import { workoutQueryOptions } from '@/lib/api/workouts';
-import type { workout_WorkoutWithSetsResponse } from '@/generated';
 import { DeleteDialog } from '../-components/delete-dialog';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
+import { workoutQueryOptions } from '@/lib/api/workouts';
+import type { WorkoutWorkoutWithSetsResponse } from '@/client';
 
 function IndividualWorkoutPage({
   workout,
-  // user,
 }: {
-  workout: workout_WorkoutWithSetsResponse[];
-  // user: Exclude<User, null>;
+  workout: WorkoutWorkoutWithSetsResponse[];
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
@@ -33,7 +30,7 @@ function IndividualWorkoutPage({
     (acc, w) => {
       const exerciseId = w.exercise_id || 0;
       const exerciseOrder = w.exercise_order ?? w.exercise_id ?? 0;
-      
+
       if (!acc[exerciseId]) {
         acc[exerciseId] = {
           name: w.exercise_name || 'Unknown Exercise',
@@ -152,71 +149,71 @@ function IndividualWorkoutPage({
           {Object.entries(exerciseGroups)
             .sort(([, a], [, b]) => a.order - b.order)
             .map(([exerciseId, exercise]) => {
-            const exerciseReps = exercise.sets.reduce(
-              (sum, set) => sum + (set.reps || 0),
-              0
-            );
-            const exerciseVolume = exercise.sets.reduce(
-              (sum, set) => sum + (set.volume || 0),
-              0
-            );
+              const exerciseReps = exercise.sets.reduce(
+                (sum, set) => sum + (set.reps || 0),
+                0
+              );
+              const exerciseVolume = exercise.sets.reduce(
+                (sum, set) => sum + (set.volume || 0),
+                0
+              );
 
-            return (
-              <Card
-                key={exerciseId}
-                className="border-0 shadow-sm backdrop-blur-sm"
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold">
-                      <Link
-                        to={`/exercises/$exerciseId`}
-                        params={{ exerciseId: Number(exerciseId) }}
-                      >
-                        {exercise.name}
-                      </Link>
-                    </CardTitle>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{exerciseReps} reps</span>
-                      <span className="text-primary">
-                        {exerciseVolume.toLocaleString()} vol
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {exercise.sets.map((set, index) => (
-                    <div
-                      key={set.set_id}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm font-medium text-muted-foreground w-8">
-                          {set.set_order ?? index + 1}
+              return (
+                <Card
+                  key={exerciseId}
+                  className="border-0 shadow-sm backdrop-blur-sm"
+                >
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg font-semibold">
+                        <Link
+                          to={`/exercises/$exerciseId`}
+                          params={{ exerciseId: Number(exerciseId) }}
+                        >
+                          {exercise.name}
+                        </Link>
+                      </CardTitle>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{exerciseReps} reps</span>
+                        <span className="text-primary">
+                          {exerciseVolume.toLocaleString()} vol
                         </span>
-                        <div className="flex items-center space-x-4 text-sm">
-                          <span className="font-medium">
-                            {set.weight || 0} lbs
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {exercise.sets.map((set, index) => (
+                      <div
+                        key={set.set_id}
+                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm font-medium text-muted-foreground w-8">
+                            {set.set_order ?? index + 1}
                           </span>
-                          <span>&times;</span>
-                          <span className="font-medium">
-                            {set.reps || 0} reps
-                          </span>
+                          <div className="flex items-center space-x-4 text-sm">
+                            <span className="font-medium">
+                              {set.weight || 0} lbs
+                            </span>
+                            <span>&times;</span>
+                            <span className="font-medium">
+                              {set.reps || 0} reps
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {(set.volume || 0).toLocaleString()} vol
                         </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {(set.volume || 0).toLocaleString()} vol
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            );
-          })}
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
         </div>
         {/* MARK: Dialog */}
-        <DeleteDialog 
-          isOpen={isDeleteDialogOpen} 
+        <DeleteDialog
+          isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
           workoutId={workout[0]?.workout_id || 0}
           // user={user}
@@ -236,16 +233,14 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/')({
       return { workoutId };
     },
   },
-  loader: async ({ context, params }): Promise<{
-    // user: Exclude<User, null>;
+  loader: async ({
+    context,
+    params,
+  }): Promise<{
     workoutId: number;
   }> => {
-    // const user = context.user;
-    // checkUser(user);
     const workoutId = params.workoutId;
-    context.queryClient.ensureQueryData(
-      workoutQueryOptions(workoutId)
-    );
+    context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
     return { workoutId };
   },
   component: RouteComponent,
@@ -253,8 +248,6 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/')({
 
 function RouteComponent() {
   const { workoutId } = Route.useLoaderData();
-  const { data: workout } = useSuspenseQuery(
-    workoutQueryOptions(workoutId)
-  );
+  const { data: workout } = useSuspenseQuery(workoutQueryOptions(workoutId));
   return <IndividualWorkoutPage workout={workout} />;
 }

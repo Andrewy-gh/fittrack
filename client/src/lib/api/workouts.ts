@@ -1,17 +1,5 @@
 import { queryClient } from './api';
-import { queryOptions, useMutation } from '@tanstack/react-query';
-import { WorkoutsService, OpenAPI } from '@/generated';
-import { ensureUser, getAccessToken, type User } from './auth';
-import type {
-  workout_CreateWorkoutRequest,
-  workout_WorkoutResponse,
-  workout_WorkoutWithSetsResponse,
-  workout_UpdateWorkoutRequest,
-  workout_UpdateExercise,
-  workout_UpdateSet,
-} from '@/generated';
-import { sortByExerciseAndSetOrder } from '@/lib/utils';
-
+import { useMutation } from '@tanstack/react-query';
 import {
   getExercisesQueryKey,
   getWorkoutsByIdQueryKey,
@@ -22,27 +10,35 @@ import {
   putWorkoutsByIdMutation,
   deleteWorkoutsByIdMutation,
 } from '@/client/@tanstack/react-query.gen';
+import type {
+  WorkoutUpdateExercise,
+  WorkoutUpdateSet,
+  WorkoutUpdateWorkoutRequest,
+  WorkoutWorkoutWithSetsResponse,
+} from '@/client';
+import { sortByExerciseAndSetOrder } from '../utils';
 
 export function workoutsQueryOptions() {
   return getWorkoutsQueryOptions();
 }
 
-
 export function workoutQueryOptions(id: number) {
   return getWorkoutsByIdQueryOptions({ path: { id } });
 }
 
-// ! TODO: return data from server to invalidate recent sets for exercise
+// ! TODO: Return data from server to invalidate recent sets for exercise
+// ! TODO: if I want to be granular, but stale time is so low not a priority
 export function useSaveWorkoutMutation() {
   return useMutation({
-    ...postWorkoutsMutation(), onSuccess: () => {
+    ...postWorkoutsMutation(),
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getWorkoutsQueryKey(),
       });
       queryClient.invalidateQueries({
         queryKey: getExercisesQueryKey(),
       });
-    }
+    },
   });
 }
 
@@ -56,8 +52,8 @@ export function useUpdateWorkoutMutation() {
       queryClient.invalidateQueries({
         queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
       });
-    }
-  },)
+    },
+  });
 }
 
 export function useDeleteWorkoutMutation() {
@@ -70,104 +66,17 @@ export function useDeleteWorkoutMutation() {
       queryClient.removeQueries({
         queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
       });
-    }
+    },
   });
 }
 
-// export function useUpdateWorkoutMutation(user: User) {
-//   const validatedUser = ensureUser(user);
-//   return useMutation({
-//     mutationFn: async ({
-//       id,
-//       data,
-//     }: {
-//       id: number;
-//       data: workout_UpdateWorkoutRequest;
-//     }) => {
-//       const accessToken = await getAccessToken(validatedUser);
-//       OpenAPI.HEADERS = {
-//         'x-stack-access-token': accessToken,
-//       };
-//       return await WorkoutsService.putWorkouts(id, data);
-//     },
-//     onSuccess: (_, { id }) => {
-//       queryClient.invalidateQueries({
-//         queryKey: ['workouts', 'list'],
-//       });
-//       queryClient.invalidateQueries({
-//         queryKey: ['workouts', 'details', id],
-//       });
-//     },
-//   });
-// }
-
-// export function workoutsQueryOptions(user: User) {
-//   const validatedUser = ensureUser(user);
-//   return queryOptions<workout_WorkoutResponse[], Error>({
-//     queryKey: ['workouts', 'list'],
-//     queryFn: async () => {
-//       const accessToken = await getAccessToken(validatedUser);
-//       OpenAPI.HEADERS = {
-//         'x-stack-access-token': accessToken,
-//       };
-//       return WorkoutsService.getWorkouts();
-//     },
-//   });
-// }
-
-// export function workoutQueryOptions(workoutId: number, user: User) {
-//   const validatedUser = ensureUser(user);
-//   return queryOptions<workout_WorkoutWithSetsResponse[], Error>({
-//     queryKey: ['workouts', 'details', workoutId],
-//     queryFn: async () => {
-//       const accessToken = await getAccessToken(validatedUser);
-//       OpenAPI.HEADERS = {
-//         'x-stack-access-token': accessToken,
-//       };
-//       return WorkoutsService.getWorkouts1(workoutId);
-//     },
-//   });
-// }
-
-// export function useSaveWorkoutMutation(user: User) {
-//   const validatedUser = ensureUser(user);
-//   return useMutation({
-//     mutationFn: async (data: workout_CreateWorkoutRequest) => {
-//       const accessToken = await getAccessToken(validatedUser);
-//       OpenAPI.HEADERS = {
-//         'x-stack-access-token': accessToken,
-//       };
-//       return await WorkoutsService.postWorkouts(data); // await for form.Subscribe to update
-//     },
-//     onSuccess: () => {
-//       queryClient.invalidateQueries({
-//         queryKey: ['workouts', 'list'],
-//       });
-//     },
-//   });
-// }
-
-// export async function deleteWorkout(
-  //   workoutId: number,
-//   user: User
-// ): Promise<void> {
-//   const validatedUser = ensureUser(user);
-//   const accessToken = await getAccessToken(validatedUser);
-//   OpenAPI.HEADERS = {
-//     'x-stack-access-token': accessToken,
-//   };
-
-//   return WorkoutsService.deleteWorkouts(workoutId);
-// }
-
-
 // MARK: Utils
 function groupSetsByExercise(
-  sortedWorkouts: workout_WorkoutWithSetsResponse[]
-): Map<number, { exercise: workout_UpdateExercise; order: number }> {
+  sortedWorkouts: WorkoutWorkoutWithSetsResponse[]
+): Map<number, { exercise: WorkoutUpdateExercise; order: number }> {
   const exercisesMap = new Map<
     number,
-    { exercise: workout_UpdateExercise; order: number }
+    { exercise: WorkoutUpdateExercise; order: number }
   >();
 
   for (const workout of sortedWorkouts) {
@@ -188,7 +97,7 @@ function groupSetsByExercise(
     exerciseEntry.exercise.sets.push({
       weight: workout.weight || 0,
       reps: workout.reps || 0,
-      setType: workout.set_type as workout_UpdateSet.setType,
+      setType: workout.set_type as WorkoutUpdateSet['setType'],
     });
   }
 
@@ -196,16 +105,16 @@ function groupSetsByExercise(
 }
 
 function extractOrderedExercises(
-  exercisesMap: Map<number, { exercise: workout_UpdateExercise; order: number }>
-): workout_UpdateExercise[] {
+  exercisesMap: Map<number, { exercise: WorkoutUpdateExercise; order: number }>
+): WorkoutUpdateExercise[] {
   return Array.from(exercisesMap.values())
     .sort((a, b) => a.order - b.order)
     .map((entry) => entry.exercise);
 }
 
 export function transformToWorkoutFormValues(
-  workouts: workout_WorkoutWithSetsResponse[]
-): workout_UpdateWorkoutRequest {
+  workouts: WorkoutWorkoutWithSetsResponse[]
+): WorkoutUpdateWorkoutRequest {
   if (workouts.length === 0) {
     return {
       date: new Date().toISOString(),

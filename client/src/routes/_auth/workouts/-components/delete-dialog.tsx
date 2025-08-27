@@ -10,16 +10,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
-// import { useMutation, useQueryClient } from '@tanstack/react-query';
-// import { deleteWorkout } from '@/lib/api/workouts';
-// import type { User } from '@/lib/api/auth';
 import { useDeleteWorkoutMutation } from '@/lib/api/workouts';
 
 interface DeleteDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   workoutId: number;
-  // user: Exclude<User, null>;
 }
 
 export function DeleteDialog({
@@ -30,21 +26,6 @@ export function DeleteDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  // const queryClient = useQueryClient();
-
-  // const deleteMutation = useMutation({
-  //   mutationFn: async () => {
-  //     return deleteWorkout(workoutId, user);
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ['workouts'] });
-  //     onOpenChange(false);
-  //     router.navigate({ to: '/workouts' });
-  //   },
-  //   onError: (error: any) => {
-  //     setError(error?.message || 'Failed to delete workout');
-  //   },
-  // });
 
   const deleteMutation = useDeleteWorkoutMutation();
 
@@ -52,7 +33,7 @@ export function DeleteDialog({
     setError(null);
     setIsDeleting(true);
     try {
-      const res = await deleteMutation.mutateAsync(
+      await deleteMutation.mutateAsync(
         { path: { id: workoutId } },
         {
           onSuccess: () => {
@@ -60,7 +41,6 @@ export function DeleteDialog({
           },
         }
       );
-      console.log('res', res);
     } finally {
       setIsDeleting(false);
     }

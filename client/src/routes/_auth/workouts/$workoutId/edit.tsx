@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { checkUser, type User } from '@/lib/api/auth';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { useSuspenseQueries } from '@tanstack/react-query';
 import {
@@ -14,7 +13,6 @@ import { Card } from '@/components/ui/card';
 import { MiniChart } from '../-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
-import type { exercise_ExerciseResponse } from '@/generated';
 import {
   ExerciseHeader,
   ExerciseScreen,
@@ -28,12 +26,10 @@ import type {
 
 function EditWorkoutForm({
   exercises,
-  // user,
   workout,
   workoutId,
 }: {
   exercises: ExerciseExerciseResponse[];
-  // user: Exclude<User, null>;
   workout: WorkoutUpdateWorkoutRequest;
   workoutId: number;
 }) {

@@ -5,14 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import type { exercise_ExerciseResponse } from '@/generated';
+import type { ExerciseExerciseResponse } from '@/client';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
-import { checkUser, type User } from '@/lib/api/auth';
 
 function ExercisesDisplay({
   exercises,
 }: {
-  exercises: exercise_ExerciseResponse[];
+  exercises: ExerciseExerciseResponse[];
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
