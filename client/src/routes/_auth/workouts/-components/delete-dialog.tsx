@@ -32,6 +32,7 @@ export function DeleteDialog({
   const handleDelete = async () => {
     setError(null);
     setIsDeleting(true);
+    // ! TODO: handle error
     try {
       await deleteMutation.mutateAsync(
         { path: { id: workoutId } },

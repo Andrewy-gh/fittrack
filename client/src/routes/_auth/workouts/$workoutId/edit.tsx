@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { useRouter } from '@tanstack/react-router';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
 import { useSuspenseQueries } from '@tanstack/react-query';
 import {
@@ -33,6 +34,7 @@ function EditWorkoutForm({
   workout: WorkoutUpdateWorkoutRequest;
   workoutId: number;
 }) {
+  const router = useRouter();
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
   >('main');
@@ -50,8 +52,14 @@ function EditWorkoutForm({
         await updateWorkoutMutation.mutateAsync({
           path: { id: workoutId },
           body: value,
+        }, {
+          onSuccess: () => {
+            router.navigate({
+              to: '/workouts/$workoutId',
+              params: { workoutId },
+            });
+          },
         });
-        console.log('Workout updated successfully!');
       } catch (error) {
         console.error('Failed to update workout:', error);
         alert(`Failed to update workout: ${error}`);
