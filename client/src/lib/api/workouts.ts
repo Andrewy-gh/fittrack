@@ -13,8 +13,11 @@ import type {
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 import {
-  getWorkoutsQueryOptions,
+  getExercisesQueryKey,
+  getWorkoutsByIdQueryKey,
   getWorkoutsByIdQueryOptions,
+  getWorkoutsQueryKey,
+  getWorkoutsQueryOptions,
   postWorkoutsMutation,
   putWorkoutsByIdMutation,
   deleteWorkoutsByIdMutation,
@@ -29,22 +32,45 @@ export function workoutQueryOptions(id: number) {
   return getWorkoutsByIdQueryOptions({ path: { id } });
 }
 
-
+// ! TODO: return data from server to invalidate recent sets for exercise
 export function useSaveWorkoutMutation() {
   return useMutation({
-    ...postWorkoutsMutation(),
+    ...postWorkoutsMutation(), onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsQueryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getExercisesQueryKey(),
+      });
+    }
   });
 }
 
 export function useUpdateWorkoutMutation() {
   return useMutation({
     ...putWorkoutsByIdMutation(),
-  });
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsQueryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
+      });
+    }
+  },)
 }
 
 export function useDeleteWorkoutMutation() {
   return useMutation({
     ...deleteWorkoutsByIdMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsQueryKey(),
+      });
+      queryClient.removeQueries({
+        queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
+      });
+    }
   });
 }
 
