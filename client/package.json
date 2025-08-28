@@ -8,7 +8,6 @@
     "build": "bunx --bun vite build",
     "serve": "vite preview",
     "test": "vitest run",
-    "generate:api": "openapi --input ../server/docs/swagger.json --output src/generated --client fetch",
     "openapi-ts": "openapi-ts"
   },
   "dependencies": {
@@ -50,7 +49,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
-    "openapi-typescript-codegen": "^0.29.0",
     "typescript": "^5.7.2",
     "vite": "^6.1.0",
     "vitest": "^3.0.5",
