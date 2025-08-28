@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
-import { checkUser, type User } from '@/lib/api/auth';
+import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import { exercisesQueryOptions, type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
@@ -25,7 +25,7 @@ function WorkoutTracker({
   user,
   exercises,
 }: {
-  user: Exclude<User, null>;
+  user: CurrentUser | CurrentInternalUser; // need user for localStorage
   exercises: DbExercise[];
 }) {
   const [currentView, setCurrentView] = useState<
@@ -298,10 +298,9 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
   loader: async ({
     context,
   }): Promise<{
-    user: Exclude<User, null>;
+    user: CurrentUser | CurrentInternalUser;
   }> => {
     const user = context.user;
-    checkUser(user);
     context.queryClient.ensureQueryData(exercisesQueryOptions());
     return { user };
   },
