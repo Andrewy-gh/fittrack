@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
 import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
-import { checkUser, type User } from '@/lib/api/auth';
 import type { workout_WorkoutResponse } from '@/generated';
 
 function WorkoutsDisplay({
@@ -133,20 +132,13 @@ function WorkoutsDisplay({
 }
 
 export const Route = createFileRoute('/_auth/workouts/')({
-  loader: async ({ context }): Promise<{ user: Exclude<User, null> }> => {
-    const user = context.user;
-    checkUser(user);
-
-    context.queryClient.ensureQueryData(workoutsQueryOptions(user));
-    return { user };
+  loader: async ({ context }) => {
+    context.queryClient.ensureQueryData(workoutsQueryOptions());
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user } = Route.useLoaderData();
-  const { data: workouts } = useSuspenseQuery(
-    workoutsQueryOptions(user)
-  );
+  const { data: workouts } = useSuspenseQuery(workoutsQueryOptions());
   return <WorkoutsDisplay workouts={workouts} />;
 }

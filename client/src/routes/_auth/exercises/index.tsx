@@ -5,14 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronRight, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import type { exercise_ExerciseResponse } from '@/generated';
+import type { ExerciseExerciseResponse } from '@/client';
 import { exercisesQueryOptions } from '@/lib/api/exercises';
-import { checkUser, type User } from '@/lib/api/auth';
 
 function ExercisesDisplay({
   exercises,
 }: {
-  exercises: exercise_ExerciseResponse[];
+  exercises: ExerciseExerciseResponse[];
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -81,21 +80,15 @@ function ExercisesDisplay({
 }
 
 export const Route = createFileRoute('/_auth/exercises/')({
-  loader: async ({ context }): Promise<{
-    user: Exclude<User, null>;
-  }> => {
-    const user = context.user;
-    checkUser(user); 
-    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
-    return { user };
+  loader: async ({ context }) => {
+    context.queryClient.ensureQueryData(exercisesQueryOptions());
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user } = Route.useLoaderData();
   const { data: exercises } = useSuspenseQuery(
-    exercisesQueryOptions(user)
-  );
+    exercisesQueryOptions()
+  );  
   return <ExercisesDisplay exercises={exercises} />;
 }

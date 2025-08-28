@@ -1,27 +1,22 @@
+import { Suspense } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { recentExerciseSetsQueryOptions } from '@/lib/api/exercises';
-import { formatDate } from '@/lib/utils';
-import type { User } from '@/lib/api/auth';
-import type { exercise_RecentSetsResponse } from '@/generated';
-import { sortByExerciseAndSetOrder } from '@/lib/utils';
-import { Link } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
-
+import { Link } from '@tanstack/react-router';
+import type { ExerciseRecentSetsResponse } from '@/client';
+import { formatDate } from '@/lib/utils';
+import { recentExerciseSetsQueryOptions } from '@/lib/api/exercises';
+import { sortByExerciseAndSetOrder } from '@/lib/utils';
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
-  user: User;
 }
 
-export function RecentSetsDisplay({
-  exerciseId,
-  user,
-}: RecentSetsDisplayProps) {
+function RecentSetsDisplay({ exerciseId }: RecentSetsDisplayProps) {
   const { data: recentSets } = useSuspenseQuery(
-    recentExerciseSetsQueryOptions(exerciseId, user)
+    recentExerciseSetsQueryOptions(exerciseId)
   );
-  
+
   if (recentSets.length === 0) {
     return null;
   }
@@ -41,7 +36,7 @@ export function RecentSetsDisplay({
       acc[dateKey].sets.push(set);
       return acc;
     },
-    {} as Record<string, { date: string; sets: exercise_RecentSetsResponse[] }>
+    {} as Record<string, { date: string; sets: ExerciseRecentSetsResponse[] }>
   );
 
   return (
@@ -69,7 +64,10 @@ export function RecentSetsDisplay({
               {group.sets.map((set, index) => {
                 const volume = (set.weight || 0) * set.reps;
                 return (
-                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors">
+                  <div
+                    key={set.set_id}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors"
+                  >
                     <div className="flex items-center space-x-4">
                       <span className="text-sm font-medium text-muted-foreground w-8">
                         {set.set_order ?? index + 1}
@@ -93,5 +91,32 @@ export function RecentSetsDisplay({
         );
       })}
     </div>
+  );
+}
+
+// MARK: Recent Susp.
+// Helper component to wrap recent sets with proper error boundaries
+export function RecentSets({ exerciseId }: { exerciseId: number | null }) {
+  if (!exerciseId) {
+    return null;
+  }
+
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
+            Recent Sets
+          </h2>
+          <div className="text-center py-8">
+            <p className="text-muted-foreground text-sm">
+              Loading recent sets...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <RecentSetsDisplay exerciseId={exerciseId} />
+    </Suspense>
   );
 }

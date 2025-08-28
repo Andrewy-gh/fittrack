@@ -12,20 +12,20 @@ import { checkUser, type User } from '@/lib/api/auth';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import { exercisesQueryOptions, type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
-import {  AddExerciseScreen } from './-components/add-exercise-screen';
+import { AddExerciseScreen } from './-components/add-exercise-screen';
 
 import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
-  RecentSets,
 } from './-components/exercise-screen';
+import { RecentSets } from './-components/recent-sets-display';
 
 function WorkoutTracker({
   user,
   exercises,
 }: {
-  user: Exclude<User, null>; 
+  user: Exclude<User, null>;
   exercises: DbExercise[];
 }) {
   const [currentView, setCurrentView] = useState<
@@ -36,8 +36,9 @@ function WorkoutTracker({
     exerciseId: number | null;
   } | null>(null);
 
-  const saveWorkout = useSaveWorkoutMutation(user);
+  const saveWorkout = useSaveWorkoutMutation();
   const form = useAppForm({
+    // MARK: TODO: Handle user.id when chat is implemented
     defaultValues: getInitialValues(user.id),
     listeners: {
       onChange: ({ formApi }) => {
@@ -47,22 +48,25 @@ function WorkoutTracker({
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {
-      await saveWorkout.mutateAsync(value, {
-        onSuccess: () => {
-          clearLocalStorage(user.id);
-          form.reset();
-          setSelectedExercise(null);
-        },
-        onError: (error) => {
-          alert(error);
-        },
-      });
+      await saveWorkout.mutateAsync(
+        { body: value },
+        {
+          onSuccess: () => {
+            clearLocalStorage(user.id);
+            form.reset();
+            setSelectedExercise(null);
+          },
+          onError: (error) => {
+            alert(error);
+          },
+        }
+      );
     },
   });
 
   // Helper to get exercise ID from exercises list
   const getExerciseId = (exerciseName: string): number | null => {
-    const exercise = exercises.find(ex => ex.name === exerciseName);
+    const exercise = exercises.find((ex) => ex.name === exerciseName);
     return exercise?.id || null;
   };
 
@@ -127,12 +131,7 @@ function WorkoutTracker({
               onBack={() => setCurrentView('main')}
             />
           }
-          recentSets={
-            <RecentSets
-              exerciseId={selectedExercise.exerciseId}
-              user={user}
-            />
-          }
+          recentSets={<RecentSets exerciseId={selectedExercise.exerciseId} />}
           sets={
             <ExerciseSets form={form} exerciseIndex={selectedExercise.index} />
           }
@@ -303,7 +302,7 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
   }> => {
     const user = context.user;
     checkUser(user);
-    context.queryClient.ensureQueryData(exercisesQueryOptions(user));
+    context.queryClient.ensureQueryData(exercisesQueryOptions());
     return { user };
   },
   component: RouteComponent,
@@ -311,13 +310,13 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
 
 function RouteComponent() {
   const { user } = Route.useLoaderData();
-  const { data: exercisesResponse } = useSuspenseQuery(exercisesQueryOptions(user));
-  
+  const { data: exercisesResponse } = useSuspenseQuery(exercisesQueryOptions());
+
   // Convert API response to our cleaner DbExercise type
-  const exercises: DbExercise[] = exercisesResponse.map(ex => ({
+  const exercises: DbExercise[] = exercisesResponse.map((ex) => ({
     id: ex.id,
-    name: ex.name
+    name: ex.name,
   }));
-  
+
   return <WorkoutTracker user={user} exercises={exercises} />;
 }

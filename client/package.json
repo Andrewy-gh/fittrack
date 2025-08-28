@@ -8,7 +8,8 @@
     "build": "bunx --bun vite build",
     "serve": "vite preview",
     "test": "vitest run",
-    "generate:api": "openapi --input ../server/docs/swagger.json --output src/generated --client fetch"
+    "generate:api": "openapi --input ../server/docs/swagger.json --output src/generated --client fetch",
+    "openapi-ts": "openapi-ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -22,6 +23,7 @@
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-form": "^1.12.3",
     "@tanstack/react-query": "^5.84.2",
+    "@tanstack/react-query-devtools": "^5.85.5",
     "@tanstack/react-router": "^1.114.3",
     "@tanstack/react-router-devtools": "^1.114.3",
     "@tanstack/router-plugin": "^1.114.3",
@@ -40,6 +42,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "0.81.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.8",

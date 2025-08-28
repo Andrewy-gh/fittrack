@@ -13,16 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { exercise_ExerciseWithSetsResponse } from '@/generated';
-import { exerciseQueryOptions } from '@/lib/api/exercises';
+// import type { exercise_ExerciseWithSetsResponse } from '@/generated';
+import { exerciseByIdQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
-import { checkUser, type User } from '@/lib/api/auth';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
+import type { ExerciseExerciseWithSetsResponse } from '@/client';
 
 function ExerciseDisplay({
   exerciseSets,
 }: {
-  exerciseSets: exercise_ExerciseWithSetsResponse[];
+  exerciseSets: ExerciseExerciseWithSetsResponse[];
 }) {
   // Calculate summary statistics
   const totalSets = exerciseSets.length;
@@ -237,25 +237,20 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
       return { exerciseId };
     },
   },
-  loader: async ({ context, params }): Promise<{
-    user: Exclude<User, null>;
-    exerciseId: number;
-  }> => {
-    const user = context.user;
-    checkUser(user);
+  loader: async ({ context, params }) => {
     const exerciseId = params.exerciseId;
     context.queryClient.ensureQueryData(
-      exerciseQueryOptions(exerciseId, user)
+      exerciseByIdQueryOptions(exerciseId)
     );
-    return { user, exerciseId };
+    return { exerciseId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user, exerciseId } = Route.useLoaderData();
+  const { exerciseId } = Route.useLoaderData();
   const { data: exerciseSets } = useSuspenseQuery(
-    exerciseQueryOptions(exerciseId, user)
+    exerciseByIdQueryOptions(exerciseId)
   );
   return <ExerciseDisplay exerciseSets={exerciseSets} />;
 }
