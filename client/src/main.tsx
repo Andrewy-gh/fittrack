@@ -18,7 +18,6 @@ import { App } from './app.tsx';
 export const router = createRouter({
   routeTree,
   context: {
-    // user: undefined!,
     queryClient,
   },
   defaultPreload: 'intent',
