@@ -195,10 +195,11 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 
 	// Step 1: Update workout metadata
 	updatedWorkout, err := qtx.UpdateWorkout(ctx, db.UpdateWorkoutParams{
-		ID:     id,
-		Date:   pgData.Workout.Date,
-		Notes:  pgData.Workout.Notes,
-		UserID: userID,
+		ID:           id,
+		Date:         pgData.Workout.Date,
+		Notes:        pgData.Workout.Notes,
+		WorkoutFocus: pgData.Workout.WorkoutFocus,
+		UserID:       userID,
 	})
 	if err != nil {
 		// Check for RLS violations
