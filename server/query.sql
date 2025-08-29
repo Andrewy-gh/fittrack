@@ -25,6 +25,7 @@ SELECT
     s.workout_id,
     w.date as workout_date,
     w.notes as workout_notes,
+    w.workout_focus as workout_focus,
     s.id as set_id,
     s.weight,
     s.reps,
@@ -42,8 +43,8 @@ ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at, s.id;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
-INSERT INTO workout (date, notes, user_id)
-VALUES ($1, $2, $3)
+INSERT INTO workout (date, notes, workout_focus, user_id)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetOrCreateExercise :one
@@ -63,6 +64,7 @@ SELECT
     w.id as workout_id,
     w.date as workout_date,
     w.notes as workout_notes,
+    w.workout_focus as workout_focus,
     s.id as set_id,
     s.weight,
     s.reps,
@@ -99,8 +101,9 @@ UPDATE workout
 SET 
     date = COALESCE($2, date),
     notes = COALESCE($3, notes),
+    workout_focus = COALESCE($4, workout_focus),
     updated_at = NOW()
-WHERE id = $1 AND user_id = $4
+WHERE id = $1 AND user_id = $5
 RETURNING *;
 
 -- name: UpdateSet :one
@@ -133,6 +136,7 @@ SELECT
     s.id AS set_id,
     w.id AS workout_id,
     w.date AS workout_date,
+    w.workout_focus AS workout_focus,
     s.weight,
     s.reps,
     s.exercise_order,
