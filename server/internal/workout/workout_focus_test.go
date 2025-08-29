@@ -427,15 +427,14 @@ func TestWorkoutFocus_Integration(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		// Get the created workout ID
-		var result []db.Workout
-		err := json.Unmarshal(w.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Len(t, result, 1)
-		workoutID := result[0].ID
+		// Get the created workout ID by querying the database directly since CreateWorkout doesn't return the workout object
+		var workoutID int32
+		err := pool.QueryRow(ctx, "SELECT id FROM workout WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1", userID).Scan(&workoutID)
+		require.NoError(t, err)
 
 		// Update the workout with focus
 		updateReq := UpdateWorkoutRequest{
+			Date:         "2023-01-15T10:00:00Z", // Date is required
 			WorkoutFocus: stringPtrHelper("Leg Day Focus"),
 			Exercises: []UpdateExercise{
 				{
@@ -459,7 +458,7 @@ func TestWorkoutFocus_Integration(t *testing.T) {
 		// Verify the update by checking the workout directly from database
 		var actualFocus string
 		var actualFocusValid bool
-		err = pool.QueryRow(ctx, "SELECT workout_focus FROM workout WHERE id = $1 AND user_id = $2",
+		err = pool.QueryRow(ctx, "SELECT workout_focus, workout_focus IS NOT NULL FROM workout WHERE id = $1 AND user_id = $2",
 			workoutID, userID).Scan(&actualFocus, &actualFocusValid)
 		assert.NoError(t, err)
 		assert.Equal(t, "Leg Day Focus", actualFocus)
