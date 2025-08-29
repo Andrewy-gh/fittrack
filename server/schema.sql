@@ -10,6 +10,7 @@ CREATE TABLE workout (
     id SERIAL PRIMARY KEY,
     date TIMESTAMPTZ NOT NULL,
     notes VARCHAR(256),
+    workout_focus VARCHAR(256),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE

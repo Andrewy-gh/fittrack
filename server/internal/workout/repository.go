@@ -195,10 +195,11 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 
 	// Step 1: Update workout metadata
 	updatedWorkout, err := qtx.UpdateWorkout(ctx, db.UpdateWorkoutParams{
-		ID:     id,
-		Date:   pgData.Workout.Date,
-		Notes:  pgData.Workout.Notes,
-		UserID: userID,
+		ID:           id,
+		Date:         pgData.Workout.Date,
+		Notes:        pgData.Workout.Notes,
+		WorkoutFocus: pgData.Workout.WorkoutFocus,
+		UserID:       userID,
 	})
 	if err != nil {
 		// Check for RLS violations
@@ -302,9 +303,10 @@ func (wr *workoutRepository) DeleteWorkout(ctx context.Context, id int32, userID
 // MARK: insertWorkout
 func (wr *workoutRepository) insertWorkout(ctx context.Context, qtx *db.Queries, workout PGWorkoutData, userID string) (db.Workout, error) {
 	return qtx.CreateWorkout(ctx, db.CreateWorkoutParams{
-		Date:   workout.Date,
-		Notes:  workout.Notes,
-		UserID: userID,
+		Date:         workout.Date,
+		Notes:        workout.Notes,
+		WorkoutFocus: workout.WorkoutFocus,
+		UserID:       userID,
 	})
 }
 
@@ -379,11 +381,22 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 			String: "",
 			Valid:  false,
 		},
+		WorkoutFocus: pgtype.Text{
+			String: "",
+			Valid:  false,
+		},
 	}
 
 	if reformatted.Workout.Notes != nil {
 		pgWorkout.Notes = pgtype.Text{
 			String: *reformatted.Workout.Notes,
+			Valid:  true,
+		}
+	}
+
+	if reformatted.Workout.WorkoutFocus != nil {
+		pgWorkout.WorkoutFocus = pgtype.Text{
+			String: *reformatted.Workout.WorkoutFocus,
 			Valid:  true,
 		}
 	}

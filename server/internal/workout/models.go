@@ -8,9 +8,10 @@ import (
 
 // Request/Response types
 type CreateWorkoutRequest struct {
-	Date      string          `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes     *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
-	Exercises []ExerciseInput `json:"exercises" validate:"required,min=1,dive"`
+	Date         string          `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
+	Notes        *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
+	WorkoutFocus *string         `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
+	Exercises    []ExerciseInput `json:"exercises" validate:"required,min=1,dive"`
 }
 
 type ExerciseInput struct {
@@ -27,8 +28,9 @@ type SetInput struct {
 // PostgreSQL-specific types
 
 type PGWorkoutData struct {
-	Date  pgtype.Timestamptz
-	Notes pgtype.Text
+	Date         pgtype.Timestamptz
+	Notes        pgtype.Text
+	WorkoutFocus pgtype.Text
 }
 
 type PGExerciseData struct {
@@ -53,8 +55,9 @@ type PGReformattedRequest struct {
 // Internal data structures
 
 type WorkoutData struct {
-	Date  time.Time
-	Notes *string
+	Date         time.Time
+	Notes        *string
+	WorkoutFocus *string
 }
 
 type ExerciseData struct {
@@ -77,6 +80,7 @@ type ReformattedRequest struct {
 type WorkoutRequestTransformable interface {
 	GetDate() *string
 	GetNotes() *string
+	GetWorkoutFocus() *string
 	GetExercises() []ExerciseTransformable
 }
 
@@ -94,9 +98,10 @@ type SetTransformable interface {
 // UPDATE endpoint types for PUT /api/workouts/{id}
 // Returns 204 No Content on success
 type UpdateWorkoutRequest struct {
-	Date      string           `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes     *string          `json:"notes,omitempty" validate:"omitempty,max=256"`
-	Exercises []UpdateExercise `json:"exercises" validate:"required,min=1,dive"`
+	Date         string           `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
+	Notes        *string          `json:"notes,omitempty" validate:"omitempty,max=256"`
+	WorkoutFocus *string          `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
+	Exercises    []UpdateExercise `json:"exercises" validate:"required,min=1,dive"`
 }
 
 type UpdateExercise struct {
@@ -119,6 +124,10 @@ func (c CreateWorkoutRequest) GetNotes() *string {
 	return c.Notes
 }
 
+func (c CreateWorkoutRequest) GetWorkoutFocus() *string {
+	return c.WorkoutFocus
+}
+
 func (c CreateWorkoutRequest) GetExercises() []ExerciseTransformable {
 	result := make([]ExerciseTransformable, len(c.Exercises))
 	for i, exercise := range c.Exercises {
@@ -134,6 +143,10 @@ func (u UpdateWorkoutRequest) GetDate() *string {
 
 func (u UpdateWorkoutRequest) GetNotes() *string {
 	return u.Notes
+}
+
+func (u UpdateWorkoutRequest) GetWorkoutFocus() *string {
+	return u.WorkoutFocus
 }
 
 func (u UpdateWorkoutRequest) GetExercises() []ExerciseTransformable {

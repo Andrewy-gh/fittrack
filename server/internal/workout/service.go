@@ -178,8 +178,9 @@ func transformWorkoutRequest[T WorkoutRequestTransformable](logger *slog.Logger,
 
 	// Create workout data
 	workout := WorkoutData{
-		Date:  parsedDate,
-		Notes: request.GetNotes(),
+		Date:         parsedDate,
+		Notes:        request.GetNotes(),
+		WorkoutFocus: request.GetWorkoutFocus(),
 	}
 
 	// Process exercises and sets

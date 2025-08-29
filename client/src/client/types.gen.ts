@@ -58,6 +58,7 @@ export type WorkoutCreateWorkoutRequest = {
   date: string;
   exercises: Array<WorkoutExerciseInput>;
   notes?: string;
+  workoutFocus?: string;
 };
 
 export type WorkoutExerciseInput = {
@@ -86,6 +87,7 @@ export type WorkoutUpdateWorkoutRequest = {
   date: string;
   exercises: Array<WorkoutUpdateExercise>;
   notes?: string;
+  workoutFocus?: string;
 };
 
 /**
@@ -98,6 +100,7 @@ export type WorkoutWorkoutResponse = {
   notes?: string;
   updated_at: string;
   user_id: string;
+  workout_focus?: string;
 };
 
 export type WorkoutWorkoutWithSetsResponse = {
@@ -111,6 +114,7 @@ export type WorkoutWorkoutWithSetsResponse = {
   volume: number;
   weight?: number;
   workout_date: string;
+  workout_focus?: string;
   workout_id: number;
   workout_notes?: string;
 };

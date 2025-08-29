@@ -205,6 +205,10 @@ export const workout_CreateWorkoutRequestSchema = {
       type: "string",
       maxLength: 256,
     },
+    workoutFocus: {
+      type: "string",
+      maxLength: 256,
+    },
   },
 } as const;
 
@@ -302,6 +306,10 @@ export const workout_UpdateWorkoutRequestSchema = {
       type: "string",
       maxLength: 256,
     },
+    workoutFocus: {
+      type: "string",
+      maxLength: 256,
+    },
   },
 } as const;
 
@@ -333,6 +341,10 @@ export const workout_WorkoutResponseSchema = {
     user_id: {
       type: "string",
       example: "user-123",
+    },
+    workout_focus: {
+      type: "string",
+      example: "Upper Body",
     },
   },
 } as const;
@@ -389,6 +401,10 @@ export const workout_WorkoutWithSetsResponseSchema = {
     workout_date: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
+    },
+    workout_focus: {
+      type: "string",
+      example: "Upper Body",
     },
     workout_id: {
       type: "integer",
