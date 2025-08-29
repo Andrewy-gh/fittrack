@@ -18,10 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { exercise_ExerciseWithSetsResponse } from '@/generated';
+import type { ExerciseExerciseWithSetsResponse } from '@/client';
 
 interface ChartBarVolProps {
-  data: exercise_ExerciseWithSetsResponse[];
+  data: Array<ExerciseExerciseWithSetsResponse>;
 }
 
 export function ChartBarVol({ data }: ChartBarVolProps) {

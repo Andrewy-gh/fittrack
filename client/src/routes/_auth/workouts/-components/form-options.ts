@@ -1,12 +1,10 @@
-import type { WorkoutCreateWorkoutRequest, WorkoutUpdateWorkoutRequest } from "@/client";
-import type { workout_ExerciseInput, workout_CreateWorkoutRequest } from "@/generated";
+import type { WorkoutCreateWorkoutRequest, WorkoutExerciseInput, WorkoutUpdateWorkoutRequest } from "@/client";
 import { loadFromLocalStorage } from "@/lib/local-storage";
 
-// MARK: Init values
 export const MOCK_VALUES: WorkoutCreateWorkoutRequest | WorkoutUpdateWorkoutRequest = {
   date: new Date().toISOString(), // API expects ISO string
   notes: '',
-  exercises: [] as workout_ExerciseInput[],
+  exercises: [] as Array<WorkoutExerciseInput>,
 };
 
 export const getInitialValues = (userId: string): WorkoutCreateWorkoutRequest  => {

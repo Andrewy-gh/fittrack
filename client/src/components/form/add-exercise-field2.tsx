@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 import { useFieldContext } from '@/hooks/form';
 import { useState } from 'react';
-import type { workout_ExerciseInput } from '@/generated';
+import type { WorkoutExerciseInput } from '@/client';
 
 export default function AddExerciseField2({
   exercises,
@@ -13,12 +13,12 @@ export default function AddExerciseField2({
   exercises: DbExercise[]; // Input: exercises from the database with guaranteed IDs
   onAddExercise: (exerciseIndex: number, exerciseId?: number) => void;
 }) {
-  const field = useFieldContext<workout_ExerciseInput[]>();
+  const field = useFieldContext<Array<WorkoutExerciseInput>>();
   const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>(); // State: may include manually created exercises
-  
+
   // Working list of exercises that can include both DB and manually created ones
   const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
-    exercises.map(ex => ({ id: ex.id, name: ex.name }))
+    exercises.map((ex) => ({ id: ex.id, name: ex.name }))
   );
 
   function handleSelect(option: ExerciseOption) {
@@ -31,7 +31,7 @@ export default function AddExerciseField2({
       id: null, // null ID for new exercises not yet in the database
       name,
     };
-    setWorkingExercises(prev => [...prev, newExercise]);
+    setWorkingExercises((prev) => [...prev, newExercise]);
     handleSelect(newExercise);
   }
 

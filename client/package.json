@@ -8,7 +8,8 @@
     "build": "bunx --bun vite build",
     "serve": "vite preview",
     "test": "vitest run",
-    "openapi-ts": "openapi-ts"
+    "openapi-ts": "openapi-ts",
+    "tsc": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -49,7 +50,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
-    "typescript": "^5.7.2",
+    "typescript": "^5.9.2",
     "vite": "^6.1.0",
     "vitest": "^3.0.5",
     "web-vitals": "^4.2.4"

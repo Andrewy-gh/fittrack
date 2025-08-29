@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
 import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
-import type { workout_WorkoutResponse } from '@/generated';
+import type { WorkoutWorkoutResponse } from '@/client';
 
 function WorkoutsDisplay({
   workouts,
 }: {
-  workouts: workout_WorkoutResponse[];
+  workouts: Array<WorkoutWorkoutResponse>;
 }) {
   const totalWorkouts = workouts.length;
   const thisWeekWorkouts = workouts.filter((workout) => {

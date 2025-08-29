@@ -5,7 +5,6 @@ import { ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MOCK_VALUES } from '../-components/form-options';
-import type { workout_SetInput } from '@/generated';
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
@@ -159,7 +158,7 @@ export const ExerciseSets = withForm({
                       weight: 0,
                       reps: 0,
                       setType: 'working',
-                    } as workout_SetInput);
+                    });
                     const updatedSets = setsField.state.value || [];
                     setDialogOpenIndex(updatedSets.length - 1);
                   }}
