@@ -37,10 +37,11 @@ type Users struct {
 }
 
 type Workout struct {
-	ID        int32              `json:"id"`
-	Date      pgtype.Timestamptz `json:"date"`
-	Notes     pgtype.Text        `json:"notes"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	UserID    string             `json:"user_id"`
+	ID           int32              `json:"id"`
+	Date         pgtype.Timestamptz `json:"date"`
+	Notes        pgtype.Text        `json:"notes"`
+	WorkoutFocus pgtype.Text        `json:"workout_focus"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	UserID       string             `json:"user_id"`
 }

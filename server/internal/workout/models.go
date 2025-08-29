@@ -80,6 +80,7 @@ type ReformattedRequest struct {
 type WorkoutRequestTransformable interface {
 	GetDate() *string
 	GetNotes() *string
+	GetWorkoutFocus() *string
 	GetExercises() []ExerciseTransformable
 }
 
@@ -123,6 +124,10 @@ func (c CreateWorkoutRequest) GetNotes() *string {
 	return c.Notes
 }
 
+func (c CreateWorkoutRequest) GetWorkoutFocus() *string {
+	return c.WorkoutFocus
+}
+
 func (c CreateWorkoutRequest) GetExercises() []ExerciseTransformable {
 	result := make([]ExerciseTransformable, len(c.Exercises))
 	for i, exercise := range c.Exercises {
@@ -138,6 +143,10 @@ func (u UpdateWorkoutRequest) GetDate() *string {
 
 func (u UpdateWorkoutRequest) GetNotes() *string {
 	return u.Notes
+}
+
+func (u UpdateWorkoutRequest) GetWorkoutFocus() *string {
+	return u.WorkoutFocus
 }
 
 func (u UpdateWorkoutRequest) GetExercises() []ExerciseTransformable {

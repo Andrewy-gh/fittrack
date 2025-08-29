@@ -5,12 +5,13 @@ import "time"
 // WorkoutResponse represents a workout response for swagger documentation
 // @Description Workout response model
 type WorkoutResponse struct {
-	ID        int32      `json:"id" validate:"required" example:"1"`
-	Date      time.Time  `json:"date" validate:"required" example:"2023-01-01T15:04:05Z"`
-	Notes     *string    `json:"notes,omitempty" example:"Great workout today"`
-	CreatedAt time.Time  `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UpdatedAt time.Time  `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UserID    string     `json:"user_id" validate:"required" example:"user-123"`
+	ID           int32      `json:"id" validate:"required" example:"1"`
+	Date         time.Time  `json:"date" validate:"required" example:"2023-01-01T15:04:05Z"`
+	Notes        *string    `json:"notes,omitempty" example:"Great workout today"`
+	WorkoutFocus *string    `json:"workout_focus,omitempty" example:"Upper Body"`
+	CreatedAt    time.Time  `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt    time.Time  `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UserID       string     `json:"user_id" validate:"required" example:"user-123"`
 }
 
 // SetResponse represents a set response for swagger documentation
@@ -41,6 +42,7 @@ type WorkoutWithSetsResponse struct {
 	WorkoutID     int32      `json:"workout_id" validate:"required" example:"1"`
 	WorkoutDate   time.Time  `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
 	WorkoutNotes  *string    `json:"workout_notes,omitempty" example:"Great workout today"`
+	WorkoutFocus  *string    `json:"workout_focus,omitempty" example:"Upper Body"`
 	SetID         int32      `json:"set_id" validate:"required" example:"1"`
 	Weight        *int32     `json:"weight,omitempty" example:"225"`
 	Reps          int32      `json:"reps" validate:"required" example:"10"`
@@ -55,7 +57,8 @@ type WorkoutWithSetsResponse struct {
 // UpdateWorkoutRequest represents an update workout request for swagger documentation
 // @Description Request model for updating existing workout metadata
 type UpdateWorkoutRequestSwagger struct {
-	Date      *string         `json:"date,omitempty" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00" example:"2023-01-15T10:00:00Z"`
-	Notes     *string         `json:"notes,omitempty" validate:"omitempty,max=256" example:"Updated workout notes"`
-	Exercises []ExerciseInput `json:"exercises,omitempty" validate:"omitempty,dive" example:"[]"`
+	Date         *string         `json:"date,omitempty" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00" example:"2023-01-15T10:00:00Z"`
+	Notes        *string         `json:"notes,omitempty" validate:"omitempty,max=256" example:"Updated workout notes"`
+	WorkoutFocus *string         `json:"workout_focus,omitempty" validate:"omitempty,max=256" example:"Upper Body"`
+	Exercises    []ExerciseInput `json:"exercises,omitempty" validate:"omitempty,dive" example:"[]"`
 }

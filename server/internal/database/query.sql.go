@@ -70,25 +70,32 @@ func (q *Queries) CreateUser(ctx context.Context, userID string) (Users, error) 
 }
 
 const createWorkout = `-- name: CreateWorkout :one
-INSERT INTO workout (date, notes, user_id)
-VALUES ($1, $2, $3)
-RETURNING id, date, notes, created_at, updated_at, user_id
+INSERT INTO workout (date, notes, workout_focus, user_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, date, notes, workout_focus, created_at, updated_at, user_id
 `
 
 type CreateWorkoutParams struct {
-	Date   pgtype.Timestamptz `json:"date"`
-	Notes  pgtype.Text        `json:"notes"`
-	UserID string             `json:"user_id"`
+	Date         pgtype.Timestamptz `json:"date"`
+	Notes        pgtype.Text        `json:"notes"`
+	WorkoutFocus pgtype.Text        `json:"workout_focus"`
+	UserID       string             `json:"user_id"`
 }
 
 // INSERT queries for form submission
 func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (Workout, error) {
-	row := q.db.QueryRow(ctx, createWorkout, arg.Date, arg.Notes, arg.UserID)
+	row := q.db.QueryRow(ctx, createWorkout,
+		arg.Date,
+		arg.Notes,
+		arg.WorkoutFocus,
+		arg.UserID,
+	)
 	var i Workout
 	err := row.Scan(
 		&i.ID,
 		&i.Date,
 		&i.Notes,
+		&i.WorkoutFocus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
@@ -194,6 +201,7 @@ SELECT
     s.workout_id,
     w.date as workout_date,
     w.notes as workout_notes,
+    w.workout_focus as workout_focus,
     s.id as set_id,
     s.weight,
     s.reps,
@@ -219,6 +227,7 @@ type GetExerciseWithSetsRow struct {
 	WorkoutID     int32              `json:"workout_id"`
 	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
 	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
 	SetID         int32              `json:"set_id"`
 	Weight        pgtype.Int4        `json:"weight"`
 	Reps          int32              `json:"reps"`
@@ -243,6 +252,7 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 			&i.WorkoutID,
 			&i.WorkoutDate,
 			&i.WorkoutNotes,
+			&i.WorkoutFocus,
 			&i.SetID,
 			&i.Weight,
 			&i.Reps,
@@ -293,6 +303,7 @@ SELECT
     s.id AS set_id,
     w.id AS workout_id,
     w.date AS workout_date,
+    w.workout_focus AS workout_focus,
     s.weight,
     s.reps,
     s.exercise_order,
@@ -314,6 +325,7 @@ type GetRecentSetsForExerciseRow struct {
 	SetID         int32              `json:"set_id"`
 	WorkoutID     int32              `json:"workout_id"`
 	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
 	Weight        pgtype.Int4        `json:"weight"`
 	Reps          int32              `json:"reps"`
 	ExerciseOrder int32              `json:"exercise_order"`
@@ -334,6 +346,7 @@ func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSet
 			&i.SetID,
 			&i.WorkoutID,
 			&i.WorkoutDate,
+			&i.WorkoutFocus,
 			&i.Weight,
 			&i.Reps,
 			&i.ExerciseOrder,
@@ -403,7 +416,7 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (Users, er
 }
 
 const getWorkout = `-- name: GetWorkout :one
-SELECT id, date, notes, created_at, updated_at, user_id FROM workout WHERE id = $1 AND user_id = $2
+SELECT id, date, notes, workout_focus, created_at, updated_at, user_id FROM workout WHERE id = $1 AND user_id = $2
 `
 
 type GetWorkoutParams struct {
@@ -419,6 +432,7 @@ func (q *Queries) GetWorkout(ctx context.Context, arg GetWorkoutParams) (Workout
 		&i.ID,
 		&i.Date,
 		&i.Notes,
+		&i.WorkoutFocus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
@@ -431,6 +445,7 @@ SELECT
     w.id as workout_id,
     w.date as workout_date,
     w.notes as workout_notes,
+    w.workout_focus as workout_focus,
     s.id as set_id,
     s.weight,
     s.reps,
@@ -456,6 +471,7 @@ type GetWorkoutWithSetsRow struct {
 	WorkoutID     int32              `json:"workout_id"`
 	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
 	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
 	SetID         int32              `json:"set_id"`
 	Weight        pgtype.Int4        `json:"weight"`
 	Reps          int32              `json:"reps"`
@@ -481,6 +497,7 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 			&i.WorkoutID,
 			&i.WorkoutDate,
 			&i.WorkoutNotes,
+			&i.WorkoutFocus,
 			&i.SetID,
 			&i.Weight,
 			&i.Reps,
@@ -570,7 +587,7 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
 }
 
 const listWorkouts = `-- name: ListWorkouts :many
-SELECT id, date, notes, created_at, updated_at, user_id FROM workout WHERE user_id = $1 ORDER BY date DESC
+SELECT id, date, notes, workout_focus, created_at, updated_at, user_id FROM workout WHERE user_id = $1 ORDER BY date DESC
 `
 
 func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]Workout, error) {
@@ -586,6 +603,7 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]Workout, e
 			&i.ID,
 			&i.Date,
 			&i.Notes,
+			&i.WorkoutFocus,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserID,
@@ -649,16 +667,18 @@ UPDATE workout
 SET 
     date = COALESCE($2, date),
     notes = COALESCE($3, notes),
+    workout_focus = COALESCE($4, workout_focus),
     updated_at = NOW()
-WHERE id = $1 AND user_id = $4
-RETURNING id, date, notes, created_at, updated_at, user_id
+WHERE id = $1 AND user_id = $5
+RETURNING id, date, notes, workout_focus, created_at, updated_at, user_id
 `
 
 type UpdateWorkoutParams struct {
-	ID     int32              `json:"id"`
-	Date   pgtype.Timestamptz `json:"date"`
-	Notes  pgtype.Text        `json:"notes"`
-	UserID string             `json:"user_id"`
+	ID           int32              `json:"id"`
+	Date         pgtype.Timestamptz `json:"date"`
+	Notes        pgtype.Text        `json:"notes"`
+	WorkoutFocus pgtype.Text        `json:"workout_focus"`
+	UserID       string             `json:"user_id"`
 }
 
 // UPDATE queries for PUT endpoint
@@ -667,6 +687,7 @@ func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (W
 		arg.ID,
 		arg.Date,
 		arg.Notes,
+		arg.WorkoutFocus,
 		arg.UserID,
 	)
 	var i Workout
@@ -674,6 +695,7 @@ func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (W
 		&i.ID,
 		&i.Date,
 		&i.Notes,
+		&i.WorkoutFocus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,

@@ -737,6 +737,10 @@ const docTemplate = `{
                 "notes": {
                     "type": "string",
                     "maxLength": 256
+                },
+                "workoutFocus": {
+                    "type": "string",
+                    "maxLength": 256
                 }
             }
         },
@@ -850,6 +854,10 @@ const docTemplate = `{
                 "notes": {
                     "type": "string",
                     "maxLength": 256
+                },
+                "workoutFocus": {
+                    "type": "string",
+                    "maxLength": 256
                 }
             }
         },
@@ -887,6 +895,10 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string",
                     "example": "user-123"
+                },
+                "workout_focus": {
+                    "type": "string",
+                    "example": "Upper Body"
                 }
             }
         },
@@ -942,6 +954,10 @@ const docTemplate = `{
                 "workout_date": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
+                },
+                "workout_focus": {
+                    "type": "string",
+                    "example": "Upper Body"
                 },
                 "workout_id": {
                     "type": "integer",

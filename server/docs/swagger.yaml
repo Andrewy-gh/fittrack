@@ -160,6 +160,9 @@ definitions:
       notes:
         maxLength: 256
         type: string
+      workoutFocus:
+        maxLength: 256
+        type: string
     required:
     - date
     - exercises
@@ -240,6 +243,9 @@ definitions:
       notes:
         maxLength: 256
         type: string
+      workoutFocus:
+        maxLength: 256
+        type: string
     required:
     - date
     - exercises
@@ -264,6 +270,9 @@ definitions:
         type: string
       user_id:
         example: user-123
+        type: string
+      workout_focus:
+        example: Upper Body
         type: string
     required:
     - created_at
@@ -303,6 +312,9 @@ definitions:
         type: integer
       workout_date:
         example: "2023-01-01T15:04:05Z"
+        type: string
+      workout_focus:
+        example: Upper Body
         type: string
       workout_id:
         example: 1
