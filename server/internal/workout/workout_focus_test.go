@@ -246,6 +246,7 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			name:      "successful partial update - focus only",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
+				Date:         "2023-01-15T10:00:00Z", // Date is required for validation
 				WorkoutFocus: stringPtrHelper("Leg Day"),
 				Exercises: []UpdateExercise{
 					{
