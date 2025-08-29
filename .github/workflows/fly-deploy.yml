@@ -17,9 +17,18 @@ jobs:
           go-version: '1.24'
           cache: true
           cache-dependency-path: server/go.sum
+      - name: Cache Go tools
+        uses: actions/cache@v3
+        with:
+          path: ~/go/bin
+          key: ${{ runner.os }}-go-tools-goose-v3.24.3
+          restore-keys: |
+            ${{ runner.os }}-go-tools-
       - name: Install Goose
         run: |
-          go install github.com/pressly/goose/v3/cmd/goose@latest
+          if ! command -v goose &> /dev/null; then
+            go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
+          fi
       - name: Run database migrations
         run: |
           goose -dir server/migrations postgres "${{ secrets.DATABASE_URL }}" up
@@ -28,7 +37,7 @@ jobs:
           # Set client env vars for Docker build
           echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" > client/.env
           echo "VITE_PUBLISHABLE_CLIENT_KEY=${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}" >> client/.env
-          
+                     
           # Now deploy
           flyctl deploy --remote-only
         env:
