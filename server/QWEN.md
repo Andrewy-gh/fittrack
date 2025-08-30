@@ -85,3 +85,34 @@ w.WriteHeader(http.StatusNoContent)
 ### DECISION REFERENCE
 
 See `docs/empty-results/README.md` for full rationale, examples, and migration guide.
+
+## 5. LESSONS LEARNED FROM WORKOUT FOCUS ENDPOINT IMPLEMENTATION
+
+### 5.1 Code Generation Tools
+- When using code generation tools like `sqlc`, always remember to run the generation command after modifying the SQL queries
+- Keep in mind that the generated code might have different return types than expected (e.g., `[]pgtype.Text` instead of `[]string`)
+
+### 5.2 Test File Maintenance
+- When adding new tests, carefully check for syntax errors, especially with braces and method declarations
+- Avoid duplicate method declarations in mock repositories
+- Ensure test files are properly structured and don't have extra or missing braces
+
+### 5.3 Consistency with Project Conventions
+- Always follow the project's conventions for handling empty results (R1: GET collection endpoints MUST return 200 OK with `[]` when empty)
+- Ensure new endpoints are consistent with existing endpoints in terms of behavior and error handling
+- Follow the established patterns for repository, service, and handler implementations
+
+### 5.4 Testing
+- Create comprehensive tests that cover both successful scenarios and error cases
+- Include tests for empty results to ensure the endpoint behaves correctly when there's no data
+- Test security aspects like authentication and authorization
+- Include integration tests that verify the endpoint works correctly with the database
+
+### 5.5 Error Handling
+- Always handle errors appropriately at each layer (repository, service, handler)
+- Use consistent error types across the application for predictable HTTP status code mapping
+- Log errors with sufficient context for debugging
+
+### 5.6 Documentation
+- Add proper Swagger documentation for new endpoints
+- Ensure the documentation accurately reflects the endpoint's behavior, including how it handles empty results

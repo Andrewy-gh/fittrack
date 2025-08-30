@@ -80,6 +80,11 @@ func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// Ensure we always return an empty slice, not nil
+	if focusValues == nil {
+		focusValues = []string{}
+	}
+
 	if err := response.JSON(w, http.StatusOK, focusValues); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 		return

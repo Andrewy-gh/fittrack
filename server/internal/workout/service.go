@@ -171,6 +171,12 @@ func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string,
 		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to list workout focus values: %w", err)
 	}
+	
+	// Ensure we always return an empty slice, not nil
+	if focusValues == nil {
+		focusValues = []string{}
+	}
+	
 	return focusValues, nil
 }
 

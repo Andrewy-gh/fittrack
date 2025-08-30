@@ -477,6 +477,11 @@ func (wr *workoutRepository) ListWorkoutFocusValues(ctx context.Context, userID 
 		}
 	}
 
+	// Ensure we always return an empty slice, not nil
+	if focusValues == nil {
+		focusValues = []string{}
+	}
+
 	// Log empty results that might indicate RLS filtering
 	if len(focusValues) == 0 {
 		wr.logger.Debug("list workout focus values returned empty results",
