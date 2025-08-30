@@ -70,3 +70,36 @@
 
   All tests are now passing both when run directly with go test and when run through the Makefile with make
   test.
+
+    Summary of Changes
+
+  This PR implements a new endpoint to retrieve all distinct workout focus values for a user.
+
+  Key Changes
+   1. New API Endpoint: GET /api/workouts/focus-values - Returns distinct workout focus values for
+      authenticated user
+   2. Database Query: Added SQL query to retrieve distinct workout focus values with proper indexing
+   3. Backend Implementation: Added repository, service, and handler methods following project patterns
+   4. Tests: Comprehensive unit and integration tests covering success, empty results, and error cases
+   5. Swagger Documentation: Added proper OpenAPI annotations for the new endpoint
+
+  Technical Details
+   - Returns 200 OK with [] when no workout focus values exist (following project conventions)
+   - Proper authentication and authorization checks
+   - Consistent error handling with existing endpoints
+   - Row Level Security (RLS) compliant
+
+  Files Modified
+   - server/query.sql - Added new SQL query
+   - server/internal/workout/repository.go - Added ListWorkoutFocusValues method
+   - server/internal/workout/service.go - Added ListWorkoutFocusValues method
+   - server/internal/workout/handler.go - Added ListWorkoutFocusValues handler
+   - server/cmd/api/routes.go - Added new route
+   - server/internal/workout/handler_test.go - Added comprehensive tests
+
+  Test Results
+  All tests passing, including:
+   - Unit tests for handler, service, and repository
+   - Integration tests with database
+   - RLS security tests
+   - Edge cases (empty results, errors, authentication)

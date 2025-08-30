@@ -623,7 +623,7 @@ func TestWorkoutHandler_ListWorkoutFocusValues(t *testing.T) {
 			}
 			handler := NewHandler(logger, validator, service)
 
-			req := httptest.NewRequest("GET", "/api/workout-focus-values", nil).WithContext(tt.ctx)
+			req := httptest.NewRequest("GET", "/api/workouts/focus-values", nil).WithContext(tt.ctx)
 			w := httptest.NewRecorder()
 
 			// Execute
