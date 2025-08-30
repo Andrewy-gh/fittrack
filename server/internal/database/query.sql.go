@@ -586,6 +586,34 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]Set, error) {
 	return items, nil
 }
 
+const listWorkoutFocusValues = `-- name: ListWorkoutFocusValues :many
+SELECT DISTINCT workout_focus 
+FROM workout 
+WHERE user_id = $1 
+  AND workout_focus IS NOT NULL
+ORDER BY workout_focus
+`
+
+func (q *Queries) ListWorkoutFocusValues(ctx context.Context, userID string) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, listWorkoutFocusValues, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var workout_focus pgtype.Text
+		if err := rows.Scan(&workout_focus); err != nil {
+			return nil, err
+		}
+		items = append(items, workout_focus)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkouts = `-- name: ListWorkouts :many
 SELECT id, date, notes, workout_focus, created_at, updated_at, user_id FROM workout WHERE user_id = $1 ORDER BY date DESC
 `

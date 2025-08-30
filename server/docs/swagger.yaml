@@ -666,6 +666,34 @@ paths:
       summary: Update an existing workout (full replacement)
       tags:
       - workouts
+  /workouts/focus-values:
+    get:
+      consumes:
+      - application/json
+      description: Get all distinct workout focus values for the authenticated user.
+        Returns 200 OK with an empty array if no workout focus values exist.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: List workout focus values
+      tags:
+      - workouts
 schemes:
 - http
 securityDefinitions:

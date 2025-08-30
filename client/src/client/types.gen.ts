@@ -333,6 +333,37 @@ export type PostWorkoutsResponses = {
 export type PostWorkoutsResponse =
   PostWorkoutsResponses[keyof PostWorkoutsResponses];
 
+export type GetWorkoutsFocusValuesData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/workouts/focus-values";
+};
+
+export type GetWorkoutsFocusValuesErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetWorkoutsFocusValuesError =
+  GetWorkoutsFocusValuesErrors[keyof GetWorkoutsFocusValuesErrors];
+
+export type GetWorkoutsFocusValuesResponses = {
+  /**
+   * OK
+   */
+  200: Array<string>;
+};
+
+export type GetWorkoutsFocusValuesResponse =
+  GetWorkoutsFocusValuesResponses[keyof GetWorkoutsFocusValuesResponses];
+
 export type DeleteWorkoutsByIdData = {
   body?: never;
   path: {

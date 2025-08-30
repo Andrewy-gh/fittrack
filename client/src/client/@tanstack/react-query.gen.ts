@@ -8,6 +8,7 @@ import {
   getExercisesByIdRecentSets,
   getWorkouts,
   postWorkouts,
+  getWorkoutsFocusValues,
   deleteWorkoutsById,
   getWorkoutsById,
   putWorkoutsById,
@@ -24,6 +25,7 @@ import type {
   PostWorkoutsData,
   PostWorkoutsError,
   PostWorkoutsResponse,
+  GetWorkoutsFocusValuesData,
   DeleteWorkoutsByIdData,
   DeleteWorkoutsByIdError,
   GetWorkoutsByIdData,
@@ -272,6 +274,31 @@ export const postWorkoutsMutation = (
     },
   };
   return mutationOptions;
+};
+
+export const getWorkoutsFocusValuesQueryKey = (
+  options?: Options<GetWorkoutsFocusValuesData>,
+) => createQueryKey("getWorkoutsFocusValues", options, false, ["workouts"]);
+
+/**
+ * List workout focus values
+ * Get all distinct workout focus values for the authenticated user. Returns 200 OK with an empty array if no workout focus values exist.
+ */
+export const getWorkoutsFocusValuesQueryOptions = (
+  options?: Options<GetWorkoutsFocusValuesData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getWorkoutsFocusValues({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getWorkoutsFocusValuesQueryKey(options),
+  });
 };
 
 /**
