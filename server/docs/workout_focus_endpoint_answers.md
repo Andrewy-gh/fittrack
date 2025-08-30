@@ -11,7 +11,7 @@ Before I implement this new endpoint, I have a few questions to ensure I follow 
 
     **ANSWER**
 
-    I think based on the conventions of our codebase, it should return a 200 OK. I want to go with this endpoint path: GET /workout-focus-values
+    I think based on the conventions of our codebase, it should return a 200 OK. I want to go with this endpoint path: GET /workouts/focus-values
 
    2. Response Format:
       - The query returns a list of distinct string values. Should the response be a simple JSON array of

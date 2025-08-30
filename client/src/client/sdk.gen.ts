@@ -20,6 +20,9 @@ import type {
   PostWorkoutsData,
   PostWorkoutsResponses,
   PostWorkoutsErrors,
+  GetWorkoutsFocusValuesData,
+  GetWorkoutsFocusValuesResponses,
+  GetWorkoutsFocusValuesErrors,
   DeleteWorkoutsByIdData,
   DeleteWorkoutsByIdResponses,
   DeleteWorkoutsByIdErrors,
@@ -194,6 +197,29 @@ export const postWorkouts = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * List workout focus values
+ * Get all distinct workout focus values for the authenticated user. Returns 200 OK with an empty array if no workout focus values exist.
+ */
+export const getWorkoutsFocusValues = <ThrowOnError extends boolean = false>(
+  options?: Options<GetWorkoutsFocusValuesData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetWorkoutsFocusValuesResponses,
+    GetWorkoutsFocusValuesErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/workouts/focus-values",
+    ...options,
   });
 };
 

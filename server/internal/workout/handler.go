@@ -67,7 +67,7 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} string
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
-// @Router /workout-focus-values [get]
+// @Router /workouts/focus-values [get]
 func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.Request) {
 	focusValues, err := h.workoutService.ListWorkoutFocusValues(r.Context())
 	if err != nil {
