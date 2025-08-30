@@ -14,6 +14,7 @@ type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
 	GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
+	ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
 	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
 	DeleteWorkout(ctx context.Context, id int32, userID string) error
@@ -156,6 +157,21 @@ func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
 
 	ws.logger.Info("workout deleted successfully", "workout_id", id, "user_id", userID)
 	return nil
+}
+
+// ListWorkoutFocusValues retrieves all distinct workout focus values for the authenticated user
+func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string, error) {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+	focusValues, err := ws.repo.ListWorkoutFocusValues(ctx, userID)
+	if err != nil {
+		ws.logger.Error("failed to list workout focus values", "error", err)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
+		return nil, fmt.Errorf("failed to list workout focus values: %w", err)
+	}
+	return focusValues, nil
 }
 
 // Generic transform function that works with both request types

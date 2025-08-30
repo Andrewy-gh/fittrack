@@ -64,6 +64,11 @@ func (m *MockWorkoutRepository) DeleteWorkout(ctx context.Context, id int32, use
 	return args.Error(0)
 }
 
+func (m *MockWorkoutRepository) ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]string), args.Error(1)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }

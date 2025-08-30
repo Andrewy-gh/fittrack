@@ -56,6 +56,36 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// MARK: ListWorkoutFocusValues
+// ListWorkoutFocusValues godoc
+// @Summary List workout focus values
+// @Description Get all distinct workout focus values for the authenticated user. Returns 200 OK with an empty array if no workout focus values exist.
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Success 200 {array} string
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workout-focus-values [get]
+func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.Request) {
+	focusValues, err := h.workoutService.ListWorkoutFocusValues(r.Context())
+	if err != nil {
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to list workout focus values", err)
+		}
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, focusValues); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+		return
+	}
+}
+
 // MARK: GetWorkoutWithSets
 // GetWorkoutWithSets godoc
 // @Summary Get workout with sets

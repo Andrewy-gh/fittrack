@@ -452,4 +452,39 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 	}, nil
 }
 
+// MARK: ListWorkoutFocusValues
+func (wr *workoutRepository) ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error) {
+	// Execute the query to get distinct workout focus values
+	rows, err := wr.queries.ListWorkoutFocusValues(ctx, userID)
+	if err != nil {
+		// Check if this might be an RLS-related error
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("list workout focus values query failed - RLS policy violation",
+				"error", err,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("list workout focus values query failed", "error", err, "user_id", userID)
+		}
+		return nil, fmt.Errorf("failed to list workout focus values: %w", err)
+	}
+
+	// Convert []pgtype.Text to []string
+	var focusValues []string
+	for _, row := range rows {
+		if row.Valid {
+			focusValues = append(focusValues, row.String)
+		}
+	}
+
+	// Log empty results that might indicate RLS filtering
+	if len(focusValues) == 0 {
+		wr.logger.Debug("list workout focus values returned empty results",
+			"user_id", userID,
+			"potential_rls_filtering", true)
+	}
+
+	return focusValues, nil
+}
+
 var _ WorkoutRepository = (*workoutRepository)(nil)
