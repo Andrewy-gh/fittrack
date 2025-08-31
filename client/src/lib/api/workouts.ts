@@ -6,6 +6,7 @@ import {
   getWorkoutsByIdQueryOptions,
   getWorkoutsQueryKey,
   getWorkoutsQueryOptions,
+  getWorkoutsFocusValuesQueryOptions,
   postWorkoutsMutation,
   putWorkoutsByIdMutation,
   deleteWorkoutsByIdMutation,
@@ -18,14 +19,22 @@ import type {
 } from '@/client';
 import { sortByExerciseAndSetOrder } from '../utils';
 
+// MARK: Get all
 export function workoutsQueryOptions() {
   return getWorkoutsQueryOptions();
 }
 
+// MARK: Get one
 export function workoutQueryOptions(id: number) {
   return getWorkoutsByIdQueryOptions({ path: { id } });
 }
 
+// MARK: Get focus values
+export function workoutsFocusValuesQueryOptions() {
+  return getWorkoutsFocusValuesQueryOptions();
+}
+
+// MARK: Create
 // ! TODO: Return data from server to invalidate recent sets for exercise
 // ! TODO: if I want to be granular, but stale time is so low not a priority
 export function useSaveWorkoutMutation() {
@@ -42,6 +51,7 @@ export function useSaveWorkoutMutation() {
   });
 }
 
+// MARK: Update
 export function useUpdateWorkoutMutation() {
   return useMutation({
     ...putWorkoutsByIdMutation(),
@@ -56,6 +66,7 @@ export function useUpdateWorkoutMutation() {
   });
 }
 
+// MARK: Delete
 export function useDeleteWorkoutMutation() {
   return useMutation({
     ...deleteWorkoutsByIdMutation(),
