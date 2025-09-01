@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
-import { useSaveWorkoutMutation } from '@/lib/api/workouts';
+import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
 import { useSuspenseQueries } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,7 +29,7 @@ function WorkoutTracker({
 }: {
   user: CurrentUser | CurrentInternalUser; // need user for localStorage
   exercises: DbExercise[];
-  workoutsFocus: Array<{ name: string }>;
+  workoutsFocus: WorkoutFocus[];
 }) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
@@ -337,7 +337,7 @@ function RouteComponent() {
     name: ex.name,
   }));
 
-  const workoutsFocus: Array<{ name: string }> = workoutsFocusValues.map(
+  const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map(
     (wf) => ({
       name: wf,
     })
