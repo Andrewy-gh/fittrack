@@ -16,6 +16,9 @@ const InputField = lazy(() => import('../components/form/input-field'));
 const AddExerciseField2 = lazy(
   () => import('../components/form/add-exercise-field2')
 );
+const WorkoutsFocusCombobox = lazy(
+  () => import('../components/form/workouts-focus-combobox')
+);
 
 export const { useAppForm, withForm } = createFormHook({
   fieldContext,
@@ -29,6 +32,7 @@ export const { useAppForm, withForm } = createFormHook({
     InputField,
     // AddExerciseField,
     AddExerciseField2,
+    WorkoutsFocusCombobox,
   },
   formComponents: {},
 });

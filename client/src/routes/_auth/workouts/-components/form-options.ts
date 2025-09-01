@@ -5,6 +5,7 @@ export const MOCK_VALUES: WorkoutCreateWorkoutRequest | WorkoutUpdateWorkoutRequ
   date: new Date().toISOString(), // API expects ISO string
   notes: '',
   exercises: [] as Array<WorkoutExerciseInput>,
+  workoutFocus: '', // Add workout focus field
 };
 
 export const getInitialValues = (userId: string): WorkoutCreateWorkoutRequest  => {
