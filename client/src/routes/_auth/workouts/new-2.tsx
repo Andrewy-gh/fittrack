@@ -29,7 +29,7 @@ function WorkoutTracker({
 }: {
   user: CurrentUser | CurrentInternalUser; // need user for localStorage
   exercises: DbExercise[];
-  workoutsFocus: Array<{name: string}>
+  workoutsFocus: Array<{ name: string }>;
 }) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
@@ -179,21 +179,21 @@ function WorkoutTracker({
           }}
         >
           <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* MARK: Date/Notes*/}
+            {/* MARK: Date/Notes/Focus */}
             <form.AppField
               name="date"
               children={(field) => <field.DatePicker2 />}
             />
             <form.AppField
-              name="notes"
-              children={(field) => <field.NotesTextarea2 />}
+              name="workoutFocus"
+              children={(field) => (
+                <field.WorkoutsFocusCombobox workoutsFocus={workoutsFocus} />
+              )}
             />
-            {/* Add new component here */}
             <div className="col-span-2">
-              {/* Could be any component or just a number as you requested */}
               <form.AppField
-                name="workoutFocus"
-                children={(field) => <field.WorkoutsFocusCombobox workoutsFocus={workoutsFocus} />}
+                name="notes"
+                children={(field) => <field.NotesTextarea2 />}
               />
             </div>
           </div>
