@@ -81,7 +81,7 @@ export const AddExerciseScreen = withForm({
               placeholder="Search exercises..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-base"
             />
           </div>
 
@@ -116,7 +116,7 @@ export const AddExerciseScreen = withForm({
                             onAddExercise(exerciseIndex, exerciseId);
                           }}
                         >
-                          <h3 className="font-semibold">{exercise.name}</h3>
+                          <h3 className="font-semibold md:text-sm">{exercise.name}</h3>
                           <ChevronRight className="w-5 h-5 text-muted-foreground" />
                         </div>
                       ))
