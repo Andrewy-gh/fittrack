@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
 import { useSaveWorkoutMutation } from '@/lib/api/workouts';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQueries } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
@@ -12,8 +12,9 @@ import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import { exercisesQueryOptions, type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
-import { AddExerciseScreen } from './-components/add-exercise-screen';
+import { workoutsFocusValuesQueryOptions } from '@/lib/api/workouts';
 
+import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
   ExerciseHeader,
   ExerciseScreen,
@@ -24,9 +25,11 @@ import { RecentSets } from './-components/recent-sets-display';
 function WorkoutTracker({
   user,
   exercises,
+  workoutsFocus,
 }: {
   user: CurrentUser | CurrentInternalUser; // need user for localStorage
   exercises: DbExercise[];
+  workoutsFocus: Array<{ name: string }>;
 }) {
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
@@ -176,15 +179,23 @@ function WorkoutTracker({
           }}
         >
           <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* MARK: Date/Notes*/}
+            {/* MARK: Date/Notes/Focus */}
             <form.AppField
               name="date"
               children={(field) => <field.DatePicker2 />}
             />
             <form.AppField
-              name="notes"
-              children={(field) => <field.NotesTextarea2 />}
+              name="workoutFocus"
+              children={(field) => (
+                <field.WorkoutsFocusCombobox workoutsFocus={workoutsFocus} />
+              )}
             />
+            <div className="col-span-2">
+              <form.AppField
+                name="notes"
+                children={(field) => <field.NotesTextarea2 />}
+              />
+            </div>
           </div>
 
           {/* MARK: Exercise Cards */}
@@ -309,7 +320,10 @@ export const Route = createFileRoute('/_auth/workouts/new-2')({
 
 function RouteComponent() {
   const { user } = Route.useLoaderData();
-  const { data: exercisesResponse } = useSuspenseQuery(exercisesQueryOptions());
+  const [{ data: exercisesResponse }, { data: workoutsFocusValues }] =
+    useSuspenseQueries({
+      queries: [exercisesQueryOptions(), workoutsFocusValuesQueryOptions()],
+    });
 
   // Convert API response to our cleaner DbExercise type
   const exercises: DbExercise[] = exercisesResponse.map((ex) => ({
@@ -317,5 +331,17 @@ function RouteComponent() {
     name: ex.name,
   }));
 
-  return <WorkoutTracker user={user} exercises={exercises} />;
+  const workoutsFocus: Array<{ name: string }> = workoutsFocusValues.map(
+    (wf) => ({
+      name: wf,
+    })
+  );
+
+  return (
+    <WorkoutTracker
+      user={user}
+      exercises={exercises}
+      workoutsFocus={workoutsFocus}
+    />
+  );
 }

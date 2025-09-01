@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
-import { workoutsQueryOptions } from '@/lib/api/workouts';
+import { workoutsQueryOptions, workoutsFocusValuesQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
 import type { WorkoutWorkoutResponse } from '@/client';
 
@@ -21,10 +21,10 @@ function WorkoutsDisplay({
     return workoutDate >= weekAgo;
   }).length;
 
-  const workoutTypes = workouts.reduce(
+  const workoutFocusValues = workouts.reduce(
     (acc, workout) => {
-      if (workout.notes) {
-        acc[workout.notes] = (acc[workout.notes] || 0) + 1;
+      if (workout.workout_focus) {
+        acc[workout.workout_focus] = (acc[workout.workout_focus] || 0) + 1;
       }
       return acc;
     },
@@ -86,13 +86,13 @@ function WorkoutsDisplay({
                 className="flex cursor-pointer items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
               >
                 <div className="flex items-center space-x-4">
-                  {workout.notes && (
+                  {workout.workout_focus && (
                     <div className="flex items-center space-x-2">
                       <Badge
                         variant="outline"
                         className="border-border bg-muted text-xs"
                       >
-                        {workout.notes.toUpperCase()}
+                        {workout.workout_focus.toUpperCase()}
                       </Badge>
                     </div>
                   )}
@@ -117,7 +117,7 @@ function WorkoutsDisplay({
           </CardTitle>
           <CardContent className="px-0">
             <div className="flex flex-wrap gap-4">
-              {Object.entries(workoutTypes).map(([type, count]) => (
+              {Object.entries(workoutFocusValues).map(([type, count]) => (
                 <div key={type} className="text-center p-4 rounded-xl">
                   <p className="font-semibold text-lg">{count}</p>
                   <p className="text-sm uppercase">{type}</p>
@@ -140,5 +140,9 @@ export const Route = createFileRoute('/_auth/workouts/')({
 
 function RouteComponent() {
   const { data: workouts } = useSuspenseQuery(workoutsQueryOptions());
+  const { data: workoutFocusValues } = useSuspenseQuery(
+    workoutsFocusValuesQueryOptions()
+  );
+  console.log('workoutFocusValues', workoutFocusValues);
   return <WorkoutsDisplay workouts={workouts} />;
 }

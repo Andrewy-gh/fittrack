@@ -1,0 +1,94 @@
+import { useState } from 'react';
+import { useFieldContext } from '@/hooks/form';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { GenericCombobox } from '@/components/generic-combobox';
+import { Target } from 'lucide-react';
+
+export default function WorkoutsFocusCombobox({
+  workoutsFocus,
+}: {
+  workoutsFocus: Array<{ name: string }>; // Input: workout focus values from the database
+}) {
+  const field = useFieldContext<string>();
+  const [open, setOpen] = useState(false);
+  const [selectedWorkoutFocus, setSelectedWorkoutFocus] = useState<{ name: string }>();
+
+  // Working list of workout focus values that can include both DB and manually created ones
+  const [workingWorkoutsFocus, setWorkingWorkoutsFocus] = useState<Array<{ name: string }>>(
+    workoutsFocus
+  );
+
+  function handleSelect(option: { name: string }) {
+    setSelectedWorkoutFocus(option);
+  }
+
+  function handleAppendGroup(name: string) {
+    // For new workout focus values, just add them to the working list
+    const newWorkoutFocus = { name };
+    setWorkingWorkoutsFocus((prev) => [...prev, newWorkoutFocus]);
+    handleSelect(newWorkoutFocus);
+  }
+
+  function handleAddWorkoutFocus() {
+    field.setValue(selectedWorkoutFocus?.name ?? '');
+    setOpen(false);
+    setSelectedWorkoutFocus(undefined);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm tracking-tight">Workout Focus</span>
+          </div>
+          <div className="text-card-foreground font-semibold text-xs">
+            {field.state.value || 'What is your focus for today?'}
+          </div>
+        </Card>
+      </DialogTrigger>
+      <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
+        <DialogHeader>
+          <DialogTitle>Workout Focus</DialogTitle>
+          <DialogDescription>
+            What are you working on today?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <GenericCombobox
+            options={workingWorkoutsFocus} // Use working list that can include manually created values
+            selected={selectedWorkoutFocus?.name ?? field.state.value ?? ''}
+            onChange={handleSelect}
+            onCreate={handleAppendGroup}
+          />
+          <Button
+            className="w-full py-4 text-base font-semibold rounded-lg"
+            disabled={!selectedWorkoutFocus?.name.trim()}
+            onClick={handleAddWorkoutFocus}
+          >
+            Add today's focus
+          </Button>
+        </div>
+        <DialogFooter className="sm:justify-start">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Close
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
