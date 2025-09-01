@@ -5,6 +5,8 @@ import { useSuspenseQueries } from '@tanstack/react-query';
 import {
   workoutQueryOptions,
   useUpdateWorkoutMutation,
+  workoutsFocusValuesQueryOptions,
+  type WorkoutFocus,
 } from '@/lib/api/workouts';
 import { transformToWorkoutFormValues } from '@/lib/api/workouts';
 import { Suspense, useState } from 'react';
@@ -29,10 +31,12 @@ function EditWorkoutForm({
   exercises,
   workout,
   workoutId,
+  workoutsFocus,
 }: {
   exercises: ExerciseExerciseResponse[];
   workout: WorkoutUpdateWorkoutRequest;
   workoutId: number;
+  workoutsFocus: WorkoutFocus[];
 }) {
   const router = useRouter();
   const [currentView, setCurrentView] = useState<
@@ -47,11 +51,15 @@ function EditWorkoutForm({
   const form = useAppForm({
     defaultValues: workout,
     onSubmit: async ({ value }) => {
-      console.log('Updating workout with value:', value);
+      const trimmedValue = {
+        ...value,
+        notes: value.notes?.trim() || undefined,
+        workoutFocus: value.workoutFocus?.trim() || undefined,
+      };
       try {
         await updateWorkoutMutation.mutateAsync({
           path: { id: workoutId },
-          body: value,
+          body: trimmedValue,
         }, {
           onSuccess: () => {
             router.navigate({
@@ -169,15 +177,23 @@ function EditWorkoutForm({
           }}
         >
           <div className="grid grid-cols-2 gap-4 mb-4">
-            {/* MARK: Date/Notes*/}
+            {/* MARK: Date/Notes/Focus */}
             <form.AppField
               name="date"
               children={(field) => <field.DatePicker2 />}
             />
             <form.AppField
-              name="notes"
-              children={(field) => <field.NotesTextarea2 />}
+              name="workoutFocus"
+              children={(field) => (
+                <field.WorkoutFocusCombobox workoutsFocus={workoutsFocus} />
+              )}
             />
+            <div className="col-span-2">
+              <form.AppField
+                name="notes"
+                children={(field) => <field.NotesTextarea2 />}
+              />
+            </div>
           </div>
 
           {/* MARK: Exercise Cards */}
@@ -306,6 +322,7 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/edit')({
     const workoutId = params.workoutId;
     context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
     context.queryClient.ensureQueryData(exercisesQueryOptions());
+    context.queryClient.ensureQueryData(workoutsFocusValuesQueryOptions());
     return { workoutId };
   },
   component: RouteComponent,
@@ -313,15 +330,23 @@ export const Route = createFileRoute('/_auth/workouts/$workoutId/edit')({
 
 function RouteComponent() {
   const { workoutId } = Route.useLoaderData();
-  const [{ data: exercises }, { data: workout }] = useSuspenseQueries({
-    queries: [exercisesQueryOptions(), workoutQueryOptions(workoutId)],
+  const [{ data: exercises }, { data: workout }, { data: workoutsFocusValues }] = useSuspenseQueries({
+    queries: [exercisesQueryOptions(), workoutQueryOptions(workoutId), workoutsFocusValuesQueryOptions()],
   });
-  const workoutFormValues = transformToWorkoutFormValues(workout);
+  const workoutFormValues: WorkoutUpdateWorkoutRequest = transformToWorkoutFormValues(workout);
+  
+  const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map(
+    (wf) => ({
+      name: wf,
+    })
+  );
+
   return (
     <EditWorkoutForm
       exercises={exercises}
       workout={workoutFormValues}
       workoutId={workoutId}
+      workoutsFocus={workoutsFocus}
     />
   );
 }

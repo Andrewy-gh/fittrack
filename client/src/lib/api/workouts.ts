@@ -145,6 +145,7 @@ export function transformToWorkoutFormValues(
   return {
     date: workouts[0].workout_date || new Date().toISOString(),
     notes: workouts[0].workout_notes || '',
+    workoutFocus: workouts[0].workout_focus || undefined,
     exercises: orderedExercises,
   };
 }

@@ -23,12 +23,13 @@ export default function NotesTextarea2() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
             <span className="font-semibold text-sm tracking-tight">Notes</span>
           </div>
-          <div className="text-card-foreground font-semibold">
-            {field.state.value ?? 'Enter notes'}
+          <div className="text-xs font-semibold text-card-foreground">
+            {field.state.value ||
+              'Enter any notes, focus areas, or observations for this workout.'}
           </div>
         </Card>
       </DialogTrigger>
