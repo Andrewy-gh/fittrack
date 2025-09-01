@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { GenericCombobox } from '@/components/generic-combobox';
-import { Target } from 'lucide-react';
+import { Target, X } from 'lucide-react';
 import type { WorkoutFocus } from '@/lib/api/workouts';
 
 export default function WorkoutFocusCombobox({
@@ -47,6 +47,11 @@ export default function WorkoutFocusCombobox({
     setSelectedWorkoutFocus(undefined);
   }
 
+  function handleReset() {
+    field.setValue('');
+    setSelectedWorkoutFocus(undefined);
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -54,6 +59,20 @@ export default function WorkoutFocusCombobox({
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-5 h-5 text-primary" />
             <span className="font-semibold text-sm tracking-tight">Workout Focus</span>
+            {field.state.value && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 ml-auto text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReset();
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
           </div>
           <div className="text-card-foreground font-semibold text-xs">
             {field.state.value || 'What is your focus for today?'}
@@ -74,13 +93,25 @@ export default function WorkoutFocusCombobox({
             onChange={handleSelect}
             onCreate={handleAppendGroup}
           />
-          <Button
-            className="w-full py-4 text-base font-semibold rounded-lg"
-            disabled={!selectedWorkoutFocus?.name.trim() || selectedWorkoutFocus?.name === field.state.value}
-            onClick={handleAddWorkoutFocus}
-          >
-            Add today's focus
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 py-4 text-base font-semibold rounded-lg"
+              disabled={!selectedWorkoutFocus?.name.trim() || selectedWorkoutFocus?.name === field.state.value}
+              onClick={handleAddWorkoutFocus}
+            >
+              Add today's focus
+            </Button>
+            {field.state.value && (
+              <Button
+                type="button"
+                variant="outline"
+                className="px-4 py-4 text-base font-semibold rounded-lg"
+                onClick={handleReset}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <DialogFooter className="sm:justify-start">
           <DialogClose asChild>
