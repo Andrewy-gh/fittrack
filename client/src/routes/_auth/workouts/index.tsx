@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
-import { workoutsQueryOptions, workoutsFocusValuesQueryOptions } from '@/lib/api/workouts';
+import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
 import type { WorkoutWorkoutResponse } from '@/client';
 
@@ -140,9 +140,5 @@ export const Route = createFileRoute('/_auth/workouts/')({
 
 function RouteComponent() {
   const { data: workouts } = useSuspenseQuery(workoutsQueryOptions());
-  const { data: workoutFocusValues } = useSuspenseQuery(
-    workoutsFocusValuesQueryOptions()
-  );
-  console.log('workoutFocusValues', workoutFocusValues);
   return <WorkoutsDisplay workouts={workouts} />;
 }

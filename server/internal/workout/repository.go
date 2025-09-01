@@ -387,14 +387,14 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 		},
 	}
 
-	if reformatted.Workout.Notes != nil {
+	if reformatted.Workout.Notes != nil && *reformatted.Workout.Notes != "" {
 		pgWorkout.Notes = pgtype.Text{
 			String: *reformatted.Workout.Notes,
 			Valid:  true,
 		}
 	}
 
-	if reformatted.Workout.WorkoutFocus != nil {
+	if reformatted.Workout.WorkoutFocus != nil && *reformatted.Workout.WorkoutFocus != "" {
 		pgWorkout.WorkoutFocus = pgtype.Text{
 			String: *reformatted.Workout.WorkoutFocus,
 			Valid:  true,

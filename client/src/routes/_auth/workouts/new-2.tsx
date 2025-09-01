@@ -51,8 +51,14 @@ function WorkoutTracker({
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {
+      const trimmedValue = {
+        ...value,
+        notes: value.notes?.trim() || undefined,
+        workoutFocus: value.workoutFocus?.trim() || undefined,
+      };
+
       await saveWorkout.mutateAsync(
-        { body: value },
+        { body: trimmedValue },
         {
           onSuccess: () => {
             clearLocalStorage(user.id);

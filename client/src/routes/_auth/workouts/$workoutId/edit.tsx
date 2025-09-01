@@ -47,11 +47,15 @@ function EditWorkoutForm({
   const form = useAppForm({
     defaultValues: workout,
     onSubmit: async ({ value }) => {
-      console.log('Updating workout with value:', value);
+      const trimmedValue = {
+        ...value,
+        notes: value.notes?.trim() || undefined,
+        workoutFocus: value.workoutFocus?.trim() || undefined,
+      };
       try {
         await updateWorkoutMutation.mutateAsync({
           path: { id: workoutId },
-          body: value,
+          body: trimmedValue,
         }, {
           onSuccess: () => {
             router.navigate({
