@@ -187,7 +187,7 @@ function WorkoutTracker({
             <form.AppField
               name="workoutFocus"
               children={(field) => (
-                <field.WorkoutsFocusCombobox workoutsFocus={workoutsFocus} />
+                <field.WorkoutFocusCombobox workoutsFocus={workoutsFocus} />
               )}
             />
             <div className="col-span-2">

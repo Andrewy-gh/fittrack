@@ -14,22 +14,23 @@ import {
 } from '@/components/ui/dialog';
 import { GenericCombobox } from '@/components/generic-combobox';
 import { Target } from 'lucide-react';
+import type { WorkoutFocus } from '@/lib/api/workouts';
 
-export default function WorkoutsFocusCombobox({
+export default function WorkoutFocusCombobox({
   workoutsFocus,
 }: {
-  workoutsFocus: Array<{ name: string }>; // Input: workout focus values from the database
+  workoutsFocus: WorkoutFocus[]; // Input: workout focus values from the database
 }) {
   const field = useFieldContext<string>();
   const [open, setOpen] = useState(false);
-  const [selectedWorkoutFocus, setSelectedWorkoutFocus] = useState<{ name: string }>();
+  const [selectedWorkoutFocus, setSelectedWorkoutFocus] = useState<WorkoutFocus>();
 
   // Working list of workout focus values that can include both DB and manually created ones
-  const [workingWorkoutsFocus, setWorkingWorkoutsFocus] = useState<Array<{ name: string }>>(
+  const [workingWorkoutsFocus, setWorkingWorkoutsFocus] = useState<WorkoutFocus[]>(
     workoutsFocus
   );
 
-  function handleSelect(option: { name: string }) {
+  function handleSelect(option: WorkoutFocus) {
     setSelectedWorkoutFocus(option);
   }
 
@@ -49,7 +50,7 @@ export default function WorkoutsFocusCombobox({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Card className="p-4">
+        <Card className="p-4" aria-label="Workout Focus">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-5 h-5 text-primary" />
             <span className="font-semibold text-sm tracking-tight">Workout Focus</span>
@@ -75,7 +76,7 @@ export default function WorkoutsFocusCombobox({
           />
           <Button
             className="w-full py-4 text-base font-semibold rounded-lg"
-            disabled={!selectedWorkoutFocus?.name.trim()}
+            disabled={!selectedWorkoutFocus?.name.trim() || selectedWorkoutFocus?.name === field.state.value}
             onClick={handleAddWorkoutFocus}
           >
             Add today's focus
