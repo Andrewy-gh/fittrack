@@ -19,6 +19,10 @@ import type {
 } from '@/client';
 import { sortByExerciseAndSetOrder } from '../utils';
 
+export type WorkoutFocus = {
+  name: string;
+};
+
 // MARK: Get all
 export function workoutsQueryOptions() {
   return getWorkoutsQueryOptions();
