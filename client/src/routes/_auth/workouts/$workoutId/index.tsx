@@ -45,7 +45,7 @@ function IndividualWorkoutPage({
   );
 
   const workoutDate = workout[0]?.workout_date;
-  const workoutNotes = workout[0]?.workout_notes;
+  const workoutFocus = workout[0]?.workout_focus;
 
   const handleOpenDeleteDialog = () => {
     setIsDeleteDialogOpen(true);
@@ -66,14 +66,14 @@ function IndividualWorkoutPage({
               <p className="text-sm md:text-base text-muted-foreground">
                 {formatTime(workoutDate)}
               </p>
-              {workoutNotes && (
+              {workoutFocus && (
                 <>
                   <span className="text-muted-foreground">•</span>
                   <Badge
                     variant="outline"
                     className="border-border bg-muted text-xs"
                   >
-                    {workoutNotes.toUpperCase()}
+                    {workoutFocus.toUpperCase()}
                   </Badge>
                 </>
               )}
