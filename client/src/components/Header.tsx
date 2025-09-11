@@ -1,6 +1,5 @@
-import { UserButton } from '@stackframe/react';
 import { Link } from '@tanstack/react-router';
-import { ModeToggle } from './mode-toggle';
+import { CustomUserButton } from './custom-user-button';
 
 export default function Header() {
   return (
@@ -16,10 +15,7 @@ export default function Header() {
           <Link to="/exercises">Exercises</Link>
         </div>
       </nav>
-      <div className="flex flex-row gap-2">
-        <ModeToggle />
-        <UserButton />
-      </div>
+      <CustomUserButton />
     </header>
   );
 }
