@@ -15,11 +15,15 @@ import {
   CheckCircle,
   Activity,
   BarChart3,
+  Dumbbell,
 } from 'lucide-react';
-import { UserButton } from '@stackframe/react';
 import { stackClientApp } from '@/stack';
-import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
-import { ModeToggle } from '@/components/mode-toggle';
+import {
+  type CurrentUser,
+  type CurrentInternalUser,
+  UserButton,
+} from '@stackframe/react';
+import { CustomUserButton } from '@/components/custom-user-button';
 
 function HomePage({
   user,
@@ -104,25 +108,8 @@ function HomePage({
             <span className="text-xl font-bold tracking-wide text-foreground">
               FITTRACK
             </span>
-            {user && (
-              <>
-                <div className="px-2 font-bold text-foreground">
-                  <Link to="/workouts">Workouts</Link>
-                </div>
-                <div className="px-2 font-bold text-foreground">
-                  <Link to="/exercises">Exercises</Link>
-                </div>
-              </>
-            )}
           </div>
-          <div className="flex items-center gap-4">
-            <ModeToggle />
-            <UserButton />
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Download className="w-4 h-4 mr-2" />
-              Get Started Free
-            </Button>
-          </div>
+          {user ? <CustomUserButton /> : <UserButton />}
         </div>
       </nav>
 
@@ -151,9 +138,12 @@ function HomePage({
               <Button
                 size="lg"
                 className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
+                asChild
               >
-                <Download className="w-5 h-5 mr-2" />
-                Download Free Today
+                <Link to="/workouts" preload={false}>
+                  <Dumbbell className="w-5 h-5 mr-1" />
+                  Try It For Free
+                </Link>
               </Button>
               <Button
                 size="lg"
@@ -180,17 +170,13 @@ function HomePage({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-card border border-border rounded space-y-3">
-                  <div className="text-2xl font-bold text-primary">
-                    250K+
-                  </div>
+                  <div className="text-2xl font-bold text-primary">250K+</div>
                   <div className="text-xs text-muted-foreground">
                     ACTIVE USERS
                   </div>
                 </div>
                 <div className="text-center p-4 bg-card border border-border rounded space-y-3">
-                  <div className="text-2xl font-bold text-foreground">
-                    85%
-                  </div>
+                  <div className="text-2xl font-bold text-foreground">85%</div>
                   <div className="text-xs text-muted-foreground">
                     STILL ACTIVE AFTER 6 MONTHS
                   </div>
@@ -335,9 +321,7 @@ function HomePage({
                   <div className="text-xs text-muted-foreground mb-2">
                     THIS WEEK'S CHALLENGE
                   </div>
-                  <div className="text-4xl font-bold text-foreground">
-                    7/10
-                  </div>
+                  <div className="text-4xl font-bold text-foreground">7/10</div>
                   <div className="text-xs text-muted-foreground">
                     Workouts completed
                   </div>
