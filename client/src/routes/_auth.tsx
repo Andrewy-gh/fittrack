@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
+import { Header } from '@/components/header';
 import { stackClientApp } from '@/stack';
 
 export const Route = createFileRoute('/_auth')({
@@ -10,5 +11,10 @@ export const Route = createFileRoute('/_auth')({
 });
 
 function LayoutComponent() {
-  return <Outlet />;
+  return (
+    <>
+      <Header />
+      <Outlet />
+    </>
+  );
 }
