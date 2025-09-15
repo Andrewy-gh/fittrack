@@ -31,6 +31,9 @@ jobs:
           fi
       - name: Run database migrations
         run: |
+          echo "Checking migration status..."
+          goose -dir server/migrations postgres "${{ secrets.DATABASE_URL }}" status || echo "No goose_db_version table found, will create on first migration"
+          echo "Running migrations..."
           goose -dir server/migrations postgres "${{ secrets.DATABASE_URL }}" up
       - name: Build and deploy to Fly.io
         run: |
