@@ -31,10 +31,16 @@ jobs:
           fi
       - name: Run database migrations
         run: |
+          # Disable prepared statements (simple protocol) for goose
+          GOOSE_DB_URL="${{ secrets.DATABASE_URL }}?default_query_exec_mode=simple_protocol"
           echo "Checking migration status..."
-          goose -dir server/migrations postgres "${{ secrets.DATABASE_URL }}" status || echo "No goose_db_version table found, will create on first migration"
-          echo "Running migrations..."
-          goose -dir server/migrations postgres "${{ secrets.DATABASE_URL }}" up
+          if goose -dir server/migrations postgres "$GOOSE_DB_URL" status | grep -q "no migrations"; then
+            echo "Running migrations..."
+            goose -dir server/migrations postgres "$GOOSE_DB_URL" up
+          else
+            echo "Database is already up to date, checking for new migrations..."
+            goose -dir server/migrations postgres "$GOOSE_DB_URL" up || echo "No new migrations to apply"
+          fi
       - name: Build and deploy to Fly.io
         run: |
           # Set client env vars for Docker build
