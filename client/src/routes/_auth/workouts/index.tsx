@@ -3,15 +3,19 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, ChevronRight, Dumbbell, Plus } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, Dumbbell, Plus } from 'lucide-react';
 import { workoutsQueryOptions } from '@/lib/api/workouts';
 import { formatDate, formatTime } from '@/lib/utils';
 import type { WorkoutWorkoutResponse } from '@/client';
+import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import { loadFromLocalStorage } from '@/lib/local-storage';
 
 function WorkoutsDisplay({
   workouts,
+  user,
 }: {
   workouts: Array<WorkoutWorkoutResponse>;
+  user: CurrentUser | CurrentInternalUser;
 }) {
   const totalWorkouts = workouts.length;
   const thisWeekWorkouts = workouts.filter((workout) => {
@@ -31,6 +35,8 @@ function WorkoutsDisplay({
     {} as Record<string, number>
   );
 
+  const hasWorkoutInProgress = loadFromLocalStorage(user.id) !== null;
+
   return (
     <main>
       <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
@@ -41,8 +47,12 @@ function WorkoutsDisplay({
           </div>
           <Button size="sm" asChild>
             <Link to="/workouts/new-2">
-              <Plus className="w-4 h-4 mr-2" />
-              New Workout
+              {hasWorkoutInProgress ? (
+                <Clock className="w-4 h-4 mr-2" />
+              ) : (
+                <Plus className="w-4 h-4 mr-2" />
+              )}
+              {hasWorkoutInProgress ? 'In Progress' : 'New Workout'}
             </Link>
           </Button>
         </div>
@@ -132,13 +142,20 @@ function WorkoutsDisplay({
 }
 
 export const Route = createFileRoute('/_auth/workouts/')({
-  loader: async ({ context }) => {
+  loader: async ({
+    context,
+  }): Promise<{
+    user: CurrentUser | CurrentInternalUser;
+  }> => {
+    const user = context.user;
     context.queryClient.ensureQueryData(workoutsQueryOptions());
+    return { user };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
+  const { user } = Route.useLoaderData();
   const { data: workouts } = useSuspenseQuery(workoutsQueryOptions());
-  return <WorkoutsDisplay workouts={workouts} />;
+  return <WorkoutsDisplay workouts={workouts} user={user} />;
 }
