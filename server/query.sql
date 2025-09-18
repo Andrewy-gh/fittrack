@@ -1,22 +1,22 @@
 -- Basic SELECT queries
 -- name: GetWorkout :one
-SELECT * FROM workout WHERE id = $1 AND user_id = $2;
+SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE id = $1 AND user_id = $2;
 
--- name: ListWorkouts :many  
-SELECT * FROM workout WHERE user_id = $1 ORDER BY date DESC;
+-- name: ListWorkouts :many
+SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE user_id = $1 ORDER BY date DESC;
 
 -- name: GetExercise :one
-SELECT * FROM exercise WHERE id = $1 AND user_id = $2;
+SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2;
 
 -- name: ListExercises :many
-SELECT * FROM exercise WHERE user_id = $1 ORDER BY name;
+SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name;
 
 -- name: GetSet :one
-SELECT * FROM "set" 
+SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
 WHERE id = $1 AND user_id = $2;
 
 -- name: ListSets :many
-SELECT * FROM "set" 
+SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
 WHERE user_id = $1
 ORDER BY exercise_order, set_order, id;
 
@@ -45,18 +45,18 @@ ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at, s.id;
 -- name: CreateWorkout :one
 INSERT INTO workout (date, notes, workout_focus, user_id)
 VALUES ($1, $2, $3, $4)
-RETURNING *;
+RETURNING id;
 
 -- name: GetOrCreateExercise :one
-INSERT INTO exercise (name, user_id) 
+INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
-RETURNING *;
+RETURNING id;
 
 -- name: CreateSet :one
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING *;
+RETURNING id;
 
 -- Complex queries for joining data
 -- name: GetWorkoutWithSets :many
@@ -81,40 +81,40 @@ WHERE w.id = $1 AND w.user_id = $2
 ORDER BY s.exercise_order, s.set_order, s.id;
 
 -- name: GetExerciseByName :one
-SELECT * FROM exercise WHERE name = $1 AND user_id = $2;
+SELECT id, name FROM exercise WHERE name = $1 AND user_id = $2;
 
 -- User queries
 -- name: GetUser :one
-SELECT * FROM users WHERE id = $1;
+SELECT id, user_id, created_at FROM users WHERE id = $1;
 
 -- name: GetUserByUserID :one
-SELECT * FROM users WHERE user_id = $1 LIMIT 1;
+SELECT id, user_id, created_at FROM users WHERE user_id = $1 LIMIT 1;
 
 -- name: CreateUser :one
 INSERT INTO users (user_id)
 VALUES ($1)
-RETURNING *;
+RETURNING id;
 
 -- UPDATE queries for PUT endpoint
 -- name: UpdateWorkout :one
-UPDATE workout 
-SET 
+UPDATE workout
+SET
     date = COALESCE($2, date),
     notes = COALESCE($3, notes),
     workout_focus = COALESCE($4, workout_focus),
     updated_at = NOW()
 WHERE id = $1 AND user_id = $5
-RETURNING *;
+RETURNING id;
 
 -- name: UpdateSet :one
-UPDATE "set" 
-SET 
+UPDATE "set"
+SET
     weight = COALESCE($2, weight),
     reps = COALESCE($3, reps),
     set_type = COALESCE($4, set_type),
     updated_at = NOW()
 WHERE id = $1 AND user_id = $5
-RETURNING *;
+RETURNING id;
 
 -- name: DeleteSetsByWorkout :exec
 DELETE FROM "set" 
