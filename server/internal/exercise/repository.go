@@ -25,7 +25,7 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 }
 
 func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) ([]db.Exercise, error) {
-	exercises, err := er.queries.ListExercises(ctx, userID)
+	exerciseRows, err := er.queries.ListExercises(ctx, userID)
 	if err != nil {
 		// Check if this might be an RLS-related error
 		if db.IsRowLevelSecurityError(err) {
@@ -39,8 +39,19 @@ func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) 
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
 
-	if exercises == nil {
-		exercises = []db.Exercise{}
+	if exerciseRows == nil {
+		return []db.Exercise{}, nil
+	}
+
+	// Convert ListExercisesRow to Exercise
+	exercises := make([]db.Exercise, len(exerciseRows))
+	for i, row := range exerciseRows {
+		exercises[i] = db.Exercise{
+			ID:   row.ID,
+			Name: row.Name,
+			// UserID is not returned by optimized query but was used for filtering
+			UserID: userID,
+		}
 	}
 
 	// Log empty results that might indicate RLS filtering
@@ -58,7 +69,7 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID 
 		ID:     id,
 		UserID: userID,
 	}
-	exercise, err := er.queries.GetExercise(ctx, params)
+	exerciseRow, err := er.queries.GetExercise(ctx, params)
 	if err != nil {
 		// Check if this might be an RLS-related error
 		if db.IsRowLevelSecurityError(err) {
@@ -75,6 +86,15 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID 
 		}
 		return db.Exercise{}, fmt.Errorf("failed to get exercise (id: %d): %w", id, err)
 	}
+
+	// Convert GetExerciseRow to Exercise
+	exercise := db.Exercise{
+		ID:   exerciseRow.ID,
+		Name: exerciseRow.Name,
+		// UserID is not returned by optimized query but was used for filtering
+		UserID: userID,
+	}
+
 	return exercise, nil
 }
 
@@ -83,7 +103,7 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 		Name:   name,
 		UserID: userID,
 	}
-	exercise, err := er.queries.GetOrCreateExercise(ctx, params)
+	exerciseID, err := er.queries.GetOrCreateExercise(ctx, params)
 	if err != nil {
 		// Check if this might be an RLS-related error
 		if db.IsRowLevelSecurityError(err) {
@@ -100,6 +120,14 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 		}
 		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
+
+	// Create Exercise from returned ID
+	exercise := db.Exercise{
+		ID:     exerciseID,
+		Name:   name,
+		UserID: userID,
+	}
+
 	return exercise, nil
 }
 
@@ -150,13 +178,20 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 	}
 
 	er.logger.Info("calling GetOrCreateExercise with params", "params", params)
-	exercise, err := qtx.GetOrCreateExercise(ctx, params)
+	exerciseID, err := qtx.GetOrCreateExercise(ctx, params)
 	if err != nil {
 		er.logger.Error("failed to get or create exercise",
 			"error", err,
 			"exercise_name", name,
 			"user_id", userID)
 		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
+	}
+
+	// Create Exercise from returned ID
+	exercise := db.Exercise{
+		ID:     exerciseID,
+		Name:   name,
+		UserID: userID,
 	}
 
 	er.logger.Info("successfully got/created exercise",

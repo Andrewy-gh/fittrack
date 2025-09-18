@@ -29,7 +29,7 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool,
 
 // MARK: ListWorkouts
 func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([]db.Workout, error) {
-	workouts, err := wr.queries.ListWorkouts(ctx, userId)
+	workoutRows, err := wr.queries.ListWorkouts(ctx, userId)
 	if err != nil {
 		// Check if this might be an RLS-related error
 		if db.IsRowLevelSecurityError(err) {
@@ -43,8 +43,23 @@ func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
 	}
 
-	if workouts == nil {
-		workouts = []db.Workout{}
+	if workoutRows == nil {
+		return []db.Workout{}, nil
+	}
+
+	// Convert ListWorkoutsRow to Workout
+	workouts := make([]db.Workout, len(workoutRows))
+	for i, row := range workoutRows {
+		workouts[i] = db.Workout{
+			ID:           row.ID,
+			Date:         row.Date,
+			Notes:        row.Notes,
+			WorkoutFocus: row.WorkoutFocus,
+			CreatedAt:    row.CreatedAt,
+			UpdatedAt:    row.UpdatedAt,
+			// UserID is not returned by optimized query but was used for filtering
+			UserID: userId,
+		}
 	}
 
 	// Log empty results that might indicate RLS filtering
@@ -63,7 +78,7 @@ func (wr *workoutRepository) GetWorkout(ctx context.Context, id int32, userID st
 		ID:     id,
 		UserID: userID,
 	}
-	workout, err := wr.queries.GetWorkout(ctx, params)
+	workoutRow, err := wr.queries.GetWorkout(ctx, params)
 	if err != nil {
 		// Check if this might be an RLS-related error
 		if db.IsRowLevelSecurityError(err) {
@@ -78,7 +93,19 @@ func (wr *workoutRepository) GetWorkout(ctx context.Context, id int32, userID st
 				"user_id", userID,
 				"error", err)
 		}
-		return workout, fmt.Errorf("failed to get workout (id: %d): %w", id, err)
+		return db.Workout{}, fmt.Errorf("failed to get workout (id: %d): %w", id, err)
+	}
+
+	// Convert GetWorkoutRow to Workout
+	workout := db.Workout{
+		ID:           workoutRow.ID,
+		Date:         workoutRow.Date,
+		Notes:        workoutRow.Notes,
+		WorkoutFocus: workoutRow.WorkoutFocus,
+		CreatedAt:    workoutRow.CreatedAt,
+		UpdatedAt:    workoutRow.UpdatedAt,
+		// UserID is not returned by optimized query but was used for filtering
+		UserID: userID,
 	}
 
 	return workout, nil
@@ -194,7 +221,7 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 	qtx := wr.queries.WithTx(tx)
 
 	// Step 1: Update workout metadata
-	updatedWorkout, err := qtx.UpdateWorkout(ctx, db.UpdateWorkoutParams{
+	_, err = qtx.UpdateWorkout(ctx, db.UpdateWorkoutParams{
 		ID:           id,
 		Date:         pgData.Workout.Date,
 		Notes:        pgData.Workout.Notes,
@@ -219,8 +246,7 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 	}
 
 	wr.logger.Info("workout metadata updated successfully",
-		"workout_id", updatedWorkout.ID,
-		"updated_at", updatedWorkout.UpdatedAt,
+		"workout_id", id,
 		"user_id", userID)
 
 	// Step 2: Handle exercise/set updates (replace strategy - delete all and recreate)
@@ -302,12 +328,24 @@ func (wr *workoutRepository) DeleteWorkout(ctx context.Context, id int32, userID
 
 // MARK: insertWorkout
 func (wr *workoutRepository) insertWorkout(ctx context.Context, qtx *db.Queries, workout PGWorkoutData, userID string) (db.Workout, error) {
-	return qtx.CreateWorkout(ctx, db.CreateWorkoutParams{
+	workoutID, err := qtx.CreateWorkout(ctx, db.CreateWorkoutParams{
 		Date:         workout.Date,
 		Notes:        workout.Notes,
 		WorkoutFocus: workout.WorkoutFocus,
 		UserID:       userID,
 	})
+	if err != nil {
+		return db.Workout{}, err
+	}
+
+	// Create Workout from returned ID
+	return db.Workout{
+		ID:           workoutID,
+		Date:         workout.Date,
+		Notes:        workout.Notes,
+		WorkoutFocus: workout.WorkoutFocus,
+		UserID:       userID,
+	}, nil
 }
 
 // MARK: getOrCreateExercises

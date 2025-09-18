@@ -40,7 +40,7 @@ func (r *userRepository) GetUser(ctx context.Context, id string) (db.Users, erro
 
 // CreateUser inserts a new user into the database
 func (r *userRepository) CreateUser(ctx context.Context, userID string) (db.Users, error) {
-	user, err := r.queries.CreateUser(ctx, userID)
+	id, err := r.queries.CreateUser(ctx, userID)
 	if err != nil {
 		if db.IsUniqueConstraintError(err) {
 			r.logger.Debug("user creation failed due to unique constraint", "user_id", userID)
@@ -49,7 +49,9 @@ func (r *userRepository) CreateUser(ctx context.Context, userID string) (db.User
 		}
 		return db.Users{}, fmt.Errorf("failed to create user %s: %w", userID, err)
 	}
-	return user, nil
+
+	// Since CreateUser now only returns the ID, we need to fetch the full user
+	return r.queries.GetUser(ctx, id)
 }
 
 var _ UserRepository = (*userRepository)(nil)
