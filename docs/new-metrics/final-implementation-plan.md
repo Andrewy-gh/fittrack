@@ -20,6 +20,13 @@ This document outlines the finalized implementation plan for adding 5 new streng
 - **Volume**: `weight × reps` (already implemented)
 - **Intensity**: `(working_weight / historical_1rm) × 100`
 
+### Handling New Exercises (No Historical 1RM)
+When `historical_1rm` is 0 or null (new exercises with no historical data):
+- **Session Average Intensity**: `AVG(s.weight / session_best_e1rm * 100)` for working sets
+- **Session Best Intensity**: `MAX(s.weight / session_best_e1rm * 100)` for working sets
+
+This approach uses the session's best estimated 1RM as the baseline, providing meaningful intensity metrics even for brand new exercises.
+
 ### Key Design Decisions
 - **Use existing `set_type` column** instead of adding redundant `is_working` column
 - **No RPE column** - avoiding subjective metrics
@@ -78,6 +85,15 @@ CREATE INDEX idx_session_metrics_user_exercise ON session_metrics(user_id, exerc
 - **Portfolio value**: Demonstrates advanced system design and performance optimization thinking
 - **Real-world pattern**: How companies like Strava handle analytics at scale
 
+**Decision: Continue with current GetSessionMetrics query approach instead of session_metrics table**
+Based on analysis, the current query-based approach is preferred because:
+- **Real-time accuracy**: Calculates metrics directly from current set data
+- **Simplicity**: No need to maintain/sync a separate metrics table
+- **Flexibility**: Easy to modify calculations without data migration
+- **Performance**: For single workout queries, the performance difference is negligible
+
+The session metrics table adds complexity without significant benefit for this use case. The current `GetSessionMetrics` query is well-structured and efficient for the application's needs.
+
 ## Backend Implementation (Go)
 
 ### Repository Layer (`server/internal/`)
@@ -95,10 +111,18 @@ SELECT
     e.historical_1rm,
     MAX(s.e1rm) FILTER (WHERE s.set_type = 'working') as session_best_e1rm,
     AVG(s.e1rm) FILTER (WHERE s.set_type = 'working') as session_avg_e1rm,
+    -- For exercises with historical_1rm, use historical as baseline
     AVG(CASE WHEN e.historical_1rm > 0 THEN (s.weight::decimal / e.historical_1rm * 100) END)
         FILTER (WHERE s.set_type = 'working') as avg_intensity_vs_hist,
     MAX(CASE WHEN e.historical_1rm > 0 THEN (s.weight::decimal / e.historical_1rm * 100) END)
         FILTER (WHERE s.set_type = 'working') as session_best_intensity_vs_hist,
+    -- For new exercises (no historical_1rm), use session_best_e1rm as baseline
+    AVG(CASE WHEN e.historical_1rm <= 0 OR e.historical_1rm IS NULL
+         THEN (s.weight::decimal / MAX(s.e1rm) OVER (PARTITION BY e.id) * 100) END)
+        FILTER (WHERE s.set_type = 'working') as avg_intensity_vs_session_best,
+    MAX(CASE WHEN e.historical_1rm <= 0 OR e.historical_1rm IS NULL
+         THEN (s.weight::decimal / MAX(s.e1rm) OVER (PARTITION BY e.id) * 100) END)
+        FILTER (WHERE s.set_type = 'working') as session_best_intensity_vs_session_best,
     SUM(s.volume) FILTER (WHERE s.set_type = 'working') as total_volume_working
 FROM "set" s
 JOIN exercise e ON s.exercise_id = e.id
