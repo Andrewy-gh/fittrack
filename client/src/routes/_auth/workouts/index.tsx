@@ -46,7 +46,7 @@ function WorkoutsDisplay({
             <h1 className="text-3xl font-bold tracking-tight">Workouts</h1>
           </div>
           <Button size="sm" asChild>
-            <Link to="/workouts/new-2">
+            <Link to="/workouts/new">
               {hasWorkoutInProgress ? (
                 <Clock className="w-4 h-4 mr-2" />
               ) : (

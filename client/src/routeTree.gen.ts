@@ -17,7 +17,6 @@ import { Route as IndexImport } from './routes/index'
 import { Route as HandlerSplatImport } from './routes/handler.$'
 import { Route as AuthWorkoutsIndexImport } from './routes/_auth/workouts/index'
 import { Route as AuthExercisesIndexImport } from './routes/_auth/exercises/index'
-import { Route as AuthWorkoutsNew2Import } from './routes/_auth/workouts/new-2'
 import { Route as AuthWorkoutsNewImport } from './routes/_auth/workouts/new'
 import { Route as AuthExercisesExerciseIdImport } from './routes/_auth/exercises/$exerciseId'
 import { Route as AuthWorkoutsWorkoutIdIndexImport } from './routes/_auth/workouts/$workoutId/index'
@@ -57,12 +56,6 @@ const AuthWorkoutsIndexRoute = AuthWorkoutsIndexImport.update({
 const AuthExercisesIndexRoute = AuthExercisesIndexImport.update({
   id: '/exercises/',
   path: '/exercises/',
-  getParentRoute: () => AuthRoute,
-} as any)
-
-const AuthWorkoutsNew2Route = AuthWorkoutsNew2Import.update({
-  id: '/workouts/new-2',
-  path: '/workouts/new-2',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -138,13 +131,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthWorkoutsNewImport
       parentRoute: typeof AuthImport
     }
-    '/_auth/workouts/new-2': {
-      id: '/_auth/workouts/new-2'
-      path: '/workouts/new-2'
-      fullPath: '/workouts/new-2'
-      preLoaderRoute: typeof AuthWorkoutsNew2Import
-      parentRoute: typeof AuthImport
-    }
     '/_auth/exercises/': {
       id: '/_auth/exercises/'
       path: '/exercises'
@@ -181,7 +167,6 @@ declare module '@tanstack/react-router' {
 interface AuthRouteChildren {
   AuthExercisesExerciseIdRoute: typeof AuthExercisesExerciseIdRoute
   AuthWorkoutsNewRoute: typeof AuthWorkoutsNewRoute
-  AuthWorkoutsNew2Route: typeof AuthWorkoutsNew2Route
   AuthExercisesIndexRoute: typeof AuthExercisesIndexRoute
   AuthWorkoutsIndexRoute: typeof AuthWorkoutsIndexRoute
   AuthWorkoutsWorkoutIdEditRoute: typeof AuthWorkoutsWorkoutIdEditRoute
@@ -191,7 +176,6 @@ interface AuthRouteChildren {
 const AuthRouteChildren: AuthRouteChildren = {
   AuthExercisesExerciseIdRoute: AuthExercisesExerciseIdRoute,
   AuthWorkoutsNewRoute: AuthWorkoutsNewRoute,
-  AuthWorkoutsNew2Route: AuthWorkoutsNew2Route,
   AuthExercisesIndexRoute: AuthExercisesIndexRoute,
   AuthWorkoutsIndexRoute: AuthWorkoutsIndexRoute,
   AuthWorkoutsWorkoutIdEditRoute: AuthWorkoutsWorkoutIdEditRoute,
@@ -207,7 +191,6 @@ export interface FileRoutesByFullPath {
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
-  '/workouts/new-2': typeof AuthWorkoutsNew2Route
   '/exercises': typeof AuthExercisesIndexRoute
   '/workouts': typeof AuthWorkoutsIndexRoute
   '/workouts/$workoutId/edit': typeof AuthWorkoutsWorkoutIdEditRoute
@@ -221,7 +204,6 @@ export interface FileRoutesByTo {
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
-  '/workouts/new-2': typeof AuthWorkoutsNew2Route
   '/exercises': typeof AuthExercisesIndexRoute
   '/workouts': typeof AuthWorkoutsIndexRoute
   '/workouts/$workoutId/edit': typeof AuthWorkoutsWorkoutIdEditRoute
@@ -236,7 +218,6 @@ export interface FileRoutesById {
   '/handler/$': typeof HandlerSplatRoute
   '/_auth/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/_auth/workouts/new': typeof AuthWorkoutsNewRoute
-  '/_auth/workouts/new-2': typeof AuthWorkoutsNew2Route
   '/_auth/exercises/': typeof AuthExercisesIndexRoute
   '/_auth/workouts/': typeof AuthWorkoutsIndexRoute
   '/_auth/workouts/$workoutId/edit': typeof AuthWorkoutsWorkoutIdEditRoute
@@ -252,7 +233,6 @@ export interface FileRouteTypes {
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
-    | '/workouts/new-2'
     | '/exercises'
     | '/workouts'
     | '/workouts/$workoutId/edit'
@@ -265,7 +245,6 @@ export interface FileRouteTypes {
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
-    | '/workouts/new-2'
     | '/exercises'
     | '/workouts'
     | '/workouts/$workoutId/edit'
@@ -278,7 +257,6 @@ export interface FileRouteTypes {
     | '/handler/$'
     | '/_auth/exercises/$exerciseId'
     | '/_auth/workouts/new'
-    | '/_auth/workouts/new-2'
     | '/_auth/exercises/'
     | '/_auth/workouts/'
     | '/_auth/workouts/$workoutId/edit'
@@ -324,7 +302,6 @@ export const routeTree = rootRoute
       "children": [
         "/_auth/exercises/$exerciseId",
         "/_auth/workouts/new",
-        "/_auth/workouts/new-2",
         "/_auth/exercises/",
         "/_auth/workouts/",
         "/_auth/workouts/$workoutId/edit",
@@ -343,10 +320,6 @@ export const routeTree = rootRoute
     },
     "/_auth/workouts/new": {
       "filePath": "_auth/workouts/new.tsx",
-      "parent": "/_auth"
-    },
-    "/_auth/workouts/new-2": {
-      "filePath": "_auth/workouts/new-2.tsx",
       "parent": "/_auth"
     },
     "/_auth/exercises/": {
