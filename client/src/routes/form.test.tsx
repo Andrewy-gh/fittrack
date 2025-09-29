@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { SimpleFormExample, FieldInfo } from './form'
+import { SimpleFormExample } from './form'
 
 describe('Form Component', () => {
   beforeEach(() => {
