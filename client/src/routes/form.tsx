@@ -10,7 +10,7 @@ export const Route = createFileRoute('/form')({
   component: RouteComponent,
 })
 
-function FieldInfo({ field }: { field: AnyFieldApi }) {
+export function FieldInfo({ field }: { field: AnyFieldApi }) {
   return (
     <>
       {field.state.meta.isTouched && !field.state.meta.isValid ? (
@@ -23,7 +23,7 @@ function FieldInfo({ field }: { field: AnyFieldApi }) {
   )
 }
 
-function RouteComponent() {
+export function SimpleFormExample() {
   const form = useForm({
     defaultValues: {
       firstName: '',
@@ -119,4 +119,8 @@ function RouteComponent() {
       </Card>
     </div>
   )
+}
+
+function RouteComponent() {
+  return <SimpleFormExample />
 }

@@ -16,6 +16,7 @@ import { Route as AboutImport } from './routes/about'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as IndexImport } from './routes/index'
 import { Route as HandlerSplatImport } from './routes/handler.$'
+import { Route as FormTestImport } from './routes/form.test'
 import { Route as AuthWorkoutsIndexImport } from './routes/_auth/workouts/index'
 import { Route as AuthExercisesIndexImport } from './routes/_auth/exercises/index'
 import { Route as AuthWorkoutsNew2Import } from './routes/_auth/workouts/new-2'
@@ -53,6 +54,12 @@ const HandlerSplatRoute = HandlerSplatImport.update({
   id: '/handler/$',
   path: '/handler/$',
   getParentRoute: () => rootRoute,
+} as any)
+
+const FormTestRoute = FormTestImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => FormRoute,
 } as any)
 
 const AuthWorkoutsIndexRoute = AuthWorkoutsIndexImport.update({
@@ -130,6 +137,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/form'
       preLoaderRoute: typeof FormImport
       parentRoute: typeof rootRoute
+    }
+    '/form/test': {
+      id: '/form/test'
+      path: '/test'
+      fullPath: '/form/test'
+      preLoaderRoute: typeof FormTestImport
+      parentRoute: typeof FormImport
     }
     '/handler/$': {
       id: '/handler/$'
@@ -214,11 +228,22 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface FormRouteChildren {
+  FormTestRoute: typeof FormTestRoute
+}
+
+const FormRouteChildren: FormRouteChildren = {
+  FormTestRoute: FormTestRoute,
+}
+
+const FormRouteWithChildren = FormRoute._addFileChildren(FormRouteChildren)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
-  '/form': typeof FormRoute
+  '/form': typeof FormRouteWithChildren
+  '/form/test': typeof FormTestRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
@@ -233,7 +258,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
-  '/form': typeof FormRoute
+  '/form': typeof FormRouteWithChildren
+  '/form/test': typeof FormTestRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
@@ -249,7 +275,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
-  '/form': typeof FormRoute
+  '/form': typeof FormRouteWithChildren
+  '/form/test': typeof FormTestRoute
   '/handler/$': typeof HandlerSplatRoute
   '/_auth/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/_auth/workouts/new': typeof AuthWorkoutsNewRoute
@@ -267,6 +294,7 @@ export interface FileRouteTypes {
     | ''
     | '/about'
     | '/form'
+    | '/form/test'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -281,6 +309,7 @@ export interface FileRouteTypes {
     | ''
     | '/about'
     | '/form'
+    | '/form/test'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -295,6 +324,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/about'
     | '/form'
+    | '/form/test'
     | '/handler/$'
     | '/_auth/exercises/$exerciseId'
     | '/_auth/workouts/new'
@@ -310,7 +340,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   AboutRoute: typeof AboutRoute
-  FormRoute: typeof FormRoute
+  FormRoute: typeof FormRouteWithChildren
   HandlerSplatRoute: typeof HandlerSplatRoute
 }
 
@@ -318,7 +348,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   AboutRoute: AboutRoute,
-  FormRoute: FormRoute,
+  FormRoute: FormRouteWithChildren,
   HandlerSplatRoute: HandlerSplatRoute,
 }
 
@@ -358,7 +388,14 @@ export const routeTree = rootRoute
       "filePath": "about.tsx"
     },
     "/form": {
-      "filePath": "form.tsx"
+      "filePath": "form.tsx",
+      "children": [
+        "/form/test"
+      ]
+    },
+    "/form/test": {
+      "filePath": "form.test.tsx",
+      "parent": "/form"
     },
     "/handler/$": {
       "filePath": "handler.$.tsx"
