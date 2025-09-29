@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as FormImport } from './routes/form'
 import { Route as AboutImport } from './routes/about'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as IndexImport } from './routes/index'
@@ -24,6 +25,12 @@ import { Route as AuthWorkoutsWorkoutIdIndexImport } from './routes/_auth/workou
 import { Route as AuthWorkoutsWorkoutIdEditImport } from './routes/_auth/workouts/$workoutId/edit'
 
 // Create/Update Routes
+
+const FormRoute = FormImport.update({
+  id: '/form',
+  path: '/form',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const AboutRoute = AboutImport.update({
   id: '/about',
@@ -117,6 +124,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
+    '/form': {
+      id: '/form'
+      path: '/form'
+      fullPath: '/form'
+      preLoaderRoute: typeof FormImport
+      parentRoute: typeof rootRoute
+    }
     '/handler/$': {
       id: '/handler/$'
       path: '/handler/$'
@@ -204,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
+  '/form': typeof FormRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
@@ -218,6 +233,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
+  '/form': typeof FormRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
@@ -233,6 +249,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
+  '/form': typeof FormRoute
   '/handler/$': typeof HandlerSplatRoute
   '/_auth/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/_auth/workouts/new': typeof AuthWorkoutsNewRoute
@@ -249,6 +266,7 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/about'
+    | '/form'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -262,6 +280,7 @@ export interface FileRouteTypes {
     | '/'
     | ''
     | '/about'
+    | '/form'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -275,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_auth'
     | '/about'
+    | '/form'
     | '/handler/$'
     | '/_auth/exercises/$exerciseId'
     | '/_auth/workouts/new'
@@ -290,6 +310,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   AboutRoute: typeof AboutRoute
+  FormRoute: typeof FormRoute
   HandlerSplatRoute: typeof HandlerSplatRoute
 }
 
@@ -297,6 +318,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   AboutRoute: AboutRoute,
+  FormRoute: FormRoute,
   HandlerSplatRoute: HandlerSplatRoute,
 }
 
@@ -313,6 +335,7 @@ export const routeTree = rootRoute
         "/",
         "/_auth",
         "/about",
+        "/form",
         "/handler/$"
       ]
     },
@@ -333,6 +356,9 @@ export const routeTree = rootRoute
     },
     "/about": {
       "filePath": "about.tsx"
+    },
+    "/form": {
+      "filePath": "form.tsx"
     },
     "/handler/$": {
       "filePath": "handler.$.tsx"
