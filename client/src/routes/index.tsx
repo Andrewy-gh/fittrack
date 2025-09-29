@@ -142,15 +142,18 @@ function HomePage({
               >
                 <Link to="/workouts" preload={false}>
                   <Dumbbell className="w-5 h-5 mr-1" />
-                  Try It For Free
+                  {user ? 'New Workout' : 'Try It For Free'}
                 </Link>
               </Button>
               <Button
                 size="lg"
                 variant="outline"
                 className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
+                asChild
               >
-                See How It Works
+                <Link to="/workouts" preload={false}>
+                  See How It Works
+                </Link>
               </Button>
             </div>
           </div>
@@ -223,9 +226,14 @@ function HomePage({
                       </div>
                     </div>
 
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4">
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                      Log Next Set
+                    <Button
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
+                      asChild
+                    >
+                      <Link to="/workouts" preload={false}>
+                        <ArrowRight className="w-5 h-5 mr-1" />
+                        Log Next Set
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -372,9 +380,14 @@ function HomePage({
                     </span>
                   </div>
 
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4">
-                    <ArrowRight className="w-4 h-4 mr-2" />
-                    Join Challenge
+                  <Button
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4"
+                    asChild
+                  >
+                    <Link to="/workouts" preload={false}>
+                      <ArrowRight className="w-4 h-4 mr-2" />
+                      Join Challenge
+                    </Link>
                   </Button>
                 </div>
               </div>
@@ -479,16 +492,22 @@ function HomePage({
             <Button
               size="lg"
               className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
+              asChild
             >
-              <Download className="w-5 h-5 mr-2" />
-              Download Free
+              <Link to="/workouts" preload={false}>
+                <Download className="w-5 h-5 mr-2" />
+                Download Free
+              </Link>
             </Button>
             <Button
               size="lg"
               variant="outline"
               className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
+              asChild
             >
-              See Features
+              <Link to="/workouts" preload={false}>
+                See Features
+              </Link>
             </Button>
           </div>
 
