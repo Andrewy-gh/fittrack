@@ -53,6 +53,9 @@ VALUES ($1, $2)
 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
 RETURNING id;
 
+-- name: DeleteExercise :exec
+DELETE FROM exercise WHERE id = $1 AND user_id = $2;
+
 -- name: CreateSet :one
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

@@ -204,3 +204,49 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 		return
 	}
 }
+
+// MARK: DeleteExercise
+// DeleteExercise godoc
+// @Summary Delete an exercise
+// @Description Delete a specific exercise and all its associated sets. Only the owner of the exercise can delete it.
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Exercise ID"
+// @Success 204 "No Content - Exercise deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid exercise ID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
+// @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises/{id} [delete]
+func (h *ExerciseHandler) DeleteExercise(w http.ResponseWriter, r *http.Request) {
+	exerciseID := r.PathValue("id")
+	if exerciseID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+		return
+	}
+
+	exerciseIDInt, err := strconv.ParseInt(exerciseID, 10, 32)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+		return
+	}
+
+	if err := h.exerciseService.DeleteExercise(r.Context(), int32(exerciseIDInt)); err != nil {
+		var errUnauthorized *ErrUnauthorized
+		var errNotFound *ErrNotFound
+
+		switch {
+		case errors.As(err, &errUnauthorized):
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		case errors.As(err, &errNotFound):
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+		default:
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to delete exercise", err)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

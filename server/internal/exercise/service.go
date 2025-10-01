@@ -16,6 +16,7 @@ type ExerciseRepository interface {
 	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
 	GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error)
+	DeleteExercise(ctx context.Context, id int32, userID string) error
 }
 
 type ErrUnauthorized struct {
@@ -23,6 +24,14 @@ type ErrUnauthorized struct {
 }
 
 func (e *ErrUnauthorized) Error() string {
+	return e.Message
+}
+
+type ErrNotFound struct {
+	Message string
+}
+
+func (e *ErrNotFound) Error() string {
 	return e.Message
 }
 
@@ -96,4 +105,27 @@ func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int3
 		return nil, fmt.Errorf("failed to get recent sets for exercise: %w", err)
 	}
 	return sets, nil
+}
+
+// MARK: DeleteExercise
+func (es *ExerciseService) DeleteExercise(ctx context.Context, id int32) error {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	_, err := es.repo.GetExercise(ctx, id, userID)
+	if err != nil {
+		es.logger.Debug("exercise not found for update", "exercise_id", id, "user_id", userID, "error", err)
+		return &ErrNotFound{Message: "exercise not found"}
+	}
+
+	if err := es.repo.DeleteExercise(ctx, id, userID); err != nil {
+		es.logger.Error("failed to delete exercise", "error", err)
+		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
+		return fmt.Errorf("failed to delete exercise: %w", err)
+	}
+
+	es.logger.Info("exercise deleted successfully", "exercise_id", id, "user_id", userID)
+	return nil
 }

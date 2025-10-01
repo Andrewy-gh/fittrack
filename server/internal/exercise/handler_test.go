@@ -61,6 +61,11 @@ func (m *MockExerciseRepository) GetRecentSetsForExercise(ctx context.Context, i
 	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
 }
 
+func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
+	args := m.Called(ctx, id, userID)
+	return args.Error(0)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }
@@ -730,7 +735,7 @@ func setupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 
 	// Setup users table entries
 	setupTestUsers(t, pool)
-	
+
 	// Backfill order columns for existing test data if they exist
 	// This ensures tests work with both old and new database schemas
 	backfillOrderColumnsForTests(t, pool)
@@ -838,15 +843,15 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
-	
+
 	// Backfill order columns for all test users
 	// This ensures tests work whether or not the migration has been applied
 	testUsers := []string{"test-user-a", "test-user-b"}
-	
+
 	for _, userID := range testUsers {
 		// Set user context for RLS
 		ctxUser := testutils.SetTestUserContext(ctx, t, pool, userID)
-		
+
 		// Backfill order columns for this user
 		testutils.BackfillSetOrderColumns(ctxUser, t, pool, userID)
 	}

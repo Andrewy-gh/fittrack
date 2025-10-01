@@ -29,7 +29,7 @@ CREATE TABLE exercise (
 -- Sets table
 CREATE TABLE "set" (
     id SERIAL PRIMARY KEY,
-    exercise_id INTEGER NOT NULL REFERENCES exercise(id),
+    exercise_id INTEGER NOT NULL REFERENCES exercise(id) ON DELETE CASCADE,
     workout_id INTEGER NOT NULL REFERENCES workout(id) ON DELETE CASCADE,
     weight INTEGER,
     reps INTEGER NOT NULL,
