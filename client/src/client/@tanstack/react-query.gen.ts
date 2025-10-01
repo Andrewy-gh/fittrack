@@ -4,6 +4,7 @@ import {
   type Options,
   getExercises,
   postExercises,
+  deleteExercisesById,
   getExercisesById,
   getExercisesByIdRecentSets,
   getWorkouts,
@@ -19,6 +20,8 @@ import type {
   PostExercisesData,
   PostExercisesError,
   PostExercisesResponse,
+  DeleteExercisesByIdData,
+  DeleteExercisesByIdError,
   GetExercisesByIdData,
   GetExercisesByIdRecentSetsData,
   GetWorkoutsData,
@@ -141,6 +144,34 @@ export const postExercisesMutation = (
   > = {
     mutationFn: async (localOptions) => {
       const { data } = await postExercises({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Delete an exercise
+ * Delete a specific exercise and all its associated sets. Only the owner of the exercise can delete it.
+ */
+export const deleteExercisesByIdMutation = (
+  options?: Partial<Options<DeleteExercisesByIdData>>,
+): UseMutationOptions<
+  unknown,
+  DeleteExercisesByIdError,
+  Options<DeleteExercisesByIdData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    DeleteExercisesByIdError,
+    Options<DeleteExercisesByIdData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await deleteExercisesById({
         ...options,
         ...localOptions,
         throwOnError: true,
