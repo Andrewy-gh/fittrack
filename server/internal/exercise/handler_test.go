@@ -61,6 +61,11 @@ func (m *MockExerciseRepository) GetRecentSetsForExercise(ctx context.Context, i
 	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
 }
 
+func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
+	args := m.Called(ctx, id, userID)
+	return args.Error(0)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }
@@ -448,6 +453,121 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 	}
 }
 
+func TestExerciseHandler_DeleteExercise(t *testing.T) {
+	userID := "test-user-id"
+
+	tests := []struct {
+		name          string
+		exerciseID    string
+		setupMock     func(*MockExerciseRepository, int32)
+		ctx           context.Context
+		expectedCode  int
+		expectJSON    bool
+		expectedError string
+	}{
+		{
+			name:       "successful deletion",
+			exerciseID: "1",
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Bench Press"}, nil)
+				m.On("DeleteExercise", mock.Anything, id, userID).Return(nil)
+			},
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusNoContent,
+			expectJSON:   false,
+		},
+		{
+			name:          "missing exercise ID",
+			exerciseID:    "",
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "Missing exercise ID",
+		},
+		{
+			name:          "invalid exercise ID",
+			exerciseID:    "invalid",
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "Invalid exercise ID",
+		},
+		{
+			name:       "exercise not found",
+			exerciseID: "999",
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusNotFound,
+			expectJSON:    true,
+			expectedError: "exercise not found",
+		},
+		{
+			name:       "delete operation fails",
+			exerciseID: "1",
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Bench Press"}, nil)
+				m.On("DeleteExercise", mock.Anything, id, userID).Return(assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectJSON:    true,
+			expectedError: "Failed to delete exercise",
+		},
+		{
+			name:          "unauthenticated user",
+			exerciseID:    "1",
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.Background(),
+			expectedCode:  http.StatusUnauthorized,
+			expectJSON:    true,
+			expectedError: "user not authenticated",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			mockRepo := &MockExerciseRepository{}
+			var id int32
+			if tt.exerciseID != "" {
+				idInt, err := strconv.Atoi(tt.exerciseID)
+				if err == nil {
+					id = int32(idInt)
+				}
+			}
+			tt.setupMock(mockRepo, id)
+
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			validator := validator.New()
+			service := NewService(logger, mockRepo)
+			handler := NewHandler(logger, validator, service)
+
+			req := httptest.NewRequest("DELETE", "/api/exercises/"+tt.exerciseID, nil).WithContext(tt.ctx)
+			req.SetPathValue("id", tt.exerciseID)
+			w := httptest.NewRecorder()
+
+			// Execute
+			handler.DeleteExercise(w, req)
+
+			// Assert
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			if tt.expectJSON {
+				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+				if tt.expectedError != "" {
+					assertJSONError(t, w, tt.expectedError)
+				}
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
 func TestMain(m *testing.M) {
 	// Run tests
 	code := m.Run()
@@ -688,6 +808,144 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		}
 		assert.True(t, found, "User B should see their own exercise")
 	})
+
+	t.Run("Scenario7_DeleteExercise_UserA_CanDeleteOwnExercise", func(t *testing.T) {
+		// User A creates an exercise to delete
+		ctxA := setTestUserContext(context.Background(), t, pool, userAID)
+		ctxA = user.WithContext(ctxA, userAID)
+
+		createReq := CreateExerciseRequest{Name: "User A's Exercise To Delete"}
+		body, _ := json.Marshal(createReq)
+		req := httptest.NewRequest("POST", "/api/exercises", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(ctxA)
+		w := httptest.NewRecorder()
+
+		handler.GetOrCreateExercise(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var createdExercise db.Exercise
+		err := json.Unmarshal(w.Body.Bytes(), &createdExercise)
+		assert.NoError(t, err)
+
+		// User A deletes their own exercise
+		deleteReq := httptest.NewRequest("DELETE", fmt.Sprintf("/api/exercises/%d", createdExercise.ID), nil).WithContext(ctxA)
+		deleteReq.SetPathValue("id", fmt.Sprintf("%d", createdExercise.ID))
+		deleteW := httptest.NewRecorder()
+
+		handler.DeleteExercise(deleteW, deleteReq)
+		assert.Equal(t, http.StatusNoContent, deleteW.Code)
+
+		// Verify exercise is deleted - listing should not include it
+		listReq := httptest.NewRequest("GET", "/api/exercises", nil).WithContext(ctxA)
+		listW := httptest.NewRecorder()
+
+		handler.ListExercises(listW, listReq)
+		assert.Equal(t, http.StatusOK, listW.Code)
+
+		var exercises []db.Exercise
+		err = json.Unmarshal(listW.Body.Bytes(), &exercises)
+		assert.NoError(t, err)
+
+		for _, ex := range exercises {
+			assert.NotEqual(t, createdExercise.ID, ex.ID, "Deleted exercise should not appear in list")
+		}
+	})
+
+	t.Run("Scenario8_DeleteExercise_UserB_CannotDeleteUserAExercise", func(t *testing.T) {
+		// User B tries to delete User A's exercise
+		ctxB := setTestUserContext(context.Background(), t, pool, userBID)
+		ctxB = user.WithContext(ctxB, userBID)
+
+		deleteReq := httptest.NewRequest("DELETE", fmt.Sprintf("/api/exercises/%d", exerciseAID), nil).WithContext(ctxB)
+		deleteReq.SetPathValue("id", fmt.Sprintf("%d", exerciseAID))
+		w := httptest.NewRecorder()
+
+		handler.DeleteExercise(w, deleteReq)
+
+		// Should return 404 due to RLS - User B cannot see or delete User A's exercise
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		var resp errorResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Contains(t, resp.Message, "exercise not found")
+	})
+
+	t.Run("Scenario9_DeleteExercise_CascadeDeletesSets", func(t *testing.T) {
+		// User A creates an exercise and adds sets to it
+		ctxA := setTestUserContext(context.Background(), t, pool, userAID)
+		ctxA = user.WithContext(ctxA, userAID)
+
+		// Create exercise
+		createReq := CreateExerciseRequest{Name: "User A's Exercise With Sets"}
+		body, _ := json.Marshal(createReq)
+		req := httptest.NewRequest("POST", "/api/exercises", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(ctxA)
+		w := httptest.NewRecorder()
+
+		handler.GetOrCreateExercise(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var createdExercise db.Exercise
+		err := json.Unmarshal(w.Body.Bytes(), &createdExercise)
+		assert.NoError(t, err)
+
+		// Add sets to the exercise
+		setupTestSetsForExercise(t, pool, userAID, createdExercise.ID, 3)
+
+		// Verify sets exist
+		getReq := httptest.NewRequest("GET", fmt.Sprintf("/api/exercises/%d", createdExercise.ID), nil).WithContext(ctxA)
+		getReq.SetPathValue("id", fmt.Sprintf("%d", createdExercise.ID))
+		getW := httptest.NewRecorder()
+
+		handler.GetExerciseWithSets(getW, getReq)
+		assert.Equal(t, http.StatusOK, getW.Code)
+
+		var exerciseWithSets []db.GetExerciseWithSetsRow
+		err = json.Unmarshal(getW.Body.Bytes(), &exerciseWithSets)
+		assert.NoError(t, err)
+		assert.Len(t, exerciseWithSets, 3, "Exercise should have 3 sets")
+
+		// Delete the exercise
+		deleteReq := httptest.NewRequest("DELETE", fmt.Sprintf("/api/exercises/%d", createdExercise.ID), nil).WithContext(ctxA)
+		deleteReq.SetPathValue("id", fmt.Sprintf("%d", createdExercise.ID))
+		deleteW := httptest.NewRecorder()
+
+		handler.DeleteExercise(deleteW, deleteReq)
+		assert.Equal(t, http.StatusNoContent, deleteW.Code)
+
+		// Verify sets were cascade deleted - trying to get exercise with sets should return empty
+		getReq2 := httptest.NewRequest("GET", fmt.Sprintf("/api/exercises/%d", createdExercise.ID), nil).WithContext(ctxA)
+		getReq2.SetPathValue("id", fmt.Sprintf("%d", createdExercise.ID))
+		getW2 := httptest.NewRecorder()
+
+		handler.GetExerciseWithSets(getW2, getReq2)
+		assert.Equal(t, http.StatusOK, getW2.Code)
+
+		var exerciseWithSets2 []db.GetExerciseWithSetsRow
+		err = json.Unmarshal(getW2.Body.Bytes(), &exerciseWithSets2)
+		assert.NoError(t, err)
+		assert.Empty(t, exerciseWithSets2, "Exercise and its sets should be deleted")
+	})
+
+	t.Run("Scenario10_DeleteExercise_AnonymousUser_CannotDelete", func(t *testing.T) {
+		// Anonymous user (no context) tries to delete an exercise
+		ctx := context.Background()
+
+		deleteReq := httptest.NewRequest("DELETE", fmt.Sprintf("/api/exercises/%d", exerciseAID), nil).WithContext(ctx)
+		deleteReq.SetPathValue("id", fmt.Sprintf("%d", exerciseAID))
+		w := httptest.NewRecorder()
+
+		handler.DeleteExercise(w, deleteReq)
+
+		// Should return 401 Unauthorized
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		var resp errorResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Contains(t, resp.Message, "user not authenticated")
+	})
 }
 
 // === HELPER FUNCTIONS FOR INTEGRATION TESTS ===
@@ -730,7 +988,7 @@ func setupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 
 	// Setup users table entries
 	setupTestUsers(t, pool)
-	
+
 	// Backfill order columns for existing test data if they exist
 	// This ensures tests work with both old and new database schemas
 	backfillOrderColumnsForTests(t, pool)
@@ -803,6 +1061,30 @@ func setupTestExercise(t *testing.T, pool *pgxpool.Pool, userID, name string) in
 	return exerciseID
 }
 
+func setupTestSetsForExercise(t *testing.T, pool *pgxpool.Pool, userID string, exerciseID int32, numSets int) {
+	t.Helper()
+	ctx := context.Background()
+
+	// Set user context for RLS
+	ctx = testutils.SetTestUserContext(ctx, t, pool, userID)
+
+	// Create a workout for the sets
+	var workoutID int32
+	err := pool.QueryRow(ctx,
+		"INSERT INTO workout (date, user_id, created_at, updated_at) VALUES (NOW(), $1, NOW(), NOW()) RETURNING id",
+		userID).Scan(&workoutID)
+	require.NoError(t, err, "Failed to create test workout for sets")
+
+	// Create sets for the exercise
+	for i := 0; i < numSets; i++ {
+		_, err := pool.Exec(ctx,
+			`INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
+			exerciseID, workoutID, 100+i*10, 10-i, "normal", userID, 1, i+1)
+		require.NoError(t, err, "Failed to create test set %d", i+1)
+	}
+}
+
 func setTestUserContext(ctx context.Context, t *testing.T, pool *pgxpool.Pool, userID string) context.Context {
 	t.Helper()
 	return testutils.SetTestUserContext(ctx, t, pool, userID)
@@ -838,15 +1120,15 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
-	
+
 	// Backfill order columns for all test users
 	// This ensures tests work whether or not the migration has been applied
 	testUsers := []string{"test-user-a", "test-user-b"}
-	
+
 	for _, userID := range testUsers {
 		// Set user context for RLS
 		ctxUser := testutils.SetTestUserContext(ctx, t, pool, userID)
-		
+
 		// Backfill order columns for this user
 		testutils.BackfillSetOrderColumns(ctxUser, t, pool, userID)
 	}

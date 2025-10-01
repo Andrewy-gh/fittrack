@@ -409,6 +409,43 @@ paths:
       tags:
       - exercises
   /exercises/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific exercise and all its associated sets. Only the
+        owner of the exercise can delete it.
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content - Exercise deleted successfully
+        "400":
+          description: Bad Request - Invalid exercise ID
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid token
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found - Exercise not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Delete an exercise
+      tags:
+      - exercises
     get:
       consumes:
       - application/json

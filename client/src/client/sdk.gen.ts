@@ -8,6 +8,9 @@ import type {
   PostExercisesData,
   PostExercisesResponses,
   PostExercisesErrors,
+  DeleteExercisesByIdData,
+  DeleteExercisesByIdResponses,
+  DeleteExercisesByIdErrors,
   GetExercisesByIdData,
   GetExercisesByIdResponses,
   GetExercisesByIdErrors,
@@ -99,6 +102,29 @@ export const postExercises = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Delete an exercise
+ * Delete a specific exercise and all its associated sets. Only the owner of the exercise can delete it.
+ */
+export const deleteExercisesById = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteExercisesByIdData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    DeleteExercisesByIdResponses,
+    DeleteExercisesByIdErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}",
+    ...options,
   });
 };
 

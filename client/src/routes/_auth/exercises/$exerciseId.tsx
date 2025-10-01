@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   Activity,
   BarChart3,
   Calendar,
   Edit,
   Hash,
+  Trash,
   TrendingUp,
   Weight,
 } from 'lucide-react';
@@ -18,12 +20,14 @@ import { exerciseByIdQueryOptions } from '@/lib/api/exercises';
 import { formatDate, formatTime } from '@/lib/utils';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
+import { ExerciseDeleteDialog } from './-components/exercise-delete-dialog';
 
 function ExerciseDisplay({
   exerciseSets,
 }: {
   exerciseSets: ExerciseExerciseWithSetsResponse[];
 }) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
   const totalSets = exerciseSets.length;
   const uniqueWorkouts = new Set(exerciseSets.map((set) => set.workout_id))
@@ -63,6 +67,10 @@ function ExerciseDisplay({
 
   const exerciseName = exerciseSets[0]?.exercise_name || 'Exercise';
 
+  const handleOpenDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
   return (
     <main>
       <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
@@ -73,10 +81,20 @@ function ExerciseDisplay({
               {exerciseName}
             </h1>
           </div>
-          <Button size="sm">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
+          <div className="flex flex-col items-center gap-3 md:flex-row">
+            <Button size="sm">
+              <Edit className="mr-2 hidden h-4 w-4 md:block" />
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleOpenDeleteDialog}
+            >
+              <Trash className="mr-2 hidden h-4 w-4 md:block" />
+              Delete
+            </Button>
+          </div>
         </div>
 
         {/* MARK: Summary Cards */}
@@ -222,6 +240,12 @@ function ExerciseDisplay({
             );
           })}
         </div>
+        {/* MARK: Dialog */}
+        <ExerciseDeleteDialog
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          exerciseId={exerciseSets[0]?.exercise_id || 0}
+        />
       </div>
     </main>
   );
@@ -239,9 +263,7 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
   },
   loader: async ({ context, params }) => {
     const exerciseId = params.exerciseId;
-    context.queryClient.ensureQueryData(
-      exerciseByIdQueryOptions(exerciseId)
-    );
+    context.queryClient.ensureQueryData(exerciseByIdQueryOptions(exerciseId));
     return { exerciseId };
   },
   component: RouteComponent,

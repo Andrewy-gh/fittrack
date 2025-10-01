@@ -186,6 +186,47 @@ export type PostExercisesResponses = {
 export type PostExercisesResponse =
   PostExercisesResponses[keyof PostExercisesResponses];
 
+export type DeleteExercisesByIdData = {
+  body?: never;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/exercises/{id}";
+};
+
+export type DeleteExercisesByIdErrors = {
+  /**
+   * Bad Request - Invalid exercise ID
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized - Invalid token
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found - Exercise not found or doesn't belong to user
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type DeleteExercisesByIdError =
+  DeleteExercisesByIdErrors[keyof DeleteExercisesByIdErrors];
+
+export type DeleteExercisesByIdResponses = {
+  /**
+   * No Content - Exercise deleted successfully
+   */
+  204: unknown;
+};
+
 export type GetExercisesByIdData = {
   body?: never;
   path: {

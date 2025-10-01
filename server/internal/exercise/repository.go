@@ -238,4 +238,31 @@ func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id i
 	return sets, nil
 }
 
+func (er *exerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
+	if err := er.queries.DeleteExercise(ctx, db.DeleteExerciseParams{
+		ID:     id,
+		UserID: userID,
+	}); err != nil {
+		if db.IsRowLevelSecurityError(err) {
+			er.logger.Error("delete exercise failed - RLS policy violation",
+				"error", err,
+				"exercise_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			er.logger.Error("delete exercise failed",
+				"exercise_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return fmt.Errorf("failed to delete exercise (id: %d): %w", id, err)
+	}
+
+	er.logger.Info("exercise deleted successfully",
+		"exercise_id", id,
+		"user_id", userID)
+
+	return nil
+}
+
 var _ ExerciseRepository = (*exerciseRepository)(nil)
