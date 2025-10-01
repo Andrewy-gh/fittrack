@@ -175,6 +175,62 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Delete a specific exercise and all its associated sets. Only the owner of the exercise can delete it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Delete an exercise",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content - Exercise deleted successfully"
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid exercise ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Exercise not found or doesn't belong to user",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/exercises/{id}/recent-sets": {
