@@ -59,15 +59,16 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 // MARK: GetExerciseWithSets
 // GetExerciseWithSets godoc
 // @Summary Get exercise with sets
-// @Description Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.
+// @Description Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
 // @Tags exercises
 // @Accept json
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Exercise ID"
-// @Success 200 {array} exercise.ExerciseWithSetsResponse "Success (may be empty array)"
+// @Success 200 {array} exercise.ExerciseWithSetsResponse "Success (may be empty array if exercise has no sets)"
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id} [get]
 func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Request) {
@@ -95,9 +96,14 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 	exerciseWithSets, err := h.exerciseService.GetExerciseWithSets(r.Context(), req.ExerciseID)
 	if err != nil {
 		var errUnauthorized *ErrUnauthorized
-		if errors.As(err, &errUnauthorized) {
+		var errNotFound *ErrNotFound
+
+		switch {
+		case errors.As(err, &errUnauthorized):
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
-		} else {
+		case errors.As(err, &errNotFound):
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise with sets", err)
 		}
 		return

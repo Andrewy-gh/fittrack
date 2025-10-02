@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
@@ -160,6 +161,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			name:       "successful fetch",
 			exerciseID: "1",
 			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Bench Press"}, nil)
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{
 					{ExerciseID: id, ExerciseName: "Bench Press"},
 				}, nil)
@@ -177,19 +179,21 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			expectedError: "Invalid exercise ID",
 		},
 		{
-			name:       "service error",
+			name:       "exercise not found",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{}, assert.AnError)
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
-			expectedCode:  http.StatusInternalServerError,
-			expectedError: "Failed to get exercise with sets",
+			expectedCode:  http.StatusNotFound,
+			expectJSON:    true,
+			expectedError: "exercise not found",
 		},
 		{
-			name:       "empty results - returns 200 with empty array",
+			name:       "exercise exists but has no sets - returns 200 with empty array",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "New Exercise"}, nil)
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
@@ -685,12 +689,12 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 
 		handler.GetExerciseWithSets(w, req)
 
-		// Should return 200 with empty array due to RLS filtering (no sets visible)
-		assert.Equal(t, http.StatusOK, w.Code)
-		var exerciseWithSets []db.GetExerciseWithSetsRow
-		err := json.Unmarshal(w.Body.Bytes(), &exerciseWithSets)
+		// Should return 404 because the exercise doesn't exist for User B due to RLS
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		var errorResp response.ErrorResponse
+		err := json.Unmarshal(w.Body.Bytes(), &errorResp)
 		assert.NoError(t, err)
-		assert.Empty(t, exerciseWithSets, "User B should not see User A's exercise sets due to RLS")
+		assert.Equal(t, "exercise not found", errorResp.Message)
 	})
 
 	t.Run("Scenario5_CreateExercise_UserIsolation", func(t *testing.T) {
@@ -915,18 +919,18 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.DeleteExercise(deleteW, deleteReq)
 		assert.Equal(t, http.StatusNoContent, deleteW.Code)
 
-		// Verify sets were cascade deleted - trying to get exercise with sets should return empty
+		// Verify exercise was deleted - trying to get it should return 404
 		getReq2 := httptest.NewRequest("GET", fmt.Sprintf("/api/exercises/%d", createdExercise.ID), nil).WithContext(ctxA)
 		getReq2.SetPathValue("id", fmt.Sprintf("%d", createdExercise.ID))
 		getW2 := httptest.NewRecorder()
 
 		handler.GetExerciseWithSets(getW2, getReq2)
-		assert.Equal(t, http.StatusOK, getW2.Code)
+		assert.Equal(t, http.StatusNotFound, getW2.Code)
 
-		var exerciseWithSets2 []db.GetExerciseWithSetsRow
-		err = json.Unmarshal(getW2.Body.Bytes(), &exerciseWithSets2)
+		var errorResp2 response.ErrorResponse
+		err = json.Unmarshal(getW2.Body.Bytes(), &errorResp2)
 		assert.NoError(t, err)
-		assert.Empty(t, exerciseWithSets2, "Exercise and its sets should be deleted")
+		assert.Equal(t, "exercise not found", errorResp2.Message)
 	})
 
 	t.Run("Scenario10_DeleteExercise_AnonymousUser_CannotDelete", func(t *testing.T) {

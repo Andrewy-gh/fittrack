@@ -24,8 +24,10 @@ import { ExerciseDeleteDialog } from './-components/exercise-delete-dialog';
 
 function ExerciseDisplay({
   exerciseSets,
+  exerciseId,
 }: {
   exerciseSets: ExerciseExerciseWithSetsResponse[];
+  exerciseId: number;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
@@ -35,14 +37,14 @@ function ExerciseDisplay({
   const weights = exerciseSets.map((set) => set.weight || 0);
   const volumes = exerciseSets.map((set) => set.volume);
 
-  const averageWeight = Math.round(
-    weights.reduce((sum, weight) => sum + weight, 0) / weights.length
-  );
-  const maxWeight = Math.max(...weights);
-  const averageVolume = Math.round(
-    volumes.reduce((sum, volume) => sum + volume, 0) / volumes.length
-  );
-  const maxVolume = Math.max(...volumes);
+  const averageWeight = totalSets > 0
+    ? Math.round(weights.reduce((sum, weight) => sum + weight, 0) / weights.length)
+    : 0;
+  const maxWeight = totalSets > 0 ? Math.max(...weights) : 0;
+  const averageVolume = totalSets > 0
+    ? Math.round(volumes.reduce((sum, volume) => sum + volume, 0) / volumes.length)
+    : 0;
+  const maxVolume = totalSets > 0 ? Math.max(...volumes) : 0;
 
   const sortedExerciseSets = sortByExerciseAndSetOrder(exerciseSets);
 
@@ -244,7 +246,7 @@ function ExerciseDisplay({
         <ExerciseDeleteDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
-          exerciseId={exerciseSets[0]?.exercise_id || 0}
+          exerciseId={exerciseId}
         />
       </div>
     </main>
@@ -274,5 +276,5 @@ function RouteComponent() {
   const { data: exerciseSets } = useSuspenseQuery(
     exerciseByIdQueryOptions(exerciseId)
   );
-  return <ExerciseDisplay exerciseSets={exerciseSets} />;
+  return <ExerciseDisplay exerciseSets={exerciseSets} exerciseId={exerciseId} />;
 }

@@ -68,6 +68,12 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([
 		return nil, &ErrUnauthorized{Message: "user not authenticated"}
 	}
 
+	_, err := es.repo.GetExercise(ctx, id, userID)
+	if err != nil {
+		es.logger.Debug("exercise not found", "exercise_id", id, "user_id", userID, "error", err)
+		return nil, &ErrNotFound{Message: "exercise not found"}
+	}
+
 	sets, err := es.repo.GetExerciseWithSets(ctx, id, userID)
 	if err != nil {
 		es.logger.Error("failed to get exercise with sets", "error", err)
