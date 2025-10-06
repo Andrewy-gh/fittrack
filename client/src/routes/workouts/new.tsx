@@ -312,16 +312,14 @@ function WorkoutTracker({
 }
 
 export const Route = createFileRoute('/workouts/new')({
-  loader: async ({
-    context,
-  }): Promise<void> => {
+  loader: async ({ context }): Promise<void> => {
     context.queryClient.ensureQueryData(exercisesQueryOptions());
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const {user} = Route.useRouteContext()
+  const { user } = Route.useRouteContext();
   const [{ data: exercisesResponse }, { data: workoutsFocusValues }] =
     useSuspenseQueries({
       queries: [exercisesQueryOptions(), workoutsFocusValuesQueryOptions()],
@@ -333,11 +331,9 @@ function RouteComponent() {
     name: ex.name,
   }));
 
-  const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map(
-    (wf) => ({
-      name: wf,
-    })
-  );
+  const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map((wf) => ({
+    name: wf,
+  }));
 
   return (
     <WorkoutTracker
