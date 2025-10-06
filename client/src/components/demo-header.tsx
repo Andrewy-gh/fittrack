@@ -17,10 +17,10 @@ export function DemoHeader() {
           <Link to="/">Home</Link>
         </div>
         <div className="px-2 font-bold">
-          <Link to="/demo/workouts">Workouts</Link>
+          <Link to="/workouts">Workouts</Link>
         </div>
         <div className="px-2 font-bold">
-          <Link to="/demo/exercises">Exercises</Link>
+          <Link to="/exercises">Exercises</Link>
         </div>
       </nav>
       <div className="flex items-center gap-2">

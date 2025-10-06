@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dumbbell, Edit, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
 import { formatDate, formatTime } from '@/lib/utils';
-import { DeleteDialog } from '@/routes/_auth/workouts/-components/delete-dialog';
+import { DeleteDialog } from '@/routes/workouts/-components/delete-dialog';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { WorkoutWorkoutWithSetsResponse } from '@/client';
 

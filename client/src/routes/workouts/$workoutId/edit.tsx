@@ -303,7 +303,7 @@ function EditWorkoutForm({
   );
 }
 
-export const Route = createFileRoute('/_auth/workouts/$workoutId/edit')({
+export const Route = createFileRoute('/workouts/$workoutId/edit')({
   params: {
     parse: (params) => {
       const workoutId = parseInt(params.workoutId, 10);

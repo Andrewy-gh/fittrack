@@ -1,273 +1,195 @@
-# Demo Routes Implementation Plan
+# Demo Routes Implementation Plan - REVISED
 
 ## Overview
-Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock data to allow users to test the app without authentication.
+~~Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock data~~
 
-## Implementation Strategy: **Easy + Maintainable**
+**ACTUAL IMPLEMENTATION**: Merged auth and demo routes into unified root routes (`/workouts`, `/exercises`) with conditional data loading based on authentication state.
+
+## Implementation Strategy: **Route Merge (Unified Routes)**
+
+See `route-merge-proposal.md` for detailed rationale and architecture.
 
 ---
 
-## Phase 1: Data Layer Setup
+## Phase 1: Data Layer Setup ✅ COMPLETE
 
 ### 1.1 Type Safety & Data Structures ✅ COMPLETE
-- [x] Verify generated types from `@/client` match schema:
-  - [x] `WorkoutWorkoutWithSetsResponse` structure - Verified (flattened/joined structure)
-  - [x] `ExerciseExerciseResponse` structure - Verified (simple entity with metadata)
-  - [x] User type analysis - No explicit User type; entities include `user_id: string`
-- [x] Document data relationships:
-  - [x] Workout → Sets (one-to-many via `workout_id`)
-  - [x] Exercise → Sets (one-to-many via `exercise_id`)
-  - [x] Set fields: `exercise_order`, `set_order`, `weight`, `reps`, `set_type`
-- [x] **Created**: `client/docs/phase-1-1-type-verification.md` (230 lines - full verification report)
+- [x] Verify generated types from `@/client` match schema
+- [x] Document data relationships
+- [x] **Created**: `client/docs/phase-1-1-type-verification.md`
 
 ### 1.2 Mock Data Files (`client/src/lib/demo-data/`) ✅ COMPLETE
 - [x] `types.ts` - Import and re-export relevant types from `@/client`
-- [x] `initial-data.ts` - Initial seed data matching real types:
-  - [x] 5 exercises (Barbell Squat, Bench Press, Deadlift, Overhead Press, Pull-ups)
-  - [x] 3 workouts with realistic dates (7 days ago, 5 days ago, 2 days ago)
-  - [x] 26 sets with proper relationships and ordering
-  - [x] Realistic progression data (weight/reps showing progression)
-- [x] `storage.ts` - localStorage utilities:
-  - [x] `STORAGE_KEYS` constants
-  - [x] `getAllWorkouts()` / `getWorkoutById()` - Load from localStorage
-  - [x] `createWorkout()` / `updateWorkout()` / `deleteWorkout()` - CRUD operations
-  - [x] `getAllExercises()` / `getExerciseById()` - Load from localStorage
-  - [x] `createExercise()` / `deleteExercise()` - CRUD operations
-  - [x] `getExerciseWithSets()` / `getExerciseRecentSets()` - Join operations
-  - [x] `resetDemoData()` - Clear all demo data and restore initial state
-  - [x] `initializeDemoData()` - Initialize on first load
-  - [x] `getWorkoutFocusValues()` - Get distinct focus values
+- [x] `initial-data.ts` - Seed data (5 exercises, 3 workouts, 26 sets)
+- [x] `storage.ts` - localStorage utilities (390 lines)
+  - [x] Full CRUD operations for workouts and exercises
+  - [x] `clearDemoData()` - NEW: Clear demo data when user authenticates
+- [x] `query-options.ts` - Demo query/mutation options (237 lines)
 
-### 1.3 Demo Query Options (`client/src/lib/demo-data/query-options.ts`) ✅ COMPLETE
-- [x] Mirror structure from `@/client/@tanstack/react-query.gen`:
-  - [x] `getDemoExercisesQueryOptions()` - Return exercises from localStorage
-  - [x] `getDemoExercisesByIdQueryOptions(id)` - Return exercise with sets
-  - [x] `getDemoExercisesByIdRecentSetsQueryOptions(id)` - Return recent sets for exercise
-  - [x] `getDemoWorkoutsQueryOptions()` - Return workouts sorted by date DESC
-  - [x] `getDemoWorkoutsByIdQueryOptions(id)` - Return workout with joined sets/exercises
-  - [x] `getDemoWorkoutsFocusValuesQueryOptions()` - Return distinct workout_focus values
-- [x] Demo mutations (update localStorage + invalidate queries):
-  - [x] `postDemoWorkoutsMutation()` - Create new workout
-  - [x] `putDemoWorkoutsByIdMutation()` - Update existing workout
-  - [x] `deleteDemoWorkoutsByIdMutation()` - Delete workout
-  - [x] `deleteDemoExercisesByIdMutation()` - Delete exercise
-  - [x] `postDemoExercisesMutation()` - Create exercise
+### 1.3 Demo Query Options ✅ COMPLETE
+- [x] All query options mirroring API structure
+- [x] All mutations (create, update, delete) for both workouts and exercises
 
 ---
 
-## Phase 2: Route Implementation
+## Phase 2: Route Merge Implementation ✅ COMPLETE
 
-### 2.0 Component Reuse Strategy Analysis ✅ COMPLETE
+### 2.1 Extract Shared Components ✅ COMPLETE
+- [x] `components/workouts/workout-list.tsx`
+- [x] `components/workouts/workout-detail.tsx`
+- [x] `components/exercises/exercise-list.tsx`
+- [x] `components/exercises/exercise-detail.tsx`
 
-**Key Finding**: User dependency is minimal - only used for localStorage scoping in 3 route files, zero usage in child components.
+### 2.2 Create Unified Routes ✅ COMPLETE
 
-**Decision**: Extract shared display components instead of duplicating routes.
+**Strategy**: Single route tree serves both authenticated and demo users via conditional loaders.
 
-**Rationale**:
-- All UI components (`WorkoutsDisplay`, `ExerciseDisplay`, etc.) are already user-agnostic
-- User only used for: `user.id` in localStorage keys and auth validation in loaders
-- Extracting components maintains DRY principle without conditional complexity
-- Future UI updates only require one change instead of two
+#### Completed Routes:
+- [x] `/exercises/` - Conditional: API queries vs demo queries
+- [x] `/exercises/$exerciseId` - Conditional: API vs demo data
+- [x] `/workouts/` - Conditional: API queries vs demo queries
+- [x] `/workouts/$workoutId/` - Conditional: API vs demo data
+  - Edit/delete buttons **shown in both modes** (demo has mutations)
+- [x] `/workouts/$workoutId/edit` - Auth-only (complex, uses API-specific hooks)
+- [x] `/workouts/new` - **PARTIALLY COMPLETE** (see below)
 
-**Strategy**: Component Extraction Pattern (Option A)
-1. Extract display components to `client/src/components/`
-2. Both `/_auth/*` and `/demo/*` routes import same components
-3. Routes handle data fetching (different query options), components handle display
+#### `/workouts/new` Status: ⚠️ BLOCKED
 
-### 2.1 Extract Shared Components (`client/src/components/`) ✅ COMPLETE
-- [x] Create `client/src/components/workouts/` directory
-- [x] Extract `WorkoutsDisplay` → `components/workouts/workout-list.tsx`
-  - [x] Move from `_auth/workouts/index.tsx` (lines 13-142)
-  - [x] Export as standalone component
-  - [x] Remove user prop (not needed by component)
-  - [x] Added optional `hasWorkoutInProgress` and `newWorkoutLink` props for flexibility
-- [x] Extract `IndividualWorkoutPage` → `components/workouts/workout-detail.tsx`
-  - [x] Move from `_auth/workouts/$workoutId/index.tsx` (lines 14-224)
-  - [x] Export as standalone component
-- [ ] Extract `WorkoutTracker` → `components/workouts/workout-form.tsx` (if needed for new workout flow)
-  - [ ] Analyze `_auth/workouts/new.tsx` dependencies
-  - [ ] May need to keep in route file due to complex state/localStorage integration
-- [x] Create `client/src/components/exercises/` directory
-- [x] Extract `ExercisesDisplay` → `components/exercises/exercise-list.tsx`
-  - [x] Move from `_auth/exercises/index.tsx` (lines 11-80)
-  - [x] Export as standalone component
-- [x] Extract `ExerciseDisplay` → `components/exercises/exercise-detail.tsx`
-  - [x] Move from `_auth/exercises/$exerciseId.tsx` (lines 25-254)
-  - [x] Export as standalone component
+**Current State:**
+- Route created at `/workouts/new` (not auth-only)
+- User type changed to nullable: `CurrentUser | CurrentInternalUser | null`
+- Uses API-only mutation: `useSaveWorkoutMutation()`
+- Uses `user.id` for localStorage (breaks when user is null)
 
-### 2.2 Update Auth Routes to Use Extracted Components ✅ COMPLETE
-- [x] Update `_auth/workouts/index.tsx`:
-  - [x] Import `WorkoutList` from `@/components/workouts/workout-list`
-  - [x] Update `RouteComponent` to render imported component
-  - [x] Keep loader and query logic unchanged
-  - [x] User prop handled in route file for localStorage check
-- [x] Update `_auth/workouts/$workoutId/index.tsx`:
-  - [x] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
-  - [x] Update `RouteComponent` to render imported component
-  - [x] Keep loader and query logic unchanged
-- [x] Update `_auth/exercises/index.tsx`:
-  - [x] Import `ExerciseList` from `@/components/exercises/exercise-list`
-  - [x] Update `RouteComponent` to render imported component
-- [x] Update `_auth/exercises/$exerciseId.tsx`:
-  - [x] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
-  - [x] Update `RouteComponent` to render imported component
+**Remaining Work:**
+1. Add conditional mutation (API vs demo)
+2. Handle `user?.id` for localStorage operations (use `undefined` for demo users)
+3. Update `WorkoutTracker` to use conditional save mutation
+4. Update all `user.id` references to `user?.id`
 
-### 2.3 Create Demo Routes (`client/src/routes/demo/`)
+**Files Involved:**
+- `routes/workouts/new.tsx` (lines 42, 45, 49, 64, 96)
+- Need to conditionally use `useSaveWorkoutMutation()` vs `useMutation(postDemoWorkoutsMutation())`
 
-**⚠️ IMPORTANT NOTE**: Workout form extraction (`new.tsx`) is complex and has been deferred.
-See `client/docs/workout-form-extraction-plan.md` and `client/docs/workout-form-extraction-plan-v2.md` for detailed analysis.
-**Current Strategy**: Implement view-only routes first (Phase 2.3a), circle back to form later (Phase 2.3b).
-
-#### Phase 2.3a: View-Only Demo Routes ✅ COMPLETE
-- [x] `demo.tsx` - Demo layout route (added demo mode banner)
-- [x] `demo/workouts/index.tsx`:
-  - [x] Import `WorkoutList` from `@/components/workouts/workout-list`
-  - [x] Use `getDemoWorkoutsQueryOptions()` in loader
-  - [x] Render same component as auth route
-- [x] `demo/workouts/$workoutId/index.tsx`:
-  - [x] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
-  - [x] Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
-  - [x] Render same component as auth route
-- [x] `demo/exercises/index.tsx`:
-  - [x] Import `ExerciseList` from `@/components/exercises/exercise-list`
-  - [x] Use `getDemoExercisesQueryOptions()` in loader
-  - [x] Render same component as auth route
-- [x] `demo/exercises/$exerciseId.tsx`:
-  - [x] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
-  - [x] Use `getDemoExercisesByIdQueryOptions(id)` in loader
-  - [x] Render same component as auth route
-
-#### Phase 2.3b: Workout Form Route (DEFERRED - Complex)
-- [ ] `demo/workouts/new.tsx`:
-  - [ ] **See extraction plans**: `workout-form-extraction-plan.md` and `workout-form-extraction-plan-v2.md`
-  - [ ] **Recommended approach**: Hybrid (Option C) - Extract child components, manual props for parent
-  - [ ] **Estimated time**: 1.25 hours
-  - [ ] **Decision rationale**: Child components already use `withForm` HOC correctly (TanStack Form pattern)
-  - [ ] Use demo query/mutation options
-  - [ ] Use `'demo-user'` for localStorage operations
+### 2.3 Cleanup ✅ COMPLETE
+- [x] Deleted `/demo/*` routes (never fully implemented)
+- [x] Deleted `/_auth/*` routes (migrated to root)
+- [x] Moved `-components` folders to new route locations
+- [x] Updated import paths in shared components
 
 ---
 
-## Phase 3: Integration & Polish
+## Phase 3: Type Safety & Integration ⏳ IN PROGRESS
 
-### 3.1 Landing Page Integration
-- [ ] Update landing page "Try for free" button:
-  - [ ] Link to `/demo/workouts/new`
-  - [ ] Ensure navigation works correctly
+### 3.1 TypeScript Compilation ⏳ PARTIALLY COMPLETE
+- [x] Fixed query option type conflicts (used conditional `useSuspenseQuery` calls)
+- [x] Fixed main.tsx context (user set to `null` instead of `undefined!`)
+- [x] TanStack Router routes regenerated
+- [ ] **REMAINING**: Fix `/workouts/new` TypeScript errors (nullable user issues)
 
-### 3.2 Demo UX Enhancements
-- [ ] Add "Reset Demo" button/option:
-  - [ ] Placement: Demo settings, or persistent banner
-  - [ ] Calls `resetDemoData()` and invalidates all queries
-- [ ] Add demo indicator:
-  - [ ] Banner/badge showing "Demo Mode" (optional)
-  - [ ] Link to sign up for real account (optional)
+### 3.2 Data Cleanup on Login ✅ IMPLEMENTED
+- [x] `clearDemoData()` function created in `storage.ts`
+- [x] Called in route loaders when `user` exists (clears demo localStorage)
+- [ ] Test: Verify demo data cleared when user logs in
 
-### 3.3 Testing Checklist
-- [ ] **Workouts**:
-  - [ ] Create new workout with multiple exercises
-  - [ ] View workout list (sorted by date)
+### 3.3 Testing Checklist ⏳ TODO
+- [ ] **Demo Mode (Unauthenticated)**:
+  - [ ] View workouts list with demo data
+  - [ ] View workout detail
+  - [ ] Delete workout (demo mutation)
+  - [ ] View exercises list
+  - [ ] View exercise detail
+  - [ ] Verify edit/delete buttons visible
+  - [ ] ~~Create new workout~~ (blocked until `/workouts/new` completed)
+- [ ] **Authenticated Mode**:
+  - [ ] View workouts list with API data
+  - [ ] Create new workout
   - [ ] Edit existing workout
   - [ ] Delete workout
-  - [ ] Verify localStorage persistence across page reloads
-- [ ] **Exercises**:
-  - [ ] View exercise list
-  - [ ] Create exercise (via workout form)
-  - [ ] Delete exercise
-  - [ ] Verify exercise relationships with sets
-- [ ] **Data Integrity**:
-  - [ ] Sets properly linked to workouts and exercises
-  - [ ] Exercise/set ordering preserved
-  - [ ] Date sorting works correctly
-- [ ] **Reset Flow**:
-  - [ ] Reset demo data
-  - [ ] Verify initial data restored
-  - [ ] Confirm localStorage cleared
-
-### 3.4 Type Safety Verification
-- [ ] Run TypeScript compiler: `npm run typecheck` (or equivalent)
-- [ ] Ensure no type errors in demo files
-- [ ] Verify mock data matches generated types from `@/client`
+  - [ ] Verify demo data cleared on login
+- [ ] **Data Persistence**:
+  - [ ] Demo data persists across page reloads
+  - [ ] Demo data cleared when user authenticates
 
 ---
 
-## File Structure Summary
+## Current File Structure
 
-### New Files Created (Phase 1 & 2.1/2.2)
+### Routes (Unified - No Separation)
 ```
-client/src/lib/demo-data/                          ✅ COMPLETE
-  ├── types.ts                    # Type imports/exports
-  ├── initial-data.ts             # Seed data (5 exercises, 3 workouts, 26 sets)
-  ├── storage.ts                  # localStorage utilities (390 lines)
-  └── query-options.ts            # Demo query/mutation options (237 lines)
-
-client/src/components/                             ✅ COMPLETE (Phase 2.1)
-  ├── workouts/
-  │   ├── workout-list.tsx       # Extracted from _auth/workouts/index.tsx
-  │   └── workout-detail.tsx     # Extracted from _auth/workouts/$workoutId/index.tsx
-  └── exercises/
-      ├── exercise-list.tsx      # Extracted from _auth/exercises/index.tsx
-      └── exercise-detail.tsx    # Extracted from _auth/exercises/$exerciseId.tsx
-
-client/src/routes/demo/                            ⏳ TODO (Phase 2.3)
-  ├── index.tsx                   # Demo landing (optional)
-  ├── workouts/
-  │   ├── index.tsx              # Workout list
-  │   ├── new.tsx                # Create workout
-  │   └── $id.tsx                # Edit workout (if exists)
-  └── exercises/
-      └── index.tsx              # Exercise list
+client/src/routes/
+├── __root.tsx                       # Updated: user is nullable
+├── exercises/
+│   ├── index.tsx                   # ✅ Conditional: API or demo queries
+│   ├── $exerciseId.tsx             # ✅ Conditional: API or demo data
+│   └── -components/
+│       └── exercise-delete-dialog.tsx
+└── workouts/
+    ├── index.tsx                   # ✅ Conditional: API or demo queries
+    ├── $workoutId/
+    │   ├── index.tsx              # ✅ Conditional: API or demo data
+    │   └── edit.tsx               # ✅ Auth-only (complex)
+    ├── new.tsx                    # ⚠️ BLOCKED: Needs conditional mutations
+    └── -components/               # Shared components for workout forms
+        ├── add-exercise-screen.tsx
+        ├── exercise-screen.tsx
+        ├── form-options.ts
+        ├── mini-chart.tsx
+        └── recent-sets-display.tsx
 ```
 
-### Modified Files
-- [x] `_auth/workouts/index.tsx` - Now uses `<WorkoutList>` component (Phase 2.2)
-- [x] `_auth/workouts/$workoutId/index.tsx` - Now uses `<WorkoutDetail>` component (Phase 2.2)
-- [x] `_auth/exercises/index.tsx` - Now uses `<ExerciseList>` component (Phase 2.2)
-- [x] `_auth/exercises/$exerciseId.tsx` - Now uses `<ExerciseDetail>` component (Phase 2.2)
-- [ ] Landing page - Add "Try for free" link to `/demo` (Phase 3.1)
+### Shared Components
+```
+client/src/components/
+├── workouts/
+│   ├── workout-list.tsx           # ✅ Used by both modes
+│   └── workout-detail.tsx         # ✅ Shows edit/delete in both modes
+└── exercises/
+    ├── exercise-list.tsx          # ✅ Used by both modes
+    └── exercise-detail.tsx        # ✅ Used by both modes
+```
+
+### Demo Data Infrastructure
+```
+client/src/lib/demo-data/
+├── types.ts                       # ✅ Type exports
+├── initial-data.ts                # ✅ Seed data
+├── storage.ts                     # ✅ localStorage CRUD + clearDemoData()
+└── query-options.ts               # ✅ Query/mutation options
+```
 
 ---
 
-## Data Schema Reference
+## Benefits of Route Merge Approach
 
-### Database Structure (from schema.sql)
-```sql
-users (id, user_id, created_at)
-workout (id, date, notes, workout_focus, user_id)
-exercise (id, name, user_id)
-set (id, exercise_id, workout_id, weight, reps, set_type,
-     exercise_order, set_order, user_id)
-```
-
-### localStorage Keys
-```typescript
-'fittrack-demo-workouts'  // Workout[]
-'fittrack-demo-exercises' // Exercise[]
-'fittrack-demo-sets'      // Set[]
-```
-
-### Data Relationships
-- Workout (1) → Sets (N) via `set.workout_id`
-- Exercise (1) → Sets (N) via `set.exercise_id`
-- Sets link workouts and exercises (junction table pattern)
+✅ **No Code Duplication**: Single route tree, shared components
+✅ **Type-Safe Links**: Hardcoded TanStack Router paths work correctly
+✅ **Simpler Maintenance**: One set of routes to update
+✅ **Better UX**: Seamless transition from demo to authenticated
+✅ **Full CRUD in Demo**: Users can create/edit/delete in demo mode
 
 ---
 
-## Benefits
+## Blockers
 
-✅ **Type Safe**: Uses generated types, survives OpenAPI regeneration
-✅ **Persistent**: localStorage maintains demo state across sessions
-✅ **Resettable**: Users can restore initial demo data anytime
-✅ **Maintainable**: Mock data separated from component logic
-✅ **No Breaking Changes**: Auth routes completely untouched
-✅ **Realistic**: Full CRUD operations with proper data relationships
+### 🔴 Critical: `/workouts/new` Route
+**Issue**: Route uses API-only mutation and assumes user exists.
+
+**Solution Required**:
+1. Conditional mutation based on `user` existence
+2. Handle `user?.id` for localStorage operations
+3. Pass correct mutation to `WorkoutTracker` component
+
+**Estimated Time**: 1-2 hours
 
 ---
 
-## Timeline Estimate
-- **Phase 1 (Data Layer)**: 2-3 hours
-- **Phase 2 (Routes)**: 2-3 hours
-- **Phase 3 (Integration & Testing)**: 2-3 hours
-- **Total**: 6-9 hours
+## Next Steps for Next Agent
 
-This approach ensures careful implementation with comprehensive type safety and testing.
+1. **Fix `/workouts/new` route** (see BLOCKED section above)
+2. **Run `bun run tsc`** to verify all TypeScript errors resolved
+3. **Manual testing** of both demo and auth modes
+4. **Update landing page** to link to `/workouts` (auto-detects mode)
+5. **Optional**: Create unified header with demo banner
+
+See `NEXT-STEPS.md` for detailed handoff.

@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { exerciseByIdQueryOptions } from '@/lib/api/exercises';
+import { getDemoExercisesByIdQueryOptions } from '@/lib/demo-data/query-options';
+import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
 import { ExerciseDetail } from '@/components/exercises/exercise-detail';
 
-export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
+export const Route = createFileRoute('/exercises/$exerciseId')({
   params: {
     parse: (params) => {
       const exerciseId = parseInt(params.exerciseId, 10);
@@ -15,7 +17,18 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
   },
   loader: async ({ context, params }) => {
     const exerciseId = params.exerciseId;
-    context.queryClient.ensureQueryData(exerciseByIdQueryOptions(exerciseId));
+    const user = context.user;
+
+    if (user) {
+      // Authenticated: use API data
+      clearDemoData();
+      await context.queryClient.ensureQueryData(exerciseByIdQueryOptions(exerciseId));
+    } else {
+      // Demo mode: use localStorage
+      initializeDemoData();
+      await context.queryClient.ensureQueryData(getDemoExercisesByIdQueryOptions(exerciseId));
+    }
+
     return { exerciseId };
   },
   component: RouteComponent,
@@ -23,8 +36,11 @@ export const Route = createFileRoute('/_auth/exercises/$exerciseId')({
 
 function RouteComponent() {
   const { exerciseId } = Route.useLoaderData();
-  const { data: exerciseSets } = useSuspenseQuery(
-    exerciseByIdQueryOptions(exerciseId)
-  );
+  const { user } = Route.useRouteContext();
+
+  const { data: exerciseSets } = user
+    ? useSuspenseQuery(exerciseByIdQueryOptions(exerciseId))
+    : useSuspenseQuery(getDemoExercisesByIdQueryOptions(exerciseId));
+
   return <ExerciseDetail exerciseSets={exerciseSets} exerciseId={exerciseId} />;
 }

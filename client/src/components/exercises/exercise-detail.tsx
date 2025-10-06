@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { formatDate, formatTime } from '@/lib/utils';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
-import { ExerciseDeleteDialog } from '@/routes/_auth/exercises/-components/exercise-delete-dialog';
+import { ExerciseDeleteDialog } from '@/routes/exercises/-components/exercise-delete-dialog';
 
 export interface ExerciseDetailProps {
   exerciseSets: ExerciseExerciseWithSetsResponse[];

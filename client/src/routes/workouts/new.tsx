@@ -27,7 +27,7 @@ function WorkoutTracker({
   exercises,
   workoutsFocus,
 }: {
-  user: CurrentUser | CurrentInternalUser; // need user for localStorage
+  user: CurrentUser | CurrentInternalUser | null; // need user for localStorage
   exercises: DbExercise[];
   workoutsFocus: WorkoutFocus[];
 }) {
@@ -311,21 +311,17 @@ function WorkoutTracker({
   );
 }
 
-export const Route = createFileRoute('/_auth/workouts/new')({
+export const Route = createFileRoute('/workouts/new')({
   loader: async ({
     context,
-  }): Promise<{
-    user: CurrentUser | CurrentInternalUser;
-  }> => {
-    const user = context.user;
+  }): Promise<void> => {
     context.queryClient.ensureQueryData(exercisesQueryOptions());
-    return { user };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user } = Route.useLoaderData();
+  const {user} = Route.useRouteContext()
   const [{ data: exercisesResponse }, { data: workoutsFocusValues }] =
     useSuspenseQueries({
       queries: [exercisesQueryOptions(), workoutsFocusValuesQueryOptions()],

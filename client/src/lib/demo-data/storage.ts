@@ -58,6 +58,13 @@ export function resetDemoData(): void {
   setInStorage(STORAGE_KEYS.SETS, INITIAL_SETS);
 }
 
+export function clearDemoData(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEYS.EXERCISES);
+  localStorage.removeItem(STORAGE_KEYS.WORKOUTS);
+  localStorage.removeItem(STORAGE_KEYS.SETS);
+}
+
 // ===========================
 // Exercise CRUD
 // ===========================

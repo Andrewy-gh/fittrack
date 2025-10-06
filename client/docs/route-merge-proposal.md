@@ -132,6 +132,11 @@ function RouteComponent() {
 }
 ```
 
+**Feedback**
+- I would want the ensureQueryData to be called in not in the `beforeLoad` function as according to tanstack router doc's the `beforeLoad` functions happens in serial. We can move the ensureQueryData to the `loader` function to not block ui as it happens in parallel. 
+- It seems like we are storing demo updates into storage as check `lib/demo-data/storage.ts` so the above example `hasWorkoutInProgress` always returns false even though we a demo user might have a workout in progress. You'll have to keep an eye on this as we progress through the PR.
+- I made your change in `app.tsx` where user can be used through context now `const user = await stackClientApp.getUser();` so is not needed 
+
 ### 2. Header Component
 
 **Unified header** that adapts to auth state:
@@ -276,24 +281,40 @@ export const Route = createFileRoute('/workouts/$workoutId/edit')({
 - **Option A**: `/workouts` (auto-detects auth vs demo) ✅ **Recommended**
 - **Option B**: Keep `/demo/workouts` for explicit demo, `/workouts` requires auth
 
+**Feedback**
+Use options A
+
 ### 2. Edit/Delete Routes
 - **Option A**: Hide completely in demo mode ✅ **Recommended**
 - **Option B**: Show but redirect to sign-in when clicked
 - **Option C**: Keep under `/_auth` requiring authentication
+
+**Feedback**
+- Believe that we might have created a lib file in `lib/demo-data/query-options.ts` that handles editing and deleting in demo mode. If so we should not hide the buttons. Do more research.
 
 ### 3. New Workout Route
 - **Option A**: Support demo mode (allow creating to localStorage)
 - **Option B**: Require auth (redirect to sign-in) ✅ **Recommended**
 - **Option C**: Separate demo creation route with limited features
 
+**Feedback**
+- I believe that we might have created a lib file in `lib/demo-data/query-options.ts` that handles creating in demo mode. If so we should not hide the buttons. Do more research.
+
 ### 4. Header Component
 - **Option A**: Unified header with conditional user button/demo banner ✅ **Recommended**
 - **Option B**: Keep separate headers, conditionally render based on auth
+
+**Feedback**
+- I like option A
 
 ### 5. Data Refresh on Login
 - **Option A**: Auto-refresh queries when user logs in ✅ **Recommended**
 - **Option B**: Redirect user to home, require manual navigation
 - **Option C**: Show prompt to refresh
+
+**Feedback**
+- This is a scenario that I would like to work through. 
+- The demo mode contains a placeholder data, so when a user logs while on `/workouts` `exercises` and `exercises/exercisesId` any placeholder data should be refreshed. However what if the user has created something in the demo mode and logs in, should we keep that data? Let's say they were in the process of creating a new workout or exercise and they decide to sign up, I don't think it would be a good user experience to have the data they created in the demo mode to be lost. However, if to enable the newly created data to persist into that user's account, we would need to implement a way to transfer the data from localStorage to the database which is a bit of a challenge. Let me know your thoughts on this.
 
 ---
 
