@@ -4,19 +4,20 @@
 
 **Goal**: Create `/demo/*` routes with localStorage-backed mock data so users can try FitTrack without authentication.
 
-**Current Phase**: Phase 1.1 ✅ COMPLETE → Starting Phase 1.2 (Mock Data Files)
+**Current Phase**: Phase 1.2 & 1.3 ✅ COMPLETE → Starting Phase 2 (Route Implementation)
 
 **What's Done**:
-- ✅ Planning & analysis complete
+- ✅ Planning & analysis complete (Phase 1.1)
 - ✅ All types verified from `@/client/types.gen.ts`
 - ✅ Data relationships mapped
 - ✅ localStorage schema designed
+- ✅ Mock data files created (Phase 1.2)
+- ✅ Demo query options implemented (Phase 1.3)
 
-**Next Tasks** (Phase 1.2):
-1. Create `client/src/lib/demo-data/types.ts`
-2. Create `client/src/lib/demo-data/initial-data.ts`
-3. Create `client/src/lib/demo-data/storage.ts`
-4. Create `client/src/lib/demo-data/query-options.ts` (Phase 1.3)
+**Next Tasks** (Phase 2):
+1. Analyze existing `/_auth/*` routes structure
+2. Create demo route wrappers (`/demo/*`)
+3. Wire up demo query options to route components
 
 **Key Docs**:
 - `client/docs/demo-plan.md` - Master checklist
@@ -43,7 +44,7 @@
    - Generated types from `@/client` (OpenAPI/Swagger codegen)
    - Generated query options from `@/client/@tanstack/react-query.gen`
 
-### ✅ Session 2: Phase 1.1 Implementation (2025-10-05)
+### ✅ Session 2: Phase 1.1 Implementation (Previous - 2025-10-05)
 1. **Type Verification Complete** - Analyzed all generated types in `client/src/client/types.gen.ts`:
    - ✅ `WorkoutWorkoutWithSetsResponse` (lines 106-120) - Flattened workout+sets+exercises structure
    - ✅ `ExerciseExerciseResponse` (lines 15-21) - Basic exercise entity with user scoping
@@ -67,6 +68,59 @@
 4. **Progress Tracking**:
    - ✅ Updated `client/docs/demo-plan.md` to mark Phase 1.1 complete
    - ✅ Updated this progress log with session summary
+
+### ✅ Session 3: Phase 1.2 & 1.3 Implementation (2025-10-05)
+
+1. **Created `client/src/lib/demo-data/types.ts`** (67 lines):
+   - ✅ Re-exported all relevant types from `@/client/types.gen.ts`
+   - ✅ Defined demo-specific constants (`DEMO_USER_ID`, `STORAGE_KEYS`)
+   - ✅ Created internal storage types (`StoredSet`, `StoredWorkout`, `StoredExercise`)
+   - ✅ Ensures type safety and compatibility with generated API types
+
+2. **Created `client/src/lib/demo-data/initial-data.ts`** (315 lines):
+   - ✅ 5 exercises: Barbell Squat, Bench Press, Deadlift, Overhead Press, Pull-ups
+   - ✅ 3 workouts with realistic dates (7 days ago, 5 days ago, 2 days ago)
+   - ✅ 26 sets showing realistic progression (weight increases across workouts)
+   - ✅ Proper exercise/set ordering with `exercise_order` and `set_order`
+   - ✅ Mix of weighted and bodyweight exercises (Pull-ups without weight)
+   - ✅ Warmup and working sets with proper `set_type` values
+   - ✅ Helper function `getNextId()` for generating new IDs
+
+3. **Created `client/src/lib/demo-data/storage.ts`** (390 lines):
+   - ✅ localStorage utilities with proper type safety
+   - ✅ `initializeDemoData()` - Auto-initialize on first load
+   - ✅ `resetDemoData()` - Restore initial state
+   - ✅ Exercise CRUD operations:
+     - `getAllExercises()`, `getExerciseById()`
+     - `createExercise()`, `deleteExercise()`
+     - `getExerciseWithSets()` - Join exercise with all sets/workouts
+     - `getExerciseRecentSets()` - Get recent sets for progression tracking
+   - ✅ Workout CRUD operations:
+     - `getAllWorkouts()`, `getWorkoutById()`
+     - `createWorkout()`, `updateWorkout()`, `deleteWorkout()`
+     - Proper joining of workouts + sets + exercises
+     - Cascade delete (deleting workout removes its sets)
+   - ✅ `getWorkoutFocusValues()` - Extract unique workout focus values
+
+4. **Created `client/src/lib/demo-data/query-options.ts`** (237 lines):
+   - ✅ Query keys matching TanStack Query conventions
+   - ✅ Query options for all exercise endpoints:
+     - `getDemoExercisesQueryOptions()`
+     - `getDemoExercisesByIdQueryOptions(id)`
+     - `getDemoExercisesByIdRecentSetsQueryOptions(id)`
+   - ✅ Query options for all workout endpoints:
+     - `getDemoWorkoutsQueryOptions()`
+     - `getDemoWorkoutsByIdQueryOptions(id)`
+     - `getDemoWorkoutsFocusValuesQueryOptions()`
+   - ✅ Mutation options with proper cache invalidation:
+     - `postDemoExercisesMutation()`, `deleteDemoExercisesByIdMutation()`
+     - `postDemoWorkoutsMutation()`, `putDemoWorkoutsByIdMutation()`, `deleteDemoWorkoutsByIdMutation()`
+   - ✅ Simulated API delays (100-200ms) for realistic UX
+   - ✅ Automatic query invalidation on mutations
+
+5. **Documentation Updates**:
+   - ✅ Updated `client/docs/demo-plan.md` to mark Phase 1.2 & 1.3 complete
+   - ✅ Updated this progress log with implementation details
 
 ### ✅ Key Decisions Made
 
@@ -111,6 +165,31 @@ exercise (id, name, user_id)
 
 ---
 
+---
+
+## 📦 Phase 1 Summary (COMPLETE)
+
+**Total Implementation**: ~1,010 lines of code across 4 files
+- ✅ `types.ts` (67 lines) - Type safety layer
+- ✅ `initial-data.ts` (315 lines) - Realistic seed data
+- ✅ `storage.ts` (390 lines) - localStorage CRUD operations
+- ✅ `query-options.ts` (237 lines) - TanStack Query integration
+
+**Key Features**:
+- Full CRUD operations for workouts and exercises
+- Proper data relationships with join operations
+- Type-safe localStorage persistence
+- Simulated API delays for realistic UX
+- Automatic query cache invalidation
+- Reset functionality to restore demo state
+
+**Next Phase**: Phase 2 - Route Implementation
+- Analyze existing `/_auth/*` routes
+- Create demo route wrappers
+- Wire up demo query options
+
+---
+
 ## Next Steps
 
 ### ✅ COMPLETED: Phase 1.1 - Type Verification
@@ -122,16 +201,21 @@ See `client/docs/phase-1-1-type-verification.md` for complete verification repor
 - Data relationships fully mapped
 - localStorage schema designed to match API types exactly
 
-### Immediate Tasks (Phase 1.2 - Mock Data Files)
+### ✅ COMPLETED: Phase 1.2 & 1.3 - Mock Data Files
 
-**Next** → Create mock data files in `client/src/lib/demo-data/`:
+All mock data infrastructure complete! See Session 3 above for details.
+
+**What's Next**: Phase 2 - Route Implementation
 
 #### Priority Order:
-1. ~~**Verify types**~~ ✅ COMPLETE - See verification doc
-2. **Create `client/src/lib/demo-data/types.ts`** - Import and re-export types
-3. **Create `client/src/lib/demo-data/initial-data.ts`** - Seed data with realistic fitness examples
-4. **Create `client/src/lib/demo-data/storage.ts`** - localStorage utilities
-5. **Create `client/src/lib/demo-data/query-options.ts`** - Demo query/mutation options
+1. ~~**Verify types**~~ ✅ COMPLETE
+2. ~~**Create `types.ts`**~~ ✅ COMPLETE
+3. ~~**Create `initial-data.ts`**~~ ✅ COMPLETE
+4. ~~**Create `storage.ts`**~~ ✅ COMPLETE
+5. ~~**Create `query-options.ts`**~~ ✅ COMPLETE
+6. **Analyze existing `/_auth/*` routes** ← NEXT
+7. **Create `/demo/*` route wrappers**
+8. **Test demo routes end-to-end**
 
 ---
 

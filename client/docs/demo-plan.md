@@ -20,37 +20,38 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
   - [x] Set fields: `exercise_order`, `set_order`, `weight`, `reps`, `set_type`
 - [x] **Created**: `client/docs/phase-1-1-type-verification.md` (230 lines - full verification report)
 
-### 1.2 Mock Data Files (`client/src/lib/demo-data/`)
-- [ ] `types.ts` - Import and re-export relevant types from `@/client`
-- [ ] `initial-data.ts` - Initial seed data matching real types:
-  - [ ] 5 exercises (Bench Press, Squat, Deadlift, Pull-ups, Overhead Press)
-  - [ ] 3 workouts (Push Day, Pull Day, Leg Day) with realistic dates
-  - [ ] 15-20 sets with proper relationships and ordering
-  - [ ] Realistic progression data (weight/reps)
-- [ ] `storage.ts` - localStorage utilities:
-  - [ ] `DEMO_STORAGE_KEYS` constants
-  - [ ] `getDemoWorkouts()` - Load from localStorage or return initial data
-  - [ ] `saveDemoWorkouts()` - Persist to localStorage
-  - [ ] `getDemoExercises()` - Load from localStorage or return initial data
-  - [ ] `saveDemoExercises()` - Persist to localStorage
-  - [ ] `getDemoSets()` - Load from localStorage or return initial data
-  - [ ] `saveDemoSets()` - Persist to localStorage
-  - [ ] `resetDemoData()` - Clear all demo data and restore initial state
-  - [ ] `getDemoWorkoutWithSets(id)` - Join workouts + sets + exercises
+### 1.2 Mock Data Files (`client/src/lib/demo-data/`) ✅ COMPLETE
+- [x] `types.ts` - Import and re-export relevant types from `@/client`
+- [x] `initial-data.ts` - Initial seed data matching real types:
+  - [x] 5 exercises (Barbell Squat, Bench Press, Deadlift, Overhead Press, Pull-ups)
+  - [x] 3 workouts with realistic dates (7 days ago, 5 days ago, 2 days ago)
+  - [x] 26 sets with proper relationships and ordering
+  - [x] Realistic progression data (weight/reps showing progression)
+- [x] `storage.ts` - localStorage utilities:
+  - [x] `STORAGE_KEYS` constants
+  - [x] `getAllWorkouts()` / `getWorkoutById()` - Load from localStorage
+  - [x] `createWorkout()` / `updateWorkout()` / `deleteWorkout()` - CRUD operations
+  - [x] `getAllExercises()` / `getExerciseById()` - Load from localStorage
+  - [x] `createExercise()` / `deleteExercise()` - CRUD operations
+  - [x] `getExerciseWithSets()` / `getExerciseRecentSets()` - Join operations
+  - [x] `resetDemoData()` - Clear all demo data and restore initial state
+  - [x] `initializeDemoData()` - Initialize on first load
+  - [x] `getWorkoutFocusValues()` - Get distinct focus values
 
-### 1.3 Demo Query Options (`client/src/lib/demo-data/query-options.ts`)
-- [ ] Mirror structure from `@/client/@tanstack/react-query.gen`:
-  - [ ] `demoExercisesQueryOptions()` - Return exercises from localStorage
-  - [ ] `demoExerciseByIdQueryOptions(id)` - Return single exercise
-  - [ ] `demoRecentExerciseSetsQueryOptions(id)` - Return recent sets for exercise
-  - [ ] `demoWorkoutsQueryOptions()` - Return workouts sorted by date DESC
-  - [ ] `demoWorkoutByIdQueryOptions(id)` - Return workout with joined sets/exercises
-  - [ ] `demoWorkoutsFocusValuesQueryOptions()` - Return distinct workout_focus values
-- [ ] Demo mutations (update localStorage + invalidate queries):
-  - [ ] `useDemoSaveWorkoutMutation()` - Create new workout
-  - [ ] `useDemoUpdateWorkoutMutation()` - Update existing workout
-  - [ ] `useDemoDeleteWorkoutMutation()` - Delete workout
-  - [ ] `useDemoDeleteExerciseMutation()` - Delete exercise
+### 1.3 Demo Query Options (`client/src/lib/demo-data/query-options.ts`) ✅ COMPLETE
+- [x] Mirror structure from `@/client/@tanstack/react-query.gen`:
+  - [x] `getDemoExercisesQueryOptions()` - Return exercises from localStorage
+  - [x] `getDemoExercisesByIdQueryOptions(id)` - Return exercise with sets
+  - [x] `getDemoExercisesByIdRecentSetsQueryOptions(id)` - Return recent sets for exercise
+  - [x] `getDemoWorkoutsQueryOptions()` - Return workouts sorted by date DESC
+  - [x] `getDemoWorkoutsByIdQueryOptions(id)` - Return workout with joined sets/exercises
+  - [x] `getDemoWorkoutsFocusValuesQueryOptions()` - Return distinct workout_focus values
+- [x] Demo mutations (update localStorage + invalidate queries):
+  - [x] `postDemoWorkoutsMutation()` - Create new workout
+  - [x] `putDemoWorkoutsByIdMutation()` - Update existing workout
+  - [x] `deleteDemoWorkoutsByIdMutation()` - Delete workout
+  - [x] `deleteDemoExercisesByIdMutation()` - Delete exercise
+  - [x] `postDemoExercisesMutation()` - Create exercise
 
 ---
 
