@@ -133,7 +133,7 @@
 
 1. **Analyzed user prop usage across all routes**:
    - ✅ Searched for `user` in all `/_auth/*` routes
-   - ✅ Found user only used in **3 route files** (workouts/index.tsx, workouts/new.tsx, workouts/new-2.tsx)
+   - ✅ Found user only used in **3 route files** (workouts/index.tsx, workouts/new.tsx)
    - ✅ **Zero usage** in any `-components/*` files
    - ✅ **Zero usage** in exercise routes
    - ✅ User only used for: `user.id` in localStorage scoping + auth validation

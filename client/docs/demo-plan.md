@@ -85,7 +85,7 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
   - [x] Move from `_auth/workouts/$workoutId/index.tsx` (lines 14-224)
   - [x] Export as standalone component
 - [ ] Extract `WorkoutTracker` → `components/workouts/workout-form.tsx` (if needed for new workout flow)
-  - [ ] Analyze `_auth/workouts/new-2.tsx` dependencies
+  - [ ] Analyze `_auth/workouts/new.tsx` dependencies
   - [ ] May need to keep in route file due to complex state/localStorage integration
 - [x] Create `client/src/components/exercises/` directory
 - [x] Extract `ExercisesDisplay` → `components/exercises/exercise-list.tsx`
@@ -122,7 +122,7 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
   - [ ] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
   - [ ] Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
   - [ ] Render same component as auth route
-- [ ] `demo/workouts/new-2.tsx` (or similar):
+- [ ] `demo/workouts/new.tsx` (or similar):
   - [ ] Analyze if `WorkoutTracker` can be extracted or needs route-specific version
   - [ ] Use demo query/mutation options
   - [ ] Use `'demo-user'` for localStorage operations
