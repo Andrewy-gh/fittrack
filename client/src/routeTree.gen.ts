@@ -16,10 +16,14 @@ import { Route as AboutImport } from './routes/about'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as IndexImport } from './routes/index'
 import { Route as HandlerSplatImport } from './routes/handler.$'
+import { Route as DemoWorkoutsIndexImport } from './routes/demo/workouts/index'
+import { Route as DemoExercisesIndexImport } from './routes/demo/exercises/index'
 import { Route as AuthWorkoutsIndexImport } from './routes/_auth/workouts/index'
 import { Route as AuthExercisesIndexImport } from './routes/_auth/exercises/index'
+import { Route as DemoExercisesExerciseIdImport } from './routes/demo/exercises/$exerciseId'
 import { Route as AuthWorkoutsNewImport } from './routes/_auth/workouts/new'
 import { Route as AuthExercisesExerciseIdImport } from './routes/_auth/exercises/$exerciseId'
+import { Route as DemoWorkoutsWorkoutIdIndexImport } from './routes/demo/workouts/$workoutId/index'
 import { Route as AuthWorkoutsWorkoutIdIndexImport } from './routes/_auth/workouts/$workoutId/index'
 import { Route as AuthWorkoutsWorkoutIdEditImport } from './routes/_auth/workouts/$workoutId/edit'
 
@@ -54,6 +58,18 @@ const HandlerSplatRoute = HandlerSplatImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const DemoWorkoutsIndexRoute = DemoWorkoutsIndexImport.update({
+  id: '/workouts/',
+  path: '/workouts/',
+  getParentRoute: () => DemoRoute,
+} as any)
+
+const DemoExercisesIndexRoute = DemoExercisesIndexImport.update({
+  id: '/exercises/',
+  path: '/exercises/',
+  getParentRoute: () => DemoRoute,
+} as any)
+
 const AuthWorkoutsIndexRoute = AuthWorkoutsIndexImport.update({
   id: '/workouts/',
   path: '/workouts/',
@@ -64,6 +80,12 @@ const AuthExercisesIndexRoute = AuthExercisesIndexImport.update({
   id: '/exercises/',
   path: '/exercises/',
   getParentRoute: () => AuthRoute,
+} as any)
+
+const DemoExercisesExerciseIdRoute = DemoExercisesExerciseIdImport.update({
+  id: '/exercises/$exerciseId',
+  path: '/exercises/$exerciseId',
+  getParentRoute: () => DemoRoute,
 } as any)
 
 const AuthWorkoutsNewRoute = AuthWorkoutsNewImport.update({
@@ -77,6 +99,14 @@ const AuthExercisesExerciseIdRoute = AuthExercisesExerciseIdImport.update({
   path: '/exercises/$exerciseId',
   getParentRoute: () => AuthRoute,
 } as any)
+
+const DemoWorkoutsWorkoutIdIndexRoute = DemoWorkoutsWorkoutIdIndexImport.update(
+  {
+    id: '/workouts/$workoutId/',
+    path: '/workouts/$workoutId/',
+    getParentRoute: () => DemoRoute,
+  } as any,
+)
 
 const AuthWorkoutsWorkoutIdIndexRoute = AuthWorkoutsWorkoutIdIndexImport.update(
   {
@@ -145,6 +175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthWorkoutsNewImport
       parentRoute: typeof AuthImport
     }
+    '/demo/exercises/$exerciseId': {
+      id: '/demo/exercises/$exerciseId'
+      path: '/exercises/$exerciseId'
+      fullPath: '/demo/exercises/$exerciseId'
+      preLoaderRoute: typeof DemoExercisesExerciseIdImport
+      parentRoute: typeof DemoImport
+    }
     '/_auth/exercises/': {
       id: '/_auth/exercises/'
       path: '/exercises'
@@ -159,6 +196,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthWorkoutsIndexImport
       parentRoute: typeof AuthImport
     }
+    '/demo/exercises/': {
+      id: '/demo/exercises/'
+      path: '/exercises'
+      fullPath: '/demo/exercises'
+      preLoaderRoute: typeof DemoExercisesIndexImport
+      parentRoute: typeof DemoImport
+    }
+    '/demo/workouts/': {
+      id: '/demo/workouts/'
+      path: '/workouts'
+      fullPath: '/demo/workouts'
+      preLoaderRoute: typeof DemoWorkoutsIndexImport
+      parentRoute: typeof DemoImport
+    }
     '/_auth/workouts/$workoutId/edit': {
       id: '/_auth/workouts/$workoutId/edit'
       path: '/workouts/$workoutId/edit'
@@ -172,6 +223,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workouts/$workoutId'
       preLoaderRoute: typeof AuthWorkoutsWorkoutIdIndexImport
       parentRoute: typeof AuthImport
+    }
+    '/demo/workouts/$workoutId/': {
+      id: '/demo/workouts/$workoutId/'
+      path: '/workouts/$workoutId'
+      fullPath: '/demo/workouts/$workoutId'
+      preLoaderRoute: typeof DemoWorkoutsWorkoutIdIndexImport
+      parentRoute: typeof DemoImport
     }
   }
 }
@@ -198,32 +256,56 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
+interface DemoRouteChildren {
+  DemoExercisesExerciseIdRoute: typeof DemoExercisesExerciseIdRoute
+  DemoExercisesIndexRoute: typeof DemoExercisesIndexRoute
+  DemoWorkoutsIndexRoute: typeof DemoWorkoutsIndexRoute
+  DemoWorkoutsWorkoutIdIndexRoute: typeof DemoWorkoutsWorkoutIdIndexRoute
+}
+
+const DemoRouteChildren: DemoRouteChildren = {
+  DemoExercisesExerciseIdRoute: DemoExercisesExerciseIdRoute,
+  DemoExercisesIndexRoute: DemoExercisesIndexRoute,
+  DemoWorkoutsIndexRoute: DemoWorkoutsIndexRoute,
+  DemoWorkoutsWorkoutIdIndexRoute: DemoWorkoutsWorkoutIdIndexRoute,
+}
+
+const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
-  '/demo': typeof DemoRoute
+  '/demo': typeof DemoRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
+  '/demo/exercises/$exerciseId': typeof DemoExercisesExerciseIdRoute
   '/exercises': typeof AuthExercisesIndexRoute
   '/workouts': typeof AuthWorkoutsIndexRoute
+  '/demo/exercises': typeof DemoExercisesIndexRoute
+  '/demo/workouts': typeof DemoWorkoutsIndexRoute
   '/workouts/$workoutId/edit': typeof AuthWorkoutsWorkoutIdEditRoute
   '/workouts/$workoutId': typeof AuthWorkoutsWorkoutIdIndexRoute
+  '/demo/workouts/$workoutId': typeof DemoWorkoutsWorkoutIdIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
-  '/demo': typeof DemoRoute
+  '/demo': typeof DemoRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/workouts/new': typeof AuthWorkoutsNewRoute
+  '/demo/exercises/$exerciseId': typeof DemoExercisesExerciseIdRoute
   '/exercises': typeof AuthExercisesIndexRoute
   '/workouts': typeof AuthWorkoutsIndexRoute
+  '/demo/exercises': typeof DemoExercisesIndexRoute
+  '/demo/workouts': typeof DemoWorkoutsIndexRoute
   '/workouts/$workoutId/edit': typeof AuthWorkoutsWorkoutIdEditRoute
   '/workouts/$workoutId': typeof AuthWorkoutsWorkoutIdIndexRoute
+  '/demo/workouts/$workoutId': typeof DemoWorkoutsWorkoutIdIndexRoute
 }
 
 export interface FileRoutesById {
@@ -231,14 +313,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/about': typeof AboutRoute
-  '/demo': typeof DemoRoute
+  '/demo': typeof DemoRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/_auth/exercises/$exerciseId': typeof AuthExercisesExerciseIdRoute
   '/_auth/workouts/new': typeof AuthWorkoutsNewRoute
+  '/demo/exercises/$exerciseId': typeof DemoExercisesExerciseIdRoute
   '/_auth/exercises/': typeof AuthExercisesIndexRoute
   '/_auth/workouts/': typeof AuthWorkoutsIndexRoute
+  '/demo/exercises/': typeof DemoExercisesIndexRoute
+  '/demo/workouts/': typeof DemoWorkoutsIndexRoute
   '/_auth/workouts/$workoutId/edit': typeof AuthWorkoutsWorkoutIdEditRoute
   '/_auth/workouts/$workoutId/': typeof AuthWorkoutsWorkoutIdIndexRoute
+  '/demo/workouts/$workoutId/': typeof DemoWorkoutsWorkoutIdIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -251,10 +337,14 @@ export interface FileRouteTypes {
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
+    | '/demo/exercises/$exerciseId'
     | '/exercises'
     | '/workouts'
+    | '/demo/exercises'
+    | '/demo/workouts'
     | '/workouts/$workoutId/edit'
     | '/workouts/$workoutId'
+    | '/demo/workouts/$workoutId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -264,10 +354,14 @@ export interface FileRouteTypes {
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
+    | '/demo/exercises/$exerciseId'
     | '/exercises'
     | '/workouts'
+    | '/demo/exercises'
+    | '/demo/workouts'
     | '/workouts/$workoutId/edit'
     | '/workouts/$workoutId'
+    | '/demo/workouts/$workoutId'
   id:
     | '__root__'
     | '/'
@@ -277,10 +371,14 @@ export interface FileRouteTypes {
     | '/handler/$'
     | '/_auth/exercises/$exerciseId'
     | '/_auth/workouts/new'
+    | '/demo/exercises/$exerciseId'
     | '/_auth/exercises/'
     | '/_auth/workouts/'
+    | '/demo/exercises/'
+    | '/demo/workouts/'
     | '/_auth/workouts/$workoutId/edit'
     | '/_auth/workouts/$workoutId/'
+    | '/demo/workouts/$workoutId/'
   fileRoutesById: FileRoutesById
 }
 
@@ -288,7 +386,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   AboutRoute: typeof AboutRoute
-  DemoRoute: typeof DemoRoute
+  DemoRoute: typeof DemoRouteWithChildren
   HandlerSplatRoute: typeof HandlerSplatRoute
 }
 
@@ -296,7 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   AboutRoute: AboutRoute,
-  DemoRoute: DemoRoute,
+  DemoRoute: DemoRouteWithChildren,
   HandlerSplatRoute: HandlerSplatRoute,
 }
 
@@ -335,7 +433,13 @@ export const routeTree = rootRoute
       "filePath": "about.tsx"
     },
     "/demo": {
-      "filePath": "demo.tsx"
+      "filePath": "demo.tsx",
+      "children": [
+        "/demo/exercises/$exerciseId",
+        "/demo/exercises/",
+        "/demo/workouts/",
+        "/demo/workouts/$workoutId/"
+      ]
     },
     "/handler/$": {
       "filePath": "handler.$.tsx"
@@ -348,6 +452,10 @@ export const routeTree = rootRoute
       "filePath": "_auth/workouts/new.tsx",
       "parent": "/_auth"
     },
+    "/demo/exercises/$exerciseId": {
+      "filePath": "demo/exercises/$exerciseId.tsx",
+      "parent": "/demo"
+    },
     "/_auth/exercises/": {
       "filePath": "_auth/exercises/index.tsx",
       "parent": "/_auth"
@@ -356,6 +464,14 @@ export const routeTree = rootRoute
       "filePath": "_auth/workouts/index.tsx",
       "parent": "/_auth"
     },
+    "/demo/exercises/": {
+      "filePath": "demo/exercises/index.tsx",
+      "parent": "/demo"
+    },
+    "/demo/workouts/": {
+      "filePath": "demo/workouts/index.tsx",
+      "parent": "/demo"
+    },
     "/_auth/workouts/$workoutId/edit": {
       "filePath": "_auth/workouts/$workoutId/edit.tsx",
       "parent": "/_auth"
@@ -363,6 +479,10 @@ export const routeTree = rootRoute
     "/_auth/workouts/$workoutId/": {
       "filePath": "_auth/workouts/$workoutId/index.tsx",
       "parent": "/_auth"
+    },
+    "/demo/workouts/$workoutId/": {
+      "filePath": "demo/workouts/$workoutId/index.tsx",
+      "parent": "/demo"
     }
   }
 }

@@ -12,7 +12,6 @@ import type {
 } from './types';
 import {
   getAllExercises,
-  getExerciseById,
   createExercise,
   deleteExercise,
   getExerciseWithSets,

@@ -118,24 +118,24 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
 See `client/docs/workout-form-extraction-plan.md` and `client/docs/workout-form-extraction-plan-v2.md` for detailed analysis.
 **Current Strategy**: Implement view-only routes first (Phase 2.3a), circle back to form later (Phase 2.3b).
 
-#### Phase 2.3a: View-Only Demo Routes (DO THIS FIRST)
-- [ ] `demo.tsx` - Demo layout route (pathless layout with Header + initialize demo data)
-- [ ] `demo/workouts/index.tsx`:
-  - [ ] Import `WorkoutList` from `@/components/workouts/workout-list`
-  - [ ] Use `getDemoWorkoutsQueryOptions()` in loader
-  - [ ] Render same component as auth route
-- [ ] `demo/workouts/$workoutId/index.tsx`:
-  - [ ] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
-  - [ ] Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
-  - [ ] Render same component as auth route
-- [ ] `demo/exercises/index.tsx`:
-  - [ ] Import `ExerciseList` from `@/components/exercises/exercise-list`
-  - [ ] Use `getDemoExercisesQueryOptions()` in loader
-  - [ ] Render same component as auth route
-- [ ] `demo/exercises/$exerciseId.tsx`:
-  - [ ] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
-  - [ ] Use `getDemoExercisesByIdQueryOptions(id)` in loader
-  - [ ] Render same component as auth route
+#### Phase 2.3a: View-Only Demo Routes ✅ COMPLETE
+- [x] `demo.tsx` - Demo layout route (added demo mode banner)
+- [x] `demo/workouts/index.tsx`:
+  - [x] Import `WorkoutList` from `@/components/workouts/workout-list`
+  - [x] Use `getDemoWorkoutsQueryOptions()` in loader
+  - [x] Render same component as auth route
+- [x] `demo/workouts/$workoutId/index.tsx`:
+  - [x] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
+  - [x] Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
+  - [x] Render same component as auth route
+- [x] `demo/exercises/index.tsx`:
+  - [x] Import `ExerciseList` from `@/components/exercises/exercise-list`
+  - [x] Use `getDemoExercisesQueryOptions()` in loader
+  - [x] Render same component as auth route
+- [x] `demo/exercises/$exerciseId.tsx`:
+  - [x] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
+  - [x] Use `getDemoExercisesByIdQueryOptions(id)` in loader
+  - [x] Render same component as auth route
 
 #### Phase 2.3b: Workout Form Route (DEFERRED - Complex)
 - [ ] `demo/workouts/new.tsx`:
