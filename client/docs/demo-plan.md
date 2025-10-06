@@ -57,35 +57,81 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
 
 ## Phase 2: Route Implementation
 
-### 2.1 Identify Auth Routes to Copy
-- [ ] List all routes in `client/src/routes/_auth/`:
-  - [ ] `workouts/index.tsx` - Workout list
-  - [ ] `workouts/new.tsx` - Create workout form
-  - [ ] `workouts/$id.tsx` - View/edit workout (if exists)
-  - [ ] `exercises/index.tsx` - Exercise list
-  - [ ] Other routes?
-- [ ] Check for shared components/layouts used by auth routes
+### 2.0 Component Reuse Strategy Analysis ✅ COMPLETE
 
-### 2.2 Create Demo Routes (`client/src/routes/demo/`)
-- [ ] `demo/workouts/index.tsx` - Copy from `_auth/workouts/index.tsx`:
-  - [ ] Replace query imports with demo query options
-  - [ ] Replace mutation imports with demo mutations
-  - [ ] Test: List workouts, delete workout
-- [ ] `demo/workouts/new.tsx` - Copy from `_auth/workouts/new.tsx`:
-  - [ ] Replace query/mutation imports
-  - [ ] Test: Create new workout with exercises/sets
-- [ ] `demo/workouts/$id.tsx` - Copy from `_auth/workouts/$id.tsx` (if exists):
-  - [ ] Replace query/mutation imports
-  - [ ] Test: View and edit workout
-- [ ] `demo/exercises/index.tsx` - Copy from `_auth/exercises/index.tsx`:
-  - [ ] Replace query/mutation imports
-  - [ ] Test: List exercises, delete exercise
+**Key Finding**: User dependency is minimal - only used for localStorage scoping in 3 route files, zero usage in child components.
 
-### 2.3 Demo Route Layout/Index
-- [ ] `demo/index.tsx` - Demo landing/dashboard (if needed)
-- [ ] Handle user context (if routes access user data):
-  - [ ] Check if `useUser()` hook is used
-  - [ ] Create demo user provider or mock context if needed
+**Decision**: Extract shared display components instead of duplicating routes.
+
+**Rationale**:
+- All UI components (`WorkoutsDisplay`, `ExerciseDisplay`, etc.) are already user-agnostic
+- User only used for: `user.id` in localStorage keys and auth validation in loaders
+- Extracting components maintains DRY principle without conditional complexity
+- Future UI updates only require one change instead of two
+
+**Strategy**: Component Extraction Pattern (Option A)
+1. Extract display components to `client/src/components/`
+2. Both `/_auth/*` and `/demo/*` routes import same components
+3. Routes handle data fetching (different query options), components handle display
+
+### 2.1 Extract Shared Components (`client/src/components/`)
+- [ ] Create `client/src/components/workouts/` directory
+- [ ] Extract `WorkoutsDisplay` → `components/workouts/workout-list.tsx`
+  - [ ] Move from `_auth/workouts/index.tsx` (lines 13-142)
+  - [ ] Export as standalone component
+  - [ ] Remove user prop (not needed by component)
+- [ ] Extract `IndividualWorkoutPage` → `components/workouts/workout-detail.tsx`
+  - [ ] Move from `_auth/workouts/$workoutId/index.tsx` (lines 14-224)
+  - [ ] Export as standalone component
+- [ ] Extract `WorkoutTracker` → `components/workouts/workout-form.tsx` (if needed for new workout flow)
+  - [ ] Analyze `_auth/workouts/new-2.tsx` dependencies
+  - [ ] May need to keep in route file due to complex state/localStorage integration
+- [ ] Create `client/src/components/exercises/` directory
+- [ ] Extract `ExercisesDisplay` → `components/exercises/exercise-list.tsx`
+  - [ ] Move from `_auth/exercises/index.tsx` (lines 11-80)
+  - [ ] Export as standalone component
+- [ ] Extract `ExerciseDisplay` → `components/exercises/exercise-detail.tsx`
+  - [ ] Move from `_auth/exercises/$exerciseId.tsx` (lines 25-254)
+  - [ ] Export as standalone component
+
+### 2.2 Update Auth Routes to Use Extracted Components
+- [ ] Update `_auth/workouts/index.tsx`:
+  - [ ] Import `WorkoutList` from `@/components/workouts/workout-list`
+  - [ ] Update `RouteComponent` to render imported component
+  - [ ] Keep loader and query logic unchanged
+- [ ] Update `_auth/workouts/$workoutId/index.tsx`:
+  - [ ] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
+  - [ ] Update `RouteComponent` to render imported component
+  - [ ] Keep loader and query logic unchanged
+- [ ] Update `_auth/exercises/index.tsx`:
+  - [ ] Import `ExerciseList` from `@/components/exercises/exercise-list`
+  - [ ] Update `RouteComponent` to render imported component
+- [ ] Update `_auth/exercises/$exerciseId.tsx`:
+  - [ ] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
+  - [ ] Update `RouteComponent` to render imported component
+
+### 2.3 Create Demo Routes (`client/src/routes/demo/`)
+- [ ] `demo.tsx` - Demo layout route (pathless layout with Header + initialize demo data)
+- [ ] `demo/workouts/index.tsx`:
+  - [ ] Import `WorkoutList` from `@/components/workouts/workout-list`
+  - [ ] Use `getDemoWorkoutsQueryOptions()` in loader
+  - [ ] Render same component as auth route
+- [ ] `demo/workouts/$workoutId/index.tsx`:
+  - [ ] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
+  - [ ] Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
+  - [ ] Render same component as auth route
+- [ ] `demo/workouts/new-2.tsx` (or similar):
+  - [ ] Analyze if `WorkoutTracker` can be extracted or needs route-specific version
+  - [ ] Use demo query/mutation options
+  - [ ] Use `'demo-user'` for localStorage operations
+- [ ] `demo/exercises/index.tsx`:
+  - [ ] Import `ExerciseList` from `@/components/exercises/exercise-list`
+  - [ ] Use `getDemoExercisesQueryOptions()` in loader
+  - [ ] Render same component as auth route
+- [ ] `demo/exercises/$exerciseId.tsx`:
+  - [ ] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
+  - [ ] Use `getDemoExercisesByIdQueryOptions(id)` in loader
+  - [ ] Render same component as auth route
 
 ---
 

@@ -15,9 +15,12 @@
 - ✅ Demo query options implemented (Phase 1.3)
 
 **Next Tasks** (Phase 2):
-1. Analyze existing `/_auth/*` routes structure
-2. Create demo route wrappers (`/demo/*`)
-3. Wire up demo query options to route components
+1. ✅ Analyze existing `/_auth/*` routes structure
+2. ✅ Analyze component reuse strategy
+3. Extract shared display components
+4. Update auth routes to use extracted components
+5. Create demo route wrappers (`/demo/*`)
+6. Wire up demo query options to route components
 
 **Key Docs**:
 - `client/docs/demo-plan.md` - Master checklist
@@ -69,7 +72,7 @@
    - ✅ Updated `client/docs/demo-plan.md` to mark Phase 1.1 complete
    - ✅ Updated this progress log with session summary
 
-### ✅ Session 3: Phase 1.2 & 1.3 Implementation (2025-10-05)
+### ✅ Session 3: Phase 1.2 & 1.3 Implementation (2025-10-05 - Morning)
 
 1. **Created `client/src/lib/demo-data/types.ts`** (67 lines):
    - ✅ Re-exported all relevant types from `@/client/types.gen.ts`
@@ -121,6 +124,76 @@
 5. **Documentation Updates**:
    - ✅ Updated `client/docs/demo-plan.md` to mark Phase 1.2 & 1.3 complete
    - ✅ Updated this progress log with implementation details
+
+### ✅ Session 4: Phase 2.0 - Component Reuse Analysis (2025-10-05 - Afternoon)
+
+**Goal**: Determine if we can reuse existing auth components instead of duplicating code.
+
+1. **Analyzed user prop usage across all routes**:
+   - ✅ Searched for `user` in all `/_auth/*` routes
+   - ✅ Found user only used in **3 route files** (workouts/index.tsx, workouts/new.tsx, workouts/new-2.tsx)
+   - ✅ **Zero usage** in any `-components/*` files
+   - ✅ **Zero usage** in exercise routes
+   - ✅ User only used for: `user.id` in localStorage scoping + auth validation
+
+2. **Key Discovery**:
+   - All display components (`WorkoutsDisplay`, `ExerciseDisplay`, `IndividualWorkoutPage`, etc.) are **already user-agnostic**
+   - Components only receive data from queries, no user context needed
+   - localStorage helpers already support optional `userId` parameter
+
+3. **Evaluated 3 options**:
+   - **Option A**: Extract display components to `@/components/` (RECOMMENDED)
+   - **Option B**: Make user prop optional with conditional logic
+   - **Option C**: Duplicate all routes (original plan)
+
+4. **Decision: Component Extraction Pattern (Option A)**:
+   - ✅ Extract display logic to shared components
+   - ✅ Both `/_auth/*` and `/demo/*` routes import same components
+   - ✅ Routes handle data fetching, components handle display
+   - ✅ Maintains DRY principle without conditional complexity
+
+5. **Benefits of chosen approach**:
+   - Single source of truth for UI components
+   - No code duplication (saves ~500+ lines)
+   - Future UI updates only need one change
+   - Clear separation of concerns (routes = data, components = UI)
+   - No breaking changes to existing auth routes
+   - Better testability (components isolated from route context)
+
+6. **Documentation Updates**:
+   - ✅ Updated `client/docs/demo-plan.md` Phase 2 with new strategy
+   - ✅ Added Phase 2.0 (Component Reuse Strategy Analysis)
+   - ✅ Restructured Phase 2.1 (Extract Shared Components)
+   - ✅ Added Phase 2.2 (Update Auth Routes)
+   - ✅ Updated Phase 2.3 (Create Demo Routes)
+   - ✅ Updated this progress log
+
+### ✅ Key Decisions Made (Session 4)
+
+#### Component Reuse Strategy
+- **Approach**: Extract display components to shared location
+- **Locations**:
+  - `client/src/components/workouts/workout-list.tsx`
+  - `client/src/components/workouts/workout-detail.tsx`
+  - `client/src/components/exercises/exercise-list.tsx`
+  - `client/src/components/exercises/exercise-detail.tsx`
+- **Routes**: Thin wrappers that load data and render shared components
+- **Complexity**: Low - components already user-agnostic
+
+---
+
+## 📦 Phase 2.0 Summary (Session 4 - COMPLETE)
+
+**Analysis Complete**: Component reuse is viable and preferable
+
+**Files Analyzed**:
+- All `/_auth/*` route files
+- All `-components/*` files
+- localStorage utilities
+
+**Next Phase**: Phase 2.1 - Extract Shared Components
+
+---
 
 ### ✅ Key Decisions Made
 
