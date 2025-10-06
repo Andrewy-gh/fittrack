@@ -1,8 +1,7 @@
 import { beforeEach } from 'vitest';
+import { page } from '@vitest/browser/context';
 
 // Clear localStorage before each test
 beforeEach(async () => {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.clear();
-  }
+  await page.evaluate(() => localStorage.clear());
 });
