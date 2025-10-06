@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
 import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
-import { useSuspenseQueries } from '@tanstack/react-query';
+import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MiniChart } from './-components/mini-chart';
@@ -10,9 +10,14 @@ import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
-import { exercisesQueryOptions, type DbExercise } from '@/lib/api/exercises';
+import { type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues } from './-components/form-options';
-import { workoutsFocusValuesQueryOptions } from '@/lib/api/workouts';
+import { postDemoWorkoutsMutation } from '@/lib/demo-data/query-options';
+import { initializeDemoData } from '@/lib/demo-data/storage';
+import {
+  getExercisesQueryOptions,
+  getWorkoutsFocusQueryOptions
+} from '@/lib/api/unified-query-options';
 
 import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
@@ -39,14 +44,16 @@ function WorkoutTracker({
     exerciseId: number | null;
   } | null>(null);
 
-  const saveWorkout = useSaveWorkoutMutation();
+  const saveWorkoutApi = useSaveWorkoutMutation();
+  const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
+  const saveWorkout = user ? saveWorkoutApi : saveWorkoutDemo;
   const form = useAppForm({
     // MARK: TODO: Handle user.id when chat is implemented
-    defaultValues: getInitialValues(user.id),
+    defaultValues: getInitialValues(user?.id),
     listeners: {
       onChange: ({ formApi }) => {
         console.log('Saving form data to localStorage');
-        saveToLocalStorage(formApi.state.values, user.id);
+        saveToLocalStorage(formApi.state.values, user?.id);
       },
       onChangeDebounceMs: 500,
     },
@@ -61,7 +68,7 @@ function WorkoutTracker({
         { body: trimmedValue },
         {
           onSuccess: () => {
-            clearLocalStorage(user.id);
+            clearLocalStorage(user?.id);
             form.reset();
             setSelectedExercise(null);
           },
@@ -93,7 +100,7 @@ function WorkoutTracker({
 
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
-      clearLocalStorage(user.id);
+      clearLocalStorage(user?.id);
       form.reset();
       setSelectedExercise(null);
     }
@@ -140,7 +147,7 @@ function WorkoutTracker({
               onBack={() => setCurrentView('main')}
             />
           }
-          recentSets={<RecentSets exerciseId={selectedExercise.exerciseId} />}
+          recentSets={<RecentSets exerciseId={selectedExercise.exerciseId} user={user} />}
           sets={
             <ExerciseSets form={form} exerciseIndex={selectedExercise.index} />
           }
@@ -313,17 +320,18 @@ function WorkoutTracker({
 
 export const Route = createFileRoute('/workouts/new')({
   loader: async ({ context }): Promise<void> => {
-    context.queryClient.ensureQueryData(exercisesQueryOptions());
+    if (!context.user) initializeDemoData();
+    await context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
+    await context.queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(context.user));
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const { user } = Route.useRouteContext();
-  const [{ data: exercisesResponse }, { data: workoutsFocusValues }] =
-    useSuspenseQueries({
-      queries: [exercisesQueryOptions(), workoutsFocusValuesQueryOptions()],
-    });
+
+  const { data: exercisesResponse } = useSuspenseQuery(getExercisesQueryOptions(user));
+  const { data: workoutsFocusValues } = useSuspenseQuery(getWorkoutsFocusQueryOptions(user));
 
   // Convert API response to our cleaner DbExercise type
   const exercises: DbExercise[] = exercisesResponse.map((ex) => ({

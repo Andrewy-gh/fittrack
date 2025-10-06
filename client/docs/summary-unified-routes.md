@@ -42,7 +42,7 @@ For key details and decisions see [Implementation Plan](./unified-route-implemen
 **Status**: ✅ **APPROVED - Ready for Implementation**
 
 **Next Steps**:
-1. [ ] Start with Phase 0 (factory functions)
+1. [X] Start with Phase 0 (factory functions)
 2. [ ] Proceed to Phase 1 + 1.5 (`/workouts/new` + RecentSets)
 3. [ ] Test thoroughly before Phase 2
 4. [ ] Complete Phase 2 (`/workouts/$workoutId/edit`)

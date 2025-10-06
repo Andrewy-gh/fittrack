@@ -8,7 +8,7 @@ export const MOCK_VALUES: WorkoutCreateWorkoutRequest | WorkoutUpdateWorkoutRequ
   workoutFocus: '',
 };
 
-export const getInitialValues = (userId: string): WorkoutCreateWorkoutRequest  => {
+export const getInitialValues = (userId?: string): WorkoutCreateWorkoutRequest  => {
   const saved = loadFromLocalStorage(userId);
   return saved || MOCK_VALUES;
 };

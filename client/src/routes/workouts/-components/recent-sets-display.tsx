@@ -5,16 +5,18 @@ import { ChevronRight } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import type { ExerciseRecentSetsResponse } from '@/client';
 import { formatDate } from '@/lib/utils';
-import { recentExerciseSetsQueryOptions } from '@/lib/api/exercises';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
+import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import { getRecentSetsQueryOptions } from '@/lib/api/unified-query-options';
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
+  user: CurrentUser | CurrentInternalUser | null;
 }
 
-function RecentSetsDisplay({ exerciseId }: RecentSetsDisplayProps) {
+function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
   const { data: recentSets } = useSuspenseQuery(
-    recentExerciseSetsQueryOptions(exerciseId)
+    getRecentSetsQueryOptions(user, exerciseId)
   );
 
   if (recentSets.length === 0) {
@@ -96,7 +98,13 @@ function RecentSetsDisplay({ exerciseId }: RecentSetsDisplayProps) {
 
 // MARK: Recent Susp.
 // Helper component to wrap recent sets with proper error boundaries
-export function RecentSets({ exerciseId }: { exerciseId: number | null }) {
+export function RecentSets({
+  exerciseId,
+  user
+}: {
+  exerciseId: number | null;
+  user: CurrentUser | CurrentInternalUser | null;
+}) {
   if (!exerciseId) {
     return null;
   }
@@ -116,7 +124,7 @@ export function RecentSets({ exerciseId }: { exerciseId: number | null }) {
         </div>
       }
     >
-      <RecentSetsDisplay exerciseId={exerciseId} />
+      <RecentSetsDisplay exerciseId={exerciseId} user={user} />
     </Suspense>
   );
 }
