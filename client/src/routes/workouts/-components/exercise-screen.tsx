@@ -112,6 +112,7 @@ export const ExerciseSets = withForm({
                       // MARK: Set Cards
                       <Card
                         key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
+                        data-testid="exercise-card"
                         className="bg-card border border-border shadow-sm p-4"
                         onClick={() => {
                           setDialogOpenIndex(setIndex);

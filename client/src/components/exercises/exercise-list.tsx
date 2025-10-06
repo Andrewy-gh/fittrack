@@ -57,6 +57,7 @@ export function ExerciseList({
                   to="/exercises/$exerciseId"
                   params={{ exerciseId: exercise.id }}
                   key={exercise.id}
+                  data-testid="exercise-card"
                   className="flex items-center justify-between p-4 hover:bg-gray-100/50 transition-colors cursor-pointer border-b border-border last:border-b-0"
                 >
                   <h3 className="font-semibold">{exercise.name}</h3>

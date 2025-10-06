@@ -91,6 +91,7 @@ export function WorkoutList({
                 params={{
                   workoutId: workout.id,
                 }}
+                data-testid="workout-card"
                 className="flex cursor-pointer items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
               >
                 <div className="flex items-center space-x-4">

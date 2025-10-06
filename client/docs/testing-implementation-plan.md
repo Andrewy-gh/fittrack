@@ -761,8 +761,8 @@ jobs:
 ## Next Steps
 
 1. [X] **Approve this plan** ✅ (Updated to use Vitest Browser Mode)
-2. [ ] **Phase 1**: Install Vitest browser mode dependencies and create config
-3. [ ] **Phase 5**: Add `data-testid` attributes to components (do this first!)
+2. [X] **Phase 1**: Install Vitest browser mode dependencies and create config
+3. [X] **Phase 5**: Add `data-testid` attributes to components (do this first!)
 4. [ ] **Phase 2**: Implement demo mode tests (5 test files)
 5. [ ] **Phase 3**: Implement localStorage tests
 6. [ ] **Run tests**: `bun run test:e2e:ui` (interactive mode)
