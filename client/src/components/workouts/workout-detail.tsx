@@ -11,9 +11,13 @@ import type { WorkoutWorkoutWithSetsResponse } from '@/client';
 
 export interface WorkoutDetailProps {
   workout: WorkoutWorkoutWithSetsResponse[];
+  showEditDelete?: boolean;
 }
 
-export function WorkoutDetail({ workout }: WorkoutDetailProps) {
+export function WorkoutDetail({
+  workout,
+  showEditDelete = true
+}: WorkoutDetailProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
@@ -77,25 +81,27 @@ export function WorkoutDetail({ workout }: WorkoutDetailProps) {
               )}
             </div>
           </div>
-          <div className="flex flex-col items-center gap-3 md:flex-row">
-            <Button size="sm" variant="outline" asChild>
-              <Link
-                to="/workouts/$workoutId/edit"
-                params={{ workoutId: workout[0]?.workout_id }}
+          {showEditDelete && (
+            <div className="flex flex-col items-center gap-3 md:flex-row">
+              <Button size="sm" variant="outline" asChild>
+                <Link
+                  to="/workouts/$workoutId/edit"
+                  params={{ workoutId: workout[0]?.workout_id }}
+                >
+                  <Edit className="mr-2 hidden h-4 w-4 md:block" />
+                  Edit
+                </Link>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleOpenDeleteDialog}
               >
-                <Edit className="mr-2 hidden h-4 w-4 md:block" />
-                Edit
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleOpenDeleteDialog}
-            >
-              <Trash className="mr-2 hidden h-4 w-4 md:block" />
-              Delete
-            </Button>
-          </div>
+                <Trash className="mr-2 hidden h-4 w-4 md:block" />
+                Delete
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* MARK: Summary Cards */}
@@ -165,7 +171,7 @@ export function WorkoutDetail({ workout }: WorkoutDetailProps) {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg font-semibold">
                         <Link
-                          to={`/exercises/$exerciseId`}
+                          to="/exercises/$exerciseId"
                           params={{ exerciseId: Number(exerciseId) }}
                         >
                           {exercise.name}

@@ -10,7 +10,9 @@ export interface ExerciseListProps {
   exercises: ExerciseExerciseResponse[];
 }
 
-export function ExerciseList({ exercises }: ExerciseListProps) {
+export function ExerciseList({
+  exercises
+}: ExerciseListProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredExercises = exercises.filter((exercise) =>
@@ -52,7 +54,7 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
             ) : (
               filteredExercises.map((exercise) => (
                 <Link
-                  to={`/exercises/$exerciseId`}
+                  to="/exercises/$exerciseId"
                   params={{ exerciseId: exercise.id }}
                   key={exercise.id}
                   className="flex items-center justify-between p-4 hover:bg-gray-100/50 transition-colors cursor-pointer border-b border-border last:border-b-0"

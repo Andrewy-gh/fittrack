@@ -28,5 +28,11 @@ function RouteComponent() {
   const { data: workout } = useSuspenseQuery(
     getDemoWorkoutsByIdQueryOptions(workoutId)
   );
-  return <WorkoutDetail workout={workout} />;
+  return (
+    <WorkoutDetail
+      workout={workout}
+      exerciseDetailBasePath="/demo/exercises"
+      showEditDelete={false}
+    />
+  );
 }

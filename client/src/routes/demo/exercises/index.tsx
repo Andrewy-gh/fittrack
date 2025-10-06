@@ -12,5 +12,5 @@ export const Route = createFileRoute('/demo/exercises/')({
 
 function RouteComponent() {
   const { data: exercises } = useSuspenseQuery(getDemoExercisesQueryOptions());
-  return <ExerciseList exercises={exercises} />;
+  return <ExerciseList exercises={exercises} exerciseDetailBasePath="/demo/exercises" />;
 }

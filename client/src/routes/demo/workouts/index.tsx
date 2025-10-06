@@ -12,5 +12,12 @@ export const Route = createFileRoute('/demo/workouts/')({
 
 function RouteComponent() {
   const { data: workouts } = useSuspenseQuery(getDemoWorkoutsQueryOptions());
-  return <WorkoutList workouts={workouts} hasWorkoutInProgress={false} />;
+  return (
+    <WorkoutList
+      workouts={workouts}
+      hasWorkoutInProgress={false}
+      newWorkoutLink="/demo/workouts/new"
+      workoutDetailBasePath="/demo/workouts"
+    />
+  );
 }
