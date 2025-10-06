@@ -1238,17 +1238,6 @@ Monthly (300 PRs):
 
 ---
 
-## Next Steps
-
-**If approved**:
-
-1. Run `bunx playwright install chromium --with-deps`
-2. Create `playwright.config.ts`
-3. Convert the 6 test files from Vitest browser API to Playwright API
-4. Test locally with `bunx playwright test --ui`
-5. Update CI workflow
-6. Document in README
-
 **Estimated effort**: 2-3 hours total
 
 **Expected outcome**: Working E2E test suite verifying:
