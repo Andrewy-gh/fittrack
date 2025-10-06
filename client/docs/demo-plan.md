@@ -74,41 +74,43 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
 2. Both `/_auth/*` and `/demo/*` routes import same components
 3. Routes handle data fetching (different query options), components handle display
 
-### 2.1 Extract Shared Components (`client/src/components/`)
-- [ ] Create `client/src/components/workouts/` directory
-- [ ] Extract `WorkoutsDisplay` → `components/workouts/workout-list.tsx`
-  - [ ] Move from `_auth/workouts/index.tsx` (lines 13-142)
-  - [ ] Export as standalone component
-  - [ ] Remove user prop (not needed by component)
-- [ ] Extract `IndividualWorkoutPage` → `components/workouts/workout-detail.tsx`
-  - [ ] Move from `_auth/workouts/$workoutId/index.tsx` (lines 14-224)
-  - [ ] Export as standalone component
+### 2.1 Extract Shared Components (`client/src/components/`) ✅ COMPLETE
+- [x] Create `client/src/components/workouts/` directory
+- [x] Extract `WorkoutsDisplay` → `components/workouts/workout-list.tsx`
+  - [x] Move from `_auth/workouts/index.tsx` (lines 13-142)
+  - [x] Export as standalone component
+  - [x] Remove user prop (not needed by component)
+  - [x] Added optional `hasWorkoutInProgress` and `newWorkoutLink` props for flexibility
+- [x] Extract `IndividualWorkoutPage` → `components/workouts/workout-detail.tsx`
+  - [x] Move from `_auth/workouts/$workoutId/index.tsx` (lines 14-224)
+  - [x] Export as standalone component
 - [ ] Extract `WorkoutTracker` → `components/workouts/workout-form.tsx` (if needed for new workout flow)
   - [ ] Analyze `_auth/workouts/new-2.tsx` dependencies
   - [ ] May need to keep in route file due to complex state/localStorage integration
-- [ ] Create `client/src/components/exercises/` directory
-- [ ] Extract `ExercisesDisplay` → `components/exercises/exercise-list.tsx`
-  - [ ] Move from `_auth/exercises/index.tsx` (lines 11-80)
-  - [ ] Export as standalone component
-- [ ] Extract `ExerciseDisplay` → `components/exercises/exercise-detail.tsx`
-  - [ ] Move from `_auth/exercises/$exerciseId.tsx` (lines 25-254)
-  - [ ] Export as standalone component
+- [x] Create `client/src/components/exercises/` directory
+- [x] Extract `ExercisesDisplay` → `components/exercises/exercise-list.tsx`
+  - [x] Move from `_auth/exercises/index.tsx` (lines 11-80)
+  - [x] Export as standalone component
+- [x] Extract `ExerciseDisplay` → `components/exercises/exercise-detail.tsx`
+  - [x] Move from `_auth/exercises/$exerciseId.tsx` (lines 25-254)
+  - [x] Export as standalone component
 
-### 2.2 Update Auth Routes to Use Extracted Components
-- [ ] Update `_auth/workouts/index.tsx`:
-  - [ ] Import `WorkoutList` from `@/components/workouts/workout-list`
-  - [ ] Update `RouteComponent` to render imported component
-  - [ ] Keep loader and query logic unchanged
-- [ ] Update `_auth/workouts/$workoutId/index.tsx`:
-  - [ ] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
-  - [ ] Update `RouteComponent` to render imported component
-  - [ ] Keep loader and query logic unchanged
-- [ ] Update `_auth/exercises/index.tsx`:
-  - [ ] Import `ExerciseList` from `@/components/exercises/exercise-list`
-  - [ ] Update `RouteComponent` to render imported component
-- [ ] Update `_auth/exercises/$exerciseId.tsx`:
-  - [ ] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
-  - [ ] Update `RouteComponent` to render imported component
+### 2.2 Update Auth Routes to Use Extracted Components ✅ COMPLETE
+- [x] Update `_auth/workouts/index.tsx`:
+  - [x] Import `WorkoutList` from `@/components/workouts/workout-list`
+  - [x] Update `RouteComponent` to render imported component
+  - [x] Keep loader and query logic unchanged
+  - [x] User prop handled in route file for localStorage check
+- [x] Update `_auth/workouts/$workoutId/index.tsx`:
+  - [x] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
+  - [x] Update `RouteComponent` to render imported component
+  - [x] Keep loader and query logic unchanged
+- [x] Update `_auth/exercises/index.tsx`:
+  - [x] Import `ExerciseList` from `@/components/exercises/exercise-list`
+  - [x] Update `RouteComponent` to render imported component
+- [x] Update `_auth/exercises/$exerciseId.tsx`:
+  - [x] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
+  - [x] Update `RouteComponent` to render imported component
 
 ### 2.3 Create Demo Routes (`client/src/routes/demo/`)
 - [ ] `demo.tsx` - Demo layout route (pathless layout with Header + initialize demo data)
@@ -139,7 +141,7 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
 
 ### 3.1 Landing Page Integration
 - [ ] Update landing page "Try for free" button:
-  - [ ] Link to `/demo/workouts` or `/demo` route
+  - [ ] Link to `/demo/workouts/new`
   - [ ] Ensure navigation works correctly
 
 ### 3.2 Demo UX Enhancements
@@ -180,15 +182,23 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
 
 ## File Structure Summary
 
-### New Files
+### New Files Created (Phase 1 & 2.1/2.2)
 ```
-client/src/lib/demo-data/
+client/src/lib/demo-data/                          ✅ COMPLETE
   ├── types.ts                    # Type imports/exports
-  ├── initial-data.ts             # Seed data
-  ├── storage.ts                  # localStorage utilities
-  └── query-options.ts            # Demo query/mutation options
+  ├── initial-data.ts             # Seed data (5 exercises, 3 workouts, 26 sets)
+  ├── storage.ts                  # localStorage utilities (390 lines)
+  └── query-options.ts            # Demo query/mutation options (237 lines)
 
-client/src/routes/demo/
+client/src/components/                             ✅ COMPLETE (Phase 2.1)
+  ├── workouts/
+  │   ├── workout-list.tsx       # Extracted from _auth/workouts/index.tsx
+  │   └── workout-detail.tsx     # Extracted from _auth/workouts/$workoutId/index.tsx
+  └── exercises/
+      ├── exercise-list.tsx      # Extracted from _auth/exercises/index.tsx
+      └── exercise-detail.tsx    # Extracted from _auth/exercises/$exerciseId.tsx
+
+client/src/routes/demo/                            ⏳ TODO (Phase 2.3)
   ├── index.tsx                   # Demo landing (optional)
   ├── workouts/
   │   ├── index.tsx              # Workout list
@@ -199,7 +209,11 @@ client/src/routes/demo/
 ```
 
 ### Modified Files
-- [ ] Landing page - Add "Try for free" link to `/demo`
+- [x] `_auth/workouts/index.tsx` - Now uses `<WorkoutList>` component (Phase 2.2)
+- [x] `_auth/workouts/$workoutId/index.tsx` - Now uses `<WorkoutDetail>` component (Phase 2.2)
+- [x] `_auth/exercises/index.tsx` - Now uses `<ExerciseList>` component (Phase 2.2)
+- [x] `_auth/exercises/$exerciseId.tsx` - Now uses `<ExerciseDetail>` component (Phase 2.2)
+- [ ] Landing page - Add "Try for free" link to `/demo` (Phase 3.1)
 
 ---
 

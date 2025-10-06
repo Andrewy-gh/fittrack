@@ -14,11 +14,13 @@
 - ✅ Mock data files created (Phase 1.2)
 - ✅ Demo query options implemented (Phase 1.3)
 
-**Next Tasks** (Phase 2):
+**Current Phase**: Phase 2.1 & 2.2 ✅ COMPLETE → Starting Phase 2.3 (Demo Routes)
+
+**Next Tasks** (Phase 2.3):
 1. ✅ Analyze existing `/_auth/*` routes structure
 2. ✅ Analyze component reuse strategy
-3. Extract shared display components
-4. Update auth routes to use extracted components
+3. ✅ Extract shared display components
+4. ✅ Update auth routes to use extracted components
 5. Create demo route wrappers (`/demo/*`)
 6. Wire up demo query options to route components
 
@@ -168,6 +170,62 @@
    - ✅ Updated Phase 2.3 (Create Demo Routes)
    - ✅ Updated this progress log
 
+### ✅ Session 5: Phase 2.1 & 2.2 - Component Extraction (2025-10-05 - Evening)
+
+**Goal**: Extract shared display components and update auth routes to use them.
+
+1. **Created 4 shared components** in `client/src/components/`:
+   - ✅ `workouts/workout-list.tsx` (143 lines)
+     - Extracted from `_auth/workouts/index.tsx`
+     - Removed user prop dependency
+     - Added optional `hasWorkoutInProgress` and `newWorkoutLink` props for flexibility
+     - Exports `WorkoutList` component and `WorkoutListProps` interface
+   - ✅ `workouts/workout-detail.tsx` (234 lines)
+     - Extracted from `_auth/workouts/$workoutId/index.tsx`
+     - Completely user-agnostic
+     - Exports `WorkoutDetail` component and `WorkoutDetailProps` interface
+   - ✅ `exercises/exercise-list.tsx` (82 lines)
+     - Extracted from `_auth/exercises/index.tsx`
+     - Includes search functionality
+     - Exports `ExerciseList` component and `ExerciseListProps` interface
+   - ✅ `exercises/exercise-detail.tsx` (242 lines)
+     - Extracted from `_auth/exercises/$exerciseId.tsx`
+     - Includes statistics cards and chart
+     - Exports `ExerciseDetail` component and `ExerciseDetailProps` interface
+
+2. **Updated 4 auth routes to use extracted components**:
+   - ✅ `_auth/workouts/index.tsx` (33 lines - reduced from 162)
+     - Imports `WorkoutList` component
+     - Handles `hasWorkoutInProgress` check in route
+     - Passes data to component
+   - ✅ `_auth/workouts/$workoutId/index.tsx` (34 lines - reduced from 254)
+     - Imports `WorkoutDetail` component
+     - Pure data fetching wrapper
+   - ✅ `_auth/exercises/index.tsx` (16 lines - reduced from 95)
+     - Imports `ExerciseList` component
+     - Minimal wrapper around query
+   - ✅ `_auth/exercises/$exerciseId.tsx` (31 lines - reduced from 281)
+     - Imports `ExerciseDetail` component
+     - Pure data fetching wrapper
+
+3. **Code reduction achieved**:
+   - Total lines removed from route files: ~600 lines
+   - Total lines in shared components: ~700 lines
+   - Net result: Routes are now thin wrappers (16-34 lines each)
+   - All display logic centralized in reusable components
+
+4. **Benefits realized**:
+   - ✅ Single source of truth for UI components
+   - ✅ Auth routes remain functional (no breaking changes)
+   - ✅ Components ready for reuse in demo routes
+   - ✅ Clear separation: routes handle data, components handle UI
+   - ✅ Type-safe props interfaces exported from each component
+
+5. **Documentation Updates**:
+   - ✅ Updated `client/docs/demo-plan.md` Phase 2.1 & 2.2 checkboxes
+   - ✅ Updated file structure summary
+   - ✅ Updated this progress log
+
 ### ✅ Key Decisions Made (Session 4)
 
 #### Component Reuse Strategy
@@ -191,7 +249,7 @@
 - All `-components/*` files
 - localStorage utilities
 
-**Next Phase**: Phase 2.1 - Extract Shared Components
+**Next Phase**: Phase 2.3 - Create Demo Routes
 
 ---
 
@@ -240,6 +298,28 @@ exercise (id, name, user_id)
 
 ---
 
+## 📦 Phase 2.1 & 2.2 Summary (Session 5 - COMPLETE)
+
+**Total Component Extraction**: ~700 lines across 4 components
+- ✅ `workout-list.tsx` (143 lines) - List view with summary cards
+- ✅ `workout-detail.tsx` (234 lines) - Detail view with exercises
+- ✅ `exercise-list.tsx` (82 lines) - List view with search
+- ✅ `exercise-detail.tsx` (242 lines) - Detail view with stats and chart
+
+**Route Simplification**: ~600 lines removed from route files
+- Auth routes reduced to 16-34 lines each (pure data wrappers)
+- All display logic moved to shared components
+- No breaking changes to existing functionality
+
+**Key Achievement**: Both auth and demo routes can now use identical UI components
+
+**Next Phase**: Phase 2.3 - Create Demo Routes
+- Create `/demo/*` route wrappers
+- Use demo query options instead of API queries
+- Reuse same extracted components
+
+---
+
 ## 📦 Phase 1 Summary (COMPLETE)
 
 **Total Implementation**: ~1,010 lines of code across 4 files
@@ -278,7 +358,11 @@ See `client/docs/phase-1-1-type-verification.md` for complete verification repor
 
 All mock data infrastructure complete! See Session 3 above for details.
 
-**What's Next**: Phase 2 - Route Implementation
+### ✅ COMPLETED: Phase 2.1 & 2.2 - Component Extraction
+
+All shared components extracted and auth routes updated! See Session 5 above for details.
+
+**What's Next**: Phase 2.3 - Create Demo Routes
 
 #### Priority Order:
 1. ~~**Verify types**~~ ✅ COMPLETE
@@ -286,9 +370,11 @@ All mock data infrastructure complete! See Session 3 above for details.
 3. ~~**Create `initial-data.ts`**~~ ✅ COMPLETE
 4. ~~**Create `storage.ts`**~~ ✅ COMPLETE
 5. ~~**Create `query-options.ts`**~~ ✅ COMPLETE
-6. **Analyze existing `/_auth/*` routes** ← NEXT
-7. **Create `/demo/*` route wrappers**
-8. **Test demo routes end-to-end**
+6. ~~**Analyze existing `/_auth/*` routes**~~ ✅ COMPLETE
+7. ~~**Extract shared components**~~ ✅ COMPLETE
+8. ~~**Update auth routes to use components**~~ ✅ COMPLETE
+9. **Create `/demo/*` route wrappers** ← NEXT
+10. **Test demo routes end-to-end**
 
 ---
 
@@ -333,43 +419,72 @@ Check what exists in `client/src/routes/_auth/`:
 ## Handoff Prompt for Next Session
 
 ```
-I'm implementing demo routes for a fitness tracking app. We've completed Phase 1.1 (Type Verification).
+I'm implementing demo routes for a fitness tracking app. We've completed Phases 1 (Data Layer) and 2.1-2.2 (Component Extraction).
 
-**Current Status**: Phase 1.1 COMPLETE ✅ - Ready for Phase 1.2 (Mock Data Files)
+**Current Status**: Phase 2.1 & 2.2 COMPLETE ✅ - Ready for Phase 2.3 (Create Demo Routes)
 
 **What was completed**:
-- ✅ All generated types verified in `client/src/client/types.gen.ts`
-- ✅ Data relationships fully mapped and documented
-- ✅ localStorage schema designed to match API types
-- ✅ Created comprehensive verification doc: `client/docs/phase-1-1-type-verification.md`
+- ✅ Phase 1: All mock data infrastructure (types, initial data, storage, query options)
+- ✅ Phase 2.0: Component reuse strategy analysis
+- ✅ Phase 2.1: Extracted 4 shared components to `client/src/components/`
+- ✅ Phase 2.2: Updated auth routes to use extracted components
 
 **What I need you to do next**:
 1. **Read these docs to get context**:
-   - `client/docs/phase-1-1-type-verification.md` - Type verification results
-   - `client/docs/demo-plan.md` - Full implementation plan (Phase 1.1 is checked off)
+   - `client/docs/demo-progress.md` - Full progress log (see Session 5 for latest work)
+   - `client/docs/demo-plan.md` - Implementation plan (Phase 2.1 & 2.2 checked off)
 
-2. **Implement Phase 1.2 - Mock Data Files** in `client/src/lib/demo-data/`:
-   - Create `types.ts` - Import and re-export types from `@/client`
-   - Create `initial-data.ts` - Seed data (5 exercises, 3 workouts, 15-20 sets)
-   - Create `storage.ts` - localStorage CRUD utilities
-
-3. **Then Phase 1.3 - Query Options**:
-   - Create `query-options.ts` - Demo query/mutation options that mirror real API
-
-**Critical Requirements**:
-- All mock data MUST match generated types from `@/client/types.gen.ts` EXACTLY
-- Use flattened `WorkoutWorkoutWithSetsResponse[]` structure (not nested objects)
-- Set types constrained to `"warmup" | "working"` literals only
-- Include `exercise_order` and `set_order` for proper UI ordering
-- Demo user ID: `"demo-user"` (string constant)
+2. **Implement Phase 2.3 - Create Demo Routes** in `client/src/routes/demo/`:
+   - Create `demo/workouts/index.tsx`:
+     - Import `WorkoutList` from `@/components/workouts/workout-list`
+     - Use `getDemoWorkoutsQueryOptions()` in loader
+     - No user dependency needed
+   - Create `demo/workouts/$workoutId/index.tsx`:
+     - Import `WorkoutDetail` from `@/components/workouts/workout-detail`
+     - Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
+   - Create `demo/exercises/index.tsx`:
+     - Import `ExerciseList` from `@/components/exercises/exercise-list`
+     - Use `getDemoExercisesQueryOptions()` in loader
+   - Create `demo/exercises/$exerciseId.tsx`:
+     - Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
+     - Use `getDemoExercisesByIdQueryOptions(id)` in loader
+   - Optional: Create `demo.tsx` layout route for demo initialization
 
 **Key Files to Reference**:
-- `client/src/client/types.gen.ts` - All type definitions
-- `client/src/lib/api/workouts.ts` - Example query/mutation patterns to mirror
-- `client/src/lib/api/exercises.ts` - Example exercise query patterns
-- `client/docs/phase-1-1-type-verification.md` - localStorage schema design
+- `client/src/components/workouts/workout-list.tsx` - Shared workout list component
+- `client/src/components/workouts/workout-detail.tsx` - Shared workout detail component
+- `client/src/components/exercises/exercise-list.tsx` - Shared exercise list component
+- `client/src/components/exercises/exercise-detail.tsx` - Shared exercise detail component
+- `client/src/lib/demo-data/query-options.ts` - All demo query options
+- `client/src/routes/_auth/workouts/index.tsx` - Example of how auth routes use components
 
-**Key Constraint**: Do NOT modify any existing `/_auth/*` routes. We're creating parallel `/demo/*` routes.
+**Critical Requirements**:
+- Demo routes should be VERY similar to auth routes, just using demo query options
+- Components are already user-agnostic - no user props needed
+- Use demo query options from `@/lib/demo-data/query-options`
+- Routes should be thin wrappers (16-34 lines like auth routes)
+- NO breaking changes to existing auth routes or components
+
+**Pattern to Follow**:
+```tsx
+// Example: demo/workouts/index.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { getDemoWorkoutsQueryOptions } from '@/lib/demo-data/query-options';
+import { WorkoutList } from '@/components/workouts/workout-list';
+
+export const Route = createFileRoute('/demo/workouts/')({
+  loader: async ({ context }) => {
+    context.queryClient.ensureQueryData(getDemoWorkoutsQueryOptions());
+  },
+  component: RouteComponent,
+});
+
+function RouteComponent() {
+  const { data: workouts } = useSuspenseQuery(getDemoWorkoutsQueryOptions());
+  return <WorkoutList workouts={workouts} />;
+}
+```
 
 Please update checkboxes in `client/docs/demo-plan.md` as you complete each task.
 ```
