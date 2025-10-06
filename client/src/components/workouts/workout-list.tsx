@@ -15,7 +15,7 @@ export interface WorkoutListProps {
 export function WorkoutList({
   workouts,
   hasWorkoutInProgress = false,
-  newWorkoutLink = '/workouts/new-2',
+  newWorkoutLink = '/workouts/new',
 }: WorkoutListProps) {
   const totalWorkouts = workouts.length;
   const thisWeekWorkouts = workouts.filter((workout) => {
