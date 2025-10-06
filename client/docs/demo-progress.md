@@ -4,25 +4,23 @@
 
 **Goal**: Create `/demo/*` routes with localStorage-backed mock data so users can try FitTrack without authentication.
 
-**Current Phase**: Phase 1.2 & 1.3 ✅ COMPLETE → Starting Phase 2 (Route Implementation)
+**Current Phase**: Phase 2.3a (View-Only Demo Routes) ← **START HERE**
 
 **What's Done**:
-- ✅ Planning & analysis complete (Phase 1.1)
-- ✅ All types verified from `@/client/types.gen.ts`
-- ✅ Data relationships mapped
-- ✅ localStorage schema designed
-- ✅ Mock data files created (Phase 1.2)
-- ✅ Demo query options implemented (Phase 1.3)
+- ✅ Phase 1: Mock data infrastructure (types, initial data, storage, query options)
+- ✅ Phase 2.1: Extracted 4 shared components to `@/components/`
+- ✅ Phase 2.2: Updated auth routes to use extracted components
+- ✅ Session 6: Analyzed workout form extraction (deferred for productivity)
 
-**Current Phase**: Phase 2.1 & 2.2 ✅ COMPLETE → Starting Phase 2.3 (Demo Routes)
+**Next Tasks** (Phase 2.3a - Easy Wins!):**
+1. Create `demo/workouts/index.tsx` (~30 lines)
+2. Create `demo/workouts/$workoutId/index.tsx` (~35 lines)
+3. Create `demo/exercises/index.tsx` (~20 lines)
+4. Create `demo/exercises/$exerciseId.tsx` (~30 lines)
+5. Optional: Create `demo.tsx` layout route
 
-**Next Tasks** (Phase 2.3):
-1. ✅ Analyze existing `/_auth/*` routes structure
-2. ✅ Analyze component reuse strategy
-3. ✅ Extract shared display components
-4. ✅ Update auth routes to use extracted components
-5. Create demo route wrappers (`/demo/*`)
-6. Wire up demo query options to route components
+**Deferred** (Phase 2.3b - Complex):
+- `demo/workouts/new.tsx` - See `workout-form-extraction-plan.md` for details
 
 **Key Docs**:
 - `client/docs/demo-plan.md` - Master checklist
@@ -226,6 +224,62 @@
    - ✅ Updated file structure summary
    - ✅ Updated this progress log
 
+### 📋 Session 6: Workout Form Extraction Analysis (2025-10-05 - Evening)
+
+**Goal**: Analyze complexity of extracting `WorkoutTracker` component from `_auth/workouts/new.tsx` for demo route reuse.
+
+1. **Initial Complexity Analysis**:
+   - ✅ Analyzed user dependency (4 locations, all `user.id` for localStorage)
+   - ✅ Analyzed mutation dependency (swappable)
+   - ✅ Analyzed 3 child components (`AddExerciseScreen`, `ExerciseScreen`, `RecentSets`)
+   - ✅ Discovered all child components are already user-agnostic using `withForm` HOC
+   - ✅ Complexity assessment: **HIGH** due to deep user/mutation integration
+
+2. **Reviewed TanStack Form Documentation**:
+   - ✅ Read Form Composition guide (`client/docs/tanstack-form-composition-docs.md`)
+   - ✅ Read Arrays guide (`client/docs/tanstack-form-array-docs.md`)
+   - ✅ Learned about `withForm` HOC pattern for component composition
+   - ✅ Discovered child components are already using correct TanStack Form pattern
+
+3. **Key Findings**:
+   - ✅ Child components (`AddExerciseScreen`, `ExerciseScreen`, etc.) use `withForm` HOC
+   - ✅ `defaultValues` in `withForm` is for type-checking only, not runtime (per TanStack docs)
+   - ✅ Child components receive form instance from parent via props
+   - ✅ **Child components require NO refactoring** - just move files
+   - ⚠️ Parent `WorkoutTracker` is too complex for simple `withForm` extraction
+
+4. **Created Comprehensive Extraction Plans**:
+   - ✅ **Plan v1** (`client/docs/workout-form-extraction-plan.md`):
+     - Option A: Extract with parameterization (2.5 hours)
+     - Option B: Duplicate route (50 minutes)
+     - Option C: Hybrid approach (1.25 hours)
+     - Detailed rollback strategies
+     - Success criteria checklists
+   - ✅ **Plan v2** (`client/docs/workout-form-extraction-plan-v2.md`):
+     - Attempted to use `withForm` for parent component
+     - Discovered form lifecycle complexity prevents simple `withForm` usage
+     - Revised to recommend Hybrid approach
+     - Validated that child components need no changes
+
+5. **Final Decision: Defer Workout Form Extraction**:
+   - **Reason**: Extraction is complex and blocks progress on simpler demo routes
+   - **Strategy**: Implement view-only demo routes first (Phase 2.3a)
+   - **Deferred**: Workout creation form (Phase 2.3b)
+   - **Recommended approach when ready**: Hybrid (Option C)
+     - Move child components to `@/components/workouts/` (already reusable)
+     - Extract `WorkoutTracker` with manual props injection
+     - Estimated time: 1.25 hours
+
+6. **Documentation Updates**:
+   - ✅ Created `client/docs/workout-form-extraction-plan.md` (900 lines)
+   - ✅ Created `client/docs/workout-form-extraction-plan-v2.md` (400 lines)
+   - ✅ Updated `client/docs/demo-plan.md` with Phase 2.3a/2.3b split
+   - ✅ Updated this progress log
+
+**Key Takeaway**: Child components are production-ready for reuse. Parent form extraction is well-documented but deferred to maintain momentum.
+
+---
+
 ### ✅ Key Decisions Made (Session 4)
 
 #### Component Reuse Strategy
@@ -419,36 +473,56 @@ Check what exists in `client/src/routes/_auth/`:
 ## Handoff Prompt for Next Session
 
 ```
-I'm implementing demo routes for a fitness tracking app. We've completed Phases 1 (Data Layer) and 2.1-2.2 (Component Extraction).
+I'm implementing demo routes for a fitness tracking app. We've completed Phases 1 (Data Layer), 2.1-2.2 (Component Extraction), and analyzed workout form extraction complexity.
 
-**Current Status**: Phase 2.1 & 2.2 COMPLETE ✅ - Ready for Phase 2.3 (Create Demo Routes)
+**Current Status**: Ready for Phase 2.3a (View-Only Demo Routes)
 
 **What was completed**:
 - ✅ Phase 1: All mock data infrastructure (types, initial data, storage, query options)
 - ✅ Phase 2.0: Component reuse strategy analysis
 - ✅ Phase 2.1: Extracted 4 shared components to `client/src/components/`
 - ✅ Phase 2.2: Updated auth routes to use extracted components
+- ✅ Session 6: Analyzed workout form extraction complexity (DEFERRED)
+  - Created comprehensive extraction plans (v1 and v2)
+  - Decided to implement view-only routes first for productivity
 
 **What I need you to do next**:
 1. **Read these docs to get context**:
-   - `client/docs/demo-progress.md` - Full progress log (see Session 5 for latest work)
-   - `client/docs/demo-plan.md` - Implementation plan (Phase 2.1 & 2.2 checked off)
+   - `client/docs/demo-progress.md` - Full progress log (see Session 6 for latest)
+   - `client/docs/demo-plan.md` - Implementation plan (note Phase 2.3a/2.3b split)
 
-2. **Implement Phase 2.3 - Create Demo Routes** in `client/src/routes/demo/`:
+2. **Implement Phase 2.3a - View-Only Demo Routes** in `client/src/routes/demo/`:
+
+   **Priority: These 4 routes first (easy wins)**
    - Create `demo/workouts/index.tsx`:
      - Import `WorkoutList` from `@/components/workouts/workout-list`
      - Use `getDemoWorkoutsQueryOptions()` in loader
      - No user dependency needed
+     - ~30 lines (similar to `_auth/workouts/index.tsx`)
+
    - Create `demo/workouts/$workoutId/index.tsx`:
      - Import `WorkoutDetail` from `@/components/workouts/workout-detail`
      - Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
+     - ~35 lines (similar to `_auth/workouts/$workoutId/index.tsx`)
+
    - Create `demo/exercises/index.tsx`:
      - Import `ExerciseList` from `@/components/exercises/exercise-list`
      - Use `getDemoExercisesQueryOptions()` in loader
+     - ~20 lines (similar to `_auth/exercises/index.tsx`)
+
    - Create `demo/exercises/$exerciseId.tsx`:
      - Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
      - Use `getDemoExercisesByIdQueryOptions(id)` in loader
-   - Optional: Create `demo.tsx` layout route for demo initialization
+     - ~30 lines (similar to `_auth/exercises/$exerciseId.tsx`)
+
+   **Optional (nice to have)**:
+   - Create `demo.tsx` layout route for demo initialization
+
+**⚠️ SKIP FOR NOW (Complex - Phase 2.3b)**:
+   - `demo/workouts/new.tsx` - Workout creation form
+   - **Why deferred**: Complex form extraction with user/mutation dependencies
+   - **When ready**: See extraction plans in `client/docs/workout-form-extraction-plan.md` and `workout-form-extraction-plan-v2.md`
+   - **Estimated effort**: 1.25 hours when we circle back
 
 **Key Files to Reference**:
 - `client/src/components/workouts/workout-list.tsx` - Shared workout list component

@@ -113,6 +113,12 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
   - [x] Update `RouteComponent` to render imported component
 
 ### 2.3 Create Demo Routes (`client/src/routes/demo/`)
+
+**⚠️ IMPORTANT NOTE**: Workout form extraction (`new.tsx`) is complex and has been deferred.
+See `client/docs/workout-form-extraction-plan.md` and `client/docs/workout-form-extraction-plan-v2.md` for detailed analysis.
+**Current Strategy**: Implement view-only routes first (Phase 2.3a), circle back to form later (Phase 2.3b).
+
+#### Phase 2.3a: View-Only Demo Routes (DO THIS FIRST)
 - [ ] `demo.tsx` - Demo layout route (pathless layout with Header + initialize demo data)
 - [ ] `demo/workouts/index.tsx`:
   - [ ] Import `WorkoutList` from `@/components/workouts/workout-list`
@@ -122,10 +128,6 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
   - [ ] Import `WorkoutDetail` from `@/components/workouts/workout-detail`
   - [ ] Use `getDemoWorkoutsByIdQueryOptions(id)` in loader
   - [ ] Render same component as auth route
-- [ ] `demo/workouts/new.tsx` (or similar):
-  - [ ] Analyze if `WorkoutTracker` can be extracted or needs route-specific version
-  - [ ] Use demo query/mutation options
-  - [ ] Use `'demo-user'` for localStorage operations
 - [ ] `demo/exercises/index.tsx`:
   - [ ] Import `ExerciseList` from `@/components/exercises/exercise-list`
   - [ ] Use `getDemoExercisesQueryOptions()` in loader
@@ -134,6 +136,15 @@ Convert authenticated routes (`/_auth/*`) to demo routes (`/demo/*`) with mock d
   - [ ] Import `ExerciseDetail` from `@/components/exercises/exercise-detail`
   - [ ] Use `getDemoExercisesByIdQueryOptions(id)` in loader
   - [ ] Render same component as auth route
+
+#### Phase 2.3b: Workout Form Route (DEFERRED - Complex)
+- [ ] `demo/workouts/new.tsx`:
+  - [ ] **See extraction plans**: `workout-form-extraction-plan.md` and `workout-form-extraction-plan-v2.md`
+  - [ ] **Recommended approach**: Hybrid (Option C) - Extract child components, manual props for parent
+  - [ ] **Estimated time**: 1.25 hours
+  - [ ] **Decision rationale**: Child components already use `withForm` HOC correctly (TanStack Form pattern)
+  - [ ] Use demo query/mutation options
+  - [ ] Use `'demo-user'` for localStorage operations
 
 ---
 
