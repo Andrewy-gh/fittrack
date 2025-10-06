@@ -1,14 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useRouter } from '@tanstack/react-router';
-import { exercisesQueryOptions } from '@/lib/api/exercises';
-import { useSuspenseQueries } from '@tanstack/react-query';
+import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
 import {
-  workoutQueryOptions,
   useUpdateWorkoutMutation,
-  workoutsFocusValuesQueryOptions,
   type WorkoutFocus,
 } from '@/lib/api/workouts';
 import { transformToWorkoutFormValues } from '@/lib/api/workouts';
+import { putDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
+import { initializeDemoData } from '@/lib/demo-data/storage';
+import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import {
+  getExercisesQueryOptions,
+  getWorkoutByIdQueryOptions,
+  getWorkoutsFocusQueryOptions,
+} from '@/lib/api/unified-query-options';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
 import { Button } from '@/components/ui/button';
@@ -28,11 +33,13 @@ import type {
 } from '@/client';
 
 function EditWorkoutForm({
+  user,
   exercises,
   workout,
   workoutId,
   workoutsFocus,
 }: {
+  user: CurrentUser | CurrentInternalUser | null;
   exercises: ExerciseExerciseResponse[];
   workout: WorkoutUpdateWorkoutRequest;
   workoutId: number;
@@ -46,7 +53,9 @@ function EditWorkoutForm({
     number | null
   >(null);
 
-  const updateWorkoutMutation = useUpdateWorkoutMutation();
+  const updateWorkoutApi = useUpdateWorkoutMutation();
+  const updateWorkoutDemo = useMutation(putDemoWorkoutsByIdMutation());
+  const updateWorkoutMutation = user ? updateWorkoutApi : updateWorkoutDemo;
 
   const form = useAppForm({
     defaultValues: workout,
@@ -57,17 +66,20 @@ function EditWorkoutForm({
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };
       try {
-        await updateWorkoutMutation.mutateAsync({
-          path: { id: workoutId },
-          body: trimmedValue,
-        }, {
-          onSuccess: () => {
-            router.navigate({
-              to: '/workouts/$workoutId',
-              params: { workoutId },
-            });
+        await updateWorkoutMutation.mutateAsync(
+          {
+            path: { id: workoutId },
+            body: trimmedValue,
           },
-        });
+          {
+            onSuccess: () => {
+              router.navigate({
+                to: '/workouts/$workoutId',
+                params: { workoutId },
+              });
+            },
+          }
+        );
       } catch (error) {
         console.error('Failed to update workout:', error);
         alert(`Failed to update workout: ${error}`);
@@ -320,9 +332,16 @@ export const Route = createFileRoute('/workouts/$workoutId/edit')({
     workoutId: number;
   }> => {
     const workoutId = params.workoutId;
-    context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
-    context.queryClient.ensureQueryData(exercisesQueryOptions());
-    context.queryClient.ensureQueryData(workoutsFocusValuesQueryOptions());
+    if (!context.user) initializeDemoData();
+
+    context.queryClient.ensureQueryData(
+      getWorkoutByIdQueryOptions(context.user, workoutId)
+    );
+    context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
+    context.queryClient.ensureQueryData(
+      getWorkoutsFocusQueryOptions(context.user)
+    );
+
     return { workoutId };
   },
   component: RouteComponent,
@@ -330,19 +349,26 @@ export const Route = createFileRoute('/workouts/$workoutId/edit')({
 
 function RouteComponent() {
   const { workoutId } = Route.useLoaderData();
-  const [{ data: exercises }, { data: workout }, { data: workoutsFocusValues }] = useSuspenseQueries({
-    queries: [exercisesQueryOptions(), workoutQueryOptions(workoutId), workoutsFocusValuesQueryOptions()],
-  });
-  const workoutFormValues: WorkoutUpdateWorkoutRequest = transformToWorkoutFormValues(workout);
-  
-  const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map(
-    (wf) => ({
-      name: wf,
-    })
+  const { user } = Route.useRouteContext();
+
+  const { data: exercises } = useSuspenseQuery(getExercisesQueryOptions(user));
+  const { data: workout } = useSuspenseQuery(
+    getWorkoutByIdQueryOptions(user, workoutId)
   );
+  const { data: workoutsFocusValues } = useSuspenseQuery(
+    getWorkoutsFocusQueryOptions(user)
+  );
+
+  const workoutFormValues: WorkoutUpdateWorkoutRequest =
+    transformToWorkoutFormValues(workout);
+
+  const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map((wf) => ({
+    name: wf,
+  }));
 
   return (
     <EditWorkoutForm
+      user={user}
       exercises={exercises}
       workout={workoutFormValues}
       workoutId={workoutId}
