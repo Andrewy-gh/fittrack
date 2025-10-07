@@ -166,6 +166,7 @@ export function WorkoutDetail({
                 <Card
                   key={exerciseId}
                   className="border-0 shadow-sm backdrop-blur-sm"
+                  data-testid="workout-detail-exercise-card"
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between">

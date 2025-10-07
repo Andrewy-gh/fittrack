@@ -32,14 +32,22 @@ test.describe('localStorage Persistence', () => {
   test('should persist workout edits to localStorage', async ({ page }) => {
     await page.goto('/workouts');
 
-    await page.getByText('Morning Strength').click();
-    await page.getByRole('button', { name: /edit/i }).click();
+    await page.getByTestId('workout-card').first().click();
+    await page.getByRole('link', { name: /edit/i }).click();
 
-    const notesField = page.getByLabel(/notes/i);
+    await page.getByTestId('notes-card').click();
+
+    const notesField = page.getByTestId('notes-textarea');
     await notesField.fill('Test notes for persistence');
+
+    await page.getByTestId('notes-close').click();
+
     await page.getByRole('button', { name: /save/i }).click();
 
     await page.waitForURL('/workouts/**', { timeout: 5000 });
+
+    // Wait for the save to complete and data to be persisted
+    await page.waitForTimeout(500);
 
     const workouts = await getDemoWorkouts(page);
     const updatedWorkout = workouts.find((w: any) => w.notes === 'Test notes for persistence');
@@ -53,7 +61,7 @@ test.describe('localStorage Persistence', () => {
     const initialWorkouts = await getDemoWorkouts(page);
     const initialCount = initialWorkouts.length;
 
-    await page.getByText('Morning Strength').click();
+    await page.getByTestId('workout-card').first().click();
     await page.getByRole('button', { name: /delete/i }).click();
 
     const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });

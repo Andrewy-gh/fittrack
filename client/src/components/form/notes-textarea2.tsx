@@ -22,7 +22,7 @@ export default function NotesTextarea2() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Card className="p-4">
+        <Card className="p-4" data-testid="notes-card">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
             <span className="font-semibold text-sm tracking-tight">Notes</span>
@@ -47,9 +47,10 @@ export default function NotesTextarea2() {
           onBlur={field.handleBlur}
           onChange={(e) => field.handleChange(e.target.value)}
           className="min-h-[80px]"
+          data-testid="notes-textarea"
         />
         <DialogFooter className="sm:justify-start">
-          <DialogClose asChild>
+          <DialogClose asChild data-testid="notes-close">
             <Button type="button" variant="outline">
               Close
             </Button>

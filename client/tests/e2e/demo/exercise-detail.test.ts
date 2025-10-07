@@ -2,8 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Exercise Detail', () => {
   test.beforeEach(async ({ page }) => {
-    await page.evaluate(() => localStorage.clear());
     await page.goto('/exercises');
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
   });
 
   test('should display exercise details', async ({ page }) => {
@@ -16,7 +17,7 @@ test.describe('Demo Mode - Exercise Detail', () => {
 
   test('should delete exercise in demo mode', async ({ page }) => {
     const initialExercises = await page.evaluate(() => {
-      const data = localStorage.getItem('demo_exercises');
+      const data = localStorage.getItem('fittrack-demo-exercises');
       return data ? JSON.parse(data).length : 0;
     });
 
@@ -32,7 +33,7 @@ test.describe('Demo Mode - Exercise Detail', () => {
     await expect(page).toHaveURL('/exercises');
 
     const updatedExercises = await page.evaluate(() => {
-      const data = localStorage.getItem('demo_exercises');
+      const data = localStorage.getItem('fittrack-demo-exercises');
       return data ? JSON.parse(data).length : 0;
     });
     expect(updatedExercises).toBe(initialExercises - 1);

@@ -10,9 +10,7 @@ export interface ExerciseListProps {
   exercises: ExerciseExerciseResponse[];
 }
 
-export function ExerciseList({
-  exercises
-}: ExerciseListProps) {
+export function ExerciseList({ exercises }: ExerciseListProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredExercises = exercises.filter((exercise) =>

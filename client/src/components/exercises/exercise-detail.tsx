@@ -90,6 +90,7 @@ export function ExerciseDetail({
               size="sm"
               variant="outline"
               onClick={handleOpenDeleteDialog}
+              data-testid="delete-exercise-button"
             >
               <Trash className="mr-2 hidden h-4 w-4 md:block" />
               Delete

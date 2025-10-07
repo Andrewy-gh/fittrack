@@ -10,9 +10,8 @@
     "test": "vitest run",
     "openapi-ts": "openapi-ts",
     "tsc": "tsc --noEmit",
-    "test:e2e": "vitest --browser.enabled",
-    "test:e2e:ui": "vitest --browser.enabled --ui",
-    "test:e2e:headed": "vitest --browser.enabled --browser.headless=false"
+    "test:e2e": "bunx playwright test",
+    "test:e2e:ui": "bunx playwright test --ui"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

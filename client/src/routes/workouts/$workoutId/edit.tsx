@@ -220,6 +220,7 @@ function EditWorkoutForm({
                       key={`exercise-${exerciseIndex}`}
                       className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
                       onClick={() => handleExerciseClick(exerciseIndex)}
+                      data-testid="edit-workout-exercise-card"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -235,6 +236,7 @@ function EditWorkoutForm({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
+                              aria-label="Delete exercise"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 field.removeValue(exerciseIndex);

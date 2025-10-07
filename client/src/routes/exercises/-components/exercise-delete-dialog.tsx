@@ -9,8 +9,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
+import { useRouter, useRouteContext } from '@tanstack/react-router';
 import { useDeleteExerciseMutation } from '@/lib/api/exercises';
+import { useMutation } from '@tanstack/react-query';
+import { deleteDemoExercisesByIdMutation } from '@/lib/demo-data/query-options';
 
 interface ExerciseDeleteDialogProps {
   isOpen: boolean;
@@ -26,8 +28,11 @@ export function ExerciseDeleteDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user } = useRouteContext({ from: '/exercises/$exerciseId' });
 
-  const deleteMutation = useDeleteExerciseMutation();
+  const authDeleteMutation = useDeleteExerciseMutation();
+  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutation());
+  const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
     setError(null);
