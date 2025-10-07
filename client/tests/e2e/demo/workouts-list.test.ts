@@ -1,43 +1,33 @@
-import { test, expect } from 'vitest';
-import { page } from '@vitest/browser/context';
+import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Workouts List', () => {
-  test.beforeEach(async () => {
-    // Clear localStorage and navigate to workouts
+  test.beforeEach(async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await page.goto('/workouts');
   });
 
-  test('should load demo workouts', async () => {
-    // Verify demo data initialized
+  test('should load demo workouts', async ({ page }) => {
     const workoutCards = page.getByTestId('workout-card');
-    await expect.element(workoutCards).toBeInTheDocument();
+    await expect(workoutCards.first()).toBeVisible();
 
-    // Verify workout content
-    await expect.element(page.getByText('Morning Strength')).toBeInTheDocument();
-    await expect.element(page.getByText('Evening Cardio')).toBeInTheDocument();
+    await expect(page.getByText('Morning Strength')).toBeVisible();
+    await expect(page.getByText('Evening Cardio')).toBeVisible();
   });
 
-  test('should persist demo data across page reloads', async () => {
-    // Verify initial load
-    await expect.element(page.getByTestId('workout-card')).toBeInTheDocument();
-    await expect.element(page.getByText('Morning Strength')).toBeInTheDocument();
+  test('should persist demo data across page reloads', async ({ page }) => {
+    await expect(page.getByTestId('workout-card').first()).toBeVisible();
+    await expect(page.getByText('Morning Strength')).toBeVisible();
 
-    // Reload page
     await page.reload();
 
-    // Verify data still there
-    await expect.element(page.getByTestId('workout-card')).toBeInTheDocument();
-    await expect.element(page.getByText('Morning Strength')).toBeInTheDocument();
+    await expect(page.getByTestId('workout-card').first()).toBeVisible();
+    await expect(page.getByText('Morning Strength')).toBeVisible();
   });
 
-  test('should navigate to workout detail', async () => {
-    // Click first workout
+  test('should navigate to workout detail', async ({ page }) => {
     await page.getByText('Morning Strength').click();
 
-    // Verify navigation (check URL contains /workouts/)
-    const currentUrl = await page.evaluate(() => window.location.pathname);
-    expect(currentUrl).toMatch(/\/workouts\/\d+/);
-    await expect.element(page.getByText('Morning Strength')).toBeInTheDocument();
+    expect(page.url()).toMatch(/\/workouts\/\d+/);
+    await expect(page.getByText('Morning Strength')).toBeVisible();
   });
 });

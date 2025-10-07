@@ -1,61 +1,48 @@
-import { test, expect } from 'vitest';
-import { page } from '@vitest/browser/context';
+import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Workout Detail', () => {
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await page.goto('/workouts');
   });
 
-  test('should display workout details', async () => {
-    // Navigate to first workout
+  test('should display workout details', async ({ page }) => {
     await page.getByText('Morning Strength').click();
 
-    // Verify workout details visible
-    await expect.element(page.getByText('Morning Strength')).toBeInTheDocument();
-    await expect.element(page.getByText('Edit')).toBeInTheDocument();
-    await expect.element(page.getByText('Delete')).toBeInTheDocument();
+    await expect(page.getByText('Morning Strength')).toBeVisible();
+    await expect(page.getByText('Edit')).toBeVisible();
+    await expect(page.getByText('Delete')).toBeVisible();
 
-    // Verify exercises shown
     const exerciseCard = page.getByTestId('exercise-card');
-    await expect.element(exerciseCard).toBeInTheDocument();
+    await expect(exerciseCard.first()).toBeVisible();
   });
 
-  test('should show edit and delete buttons in demo mode', async () => {
+  test('should show edit and delete buttons in demo mode', async ({ page }) => {
     await page.getByText('Morning Strength').click();
 
-    // Verify buttons are visible (not hidden in demo mode)
-    await expect.element(page.getByRole('button', { name: /edit/i })).toBeInTheDocument();
-    await expect.element(page.getByRole('button', { name: /delete/i })).toBeInTheDocument();
+    await expect(page.getByRole('button', { name: /edit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /delete/i })).toBeVisible();
   });
 
-  test('should delete workout in demo mode', async () => {
-    // Count initial workouts
+  test('should delete workout in demo mode', async ({ page }) => {
     const initialWorkouts = await page.evaluate(() => {
       const data = localStorage.getItem('demo_workouts');
       return data ? JSON.parse(data).length : 0;
     });
 
-    // Navigate to workout and delete
     await page.getByText('Morning Strength').click();
     await page.getByRole('button', { name: /delete/i }).click();
 
-    // Confirm deletion (if dialog exists)
     const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
-    const isVisible = await confirmButton.query() !== null;
+    const isVisible = await confirmButton.isVisible().catch(() => false);
     if (isVisible) {
       await confirmButton.click();
     }
 
-    // Verify navigated back to list
-    const currentUrl = await page.evaluate(() => window.location.pathname);
-    expect(currentUrl).toBe('/workouts');
+    await expect(page).toHaveURL('/workouts');
 
-    // Verify workout no longer in list
-    const morningStrength = await page.getByText('Morning Strength').query();
-    expect(morningStrength).toBeNull();
+    await expect(page.getByText('Morning Strength')).not.toBeVisible();
 
-    // Verify localStorage updated
     const updatedWorkouts = await page.evaluate(() => {
       const data = localStorage.getItem('demo_workouts');
       return data ? JSON.parse(data).length : 0;

@@ -4,7 +4,7 @@ Check `playwright-e2e-decision-analysis.md` for details and decisions
 
 1. [x] Run `bunx playwright install chromium --with-deps`
 2. [x] Create `playwright.config.ts`
-3. [ ] Convert the 6 test files from Vitest browser API to Playwright API
+3. [x] Convert the 6 test files from Vitest browser API to Playwright API
 4. [ ] Test locally with `bunx playwright test --ui`
 5. [ ] Remove any unneeded testing dependencies from `package.json` and `vitest.config.ts`if it is no longer needed.
 6. [ ] Update CI workflow

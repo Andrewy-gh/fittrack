@@ -1,32 +1,26 @@
-import { test, expect } from 'vitest';
-import { page } from '@vitest/browser/context';
+import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Exercises List', () => {
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await page.goto('/exercises');
   });
 
-  test('should load demo exercises', async () => {
-    // Verify demo exercises loaded (5 in initial-data.ts)
+  test('should load demo exercises', async ({ page }) => {
     const exercises = await page.evaluate(() => {
       const data = localStorage.getItem('demo_exercises');
       return data ? JSON.parse(data) : [];
     });
     expect(exercises).toHaveLength(5);
 
-    // Verify exercise names visible
-    await expect.element(page.getByText('Bench Press')).toBeInTheDocument();
-    await expect.element(page.getByText('Squat')).toBeInTheDocument();
+    await expect(page.getByText('Bench Press')).toBeVisible();
+    await expect(page.getByText('Squat')).toBeVisible();
   });
 
-  test('should navigate to exercise detail', async () => {
-    // Click first exercise
+  test('should navigate to exercise detail', async ({ page }) => {
     await page.getByText('Bench Press').click();
 
-    // Verify navigation
-    const currentUrl = await page.evaluate(() => window.location.pathname);
-    expect(currentUrl).toMatch(/\/exercises\/\d+/);
-    await expect.element(page.getByText('Bench Press')).toBeInTheDocument();
+    expect(page.url()).toMatch(/\/exercises\/\d+/);
+    await expect(page.getByText('Bench Press')).toBeVisible();
   });
 });
