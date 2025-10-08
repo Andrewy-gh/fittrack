@@ -223,6 +223,7 @@ function WorkoutTracker({
                       key={`exercise-${exerciseIndex}`}
                       className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
                       onClick={() => handleExerciseClick(exerciseIndex)}
+                      data-testid="new-workout-exercise-card"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
