@@ -5,7 +5,7 @@ import { getDemoExercisesByIdQueryOptions } from '@/lib/demo-data/query-options'
 import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
 import { ExerciseDetail } from '@/components/exercises/exercise-detail';
 
-export const Route = createFileRoute('/exercises/$exerciseId')({
+export const Route = createFileRoute('/_layout/exercises/$exerciseId')({
   params: {
     parse: (params) => {
       const exerciseId = parseInt(params.exerciseId, 10);
@@ -15,18 +15,18 @@ export const Route = createFileRoute('/exercises/$exerciseId')({
       return { exerciseId };
     },
   },
-  loader: async ({ context, params }) => {
+  loader: ({ context, params }) => {
     const exerciseId = params.exerciseId;
     const user = context.user;
 
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      await context.queryClient.ensureQueryData(exerciseByIdQueryOptions(exerciseId));
+      context.queryClient.ensureQueryData(exerciseByIdQueryOptions(exerciseId));
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      await context.queryClient.ensureQueryData(getDemoExercisesByIdQueryOptions(exerciseId));
+      context.queryClient.ensureQueryData(getDemoExercisesByIdQueryOptions(exerciseId));
     }
 
     return { exerciseId };

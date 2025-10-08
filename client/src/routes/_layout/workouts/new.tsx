@@ -1,106 +1,108 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useRouter } from '@tanstack/react-router';
-import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
-import {
-  useUpdateWorkoutMutation,
-  type WorkoutFocus,
-} from '@/lib/api/workouts';
-import { transformToWorkoutFormValues } from '@/lib/api/workouts';
-import { putDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
-import { initializeDemoData } from '@/lib/demo-data/storage';
-import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
-import {
-  getExercisesQueryOptions,
-  getWorkoutByIdQueryOptions,
-  getWorkoutsFocusQueryOptions,
-} from '@/lib/api/unified-query-options';
 import { Suspense, useState } from 'react';
 import { useAppForm } from '@/hooks/form';
+import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
+import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { MiniChart } from '../-components/mini-chart';
+import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
+import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
+import { type DbExercise } from '@/lib/api/exercises';
+import { getInitialValues } from './-components/form-options';
+import { postDemoWorkoutsMutation } from '@/lib/demo-data/query-options';
+import { initializeDemoData } from '@/lib/demo-data/storage';
+import {
+  getExercisesQueryOptions,
+  getWorkoutsFocusQueryOptions,
+} from '@/lib/api/unified-query-options';
+
+import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
-} from '../-components/exercise-screen';
-import { AddExerciseScreen } from '../-components/add-exercise-screen';
-import type {
-  ExerciseExerciseResponse,
-  WorkoutUpdateWorkoutRequest,
-} from '@/client';
+} from './-components/exercise-screen';
+import { RecentSets } from './-components/recent-sets-display';
 
-function EditWorkoutForm({
+function WorkoutTracker({
   user,
   exercises,
-  workout,
-  workoutId,
   workoutsFocus,
 }: {
-  user: CurrentUser | CurrentInternalUser | null;
-  exercises: ExerciseExerciseResponse[];
-  workout: WorkoutUpdateWorkoutRequest;
-  workoutId: number;
+  user: CurrentUser | CurrentInternalUser | null; // need user for localStorage
+  exercises: DbExercise[];
   workoutsFocus: WorkoutFocus[];
 }) {
-  const router = useRouter();
   const [currentView, setCurrentView] = useState<
     'main' | 'exercise' | 'add-exercise'
   >('main');
-  const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<
-    number | null
-  >(null);
+  const [selectedExercise, setSelectedExercise] = useState<{
+    index: number;
+    exerciseId: number | null;
+  } | null>(null);
 
-  const updateWorkoutApi = useUpdateWorkoutMutation();
-  const updateWorkoutDemo = useMutation(putDemoWorkoutsByIdMutation());
-  const updateWorkoutMutation = user ? updateWorkoutApi : updateWorkoutDemo;
-
+  const saveWorkoutApi = useSaveWorkoutMutation();
+  const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
+  const saveWorkout = user ? saveWorkoutApi : saveWorkoutDemo;
   const form = useAppForm({
-    defaultValues: workout,
+    // MARK: TODO: Handle user.id when chat is implemented
+    defaultValues: getInitialValues(user?.id),
+    listeners: {
+      onChange: ({ formApi }) => {
+        console.log('Saving form data to localStorage');
+        saveToLocalStorage(formApi.state.values, user?.id);
+      },
+      onChangeDebounceMs: 500,
+    },
     onSubmit: async ({ value }) => {
       const trimmedValue = {
         ...value,
         notes: value.notes?.trim() || undefined,
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };
-      try {
-        await updateWorkoutMutation.mutateAsync(
-          {
-            path: { id: workoutId },
-            body: trimmedValue,
+
+      await saveWorkout.mutateAsync(
+        { body: trimmedValue },
+        {
+          onSuccess: () => {
+            clearLocalStorage(user?.id);
+            form.reset();
+            setSelectedExercise(null);
           },
-          {
-            onSuccess: () => {
-              router.navigate({
-                to: '/workouts/$workoutId',
-                params: { workoutId },
-              });
-            },
-          }
-        );
-      } catch (error) {
-        console.error('Failed to update workout:', error);
-        alert(`Failed to update workout: ${error}`);
-      }
+          onError: (error) => {
+            alert(error);
+          },
+        }
+      );
     },
   });
 
-  const handleAddExercise = (index: number) => {
-    setSelectedExerciseIndex(index);
+  // Helper to get exercise ID from exercises list
+  const getExerciseId = (exerciseName: string): number | null => {
+    const exercise = exercises.find((ex) => ex.name === exerciseName);
+    return exercise?.id || null;
+  };
+
+  const handleAddExercise = (index: number, exerciseId?: number) => {
+    setSelectedExercise({ index, exerciseId: exerciseId || null });
     setCurrentView('exercise');
   };
 
   const handleExerciseClick = (index: number) => {
-    setSelectedExerciseIndex(index);
+    const exerciseName = form.state.values.exercises[index]?.name;
+    const exerciseId = getExerciseId(exerciseName);
+    setSelectedExercise({ index, exerciseId });
     setCurrentView('exercise');
   };
 
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
+      clearLocalStorage(user?.id);
       form.reset();
-      setSelectedExerciseIndex(null);
+      setSelectedExercise(null);
     }
   };
 
@@ -126,7 +128,7 @@ function EditWorkoutForm({
 
   if (
     currentView === 'exercise' &&
-    selectedExerciseIndex !== null &&
+    selectedExercise !== null &&
     form.state.values.exercises.length > 0
   ) {
     return (
@@ -141,12 +143,15 @@ function EditWorkoutForm({
           header={
             <ExerciseHeader
               form={form}
-              exerciseIndex={selectedExerciseIndex}
+              exerciseIndex={selectedExercise.index}
               onBack={() => setCurrentView('main')}
             />
           }
+          recentSets={
+            <RecentSets exerciseId={selectedExercise.exerciseId} user={user} />
+          }
           sets={
-            <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
+            <ExerciseSets form={form} exerciseIndex={selectedExercise.index} />
           }
         />
       </Suspense>
@@ -166,7 +171,7 @@ function EditWorkoutForm({
         <div className="flex items-center justify-between pt-6 pb-2">
           <div>
             <h1 className="font-bold text-2xl tracking-tight text-foreground">
-              Edit Training
+              Today's Training
             </h1>
           </div>
           <div>
@@ -220,7 +225,7 @@ function EditWorkoutForm({
                       key={`exercise-${exerciseIndex}`}
                       className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
                       onClick={() => handleExerciseClick(exerciseIndex)}
-                      data-testid="edit-workout-exercise-card"
+                      data-testid="new-workout-exercise-card"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -236,7 +241,6 @@ function EditWorkoutForm({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
-                              aria-label="Delete exercise"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 field.removeValue(exerciseIndex);
@@ -317,63 +321,41 @@ function EditWorkoutForm({
   );
 }
 
-export const Route = createFileRoute('/workouts/$workoutId/edit')({
-  params: {
-    parse: (params) => {
-      const workoutId = parseInt(params.workoutId, 10);
-      if (isNaN(workoutId) || !Number.isInteger(workoutId)) {
-        throw new Error('Invalid workoutId');
-      }
-      return { workoutId };
-    },
-  },
-  loader: async ({
-    context,
-    params,
-  }): Promise<{
-    workoutId: number;
-  }> => {
-    const workoutId = params.workoutId;
+export const Route = createFileRoute('/_layout/workouts/new')({
+  loader: ({ context }) => {
     if (!context.user) initializeDemoData();
-
-    context.queryClient.ensureQueryData(
-      getWorkoutByIdQueryOptions(context.user, workoutId)
-    );
     context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
     context.queryClient.ensureQueryData(
       getWorkoutsFocusQueryOptions(context.user)
     );
-
-    return { workoutId };
   },
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { workoutId } = Route.useLoaderData();
   const { user } = Route.useRouteContext();
 
-  const { data: exercises } = useSuspenseQuery(getExercisesQueryOptions(user));
-  const { data: workout } = useSuspenseQuery(
-    getWorkoutByIdQueryOptions(user, workoutId)
+  const { data: exercisesResponse } = useSuspenseQuery(
+    getExercisesQueryOptions(user)
   );
   const { data: workoutsFocusValues } = useSuspenseQuery(
     getWorkoutsFocusQueryOptions(user)
   );
 
-  const workoutFormValues: WorkoutUpdateWorkoutRequest =
-    transformToWorkoutFormValues(workout);
+  // Convert API response to our cleaner DbExercise type
+  const exercises: DbExercise[] = exercisesResponse.map((ex) => ({
+    id: ex.id,
+    name: ex.name,
+  }));
 
   const workoutsFocus: WorkoutFocus[] = workoutsFocusValues.map((wf) => ({
     name: wf,
   }));
 
   return (
-    <EditWorkoutForm
+    <WorkoutTracker
       user={user}
       exercises={exercises}
-      workout={workoutFormValues}
-      workoutId={workoutId}
       workoutsFocus={workoutsFocus}
     />
   );

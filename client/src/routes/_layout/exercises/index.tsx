@@ -5,18 +5,18 @@ import { getDemoExercisesQueryOptions } from '@/lib/demo-data/query-options';
 import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
 import { ExerciseList } from '@/components/exercises/exercise-list';
 
-export const Route = createFileRoute('/exercises/')({
+export const Route = createFileRoute('/_layout/exercises/')({
   loader: async ({ context }) => {
     const user = context.user;
 
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      await context.queryClient.ensureQueryData(exercisesQueryOptions());
+      context.queryClient.ensureQueryData(exercisesQueryOptions());
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      await context.queryClient.ensureQueryData(getDemoExercisesQueryOptions());
+      context.queryClient.ensureQueryData(getDemoExercisesQueryOptions());
     }
   },
   component: RouteComponent,

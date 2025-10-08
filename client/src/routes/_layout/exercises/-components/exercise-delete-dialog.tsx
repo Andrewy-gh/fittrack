@@ -10,28 +10,28 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
-import { useDeleteWorkoutMutation } from '@/lib/api/workouts';
+import { useDeleteExerciseMutation } from '@/lib/api/exercises';
 import { useMutation } from '@tanstack/react-query';
-import { deleteDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
+import { deleteDemoExercisesByIdMutation } from '@/lib/demo-data/query-options';
 
-interface DeleteDialogProps {
+interface ExerciseDeleteDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  workoutId: number;
+  exerciseId: number;
 }
 
-export function DeleteDialog({
+export function ExerciseDeleteDialog({
   isOpen,
   onOpenChange,
-  workoutId,
-}: DeleteDialogProps) {
+  exerciseId,
+}: ExerciseDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { user } = useRouteContext({ from: '/workouts/$workoutId/' });
+  const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
-  const authDeleteMutation = useDeleteWorkoutMutation();
-  const demoDeleteMutation = useMutation(deleteDemoWorkoutsByIdMutation());
+  const authDeleteMutation = useDeleteExerciseMutation();
+  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutation());
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
@@ -40,10 +40,10 @@ export function DeleteDialog({
     // ! TODO: handle error
     try {
       await deleteMutation.mutateAsync(
-        { path: { id: workoutId } },
+        { path: { id: exerciseId } },
         {
           onSuccess: () => {
-            router.navigate({ to: '/workouts' });
+            router.navigate({ to: '/exercises' });
           },
         }
       );
@@ -59,7 +59,7 @@ export function DeleteDialog({
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete this
-            workout and all associated sets from your training history.
+            exercise and all associated sets from your training history.
           </AlertDialogDescription>
           {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
         </AlertDialogHeader>
@@ -70,7 +70,7 @@ export function DeleteDialog({
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? 'Deleting...' : 'Delete Workout'}
+            {isDeleting ? 'Deleting...' : 'Delete Exercise'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

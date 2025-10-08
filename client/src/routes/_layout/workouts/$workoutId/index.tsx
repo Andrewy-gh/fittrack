@@ -5,7 +5,7 @@ import { getDemoWorkoutsByIdQueryOptions } from '@/lib/demo-data/query-options';
 import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
 import { WorkoutDetail } from '@/components/workouts/workout-detail';
 
-export const Route = createFileRoute('/workouts/$workoutId/')({
+export const Route = createFileRoute('/_layout/workouts/$workoutId/')({
   params: {
     parse: (params) => {
       const workoutId = parseInt(params.workoutId, 10);
@@ -15,18 +15,18 @@ export const Route = createFileRoute('/workouts/$workoutId/')({
       return { workoutId };
     },
   },
-  loader: async ({ context, params }) => {
+  loader: ({ context, params }) => {
     const workoutId = params.workoutId;
     const user = context.user;
 
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      await context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
+      context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      await context.queryClient.ensureQueryData(getDemoWorkoutsByIdQueryOptions(workoutId));
+      context.queryClient.ensureQueryData(getDemoWorkoutsByIdQueryOptions(workoutId));
     }
 
     return { workoutId };

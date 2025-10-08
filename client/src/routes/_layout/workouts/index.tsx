@@ -6,18 +6,18 @@ import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
 import { loadFromLocalStorage } from '@/lib/local-storage';
 import { WorkoutList } from '@/components/workouts/workout-list';
 
-export const Route = createFileRoute('/workouts/')({
+export const Route = createFileRoute('/_layout/workouts/')({
   loader: async ({ context }) => {
     const user = context.user;
 
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      await context.queryClient.ensureQueryData(workoutsQueryOptions());
+      context.queryClient.ensureQueryData(workoutsQueryOptions());
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      await context.queryClient.ensureQueryData(getDemoWorkoutsQueryOptions());
+      context.queryClient.ensureQueryData(getDemoWorkoutsQueryOptions());
     }
   },
   component: RouteComponent,
