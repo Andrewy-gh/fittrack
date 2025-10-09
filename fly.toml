@@ -4,7 +4,7 @@
 #
 
 app = 'fittrack'
-primary_region = 'bos'
+primary_region = 'ewr'
 
 [build]
 

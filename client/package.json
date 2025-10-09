@@ -7,9 +7,12 @@
     "start": "vite --port 3000",
     "build": "bunx --bun vite build",
     "serve": "vite preview",
+    "serve:test": "vite preview --port 5173",
     "test": "vitest run",
     "openapi-ts": "openapi-ts",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "test:e2e": "bunx playwright test",
+    "test:e2e:ui": "bunx playwright test --ui"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -44,13 +47,18 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.81.1",
+    "@playwright/test": "^1.56.0",
     "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.2.0",
+    "@types/node": "^24.7.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/browser": "^3.2.4",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
+    "playwright": "^1.56.0",
     "typescript": "^5.9.2",
     "vite": "^6.1.0",
     "vitest": "^3.0.5",

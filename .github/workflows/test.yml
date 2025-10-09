@@ -5,8 +5,8 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    name: Run Tests
+  backend-test:
+    name: Run Backend Tests
     runs-on: ubuntu-latest
 
     services:
@@ -35,9 +35,21 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
+      - name: Cache Go build and tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/bin
+          key: ${{ runner.os }}-go-tools-goose-v3.24.3
+          restore-keys: |
+            ${{ runner.os }}-go-tools-
+
       - name: Install Goose
         run: |
-          go install github.com/pressly/goose/v3/cmd/goose@latest
+          if ! command -v goose &> /dev/null; then
+            go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
+          fi
 
       - name: Set up test database
         working-directory: server
@@ -55,9 +67,60 @@ jobs:
         run: |
           go test -short ./...
 
-      - name: Run integration tests  
+      - name: Run integration tests
         working-directory: server
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
         run: |
           go test -v ./...
+
+  # TODO: Re-enable frontend tests once CI hanging issue is resolved
+  # See: .github/ISSUE_TEMPLATE/e2e-ci-hanging.md
+  # frontend-test:
+  #   name: Frontend Tests
+  #   runs-on: ubuntu-latest
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Set up Bun
+  #       uses: oven-sh/setup-bun@v2
+  #       with:
+  #         bun-version: '1.2'
+  #
+  #     - name: Cache Bun dependencies
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.bun/install/cache
+  #           client/node_modules
+  #         key: ${{ runner.os }}-bun-${{ hashFiles('client/bun.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-bun-
+  #
+  #     - name: Install dependencies
+  #       working-directory: client
+  #       run: bun install --frozen-lockfile
+  #
+  #     - name: Cache Playwright browsers
+  #       uses: actions/cache@v4
+  #       id: playwright-cache
+  #       with:
+  #         path: ~/.cache/ms-playwright
+  #         key: ${{ runner.os }}-playwright-${{ hashFiles('client/bun.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-playwright-
+  #
+  #     - name: Install Playwright browsers
+  #       if: steps.playwright-cache.outputs.cache-hit != 'true'
+  #       working-directory: client
+  #       run: bunx playwright install --with-deps
+  #
+  #     - name: Run type checking
+  #       working-directory: client
+  #       run: bun run tsc
+  #
+  #     - name: Run E2E tests
+  #       working-directory: client
+  #       run: bun run test:e2e

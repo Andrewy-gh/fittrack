@@ -17,7 +17,6 @@ import {
   BarChart3,
   Dumbbell,
 } from 'lucide-react';
-import { stackClientApp } from '@/stack';
 import {
   type CurrentUser,
   type CurrentInternalUser,
@@ -522,17 +521,10 @@ function HomePage({
 }
 
 export const Route = createFileRoute('/')({
-  loader: async () => {
-    const user = await stackClientApp.getUser();
-    if (!user) {
-      return null;
-    }
-    return user;
-  },
   component: App,
 });
 
 function App() {
-  const user = Route.useLoaderData();
+  const {user} = Route.useRouteContext();
   return <HomePage user={user} />;
 }
