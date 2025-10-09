@@ -43,6 +43,8 @@ function setInStorage<T>(key: string, value: T): void {
 // ===========================
 
 export function initializeDemoData(): void {
+  if (typeof window === 'undefined') return;
+
   const hasData = localStorage.getItem(STORAGE_KEYS.WORKOUTS);
 
   if (!hasData) {
