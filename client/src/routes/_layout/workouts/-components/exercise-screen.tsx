@@ -18,7 +18,7 @@ export const ExerciseHeader = withForm({
   render: function Render({ form, exerciseIndex, onBack }) {
     return (
       <div className="flex items-center justify-between pt-6 pb-2">
-        <button onClick={onBack} aria-label="Back">
+        <button onClick={onBack} aria-label="Back" className='cursor-pointer'>
           <ChevronLeft className="text-primary" />
         </button>
         <form.AppField

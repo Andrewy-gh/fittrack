@@ -34,7 +34,7 @@ export const AddExerciseScreen = withForm({
         <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
           {/* Header */}
           <div className="flex items-center justify-between pt-4">
-            <button onClick={onBack}>
+            <button onClick={onBack} className="cursor-pointer">
               <ChevronLeft className="text-primary" />
             </button>
             <div>
@@ -78,7 +78,7 @@ export const AddExerciseScreen = withForm({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search exercises..."
+              placeholder="Search/add exercises"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 text-base"
