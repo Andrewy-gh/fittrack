@@ -51,7 +51,6 @@ export const AddExerciseScreen = withForm({
                     <Button
                       size="sm"
                       onClick={() => {
-                        console.log('searchQuery', searchQuery);
                         const newExercise: ExerciseOption = {
                           id: null, // null ID for new exercises not yet in the database
                           name: searchQuery,
