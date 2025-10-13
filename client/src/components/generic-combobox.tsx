@@ -105,6 +105,7 @@ function GenericList<T extends { name: string }>({
         if (v.includes(s)) return 1;
         return 0;
       }}
+      className="pb-4"
     >
       <CommandInput
         placeholder="Search options..."
