@@ -5,6 +5,7 @@ import { queryClient } from "./lib/api/api.ts";
 import { router } from "./main.tsx";
 import "./lib/api/client-config.ts";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { ReloadPrompt } from "./components/reload-prompt";
 
 export function App() {
   const user = useUser();
@@ -15,6 +16,7 @@ export function App() {
         context={{ user }}
       />
       <ReactQueryDevtools initialIsOpen={false} />
+      <ReloadPrompt />
     </QueryClientProvider>
   );
 }

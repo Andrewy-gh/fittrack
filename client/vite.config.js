@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import viteReact from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 import { resolve } from 'node:path';
@@ -11,6 +12,44 @@ export default defineConfig({
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact(),
     tailwindcss(),
+    VitePWA({
+      registerType: 'prompt',
+      includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
+      manifest: {
+        name: 'FitTrack',
+        short_name: 'FitTrack',
+        description: 'Track your workouts',
+        theme_color: '#000000',
+        icons: [
+          {
+            src: 'logo192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'logo512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\./,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
+      }
+    }),
   ],
   build: {
     rollupOptions: {
