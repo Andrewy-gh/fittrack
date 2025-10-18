@@ -136,6 +136,14 @@ definitions:
     - workout_date
     - workout_id
     type: object
+  exercise.UpdateExerciseNameRequest:
+    properties:
+      name:
+        maxLength: 256
+        type: string
+    required:
+    - name
+    type: object
   response.ErrorResponse:
     properties:
       message:
@@ -450,7 +458,7 @@ paths:
       consumes:
       - application/json
       description: Get a specific exercise with all its sets from workouts. Returns
-        empty array when exercise has no sets.
+        empty array when exercise exists but has no sets.
       parameters:
       - description: Exercise ID
         in: path
@@ -461,7 +469,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Success (may be empty array)
+          description: Success (may be empty array if exercise has no sets)
           schema:
             items:
               $ref: '#/definitions/exercise.ExerciseWithSetsResponse'
@@ -474,6 +482,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found - Exercise not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -481,6 +493,53 @@ paths:
       security:
       - StackAuth: []
       summary: Get exercise with sets
+      tags:
+      - exercises
+    patch:
+      consumes:
+      - application/json
+      description: Update the name of an exercise by ID (must belong to authenticated
+        user)
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Exercise name update request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/exercise.UpdateExerciseNameRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content - Exercise name updated successfully
+        "400":
+          description: Bad Request - Invalid exercise ID or validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid token
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found - Exercise not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict - Exercise name already exists
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Update an exercise name
       tags:
       - exercises
   /exercises/{id}/recent-sets:

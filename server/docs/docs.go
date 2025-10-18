@@ -129,7 +129,7 @@ const docTemplate = `{
                         "StackAuth": []
                     }
                 ],
-                "description": "Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.",
+                "description": "Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.",
                 "consumes": [
                     "application/json"
                 ],
@@ -151,7 +151,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success (may be empty array)",
+                        "description": "Success (may be empty array if exercise has no sets)",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -167,6 +167,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Exercise not found or doesn't belong to user",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -223,6 +229,77 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found - Exercise not found or doesn't belong to user",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Update the name of an exercise by ID (must belong to authenticated user)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Update an exercise name",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Exercise name update request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/exercise.UpdateExerciseNameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content - Exercise name updated successfully"
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid exercise ID or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - Exercise not found or doesn't belong to user",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict - Exercise name already exists",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -795,6 +872,18 @@ const docTemplate = `{
                 "workout_id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "exercise.UpdateExerciseNameRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 256
                 }
             }
         },

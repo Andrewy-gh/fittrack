@@ -120,6 +120,28 @@ export function createExercise(name: string): ExerciseExerciseResponse {
   };
 }
 
+export function updateExercise(id: number, name: string): boolean {
+  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exerciseIndex = exercises.findIndex((ex) => ex.id === id);
+
+  if (exerciseIndex === -1) return false;
+
+  // Check for duplicate name (case-insensitive, excluding the exercise being updated)
+  const duplicate = exercises.find(
+    (ex) => ex.id !== id && ex.name.toLowerCase() === name.toLowerCase()
+  );
+  if (duplicate) {
+    throw new Error(`Exercise name "${name}" already exists`);
+  }
+
+  // Update the exercise
+  exercises[exerciseIndex].name = name;
+  exercises[exerciseIndex].updated_at = new Date().toISOString();
+
+  setInStorage(STORAGE_KEYS.EXERCISES, exercises);
+  return true;
+}
+
 export function deleteExercise(id: number): boolean {
   const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
   const filtered = exercises.filter((ex) => ex.id !== id);

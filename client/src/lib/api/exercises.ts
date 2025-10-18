@@ -1,11 +1,12 @@
 import { queryClient } from './api';
 import { useMutation } from '@tanstack/react-query';
 import type { ExerciseExerciseResponse } from '@/client';
-import { 
+import {
   getExercisesQueryOptions,
   getExercisesByIdQueryOptions,
   getExercisesByIdRecentSetsQueryOptions,
   deleteExercisesByIdMutation,
+  patchExercisesByIdMutation,
   getExercisesQueryKey,
   getExercisesByIdQueryKey,
 } from '@/client/@tanstack/react-query.gen';
@@ -44,6 +45,20 @@ export function useDeleteExerciseMutation() {
         queryKey: getExercisesQueryKey(),
       });
       queryClient.removeQueries({
+        queryKey: getExercisesByIdQueryKey({ path: { id } }),
+      });
+    },
+  });
+}
+
+export function useUpdateExerciseMutation() {
+  return useMutation({
+    ...patchExercisesByIdMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getExercisesQueryKey(),
+      });
+      queryClient.invalidateQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id } }),
       });
     },

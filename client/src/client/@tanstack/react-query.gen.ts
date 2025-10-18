@@ -6,6 +6,7 @@ import {
   postExercises,
   deleteExercisesById,
   getExercisesById,
+  patchExercisesById,
   getExercisesByIdRecentSets,
   getWorkouts,
   postWorkouts,
@@ -23,6 +24,8 @@ import type {
   DeleteExercisesByIdData,
   DeleteExercisesByIdError,
   GetExercisesByIdData,
+  PatchExercisesByIdData,
+  PatchExercisesByIdError,
   GetExercisesByIdRecentSetsData,
   GetWorkoutsData,
   PostWorkoutsData,
@@ -188,7 +191,7 @@ export const getExercisesByIdQueryKey = (
 
 /**
  * Get exercise with sets
- * Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.
+ * Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
  */
 export const getExercisesByIdQueryOptions = (
   options: Options<GetExercisesByIdData>,
@@ -205,6 +208,34 @@ export const getExercisesByIdQueryOptions = (
     },
     queryKey: getExercisesByIdQueryKey(options),
   });
+};
+
+/**
+ * Update an exercise name
+ * Update the name of an exercise by ID (must belong to authenticated user)
+ */
+export const patchExercisesByIdMutation = (
+  options?: Partial<Options<PatchExercisesByIdData>>,
+): UseMutationOptions<
+  unknown,
+  PatchExercisesByIdError,
+  Options<PatchExercisesByIdData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    PatchExercisesByIdError,
+    Options<PatchExercisesByIdData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await patchExercisesById({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
 };
 
 export const getExercisesByIdRecentSetsQueryKey = (

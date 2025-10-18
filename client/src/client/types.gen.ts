@@ -46,6 +46,10 @@ export type ExerciseRecentSetsResponse = {
   workout_id: number;
 };
 
+export type ExerciseUpdateExerciseNameRequest = {
+  name: string;
+};
+
 export type ResponseErrorResponse = {
   message?: string;
 };
@@ -249,6 +253,10 @@ export type GetExercisesByIdErrors = {
    */
   401: ResponseErrorResponse;
   /**
+   * Not Found - Exercise not found or doesn't belong to user
+   */
+  404: ResponseErrorResponse;
+  /**
    * Internal Server Error
    */
   500: ResponseErrorResponse;
@@ -259,13 +267,61 @@ export type GetExercisesByIdError =
 
 export type GetExercisesByIdResponses = {
   /**
-   * Success (may be empty array)
+   * Success (may be empty array if exercise has no sets)
    */
   200: Array<ExerciseExerciseWithSetsResponse>;
 };
 
 export type GetExercisesByIdResponse =
   GetExercisesByIdResponses[keyof GetExercisesByIdResponses];
+
+export type PatchExercisesByIdData = {
+  /**
+   * Exercise name update request
+   */
+  body: ExerciseUpdateExerciseNameRequest;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/exercises/{id}";
+};
+
+export type PatchExercisesByIdErrors = {
+  /**
+   * Bad Request - Invalid exercise ID or validation error
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized - Invalid token
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found - Exercise not found or doesn't belong to user
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Conflict - Exercise name already exists
+   */
+  409: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type PatchExercisesByIdError =
+  PatchExercisesByIdErrors[keyof PatchExercisesByIdErrors];
+
+export type PatchExercisesByIdResponses = {
+  /**
+   * No Content - Exercise name updated successfully
+   */
+  204: unknown;
+};
 
 export type GetExercisesByIdRecentSetsData = {
   body?: never;
