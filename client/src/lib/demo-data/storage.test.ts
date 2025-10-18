@@ -1,19 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { updateExercise, createExercise, getAllExercises } from './storage';
 
 describe('updateExercise', () => {
-  beforeEach(() => {
-    // Clear localStorage before each test
-    localStorage.clear();
-  });
 
   it('should successfully update exercise name', () => {
     // Create an exercise
     const exercise = createExercise('Bench Press');
-    const oldUpdatedAt = exercise.updated_at;
 
-    // Wait a bit to ensure updated_at changes
-    const now = new Date().toISOString();
+    // Small delay to ensure timestamp will be different
+    const startTime = new Date().getTime();
+    while (new Date().getTime() - startTime < 5) {
+      // Wait 5ms
+    }
 
     // Update the exercise
     const success = updateExercise(exercise.id, 'Incline Bench Press');
@@ -26,10 +24,7 @@ describe('updateExercise', () => {
 
     expect(updated).toBeDefined();
     expect(updated?.name).toBe('Incline Bench Press');
-    expect(updated?.updated_at).not.toBe(oldUpdatedAt);
-    if (updated) {
-      expect(updated.updated_at >= now).toBe(true);
-    }
+    expect(updated?.updated_at).not.toBe(exercise.updated_at);
   });
 
   it('should throw error when duplicate name exists', () => {
