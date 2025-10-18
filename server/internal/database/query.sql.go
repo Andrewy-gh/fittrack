@@ -671,6 +671,23 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 	return items, nil
 }
 
+const updateExerciseName = `-- name: UpdateExerciseName :exec
+UPDATE exercise
+SET name = $2, updated_at = NOW()
+WHERE id = $1 AND user_id = $3
+`
+
+type UpdateExerciseNameParams struct {
+	ID     int32  `json:"id"`
+	Name   string `json:"name"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) UpdateExerciseName(ctx context.Context, arg UpdateExerciseNameParams) error {
+	_, err := q.db.Exec(ctx, updateExerciseName, arg.ID, arg.Name, arg.UserID)
+	return err
+}
+
 const updateSet = `-- name: UpdateSet :one
 UPDATE "set"
 SET
