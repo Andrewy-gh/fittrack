@@ -135,3 +135,99 @@ func TestExerciseService_DeleteExercise(t *testing.T) {
 	}
 }
 
+func TestExerciseService_UpdateExerciseName(t *testing.T) {
+	tests := []struct {
+		name        string
+		exerciseID  int32
+		newName     string
+		userID      string
+		setupMock   func(*MockExerciseRepository)
+		expectError bool
+		errorType   string
+	}{
+		{
+			name:       "successful update",
+			exerciseID: 1,
+			newName:    "Updated Exercise",
+			userID:     "user-123",
+			setupMock: func(m *MockExerciseRepository) {
+				m.On("GetExercise", mock.Anything, int32(1), "user-123").Return(db.Exercise{ID: 1, Name: "Old Exercise"}, nil)
+				m.On("UpdateExerciseName", mock.Anything, int32(1), "Updated Exercise", "user-123").Return(nil)
+			},
+			expectError: false,
+		},
+		{
+			name:       "exercise not found",
+			exerciseID: 999,
+			newName:    "Updated Exercise",
+			userID:     "user-123",
+			setupMock: func(m *MockExerciseRepository) {
+				m.On("GetExercise", mock.Anything, int32(999), "user-123").Return(db.Exercise{}, assert.AnError)
+			},
+			expectError: true,
+			errorType:   "ErrNotFound",
+		},
+		{
+			name:       "unauthenticated user",
+			exerciseID: 1,
+			newName:    "Updated Exercise",
+			userID:     "",
+			setupMock: func(m *MockExerciseRepository) {
+				// No mock setup needed as authentication check happens first
+			},
+			expectError: true,
+			errorType:   "ErrUnauthorized",
+		},
+		{
+			name:       "update operation fails",
+			exerciseID: 1,
+			newName:    "Updated Exercise",
+			userID:     "user-123",
+			setupMock: func(m *MockExerciseRepository) {
+				m.On("GetExercise", mock.Anything, int32(1), "user-123").Return(db.Exercise{ID: 1, Name: "Old Exercise"}, nil)
+				m.On("UpdateExerciseName", mock.Anything, int32(1), "Updated Exercise", "user-123").Return(assert.AnError)
+			},
+			expectError: true,
+			errorType:   "generic",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := new(MockExerciseRepository)
+			tt.setupMock(mockRepo)
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			service := NewService(logger, mockRepo)
+
+			ctx := context.Background()
+			if tt.userID != "" {
+				ctx = context.WithValue(ctx, user.UserIDKey, tt.userID)
+			}
+
+			err := service.UpdateExerciseName(ctx, tt.exerciseID, tt.newName)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+				switch tt.errorType {
+				case "ErrUnauthorized":
+					if _, ok := err.(*ErrUnauthorized); !ok {
+						t.Errorf("expected ErrUnauthorized but got %T", err)
+					}
+				case "ErrNotFound":
+					if _, ok := err.(*ErrNotFound); !ok {
+						t.Errorf("expected ErrNotFound but got %T", err)
+					}
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %s", err)
+				}
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
