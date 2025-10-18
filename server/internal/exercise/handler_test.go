@@ -67,6 +67,11 @@ func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, u
 	return args.Error(0)
 }
 
+func (m *MockExerciseRepository) UpdateExerciseName(ctx context.Context, id int32, name string, userID string) error {
+	args := m.Called(ctx, id, name, userID)
+	return args.Error(0)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }
@@ -556,6 +561,168 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 
 			// Execute
 			handler.DeleteExercise(w, req)
+
+			// Assert
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			if tt.expectJSON {
+				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+				if tt.expectedError != "" {
+					assertJSONError(t, w, tt.expectedError)
+				}
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
+	userID := "test-user-id"
+
+	tests := []struct {
+		name          string
+		exerciseID    string
+		requestBody   interface{}
+		setupMock     func(*MockExerciseRepository, int32)
+		ctx           context.Context
+		expectedCode  int
+		expectJSON    bool
+		expectedError string
+	}{
+		{
+			name:       "successful update",
+			exerciseID: "1",
+			requestBody: map[string]string{"name": "Updated Exercise"},
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Old Exercise"}, nil)
+				m.On("UpdateExerciseName", mock.Anything, id, "Updated Exercise", userID).Return(nil)
+			},
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusNoContent,
+			expectJSON:   false,
+		},
+		{
+			name:          "missing exercise ID",
+			exerciseID:    "",
+			requestBody:   map[string]string{"name": "Updated Exercise"},
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "Missing exercise ID",
+		},
+		{
+			name:          "invalid exercise ID",
+			exerciseID:    "invalid",
+			requestBody:   map[string]string{"name": "Updated Exercise"},
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "Invalid exercise ID",
+		},
+		{
+			name:          "invalid JSON",
+			exerciseID:    "1",
+			requestBody:   "invalid json string",
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "Failed to decode request body",
+		},
+		{
+			name:          "validation error - empty name",
+			exerciseID:    "1",
+			requestBody:   map[string]string{"name": ""},
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "Validation failed",
+		},
+		{
+			name:       "exercise not found",
+			exerciseID: "999",
+			requestBody: map[string]string{"name": "Updated Exercise"},
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusNotFound,
+			expectJSON:    true,
+			expectedError: "exercise not found",
+		},
+		{
+			name:       "update operation fails",
+			exerciseID: "1",
+			requestBody: map[string]string{"name": "Updated Exercise"},
+			setupMock: func(m *MockExerciseRepository, id int32) {
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Old Exercise"}, nil)
+				m.On("UpdateExerciseName", mock.Anything, id, "Updated Exercise", userID).Return(assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectJSON:    true,
+			expectedError: "Failed to update exercise name",
+		},
+		{
+			name:          "unauthenticated user",
+			exerciseID:    "1",
+			requestBody:   map[string]string{"name": "Updated Exercise"},
+			setupMock:     func(m *MockExerciseRepository, id int32) {},
+			ctx:           context.Background(),
+			expectedCode:  http.StatusUnauthorized,
+			expectJSON:    true,
+			expectedError: "user not authenticated",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			mockRepo := &MockExerciseRepository{}
+			var id int32
+			if tt.exerciseID != "" {
+				idInt, err := strconv.Atoi(tt.exerciseID)
+				if err == nil {
+					id = int32(idInt)
+				}
+			}
+			tt.setupMock(mockRepo, id)
+
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			validator := validator.New()
+			service := NewService(logger, mockRepo)
+			handler := NewHandler(logger, validator, service)
+
+			// Prepare request
+			var req *http.Request
+			if tt.requestBody != nil {
+				var body []byte
+				var err error
+
+				switch v := tt.requestBody.(type) {
+				case string:
+					body = []byte(v)
+				default:
+					body, err = json.Marshal(v)
+					if err != nil {
+						t.Fatalf("Failed to marshal request body: %v", err)
+					}
+				}
+				req = httptest.NewRequest("PATCH", "/api/exercises/"+tt.exerciseID, bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+			} else {
+				req = httptest.NewRequest("PATCH", "/api/exercises/"+tt.exerciseID, nil)
+			}
+
+			req.SetPathValue("id", tt.exerciseID)
+			w := httptest.NewRecorder()
+
+			// Execute
+			handler.UpdateExerciseName(w, req.WithContext(tt.ctx))
 
 			// Assert
 			assert.Equal(t, tt.expectedCode, w.Code)

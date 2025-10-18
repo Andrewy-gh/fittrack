@@ -25,17 +25,19 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Exercises</h1>
           </div>
-          <Button size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Exercise
-          </Button>
+          {filteredExercises.length === 0 && (
+            <Button size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Exercise
+            </Button>
+          )}
         </div>
 
         {/* MARK: Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
-            placeholder="Search exercises..."
+            placeholder="Search/add exercises..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"

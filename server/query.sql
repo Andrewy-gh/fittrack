@@ -56,6 +56,11 @@ RETURNING id;
 -- name: DeleteExercise :exec
 DELETE FROM exercise WHERE id = $1 AND user_id = $2;
 
+-- name: UpdateExerciseName :exec
+UPDATE exercise
+SET name = $2, updated_at = NOW()
+WHERE id = $1 AND user_id = $3;
+
 -- name: CreateSet :one
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

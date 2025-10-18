@@ -167,6 +167,17 @@ export const exercise_RecentSetsResponseSchema = {
   },
 } as const;
 
+export const exercise_UpdateExerciseNameRequestSchema = {
+  type: "object",
+  required: ["name"],
+  properties: {
+    name: {
+      type: "string",
+      maxLength: 256,
+    },
+  },
+} as const;
+
 export const response_ErrorResponseSchema = {
   type: "object",
   properties: {

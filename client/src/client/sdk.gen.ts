@@ -14,6 +14,9 @@ import type {
   GetExercisesByIdData,
   GetExercisesByIdResponses,
   GetExercisesByIdErrors,
+  PatchExercisesByIdData,
+  PatchExercisesByIdResponses,
+  PatchExercisesByIdErrors,
   GetExercisesByIdRecentSetsData,
   GetExercisesByIdRecentSetsResponses,
   GetExercisesByIdRecentSetsErrors,
@@ -130,7 +133,7 @@ export const deleteExercisesById = <ThrowOnError extends boolean = false>(
 
 /**
  * Get exercise with sets
- * Get a specific exercise with all its sets from workouts. Returns empty array when exercise has no sets.
+ * Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
  */
 export const getExercisesById = <ThrowOnError extends boolean = false>(
   options: Options<GetExercisesByIdData, ThrowOnError>,
@@ -148,6 +151,33 @@ export const getExercisesById = <ThrowOnError extends boolean = false>(
     ],
     url: "/exercises/{id}",
     ...options,
+  });
+};
+
+/**
+ * Update an exercise name
+ * Update the name of an exercise by ID (must belong to authenticated user)
+ */
+export const patchExercisesById = <ThrowOnError extends boolean = false>(
+  options: Options<PatchExercisesByIdData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    PatchExercisesByIdResponses,
+    PatchExercisesByIdErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 };
 

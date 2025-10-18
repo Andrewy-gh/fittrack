@@ -16,6 +16,7 @@ type ExerciseRepository interface {
 	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
 	GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error)
+	UpdateExerciseName(ctx context.Context, id int32, name, userID string) error
 	DeleteExercise(ctx context.Context, id int32, userID string) error
 }
 
@@ -111,6 +112,29 @@ func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int3
 		return nil, fmt.Errorf("failed to get recent sets for exercise: %w", err)
 	}
 	return sets, nil
+}
+
+// MARK: UpdateExerciseName
+func (es *ExerciseService) UpdateExerciseName(ctx context.Context, id int32, name string) error {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	_, err := es.repo.GetExercise(ctx, id, userID)
+	if err != nil {
+		es.logger.Debug("exercise not found for update", "exercise_id", id, "user_id", userID, "error", err)
+		return &ErrNotFound{Message: "exercise not found"}
+	}
+
+	if err := es.repo.UpdateExerciseName(ctx, id, name, userID); err != nil {
+		es.logger.Error("failed to update exercise name", "error", err)
+		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
+		return fmt.Errorf("failed to update exercise name: %w", err)
+	}
+
+	es.logger.Info("exercise name updated successfully", "exercise_id", id, "user_id", userID)
+	return nil
 }
 
 // MARK: DeleteExercise

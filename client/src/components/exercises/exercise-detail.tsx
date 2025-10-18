@@ -17,6 +17,7 @@ import { formatDate, formatTime } from '@/lib/utils';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
 import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
+import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exercise-edit-dialog';
 
 export interface ExerciseDetailProps {
   exerciseSets: ExerciseExerciseWithSetsResponse[];
@@ -28,6 +29,7 @@ export function ExerciseDetail({
   exerciseId,
 }: ExerciseDetailProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   // Calculate summary statistics
   const totalSets = exerciseSets.length;
   const uniqueWorkouts = new Set(exerciseSets.map((set) => set.workout_id))
@@ -67,6 +69,10 @@ export function ExerciseDetail({
 
   const exerciseName = exerciseSets[0]?.exercise_name || 'Exercise';
 
+  const handleOpenEditDialog = () => {
+    setIsEditDialogOpen(true);
+  };
+
   const handleOpenDeleteDialog = () => {
     setIsDeleteDialogOpen(true);
   };
@@ -82,7 +88,7 @@ export function ExerciseDetail({
             </h1>
           </div>
           <div className="flex flex-col items-center gap-3 md:flex-row">
-            <Button size="sm">
+            <Button size="sm" onClick={handleOpenEditDialog}>
               <Edit className="mr-2 hidden h-4 w-4 md:block" />
               Edit
             </Button>
@@ -241,7 +247,13 @@ export function ExerciseDetail({
             );
           })}
         </div>
-        {/* MARK: Dialog */}
+        {/* MARK: Dialogs */}
+        <ExerciseEditDialog
+          isOpen={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          exerciseId={exerciseId}
+          exerciseName={exerciseName}
+        />
         <ExerciseDeleteDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}

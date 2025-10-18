@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/go-playground/validator/v10"
 )
@@ -209,6 +210,67 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
 		return
 	}
+}
+
+// MARK: UpdateExerciseName
+// UpdateExerciseName godoc
+// @Summary Update an exercise name
+// @Description Update the name of an exercise by ID (must belong to authenticated user)
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Exercise ID"
+// @Param body body UpdateExerciseNameRequest true "Exercise name update request"
+// @Success 204 "No Content - Exercise name updated successfully"
+// @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid exercise ID or validation error"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
+// @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
+// @Failure 409 {object} response.ErrorResponse "Conflict - Exercise name already exists"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises/{id} [patch]
+func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Request) {
+	exerciseID := r.PathValue("id")
+	if exerciseID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+		return
+	}
+
+	exerciseIDInt, err := strconv.ParseInt(exerciseID, 10, 32)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+		return
+	}
+
+	var req UpdateExerciseNameRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
+		return
+	}
+
+	if err := h.validator.Struct(req); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Validation failed", err)
+		return
+	}
+
+	if err := h.exerciseService.UpdateExerciseName(r.Context(), int32(exerciseIDInt), req.Name); err != nil {
+		var errUnauthorized *ErrUnauthorized
+		var errNotFound *ErrNotFound
+
+		switch {
+		case errors.As(err, &errUnauthorized):
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		case errors.As(err, &errNotFound):
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+		case db.IsUniqueConstraintError(err):
+			response.ErrorJSON(w, r, h.logger, http.StatusConflict, "Exercise name already exists", nil)
+		default:
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to update exercise name", err)
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // MARK: DeleteExercise

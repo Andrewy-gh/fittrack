@@ -238,6 +238,34 @@ func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id i
 	return sets, nil
 }
 
+func (er *exerciseRepository) UpdateExerciseName(ctx context.Context, id int32, name, userID string) error {
+	if err := er.queries.UpdateExerciseName(ctx, db.UpdateExerciseNameParams{
+		ID:     id,
+		Name:   name,
+		UserID: userID,
+	}); err != nil {
+		if db.IsRowLevelSecurityError(err) {
+			er.logger.Error("update exercise name failed - RLS policy violation",
+				"error", err,
+				"exercise_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			er.logger.Error("update exercise name failed",
+				"exercise_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return fmt.Errorf("failed to update exercise name (id: %d): %w", id, err)
+	}
+
+	er.logger.Info("exercise name updated successfully",
+		"exercise_id", id,
+		"user_id", userID)
+
+	return nil
+}
+
 func (er *exerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
 	if err := er.queries.DeleteExercise(ctx, db.DeleteExerciseParams{
 		ID:     id,

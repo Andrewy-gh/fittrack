@@ -13,6 +13,7 @@ import type {
 import {
   getAllExercises,
   createExercise,
+  updateExercise,
   deleteExercise,
   getExerciseWithSets,
   getExerciseRecentSets,
@@ -131,6 +132,28 @@ export const postDemoExercisesMutation = (): UseMutationOptions<
   mutationFn: async ({ body }) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     return createExercise(body.name);
+  },
+});
+
+export const patchDemoExercisesByIdMutation = (): UseMutationOptions<
+  void,
+  Error,
+  { path: { id: number }; body: { name: string } }
+> => ({
+  mutationFn: async ({ path: { id }, body }) => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const success = updateExercise(id, body.name);
+    if (!success) {
+      throw new Error('Exercise not found');
+    }
+  },
+  onSuccess: (_, { path: { id } }) => {
+    queryClient.invalidateQueries({
+      queryKey: getDemoExercisesQueryKey(),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getDemoExercisesByIdQueryKey(id),
+    });
   },
 });
 
