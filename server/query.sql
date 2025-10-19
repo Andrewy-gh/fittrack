@@ -157,8 +157,19 @@ ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at DESC
 LIMIT 3;
 
 -- name: ListWorkoutFocusValues :many
-SELECT DISTINCT workout_focus 
-FROM workout 
-WHERE user_id = $1 
+SELECT DISTINCT workout_focus
+FROM workout
+WHERE user_id = $1
   AND workout_focus IS NOT NULL
 ORDER BY workout_focus;
+
+-- name: GetExerciseStats :one
+SELECT
+    COUNT(s.id)::integer as total_sets,
+    COUNT(DISTINCT s.workout_id)::integer as unique_workouts,
+    COALESCE(AVG(s.weight), 0)::numeric as avg_weight,
+    COALESCE(MAX(s.weight), 0)::numeric as max_weight,
+    COALESCE(AVG(COALESCE(s.weight, 0) * s.reps), 0)::numeric as avg_volume,
+    COALESCE(MAX(COALESCE(s.weight, 0) * s.reps), 0)::numeric as max_volume
+FROM "set" s
+WHERE s.exercise_id = $1 AND s.user_id = $2;
