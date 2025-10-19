@@ -188,6 +188,46 @@ func (q *Queries) GetExerciseByName(ctx context.Context, arg GetExerciseByNamePa
 	return i, err
 }
 
+const getExerciseStats = `-- name: GetExerciseStats :one
+SELECT
+    COUNT(s.id)::integer as total_sets,
+    COUNT(DISTINCT s.workout_id)::integer as unique_workouts,
+    COALESCE(AVG(s.weight), 0)::numeric as avg_weight,
+    COALESCE(MAX(s.weight), 0)::numeric as max_weight,
+    COALESCE(AVG(COALESCE(s.weight, 0) * s.reps), 0)::numeric as avg_volume,
+    COALESCE(MAX(COALESCE(s.weight, 0) * s.reps), 0)::numeric as max_volume
+FROM "set" s
+WHERE s.exercise_id = $1 AND s.user_id = $2
+`
+
+type GetExerciseStatsParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExerciseStatsRow struct {
+	TotalSets      int32          `json:"total_sets"`
+	UniqueWorkouts int32          `json:"unique_workouts"`
+	AvgWeight      pgtype.Numeric `json:"avg_weight"`
+	MaxWeight      pgtype.Numeric `json:"max_weight"`
+	AvgVolume      pgtype.Numeric `json:"avg_volume"`
+	MaxVolume      pgtype.Numeric `json:"max_volume"`
+}
+
+func (q *Queries) GetExerciseStats(ctx context.Context, arg GetExerciseStatsParams) (GetExerciseStatsRow, error) {
+	row := q.db.QueryRow(ctx, getExerciseStats, arg.ExerciseID, arg.UserID)
+	var i GetExerciseStatsRow
+	err := row.Scan(
+		&i.TotalSets,
+		&i.UniqueWorkouts,
+		&i.AvgWeight,
+		&i.MaxWeight,
+		&i.AvgVolume,
+		&i.MaxVolume,
+	)
+	return i, err
+}
+
 const getExerciseWithSets = `-- name: GetExerciseWithSets :many
 SELECT 
     s.workout_id,
@@ -604,9 +644,9 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]ListSetsRow, e
 }
 
 const listWorkoutFocusValues = `-- name: ListWorkoutFocusValues :many
-SELECT DISTINCT workout_focus 
-FROM workout 
-WHERE user_id = $1 
+SELECT DISTINCT workout_focus
+FROM workout
+WHERE user_id = $1
   AND workout_focus IS NOT NULL
 ORDER BY workout_focus
 `
