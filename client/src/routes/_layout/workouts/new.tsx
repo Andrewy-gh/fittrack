@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Suspense, useState } from 'react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Suspense } from 'react';
 import { z } from 'zod';
 import { useAppForm } from '@/hooks/form';
 import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
@@ -37,13 +37,8 @@ function WorkoutTracker({
   exercises: DbExercise[];
   workoutsFocus: WorkoutFocus[];
 }) {
-  const [currentView, setCurrentView] = useState<
-    'main' | 'exercise' | 'add-exercise'
-  >('main');
-  const [selectedExercise, setSelectedExercise] = useState<{
-    index: number;
-    exerciseId: number | null;
-  } | null>(null);
+  const { addExercise, exerciseIndex } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   const saveWorkoutApi = useSaveWorkoutMutation();
   const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
@@ -71,7 +66,7 @@ function WorkoutTracker({
           onSuccess: () => {
             clearLocalStorage(user?.id);
             form.reset();
-            setSelectedExercise(null);
+            navigate({ search: {} });
           },
           onError: (error) => {
             alert(error);
@@ -87,28 +82,24 @@ function WorkoutTracker({
     return exercise?.id || null;
   };
 
-  const handleAddExercise = (index: number, exerciseId?: number) => {
-    setSelectedExercise({ index, exerciseId: exerciseId || null });
-    setCurrentView('exercise');
+  const handleAddExercise = (index: number) => {
+    navigate({ search: { exerciseIndex: index } });
   };
 
   const handleExerciseClick = (index: number) => {
-    const exerciseName = form.state.values.exercises[index]?.name;
-    const exerciseId = getExerciseId(exerciseName);
-    setSelectedExercise({ index, exerciseId });
-    setCurrentView('exercise');
+    navigate({ search: { exerciseIndex: index } });
   };
 
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
       clearLocalStorage(user?.id);
       form.reset();
-      setSelectedExercise(null);
+      navigate({ search: {} });
     }
   };
 
   // MARK: Screens
-  if (currentView === 'add-exercise') {
+  if (addExercise) {
     return (
       <Suspense
         fallback={
@@ -121,17 +112,25 @@ function WorkoutTracker({
           form={form}
           exercises={exercises}
           onAddExercise={handleAddExercise}
-          onBack={() => setCurrentView('main')}
+          onBack={() => navigate({ search: {} })}
         />
       </Suspense>
     );
   }
 
-  if (
-    currentView === 'exercise' &&
-    selectedExercise !== null &&
-    form.state.values.exercises.length > 0
-  ) {
+  if (exerciseIndex !== undefined) {
+    const exercises = form.state.values.exercises;
+
+    // Validate exercise index
+    if (exerciseIndex < 0 || exerciseIndex >= exercises.length) {
+      // Silently redirect to main
+      navigate({ search: {} });
+      return null;
+    }
+
+    const exerciseName = exercises[exerciseIndex]?.name;
+    const exerciseId = getExerciseId(exerciseName);
+
     return (
       <Suspense
         fallback={
@@ -144,15 +143,15 @@ function WorkoutTracker({
           header={
             <ExerciseHeader
               form={form}
-              exerciseIndex={selectedExercise.index}
-              onBack={() => setCurrentView('main')}
+              exerciseIndex={exerciseIndex}
+              onBack={() => navigate({ search: {} })}
             />
           }
           recentSets={
-            <RecentSets exerciseId={selectedExercise.exerciseId} user={user} />
+            <RecentSets exerciseId={exerciseId} user={user} />
           }
           sets={
-            <ExerciseSets form={form} exerciseIndex={selectedExercise.index} />
+            <ExerciseSets form={form} exerciseIndex={exerciseIndex} />
           }
         />
       </Suspense>
@@ -295,7 +294,7 @@ function WorkoutTracker({
               type="button"
               variant="outline"
               className="w-full text-base font-semibold rounded-lg"
-              onClick={() => setCurrentView('add-exercise')}
+              onClick={() => navigate({ search: { addExercise: true } })}
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Exercise
