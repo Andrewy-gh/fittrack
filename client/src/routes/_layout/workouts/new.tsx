@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Suspense, useState } from 'react';
+import { z } from 'zod';
 import { useAppForm } from '@/hooks/form';
 import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
 import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
@@ -321,7 +322,13 @@ function WorkoutTracker({
   );
 }
 
+const workoutSearchSchema = z.object({
+  addExercise: z.boolean().default(false),
+  exerciseIndex: z.coerce.number().int().optional(),
+});
+
 export const Route = createFileRoute('/_layout/workouts/new')({
+  validateSearch: workoutSearchSchema,
   loader: ({ context }) => {
     if (!context.user) initializeDemoData();
     context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
