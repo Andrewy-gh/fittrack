@@ -9,17 +9,20 @@ import { Input } from '@/components/ui/input';
 import { ChevronLeft, Search } from 'lucide-react';
 import { CardContent } from '@/components/ui/card';
 import { ChevronRight } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { Route } from '../new';
 
 type AddExerciseScreenProps = {
   exercises: DbExercise[]; // Database exercises with guaranteed IDs
-  onAddExercise: (exerciseIndex: number, exerciseId?: number) => void;
   onBack: () => void;
+  onAddExercise?: (index: number) => void; // Optional callback for when exercise is added (used by edit.tsx)
 };
 
 export const AddExerciseScreen = withForm({
   defaultValues: MOCK_VALUES,
   props: {} as AddExerciseScreenProps,
-  render: function Render({ form, exercises, onAddExercise, onBack }) {
+  render: function Render({ form, exercises, onBack, onAddExercise }) {
+    const navigate = useNavigate({ from: Route.fullPath });
     const [searchQuery, setSearchQuery] = useState('');
     const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
       exercises.map((ex) => ({ id: ex.id, name: ex.name }))
@@ -61,7 +64,11 @@ export const AddExerciseScreen = withForm({
                           sets: [],
                         });
                         const exerciseIndex = field.state.value.length - 1;
-                        onAddExercise(exerciseIndex, undefined);
+                        if (onAddExercise) {
+                          onAddExercise(exerciseIndex);
+                        } else {
+                          navigate({ search: { exerciseIndex } });
+                        }
                       }}
                     >
                       <Plus className="w-4 h-4 mr-2" />
@@ -111,9 +118,11 @@ export const AddExerciseScreen = withForm({
                               sets: [],
                             });
                             const exerciseIndex = field.state.value.length - 1;
-                            // should not be undefined but check for type safety
-                            const exerciseId = exercise.id || undefined;
-                            onAddExercise(exerciseIndex, exerciseId);
+                            if (onAddExercise) {
+                              onAddExercise(exerciseIndex);
+                            } else {
+                              navigate({ search: { exerciseIndex } });
+                            }
                           }}
                         >
                           <h3 className="font-semibold md:text-sm">{exercise.name}</h3>
