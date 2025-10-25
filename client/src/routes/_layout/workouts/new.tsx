@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
 import { type DbExercise } from '@/lib/api/exercises';
-import { getInitialValues } from './-components/form-options';
+import { getInitialValues, MOCK_VALUES } from './-components/form-options';
 import { postDemoWorkoutsMutation } from '@/lib/demo-data/query-options';
 import { initializeDemoData } from '@/lib/demo-data/storage';
 import {
@@ -65,7 +65,7 @@ function WorkoutTracker({
         {
           onSuccess: () => {
             clearLocalStorage(user?.id);
-            form.reset();
+            form.reset(MOCK_VALUES);
             navigate({ search: {} });
           },
           onError: (error) => {
@@ -85,7 +85,7 @@ function WorkoutTracker({
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
       clearLocalStorage(user?.id);
-      form.reset();
+      form.reset(MOCK_VALUES);
       navigate({ search: {} });
     }
   };
@@ -320,7 +320,7 @@ function WorkoutTracker({
 }
 
 const workoutSearchSchema = z.object({
-  addExercise: z.boolean().default(false),
+  addExercise: z.boolean().optional(),
   exerciseIndex: z.coerce.number().int().optional(),
 });
 

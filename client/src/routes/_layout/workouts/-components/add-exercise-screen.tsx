@@ -15,12 +15,13 @@ import { Route } from '../new';
 type AddExerciseScreenProps = {
   exercises: DbExercise[]; // Database exercises with guaranteed IDs
   onBack: () => void;
+  onAddExercise?: (index: number) => void; // Optional callback for when exercise is added (used by edit.tsx)
 };
 
 export const AddExerciseScreen = withForm({
   defaultValues: MOCK_VALUES,
   props: {} as AddExerciseScreenProps,
-  render: function Render({ form, exercises, onBack }) {
+  render: function Render({ form, exercises, onBack, onAddExercise }) {
     const navigate = useNavigate({ from: Route.fullPath });
     const [searchQuery, setSearchQuery] = useState('');
     const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
@@ -63,7 +64,11 @@ export const AddExerciseScreen = withForm({
                           sets: [],
                         });
                         const exerciseIndex = field.state.value.length - 1;
-                        navigate({ search: { exerciseIndex } });
+                        if (onAddExercise) {
+                          onAddExercise(exerciseIndex);
+                        } else {
+                          navigate({ search: { exerciseIndex } });
+                        }
                       }}
                     >
                       <Plus className="w-4 h-4 mr-2" />
@@ -113,7 +118,11 @@ export const AddExerciseScreen = withForm({
                               sets: [],
                             });
                             const exerciseIndex = field.state.value.length - 1;
-                            navigate({ search: { exerciseIndex } });
+                            if (onAddExercise) {
+                              onAddExercise(exerciseIndex);
+                            } else {
+                              navigate({ search: { exerciseIndex } });
+                            }
                           }}
                         >
                           <h3 className="font-semibold md:text-sm">{exercise.name}</h3>

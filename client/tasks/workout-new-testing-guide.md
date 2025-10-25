@@ -49,27 +49,27 @@ npx playwright test tests/e2e/demo/
 ### 🔗 Browser Navigation (Most Important)
 
 **Test Case 1: Back Button from Add Exercise Screen**
-- [ ] Navigate to `/workouts/new`
-- [ ] Click "Add Exercise" button
-- [ ] URL should show `?addExercise=true`
-- [ ] Click browser **back button**
-- [ ] ✅ Should return to main workout form
-- [ ] URL should be `/workouts/new` (no params)
+- [x] Navigate to `/workouts/new`
+- [x] Click "Add Exercise" button
+- [x] URL should show `?addExercise=true`
+- [x] Click browser **back button**
+- [x] ✅ Should return to main workout form
+- [ ] URL should be `/workouts/new` (no params) **Not expected Url: http://localhost:5173/workouts/new?addExercise=false**
 
 **Test Case 2: Back Button from Exercise Detail**
-- [ ] Navigate to `/workouts/new`
-- [ ] Click "Add Exercise"
-- [ ] Select any exercise (e.g., "Bench Press")
-- [ ] URL should show `?exerciseIndex=0`
-- [ ] Click browser **back button**
-- [ ] ✅ Should return to main workout form
-- [ ] URL should be `/workouts/new` (no params)
+- [x] Navigate to `/workouts/new`
+- [x] Click "Add Exercise"
+- [x] Select any exercise (e.g., "Bench Press")
+- [ ] URL should show `?exerciseIndex=0` **Not expected Url: http://localhost:5173/workouts/new?exerciseIndex=0&addExercise=false**
+- [x] Click browser **back button**
+- [x] ✅ Should return to main workout form
+- [ ] URL should be `/workouts/new` (no params) **Not expected Url: http://localhost:5173/workouts/new?addExercise=false**
 
 **Test Case 3: Forward Button**
-- [ ] Follow Test Case 1 or 2 above
-- [ ] After clicking back, click browser **forward button**
-- [ ] ✅ Should navigate forward to the previous screen
-- [ ] URL params should be restored
+- [x] Follow Test Case 1 or 2 above
+- [x] After clicking back, click browser **forward button**
+- [x] ✅ Should navigate forward to the previous screen
+- [ ] URL params should be restored **Not expected Url: http://localhost:5173/workouts/new?exerciseIndex=1&addExercise=false**
 
 **Test Case 4: Multiple Navigation Steps**
 - [ ] Add 2-3 exercises to the workout
@@ -85,48 +85,49 @@ npx playwright test tests/e2e/demo/
 ### 🔗 URL Deep Linking
 
 **Test Case 5: Deep Link to Add Exercise Screen**
-- [ ] Navigate to `/workouts/new?addExercise=true` directly in browser
-- [ ] ✅ Should show "Choose Exercise" screen
-- [ ] Or copy URL when on Add Exercise screen and open in new tab
+- [x] Navigate to `/workouts/new?addExercise=true` directly in browser
+- [x] ✅ Should show "Choose Exercise" screen
+- [x] Or copy URL when on Add Exercise screen and open in new tab
+
 
 **Test Case 6: Deep Link to Exercise Detail**
-- [ ] Add an exercise to the workout (e.g., "Bench Press")
-- [ ] Click on the exercise card to view details
-- [ ] Copy the URL (should be `/workouts/new?exerciseIndex=0`)
-- [ ] Open that URL in a **new tab** or **incognito window**
-- [ ] ✅ Should show the exercise detail screen (if localStorage has the exercise)
+- [x] Add an exercise to the workout (e.g., "Bench Press")
+- [x] Click on the exercise card to view details
+- [x] Copy the URL (should be `/workouts/new?exerciseIndex=0`)
+- [x] Open that URL in a **new tab** or **incognito window**
+- [x] ✅ Should show the exercise detail screen (if localStorage has the exercise)
 
 **Test Case 7: Invalid Exercise Index**
-- [ ] Navigate to `/workouts/new?exerciseIndex=999` directly
-- [ ] ✅ Should silently redirect to main view (`/workouts/new`)
-- [ ] No errors should appear in console
+- [x] Navigate to `/workouts/new?exerciseIndex=999` directly
+- [x] ✅ Should silently redirect to main view (`/workouts/new`)
+- [x] No errors should appear in console
 
 **Test Case 8: Negative Exercise Index**
-- [ ] Navigate to `/workouts/new?exerciseIndex=-1` directly
-- [ ] ✅ Should silently redirect to main view
-- [ ] No errors in console
+- [x] Navigate to `/workouts/new?exerciseIndex=-1` directly
+- [x] ✅ Should silently redirect to main view
+- [x] No errors in console
 
 ---
 
 ### 🔄 Page Refresh
 
 **Test Case 9: Refresh on Add Exercise Screen**
-- [ ] Click "Add Exercise" button
-- [ ] Refresh the page (F5 or Ctrl+R)
-- [ ] ✅ Should remain on "Choose Exercise" screen
-- [ ] URL should still show `?addExercise=true`
+- [x] Click "Add Exercise" button
+- [x] Refresh the page (F5 or Ctrl+R)
+- [x] ✅ Should remain on "Choose Exercise" screen
+- [x] URL should still show `?addExercise=true`
 
 **Test Case 10: Refresh on Exercise Detail**
-- [ ] Add an exercise and click on it to view details
-- [ ] Refresh the page
-- [ ] ✅ Should remain on exercise detail screen
-- [ ] Exercise data should persist (from localStorage)
+- [x] Add an exercise and click on it to view details
+- [x] Refresh the page
+- [x] ✅ Should remain on exercise detail screen
+- [x] Exercise data should persist (from localStorage)
 
 **Test Case 11: Refresh on Main View**
-- [ ] Be on main workout form view
-- [ ] Refresh the page
-- [ ] ✅ Should remain on main view
-- [ ] Any in-progress workout data should persist (from localStorage)
+- [x] Be on main workout form view
+- [x] Refresh the page
+- [x] ✅ Should remain on main view
+- [x] Any in-progress workout data should persist (from localStorage)
 
 ---
 
@@ -161,68 +162,68 @@ npx playwright test tests/e2e/demo/
 ### 🎯 Exercise Card Interactions
 
 **Test Case 15: Click Exercise Card**
-- [ ] Add an exercise to the workout
-- [ ] Click anywhere on the exercise card (not the delete button)
-- [ ] ✅ Should navigate to exercise detail screen
-- [ ] ✅ URL should show `?exerciseIndex=0`
-- [ ] ✅ Correct exercise details should appear
+- [x] Add an exercise to the workout
+- [x] Click anywhere on the exercise card (not the delete button)
+- [x] ✅ Should navigate to exercise detail screen
+- [x] ✅ URL should show `?exerciseIndex=0`
+- [x] ✅ Correct exercise details should appear
 
 **Test Case 16: Delete Button on Exercise Card**
-- [ ] Add an exercise to the workout
-- [ ] Click the **trash/delete icon** on the exercise card
-- [ ] ✅ Exercise should be deleted
-- [ ] ✅ Should NOT navigate away from main view
-- [ ] ✅ URL should remain `/workouts/new` (no params)
+- [x] Add an exercise to the workout
+- [x] Click the **trash/delete icon** on the exercise card
+- [x] ✅ Exercise should be deleted
+- [x] ✅ Should NOT navigate away from main view
+- [x] ✅ URL should remain `/workouts/new` (no params)
 
 **Test Case 17: Add Exercise Button**
-- [ ] Click "Add Exercise" button on main form
-- [ ] ✅ Should navigate to "Choose Exercise" screen
-- [ ] ✅ URL should show `?addExercise=true`
+- [x] Click "Add Exercise" button on main form
+- [x] ✅ Should navigate to "Choose Exercise" screen
+- [x] ✅ URL should show `?addExercise=true`
 
 ---
 
 ### 📝 Add Exercise Flow
 
 **Test Case 18: Select Exercise from List**
-- [ ] Click "Add Exercise"
-- [ ] Click on any exercise from the list (e.g., "Deadlift")
-- [ ] ✅ Should navigate to exercise detail screen
-- [ ] ✅ URL should show `?exerciseIndex=N` where N is the new exercise index
-- [ ] ✅ Exercise name should appear in header
-- [ ] ✅ "Add Set" button should be visible
+- [x] Click "Add Exercise"
+- [x] Click on any exercise from the list (e.g., "Deadlift")
+- [x] ✅ Should navigate to exercise detail screen
+- [x] ✅ URL should show `?exerciseIndex=N` where N is the new exercise index
+- [x] ✅ Exercise name should appear in header
+- [x] ✅ "Add Set" button should be visible
 
 **Test Case 19: Create New Exercise via Search**
-- [ ] Click "Add Exercise"
-- [ ] Type a new exercise name in search (e.g., "My Custom Exercise")
-- [ ] Click the "Add" button that appears
-- [ ] ✅ Should navigate to exercise detail screen for the new exercise
-- [ ] ✅ URL should show `?exerciseIndex=N`
-- [ ] ✅ New exercise name should appear in header
+- [x] Click "Add Exercise"
+- [x] Type a new exercise name in search (e.g., "My Custom Exercise")
+- [x] Click the "Add" button that appears
+- [x] ✅ Should navigate to exercise detail screen for the new exercise
+- [x] ✅ URL should show `?exerciseIndex=N`
+- [x] ✅ New exercise name should appear in header
 
 **Test Case 20: Back from Add Exercise Screen**
-- [ ] Click "Add Exercise"
-- [ ] Click the back arrow (ChevronLeft) in header
-- [ ] ✅ Should return to main workout form
-- [ ] ✅ URL should be `/workouts/new` (no params)
-- [ ] ✅ No exercise should be added
+- [x] Click "Add Exercise"
+- [x] Click the back arrow (ChevronLeft) in header
+- [x] ✅ Should return to main workout form
+- [x] ✅ URL should be `/workouts/new` (no params)
+- [x] ✅ No exercise should be added
 
 ---
 
 ### 🎨 Edge Cases
 
 **Test Case 21: Race Condition - Delete Then Navigate**
-- [ ] Add 3 exercises
-- [ ] Open exercise at index 2 in detail view
-- [ ] Use back button to return to main view
-- [ ] Delete the first two exercises
-- [ ] Click browser forward button
-- [ ] ✅ Should handle gracefully (either show valid exercise or redirect to main)
+- [x] Add 3 exercises
+- [x] Open exercise at index 2 in detail view
+- [x] Use back button to return to main view
+- [x] Delete the first two exercises
+- [x] Click browser forward button
+- [x] ✅ Should handle gracefully (either show valid exercise or redirect to main)
 
 **Test Case 22: Empty Workout Navigation**
-- [ ] Start with empty workout form
-- [ ] Try navigating to `?exerciseIndex=0` manually
-- [ ] ✅ Should redirect to main view
-- [ ] ✅ No errors in console
+- [x] Start with empty workout form
+- [x] Try navigating to `?exerciseIndex=0` manually
+- [x] ✅ Should redirect to main view
+- [x] ✅ No errors in console
 
 **Test Case 23: Multiple Quick Navigation Clicks**
 - [ ] Add 3 exercises

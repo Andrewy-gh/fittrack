@@ -28,7 +28,7 @@ test.describe('Demo Mode - Workout Create', () => {
 
     // Verify form elements are present
     await expect(
-      page.getByRole('button', { name: /add exercise/i })
+      page.getByRole('link', { name: /add exercise/i })
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /save/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /clear/i })).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
     // Add an exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
 
     // Select an exercise from the list
     await page.getByText('Bench Press', { exact: true }).click();
@@ -89,7 +89,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
     // Add an exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Deadlift', { exact: true }).click();
 
     // Add a set
@@ -123,7 +123,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
     // Add first exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Bench Press', { exact: true }).click();
     await page.getByRole('button', { name: /add set/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -136,7 +136,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /back/i }).click();
 
     // Add second exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Barbell Squat', { exact: true }).click();
     await page.getByRole('button', { name: /add set/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -172,7 +172,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
     // Add an exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Pull-ups', { exact: true }).click();
 
     // Add first set
@@ -233,7 +233,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
     // Add an exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Bench Press', { exact: true }).click();
     await page.getByRole('button', { name: /add set/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -281,7 +281,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByTestId('notes-close').click();
 
     // Add an exercise
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Bench Press', { exact: true }).click();
     await page.getByRole('button', { name: /add set/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
