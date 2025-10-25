@@ -163,4 +163,79 @@ test.describe('Demo Mode - Workout Edit', () => {
       .count();
     expect(updatedExerciseCount).toBe(initialExerciseCount - 1);
   });
+
+  // URL Navigation Tests
+  test('should update URL when navigating to add exercise', async ({ page }) => {
+    await page.getByTestId('workout-card').first().click();
+    await page.getByRole('link', { name: /edit/i }).click();
+
+    await page.getByRole('link', { name: /add exercise/i }).click();
+    expect(page.url()).toContain('addExercise=true');
+  });
+
+  test('should support browser back button from add exercise', async ({
+    page,
+  }) => {
+    await page.getByTestId('workout-card').first().click();
+    await page.getByRole('link', { name: /edit/i }).click();
+
+    await page.getByRole('link', { name: /add exercise/i }).click();
+    await page.goBack();
+
+    expect(page.url()).not.toContain('addExercise');
+    await expect(
+      page.getByRole('heading', { name: /edit training/i })
+    ).toBeVisible();
+  });
+
+  test('should update URL when navigating to exercise detail', async ({
+    page,
+  }) => {
+    await page.getByTestId('workout-card').first().click();
+    await page.getByRole('link', { name: /edit/i }).click();
+
+    await page.getByTestId('edit-workout-exercise-card').first().click();
+    expect(page.url()).toContain('exerciseIndex=0');
+  });
+
+  test('should support browser back button from exercise detail', async ({
+    page,
+  }) => {
+    await page.getByTestId('workout-card').first().click();
+    await page.getByRole('link', { name: /edit/i }).click();
+
+    await page.getByTestId('edit-workout-exercise-card').first().click();
+    await page.goBack();
+
+    expect(page.url()).not.toContain('exerciseIndex');
+    await expect(
+      page.getByRole('heading', { name: /edit training/i })
+    ).toBeVisible();
+  });
+
+  test('should handle invalid exercise index gracefully', async ({ page }) => {
+    await page.getByTestId('workout-card').first().click();
+    const editUrl = page.url().replace('/workouts/', '/workouts/') + '/edit';
+
+    await page.goto(editUrl + '?exerciseIndex=999');
+
+    await expect(
+      page.getByRole('heading', { name: /edit training/i })
+    ).toBeVisible();
+
+    expect(page.url()).not.toContain('exerciseIndex');
+  });
+
+  test('should handle negative exercise index gracefully', async ({ page }) => {
+    await page.getByTestId('workout-card').first().click();
+    const editUrl = page.url().replace('/workouts/', '/workouts/') + '/edit';
+
+    await page.goto(editUrl + '?exerciseIndex=-1');
+
+    await expect(
+      page.getByRole('heading', { name: /edit training/i })
+    ).toBeVisible();
+
+    expect(page.url()).not.toContain('exerciseIndex');
+  });
 });

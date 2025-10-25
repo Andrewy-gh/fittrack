@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useRouter } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
+import { z } from 'zod';
 import {
   useUpdateWorkoutMutation,
   type WorkoutFocus,
@@ -14,7 +14,7 @@ import {
   getWorkoutByIdQueryOptions,
   getWorkoutsFocusQueryOptions,
 } from '@/lib/api/unified-query-options';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import { useAppForm } from '@/hooks/form';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -45,13 +45,8 @@ function EditWorkoutForm({
   workoutId: number;
   workoutsFocus: WorkoutFocus[];
 }) {
-  const router = useRouter();
-  const [currentView, setCurrentView] = useState<
-    'main' | 'exercise' | 'add-exercise'
-  >('main');
-  const [selectedExerciseIndex, setSelectedExerciseIndex] = useState<
-    number | null
-  >(null);
+  const { addExercise, exerciseIndex } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   const updateWorkoutApi = useUpdateWorkoutMutation();
   const updateWorkoutDemo = useMutation(putDemoWorkoutsByIdMutation());
@@ -65,47 +60,35 @@ function EditWorkoutForm({
         notes: value.notes?.trim() || undefined,
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };
-      try {
-        await updateWorkoutMutation.mutateAsync(
-          {
-            path: { id: workoutId },
-            body: trimmedValue,
+      await updateWorkoutMutation.mutateAsync(
+        {
+          path: { id: workoutId },
+          body: trimmedValue,
+        },
+        {
+          onSuccess: () => {
+            navigate({
+              to: '/workouts/$workoutId',
+              params: { workoutId },
+            });
           },
-          {
-            onSuccess: () => {
-              router.navigate({
-                to: '/workouts/$workoutId',
-                params: { workoutId },
-              });
-            },
-          }
-        );
-      } catch (error) {
-        console.error('Failed to update workout:', error);
-        alert(`Failed to update workout: ${error}`);
-      }
+          onError: (error) => {
+            alert(`Failed to update workout: ${error}`);
+          },
+        }
+      );
     },
   });
-
-  const handleAddExercise = (index: number) => {
-    setSelectedExerciseIndex(index);
-    setCurrentView('exercise');
-  };
-
-  const handleExerciseClick = (index: number) => {
-    setSelectedExerciseIndex(index);
-    setCurrentView('exercise');
-  };
 
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
       form.reset();
-      setSelectedExerciseIndex(null);
+      navigate({ search: {} });
     }
   };
 
   // MARK: Screens
-  if (currentView === 'add-exercise') {
+  if (addExercise) {
     return (
       <Suspense
         fallback={
@@ -117,18 +100,23 @@ function EditWorkoutForm({
         <AddExerciseScreen
           form={form}
           exercises={exercises}
-          onAddExercise={handleAddExercise}
-          onBack={() => setCurrentView('main')}
+          onAddExercise={(index) => navigate({ search: { exerciseIndex: index } })}
+          onBack={() => navigate({ search: {} })}
         />
       </Suspense>
     );
   }
 
-  if (
-    currentView === 'exercise' &&
-    selectedExerciseIndex !== null &&
-    form.state.values.exercises.length > 0
-  ) {
+  if (exerciseIndex !== undefined) {
+    const exercises = form.state.values.exercises;
+
+    // Validate exercise index
+    if (exerciseIndex < 0 || exerciseIndex >= exercises.length) {
+      // Silently redirect to main
+      navigate({ search: {} });
+      return null;
+    }
+
     return (
       <Suspense
         fallback={
@@ -141,13 +129,11 @@ function EditWorkoutForm({
           header={
             <ExerciseHeader
               form={form}
-              exerciseIndex={selectedExerciseIndex}
-              onBack={() => setCurrentView('main')}
+              exerciseIndex={exerciseIndex}
+              onBack={() => navigate({ search: {} })}
             />
           }
-          sets={
-            <ExerciseSets form={form} exerciseIndex={selectedExerciseIndex} />
-          }
+          sets={<ExerciseSets form={form} exerciseIndex={exerciseIndex} />}
         />
       </Suspense>
     );
@@ -216,12 +202,16 @@ function EditWorkoutForm({
               return (
                 <div className="space-y-3">
                   {field.state.value.map((exercise, exerciseIndex) => (
-                    <Card
+                    <Link
                       key={`exercise-${exerciseIndex}`}
-                      className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
-                      onClick={() => handleExerciseClick(exerciseIndex)}
-                      data-testid="edit-workout-exercise-card"
+                      to="."
+                      search={{ exerciseIndex }}
+                      className="block"
                     >
+                      <Card
+                        className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
+                        data-testid="edit-workout-exercise-card"
+                      >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
@@ -239,6 +229,7 @@ function EditWorkoutForm({
                               aria-label="Delete exercise"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
                                 field.removeValue(exerciseIndex);
                               }}
                             >
@@ -278,6 +269,7 @@ function EditWorkoutForm({
                         </div>
                       </div>
                     </Card>
+                    </Link>
                   ))}
                 </div>
               );
@@ -286,15 +278,16 @@ function EditWorkoutForm({
 
           {/* MARK: Buttons */}
           <div className="py-6">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full text-base font-semibold rounded-lg"
-              onClick={() => setCurrentView('add-exercise')}
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Exercise
-            </Button>
+            <Link to="." search={{ addExercise: true }}>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full text-base font-semibold rounded-lg"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add Exercise
+              </Button>
+            </Link>
           </div>
           <div className="mt-8">
             <form.Subscribe
@@ -317,7 +310,13 @@ function EditWorkoutForm({
   );
 }
 
+const workoutSearchSchema = z.object({
+  addExercise: z.boolean().optional(),
+  exerciseIndex: z.coerce.number().int().optional(),
+});
+
 export const Route = createFileRoute('/_layout/workouts/$workoutId/edit')({
+  validateSearch: workoutSearchSchema,
   params: {
     parse: (params) => {
       const workoutId = parseInt(params.workoutId, 10);
