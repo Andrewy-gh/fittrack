@@ -71,7 +71,7 @@
   - [x] 3.10 Update `server/cmd/api/main.go` to apply middleware in order: SecurityHeaders → CORS → RequestID → Authentication
   - [x] 3.11 Create unit tests for all three middleware files testing headers, context values, and edge cases
 
-- [ ] 4.0 Add health and readiness endpoints with database validation
+- [x] 4.0 Add health and readiness endpoints with database validation
   - [x] 4.1 Create `server/internal/health/handler.go` with Handler struct containing logger and database pool
   - [x] 4.2 Implement GET /health endpoint that returns 200 with JSON: {"status": "healthy", "timestamp": "...", "version": "1.0.0"} (FR-2.1, FR-2.4)
   - [x] 4.3 Implement GET /ready endpoint that calls pool.Ping(ctx) to validate database connection (FR-2.2)
@@ -81,14 +81,14 @@
   - [x] 4.7 Add health endpoint routes to `server/cmd/api/routes.go` at /health and /ready
   - [x] 4.8 Create `server/internal/health/handler_test.go` with tests for healthy state, database connection failure, and response format
 
-- [ ] 5.0 Implement rate limiting middleware
-  - [ ] 5.1 Add `github.com/ulule/limiter/v3` dependency to go.mod (FR-3.7)
-  - [ ] 5.2 Create `server/internal/middleware/ratelimit.go` with RateLimit() middleware using in-memory store (FR-3.6)
-  - [ ] 5.3 Implement per-user rate limiting at 100 requests per minute, extracting user ID from context (FR-3.1, FR-3.2)
-  - [ ] 5.4 Make rate limit configurable via RATE_LIMIT_RPM config value (FR-3.3)
-  - [ ] 5.5 When rate limit exceeded, return HTTP 429 with Retry-After header and JSON {"message": "rate limit exceeded, retry after 45 seconds"} (FR-3.4, FR-3.5)
-  - [ ] 5.6 Apply rate limiting middleware to all /api/* endpoints after RequestID middleware but before Authentication
-  - [ ] 5.7 Create `server/internal/middleware/ratelimit_test.go` with tests for rate limit enforcement, header presence, and configurable limits
+- [x] 5.0 Implement rate limiting middleware
+  - [x] 5.1 Add `github.com/ulule/limiter/v3` dependency to go.mod (FR-3.7)
+  - [x] 5.2 Create `server/internal/middleware/ratelimit.go` with RateLimit() middleware using in-memory store (FR-3.6)
+  - [x] 5.3 Implement per-user rate limiting at 100 requests per minute, extracting user ID from context (FR-3.1, FR-3.2)
+  - [x] 5.4 Make rate limit configurable via RATE_LIMIT_RPM config value (FR-3.3)
+  - [x] 5.5 When rate limit exceeded, return HTTP 429 with Retry-After header and JSON {"message": "rate limit exceeded, retry after 45 seconds"} (FR-3.4, FR-3.5)
+  - [x] 5.6 Apply rate limiting middleware to all /api/* endpoints after RequestID middleware but before Authentication
+  - [x] 5.7 Create `server/internal/middleware/ratelimit_test.go` with tests for rate limit enforcement, header presence, and configurable limits
 
 - [ ] 6.0 Add Prometheus metrics collection and endpoint
   - [ ] 6.1 Add `github.com/prometheus/client_golang` dependency to go.mod (FR-7.4)
