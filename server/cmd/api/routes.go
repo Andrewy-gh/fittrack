@@ -4,12 +4,19 @@ import (
 	"net/http"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/health"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, hh *health.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
+
+	// Health endpoints (no authentication required)
+	mux.HandleFunc("GET /health", hh.Health)
+	mux.HandleFunc("GET /ready", hh.Ready)
+
+	// API endpoints (authentication required)
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)
 	mux.HandleFunc("POST /api/workouts", wh.CreateWorkout)
 	mux.HandleFunc("GET /api/workouts/{id}", wh.GetWorkoutWithSets)

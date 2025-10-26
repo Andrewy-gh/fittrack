@@ -72,14 +72,14 @@
   - [x] 3.11 Create unit tests for all three middleware files testing headers, context values, and edge cases
 
 - [ ] 4.0 Add health and readiness endpoints with database validation
-  - [ ] 4.1 Create `server/internal/health/handler.go` with Handler struct containing logger and database pool
-  - [ ] 4.2 Implement GET /health endpoint that returns 200 with JSON: {"status": "healthy", "timestamp": "...", "version": "1.0.0"} (FR-2.1, FR-2.4)
-  - [ ] 4.3 Implement GET /ready endpoint that calls pool.Ping(ctx) to validate database connection (FR-2.2)
-  - [ ] 4.4 Return 200 with {"status": "healthy", "timestamp": "...", "checks": {"database": "ok"}} if ready (FR-2.2, FR-2.4)
-  - [ ] 4.5 Return 503 with {"status": "unhealthy", "timestamp": "...", "checks": {"database": "failed: connection refused"}} if database check fails (FR-2.2)
-  - [ ] 4.6 Ensure health endpoints do NOT require authentication (FR-2.3)
-  - [ ] 4.7 Add health endpoint routes to `server/cmd/api/routes.go` at /health and /ready
-  - [ ] 4.8 Create `server/internal/health/handler_test.go` with tests for healthy state, database connection failure, and response format
+  - [x] 4.1 Create `server/internal/health/handler.go` with Handler struct containing logger and database pool
+  - [x] 4.2 Implement GET /health endpoint that returns 200 with JSON: {"status": "healthy", "timestamp": "...", "version": "1.0.0"} (FR-2.1, FR-2.4)
+  - [x] 4.3 Implement GET /ready endpoint that calls pool.Ping(ctx) to validate database connection (FR-2.2)
+  - [x] 4.4 Return 200 with {"status": "healthy", "timestamp": "...", "checks": {"database": "ok"}} if ready (FR-2.2, FR-2.4)
+  - [x] 4.5 Return 503 with {"status": "unhealthy", "timestamp": "...", "checks": {"database": "failed: connection refused"}} if database check fails (FR-2.2)
+  - [x] 4.6 Ensure health endpoints do NOT require authentication (FR-2.3)
+  - [x] 4.7 Add health endpoint routes to `server/cmd/api/routes.go` at /health and /ready
+  - [x] 4.8 Create `server/internal/health/handler_test.go` with tests for healthy state, database connection failure, and response format
 
 - [ ] 5.0 Implement rate limiting middleware
   - [ ] 5.1 Add `github.com/ulule/limiter/v3` dependency to go.mod (FR-3.7)
