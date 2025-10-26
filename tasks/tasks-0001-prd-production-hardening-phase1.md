@@ -59,17 +59,17 @@
   - [x] 2.7 Add startup log with configuration summary showing environment, port, log_level, db_max_conns, rate_limit_rpm (FR-10.5)
 
 - [ ] 3.0 Create middleware infrastructure (security headers, CORS, request ID)
-  - [ ] 3.1 Create `server/internal/middleware/security.go` with SecurityHeaders() middleware that adds X-Content-Type-Options: nosniff, X-Frame-Options: DENY, X-XSS-Protection: 1; mode=block (FR-6.1)
-  - [ ] 3.2 Add logic in SecurityHeaders to allow X-Frame-Options: SAMEORIGIN for /swagger/* paths (FR-6.2)
-  - [ ] 3.3 Add Strict-Transport-Security header only when request is HTTPS (check r.TLS != nil) (FR-6.1)
-  - [ ] 3.4 Create `server/internal/middleware/cors.go` with CORS() middleware that accepts allowed origins slice as parameter
-  - [ ] 3.5 Implement origin validation in CORS middleware to reject unknown origins, handle preflight OPTIONS requests (FR-5.5)
-  - [ ] 3.6 Remove hardcoded CORS logic from `server/internal/auth/middleware.go` lines 80-84 (FR-5.4)
-  - [ ] 3.7 Create `server/internal/middleware/requestid.go` with RequestID() middleware using github.com/google/uuid for UUID v4 generation (FR-8.1)
-  - [ ] 3.8 Add X-Request-ID to response headers, support client-provided X-Request-ID for tracing (FR-8.2, FR-8.4)
-  - [ ] 3.9 Store request ID in request context for access by handlers and logging (FR-8.3)
-  - [ ] 3.10 Update `server/cmd/api/main.go` to apply middleware in order: SecurityHeaders → CORS → RequestID → Authentication
-  - [ ] 3.11 Create unit tests for all three middleware files testing headers, context values, and edge cases
+  - [x] 3.1 Create `server/internal/middleware/security.go` with SecurityHeaders() middleware that adds X-Content-Type-Options: nosniff, X-Frame-Options: DENY, X-XSS-Protection: 1; mode=block (FR-6.1)
+  - [x] 3.2 Add logic in SecurityHeaders to allow X-Frame-Options: SAMEORIGIN for /swagger/* paths (FR-6.2)
+  - [x] 3.3 Add Strict-Transport-Security header only when request is HTTPS (check r.TLS != nil) (FR-6.1)
+  - [x] 3.4 Create `server/internal/middleware/cors.go` with CORS() middleware that accepts allowed origins slice as parameter
+  - [x] 3.5 Implement origin validation in CORS middleware to reject unknown origins, handle preflight OPTIONS requests (FR-5.5)
+  - [x] 3.6 Remove hardcoded CORS logic from `server/internal/auth/middleware.go` lines 80-84 (FR-5.4)
+  - [x] 3.7 Create `server/internal/middleware/requestid.go` with RequestID() middleware using github.com/google/uuid for UUID v4 generation (FR-8.1)
+  - [x] 3.8 Add X-Request-ID to response headers, support client-provided X-Request-ID for tracing (FR-8.2, FR-8.4)
+  - [x] 3.9 Store request ID in request context for access by handlers and logging (FR-8.3)
+  - [x] 3.10 Update `server/cmd/api/main.go` to apply middleware in order: SecurityHeaders → CORS → RequestID → Authentication
+  - [x] 3.11 Create unit tests for all three middleware files testing headers, context values, and edge cases
 
 - [ ] 4.0 Add health and readiness endpoints with database validation
   - [ ] 4.1 Create `server/internal/health/handler.go` with Handler struct containing logger and database pool

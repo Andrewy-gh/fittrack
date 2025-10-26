@@ -34,6 +34,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/go-playground/validator/v10"
@@ -158,10 +159,17 @@ func main() {
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
 	router := api.routes(workoutHandler, exerciseHandler)
 
+	// Apply middleware in order: SecurityHeaders → CORS → RequestID → Authentication
+	var handler http.Handler = router
+	handler = authenticator.Middleware(handler)
+	handler = middleware.RequestID()(handler)
+	handler = middleware.CORS(cfg.GetAllowedOrigins())(handler)
+	handler = middleware.SecurityHeaders()(handler)
+
 	// Configure HTTP server with timeouts
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      authenticator.Middleware(router),
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
