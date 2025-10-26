@@ -161,10 +161,11 @@ func main() {
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
 	router := api.routes(workoutHandler, exerciseHandler, healthHandler)
 
-	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RateLimit → Authentication
+	// Apply middleware in order: SecurityHeaders → CORS → RequestID → Metrics → RateLimit → Authentication
 	var handler http.Handler = router
 	handler = middleware.RateLimit(logger, int64(cfg.RateLimitRPM))(handler)
 	handler = authenticator.Middleware(handler)
+	handler = middleware.Metrics()(handler)
 	handler = middleware.RequestID()(handler)
 	handler = middleware.CORS(cfg.GetAllowedOrigins())(handler)
 	handler = middleware.SecurityHeaders()(handler)

@@ -5,7 +5,9 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -15,6 +17,13 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	// Health endpoints (no authentication required)
 	mux.HandleFunc("GET /health", hh.Health)
 	mux.HandleFunc("GET /ready", hh.Ready)
+
+	// Metrics endpoint (no authentication required)
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+		// Update database metrics before serving
+		middleware.UpdateDatabaseMetrics(api.pool)
+		promhttp.Handler().ServeHTTP(w, r)
+	})
 
 	// API endpoints (authentication required)
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)

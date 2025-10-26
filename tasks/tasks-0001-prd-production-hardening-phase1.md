@@ -90,16 +90,16 @@
   - [x] 5.6 Apply rate limiting middleware to all /api/* endpoints after RequestID middleware but before Authentication
   - [x] 5.7 Create `server/internal/middleware/ratelimit_test.go` with tests for rate limit enforcement, header presence, and configurable limits
 
-- [ ] 6.0 Add Prometheus metrics collection and endpoint
-  - [ ] 6.1 Add `github.com/prometheus/client_golang` dependency to go.mod (FR-7.4)
-  - [ ] 6.2 Create `server/internal/middleware/metrics.go` with Metrics() middleware
-  - [ ] 6.3 Initialize Prometheus metrics: http_requests_total (counter), http_request_duration_seconds (histogram), db_connections_active (gauge), db_connections_idle (gauge) (FR-7.3)
-  - [ ] 6.4 Implement middleware to track request count, duration, method, path, and status code labels (FR-7.3)
-  - [ ] 6.5 Add function to update database connection metrics from pool.Stat() (FR-7.3)
-  - [ ] 6.6 Apply metrics middleware to all /api/* handlers after CORS but before rate limiting (FR-7.5)
-  - [ ] 6.7 Add GET /metrics endpoint to `server/cmd/api/routes.go` that serves promhttp.Handler() (FR-7.1)
-  - [ ] 6.8 Ensure /metrics endpoint does NOT require authentication (FR-7.2)
-  - [ ] 6.9 Create `server/internal/middleware/metrics_test.go` with tests for metric collection, labels, and endpoint response format
+- [x] 6.0 Add Prometheus metrics collection and endpoint
+  - [x] 6.1 Add `github.com/prometheus/client_golang` dependency to go.mod (FR-7.4)
+  - [x] 6.2 Create `server/internal/middleware/metrics.go` with Metrics() middleware
+  - [x] 6.3 Initialize Prometheus metrics: http_requests_total (counter), http_request_duration_seconds (histogram), db_connections_active (gauge), db_connections_idle (gauge) (FR-7.3)
+  - [x] 6.4 Implement middleware to track request count, duration, method, path, and status code labels (FR-7.3)
+  - [x] 6.5 Add function to update database connection metrics from pool.Stat() (FR-7.3)
+  - [x] 6.6 Apply metrics middleware to all /api/* handlers after CORS but before rate limiting (FR-7.5)
+  - [x] 6.7 Add GET /metrics endpoint to `server/cmd/api/routes.go` that serves promhttp.Handler() (FR-7.1)
+  - [x] 6.8 Ensure /metrics endpoint does NOT require authentication (FR-7.2)
+  - [x] 6.9 Create `server/internal/middleware/metrics_test.go` with tests for metric collection, labels, and endpoint response format
 
 - [ ] 7.0 Update fly.toml and add database context timeouts
   - [ ] 7.1 Update `fly.toml` to add [http_service.checks.health] section with grace_period: 10s, interval: 30s, method: GET, path: /ready, timeout: 5s (FR-2.5)
