@@ -49,14 +49,14 @@
   - [x] 1.5 Add helper methods for parsing comma-separated ALLOWED_ORIGINS into string slice
   - [x] 1.6 Ensure config exits with code 1 and clear error message if validation fails
 
-- [ ] 2.0 Implement graceful shutdown and server lifecycle management
-  - [ ] 2.1 Update `server/cmd/api/main.go` to create http.Server with ReadTimeout: 10s, WriteTimeout: 10s, IdleTimeout: 120s (FR-4.1 to FR-4.3)
-  - [ ] 2.2 Set up signal handling for SIGTERM and SIGINT using os.Signal channel (FR-1.1)
-  - [ ] 2.3 Implement shutdown goroutine that stops accepting new requests and waits up to 30 seconds for in-flight requests (FR-1.2, FR-1.3)
-  - [ ] 2.4 Add pool.Close() in shutdown handler to cleanly close database connections (FR-1.4)
-  - [ ] 2.5 Add structured logging for shutdown events: "shutdown signal received", "draining connections", "shutdown complete", "forced shutdown" on timeout (FR-1.5)
-  - [ ] 2.6 Handle http.ErrServerClosed separately from actual server errors
-  - [ ] 2.7 Add startup log with configuration summary showing environment, port, log_level, db_max_conns, rate_limit_rpm (FR-10.5)
+- [x] 2.0 Implement graceful shutdown and server lifecycle management
+  - [x] 2.1 Update `server/cmd/api/main.go` to create http.Server with ReadTimeout: 10s, WriteTimeout: 10s, IdleTimeout: 120s (FR-4.1 to FR-4.3)
+  - [x] 2.2 Set up signal handling for SIGTERM and SIGINT using os.Signal channel (FR-1.1)
+  - [x] 2.3 Implement shutdown goroutine that stops accepting new requests and waits up to 30 seconds for in-flight requests (FR-1.2, FR-1.3)
+  - [x] 2.4 Add pool.Close() in shutdown handler to cleanly close database connections (FR-1.4)
+  - [x] 2.5 Add structured logging for shutdown events: "shutdown signal received", "draining connections", "shutdown complete", "forced shutdown" on timeout (FR-1.5)
+  - [x] 2.6 Handle http.ErrServerClosed separately from actual server errors
+  - [x] 2.7 Add startup log with configuration summary showing environment, port, log_level, db_max_conns, rate_limit_rpm (FR-10.5)
 
 - [ ] 3.0 Create middleware infrastructure (security headers, CORS, request ID)
   - [ ] 3.1 Create `server/internal/middleware/security.go` with SecurityHeaders() middleware that adds X-Content-Type-Options: nosniff, X-Frame-Options: DENY, X-XSS-Protection: 1; mode=block (FR-6.1)

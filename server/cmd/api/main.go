@@ -22,13 +22,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
@@ -40,51 +43,60 @@ import (
 	_ "github.com/Andrewy-gh/fittrack/server/docs" // This line is necessary for go-swagger to find docs
 )
 
-const (
-	defaultMaxConns       = int32(15)
-	defaultMinConns       = int32(2)
-)
-
-var (
-	defaultMaxConnIdle     = 30 * time.Second
-	defaultMaxConnLifetime = 30 * time.Minute
-	defaultHealthCheck     = 30 * time.Second
-)
-
 type api struct {
 	logger  *slog.Logger
 	queries *db.Queries
 	pool    *pgxpool.Pool
 }
 
-func envInt32(name string, def int32) int32 {
-	if v := os.Getenv(name); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i >= 0 {
-			return int32(i)
-		}
+func mustParseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		panic(fmt.Sprintf("invalid duration: %s", s))
 	}
-	return def
-}
-
-func envDuration(name string, def time.Duration) time.Duration {
-	if v := os.Getenv(name); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			return d
-		}
-	}
-	return def
+	return d
 }
 
 func main() {
+	// Load and validate configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "configuration error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Parse log level
+	var logLevel slog.Level
+	switch cfg.LogLevel {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "info":
+		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
+	case "error":
+		logLevel = slog.LevelError
+	default:
+		logLevel = slog.LevelInfo
+	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: logLevel,
 	}))
 
 	ctx := context.Background()
 
+	// Log startup configuration summary
+	logger.Info("starting application",
+		"environment", cfg.Environment,
+		"port", cfg.Port,
+		"log_level", cfg.LogLevel,
+		"db_max_conns", cfg.DBMaxConns,
+		"rate_limit_rpm", cfg.RateLimitRPM,
+	)
+
 	logger.Info("connecting to database")
-	dbURL := os.Getenv("DATABASE_URL")
-	poolConfig, err := pgxpool.ParseConfig(dbURL)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("failed to parse database config", "error", err)
 		os.Exit(1)
@@ -92,12 +104,12 @@ func main() {
 	// Disable prepared statements (simple protocol) for PgBouncer transaction pooling / Supabase pooler
 	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
-	// Configure pool caps with env overrides
-	poolConfig.MaxConns = envInt32("DB_MAX_CONNS", defaultMaxConns)
-	poolConfig.MinConns = envInt32("DB_MIN_CONNS", defaultMinConns)
-	poolConfig.MaxConnIdleTime = envDuration("DB_MAX_CONN_IDLE", defaultMaxConnIdle)
-	poolConfig.MaxConnLifetime = envDuration("DB_MAX_CONN_LIFE", defaultMaxConnLifetime)
-	poolConfig.HealthCheckPeriod = envDuration("DB_HEALTHCHECK", defaultHealthCheck)
+	// Configure pool caps from config
+	poolConfig.MaxConns = cfg.DBMaxConns
+	poolConfig.MinConns = cfg.DBMinConns
+	poolConfig.MaxConnIdleTime = mustParseDuration(cfg.DBMaxConnIdle)
+	poolConfig.MaxConnLifetime = mustParseDuration(cfg.DBMaxConnLife)
+	poolConfig.HealthCheckPeriod = mustParseDuration(cfg.DBHealthCheck)
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
@@ -137,13 +149,7 @@ func main() {
 		pool:    pool,
 	}
 
-	projectID := os.Getenv("PROJECT_ID")
-	if projectID == "" {
-		logger.Error("missing required environment variables", "has_project_id", projectID != "")
-		os.Exit(1)
-	}
-
-	jwks, err := auth.NewJWKSCache(ctx, projectID)
+	jwks, err := auth.NewJWKSCache(ctx, cfg.ProjectID)
 	if err != nil {
 		logger.Error("failed to create JWKS cache", "error", err)
 		os.Exit(1)
@@ -152,10 +158,51 @@ func main() {
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
 	router := api.routes(workoutHandler, exerciseHandler)
 
-	logger.Info("starting server", "addr", ":8080")
-	err = http.ListenAndServe(":8080", authenticator.Middleware(router))
-	if err != nil {
-		logger.Error("server failed", "error", err)
-		os.Exit(1)
+	// Configure HTTP server with timeouts
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
+		Handler:      authenticator.Middleware(router),
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	// Start server in a goroutine
+	serverErrors := make(chan error, 1)
+	go func() {
+		logger.Info("starting server", "addr", srv.Addr)
+		serverErrors <- srv.ListenAndServe()
+	}()
+
+	// Block until we receive a signal or server error
+	select {
+	case err := <-serverErrors:
+		if err != nil && err != http.ErrServerClosed {
+			logger.Error("server failed", "error", err)
+			os.Exit(1)
+		}
+	case sig := <-sigChan:
+		logger.Info("shutdown signal received", "signal", sig.String())
+
+		// Create context with 30-second timeout for graceful shutdown
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		logger.Info("draining connections")
+
+		// Attempt graceful shutdown
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			logger.Error("forced shutdown", "error", err)
+			pool.Close()
+			os.Exit(1)
+		}
+
+		// Close database connections cleanly
+		pool.Close()
+		logger.Info("shutdown complete")
 	}
 }
