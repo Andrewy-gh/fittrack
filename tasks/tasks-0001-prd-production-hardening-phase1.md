@@ -58,7 +58,7 @@
   - [x] 2.6 Handle http.ErrServerClosed separately from actual server errors
   - [x] 2.7 Add startup log with configuration summary showing environment, port, log_level, db_max_conns, rate_limit_rpm (FR-10.5)
 
-- [ ] 3.0 Create middleware infrastructure (security headers, CORS, request ID)
+- [x] 3.0 Create middleware infrastructure (security headers, CORS, request ID)
   - [x] 3.1 Create `server/internal/middleware/security.go` with SecurityHeaders() middleware that adds X-Content-Type-Options: nosniff, X-Frame-Options: DENY, X-XSS-Protection: 1; mode=block (FR-6.1)
   - [x] 3.2 Add logic in SecurityHeaders to allow X-Frame-Options: SAMEORIGIN for /swagger/* paths (FR-6.2)
   - [x] 3.3 Add Strict-Transport-Security header only when request is HTTPS (check r.TLS != nil) (FR-6.1)
