@@ -42,12 +42,12 @@
 ## Tasks
 
 - [ ] 1.0 Set up configuration management and validation system
-  - [ ] 1.1 Create `server/internal/config/config.go` with Config struct containing all required and optional environment variables (DATABASE_URL, PROJECT_ID, PORT, LOG_LEVEL, ENVIRONMENT, RATE_LIMIT_RPM, ALLOWED_ORIGINS)
-  - [ ] 1.2 Implement `Load()` function that reads environment variables and validates using go-playground/validator
-  - [ ] 1.3 Add validation rules: DATABASE_URL must be valid PostgreSQL URL, PROJECT_ID required, LOG_LEVEL enum (debug/info/warn/error), ENVIRONMENT enum (development/staging/production)
-  - [ ] 1.4 Create `server/internal/config/config_test.go` with tests for valid config, missing required vars, invalid formats, and default values
-  - [ ] 1.5 Add helper methods for parsing comma-separated ALLOWED_ORIGINS into string slice
-  - [ ] 1.6 Ensure config exits with code 1 and clear error message if validation fails
+  - [x] 1.1 Create `server/internal/config/config.go` with Config struct containing all required and optional environment variables (DATABASE_URL, PROJECT_ID, PORT, LOG_LEVEL, ENVIRONMENT, RATE_LIMIT_RPM, ALLOWED_ORIGINS)
+  - [x] 1.2 Implement `Load()` function that reads environment variables and validates using go-playground/validator
+  - [x] 1.3 Add validation rules: DATABASE_URL must be valid PostgreSQL URL, PROJECT_ID required, LOG_LEVEL enum (debug/info/warn/error), ENVIRONMENT enum (development/staging/production)
+  - [x] 1.4 Create `server/internal/config/config_test.go` with tests for valid config, missing required vars, invalid formats, and default values
+  - [x] 1.5 Add helper methods for parsing comma-separated ALLOWED_ORIGINS into string slice
+  - [x] 1.6 Ensure config exits with code 1 and clear error message if validation fails
 
 - [ ] 2.0 Implement graceful shutdown and server lifecycle management
   - [ ] 2.1 Update `server/cmd/api/main.go` to create http.Server with ReadTimeout: 10s, WriteTimeout: 10s, IdleTimeout: 120s (FR-4.1 to FR-4.3)
