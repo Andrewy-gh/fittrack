@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,6 +28,9 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 
 // GetUser retrieves a user by their ID
 func (r *userRepository) GetUser(ctx context.Context, id string) (db.Users, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	user, err := r.queries.GetUserByUserID(ctx, id)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
@@ -40,6 +44,9 @@ func (r *userRepository) GetUser(ctx context.Context, id string) (db.Users, erro
 
 // CreateUser inserts a new user into the database
 func (r *userRepository) CreateUser(ctx context.Context, userID string) (db.Users, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	id, err := r.queries.CreateUser(ctx, userID)
 	if err != nil {
 		if db.IsUniqueConstraintError(err) {

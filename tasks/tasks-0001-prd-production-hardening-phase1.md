@@ -101,12 +101,12 @@
   - [x] 6.8 Ensure /metrics endpoint does NOT require authentication (FR-7.2)
   - [x] 6.9 Create `server/internal/middleware/metrics_test.go` with tests for metric collection, labels, and endpoint response format
 
-- [ ] 7.0 Update fly.toml and add database context timeouts
-  - [ ] 7.1 Update `fly.toml` to add [http_service.checks.health] section with grace_period: 10s, interval: 30s, method: GET, path: /ready, timeout: 5s (FR-2.5)
-  - [ ] 7.2 Change min_machines_running from 0 to 1 in fly.toml to avoid cold starts
-  - [ ] 7.3 Add 30-second context timeout pattern to all methods in `server/internal/user/repository.go` (FR-4.4)
-  - [ ] 7.4 Add 30-second context timeout pattern to all methods in `server/internal/workout/repository.go` (FR-4.4)
-  - [ ] 7.5 Add 30-second context timeout pattern to all methods in `server/internal/exercise/repository.go` (FR-4.4)
-  - [ ] 7.6 Update `server/internal/response/json.go` to include request_id in error responses when available in context (FR-8.3, FR-8.5)
-  - [ ] 7.7 Update all handler logging to include request_id from context (FR-10.4)
-  - [ ] 7.8 Update `server/cmd/api/main.go` to use LOG_LEVEL from config and set slog.HandlerOptions.Level dynamically (FR-10.1, FR-10.2, FR-10.3)
+- [x] 7.0 Update fly.toml and add database context timeouts
+  - [x] 7.1 Update `fly.toml` to add [http_service.checks.health] section with grace_period: 10s, interval: 30s, method: GET, path: /ready, timeout: 5s (FR-2.5)
+  - [x] 7.2 Change min_machines_running from 0 to 1 in fly.toml to avoid cold starts
+  - [x] 7.3 Add 30-second context timeout pattern to all methods in `server/internal/user/repository.go` (FR-4.4)
+  - [x] 7.4 Add 30-second context timeout pattern to all methods in `server/internal/workout/repository.go` (FR-4.4)
+  - [x] 7.5 Add 30-second context timeout pattern to all methods in `server/internal/exercise/repository.go` (FR-4.4)
+  - [x] 7.6 Update `server/internal/response/json.go` to include request_id in error responses when available in context (FR-8.3, FR-8.5)
+  - [x] 7.7 Update all handler logging to include request_id from context (FR-10.4)
+  - [x] 7.8 Update `server/cmd/api/main.go` to use LOG_LEVEL from config and set slog.HandlerOptions.Level dynamically (FR-10.1, FR-10.2, FR-10.3)

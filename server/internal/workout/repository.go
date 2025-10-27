@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
@@ -29,6 +30,9 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool,
 
 // MARK: ListWorkouts
 func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([]db.Workout, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	workoutRows, err := wr.queries.ListWorkouts(ctx, userId)
 	if err != nil {
 		// Check if this might be an RLS-related error
@@ -74,6 +78,9 @@ func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([
 
 // MARK: GetWorkout
 func (wr *workoutRepository) GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	params := db.GetWorkoutParams{
 		ID:     id,
 		UserID: userID,
@@ -113,6 +120,9 @@ func (wr *workoutRepository) GetWorkout(ctx context.Context, id int32, userID st
 
 // MARK: GetWorkoutWithSets
 func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	params := db.GetWorkoutWithSetsParams{
 		ID:     id,
 		UserID: userID,
@@ -152,6 +162,9 @@ func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, u
 
 // MARK: SaveWorkout
 func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	pgData, err := wr.convertToPGTypes(reformatted)
 	if err != nil {
 		wr.logger.Error("failed to convert to PG types", "error", err)
@@ -202,6 +215,9 @@ func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *Refor
 // Updates workout metadata (date/notes) and exercises/sets
 // Uses a replace strategy for exercises/sets (deletes existing and recreates)
 func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Convert to PG types
 	pgData, err := wr.convertToPGTypes(reformatted)
 	if err != nil {
@@ -296,6 +312,9 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 // MARK: DeleteWorkout
 // Deletes a workout and all associated sets (CASCADE delete automatically handles sets)
 func (wr *workoutRepository) DeleteWorkout(ctx context.Context, id int32, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Delete the workout - CASCADE will automatically delete associated sets
 	if err := wr.queries.DeleteWorkout(ctx, db.DeleteWorkoutParams{
 		ID:     id,
@@ -492,6 +511,9 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 
 // MARK: ListWorkoutFocusValues
 func (wr *workoutRepository) ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Execute the query to get distinct workout focus values
 	rows, err := wr.queries.ListWorkoutFocusValues(ctx, userID)
 	if err != nil {

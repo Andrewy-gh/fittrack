@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -53,7 +54,7 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("failed to encode health response", "error", err)
+		h.logger.Error("failed to encode health response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
 	}
 }
 
@@ -86,7 +87,7 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("failed to encode ready response", "error", err)
+			h.logger.Error("failed to encode ready response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
 		}
 		return
 	}
@@ -102,6 +103,6 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("failed to encode ready response", "error", err)
+		h.logger.Error("failed to encode ready response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/lestrrat-go/httprc/v3"
@@ -83,21 +84,21 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
-			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method)
+			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method, "request_id", middleware.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "missing access token", nil)
 			return
 		}
 
 		userID, err := a.jwkCache.GetUserIDFromToken(accessToken)
 		if err != nil {
-			a.logger.Error("invalid access token", "error", err, "path", r.URL.Path)
+			a.logger.Error("invalid access token", "error", err, "path", r.URL.Path, "request_id", middleware.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "invalid access token", err)
 			return
 		}
 
 		dbUser, err := a.userService.EnsureUser(r.Context(), userID)
 		if err != nil {
-			a.logger.Error("failed to ensure user", "error", err, "userID", userID)
+			a.logger.Error("failed to ensure user", "error", err, "userID", userID, "request_id", middleware.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to ensure user", err)
 			return
 		}
@@ -108,7 +109,8 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 				a.logger.Error("failed to set user context",
 					"error", err,
 					"userID", userID,
-					"path", r.URL.Path)
+					"path", r.URL.Path,
+					"request_id", middleware.GetRequestID(r.Context()))
 				response.ErrorJSON(w, r, a.logger,
 					http.StatusInternalServerError,
 					"failed to set user context",
