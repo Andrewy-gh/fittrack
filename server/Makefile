@@ -24,6 +24,7 @@ help:
 	@echo "  docker-down  - Stop Docker containers"
 	@echo "  run          - Run the application"
 	@echo "  test         - Run tests"
+	@echo "  vet          - Run go vet"
 	@echo "  migrate-up   - Run database migrations up"
 	@echo "  migrate-down - Rollback database migrations"
 	@echo "  sqlc         - Generate SQL code"
