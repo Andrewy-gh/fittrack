@@ -82,3 +82,5 @@ jobs:
             DATABASE_URL=${{ secrets.PREVIEW_DATABASE_URL }}
             PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}
             ENVIRONMENT=staging
+            METRICS_USERNAME=${{ secrets.PREVIEW_METRICS_USERNAME }}
+            METRICS_PASSWORD=${{ secrets.PREVIEW_METRICS_PASSWORD }}
