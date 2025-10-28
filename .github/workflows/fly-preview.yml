@@ -81,4 +81,4 @@ jobs:
           secrets: |
             DATABASE_URL=${{ secrets.PREVIEW_DATABASE_URL }}
             PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}
-
+            ENVIRONMENT=staging

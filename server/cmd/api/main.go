@@ -49,6 +49,7 @@ type api struct {
 	logger  *slog.Logger
 	queries *db.Queries
 	pool    *pgxpool.Pool
+	cfg     *config.Config
 }
 
 func mustParseDuration(s string) time.Duration {
@@ -150,6 +151,7 @@ func main() {
 		logger:  logger,
 		queries: queries,
 		pool:    pool,
+		cfg:     cfg,
 	}
 
 	jwks, err := auth.NewJWKSCache(ctx, cfg.ProjectID)

@@ -18,12 +18,16 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /health", hh.Health)
 	mux.HandleFunc("GET /ready", hh.Ready)
 
-	// Metrics endpoint (no authentication required)
-	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+	// Metrics endpoint (basic auth if configured)
+	metricsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Update database metrics before serving
 		middleware.UpdateDatabaseMetrics(api.pool)
 		promhttp.Handler().ServeHTTP(w, r)
 	})
+
+	// Wrap with basic auth if credentials are configured
+	protectedMetrics := middleware.BasicAuth(api.cfg.MetricsUsername, api.cfg.MetricsPassword, api.logger)(metricsHandler)
+	mux.Handle("GET /metrics", protectedMetrics)
 
 	// API endpoints (authentication required)
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)

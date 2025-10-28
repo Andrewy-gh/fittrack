@@ -28,6 +28,10 @@ type Config struct {
 	DBMaxConnIdle      string `validate:"omitempty"`
 	DBMaxConnLife      string `validate:"omitempty"`
 	DBHealthCheck      string `validate:"omitempty"`
+
+	// Metrics basic auth (optional)
+	MetricsUsername string `validate:"omitempty"`
+	MetricsPassword string `validate:"omitempty"`
 }
 
 // Load reads configuration from environment variables and validates it
@@ -45,6 +49,8 @@ func Load() (*Config, error) {
 		DBMaxConnIdle:  getEnvString("DB_MAX_CONN_IDLE", "30s"),
 		DBMaxConnLife:  getEnvString("DB_MAX_CONN_LIFE", "30m"),
 		DBHealthCheck:  getEnvString("DB_HEALTHCHECK", "30s"),
+		MetricsUsername: os.Getenv("METRICS_USERNAME"),
+		MetricsPassword: os.Getenv("METRICS_PASSWORD"),
 	}
 
 	// Validate configuration
