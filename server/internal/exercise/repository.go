@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,6 +26,9 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool)
 }
 
 func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) ([]db.Exercise, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	exerciseRows, err := er.queries.ListExercises(ctx, userID)
 	if err != nil {
 		// Check if this might be an RLS-related error
@@ -65,6 +69,9 @@ func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) 
 }
 
 func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	params := db.GetExerciseParams{
 		ID:     id,
 		UserID: userID,
@@ -99,6 +106,9 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID 
 }
 
 func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name string, userID string) (db.Exercise, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	params := db.GetOrCreateExerciseParams{
 		Name:   name,
 		UserID: userID,
@@ -132,6 +142,9 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 }
 
 func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	params := db.GetExerciseWithSetsParams{
 		ExerciseID: id,
 		UserID:     userID,
@@ -203,6 +216,9 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 }
 
 func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	params := db.GetRecentSetsForExerciseParams{
 		ExerciseID: id,
 		UserID:     userID,
@@ -239,6 +255,9 @@ func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id i
 }
 
 func (er *exerciseRepository) UpdateExerciseName(ctx context.Context, id int32, name, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := er.queries.UpdateExerciseName(ctx, db.UpdateExerciseNameParams{
 		ID:     id,
 		Name:   name,
@@ -267,6 +286,9 @@ func (er *exerciseRepository) UpdateExerciseName(ctx context.Context, id int32, 
 }
 
 func (er *exerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := er.queries.DeleteExercise(ctx, db.DeleteExerciseParams{
 		ID:     id,
 		UserID: userID,

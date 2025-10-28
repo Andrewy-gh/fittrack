@@ -4,12 +4,32 @@ import (
 	"net/http"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/health"
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, hh *health.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
+
+	// Health endpoints (no authentication required)
+	mux.HandleFunc("GET /health", hh.Health)
+	mux.HandleFunc("GET /ready", hh.Ready)
+
+	// Metrics endpoint (basic auth if configured)
+	metricsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Update database metrics before serving
+		middleware.UpdateDatabaseMetrics(api.pool)
+		promhttp.Handler().ServeHTTP(w, r)
+	})
+
+	// Wrap with basic auth if credentials are configured
+	protectedMetrics := middleware.BasicAuth(api.cfg.MetricsUsername, api.cfg.MetricsPassword, api.logger)(metricsHandler)
+	mux.Handle("GET /metrics", protectedMetrics)
+
+	// API endpoints (authentication required)
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)
 	mux.HandleFunc("POST /api/workouts", wh.CreateWorkout)
 	mux.HandleFunc("GET /api/workouts/{id}", wh.GetWorkoutWithSets)

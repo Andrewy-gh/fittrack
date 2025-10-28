@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/lestrrat-go/httprc/v3"
@@ -76,42 +77,28 @@ func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) err
 
 func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Add CORS headers for all API requests
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-stack-access-token")
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
-
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// Handle CORS preflight requests
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
-			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method)
+			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method, "request_id", middleware.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "missing access token", nil)
 			return
 		}
 
 		userID, err := a.jwkCache.GetUserIDFromToken(accessToken)
 		if err != nil {
-			a.logger.Error("invalid access token", "error", err, "path", r.URL.Path)
+			a.logger.Error("invalid access token", "error", err, "path", r.URL.Path, "request_id", middleware.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "invalid access token", err)
 			return
 		}
 
 		dbUser, err := a.userService.EnsureUser(r.Context(), userID)
 		if err != nil {
-			a.logger.Error("failed to ensure user", "error", err, "userID", userID)
+			a.logger.Error("failed to ensure user", "error", err, "userID", userID, "request_id", middleware.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to ensure user", err)
 			return
 		}
@@ -122,7 +109,8 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 				a.logger.Error("failed to set user context",
 					"error", err,
 					"userID", userID,
-					"path", r.URL.Path)
+					"path", r.URL.Path,
+					"request_id", middleware.GetRequestID(r.Context()))
 				response.ErrorJSON(w, r, a.logger,
 					http.StatusInternalServerError,
 					"failed to set user context",

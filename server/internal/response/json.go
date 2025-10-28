@@ -6,10 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 )
 
 type Error struct {
-	Message string `json:"message"`
+	Message   string `json:"message"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
 func JSON(w http.ResponseWriter, status int, data any) error {
@@ -130,20 +133,24 @@ func isValidationError(message, errMsg string) bool {
 }
 
 func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, message string, err error) {
+	// Get request ID from context
+	requestID := middleware.GetRequestID(r.Context())
+
 	// Log the full error details at Error level for operational monitoring
-	logger.Error(message, "error", err, "path", r.URL.Path, "method", r.Method, "status", status)
-	
+	logger.Error(message, "error", err, "path", r.URL.Path, "method", r.Method, "status", status, "request_id", requestID)
+
 	// If there's an underlying error, log the raw details at Debug level for troubleshooting
 	if err != nil {
-		logger.Debug("raw error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "path", r.URL.Path)
+		logger.Debug("raw error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "path", r.URL.Path, "request_id", requestID)
 	}
 
 	// Create a sanitized error response - never include raw error details in HTTP responses
 	resp := Error{
-		Message: sanitizeErrorMessage(message, err),
+		Message:   sanitizeErrorMessage(message, err),
+		RequestID: requestID,
 	}
 
 	if jsonErr := JSON(w, status, resp); jsonErr != nil {
-		logger.Error("failed to write error response", "error", jsonErr, "path", r.URL.Path)
+		logger.Error("failed to write error response", "error", jsonErr, "path", r.URL.Path, "request_id", requestID)
 	}
 }
