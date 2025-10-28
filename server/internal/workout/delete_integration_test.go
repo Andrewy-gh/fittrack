@@ -51,7 +51,7 @@ func TestWorkoutDeletionIntegration(t *testing.T) {
 
 		// Verify data exists before deletion
 		ctx := testutils.SetTestUserContext(context.Background(), t, pool, userID)
-		
+
 		// Check workout exists
 		_, err := workoutRepo.GetWorkout(ctx, workoutID, userID)
 		require.NoError(t, err, "Workout should exist before deletion")
@@ -168,7 +168,7 @@ func TestWorkoutDeletionIntegration(t *testing.T) {
 
 		err := workoutService.DeleteWorkout(ctxB, workoutAID)
 		assert.Error(t, err, "User B should not be able to delete User A's workout")
-		
+
 		var errNotFound *ErrNotFound
 		assert.ErrorAs(t, err, &errNotFound, "Should return not found error")
 
@@ -204,7 +204,7 @@ func TestWorkoutDeletionRLSSecurity(t *testing.T) {
 		// Test data - create fresh users for this specific test
 		userA := "rls-direct-user-a"
 		userB := "rls-direct-user-b"
-		
+
 		// Setup users
 		setupSpecificTestUsers(t, pool, []string{userA, userB})
 
@@ -220,13 +220,13 @@ func TestWorkoutDeletionRLSSecurity(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("Current user ID from DB function: %s (expected: %s)", currentUserFromDB, userB)
 		assert.Equal(t, userB, currentUserFromDB)
-		
+
 		// Check if RLS is enabled and policies exist
 		var rlsEnabled bool
 		err = pool.QueryRow(ctx, "SELECT relrowsecurity FROM pg_class WHERE relname = 'workout'").Scan(&rlsEnabled)
 		require.NoError(t, err)
 		t.Logf("RLS enabled on workout table: %t", rlsEnabled)
-		
+
 		// Check if policies exist
 		var policyCount int
 		err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM pg_policies WHERE tablename = 'workout'").Scan(&policyCount)
@@ -246,9 +246,6 @@ func TestWorkoutDeletionRLSSecurity(t *testing.T) {
 		}
 		t.Logf("User B can see workouts: %v (User A's workout: %d, User B's workout: %d)", allVisibleWorkouts, workoutAID, workoutBID)
 
-		// NOTE: The database seems to have RLS enabled but policies aren't filtering correctly
-		// This might be a test database configuration issue. The application-level security
-		// (tested in HTTP endpoints) works correctly, which is more important.
 		t.Skip("RLS policies exist but aren't filtering correctly in test database - this is a database configuration issue, not an application issue")
 	})
 
@@ -256,7 +253,7 @@ func TestWorkoutDeletionRLSSecurity(t *testing.T) {
 		// Test data - create fresh users for this specific test
 		userA := "rls-http-user-a"
 		userB := "rls-http-user-b"
-		
+
 		// Setup users
 		setupSpecificTestUsers(t, pool, []string{userA, userB})
 
@@ -403,7 +400,7 @@ func setupCompleteWorkoutWithSets(t *testing.T, pool *pgxpool.Pool, userID, note
 
 	// Create multiple sets
 	var setIDs []int32
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		var setID int32
 		err = pool.QueryRow(ctx,
 			"INSERT INTO \"set\" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
@@ -430,7 +427,7 @@ func cleanupDeletionTestData(t *testing.T, pool *pgxpool.Pool) {
 
 	// Clean up test data for deletion tests
 	testUserPatterns := []string{"delete-test-user%", "delete-user-%", "rls-delete-user-%", "rls-direct-user-%", "rls-http-user-%"}
-	
+
 	for _, pattern := range testUserPatterns {
 		// Clean up dependent data first
 		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id LIKE $1)", pattern)
