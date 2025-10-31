@@ -47,45 +47,16 @@ export const ExerciseSets = withForm({
         name={`exercises[${exerciseIndex}].sets`}
         mode="array"
         children={(setsField) => {
-          const sets = setsField.state.value || [];
-          const totalSets = sets.length;
-          const totalVolume = sets.reduce(
-            (acc, set) => acc + (set?.weight || 0) * (set?.reps || 0),
-            0
-          );
           return (
             // MARK: Stats
             <>
               <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
                 Today's Sets
               </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-card border border-border shadow-sm p-6">
-                  <div className="text-center">
-                    <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground mb-2">
-                      TOTAL SETS
-                    </div>
-                    <div className="font-bold text-lg text-primary">
-                      {totalSets}
-                    </div>
-                  </div>
-                </Card>
-                <Card className="bg-card border border-border shadow-sm p-6">
-                  <div className="text-center">
-                    <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground mb-2">
-                      TOTAL VOLUME
-                    </div>
-                    <div className="font-bold text-lg text-primary">
-                      {totalVolume}
-                    </div>
-                  </div>
-                </Card>
-              </div>
-
               {/* Sets List */}
               <div>
                 <div className="space-y-3">
-                  {sets.map((set, setIndex) => {
+                  {(setsField.state.value || []).map((set, setIndex) => {
                     // MARK: Dialog
                     const isDialogOpen = dialogOpenIndex === setIndex;
                     if (isDialogOpen) {
