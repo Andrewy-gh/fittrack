@@ -8,6 +8,8 @@ type FormInputProps = {
   placeholder?: string;
   type?: 'text' | 'number';
   className?: string;
+  step?: string;
+  min?: string;
 };
 
 export default function InputField({
@@ -15,6 +17,8 @@ export default function InputField({
   placeholder,
   type = 'text',
   className,
+  step,
+  min,
 }: FormInputProps) {
   const field = useFieldContext<string | number>();
 
@@ -53,6 +57,8 @@ export default function InputField({
         onChange={handleChange}
         className={getInputClassName()}
         placeholder={getDefaultPlaceholder()}
+        step={step}
+        min={min}
       />
     </div>
   );

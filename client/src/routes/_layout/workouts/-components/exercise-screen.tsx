@@ -5,6 +5,7 @@ import { ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MOCK_VALUES } from '../-components/form-options';
+import { formatWeight } from '@/lib/utils';
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
@@ -108,10 +109,10 @@ export const ExerciseSets = withForm({
                           </div>
                           <div className="text-right">
                             <div className="text-card-foreground font-bold text-lg">
-                              {set.weight}lb &#215; {set.reps}
+                              {formatWeight(set.weight)}lb &#215; {set.reps}
                             </div>
                             <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                              {set.weight && set.reps && set.weight * set.reps}{' '}
+                              {set.weight && set.reps && formatWeight(set.weight * set.reps)}{' '}
                               volume
                             </div>
                           </div>
