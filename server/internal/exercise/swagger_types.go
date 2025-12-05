@@ -17,7 +17,7 @@ type ExerciseWithSetsResponse struct {
 	WorkoutDate   time.Time `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
 	WorkoutNotes  *string   `json:"workout_notes,omitempty" example:"Great workout today"`
 	SetID         int32     `json:"set_id" validate:"required" example:"1"`
-	Weight        *int32    `json:"weight,omitempty" example:"225"`
+	Weight        *float64  `json:"weight,omitempty" example:"225.5"`
 	Reps          int32     `json:"reps" validate:"required" example:"10"`
 	SetType       string    `json:"set_type" validate:"required" example:"working"`
 	ExerciseID    int32     `json:"exercise_id" validate:"required" example:"1"`
@@ -41,7 +41,7 @@ type RecentSetsResponse struct {
 	SetID         int32     `json:"set_id" validate:"required" example:"1"`
 	WorkoutID     int32     `json:"workout_id" validate:"required" example:"1"`
 	WorkoutDate   time.Time `json:"workout_date" validate:"required" example:"2023-01-01T15:04:05Z"`
-	Weight        *int32    `json:"weight,omitempty" example:"225"`
+	Weight        *float64  `json:"weight,omitempty" example:"225.5"`
 	Reps          int32     `json:"reps" validate:"required" example:"10"`
 	ExerciseOrder *int32    `json:"exercise_order,omitempty" example:"0"`
 	SetOrder      *int32    `json:"set_order,omitempty" example:"2"`

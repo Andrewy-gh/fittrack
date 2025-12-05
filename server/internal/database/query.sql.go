@@ -18,14 +18,14 @@ RETURNING id
 `
 
 type CreateSetParams struct {
-	ExerciseID    int32       `json:"exercise_id"`
-	WorkoutID     int32       `json:"workout_id"`
-	Weight        pgtype.Int4 `json:"weight"`
-	Reps          int32       `json:"reps"`
-	SetType       string      `json:"set_type"`
-	UserID        string      `json:"user_id"`
-	ExerciseOrder int32       `json:"exercise_order"`
-	SetOrder      int32       `json:"set_order"`
+	ExerciseID    int32          `json:"exercise_id"`
+	WorkoutID     int32          `json:"workout_id"`
+	Weight        pgtype.Numeric `json:"weight"`
+	Reps          int32          `json:"reps"`
+	SetType       string         `json:"set_type"`
+	UserID        string         `json:"user_id"`
+	ExerciseOrder int32          `json:"exercise_order"`
+	SetOrder      int32          `json:"set_order"`
 }
 
 func (q *Queries) CreateSet(ctx context.Context, arg CreateSetParams) (int32, error) {
@@ -221,7 +221,7 @@ type GetExerciseWithSetsRow struct {
 	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
 	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
 	SetID         int32              `json:"set_id"`
-	Weight        pgtype.Int4        `json:"weight"`
+	Weight        pgtype.Numeric     `json:"weight"`
 	Reps          int32              `json:"reps"`
 	SetType       string             `json:"set_type"`
 	ExerciseID    int32              `json:"exercise_id"`
@@ -312,7 +312,7 @@ type GetRecentSetsForExerciseRow struct {
 	WorkoutID     int32              `json:"workout_id"`
 	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
 	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
-	Weight        pgtype.Int4        `json:"weight"`
+	Weight        pgtype.Numeric     `json:"weight"`
 	Reps          int32              `json:"reps"`
 	ExerciseOrder int32              `json:"exercise_order"`
 	SetOrder      int32              `json:"set_order"`
@@ -363,7 +363,7 @@ type GetSetRow struct {
 	ID            int32              `json:"id"`
 	ExerciseID    int32              `json:"exercise_id"`
 	WorkoutID     int32              `json:"workout_id"`
-	Weight        pgtype.Int4        `json:"weight"`
+	Weight        pgtype.Numeric     `json:"weight"`
 	Reps          int32              `json:"reps"`
 	SetType       string             `json:"set_type"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
@@ -479,7 +479,7 @@ type GetWorkoutWithSetsRow struct {
 	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
 	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
 	SetID         int32              `json:"set_id"`
-	Weight        pgtype.Int4        `json:"weight"`
+	Weight        pgtype.Numeric     `json:"weight"`
 	Reps          int32              `json:"reps"`
 	SetType       string             `json:"set_type"`
 	ExerciseID    int32              `json:"exercise_id"`
@@ -563,7 +563,7 @@ type ListSetsRow struct {
 	ID            int32              `json:"id"`
 	ExerciseID    int32              `json:"exercise_id"`
 	WorkoutID     int32              `json:"workout_id"`
-	Weight        pgtype.Int4        `json:"weight"`
+	Weight        pgtype.Numeric     `json:"weight"`
 	Reps          int32              `json:"reps"`
 	SetType       string             `json:"set_type"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
@@ -700,11 +700,11 @@ RETURNING id
 `
 
 type UpdateSetParams struct {
-	ID      int32       `json:"id"`
-	Weight  pgtype.Int4 `json:"weight"`
-	Reps    int32       `json:"reps"`
-	SetType string      `json:"set_type"`
-	UserID  string      `json:"user_id"`
+	ID      int32          `json:"id"`
+	Weight  pgtype.Numeric `json:"weight"`
+	Reps    int32          `json:"reps"`
+	SetType string         `json:"set_type"`
+	UserID  string         `json:"user_id"`
 }
 
 func (q *Queries) UpdateSet(ctx context.Context, arg UpdateSetParams) (int32, error) {

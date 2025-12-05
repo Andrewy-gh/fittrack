@@ -40,6 +40,12 @@ export const formatTime = (dateString: string) => {
   });
 };
 
+export function formatWeight(weight: number | null | undefined): string {
+  if (weight == null) return '0';
+  // Return whole numbers without decimal point, decimals with one decimal place
+  return weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
+}
+
 export function sortByExerciseAndSetOrder<
   T extends {
     exercise_order?: number;

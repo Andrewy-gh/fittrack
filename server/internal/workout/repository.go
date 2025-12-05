@@ -482,8 +482,7 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 
 		pgSet := PGSetData{
 			ExerciseName: set.ExerciseName,
-			Weight: pgtype.Int4{
-				Int32: 0,
+			Weight: pgtype.Numeric{
 				Valid: false,
 			},
 			Reps:          int32(set.Reps),
@@ -493,9 +492,9 @@ func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (
 		}
 
 		if set.Weight != nil {
-			pgSet.Weight = pgtype.Int4{
-				Int32: int32(*set.Weight),
-				Valid: true,
+			// Convert float64 to pgtype.Numeric with proper precision
+			if err := pgSet.Weight.Scan(fmt.Sprintf("%.1f", *set.Weight)); err != nil {
+				return nil, fmt.Errorf("failed to convert weight to numeric: %w", err)
 			}
 		}
 

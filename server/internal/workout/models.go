@@ -20,9 +20,9 @@ type ExerciseInput struct {
 }
 
 type SetInput struct {
-	Weight  *int   `json:"weight,omitempty" validate:"omitempty,gte=0"`
-	Reps    int    `json:"reps" validate:"required,gte=1"`
-	SetType string `json:"setType" validate:"required,oneof=warmup working"`
+	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9"`
+	Reps    int      `json:"reps" validate:"required,gte=1"`
+	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
 }
 
 // PostgreSQL-specific types
@@ -39,7 +39,7 @@ type PGExerciseData struct {
 
 type PGSetData struct {
 	ExerciseName  string
-	Weight        pgtype.Int4
+	Weight        pgtype.Numeric
 	Reps          int32
 	SetType       string
 	ExerciseOrder int32
@@ -66,7 +66,7 @@ type ExerciseData struct {
 
 type SetData struct {
 	ExerciseName string
-	Weight       *int
+	Weight       *float64
 	Reps         int
 	SetType      string
 }
@@ -90,7 +90,7 @@ type ExerciseTransformable interface {
 }
 
 type SetTransformable interface {
-	GetWeight() *int
+	GetWeight() *float64
 	GetReps() int
 	GetSetType() string
 }
@@ -110,9 +110,9 @@ type UpdateExercise struct {
 }
 
 type UpdateSet struct {
-	Weight  *int   `json:"weight,omitempty" validate:"omitempty,gte=0"`
-	Reps    int    `json:"reps" validate:"required,gte=1"`
-	SetType string `json:"setType" validate:"required,oneof=warmup working"`
+	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9"`
+	Reps    int      `json:"reps" validate:"required,gte=1"`
+	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
 }
 
 // Interface implementations for CreateWorkoutRequest
@@ -184,7 +184,7 @@ func (u UpdateExercise) GetSets() []SetTransformable {
 }
 
 // Interface implementations for SetInput
-func (s SetInput) GetWeight() *int {
+func (s SetInput) GetWeight() *float64 {
 	return s.Weight
 }
 
@@ -197,7 +197,7 @@ func (s SetInput) GetSetType() string {
 }
 
 // Interface implementations for UpdateSet
-func (u UpdateSet) GetWeight() *int {
+func (u UpdateSet) GetWeight() *float64 {
 	return u.Weight
 }
 

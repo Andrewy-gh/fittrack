@@ -20,7 +20,7 @@ type Set struct {
 	ID            int32              `json:"id"`
 	ExerciseID    int32              `json:"exercise_id"`
 	WorkoutID     int32              `json:"workout_id"`
-	Weight        pgtype.Int4        `json:"weight"`
+	Weight        pgtype.Numeric     `json:"weight"`
 	Reps          int32              `json:"reps"`
 	SetType       string             `json:"set_type"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
