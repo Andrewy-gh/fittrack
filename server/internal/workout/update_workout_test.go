@@ -26,8 +26,8 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 
 	// Helper function for string pointers
 	stringPtr := func(s string) *string { return &s }
-	// Helper function for int pointers
-	intPtr := func(i int) *int { return &i }
+	// Helper function for float64 pointers
+	float64Ptr := func(f float64) *float64 { return &f }
 
 	tests := []struct {
 		name          string
@@ -48,7 +48,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 					{
 						Name: "Updated Exercise",
 						Sets: []UpdateSet{
-							{Weight: intPtr(225), Reps: 8, SetType: "working"},
+							{Weight: float64Ptr(225), Reps: 8, SetType: "working"},
 						},
 					},
 				},
@@ -453,16 +453,16 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 				{
 					Name: "Bench Press",
 					Sets: []UpdateSet{
-						{Weight: intPtr(135), Reps: 10, SetType: "warmup"},
-						{Weight: intPtr(185), Reps: 8, SetType: "working"},
-						{Weight: intPtr(225), Reps: 5, SetType: "working"},
+						{Weight: float64Ptr(135), Reps: 10, SetType: "warmup"},
+						{Weight: float64Ptr(185), Reps: 8, SetType: "working"},
+						{Weight: float64Ptr(225), Reps: 5, SetType: "working"},
 					},
 				},
 				{
 					Name: "Squats",
 					Sets: []UpdateSet{
-						{Weight: intPtr(95), Reps: 10, SetType: "warmup"},
-						{Weight: intPtr(135), Reps: 8, SetType: "working"},
+						{Weight: float64Ptr(95), Reps: 10, SetType: "warmup"},
+						{Weight: float64Ptr(135), Reps: 8, SetType: "working"},
 					},
 				},
 			},
@@ -520,7 +520,7 @@ func stringPtr(s string) *string {
 	return &s
 }
 
-// Helper function for int pointers
-func intPtr(i int) *int {
-	return &i
+// Helper function for float64 pointers
+func float64Ptr(f float64) *float64 {
+	return &f
 }

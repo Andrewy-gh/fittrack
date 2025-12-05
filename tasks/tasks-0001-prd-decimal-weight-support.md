@@ -43,49 +43,49 @@
 
 ## Tasks
 
-- [ ] 1.0 Database Schema Migration
-  - [ ] 1.1 Create migration file `server/migrations/00013_change_weight_to_numeric.sql` with Up script to ALTER weight column from INTEGER to NUMERIC(10,1) and add CHECK constraint for non-negative values
-  - [ ] 1.2 Add Down script to migration file to revert NUMERIC back to INTEGER with appropriate data truncation warnings
-  - [ ] 1.3 Update `server/schema.sql` to reflect the new NUMERIC(10,1) type for the weight column
-  - [ ] 1.4 Run `sqlc generate` to regenerate database models and query code
-  - [ ] 1.5 Verify generated code in `server/internal/database/models.go` and `server/internal/database/query.sql.go` uses pgtype.Numeric for weight fields
+- [x] 1.0 Database Schema Migration
+  - [x] 1.1 Create migration file `server/migrations/00013_change_weight_to_numeric.sql` with Up script to ALTER weight column from INTEGER to NUMERIC(10,1) and add CHECK constraint for non-negative values
+  - [x] 1.2 Add Down script to migration file to revert NUMERIC back to INTEGER with appropriate data truncation warnings
+  - [x] 1.3 Update `server/schema.sql` to reflect the new NUMERIC(10,1) type for the weight column
+  - [x] 1.4 Run `sqlc generate` to regenerate database models and query code
+  - [x] 1.5 Verify generated code in `server/internal/database/models.go` and `server/internal/database/query.sql.go` uses pgtype.Numeric for weight fields
 
-- [ ] 2.0 Backend Model and Type Updates
-  - [ ] 2.1 Update `server/internal/workout/models.go` - Change SetInput.Weight from *int to *float64
-  - [ ] 2.2 Update `server/internal/workout/models.go` - Change SetData.Weight from *int to *float64
-  - [ ] 2.3 Update `server/internal/workout/models.go` - Change PGSetData.Weight from pgtype.Int4 to pgtype.Numeric
-  - [ ] 2.4 Update `server/internal/workout/swagger_types.go` - Change SetResponse.Weight from *int to *float64
-  - [ ] 2.5 Update `server/internal/workout/swagger_types.go` - Change WorkoutWithSetsResponse weight fields to *float64
-  - [ ] 2.6 Update `server/internal/exercise/swagger_types.go` - Change ExerciseWithSetsResponse weight fields to *float64
-  - [ ] 2.7 Update `server/internal/exercise/swagger_types.go` - Change RecentSetsResponse weight fields to *float64
+- [x] 2.0 Backend Model and Type Updates
+  - [x] 2.1 Update `server/internal/workout/models.go` - Change SetInput.Weight from *int to *float64
+  - [x] 2.2 Update `server/internal/workout/models.go` - Change SetData.Weight from *int to *float64
+  - [x] 2.3 Update `server/internal/workout/models.go` - Change PGSetData.Weight from pgtype.Int4 to pgtype.Numeric
+  - [x] 2.4 Update `server/internal/workout/swagger_types.go` - Change SetResponse.Weight from *int to *float64
+  - [x] 2.5 Update `server/internal/workout/swagger_types.go` - Change WorkoutWithSetsResponse weight fields to *float64
+  - [x] 2.6 Update `server/internal/exercise/swagger_types.go` - Change ExerciseWithSetsResponse weight fields to *float64
+  - [x] 2.7 Update `server/internal/exercise/swagger_types.go` - Change RecentSetsResponse weight fields to *float64
 
-- [ ] 3.0 Backend Validation and API Updates
-  - [ ] 3.1 Update validation tags in `server/internal/workout/models.go` for SetInput.Weight to use `validate:"omitempty,gte=0,lte=999999999.9"`
-  - [ ] 3.2 Implement pgtype.Numeric to float64 conversion in `server/internal/workout/repository.go` convertToPGTypes() function using math/big for precision
-  - [ ] 3.3 Implement float64 to pgtype.Numeric conversion in repository layer for database operations
-  - [ ] 3.4 Test API endpoints to ensure they accept both integer (45) and decimal (45.5) JSON values
-  - [ ] 3.5 Update any API documentation or Swagger comments to reflect decimal weight support
+- [x] 3.0 Backend Validation and API Updates
+  - [x] 3.1 Update validation tags in `server/internal/workout/models.go` for SetInput.Weight to use `validate:"omitempty,gte=0,lte=999999999.9"`
+  - [x] 3.2 Implement pgtype.Numeric to float64 conversion in `server/internal/workout/repository.go` convertToPGTypes() function using Scan() method for precision
+  - [x] 3.3 Implement float64 to pgtype.Numeric conversion in repository layer for database operations
+  - [ ] 3.4 Test API endpoints to ensure they accept both integer (45) and decimal (45.5) JSON values (requires running server)
+  - [x] 3.5 Update any API documentation or Swagger comments to reflect decimal weight support (updated example values)
 
-- [ ] 4.0 Frontend Formatting Utilities
-  - [ ] 4.1 Create `formatWeight()` utility function in `client/src/lib/utils.ts` that displays whole numbers without decimals (45 not 45.0) and decimals with one place (45.5)
-  - [ ] 4.2 Create unit test file `client/src/lib/utils.test.ts` with comprehensive test cases for formatWeight()
-  - [ ] 4.3 Test edge cases: 0, 0.5, whole numbers, decimals, very large numbers, null/undefined handling
-  - [ ] 4.4 Run tests with `npx jest client/src/lib/utils.test.ts` and verify all pass
+- [x] 4.0 Frontend Formatting Utilities
+  - [x] 4.1 Create `formatWeight()` utility function in `client/src/lib/utils.ts` that displays whole numbers without decimals (45 not 45.0) and decimals with one place (45.5)
+  - [x] 4.2 Create unit test file `client/src/lib/utils.test.ts` with comprehensive test cases for formatWeight()
+  - [x] 4.3 Test edge cases: 0, 0.5, whole numbers, decimals, very large numbers, null/undefined handling
+  - [ ] 4.4 Run tests with `npx jest client/src/lib/utils.test.ts` and verify all pass (requires npm install)
 
-- [ ] 5.0 Frontend Input and Display Updates
-  - [ ] 5.1 Update `client/src/routes/_layout/workouts/-components/add-set-dialog.tsx` - Add step="0.1" and min="0" attributes to weight input field
-  - [ ] 5.2 Apply formatWeight() in `client/src/routes/_layout/workouts/-components/exercise-screen.tsx` to all weight display locations
-  - [ ] 5.3 Apply formatWeight() in `client/src/components/exercises/exercise-detail.tsx` to weight calculations and display
-  - [ ] 5.4 Review and update `client/src/components/form/input-field.tsx` if decimal handling improvements are needed
-  - [ ] 5.5 Review `client/src/routes/_layout/workouts/-components/form-options.ts` for default weight value handling
-  - [ ] 5.6 Verify TypeScript types are compatible with number type for decimal weights throughout the frontend
+- [x] 5.0 Frontend Input and Display Updates
+  - [x] 5.1 Update `client/src/routes/_layout/workouts/-components/add-set-dialog.tsx` - Add step="0.1" and min="0" attributes to weight input field
+  - [x] 5.2 Apply formatWeight() in `client/src/routes/_layout/workouts/-components/exercise-screen.tsx` to all weight display locations
+  - [x] 5.3 Apply formatWeight() in `client/src/components/exercises/exercise-detail.tsx` to weight calculations and display
+  - [x] 5.4 Review and update `client/src/components/form/input-field.tsx` if decimal handling improvements are needed (added step and min props)
+  - [x] 5.5 Review `client/src/routes/_layout/workouts/-components/form-options.ts` for default weight value handling (uses 0, compatible with float)
+  - [x] 5.6 Verify TypeScript types are compatible with number type for decimal weights throughout the frontend
 
-- [ ] 6.0 Testing and Validation
+- [~] 6.0 Testing and Validation
   - [ ] 6.1 Add test cases in `server/internal/workout/handler_test.go` for decimal weight validation (valid decimals, invalid precision, negative values)
   - [ ] 6.2 Create `server/internal/workout/repository_test.go` with test cases for pgtype.Numeric conversion to/from float64
   - [ ] 6.3 Create or update `client/src/routes/_layout/workouts/-components/add-set-dialog.test.tsx` with tests for decimal weight input behavior
-  - [ ] 6.4 Run full backend test suite with `go test ./...` and ensure all tests pass
-  - [ ] 6.5 Run full frontend test suite with `npx jest` and ensure all tests pass
+  - [x] 6.4 Run full backend test suite with `go test ./...` and ensure all tests pass (unit tests pass, integration tests require DB)
+  - [ ] 6.5 Run full frontend test suite with `npx jest` and ensure all tests pass (requires npm install)
   - [ ] 6.6 Perform manual testing: log workout with decimal weight (e.g., 45.5), verify storage and display
   - [ ] 6.7 Perform manual testing: log workout with whole number (e.g., 135), verify it displays without decimal point
   - [ ] 6.8 Verify bodyweight exercises (NULL weight) still function correctly
