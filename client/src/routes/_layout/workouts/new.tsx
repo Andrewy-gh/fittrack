@@ -19,6 +19,7 @@ import {
   getExercisesQueryOptions,
   getWorkoutsFocusQueryOptions,
 } from '@/lib/api/unified-query-options';
+import { formatWeight } from '@/lib/utils';
 
 import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
@@ -259,10 +260,12 @@ function WorkoutTracker({
                               <div className="flex items-end gap-4">
                                 <div className="text-right">
                                   <div className="text-card-foreground font-bold text-lg">
-                                    {exercise.sets.reduce(
-                                      (acc, set) =>
-                                        acc + (set.reps || 0) * (set.weight || 0),
-                                      0
+                                    {formatWeight(
+                                      exercise.sets.reduce(
+                                        (acc, set) =>
+                                          acc + (set.reps || 0) * (set.weight || 0),
+                                        0
+                                      )
                                     )}
                                   </div>
                                   <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">

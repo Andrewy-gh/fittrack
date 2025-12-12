@@ -48,6 +48,8 @@ export const AddSetDialog = withForm({
                 <field.InputField
                   label="Weight"
                   type="number"
+                  step="0.1"
+                  min="0"
                   className="sm:text-center sm:h-9"
                 />
               )}

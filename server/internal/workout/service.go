@@ -62,7 +62,7 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 	return workouts, nil
 }
 
-func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]db.GetWorkoutWithSetsRow, error) {
+func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]WorkoutWithSetsResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &ErrUnauthorized{Message: "user not authenticated"}
@@ -73,7 +73,15 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]d
 		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "workout_id", id, "user_id", userID)
 		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
 	}
-	return workoutWithSets, nil
+
+	// Convert database rows to response type
+	response, err := ws.convertWorkoutWithSetsRows(workoutWithSets)
+	if err != nil {
+		ws.logger.Error("failed to convert workout with sets rows", "error", err)
+		return nil, fmt.Errorf("failed to convert workout with sets rows: %w", err)
+	}
+
+	return response, nil
 }
 
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {
@@ -242,4 +250,73 @@ func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*Refor
 
 func (ws *WorkoutService) transformUpdateRequest(request UpdateWorkoutRequest) (*ReformattedRequest, error) {
 	return transformWorkoutRequest(ws.logger, request, false) // Date is optional for updates (partial updates allowed)
+}
+
+// convertWorkoutWithSetsRows converts database rows to response type, handling pgtype.Numeric to float64 conversion
+func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSetsRow) ([]WorkoutWithSetsResponse, error) {
+	response := make([]WorkoutWithSetsResponse, len(rows))
+
+	for i, row := range rows {
+		// Convert weight from pgtype.Numeric to *float64
+		var weight *float64
+		if row.Weight.Valid {
+			f64, err := row.Weight.Float64Value()
+			if err != nil {
+				ws.logger.Error("failed to convert weight to float64", "error", err, "weight", row.Weight)
+				return nil, fmt.Errorf("failed to convert weight: %w", err)
+			}
+			weight = &f64.Float64
+		}
+
+		// Convert volume from pgtype.Numeric to float64
+		var volume float64
+		if row.Volume.Valid {
+			f64, err := row.Volume.Float64Value()
+			if err != nil {
+				ws.logger.Error("failed to convert volume to float64", "error", err, "volume", row.Volume)
+				return nil, fmt.Errorf("failed to convert volume: %w", err)
+			}
+			volume = f64.Float64
+		}
+
+		// Convert exercise_order and set_order from int32 to *int32
+		var exerciseOrder *int32
+		if row.ExerciseOrder != 0 {
+			exerciseOrder = &row.ExerciseOrder
+		}
+
+		var setOrder *int32
+		if row.SetOrder != 0 {
+			setOrder = &row.SetOrder
+		}
+
+		// Convert workout_notes and workout_focus from pgtype.Text to *string
+		var workoutNotes *string
+		if row.WorkoutNotes.Valid {
+			workoutNotes = &row.WorkoutNotes.String
+		}
+
+		var workoutFocus *string
+		if row.WorkoutFocus.Valid {
+			workoutFocus = &row.WorkoutFocus.String
+		}
+
+		response[i] = WorkoutWithSetsResponse{
+			WorkoutID:     row.WorkoutID,
+			WorkoutDate:   row.WorkoutDate.Time,
+			WorkoutNotes:  workoutNotes,
+			WorkoutFocus:  workoutFocus,
+			SetID:         row.SetID,
+			Weight:        weight,
+			Reps:          row.Reps,
+			SetType:       row.SetType,
+			ExerciseID:    row.ExerciseID,
+			ExerciseName:  row.ExerciseName,
+			ExerciseOrder: exerciseOrder,
+			SetOrder:      setOrder,
+			Volume:        volume,
+		}
+	}
+
+	return response, nil
 }

@@ -31,14 +31,15 @@ CREATE TABLE "set" (
     id SERIAL PRIMARY KEY,
     exercise_id INTEGER NOT NULL REFERENCES exercise(id) ON DELETE CASCADE,
     workout_id INTEGER NOT NULL REFERENCES workout(id) ON DELETE CASCADE,
-    weight INTEGER,
+    weight NUMERIC(10,1),
     reps INTEGER NOT NULL,
     set_type VARCHAR(256) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     exercise_order INTEGER NOT NULL,
-    set_order INTEGER NOT NULL
+    set_order INTEGER NOT NULL,
+    CONSTRAINT weight_non_negative CHECK (weight IS NULL OR weight >= 0)
 );
 
 -- Indexes for foreign keys

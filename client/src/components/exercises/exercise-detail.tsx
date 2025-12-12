@@ -13,8 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatDate, formatTime } from '@/lib/utils';
-import { sortByExerciseAndSetOrder } from '@/lib/utils';
+import { formatDate, formatTime, formatWeight, sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
 import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
 import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exercise-edit-dialog';
@@ -38,7 +37,7 @@ export function ExerciseDetail({
   const volumes = exerciseSets.map((set) => set.volume);
 
   const averageWeight = totalSets > 0
-    ? Math.round(weights.reduce((sum, weight) => sum + weight, 0) / weights.length)
+    ? weights.reduce((sum, weight) => sum + weight, 0) / weights.length
     : 0;
   const maxWeight = totalSets > 0 ? Math.max(...weights) : 0;
   const averageVolume = totalSets > 0
@@ -132,7 +131,7 @@ export function ExerciseDetail({
               <span className="text-sm font-semibold">Average Weight</span>
             </div>
             <div className="text-2xl text-card-foreground font-bold">
-              {averageWeight} lbs
+              {formatWeight(averageWeight)} lbs
             </div>
           </Card>
 
@@ -142,7 +141,7 @@ export function ExerciseDetail({
               <span className="text-sm font-semibold">Max Weight</span>
             </div>
             <div className="text-2xl text-card-foreground font-bold">
-              {maxWeight} lbs
+              {formatWeight(maxWeight)} lbs
             </div>
           </Card>
 
@@ -232,7 +231,7 @@ export function ExerciseDetail({
                           {set.set_order ?? index + 1}
                         </span>
                         <div className="flex items-center space-x-4 text-sm">
-                          <span className="font-medium">{set.weight} lbs</span>
+                          <span className="font-medium">{formatWeight(set.weight)} lbs</span>
                           <span>&times;</span>
                           <span className="font-medium">{set.reps} reps</span>
                         </div>
