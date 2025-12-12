@@ -176,31 +176,23 @@ func (es *ExerciseService) convertExerciseWithSetsRows(rows []db.GetExerciseWith
 		// Convert weight from pgtype.Numeric to *float64
 		var weight *float64
 		if row.Weight.Valid {
-			var f64 float64
-			if err := row.Weight.Scan(&f64); err == nil {
-				weight = &f64
-			} else {
-				// Try string conversion as fallback
-				weightStr := row.Weight.Int.String()
-				if _, err := fmt.Sscanf(weightStr, "%f", &f64); err != nil {
-					es.logger.Warn("failed to convert weight to float64", "error", err, "weight", row.Weight)
-				} else {
-					weight = &f64
-				}
+			f64, err := row.Weight.Float64Value()
+			if err != nil {
+				es.logger.Error("failed to convert weight to float64", "error", err, "weight", row.Weight)
+				return nil, fmt.Errorf("failed to convert weight: %w", err)
 			}
+			weight = &f64.Float64
 		}
 
 		// Convert volume from pgtype.Numeric to float64
 		var volume float64
 		if row.Volume.Valid {
-			if err := row.Volume.Scan(&volume); err != nil {
-				// Try string conversion as fallback
-				volumeStr := row.Volume.Int.String()
-				if _, err := fmt.Sscanf(volumeStr, "%f", &volume); err != nil {
-					es.logger.Error("failed to convert volume to float64", "error", err, "volume", row.Volume)
-					return nil, fmt.Errorf("failed to convert volume: %w", err)
-				}
+			f64, err := row.Volume.Float64Value()
+			if err != nil {
+				es.logger.Error("failed to convert volume to float64", "error", err, "volume", row.Volume)
+				return nil, fmt.Errorf("failed to convert volume: %w", err)
 			}
+			volume = f64.Float64
 		}
 
 		// Convert exercise_order and set_order from int32 to *int32
