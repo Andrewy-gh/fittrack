@@ -202,7 +202,7 @@ SELECT
     e.name as exercise_name,
     s.exercise_order,
     s.set_order,
-    (COALESCE(s.weight, 0) * s.reps) as volume
+    (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
@@ -228,7 +228,7 @@ type GetExerciseWithSetsRow struct {
 	ExerciseName  string             `json:"exercise_name"`
 	ExerciseOrder int32              `json:"exercise_order"`
 	SetOrder      int32              `json:"set_order"`
-	Volume        int32              `json:"volume"`
+	Volume        pgtype.Numeric     `json:"volume"`
 }
 
 func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSetsParams) ([]GetExerciseWithSetsRow, error) {
@@ -460,7 +460,7 @@ SELECT
     e.name as exercise_name,
     s.exercise_order,
     s.set_order,
-    (COALESCE(s.weight, 0) * s.reps) as volume
+    (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id
@@ -486,7 +486,7 @@ type GetWorkoutWithSetsRow struct {
 	ExerciseName  string             `json:"exercise_name"`
 	ExerciseOrder int32              `json:"exercise_order"`
 	SetOrder      int32              `json:"set_order"`
-	Volume        int32              `json:"volume"`
+	Volume        pgtype.Numeric     `json:"volume"`
 }
 
 // Complex queries for joining data

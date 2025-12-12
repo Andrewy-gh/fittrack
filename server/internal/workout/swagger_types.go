@@ -51,7 +51,7 @@ type WorkoutWithSetsResponse struct {
 	ExerciseName  string     `json:"exercise_name" validate:"required" example:"Bench Press"`
 	ExerciseOrder *int32     `json:"exercise_order,omitempty" example:"0"`
 	SetOrder      *int32     `json:"set_order,omitempty" example:"1"`
-	Volume        int32      `json:"volume" validate:"required" example:"2250"`
+	Volume        float64    `json:"volume" validate:"required" example:"2250.5"`
 }
 
 // UpdateWorkoutRequest represents an update workout request for swagger documentation

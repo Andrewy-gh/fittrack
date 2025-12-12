@@ -4,9 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dumbbell, Edit, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
-import { formatDate, formatTime } from '@/lib/utils';
+import { formatDate, formatTime, formatWeight, sortByExerciseAndSetOrder } from '@/lib/utils';
 import { DeleteDialog } from '@/routes/_layout/workouts/-components/delete-dialog';
-import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { WorkoutWorkoutWithSetsResponse } from '@/client';
 
 export interface WorkoutDetailProps {
@@ -142,7 +141,7 @@ export function WorkoutDetail({
               <span className="text-sm font-semibold">Volume</span>
             </div>
             <div className="text-2xl text-card-foreground font-bold">
-              {totalVolume.toLocaleString()}
+              {formatWeight(totalVolume)}
             </div>
           </Card>
         </div>
@@ -181,7 +180,7 @@ export function WorkoutDetail({
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{exerciseReps} reps</span>
                         <span className="text-primary">
-                          {exerciseVolume.toLocaleString()} vol
+                          {formatWeight(exerciseVolume)} vol
                         </span>
                       </div>
                     </div>
@@ -207,7 +206,7 @@ export function WorkoutDetail({
                           </div>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {(set.volume || 0).toLocaleString()} vol
+                          {formatWeight(set.volume || 0)} vol
                         </div>
                       </div>
                     ))}
