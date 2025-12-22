@@ -84,6 +84,27 @@ export function WorkoutList({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {hasWorkoutInProgress && (
+              <Link
+                to={newWorkoutLink}
+                data-testid="workout-in-progress-card"
+                className="flex cursor-pointer items-center justify-between rounded-lg bg-primary/10 px-3 py-2"
+              >
+                <div className="flex items-center space-x-4">
+                  <Badge
+                    variant="outline"
+                    className="border-primary/20 bg-primary/10 text-primary text-xs"
+                  >
+                    IN PROGRESS
+                  </Badge>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="text-primary">Continue workout</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-primary" />
+              </Link>
+            )}
             {workouts.map((workout) => (
               <Link
                 key={workout.id}
