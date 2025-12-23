@@ -54,7 +54,7 @@
 
 - [ ] 4.0 Create WorkoutContributionGraph Component
   - [x] 4.1 Create `client/src/components/workouts/workout-contribution-graph.tsx` with the basic component structure and data fetching using `useSuspenseQuery`
-  - [ ] 4.2 Implement the Collapsible wrapper with a header/trigger showing "Activity" or similar label with expand/collapse icon
+  - [x] 4.2 Implement the Collapsible wrapper with a header/trigger showing "Activity" or similar label with expand/collapse icon
   - [ ] 4.3 Implement lazy rendering so the ContributionGraph DOM is only rendered when the collapsible is open (`{isOpen && <ContributionGraph ... />}`)
   - [ ] 4.4 Customize ContributionGraphBlock colors to use the primary (orange) color scheme: level 0 = muted, levels 1-4 = primary with 20%/40%/60%/80% opacity
   - [ ] 4.5 Add ContributionGraphFooter with ContributionGraphLegend showing Less/More indicator

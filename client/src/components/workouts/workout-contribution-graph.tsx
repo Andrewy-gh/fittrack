@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { contributionDataQueryOptions } from '@/lib/api/workouts';
 import {
   ContributionGraph,
@@ -8,8 +10,14 @@ import {
   ContributionGraphLegend,
   type Activity,
 } from '@/components/kibo-ui/contribution-graph';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 export function WorkoutContributionGraph() {
+  const [isOpen, setIsOpen] = useState(true);
   const { data } = useSuspenseQuery(contributionDataQueryOptions());
 
   // Transform API response to Activity[] format
@@ -32,21 +40,33 @@ export function WorkoutContributionGraph() {
   }
 
   return (
-    <div className="space-y-4">
-      <ContributionGraph data={activities}>
-        <ContributionGraphCalendar>
-          {({ activity, dayIndex, weekIndex }) => (
-            <ContributionGraphBlock
-              activity={activity}
-              dayIndex={dayIndex}
-              weekIndex={weekIndex}
-            />
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold tracking-tight">Activity</h2>
+        <CollapsibleTrigger className="p-2 hover:bg-muted rounded-md transition-colors">
+          {isOpen ? (
+            <ChevronUp className="h-5 w-5" />
+          ) : (
+            <ChevronDown className="h-5 w-5" />
           )}
-        </ContributionGraphCalendar>
-        <ContributionGraphFooter>
-          <ContributionGraphLegend />
-        </ContributionGraphFooter>
-      </ContributionGraph>
-    </div>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent className="space-y-4">
+        <ContributionGraph data={activities}>
+          <ContributionGraphCalendar>
+            {({ activity, dayIndex, weekIndex }) => (
+              <ContributionGraphBlock
+                activity={activity}
+                dayIndex={dayIndex}
+                weekIndex={weekIndex}
+              />
+            )}
+          </ContributionGraphCalendar>
+          <ContributionGraphFooter>
+            <ContributionGraphLegend />
+          </ContributionGraphFooter>
+        </ContributionGraph>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
