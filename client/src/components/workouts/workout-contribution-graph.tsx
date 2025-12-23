@@ -52,20 +52,23 @@ export function WorkoutContributionGraph() {
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent className="space-y-4">
-        <ContributionGraph data={activities}>
-          <ContributionGraphCalendar>
-            {({ activity, dayIndex, weekIndex }) => (
-              <ContributionGraphBlock
-                activity={activity}
-                dayIndex={dayIndex}
-                weekIndex={weekIndex}
-              />
-            )}
-          </ContributionGraphCalendar>
-          <ContributionGraphFooter>
-            <ContributionGraphLegend />
-          </ContributionGraphFooter>
-        </ContributionGraph>
+        {isOpen && (
+          <ContributionGraph data={activities}>
+            <ContributionGraphCalendar>
+              {({ activity, dayIndex, weekIndex }) => (
+                <ContributionGraphBlock
+                  activity={activity}
+                  dayIndex={dayIndex}
+                  weekIndex={weekIndex}
+                  className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80"
+                />
+              )}
+            </ContributionGraphCalendar>
+            <ContributionGraphFooter>
+              <ContributionGraphLegend />
+            </ContributionGraphFooter>
+          </ContributionGraph>
+        )}
       </CollapsibleContent>
     </Collapsible>
   );
