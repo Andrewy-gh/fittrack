@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { contributionDataQueryOptions } from '@/lib/api/workouts';
@@ -24,9 +25,10 @@ import {
 
 export function WorkoutContributionGraph() {
   const [isOpen, setIsOpen] = useState(true);
+  const navigate = useNavigate();
   const { data } = useSuspenseQuery(contributionDataQueryOptions());
 
-  // Transform API response to Activity[] format
+  // Transform API response to Activity[] format and track workout IDs
   const activities: Activity[] =
     data.days?.map((day) => ({
       date: day.date || '',
@@ -34,12 +36,18 @@ export function WorkoutContributionGraph() {
       level: day.level || 0,
     })) || [];
 
+  // Create a map of date to workout IDs for navigation
+  const workoutIdsByDate = new Map<string, number[]>(
+    data.days?.map((day) => [day.date || '', day.workoutIds || []]) || []
+  );
+
   // Empty state: no workouts in 52-week period
   if (activities.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-8 text-center">
         <p className="text-muted-foreground">
-          Start your fitness journey! Log your first workout to see your progress here.
+          Start your fitness journey! Log your first workout to see your
+          progress here.
         </p>
       </div>
     );
@@ -68,7 +76,21 @@ export function WorkoutContributionGraph() {
                 );
                 const workingSets = activity.count;
                 const workingSetsText =
-                  workingSets === 1 ? '1 working set' : `${workingSets} working sets`;
+                  workingSets === 1
+                    ? '1 working set'
+                    : `${workingSets} working sets`;
+
+                const workoutIds = workoutIdsByDate.get(activity.date) || [];
+                const hasSingleWorkout = workoutIds.length === 1;
+
+                const handleClick = () => {
+                  if (hasSingleWorkout) {
+                    navigate({
+                      to: '/workouts/$workoutId',
+                      params: { workoutId: workoutIds[0] },
+                    });
+                  }
+                };
 
                 return (
                   <Tooltip>
@@ -77,6 +99,7 @@ export function WorkoutContributionGraph() {
                         activity={activity}
                         dayIndex={dayIndex}
                         weekIndex={weekIndex}
+                        onClick={handleClick}
                         className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80 cursor-pointer"
                       />
                     </TooltipTrigger>

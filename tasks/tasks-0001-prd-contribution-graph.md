@@ -59,7 +59,7 @@
   - [x] 4.4 Customize ContributionGraphBlock colors to use the primary (orange) color scheme: level 0 = muted, levels 1-4 = primary with 20%/40%/60%/80% opacity
   - [x] 4.5 Add ContributionGraphFooter with ContributionGraphLegend showing Less/More indicator
   - [x] 4.6 Implement tooltip on hover displaying formatted date (e.g., "Monday, Jan 15, 2025") and working set count (e.g., "12 working sets")
-  - [ ] 4.7 Implement click handler for days with a single workout to navigate directly to `/workouts/{id}`
+  - [x] 4.7 Implement click handler for days with a single workout to navigate directly to `/workouts/{id}`
   - [ ] 4.8 Implement click handler for days with multiple workouts to show a Popover listing each workout with time/focus, allowing user to select which workout to navigate to
   - [ ] 4.9 Implement empty state: when user has no workouts in 52-week period, display an encouraging message (e.g., "Start your fitness journey! Log your first workout to see your progress here.")
   - [ ] 4.10 Ensure the component is responsive with horizontal scroll on mobile (leverage existing `overflow-x-auto` in ContributionGraphCalendar)
