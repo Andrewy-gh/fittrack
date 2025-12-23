@@ -658,6 +658,309 @@ func TestWorkoutHandler_ListWorkoutFocusValues(t *testing.T) {
 	}
 }
 
+// Test for GetContributionData endpoint
+func TestWorkoutHandler_GetContributionData(t *testing.T) {
+	userID := "test-user-id"
+
+	tests := []struct {
+		name          string
+		setupMock     func(*MockWorkoutRepository)
+		ctx           context.Context
+		expectedCode  int
+		expectJSON    bool
+		expectedDays  int
+		expectedError string
+	}{
+		{
+			name: "successful fetch with data",
+			setupMock: func(m *MockWorkoutRepository) {
+				m.On("GetContributionData", mock.Anything, userID).Return([]db.GetContributionDataRow{
+					{
+						Date:       pgtype.Date{Time: time.Now().AddDate(0, 0, -1), Valid: true},
+						Count:      5,
+						WorkoutIds: []interface{}{int64(1)},
+					},
+					{
+						Date:       pgtype.Date{Time: time.Now(), Valid: true},
+						Count:      10,
+						WorkoutIds: []interface{}{int64(2), int64(3)},
+					},
+				}, nil)
+			},
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusOK,
+			expectJSON:   true,
+			expectedDays: 2,
+		},
+		{
+			name: "successful fetch with empty result",
+			setupMock: func(m *MockWorkoutRepository) {
+				m.On("GetContributionData", mock.Anything, userID).Return([]db.GetContributionDataRow{}, nil)
+			},
+			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode: http.StatusOK,
+			expectJSON:   true,
+			expectedDays: 0,
+		},
+		{
+			name: "service error",
+			setupMock: func(m *MockWorkoutRepository) {
+				m.On("GetContributionData", mock.Anything, userID).Return([]db.GetContributionDataRow{}, assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectedError: "failed to get contribution data",
+		},
+		{
+			name:          "unauthenticated user",
+			setupMock:     func(m *MockWorkoutRepository) {},
+			ctx:           context.Background(),
+			expectedCode:  http.StatusUnauthorized,
+			expectedError: "user not authenticated",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			mockRepo := new(MockWorkoutRepository)
+			tt.setupMock(mockRepo)
+
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			validator := validator.New()
+			service := &WorkoutService{
+				repo:   mockRepo,
+				logger: logger,
+			}
+			handler := NewHandler(logger, validator, service)
+
+			req := httptest.NewRequest("GET", "/api/workouts/contribution-data", nil).WithContext(tt.ctx)
+			w := httptest.NewRecorder()
+
+			// Execute
+			handler.GetContributionData(w, req)
+
+			// Assert
+			assert.Equal(t, tt.expectedCode, w.Code)
+
+			if tt.expectJSON {
+				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+				var result ContributionDataResponse
+				err := json.Unmarshal(w.Body.Bytes(), &result)
+				assert.NoError(t, err)
+				assert.Len(t, result.Days, tt.expectedDays)
+			}
+
+			if tt.expectedError != "" {
+				assert.Contains(t, w.Body.String(), tt.expectedError)
+			}
+
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// Test for level calculation in the service layer
+func TestWorkoutService_CalculateLevelThresholds(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := &WorkoutService{logger: logger}
+
+	tests := []struct {
+		name       string
+		counts     []int
+		wantStatic bool // true if we expect static thresholds
+	}{
+		{
+			name:       "empty counts uses static thresholds",
+			counts:     []int{},
+			wantStatic: true,
+		},
+		{
+			name:       "fewer than 10 workout days uses static thresholds",
+			counts:     []int{5, 10, 3, 8, 2},
+			wantStatic: true,
+		},
+		{
+			name:       "exactly 9 workout days uses static thresholds",
+			counts:     []int{5, 10, 3, 8, 2, 7, 4, 6, 9},
+			wantStatic: true,
+		},
+		{
+			name:       "10+ workout days uses dynamic percentile thresholds",
+			counts:     []int{5, 10, 3, 8, 2, 7, 4, 6, 9, 11, 12, 15},
+			wantStatic: false,
+		},
+		{
+			name:       "only zeros uses static thresholds",
+			counts:     []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			wantStatic: true,
+		},
+		{
+			name:       "mixed zeros and values - 10+ non-zero uses dynamic",
+			counts:     []int{0, 5, 0, 10, 3, 0, 8, 2, 7, 4, 6, 9, 11, 12},
+			wantStatic: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			thresholds := service.calculateLevelThresholds(tt.counts)
+
+			// Static thresholds are [1, 6, 11, 16]
+			staticThresholds := [4]int{1, 6, 11, 16}
+
+			if tt.wantStatic {
+				assert.Equal(t, staticThresholds, thresholds, "Expected static thresholds")
+			} else {
+				// Dynamic thresholds should be strictly increasing
+				assert.GreaterOrEqual(t, thresholds[0], 1, "First threshold should be at least 1")
+				assert.Greater(t, thresholds[1], thresholds[0], "Thresholds should be strictly increasing")
+				assert.Greater(t, thresholds[2], thresholds[1], "Thresholds should be strictly increasing")
+				assert.Greater(t, thresholds[3], thresholds[2], "Thresholds should be strictly increasing")
+			}
+		})
+	}
+}
+
+// Test for level calculation based on count and thresholds
+func TestWorkoutService_CalculateLevel(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := &WorkoutService{logger: logger}
+
+	// Static thresholds: [1, 6, 11, 16]
+	// Level 0: count == 0
+	// Level 1: count >= 1 and count < 6
+	// Level 2: count >= 6 and count < 11
+	// Level 3: count >= 11 and count < 16
+	// Level 4: count >= 16
+	thresholds := [4]int{1, 6, 11, 16}
+
+	tests := []struct {
+		name          string
+		count         int
+		expectedLevel int
+	}{
+		{"zero count gives level 0", 0, 0},
+		{"count 1 gives level 1", 1, 1},
+		{"count 5 gives level 1", 5, 1},
+		{"count 6 gives level 2", 6, 2},
+		{"count 10 gives level 2", 10, 2},
+		{"count 11 gives level 3", 11, 3},
+		{"count 15 gives level 3", 15, 3},
+		{"count 16 gives level 4", 16, 4},
+		{"count 100 gives level 4", 100, 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			level := service.calculateLevel(tt.count, thresholds)
+			assert.Equal(t, tt.expectedLevel, level)
+		})
+	}
+}
+
+// Test for extractWorkoutIDs
+func TestWorkoutService_ExtractWorkoutIDs(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := &WorkoutService{logger: logger}
+
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected []int32
+	}{
+		{
+			name:     "nil input",
+			input:    nil,
+			expected: []int32{},
+		},
+		{
+			name:     "empty slice interface",
+			input:    []interface{}{},
+			expected: []int32{},
+		},
+		{
+			name:     "slice of int64",
+			input:    []interface{}{int64(1), int64(2), int64(3)},
+			expected: []int32{1, 2, 3},
+		},
+		{
+			name:     "slice of int32",
+			input:    []interface{}{int32(1), int32(2)},
+			expected: []int32{1, 2},
+		},
+		{
+			name:     "slice of float64",
+			input:    []interface{}{float64(1), float64(2)},
+			expected: []int32{1, 2},
+		},
+		{
+			name:     "direct []int32",
+			input:    []int32{1, 2, 3},
+			expected: []int32{1, 2, 3},
+		},
+		{
+			name:     "direct []int64",
+			input:    []int64{1, 2, 3},
+			expected: []int32{1, 2, 3},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := service.extractWorkoutIDs(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// Test for convertContributionRows
+func TestWorkoutService_ConvertContributionRows(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := &WorkoutService{logger: logger}
+
+	t.Run("empty rows returns empty slice", func(t *testing.T) {
+		result := service.convertContributionRows([]db.GetContributionDataRow{})
+		assert.Equal(t, []ContributionDay{}, result)
+	})
+
+	t.Run("converts rows with correct level calculation", func(t *testing.T) {
+		testDate := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+		rows := []db.GetContributionDataRow{
+			{
+				Date:       pgtype.Date{Time: testDate, Valid: true},
+				Count:      5,
+				WorkoutIds: []interface{}{int64(1)},
+			},
+		}
+
+		result := service.convertContributionRows(rows)
+
+		assert.Len(t, result, 1)
+		assert.Equal(t, "2025-01-15", result[0].Date)
+		assert.Equal(t, 5, result[0].Count)
+		assert.Equal(t, 1, result[0].Level) // Static threshold: 5 < 6, so level 1
+		assert.Equal(t, []int32{1}, result[0].WorkoutIDs)
+	})
+
+	t.Run("handles multiple workout IDs", func(t *testing.T) {
+		testDate := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+		rows := []db.GetContributionDataRow{
+			{
+				Date:       pgtype.Date{Time: testDate, Valid: true},
+				Count:      20,
+				WorkoutIds: []interface{}{int64(1), int64(2), int64(3)},
+			},
+		}
+
+		result := service.convertContributionRows(rows)
+
+		assert.Len(t, result, 1)
+		assert.Equal(t, 4, result[0].Level) // 20 >= 16, so level 4
+		assert.Equal(t, []int32{1, 2, 3}, result[0].WorkoutIDs)
+	})
+}
+
 func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

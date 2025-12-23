@@ -40,7 +40,7 @@
   - [x] 1.5 Add `GetContributionData` method to the service layer that calculates dynamic level thresholds using percentiles (25th, 50th, 75th) when user has 10+ workout days, otherwise use static thresholds (0, 1-5, 6-10, 11-15, 16+)
   - [x] 1.6 Add `GetContributionData` handler in `handler.go` with Swagger documentation comments
   - [x] 1.7 Register the route `GET /api/workouts/contribution-data` in `server/cmd/api/routes.go`
-  - [ ] 1.8 Test the endpoint manually or with unit tests to verify correct data aggregation and level calculation
+  - [x] 1.8 Test the endpoint manually or with unit tests to verify correct data aggregation and level calculation
 
 - [ ] 2.0 Add Frontend Query Options and Cache Management
   - [ ] 2.1 Add `contributionDataQueryOptions()` function to `client/src/lib/api/workouts.ts` wrapping the generated TanStack Query options
