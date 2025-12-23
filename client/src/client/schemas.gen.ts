@@ -106,12 +106,12 @@ export const exercise_ExerciseWithSetsResponseSchema = {
       example: "working",
     },
     volume: {
-      type: "integer",
-      example: 2250,
+      type: "number",
+      example: 2250.5,
     },
     weight: {
-      type: "integer",
-      example: 225,
+      type: "number",
+      example: 225.5,
     },
     workout_date: {
       type: "string",
@@ -153,8 +153,8 @@ export const exercise_RecentSetsResponseSchema = {
       example: 2,
     },
     weight: {
-      type: "integer",
-      example: 225,
+      type: "number",
+      example: 225.5,
     },
     workout_date: {
       type: "string",
@@ -178,6 +178,39 @@ export const exercise_UpdateExerciseNameRequestSchema = {
   },
 } as const;
 
+export const health_HealthResponseSchema = {
+  type: "object",
+  properties: {
+    status: {
+      type: "string",
+    },
+    timestamp: {
+      type: "string",
+    },
+    version: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const health_ReadyResponseSchema = {
+  type: "object",
+  properties: {
+    checks: {
+      type: "object",
+      additionalProperties: {
+        type: "string",
+      },
+    },
+    status: {
+      type: "string",
+    },
+    timestamp: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const response_ErrorResponseSchema = {
   type: "object",
   properties: {
@@ -194,6 +227,39 @@ export const response_SuccessResponseSchema = {
     success: {
       type: "boolean",
       example: true,
+    },
+  },
+} as const;
+
+export const workout_ContributionDataResponseSchema = {
+  type: "object",
+  properties: {
+    days: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/workout.ContributionDay",
+      },
+    },
+  },
+} as const;
+
+export const workout_ContributionDaySchema = {
+  type: "object",
+  properties: {
+    count: {
+      type: "integer",
+    },
+    date: {
+      type: "string",
+    },
+    level: {
+      type: "integer",
+    },
+    workoutIds: {
+      type: "array",
+      items: {
+        type: "integer",
+      },
     },
   },
 } as const;
@@ -255,7 +321,8 @@ export const workout_SetInputSchema = {
       enum: ["warmup", "working"],
     },
     weight: {
-      type: "integer",
+      type: "number",
+      maximum: 999999999.9,
       minimum: 0,
     },
   },
@@ -293,7 +360,8 @@ export const workout_UpdateSetSchema = {
       enum: ["warmup", "working"],
     },
     weight: {
-      type: "integer",
+      type: "number",
+      maximum: 999999999.9,
       minimum: 0,
     },
   },
@@ -402,12 +470,12 @@ export const workout_WorkoutWithSetsResponseSchema = {
       example: "working",
     },
     volume: {
-      type: "integer",
-      example: 2250,
+      type: "number",
+      example: 2250.5,
     },
     weight: {
-      type: "integer",
-      example: 225,
+      type: "number",
+      example: 225.5,
     },
     workout_date: {
       type: "string",

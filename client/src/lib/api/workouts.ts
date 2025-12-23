@@ -7,6 +7,8 @@ import {
   getWorkoutsQueryKey,
   getWorkoutsQueryOptions,
   getWorkoutsFocusValuesQueryOptions,
+  getWorkoutsContributionDataQueryKey,
+  getWorkoutsContributionDataQueryOptions,
   postWorkoutsMutation,
   putWorkoutsByIdMutation,
   deleteWorkoutsByIdMutation,
@@ -38,6 +40,11 @@ export function workoutsFocusValuesQueryOptions() {
   return getWorkoutsFocusValuesQueryOptions();
 }
 
+// MARK: Get contribution data
+export function contributionDataQueryOptions() {
+  return getWorkoutsContributionDataQueryOptions();
+}
+
 // MARK: Create
 // ! TODO: Return data from server to invalidate recent sets for exercise
 // ! TODO: if I want to be granular, but stale time is so low not a priority
@@ -50,6 +57,9 @@ export function useSaveWorkoutMutation() {
       });
       queryClient.invalidateQueries({
         queryKey: getExercisesQueryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsContributionDataQueryKey(),
       });
     },
   });
@@ -80,6 +90,9 @@ export function useDeleteWorkoutMutation() {
       });
       queryClient.removeQueries({
         queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsContributionDataQueryKey(),
       });
     },
   });

@@ -32,7 +32,7 @@
 
 ## Tasks
 
-- [ ] 1.0 Create Backend API Endpoint for Contribution Data
+- [x] 1.0 Create Backend API Endpoint for Contribution Data
   - [x] 1.1 Add `GetContributionData` SQL query to `server/query.sql` that aggregates daily working set counts, groups by date, and returns workout IDs array for the past 52 weeks
   - [x] 1.2 Run `sqlc generate` to generate the Go code from the new query
   - [x] 1.3 Add `ContributionDataResponse` and `ContributionDay` types to `server/internal/workout/models.go` with fields: date, count, level (0-4), and workout_ids
@@ -42,11 +42,11 @@
   - [x] 1.7 Register the route `GET /api/workouts/contribution-data` in `server/cmd/api/routes.go`
   - [x] 1.8 Test the endpoint manually or with unit tests to verify correct data aggregation and level calculation
 
-- [ ] 2.0 Add Frontend Query Options and Cache Management
-  - [ ] 2.1 Add `contributionDataQueryOptions()` function to `client/src/lib/api/workouts.ts` wrapping the generated TanStack Query options
-  - [ ] 2.2 Update `useSaveWorkoutMutation` to invalidate contribution data query key on success
-  - [ ] 2.3 Update `useDeleteWorkoutMutation` to invalidate contribution data query key on success
-  - [ ] 2.4 Verify TypeScript types are correctly generated for the new endpoint response
+- [x] 2.0 Add Frontend Query Options and Cache Management
+  - [x] 2.1 Add `contributionDataQueryOptions()` function to `client/src/lib/api/workouts.ts` wrapping the generated TanStack Query options
+  - [x] 2.2 Update `useSaveWorkoutMutation` to invalidate contribution data query key on success
+  - [x] 2.3 Update `useDeleteWorkoutMutation` to invalidate contribution data query key on success
+  - [x] 2.4 Verify TypeScript types are correctly generated for the new endpoint response
 
 - [ ] 3.0 Add Collapsible UI Component
   - [ ] 3.1 Add the shadcn/ui Collapsible component to `client/src/components/ui/collapsible.tsx` (use `npx shadcn@latest add collapsible` or manually create based on Radix UI)
