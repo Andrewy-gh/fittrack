@@ -69,6 +69,11 @@ func (m *MockWorkoutRepository) ListWorkoutFocusValues(ctx context.Context, user
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (m *MockWorkoutRepository) GetContributionData(ctx context.Context, userID string) ([]db.GetContributionDataRow, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]db.GetContributionDataRow), args.Error(1)
+}
+
 type errorResponse struct {
 	Message string `json:"message"`
 }

@@ -36,10 +36,10 @@
   - [x] 1.1 Add `GetContributionData` SQL query to `server/query.sql` that aggregates daily working set counts, groups by date, and returns workout IDs array for the past 52 weeks
   - [x] 1.2 Run `sqlc generate` to generate the Go code from the new query
   - [x] 1.3 Add `ContributionDataResponse` and `ContributionDay` types to `server/internal/workout/models.go` with fields: date, count, level (0-4), and workout_ids
-  - [ ] 1.4 Add `GetContributionData` method to the repository interface and implement it in `repository.go` with proper context timeout and RLS error handling
-  - [ ] 1.5 Add `GetContributionData` method to the service layer that calculates dynamic level thresholds using percentiles (25th, 50th, 75th) when user has 10+ workout days, otherwise use static thresholds (0, 1-5, 6-10, 11-15, 16+)
-  - [ ] 1.6 Add `GetContributionData` handler in `handler.go` with Swagger documentation comments
-  - [ ] 1.7 Register the route `GET /api/workouts/contribution-data` in `server/cmd/api/routes.go`
+  - [x] 1.4 Add `GetContributionData` method to the repository interface and implement it in `repository.go` with proper context timeout and RLS error handling
+  - [x] 1.5 Add `GetContributionData` method to the service layer that calculates dynamic level thresholds using percentiles (25th, 50th, 75th) when user has 10+ workout days, otherwise use static thresholds (0, 1-5, 6-10, 11-15, 16+)
+  - [x] 1.6 Add `GetContributionData` handler in `handler.go` with Swagger documentation comments
+  - [x] 1.7 Register the route `GET /api/workouts/contribution-data` in `server/cmd/api/routes.go`
   - [ ] 1.8 Test the endpoint manually or with unit tests to verify correct data aggregation and level calculation
 
 - [ ] 2.0 Add Frontend Query Options and Cache Management

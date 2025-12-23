@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -187,6 +188,154 @@ func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string,
 	}
 
 	return focusValues, nil
+}
+
+// GetContributionData retrieves contribution graph data for the past 52 weeks
+func (ws *WorkoutService) GetContributionData(ctx context.Context) (*ContributionDataResponse, error) {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	rows, err := ws.repo.GetContributionData(ctx, userID)
+	if err != nil {
+		ws.logger.Error("failed to get contribution data", "error", err)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
+		return nil, fmt.Errorf("failed to get contribution data: %w", err)
+	}
+
+	// Convert rows to ContributionDay slice and calculate levels
+	days := ws.convertContributionRows(rows)
+
+	return &ContributionDataResponse{Days: days}, nil
+}
+
+// convertContributionRows converts database rows to ContributionDay slice with calculated levels
+func (ws *WorkoutService) convertContributionRows(rows []db.GetContributionDataRow) []ContributionDay {
+	if len(rows) == 0 {
+		return []ContributionDay{}
+	}
+
+	// Extract counts for threshold calculation
+	counts := make([]int, len(rows))
+	for i, row := range rows {
+		counts[i] = int(row.Count)
+	}
+
+	// Calculate thresholds
+	thresholds := ws.calculateLevelThresholds(counts)
+
+	// Convert rows to ContributionDay
+	days := make([]ContributionDay, len(rows))
+	for i, row := range rows {
+		// Convert workout_ids from interface{} to []int32
+		workoutIDs := ws.extractWorkoutIDs(row.WorkoutIds)
+
+		days[i] = ContributionDay{
+			Date:       row.Date.Time.Format("2006-01-02"),
+			Count:      int(row.Count),
+			Level:      ws.calculateLevel(int(row.Count), thresholds),
+			WorkoutIDs: workoutIDs,
+		}
+	}
+
+	return days
+}
+
+// calculateLevelThresholds returns thresholds for levels 1-4
+// Uses percentiles (25th, 50th, 75th) when 10+ workout days, otherwise static thresholds
+func (ws *WorkoutService) calculateLevelThresholds(counts []int) [4]int {
+	// Filter out zero counts for threshold calculation
+	nonZeroCounts := make([]int, 0, len(counts))
+	for _, c := range counts {
+		if c > 0 {
+			nonZeroCounts = append(nonZeroCounts, c)
+		}
+	}
+
+	// Use static thresholds if fewer than 10 workout days
+	if len(nonZeroCounts) < 10 {
+		return [4]int{1, 6, 11, 16} // 0, 1-5, 6-10, 11-15, 16+
+	}
+
+	// Sort for percentile calculation
+	sorted := make([]int, len(nonZeroCounts))
+	copy(sorted, nonZeroCounts)
+	sort.Ints(sorted)
+
+	// Calculate percentiles (25th, 50th, 75th)
+	p25 := percentile(sorted, 25)
+	p50 := percentile(sorted, 50)
+	p75 := percentile(sorted, 75)
+
+	// Ensure thresholds are strictly increasing and at least 1
+	t1 := max(1, p25)
+	t2 := max(t1+1, p50)
+	t3 := max(t2+1, p75)
+	t4 := t3 + 1
+
+	return [4]int{t1, t2, t3, t4}
+}
+
+// percentile calculates the p-th percentile of a sorted slice
+func percentile(sorted []int, p int) int {
+	if len(sorted) == 0 {
+		return 0
+	}
+	idx := (p * (len(sorted) - 1)) / 100
+	return sorted[idx]
+}
+
+// calculateLevel returns the level (0-4) based on count and thresholds
+func (ws *WorkoutService) calculateLevel(count int, thresholds [4]int) int {
+	if count == 0 {
+		return 0
+	}
+	if count < thresholds[1] {
+		return 1
+	}
+	if count < thresholds[2] {
+		return 2
+	}
+	if count < thresholds[3] {
+		return 3
+	}
+	return 4
+}
+
+// extractWorkoutIDs converts the interface{} workout_ids to []int32
+func (ws *WorkoutService) extractWorkoutIDs(ids interface{}) []int32 {
+	if ids == nil {
+		return []int32{}
+	}
+
+	// The pgx driver returns []interface{} for ARRAY_AGG results
+	switch v := ids.(type) {
+	case []interface{}:
+		result := make([]int32, 0, len(v))
+		for _, id := range v {
+			switch idVal := id.(type) {
+			case int32:
+				result = append(result, idVal)
+			case int64:
+				result = append(result, int32(idVal))
+			case float64:
+				result = append(result, int32(idVal))
+			}
+		}
+		return result
+	case []int32:
+		return v
+	case []int64:
+		result := make([]int32, len(v))
+		for i, id := range v {
+			result[i] = int32(id)
+		}
+		return result
+	default:
+		ws.logger.Warn("unexpected workout_ids type", "type", fmt.Sprintf("%T", ids))
+		return []int32{}
+	}
 }
 
 // Generic transform function that works with both request types
