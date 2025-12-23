@@ -48,12 +48,12 @@
   - [x] 2.3 Update `useDeleteWorkoutMutation` to invalidate contribution data query key on success
   - [x] 2.4 Verify TypeScript types are correctly generated for the new endpoint response
 
-- [ ] 3.0 Add Collapsible UI Component
-  - [ ] 3.1 Add the shadcn/ui Collapsible component to `client/src/components/ui/collapsible.tsx` (use `npx shadcn@latest add collapsible` or manually create based on Radix UI)
-  - [ ] 3.2 Verify the component exports `Collapsible`, `CollapsibleTrigger`, and `CollapsibleContent`
+- [x] 3.0 Add Collapsible UI Component
+  - [x] 3.1 Add the shadcn/ui Collapsible component to `client/src/components/ui/collapsible.tsx` (use `npx shadcn@latest add collapsible` or manually create based on Radix UI)
+  - [x] 3.2 Verify the component exports `Collapsible`, `CollapsibleTrigger`, and `CollapsibleContent`
 
 - [ ] 4.0 Create WorkoutContributionGraph Component
-  - [ ] 4.1 Create `client/src/components/workouts/workout-contribution-graph.tsx` with the basic component structure and data fetching using `useSuspenseQuery`
+  - [x] 4.1 Create `client/src/components/workouts/workout-contribution-graph.tsx` with the basic component structure and data fetching using `useSuspenseQuery`
   - [ ] 4.2 Implement the Collapsible wrapper with a header/trigger showing "Activity" or similar label with expand/collapse icon
   - [ ] 4.3 Implement lazy rendering so the ContributionGraph DOM is only rendered when the collapsible is open (`{isOpen && <ContributionGraph ... />}`)
   - [ ] 4.4 Customize ContributionGraphBlock colors to use the primary (orange) color scheme: level 0 = muted, levels 1-4 = primary with 20%/40%/60%/80% opacity
