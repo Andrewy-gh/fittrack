@@ -217,3 +217,15 @@ var (
 	_ SetTransformable            = SetInput{}
 	_ SetTransformable            = UpdateSet{}
 )
+
+// Contribution Graph types for GET /api/workouts/contribution-data
+type ContributionDay struct {
+	Date       string  `json:"date"`
+	Count      int     `json:"count"`
+	Level      int     `json:"level"`
+	WorkoutIDs []int32 `json:"workoutIds"`
+}
+
+type ContributionDataResponse struct {
+	Days []ContributionDay `json:"days"`
+}
