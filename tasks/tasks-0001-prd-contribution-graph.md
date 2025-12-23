@@ -15,10 +15,13 @@
 
 ### Frontend - Components
 - `client/src/components/ui/collapsible.tsx` - New shadcn/ui Collapsible component
-- `client/src/components/workouts/workout-contribution-graph.tsx` - Main wrapper component with accordion, interactivity, and styling
+- `client/src/components/workouts/workout-contribution-graph.tsx` - Contribution graph component with Card wrapper, collapsible behavior, and interactivity
+- `client/src/components/workouts/workout-summary-cards.tsx` - Summary cards component showing total workouts and this week count
+- `client/src/components/workouts/recent-workouts-card.tsx` - Recent workouts list component with workout-in-progress support
+- `client/src/components/workouts/workout-distribution-card.tsx` - Workout distribution by focus component
 
 ### Frontend - Integration
-- `client/src/routes/_layout/workouts/index.tsx` - Integrate component and add to route loader
+- `client/src/routes/_layout/workouts/index.tsx` - Compose all workout page components and manage data fetching
 
 ### Notes
 
@@ -52,7 +55,7 @@
   - [x] 3.1 Add the shadcn/ui Collapsible component to `client/src/components/ui/collapsible.tsx` (use `npx shadcn@latest add collapsible` or manually create based on Radix UI)
   - [x] 3.2 Verify the component exports `Collapsible`, `CollapsibleTrigger`, and `CollapsibleContent`
 
-- [ ] 4.0 Create WorkoutContributionGraph Component
+- [x] 4.0 Create WorkoutContributionGraph Component
   - [x] 4.1 Create `client/src/components/workouts/workout-contribution-graph.tsx` with the basic component structure and data fetching using `useSuspenseQuery`
   - [x] 4.2 Implement the Collapsible wrapper with a header/trigger showing "Activity" or similar label with expand/collapse icon
   - [x] 4.3 Implement lazy rendering so the ContributionGraph DOM is only rendered when the collapsible is open (`{isOpen && <ContributionGraph ... />}`)
@@ -62,11 +65,11 @@
   - [x] 4.7 Implement click handler for days with a single workout to navigate directly to `/workouts/{id}`
   - [x] 4.8 Implement click handler for days with multiple workouts to show a Popover listing each workout with time/focus, allowing user to select which workout to navigate to
   - [x] 4.9 Implement empty state: when user has no workouts in 52-week period, display an encouraging message (e.g., "Start your fitness journey! Log your first workout to see your progress here.")
-  - [ ] 4.10 Ensure the component is responsive with horizontal scroll on mobile (leverage existing `overflow-x-auto` in ContributionGraphCalendar)
+  - [x] 4.10 Ensure the component is responsive with horizontal scroll on mobile (leverage existing `overflow-x-auto` in ContributionGraphCalendar)
 
-- [ ] 5.0 Integrate Contribution Graph into Workouts Page
-  - [ ] 5.1 Import `WorkoutContributionGraph` in `client/src/routes/_layout/workouts/index.tsx`
-  - [ ] 5.2 Add the component above the `WorkoutList` component in the page layout
-  - [ ] 5.3 Add `contributionDataQueryOptions()` to the route loader to prefetch contribution data
-  - [ ] 5.4 Implement responsive default state: collapsible expanded by default on desktop, collapsed by default on mobile (use media query or viewport width check)
-  - [ ] 5.5 Test the full integration: verify data loads, accordion works, tooltips display, navigation works for single and multiple workout days, and empty state displays correctly for new users
+- [x] 5.0 Integrate Contribution Graph into Workouts Page
+  - [x] 5.1 Import `WorkoutContributionGraph` in `client/src/routes/_layout/workouts/index.tsx`
+  - [x] 5.2 Add the component above the `WorkoutList` component in the page layout
+  - [x] 5.3 Add `contributionDataQueryOptions()` to the route loader to prefetch contribution data
+  - [x] 5.4 Implement responsive default state: collapsible expanded by default on desktop, collapsed by default on mobile (use media query or viewport width check)
+  - [x] 5.5 Test the full integration: verify data loads, accordion works, tooltips display, navigation works for single and multiple workout days, and empty state displays correctly for new users

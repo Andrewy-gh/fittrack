@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { contributionDataQueryOptions, workoutsQueryOptions } from '@/lib/api/workouts';
+import { workoutsQueryOptions } from '@/lib/api/workouts';
 import {
   ContributionGraph,
   ContributionGraphBlock,
@@ -27,12 +27,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Card, CardContent } from '@/components/ui/card';
+import type { WorkoutContributionDataResponse } from '@/client';
 
-export function WorkoutContributionGraph() {
-  const [isOpen, setIsOpen] = useState(true);
+export interface WorkoutContributionGraphProps {
+  data: WorkoutContributionDataResponse;
+  defaultOpen?: boolean;
+}
+
+export function WorkoutContributionGraph({
+  data,
+  defaultOpen = true,
+}: WorkoutContributionGraphProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { data } = useSuspenseQuery(contributionDataQueryOptions());
   const { data: workouts } = useSuspenseQuery(workoutsQueryOptions());
 
   // Transform API response to Activity[] format and track workout IDs
@@ -63,28 +72,30 @@ export function WorkoutContributionGraph() {
   // Empty state: no workouts in 52-week period
   if (activities.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
+      <Card className="p-8 text-center">
         <p className="text-muted-foreground">
           Start your fitness journey! Log your first workout to see your
           progress here.
         </p>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight">Activity</h2>
-        <CollapsibleTrigger className="p-2 hover:bg-muted rounded-md transition-colors">
-          {isOpen ? (
-            <ChevronUp className="h-5 w-5" />
-          ) : (
-            <ChevronDown className="h-5 w-5" />
-          )}
-        </CollapsibleTrigger>
-      </div>
-      <CollapsibleContent className="space-y-4">
+    <Card>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between p-6 pb-0">
+          <h2 className="text-xl font-semibold tracking-tight">Activity</h2>
+          <CollapsibleTrigger className="p-2 hover:bg-muted rounded-md transition-colors">
+            {isOpen ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+          <CardContent className="pt-4">
         {isOpen && (
           <ContributionGraph data={activities}>
             <ContributionGraphCalendar>
@@ -151,7 +162,10 @@ export function WorkoutContributionGraph() {
                             const workout = workoutDetailsById.get(workoutId);
                             if (!workout) return null;
 
-                            const time = format(parseISO(workout.date), 'h:mm a');
+                            const time = format(
+                              parseISO(workout.date),
+                              'h:mm a'
+                            );
                             return (
                               <button
                                 key={workoutId}
@@ -197,7 +211,9 @@ export function WorkoutContributionGraph() {
             </ContributionGraphFooter>
           </ContributionGraph>
         )}
-      </CollapsibleContent>
-    </Collapsible>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
