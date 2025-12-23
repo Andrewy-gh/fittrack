@@ -37,7 +37,7 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
-          autoFocus
+            autoFocus
             placeholder="Search/add exercises..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -49,7 +49,7 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
         <Card className="py-0">
           <CardContent className="p-0">
             {filteredExercises.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="px-4 py-8 text-center text-wrap text-muted-foreground">
                 No exercises found matching "{searchQuery}"
               </div>
             ) : (
