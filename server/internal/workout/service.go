@@ -15,6 +15,7 @@ type WorkoutRepository interface {
 	GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error)
+	GetContributionData(ctx context.Context, userID string) ([]db.GetContributionDataRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
 	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
 	DeleteWorkout(ctx context.Context, id int32, userID string) error
