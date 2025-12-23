@@ -60,8 +60,8 @@
   - [x] 4.5 Add ContributionGraphFooter with ContributionGraphLegend showing Less/More indicator
   - [x] 4.6 Implement tooltip on hover displaying formatted date (e.g., "Monday, Jan 15, 2025") and working set count (e.g., "12 working sets")
   - [x] 4.7 Implement click handler for days with a single workout to navigate directly to `/workouts/{id}`
-  - [ ] 4.8 Implement click handler for days with multiple workouts to show a Popover listing each workout with time/focus, allowing user to select which workout to navigate to
-  - [ ] 4.9 Implement empty state: when user has no workouts in 52-week period, display an encouraging message (e.g., "Start your fitness journey! Log your first workout to see your progress here.")
+  - [x] 4.8 Implement click handler for days with multiple workouts to show a Popover listing each workout with time/focus, allowing user to select which workout to navigate to
+  - [x] 4.9 Implement empty state: when user has no workouts in 52-week period, display an encouraging message (e.g., "Start your fitness journey! Log your first workout to see your progress here.")
   - [ ] 4.10 Ensure the component is responsive with horizontal scroll on mobile (leverage existing `overflow-x-auto` in ContributionGraphCalendar)
 
 - [ ] 5.0 Integrate Contribution Graph into Workouts Page
