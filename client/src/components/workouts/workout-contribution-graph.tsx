@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { contributionDataQueryOptions } from '@/lib/api/workouts';
 import {
   ContributionGraph,
@@ -15,6 +16,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export function WorkoutContributionGraph() {
   const [isOpen, setIsOpen] = useState(true);
@@ -55,14 +61,34 @@ export function WorkoutContributionGraph() {
         {isOpen && (
           <ContributionGraph data={activities}>
             <ContributionGraphCalendar>
-              {({ activity, dayIndex, weekIndex }) => (
-                <ContributionGraphBlock
-                  activity={activity}
-                  dayIndex={dayIndex}
-                  weekIndex={weekIndex}
-                  className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80"
-                />
-              )}
+              {({ activity, dayIndex, weekIndex }) => {
+                const formattedDate = format(
+                  parseISO(activity.date),
+                  'EEEE, MMM d, yyyy'
+                );
+                const workingSets = activity.count;
+                const workingSetsText =
+                  workingSets === 1 ? '1 working set' : `${workingSets} working sets`;
+
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <ContributionGraphBlock
+                        activity={activity}
+                        dayIndex={dayIndex}
+                        weekIndex={weekIndex}
+                        className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80 cursor-pointer"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-center">
+                        <div className="font-medium">{formattedDate}</div>
+                        <div className="text-xs">{workingSetsText}</div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }}
             </ContributionGraphCalendar>
             <ContributionGraphFooter>
               <ContributionGraphLegend />
