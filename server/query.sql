@@ -157,8 +157,20 @@ ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at DESC
 LIMIT 3;
 
 -- name: ListWorkoutFocusValues :many
-SELECT DISTINCT workout_focus 
-FROM workout 
-WHERE user_id = $1 
+SELECT DISTINCT workout_focus
+FROM workout
+WHERE user_id = $1
   AND workout_focus IS NOT NULL
 ORDER BY workout_focus;
+
+-- name: GetContributionData :many
+SELECT
+    DATE_TRUNC('day', w.date)::DATE as date,
+    COUNT(s.id)::INTEGER as count,
+    ARRAY_AGG(DISTINCT w.id) as workout_ids
+FROM workout w
+LEFT JOIN "set" s ON s.workout_id = w.id AND s.set_type = 'working'
+WHERE w.user_id = $1
+  AND w.date >= CURRENT_DATE - INTERVAL '52 weeks'
+GROUP BY DATE_TRUNC('day', w.date)
+ORDER BY date;

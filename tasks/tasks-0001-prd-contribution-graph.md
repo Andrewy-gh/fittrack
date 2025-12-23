@@ -33,7 +33,7 @@
 ## Tasks
 
 - [ ] 1.0 Create Backend API Endpoint for Contribution Data
-  - [ ] 1.1 Add `GetContributionData` SQL query to `server/query.sql` that aggregates daily working set counts, groups by date, and returns workout IDs array for the past 52 weeks
+  - [x] 1.1 Add `GetContributionData` SQL query to `server/query.sql` that aggregates daily working set counts, groups by date, and returns workout IDs array for the past 52 weeks
   - [ ] 1.2 Run `sqlc generate` to generate the Go code from the new query
   - [ ] 1.3 Add `ContributionDataResponse` and `ContributionDay` types to `server/internal/workout/models.go` with fields: date, count, level (0-4), and workout_ids
   - [ ] 1.4 Add `GetContributionData` method to the repository interface and implement it in `repository.go` with proper context timeout and RLS error handling
