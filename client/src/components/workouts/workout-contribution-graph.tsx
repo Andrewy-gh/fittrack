@@ -3,6 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { workoutsQueryOptions } from '@/lib/api/workouts';
 import {
   ContributionGraph,
@@ -27,7 +28,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { WorkoutContributionDataResponse } from '@/client';
 
 export interface WorkoutContributionGraphProps {
@@ -84,9 +85,14 @@ export function WorkoutContributionGraph({
   return (
     <Card>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex items-center justify-between p-6 pb-0">
-          <h2 className="text-xl font-semibold tracking-tight">Activity</h2>
-          <CollapsibleTrigger className="p-2 hover:bg-muted rounded-md transition-colors">
+        {/* <div className="flex items-center justify-between p-6 pb-0"> */}
+        <div className="flex items-center justify-between">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold">Activity</CardTitle>
+          </CardHeader>
+
+          {/* <h2 className="text-xl font-semibold tracking-tight">Activity</h2> */}
+          <CollapsibleTrigger className="px-6 hover:bg-muted rounded-md transition-colors">
             {isOpen ? (
               <ChevronUp className="h-5 w-5" />
             ) : (
@@ -96,56 +102,110 @@ export function WorkoutContributionGraph({
         </div>
         <CollapsibleContent>
           <CardContent className="pt-4">
-        {isOpen && (
-          <ContributionGraph data={activities}>
-            <ContributionGraphCalendar>
-              {({ activity, dayIndex, weekIndex }) => {
-                const formattedDate = format(
-                  parseISO(activity.date),
-                  'EEEE, MMM d, yyyy'
-                );
-                const workingSets = activity.count;
-                const workingSetsText =
-                  workingSets === 1
-                    ? '1 working set'
-                    : `${workingSets} working sets`;
+            {isOpen && (
+              <ContributionGraph data={activities}>
+                <ContributionGraphCalendar>
+                  {({ activity, dayIndex, weekIndex }) => {
+                    const formattedDate = format(
+                      parseISO(activity.date),
+                      'EEEE, MMM d, yyyy'
+                    );
+                    const workingSets = activity.count;
+                    const workingSetsText =
+                      workingSets === 1
+                        ? '1 working set'
+                        : `${workingSets} working sets`;
 
-                const workoutIds = workoutIdsByDate.get(activity.date) || [];
-                const hasSingleWorkout = workoutIds.length === 1;
-                const hasMultipleWorkouts = workoutIds.length > 1;
+                    const workoutIds =
+                      workoutIdsByDate.get(activity.date) || [];
+                    const hasSingleWorkout = workoutIds.length === 1;
+                    const hasMultipleWorkouts = workoutIds.length > 1;
 
-                const handleClick = () => {
-                  if (hasSingleWorkout) {
-                    navigate({
-                      to: '/workouts/$workoutId',
-                      params: { workoutId: workoutIds[0] },
-                    });
-                  }
-                };
-
-                const block = (
-                  <ContributionGraphBlock
-                    activity={activity}
-                    dayIndex={dayIndex}
-                    weekIndex={weekIndex}
-                    onClick={handleClick}
-                    className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80 cursor-pointer"
-                  />
-                );
-
-                // For multiple workouts, wrap with Popover
-                if (hasMultipleWorkouts) {
-                  return (
-                    <Popover
-                      open={openPopover === activity.date}
-                      onOpenChange={(open) =>
-                        setOpenPopover(open ? activity.date : null)
+                    const handleClick = () => {
+                      if (hasSingleWorkout) {
+                        navigate({
+                          to: '/workouts/$workoutId',
+                          params: { workoutId: workoutIds[0] },
+                        });
                       }
-                    >
+                    };
+
+                    const block = (
+                      <ContributionGraphBlock
+                        activity={activity}
+                        dayIndex={dayIndex}
+                        weekIndex={weekIndex}
+                        onClick={handleClick}
+                        className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80 cursor-pointer"
+                      />
+                    );
+
+                    // For multiple workouts, wrap with Popover
+                    if (hasMultipleWorkouts) {
+                      return (
+                        <Popover
+                          open={openPopover === activity.date}
+                          onOpenChange={(open) =>
+                            setOpenPopover(open ? activity.date : null)
+                          }
+                        >
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <PopoverTrigger asChild>{block}</PopoverTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="text-center">
+                                <div className="font-medium">
+                                  {formattedDate}
+                                </div>
+                                <div className="text-xs">{workingSetsText}</div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                          <PopoverContent className="w-64 p-2">
+                            <div className="space-y-1">
+                              <div className="px-2 py-1.5 text-sm font-semibold">
+                                Select a workout
+                              </div>
+                              {workoutIds.map((workoutId) => {
+                                const workout =
+                                  workoutDetailsById.get(workoutId);
+                                if (!workout) return null;
+
+                                const time = format(
+                                  parseISO(workout.date),
+                                  'h:mm a'
+                                );
+                                return (
+                                  <button
+                                    key={workoutId}
+                                    onClick={() => {
+                                      navigate({
+                                        to: '/workouts/$workoutId',
+                                        params: { workoutId },
+                                      });
+                                    }}
+                                    className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted transition-colors"
+                                  >
+                                    <div className="font-medium">{time}</div>
+                                    {workout.focus && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {workout.focus}
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      );
+                    }
+
+                    // For single or no workouts, just show tooltip
+                    return (
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <PopoverTrigger asChild>{block}</PopoverTrigger>
-                        </TooltipTrigger>
+                        <TooltipTrigger asChild>{block}</TooltipTrigger>
                         <TooltipContent>
                           <div className="text-center">
                             <div className="font-medium">{formattedDate}</div>
@@ -153,64 +213,35 @@ export function WorkoutContributionGraph({
                           </div>
                         </TooltipContent>
                       </Tooltip>
-                      <PopoverContent className="w-64 p-2">
-                        <div className="space-y-1">
-                          <div className="px-2 py-1.5 text-sm font-semibold">
-                            Select a workout
-                          </div>
-                          {workoutIds.map((workoutId) => {
-                            const workout = workoutDetailsById.get(workoutId);
-                            if (!workout) return null;
-
-                            const time = format(
-                              parseISO(workout.date),
-                              'h:mm a'
-                            );
-                            return (
-                              <button
-                                key={workoutId}
-                                onClick={() => {
-                                  navigate({
-                                    to: '/workouts/$workoutId',
-                                    params: { workoutId },
-                                  });
-                                }}
-                                className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted transition-colors"
-                              >
-                                <div className="font-medium">{time}</div>
-                                {workout.focus && (
-                                  <div className="text-xs text-muted-foreground">
-                                    {workout.focus}
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  );
-                }
-
-                // For single or no workouts, just show tooltip
-                return (
-                  <Tooltip>
-                    <TooltipTrigger asChild>{block}</TooltipTrigger>
-                    <TooltipContent>
-                      <div className="text-center">
-                        <div className="font-medium">{formattedDate}</div>
-                        <div className="text-xs">{workingSetsText}</div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }}
-            </ContributionGraphCalendar>
-            <ContributionGraphFooter>
-              <ContributionGraphLegend />
-            </ContributionGraphFooter>
-          </ContributionGraph>
-        )}
+                    );
+                  }}
+                </ContributionGraphCalendar>
+                <ContributionGraphFooter>
+                  <ContributionGraphLegend>
+                    {({ level }) => (
+                      <svg height={12} width={12}>
+                        <title>{`Level ${level}`}</title>
+                        <rect
+                          className={cn(
+                            'stroke-[1px] stroke-border',
+                            'data-[level="0"]:fill-muted',
+                            'data-[level="1"]:fill-primary/20',
+                            'data-[level="2"]:fill-primary/40',
+                            'data-[level="3"]:fill-primary/60',
+                            'data-[level="4"]:fill-primary/80'
+                          )}
+                          data-level={level}
+                          height={12}
+                          rx={2}
+                          ry={2}
+                          width={12}
+                        />
+                      </svg>
+                    )}
+                  </ContributionGraphLegend>
+                </ContributionGraphFooter>
+              </ContributionGraph>
+            )}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
