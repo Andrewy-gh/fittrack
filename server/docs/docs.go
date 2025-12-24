@@ -1045,10 +1045,10 @@ const docTemplate = `{
                 "level": {
                     "type": "integer"
                 },
-                "workoutIds": {
+                "workouts": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "$ref": "#/definitions/workout.WorkoutSummary"
                     }
                 }
             }
@@ -1237,6 +1237,20 @@ const docTemplate = `{
                 "workout_focus": {
                     "type": "string",
                     "example": "Upper Body"
+                }
+            }
+        },
+        "workout.WorkoutSummary": {
+            "type": "object",
+            "properties": {
+                "focus": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "time": {
+                    "type": "string"
                 }
             }
         },

@@ -80,7 +80,7 @@ export type WorkoutContributionDay = {
   count?: number;
   date?: string;
   level?: number;
-  workoutIds?: Array<number>;
+  workouts?: Array<WorkoutWorkoutSummary>;
 };
 
 export type WorkoutCreateWorkoutRequest = {
@@ -130,6 +130,12 @@ export type WorkoutWorkoutResponse = {
   updated_at: string;
   user_id: string;
   workout_focus?: string;
+};
+
+export type WorkoutWorkoutSummary = {
+  focus?: string;
+  id?: number;
+  time?: string;
 };
 
 export type WorkoutWorkoutWithSetsResponse = {

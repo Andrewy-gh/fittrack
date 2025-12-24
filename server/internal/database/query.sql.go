@@ -150,7 +150,11 @@ const getContributionData = `-- name: GetContributionData :many
 SELECT
     DATE_TRUNC('day', w.date)::DATE as date,
     COUNT(s.id)::INTEGER as count,
-    ARRAY_AGG(DISTINCT w.id) as workout_ids
+    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', w.id,
+        'time', w.date,
+        'focus', w.workout_focus
+    )) as workouts
 FROM workout w
 LEFT JOIN "set" s ON s.workout_id = w.id AND s.set_type = 'working'
 WHERE w.user_id = $1
@@ -160,9 +164,9 @@ ORDER BY date
 `
 
 type GetContributionDataRow struct {
-	Date       pgtype.Date `json:"date"`
-	Count      int32       `json:"count"`
-	WorkoutIds interface{} `json:"workout_ids"`
+	Date     pgtype.Date `json:"date"`
+	Count    int32       `json:"count"`
+	Workouts []byte      `json:"workouts"`
 }
 
 func (q *Queries) GetContributionData(ctx context.Context, userID string) ([]GetContributionDataRow, error) {
@@ -174,7 +178,7 @@ func (q *Queries) GetContributionData(ctx context.Context, userID string) ([]Get
 	var items []GetContributionDataRow
 	for rows.Next() {
 		var i GetContributionDataRow
-		if err := rows.Scan(&i.Date, &i.Count, &i.WorkoutIds); err != nil {
+		if err := rows.Scan(&i.Date, &i.Count, &i.Workouts); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

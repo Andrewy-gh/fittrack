@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { workoutsQueryOptions } from '@/lib/api/workouts';
 import {
   ContributionGraph,
   ContributionGraphBlock,
@@ -43,7 +41,6 @@ export function WorkoutContributionGraph({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { data: workouts } = useSuspenseQuery(workoutsQueryOptions());
 
   // Transform API response to Activity[] format and track workout IDs
   const activities: Activity[] =
@@ -55,19 +52,24 @@ export function WorkoutContributionGraph({
 
   // Create a map of date to workout IDs for navigation
   const workoutIdsByDate = new Map<string, number[]>(
-    data.days?.map((day) => [day.date || '', day.workoutIds || []]) || []
+    data.days?.map((day) => [
+      day.date || '',
+      day.workouts?.map((w) => w.id).filter((id): id is number => id !== undefined) || [],
+    ]) || []
   );
 
-  // Create a map of workout ID to workout details
+  // Create a map of workout ID to workout details from contribution data
   const workoutDetailsById = new Map(
-    workouts?.map((workout) => [
-      workout.id,
-      {
-        id: workout.id,
-        date: workout.date,
-        focus: workout.workout_focus,
-      },
-    ]) || []
+    data.days?.flatMap((day) =>
+      day.workouts?.map((workout) => [
+        workout.id,
+        {
+          id: workout.id,
+          time: workout.time,
+          focus: workout.focus,
+        },
+      ]) || []
+    ) || []
   );
 
   // Empty state: no workouts in 52-week period
@@ -168,10 +170,10 @@ export function WorkoutContributionGraph({
                               {workoutIds.map((workoutId) => {
                                 const workout =
                                   workoutDetailsById.get(workoutId);
-                                if (!workout) return null;
+                                if (!workout || !workout.time) return null;
 
                                 const time = format(
-                                  parseISO(workout.date),
+                                  parseISO(workout.time),
                                   'h:mm a'
                                 );
                                 return (

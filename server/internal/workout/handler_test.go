@@ -674,16 +674,20 @@ func TestWorkoutHandler_GetContributionData(t *testing.T) {
 		{
 			name: "successful fetch with data",
 			setupMock: func(m *MockWorkoutRepository) {
+				now := time.Now()
+				yesterday := now.AddDate(0, 0, -1)
+				focusValue := "Strength"
+
 				m.On("GetContributionData", mock.Anything, userID).Return([]db.GetContributionDataRow{
 					{
-						Date:       pgtype.Date{Time: time.Now().AddDate(0, 0, -1), Valid: true},
-						Count:      5,
-						WorkoutIds: []interface{}{int64(1)},
+						Date:     pgtype.Date{Time: yesterday, Valid: true},
+						Count:    5,
+						Workouts: []byte(`[{"id": 1, "time": "` + yesterday.Format(time.RFC3339) + `", "focus": "` + focusValue + `"}]`),
 					},
 					{
-						Date:       pgtype.Date{Time: time.Now(), Valid: true},
-						Count:      10,
-						WorkoutIds: []interface{}{int64(2), int64(3)},
+						Date:     pgtype.Date{Time: now, Valid: true},
+						Count:    10,
+						Workouts: []byte(`[{"id": 2, "time": "` + now.Format(time.RFC3339) + `", "focus": null}, {"id": 3, "time": "` + now.Format(time.RFC3339) + `", "focus": "Cardio"}]`),
 					},
 				}, nil)
 			},
@@ -749,6 +753,24 @@ func TestWorkoutHandler_GetContributionData(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &result)
 				assert.NoError(t, err)
 				assert.Len(t, result.Days, tt.expectedDays)
+
+				// Verify workout data structure if we have days
+				if tt.expectedDays > 0 && tt.name == "successful fetch with data" {
+					// First day should have 1 workout with focus
+					assert.Len(t, result.Days[0].Workouts, 1)
+					assert.Equal(t, int32(1), result.Days[0].Workouts[0].ID)
+					assert.NotEmpty(t, result.Days[0].Workouts[0].Time)
+					assert.NotNil(t, result.Days[0].Workouts[0].Focus)
+					assert.Equal(t, "Strength", *result.Days[0].Workouts[0].Focus)
+
+					// Second day should have 2 workouts, one with focus and one without
+					assert.Len(t, result.Days[1].Workouts, 2)
+					assert.Equal(t, int32(2), result.Days[1].Workouts[0].ID)
+					assert.Nil(t, result.Days[1].Workouts[0].Focus)
+					assert.Equal(t, int32(3), result.Days[1].Workouts[1].ID)
+					assert.NotNil(t, result.Days[1].Workouts[1].Focus)
+					assert.Equal(t, "Cardio", *result.Days[1].Workouts[1].Focus)
+				}
 			}
 
 			if tt.expectedError != "" {
@@ -859,56 +881,51 @@ func TestWorkoutService_CalculateLevel(t *testing.T) {
 	}
 }
 
-// Test for extractWorkoutIDs
-func TestWorkoutService_ExtractWorkoutIDs(t *testing.T) {
+// Test for parseWorkouts
+func TestWorkoutService_ParseWorkouts(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := &WorkoutService{logger: logger}
 
 	tests := []struct {
 		name     string
-		input    interface{}
-		expected []int32
+		input    []byte
+		expected []WorkoutSummary
 	}{
 		{
 			name:     "nil input",
 			input:    nil,
-			expected: []int32{},
+			expected: []WorkoutSummary{},
 		},
 		{
-			name:     "empty slice interface",
-			input:    []interface{}{},
-			expected: []int32{},
+			name:     "empty byte slice",
+			input:    []byte{},
+			expected: []WorkoutSummary{},
 		},
 		{
-			name:     "slice of int64",
-			input:    []interface{}{int64(1), int64(2), int64(3)},
-			expected: []int32{1, 2, 3},
+			name:  "single workout with focus",
+			input: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}]`),
+			expected: []WorkoutSummary{
+				{ID: 1, Time: "2025-01-15T10:00:00Z", Focus: stringPtr("Strength")},
+			},
 		},
 		{
-			name:     "slice of int32",
-			input:    []interface{}{int32(1), int32(2)},
-			expected: []int32{1, 2},
+			name:  "multiple workouts",
+			input: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}, {"id": 2, "time": "2025-01-15T14:00:00Z", "focus": null}]`),
+			expected: []WorkoutSummary{
+				{ID: 1, Time: "2025-01-15T10:00:00Z", Focus: stringPtr("Strength")},
+				{ID: 2, Time: "2025-01-15T14:00:00Z", Focus: nil},
+			},
 		},
 		{
-			name:     "slice of float64",
-			input:    []interface{}{float64(1), float64(2)},
-			expected: []int32{1, 2},
-		},
-		{
-			name:     "direct []int32",
-			input:    []int32{1, 2, 3},
-			expected: []int32{1, 2, 3},
-		},
-		{
-			name:     "direct []int64",
-			input:    []int64{1, 2, 3},
-			expected: []int32{1, 2, 3},
+			name:     "invalid JSON",
+			input:    []byte(`invalid json`),
+			expected: []WorkoutSummary{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := service.extractWorkoutIDs(tt.input)
+			result := service.parseWorkouts(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -928,9 +945,9 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 		testDate := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 		rows := []db.GetContributionDataRow{
 			{
-				Date:       pgtype.Date{Time: testDate, Valid: true},
-				Count:      5,
-				WorkoutIds: []interface{}{int64(1)},
+				Date:     pgtype.Date{Time: testDate, Valid: true},
+				Count:    5,
+				Workouts: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}]`),
 			},
 		}
 
@@ -940,16 +957,17 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 		assert.Equal(t, "2025-01-15", result[0].Date)
 		assert.Equal(t, 5, result[0].Count)
 		assert.Equal(t, 1, result[0].Level) // Static threshold: 5 < 6, so level 1
-		assert.Equal(t, []int32{1}, result[0].WorkoutIDs)
+		assert.Len(t, result[0].Workouts, 1)
+		assert.Equal(t, int32(1), result[0].Workouts[0].ID)
 	})
 
-	t.Run("handles multiple workout IDs", func(t *testing.T) {
+	t.Run("handles multiple workouts", func(t *testing.T) {
 		testDate := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 		rows := []db.GetContributionDataRow{
 			{
-				Date:       pgtype.Date{Time: testDate, Valid: true},
-				Count:      20,
-				WorkoutIds: []interface{}{int64(1), int64(2), int64(3)},
+				Date:     pgtype.Date{Time: testDate, Valid: true},
+				Count:    20,
+				Workouts: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}, {"id": 2, "time": "2025-01-15T14:00:00Z", "focus": null}, {"id": 3, "time": "2025-01-15T18:00:00Z", "focus": "Cardio"}]`),
 			},
 		}
 
@@ -957,7 +975,10 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 
 		assert.Len(t, result, 1)
 		assert.Equal(t, 4, result[0].Level) // 20 >= 16, so level 4
-		assert.Equal(t, []int32{1, 2, 3}, result[0].WorkoutIDs)
+		assert.Len(t, result[0].Workouts, 3)
+		assert.Equal(t, int32(1), result[0].Workouts[0].ID)
+		assert.Equal(t, int32(2), result[0].Workouts[1].ID)
+		assert.Equal(t, int32(3), result[0].Workouts[2].ID)
 	})
 }
 
@@ -1127,6 +1148,119 @@ func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 	})
 }
 
+func TestContributionData_Integration_RLS(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	// Setup real database connection
+	pool, cleanup := setupTestDatabase(t)
+	defer cleanup()
+
+	// Initialize components with real database
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	validator := validator.New()
+	queries := db.New(pool)
+
+	// Initialize repositories
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	workoutRepo := NewRepository(logger, queries, pool, exerciseRepo)
+	workoutService := NewService(logger, workoutRepo)
+	handler := NewHandler(logger, validator, workoutService)
+
+	// Test data
+	userAID := "test-user-rls-a"
+	userBID := "test-user-rls-b"
+
+	// Create test workouts for both users on the same day
+	today := time.Now()
+	workoutAID := setupTestWorkout(t, pool, userAID, "User A's workout")
+	workoutBID := setupTestWorkout(t, pool, userBID, "User B's workout")
+
+	// Add a set to each workout so they show up in contribution data
+	setupTestSet(t, pool, userAID, workoutAID)
+	setupTestSet(t, pool, userBID, workoutBID)
+
+	t.Run("UserA_OnlySeesOwnWorkoutMetadata", func(t *testing.T) {
+		// Set RLS context for User A
+		ctx := setTestUserContext(context.Background(), t, pool, userAID)
+		ctx = user.WithContext(ctx, userAID)
+
+		req := httptest.NewRequest("GET", "/api/workouts/contribution-data", nil).WithContext(ctx)
+		w := httptest.NewRecorder()
+
+		handler.GetContributionData(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result ContributionDataResponse
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NoError(t, err)
+
+		// Find today's contribution data
+		todayStr := today.Format("2006-01-02")
+		var todayData *ContributionDay
+		for i := range result.Days {
+			if result.Days[i].Date == todayStr {
+				todayData = &result.Days[i]
+				break
+			}
+		}
+
+		assert.NotNil(t, todayData, "Should have contribution data for today")
+		assert.Len(t, todayData.Workouts, 1, "User A should see exactly 1 workout (their own)")
+		assert.Equal(t, workoutAID, todayData.Workouts[0].ID, "User A should see their own workout ID")
+		assert.NotEqual(t, workoutBID, todayData.Workouts[0].ID, "User A should NOT see User B's workout ID")
+	})
+
+	t.Run("UserB_OnlySeesOwnWorkoutMetadata", func(t *testing.T) {
+		// Set RLS context for User B
+		ctx := setTestUserContext(context.Background(), t, pool, userBID)
+		ctx = user.WithContext(ctx, userBID)
+
+		req := httptest.NewRequest("GET", "/api/workouts/contribution-data", nil).WithContext(ctx)
+		w := httptest.NewRecorder()
+
+		handler.GetContributionData(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var result ContributionDataResponse
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		assert.NoError(t, err)
+
+		// Find today's contribution data
+		todayStr := today.Format("2006-01-02")
+		var todayData *ContributionDay
+		for i := range result.Days {
+			if result.Days[i].Date == todayStr {
+				todayData = &result.Days[i]
+				break
+			}
+		}
+
+		assert.NotNil(t, todayData, "Should have contribution data for today")
+		assert.Len(t, todayData.Workouts, 1, "User B should see exactly 1 workout (their own)")
+		assert.Equal(t, workoutBID, todayData.Workouts[0].ID, "User B should see their own workout ID")
+		assert.NotEqual(t, workoutAID, todayData.Workouts[0].ID, "User B should NOT see User A's workout ID")
+	})
+
+	t.Run("AnonymousUser_Unauthorized", func(t *testing.T) {
+		// No user context set (anonymous user)
+		ctx := context.Background()
+
+		req := httptest.NewRequest("GET", "/api/workouts/contribution-data", nil).WithContext(ctx)
+		w := httptest.NewRecorder()
+
+		handler.GetContributionData(w, req)
+
+		// Should get unauthorized
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		var resp errorResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.NoError(t, err)
+		assert.Contains(t, resp.Message, "user not authenticated")
+	})
+}
+
 func BenchmarkWorkoutHandler_ListWorkouts(b *testing.B) {
 	userID := "test-user-id"
 	mockRepo := &MockWorkoutRepository{}
@@ -1270,6 +1404,36 @@ func setupTestWorkout(t *testing.T, pool *pgxpool.Pool, userID, notes string) in
 	require.NoError(t, err, "Failed to create test workout for user %s", userID)
 
 	return workoutID
+}
+
+func setupTestSet(t *testing.T, pool *pgxpool.Pool, userID string, workoutID int32) int32 {
+	t.Helper()
+	ctx := context.Background()
+
+	// Set user context for RLS
+	ctx = testutils.SetTestUserContext(ctx, t, pool, userID)
+
+	// Get or create a test exercise
+	var exerciseID int32
+	err := pool.QueryRow(ctx,
+		"INSERT INTO exercise (name, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING id",
+		"Test Exercise", userID).Scan(&exerciseID)
+	if err != nil {
+		// If conflict, query for existing
+		err = pool.QueryRow(ctx,
+			"SELECT id FROM exercise WHERE name = $1 AND user_id = $2 LIMIT 1",
+			"Test Exercise", userID).Scan(&exerciseID)
+		require.NoError(t, err, "Failed to get test exercise for user %s", userID)
+	}
+
+	// Create a working set
+	var setID int32
+	err = pool.QueryRow(ctx,
+		"INSERT INTO \"set\" (workout_id, exercise_id, user_id, weight, reps, set_type, exercise_order, set_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+		workoutID, exerciseID, userID, 100, 10, "working", 1, 1).Scan(&setID)
+	require.NoError(t, err, "Failed to create test set for user %s", userID)
+
+	return setID
 }
 
 func setTestUserContext(ctx context.Context, t *testing.T, pool *pgxpool.Pool, userID string) context.Context {

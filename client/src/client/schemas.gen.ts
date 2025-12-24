@@ -255,10 +255,10 @@ export const workout_ContributionDaySchema = {
     level: {
       type: "integer",
     },
-    workoutIds: {
+    workouts: {
       type: "array",
       items: {
-        type: "integer",
+        $ref: "#/definitions/workout.WorkoutSummary",
       },
     },
   },
@@ -424,6 +424,21 @@ export const workout_WorkoutResponseSchema = {
     workout_focus: {
       type: "string",
       example: "Upper Body",
+    },
+  },
+} as const;
+
+export const workout_WorkoutSummarySchema = {
+  type: "object",
+  properties: {
+    focus: {
+      type: "string",
+    },
+    id: {
+      type: "integer",
+    },
+    time: {
+      type: "string",
     },
   },
 } as const;

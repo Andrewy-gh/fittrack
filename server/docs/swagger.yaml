@@ -191,9 +191,9 @@ definitions:
         type: string
       level:
         type: integer
-      workoutIds:
+      workouts:
         items:
-          type: integer
+          $ref: '#/definitions/workout.WorkoutSummary'
         type: array
     type: object
   workout.CreateWorkoutRequest:
@@ -330,6 +330,15 @@ definitions:
     - id
     - updated_at
     - user_id
+    type: object
+  workout.WorkoutSummary:
+    properties:
+      focus:
+        type: string
+      id:
+        type: integer
+      time:
+        type: string
     type: object
   workout.WorkoutWithSetsResponse:
     properties:

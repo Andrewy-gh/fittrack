@@ -2,6 +2,7 @@ package workout
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -225,13 +226,13 @@ func (ws *WorkoutService) convertContributionRows(rows []db.GetContributionDataR
 
 	days := make([]ContributionDay, len(rows))
 	for i, row := range rows {
-		workoutIDs := ws.extractWorkoutIDs(row.WorkoutIds)
+		workouts := ws.parseWorkouts(row.Workouts)
 
 		days[i] = ContributionDay{
-			Date:       row.Date.Time.Format("2006-01-02"),
-			Count:      int(row.Count),
-			Level:      ws.calculateLevel(int(row.Count), thresholds),
-			WorkoutIDs: workoutIDs,
+			Date:     row.Date.Time.Format("2006-01-02"),
+			Count:    int(row.Count),
+			Level:    ws.calculateLevel(int(row.Count), thresholds),
+			Workouts: workouts,
 		}
 	}
 
@@ -299,39 +300,19 @@ func (ws *WorkoutService) calculateLevel(count int, thresholds [4]int) int {
 	return 4
 }
 
-// extractWorkoutIDs converts the interface{} workout_ids to []int32
-func (ws *WorkoutService) extractWorkoutIDs(ids interface{}) []int32 {
-	if ids == nil {
-		return []int32{}
+// parseWorkouts parses JSON workout data into []WorkoutSummary
+func (ws *WorkoutService) parseWorkouts(workoutsJSON []byte) []WorkoutSummary {
+	if workoutsJSON == nil || len(workoutsJSON) == 0 {
+		return []WorkoutSummary{}
 	}
 
-	// The pgx driver returns []interface{} for ARRAY_AGG results
-	switch v := ids.(type) {
-	case []interface{}:
-		result := make([]int32, 0, len(v))
-		for _, id := range v {
-			switch idVal := id.(type) {
-			case int32:
-				result = append(result, idVal)
-			case int64:
-				result = append(result, int32(idVal))
-			case float64:
-				result = append(result, int32(idVal))
-			}
-		}
-		return result
-	case []int32:
-		return v
-	case []int64:
-		result := make([]int32, len(v))
-		for i, id := range v {
-			result[i] = int32(id)
-		}
-		return result
-	default:
-		ws.logger.Warn("unexpected workout_ids type", "type", fmt.Sprintf("%T", ids))
-		return []int32{}
+	var workouts []WorkoutSummary
+	if err := json.Unmarshal(workoutsJSON, &workouts); err != nil {
+		ws.logger.Warn("failed to parse workouts JSON", "error", err)
+		return []WorkoutSummary{}
 	}
+
+	return workouts
 }
 
 // Generic transform function that works with both request types

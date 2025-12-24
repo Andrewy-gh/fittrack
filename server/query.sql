@@ -164,10 +164,18 @@ WHERE user_id = $1
 ORDER BY workout_focus;
 
 -- name: GetContributionData :many
+-- Security: This query is protected by both application-level filtering and RLS policies.
+-- The WHERE clause filters by user_id (parameter $1), ensuring only the authenticated user's
+-- workouts are retrieved. RLS policies on the workout table provide defense-in-depth.
+-- The GROUP BY on date and JSON_AGG of workout metadata ensures no cross-user data leakage.
 SELECT
     DATE_TRUNC('day', w.date)::DATE as date,
     COUNT(s.id)::INTEGER as count,
-    ARRAY_AGG(DISTINCT w.id) as workout_ids
+    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', w.id,
+        'time', w.date,
+        'focus', w.workout_focus
+    )) as workouts
 FROM workout w
 LEFT JOIN "set" s ON s.workout_id = w.id AND s.set_type = 'working'
 WHERE w.user_id = $1
