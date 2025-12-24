@@ -216,19 +216,15 @@ func (ws *WorkoutService) convertContributionRows(rows []db.GetContributionDataR
 		return []ContributionDay{}
 	}
 
-	// Extract counts for threshold calculation
 	counts := make([]int, len(rows))
 	for i, row := range rows {
 		counts[i] = int(row.Count)
 	}
 
-	// Calculate thresholds
 	thresholds := ws.calculateLevelThresholds(counts)
 
-	// Convert rows to ContributionDay
 	days := make([]ContributionDay, len(rows))
 	for i, row := range rows {
-		// Convert workout_ids from interface{} to []int32
 		workoutIDs := ws.extractWorkoutIDs(row.WorkoutIds)
 
 		days[i] = ContributionDay{
@@ -407,7 +403,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 	response := make([]WorkoutWithSetsResponse, len(rows))
 
 	for i, row := range rows {
-		// Convert weight from pgtype.Numeric to *float64
 		var weight *float64
 		if row.Weight.Valid {
 			f64, err := row.Weight.Float64Value()
@@ -418,7 +413,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 			weight = &f64.Float64
 		}
 
-		// Convert volume from pgtype.Numeric to float64
 		var volume float64
 		if row.Volume.Valid {
 			f64, err := row.Volume.Float64Value()
@@ -429,7 +423,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 			volume = f64.Float64
 		}
 
-		// Convert exercise_order and set_order from int32 to *int32
 		var exerciseOrder *int32
 		if row.ExerciseOrder != 0 {
 			exerciseOrder = &row.ExerciseOrder
@@ -440,7 +433,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 			setOrder = &row.SetOrder
 		}
 
-		// Convert workout_notes and workout_focus from pgtype.Text to *string
 		var workoutNotes *string
 		if row.WorkoutNotes.Valid {
 			workoutNotes = &row.WorkoutNotes.String

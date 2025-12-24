@@ -85,13 +85,11 @@ export function WorkoutContributionGraph({
   return (
     <Card>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        {/* <div className="flex items-center justify-between p-6 pb-0"> */}
         <div className="flex items-center justify-between">
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Activity</CardTitle>
           </CardHeader>
 
-          {/* <h2 className="text-xl font-semibold tracking-tight">Activity</h2> */}
           <CollapsibleTrigger className="px-6 hover:bg-muted rounded-md transition-colors">
             {isOpen ? (
               <ChevronUp className="h-5 w-5" />
