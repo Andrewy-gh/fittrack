@@ -111,13 +111,13 @@
 
 ### Subtasks
 
-- [ ] **3.1: Refactor cleanupTestData function**
-  - File: `server/internal/workout/handler_test.go` (lines 1289-1312)
+- [x] **3.1: Refactor cleanupTestData function**
+  - File: `server/internal/workout/handler_test.go` (lines 1444-1493)
   - Replace: LIKE pattern `test-user-%` with exact user ID list
   - Use: Iteration over known test user IDs
   - Add: Logging for cleanup failures (don't fail tests)
   - Pattern: Follow `cleanupSpecificTestUsers` from `delete_integration_test.go`
-  - Status: Not Started
+  - Status: Completed
 
 - [ ] **3.2: (Optional) Update test setup to track users**
   - File: `server/internal/workout/handler_test.go`

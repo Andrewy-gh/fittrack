@@ -1445,48 +1445,51 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 	ctx := context.Background()
 
 	// Disable RLS temporarily for cleanup
-	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY; ALTER TABLE workout DISABLE ROW LEVEL SECURITY; ALTER TABLE exercise DISABLE ROW LEVEL SECURITY; ALTER TABLE \"set\" DISABLE ROW LEVEL SECURITY;")
-	if err != nil {
-		t.Logf("Warning: Failed to disable RLS for cleanup: %v", err)
+	tables := []string{"users", "workout", "exercise", `"set"`}
+	for _, table := range tables {
+		_, err := pool.Exec(ctx, fmt.Sprintf("ALTER TABLE %s DISABLE ROW LEVEL SECURITY", table))
+		if err != nil {
+			t.Logf("Warning: Failed to disable RLS on %s for cleanup: %v", table, err)
+		}
 	}
 
-	// More thorough cleanup - remove ALL test data
-	// This helps prevent test pollution between runs
-	testUserPattern := "test-user-%"
-	
-	// Start with dependent tables first
-	_, err = pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id LIKE $1)", testUserPattern)
-	if err != nil {
-		t.Logf("Warning: Failed to clean up set data: %v", err)
-	}
+	// Clean up test data using exact user IDs (avoids SQL injection risk from LIKE patterns)
+	// List all known test users created by integration tests
+	testUserIDs := []string{"test-user-a", "test-user-b", "test-user-rls-a", "test-user-rls-b"}
 
-	_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id LIKE $1", testUserPattern)
-	if err != nil {
-		t.Logf("Warning: Failed to clean up workout data: %v", err)
-	}
+	// Clean up data for each test user
+	for _, userID := range testUserIDs {
+		// Clean up dependent data first (sets → workouts → exercises → users)
+		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id = $1)", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up set data for user %s: %v", userID, err)
+		}
 
-	_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id LIKE $1", testUserPattern)
-	if err != nil {
-		t.Logf("Warning: Failed to clean up exercise data: %v", err)
-	}
+		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up workout data for user %s: %v", userID, err)
+		}
 
-	_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id LIKE $1", testUserPattern)
-	if err != nil {
-		t.Logf("Warning: Failed to clean up user data: %v", err)
-	}
+		_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up exercise data for user %s: %v", userID, err)
+		}
 
-	// Log cleanup results
-	var remainingWorkouts int
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM workout WHERE user_id LIKE $1", testUserPattern).Scan(&remainingWorkouts)
-	if err == nil {
-		t.Logf("Cleanup complete. Remaining test workouts: %d", remainingWorkouts)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up user data for user %s: %v", userID, err)
+		}
 	}
 
 	// Re-enable RLS
-	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY; ALTER TABLE exercise ENABLE ROW LEVEL SECURITY; ALTER TABLE \"set\" ENABLE ROW LEVEL SECURITY;")
-	if err != nil {
-		t.Logf("Warning: Failed to re-enable RLS after cleanup: %v", err)
+	for _, table := range tables {
+		_, err := pool.Exec(ctx, fmt.Sprintf("ALTER TABLE %s ENABLE ROW LEVEL SECURITY", table))
+		if err != nil {
+			t.Logf("Warning: Failed to re-enable RLS on %s after cleanup: %v", table, err)
+		}
 	}
+
+	t.Logf("Test cleanup complete for users: %v", testUserIDs)
 }
 
 func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {
