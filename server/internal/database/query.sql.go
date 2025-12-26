@@ -146,6 +146,49 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) er
 	return err
 }
 
+const getContributionData = `-- name: GetContributionData :many
+SELECT
+    DATE_TRUNC('day', w.date)::DATE as date,
+    COUNT(s.id)::INTEGER as count,
+    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', w.id,
+        'time', w.date,
+        'focus', w.workout_focus
+    )) as workouts
+FROM workout w
+LEFT JOIN "set" s ON s.workout_id = w.id AND s.set_type = 'working'
+WHERE w.user_id = $1
+  AND w.date >= CURRENT_DATE - INTERVAL '52 weeks'
+GROUP BY DATE_TRUNC('day', w.date)
+ORDER BY date
+`
+
+type GetContributionDataRow struct {
+	Date     pgtype.Date `json:"date"`
+	Count    int32       `json:"count"`
+	Workouts []byte      `json:"workouts"`
+}
+
+func (q *Queries) GetContributionData(ctx context.Context, userID string) ([]GetContributionDataRow, error) {
+	rows, err := q.db.Query(ctx, getContributionData, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContributionDataRow
+	for rows.Next() {
+		var i GetContributionDataRow
+		if err := rows.Scan(&i.Date, &i.Count, &i.Workouts); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExercise = `-- name: GetExercise :one
 SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2
 `
@@ -604,9 +647,9 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]ListSetsRow, e
 }
 
 const listWorkoutFocusValues = `-- name: ListWorkoutFocusValues :many
-SELECT DISTINCT workout_focus 
-FROM workout 
-WHERE user_id = $1 
+SELECT DISTINCT workout_focus
+FROM workout
+WHERE user_id = $1
   AND workout_focus IS NOT NULL
 ORDER BY workout_focus
 `

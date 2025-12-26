@@ -551,4 +551,37 @@ func (wr *workoutRepository) ListWorkoutFocusValues(ctx context.Context, userID 
 	return focusValues, nil
 }
 
+// MARK: GetContributionData
+func (wr *workoutRepository) GetContributionData(ctx context.Context, userID string) ([]db.GetContributionDataRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	rows, err := wr.queries.GetContributionData(ctx, userID)
+	if err != nil {
+		// Check if this might be an RLS-related error
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("get contribution data query failed - RLS policy violation",
+				"error", err,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("get contribution data query failed", "error", err, "user_id", userID)
+		}
+		return nil, fmt.Errorf("failed to get contribution data: %w", err)
+	}
+
+	if rows == nil {
+		rows = []db.GetContributionDataRow{}
+	}
+
+	// Log empty results that might indicate RLS filtering
+	if len(rows) == 0 {
+		wr.logger.Debug("get contribution data returned empty results",
+			"user_id", userID,
+			"potential_rls_filtering", true)
+	}
+
+	return rows, nil
+}
+
 var _ WorkoutRepository = (*workoutRepository)(nil)

@@ -371,6 +371,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "Returns the health status of the API",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/health.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ready": {
+            "get": {
+                "description": "Returns the readiness status of the API including database connectivity",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Readiness check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/health.ReadyResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/health.ReadyResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/workouts": {
             "get": {
                 "security": [
@@ -452,6 +498,46 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workouts/contribution-data": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Get workout contribution data for the past 52 weeks, including daily working set counts and intensity levels (0-4) for visualization in a contribution graph",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workouts"
+                ],
+                "summary": "Get contribution graph data",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/workout.ContributionDataResponse"
                         }
                     },
                     "401": {
@@ -810,12 +896,12 @@ const docTemplate = `{
                     "example": "working"
                 },
                 "volume": {
-                    "type": "integer",
-                    "example": 2250
+                    "type": "number",
+                    "example": 2250.5
                 },
                 "weight": {
-                    "type": "integer",
-                    "example": 225
+                    "type": "number",
+                    "example": 225.5
                 },
                 "workout_date": {
                     "type": "string",
@@ -862,8 +948,8 @@ const docTemplate = `{
                     "example": 2
                 },
                 "weight": {
-                    "type": "integer",
-                    "example": 225
+                    "type": "number",
+                    "example": 225.5
                 },
                 "workout_date": {
                     "type": "string",
@@ -887,6 +973,37 @@ const docTemplate = `{
                 }
             }
         },
+        "health.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "health.ReadyResponse": {
+            "type": "object",
+            "properties": {
+                "checks": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
         "response.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -902,6 +1019,37 @@ const docTemplate = `{
                 "success": {
                     "type": "boolean",
                     "example": true
+                }
+            }
+        },
+        "workout.ContributionDataResponse": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workout.ContributionDay"
+                    }
+                }
+            }
+        },
+        "workout.ContributionDay": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "workouts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workout.WorkoutSummary"
+                    }
                 }
             }
         },
@@ -972,7 +1120,8 @@ const docTemplate = `{
                     ]
                 },
                 "weight": {
-                    "type": "integer",
+                    "type": "number",
+                    "maximum": 999999999.9,
                     "minimum": 0
                 }
             }
@@ -1017,7 +1166,8 @@ const docTemplate = `{
                     ]
                 },
                 "weight": {
-                    "type": "integer",
+                    "type": "number",
+                    "maximum": 999999999.9,
                     "minimum": 0
                 }
             }
@@ -1090,6 +1240,20 @@ const docTemplate = `{
                 }
             }
         },
+        "workout.WorkoutSummary": {
+            "type": "object",
+            "properties": {
+                "focus": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
         "workout.WorkoutWithSetsResponse": {
             "type": "object",
             "required": [
@@ -1132,12 +1296,12 @@ const docTemplate = `{
                     "example": "working"
                 },
                 "volume": {
-                    "type": "integer",
-                    "example": 2250
+                    "type": "number",
+                    "example": 2250.5
                 },
                 "weight": {
-                    "type": "integer",
-                    "example": 225
+                    "type": "number",
+                    "example": 225.5
                 },
                 "workout_date": {
                     "type": "string",

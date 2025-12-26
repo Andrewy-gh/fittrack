@@ -50,12 +50,37 @@ export type ExerciseUpdateExerciseNameRequest = {
   name: string;
 };
 
+export type HealthHealthResponse = {
+  status?: string;
+  timestamp?: string;
+  version?: string;
+};
+
+export type HealthReadyResponse = {
+  checks?: {
+    [key: string]: string;
+  };
+  status?: string;
+  timestamp?: string;
+};
+
 export type ResponseErrorResponse = {
   message?: string;
 };
 
 export type ResponseSuccessResponse = {
   success?: boolean;
+};
+
+export type WorkoutContributionDataResponse = {
+  days?: Array<WorkoutContributionDay>;
+};
+
+export type WorkoutContributionDay = {
+  count?: number;
+  date?: string;
+  level?: number;
+  workouts?: Array<WorkoutWorkoutSummary>;
 };
 
 export type WorkoutCreateWorkoutRequest = {
@@ -105,6 +130,12 @@ export type WorkoutWorkoutResponse = {
   updated_at: string;
   user_id: string;
   workout_focus?: string;
+};
+
+export type WorkoutWorkoutSummary = {
+  focus?: string;
+  id?: number;
+  time?: string;
 };
 
 export type WorkoutWorkoutWithSetsResponse = {
@@ -363,6 +394,47 @@ export type GetExercisesByIdRecentSetsResponses = {
 export type GetExercisesByIdRecentSetsResponse =
   GetExercisesByIdRecentSetsResponses[keyof GetExercisesByIdRecentSetsResponses];
 
+export type GetHealthData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/health";
+};
+
+export type GetHealthResponses = {
+  /**
+   * OK
+   */
+  200: HealthHealthResponse;
+};
+
+export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+
+export type GetReadyData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/ready";
+};
+
+export type GetReadyErrors = {
+  /**
+   * Service Unavailable
+   */
+  503: HealthReadyResponse;
+};
+
+export type GetReadyError = GetReadyErrors[keyof GetReadyErrors];
+
+export type GetReadyResponses = {
+  /**
+   * OK
+   */
+  200: HealthReadyResponse;
+};
+
+export type GetReadyResponse = GetReadyResponses[keyof GetReadyResponses];
+
 export type GetWorkoutsData = {
   body?: never;
   path?: never;
@@ -429,6 +501,37 @@ export type PostWorkoutsResponses = {
 
 export type PostWorkoutsResponse =
   PostWorkoutsResponses[keyof PostWorkoutsResponses];
+
+export type GetWorkoutsContributionDataData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/workouts/contribution-data";
+};
+
+export type GetWorkoutsContributionDataErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetWorkoutsContributionDataError =
+  GetWorkoutsContributionDataErrors[keyof GetWorkoutsContributionDataErrors];
+
+export type GetWorkoutsContributionDataResponses = {
+  /**
+   * OK
+   */
+  200: WorkoutContributionDataResponse;
+};
+
+export type GetWorkoutsContributionDataResponse =
+  GetWorkoutsContributionDataResponses[keyof GetWorkoutsContributionDataResponses];
 
 export type GetWorkoutsFocusValuesData = {
   body?: never;

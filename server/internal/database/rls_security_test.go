@@ -17,32 +17,26 @@ import (
 )
 
 // === RLS PERFORMANCE & SECURITY TESTS ===
-//
 // This file contains comprehensive tests for Row Level Security (RLS) implementation.
 // These tests ensure that:
-//
 // 1. PERFORMANCE CHARACTERISTICS:
 //    - RLS overhead is within acceptable limits
 //    - Connection pooling maintains user isolation under concurrent load
 //    - Session variables don't cause significant performance degradation
-//
 // 2. SECURITY PROPERTIES:
 //    - RLS policies cannot be bypassed through SQL injection or manipulation
 //    - Session variables are properly isolated between users
 //    - Edge cases (missing, null, invalid session variables) are handled securely
 //    - Direct database access attempts are properly blocked
-//
 // 3. EDGE CASE HANDLING:
 //    - Missing session variables result in no data access
 //    - Invalid user IDs don't cause errors or security breaches
 //    - Session variable persistence behavior is predictable
-//
 // IMPORTANT NOTES:
 // - Tests automatically skip when running as database superuser (since superuser bypasses RLS)
 // - In production, the application should NEVER run as a database superuser
 // - Performance tests are skipped in short test mode (-short flag)
 // - Tests require a properly configured PostgreSQL database with RLS enabled
-//
 // === PERFORMANCE & SECURITY TESTS ===
 
 func TestRLSConnectionPoolIsolation(t *testing.T) {

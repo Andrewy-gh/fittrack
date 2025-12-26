@@ -91,6 +91,36 @@ func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.R
 	}
 }
 
+// MARK: GetContributionData
+// GetContributionData godoc
+// @Summary Get contribution graph data
+// @Description Get workout contribution data for the past 52 weeks, including daily working set counts and intensity levels (0-4) for visualization in a contribution graph
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Success 200 {object} workout.ContributionDataResponse
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts/contribution-data [get]
+func (h *WorkoutHandler) GetContributionData(w http.ResponseWriter, r *http.Request) {
+	contributionData, err := h.workoutService.GetContributionData(r.Context())
+	if err != nil {
+		var errUnauthorized *ErrUnauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get contribution data", err)
+		}
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, contributionData); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+		return
+	}
+}
+
 // MARK: GetWorkoutWithSets
 // GetWorkoutWithSets godoc
 // @Summary Get workout with sets

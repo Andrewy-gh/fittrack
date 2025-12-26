@@ -79,11 +79,11 @@ definitions:
         example: working
         type: string
       volume:
-        example: 2250
-        type: integer
+        example: 2250.5
+        type: number
       weight:
-        example: 225
-        type: integer
+        example: 225.5
+        type: number
       workout_date:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -121,8 +121,8 @@ definitions:
         example: 2
         type: integer
       weight:
-        example: 225
-        type: integer
+        example: 225.5
+        type: number
       workout_date:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -144,6 +144,26 @@ definitions:
     required:
     - name
     type: object
+  health.HealthResponse:
+    properties:
+      status:
+        type: string
+      timestamp:
+        type: string
+      version:
+        type: string
+    type: object
+  health.ReadyResponse:
+    properties:
+      checks:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
   response.ErrorResponse:
     properties:
       message:
@@ -155,6 +175,26 @@ definitions:
       success:
         example: true
         type: boolean
+    type: object
+  workout.ContributionDataResponse:
+    properties:
+      days:
+        items:
+          $ref: '#/definitions/workout.ContributionDay'
+        type: array
+    type: object
+  workout.ContributionDay:
+    properties:
+      count:
+        type: integer
+      date:
+        type: string
+      level:
+        type: integer
+      workouts:
+        items:
+          $ref: '#/definitions/workout.WorkoutSummary'
+        type: array
     type: object
   workout.CreateWorkoutRequest:
     properties:
@@ -201,8 +241,9 @@ definitions:
         - working
         type: string
       weight:
+        maximum: 9.999999999e+08
         minimum: 0
-        type: integer
+        type: number
     required:
     - reps
     - setType
@@ -233,8 +274,9 @@ definitions:
         - working
         type: string
       weight:
+        maximum: 9.999999999e+08
         minimum: 0
-        type: integer
+        type: number
     required:
     - reps
     - setType
@@ -289,6 +331,15 @@ definitions:
     - updated_at
     - user_id
     type: object
+  workout.WorkoutSummary:
+    properties:
+      focus:
+        type: string
+      id:
+        type: integer
+      time:
+        type: string
+    type: object
   workout.WorkoutWithSetsResponse:
     properties:
       exercise_id:
@@ -313,11 +364,11 @@ definitions:
         example: working
         type: string
       volume:
-        example: 2250
-        type: integer
+        example: 2250.5
+        type: number
       weight:
-        example: 225
-        type: integer
+        example: 225.5
+        type: number
       workout_date:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -580,6 +631,36 @@ paths:
       summary: Get recent sets for exercise
       tags:
       - exercises
+  /health:
+    get:
+      description: Returns the health status of the API
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /ready:
+    get:
+      description: Returns the readiness status of the API including database connectivity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.ReadyResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/health.ReadyResponse'
+      summary: Readiness check
+      tags:
+      - health
   /workouts:
     get:
       consumes:
@@ -760,6 +841,33 @@ paths:
       security:
       - StackAuth: []
       summary: Update an existing workout (full replacement)
+      tags:
+      - workouts
+  /workouts/contribution-data:
+    get:
+      consumes:
+      - application/json
+      description: Get workout contribution data for the past 52 weeks, including
+        daily working set counts and intensity levels (0-4) for visualization in a
+        contribution graph
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/workout.ContributionDataResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Get contribution graph data
       tags:
       - workouts
   /workouts/focus-values:

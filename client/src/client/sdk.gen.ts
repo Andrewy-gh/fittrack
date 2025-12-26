@@ -20,12 +20,20 @@ import type {
   GetExercisesByIdRecentSetsData,
   GetExercisesByIdRecentSetsResponses,
   GetExercisesByIdRecentSetsErrors,
+  GetHealthData,
+  GetHealthResponses,
+  GetReadyData,
+  GetReadyResponses,
+  GetReadyErrors,
   GetWorkoutsData,
   GetWorkoutsResponses,
   GetWorkoutsErrors,
   PostWorkoutsData,
   PostWorkoutsResponses,
   PostWorkoutsErrors,
+  GetWorkoutsContributionDataData,
+  GetWorkoutsContributionDataResponses,
+  GetWorkoutsContributionDataErrors,
   GetWorkoutsFocusValuesData,
   GetWorkoutsFocusValuesResponses,
   GetWorkoutsFocusValuesErrors,
@@ -207,6 +215,40 @@ export const getExercisesByIdRecentSets = <
 };
 
 /**
+ * Health check
+ * Returns the health status of the API
+ */
+export const getHealth = <ThrowOnError extends boolean = false>(
+  options?: Options<GetHealthData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetHealthResponses,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/health",
+    ...options,
+  });
+};
+
+/**
+ * Readiness check
+ * Returns the readiness status of the API including database connectivity
+ */
+export const getReady = <ThrowOnError extends boolean = false>(
+  options?: Options<GetReadyData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetReadyResponses,
+    GetReadyErrors,
+    ThrowOnError
+  >({
+    url: "/ready",
+    ...options,
+  });
+};
+
+/**
  * List workouts
  * Get all workouts for the authenticated user
  */
@@ -253,6 +295,31 @@ export const postWorkouts = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Get contribution graph data
+ * Get workout contribution data for the past 52 weeks, including daily working set counts and intensity levels (0-4) for visualization in a contribution graph
+ */
+export const getWorkoutsContributionData = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<GetWorkoutsContributionDataData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetWorkoutsContributionDataResponses,
+    GetWorkoutsContributionDataErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/workouts/contribution-data",
+    ...options,
   });
 };
 

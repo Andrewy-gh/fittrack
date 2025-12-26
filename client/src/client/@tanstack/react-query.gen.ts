@@ -8,8 +8,11 @@ import {
   getExercisesById,
   patchExercisesById,
   getExercisesByIdRecentSets,
+  getHealth,
+  getReady,
   getWorkouts,
   postWorkouts,
+  getWorkoutsContributionData,
   getWorkoutsFocusValues,
   deleteWorkoutsById,
   getWorkoutsById,
@@ -27,10 +30,13 @@ import type {
   PatchExercisesByIdData,
   PatchExercisesByIdError,
   GetExercisesByIdRecentSetsData,
+  GetHealthData,
+  GetReadyData,
   GetWorkoutsData,
   PostWorkoutsData,
   PostWorkoutsError,
   PostWorkoutsResponse,
+  GetWorkoutsContributionDataData,
   GetWorkoutsFocusValuesData,
   DeleteWorkoutsByIdData,
   DeleteWorkoutsByIdError,
@@ -264,6 +270,50 @@ export const getExercisesByIdRecentSetsQueryOptions = (
   });
 };
 
+export const getHealthQueryKey = (options?: Options<GetHealthData>) =>
+  createQueryKey("getHealth", options, false, ["health"]);
+
+/**
+ * Health check
+ * Returns the health status of the API
+ */
+export const getHealthQueryOptions = (options?: Options<GetHealthData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getHealth({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getHealthQueryKey(options),
+  });
+};
+
+export const getReadyQueryKey = (options?: Options<GetReadyData>) =>
+  createQueryKey("getReady", options, false, ["health"]);
+
+/**
+ * Readiness check
+ * Returns the readiness status of the API including database connectivity
+ */
+export const getReadyQueryOptions = (options?: Options<GetReadyData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getReady({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getReadyQueryKey(options),
+  });
+};
+
 export const getWorkoutsQueryKey = (options?: Options<GetWorkoutsData>) =>
   createQueryKey("getWorkouts", options, false, ["workouts"]);
 
@@ -336,6 +386,32 @@ export const postWorkoutsMutation = (
     },
   };
   return mutationOptions;
+};
+
+export const getWorkoutsContributionDataQueryKey = (
+  options?: Options<GetWorkoutsContributionDataData>,
+) =>
+  createQueryKey("getWorkoutsContributionData", options, false, ["workouts"]);
+
+/**
+ * Get contribution graph data
+ * Get workout contribution data for the past 52 weeks, including daily working set counts and intensity levels (0-4) for visualization in a contribution graph
+ */
+export const getWorkoutsContributionDataQueryOptions = (
+  options?: Options<GetWorkoutsContributionDataData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getWorkoutsContributionData({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getWorkoutsContributionDataQueryKey(options),
+  });
 };
 
 export const getWorkoutsFocusValuesQueryKey = (

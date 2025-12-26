@@ -2,8 +2,10 @@ package workout
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -15,6 +17,7 @@ type WorkoutRepository interface {
 	GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error)
+	GetContributionData(ctx context.Context, userID string) ([]db.GetContributionDataRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
 	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
 	DeleteWorkout(ctx context.Context, id int32, userID string) error
@@ -188,6 +191,130 @@ func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string,
 	return focusValues, nil
 }
 
+// GetContributionData retrieves contribution graph data for the past 52 weeks
+func (ws *WorkoutService) GetContributionData(ctx context.Context) (*ContributionDataResponse, error) {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+	}
+
+	rows, err := ws.repo.GetContributionData(ctx, userID)
+	if err != nil {
+		ws.logger.Error("failed to get contribution data", "error", err)
+		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
+		return nil, fmt.Errorf("failed to get contribution data: %w", err)
+	}
+
+	// Convert rows to ContributionDay slice and calculate levels
+	days := ws.convertContributionRows(rows)
+
+	return &ContributionDataResponse{Days: days}, nil
+}
+
+// convertContributionRows converts database rows to ContributionDay slice with calculated levels
+func (ws *WorkoutService) convertContributionRows(rows []db.GetContributionDataRow) []ContributionDay {
+	if len(rows) == 0 {
+		return []ContributionDay{}
+	}
+
+	counts := make([]int, len(rows))
+	for i, row := range rows {
+		counts[i] = int(row.Count)
+	}
+
+	thresholds := ws.calculateLevelThresholds(counts)
+
+	days := make([]ContributionDay, len(rows))
+	for i, row := range rows {
+		workouts := ws.parseWorkouts(row.Workouts)
+
+		days[i] = ContributionDay{
+			Date:     row.Date.Time.Format("2006-01-02"),
+			Count:    int(row.Count),
+			Level:    ws.calculateLevel(int(row.Count), thresholds),
+			Workouts: workouts,
+		}
+	}
+
+	return days
+}
+
+// calculateLevelThresholds returns thresholds for levels 1-4
+// Uses percentiles (25th, 50th, 75th) when 10+ workout days, otherwise static thresholds
+func (ws *WorkoutService) calculateLevelThresholds(counts []int) [4]int {
+	// Filter out zero counts for threshold calculation
+	nonZeroCounts := make([]int, 0, len(counts))
+	for _, c := range counts {
+		if c > 0 {
+			nonZeroCounts = append(nonZeroCounts, c)
+		}
+	}
+
+	// Use static thresholds if fewer than 30 workout days
+	if len(nonZeroCounts) < 30 {
+		return [4]int{1, 6, 11, 16} // 0, 1-5, 6-10, 11-15, 16+
+	}
+
+	// Sort for percentile calculation
+	sorted := make([]int, len(nonZeroCounts))
+	copy(sorted, nonZeroCounts)
+	sort.Ints(sorted)
+
+	// Calculate percentiles (25th, 50th, 75th)
+	p25 := percentile(sorted, 25)
+	p50 := percentile(sorted, 50)
+	p75 := percentile(sorted, 75)
+
+	// Ensure thresholds are strictly increasing and at least 1
+	t1 := max(1, p25)
+	t2 := max(t1+1, p50)
+	t3 := max(t2+1, p75)
+	t4 := t3 + 1
+
+	return [4]int{t1, t2, t3, t4}
+}
+
+// percentile calculates the p-th percentile of a sorted slice
+func percentile(sorted []int, p int) int {
+	if len(sorted) == 0 {
+		return 0
+	}
+	idx := (p * (len(sorted) - 1)) / 100
+	return sorted[idx]
+}
+
+// calculateLevel returns the level (0-4) based on count and thresholds
+func (ws *WorkoutService) calculateLevel(count int, thresholds [4]int) int {
+	if count == 0 {
+		return 0
+	}
+	if count < thresholds[1] {
+		return 1
+	}
+	if count < thresholds[2] {
+		return 2
+	}
+	if count < thresholds[3] {
+		return 3
+	}
+	return 4
+}
+
+// parseWorkouts parses JSON workout data into []WorkoutSummary
+func (ws *WorkoutService) parseWorkouts(workoutsJSON []byte) []WorkoutSummary {
+	if workoutsJSON == nil || len(workoutsJSON) == 0 {
+		return []WorkoutSummary{}
+	}
+
+	var workouts []WorkoutSummary
+	if err := json.Unmarshal(workoutsJSON, &workouts); err != nil {
+		ws.logger.Warn("failed to parse workouts JSON", "error", err)
+		return []WorkoutSummary{}
+	}
+
+	return workouts
+}
+
 // Generic transform function that works with both request types
 func transformWorkoutRequest[T WorkoutRequestTransformable](logger *slog.Logger, request T, requireDate bool) (*ReformattedRequest, error) {
 	// Parse date
@@ -257,7 +384,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 	response := make([]WorkoutWithSetsResponse, len(rows))
 
 	for i, row := range rows {
-		// Convert weight from pgtype.Numeric to *float64
 		var weight *float64
 		if row.Weight.Valid {
 			f64, err := row.Weight.Float64Value()
@@ -268,7 +394,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 			weight = &f64.Float64
 		}
 
-		// Convert volume from pgtype.Numeric to float64
 		var volume float64
 		if row.Volume.Valid {
 			f64, err := row.Volume.Float64Value()
@@ -279,7 +404,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 			volume = f64.Float64
 		}
 
-		// Convert exercise_order and set_order from int32 to *int32
 		var exerciseOrder *int32
 		if row.ExerciseOrder != 0 {
 			exerciseOrder = &row.ExerciseOrder
@@ -290,7 +414,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 			setOrder = &row.SetOrder
 		}
 
-		// Convert workout_notes and workout_focus from pgtype.Text to *string
 		var workoutNotes *string
 		if row.WorkoutNotes.Valid {
 			workoutNotes = &row.WorkoutNotes.String
