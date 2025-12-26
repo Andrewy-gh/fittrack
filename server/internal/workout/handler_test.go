@@ -29,6 +29,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test user registry for tracking users created during tests
+// This allows for automatic cleanup without hardcoding user IDs
+var (
+	testUserRegistry   = make(map[string]bool)
+	testUserRegistryMu sync.Mutex
+)
+
+// registerTestUser adds a user to the cleanup registry
+func registerTestUser(userID string) {
+	testUserRegistryMu.Lock()
+	defer testUserRegistryMu.Unlock()
+	testUserRegistry[userID] = true
+}
+
+// getRegisteredTestUsers returns a slice of all registered test users
+func getRegisteredTestUsers() []string {
+	testUserRegistryMu.Lock()
+	defer testUserRegistryMu.Unlock()
+	users := make([]string, 0, len(testUserRegistry))
+	for userID := range testUserRegistry {
+		users = append(users, userID)
+	}
+	return users
+}
+
+// clearTestUserRegistry clears the registry (useful for test isolation if needed)
+func clearTestUserRegistry() {
+	testUserRegistryMu.Lock()
+	defer testUserRegistryMu.Unlock()
+	testUserRegistry = make(map[string]bool)
+}
+
 // MockWorkoutRepository implements the WorkoutRepository interface for testing
 type MockWorkoutRepository struct {
 	mock.Mock
@@ -1377,11 +1409,13 @@ func setupTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY")
 	require.NoError(t, err, "Failed to disable RLS for setup")
 
-	// Create test users
-	userIDs := []string{"test-user-a", "test-user-b"}
+	// Create test users and register them for cleanup
+	// Include all users needed by integration tests
+	userIDs := []string{"test-user-a", "test-user-b", "test-user-rls-a", "test-user-rls-b"}
 	for _, userID := range userIDs {
 		_, err = pool.Exec(ctx, "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID)
 		require.NoError(t, err, "Failed to create test user: %s", userID)
+		registerTestUser(userID)
 	}
 
 	// Re-enable RLS
@@ -1453,11 +1487,15 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 		}
 	}
 
-	// Clean up test data using exact user IDs (avoids SQL injection risk from LIKE patterns)
-	// List all known test users created by integration tests
-	testUserIDs := []string{"test-user-a", "test-user-b", "test-user-rls-a", "test-user-rls-b"}
+	// Get all registered test users from the registry
+	// This automatically includes any users created during test setup
+	testUserIDs := getRegisteredTestUsers()
 
-	// Clean up data for each test user
+	if len(testUserIDs) == 0 {
+		t.Logf("Warning: No test users registered for cleanup")
+	}
+
+	// Clean up data for each registered test user
 	for _, userID := range testUserIDs {
 		// Clean up dependent data first (sets → workouts → exercises → users)
 		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id = $1)", userID)
@@ -1489,7 +1527,7 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 		}
 	}
 
-	t.Logf("Test cleanup complete for users: %v", testUserIDs)
+	t.Logf("Test cleanup complete for %d registered users: %v", len(testUserIDs), testUserIDs)
 }
 
 func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {

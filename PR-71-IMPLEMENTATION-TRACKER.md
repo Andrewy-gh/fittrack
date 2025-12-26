@@ -12,12 +12,12 @@
 
 - [x] Task 1: Fix Frontend Performance - API Changes (6/6 subtasks)
 - [x] Task 2: Verify RLS and Fix Data Leakage (3/3 subtasks)
-- [ ] Task 3: Fix Test Cleanup Pattern (0/2 subtasks)
+- [x] Task 3: Fix Test Cleanup Pattern (2/2 subtasks)
 - [ ] Task 4: Change Threshold 10 → 30 Days (0/2 subtasks)
 - [ ] Task 5: Add Error Boundaries (0/3 subtasks)
 - [ ] Task 6: Add Edge Case Tests (0/3 subtasks)
 
-**Total Progress:** 9/19 subtasks completed
+**Total Progress:** 11/19 subtasks completed
 
 ---
 
@@ -106,7 +106,7 @@
 ## Task 3: Fix Test Cleanup Pattern (Remove SQL Injection Risk)
 
 **Priority:** MUST-FIX #3 (Code Quality)
-**Status:** Not Started
+**Status:** Completed
 **Files:** `server/internal/workout/handler_test.go`
 
 ### Subtasks
@@ -119,12 +119,12 @@
   - Pattern: Follow `cleanupSpecificTestUsers` from `delete_integration_test.go`
   - Status: Completed
 
-- [ ] **3.2: (Optional) Update test setup to track users**
-  - File: `server/internal/workout/handler_test.go`
-  - Consider: Creating test user registry
-  - Update: `setupTestUsers` to register created users
-  - Use: Registry in cleanup instead of hardcoded list
-  - Status: Not Started
+- [x] **3.2: (Optional) Update test setup to track users**
+  - File: `server/internal/workout/handler_test.go` (lines 32-62 registry, 1404-1424 setup, 1478-1531 cleanup)
+  - Created: Test user registry with thread-safe functions
+  - Updated: `setupTestUsers` to register created users (including RLS test users)
+  - Updated: `cleanupTestData` to use registry instead of hardcoded list
+  - Status: Completed
 
 ---
 
