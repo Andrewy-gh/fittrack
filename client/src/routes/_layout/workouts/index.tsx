@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Clock, Plus } from 'lucide-react';
@@ -12,7 +12,6 @@ import { WorkoutContributionGraph } from '@/components/workouts/workout-contribu
 import { ContributionGraphError } from '@/components/workouts/contribution-graph-error';
 import { RecentWorkoutsCard } from '@/components/workouts/recent-workouts-card';
 import { WorkoutDistributionCard } from '@/components/workouts/workout-distribution-card';
-import { ErrorBoundary } from '@/components/error-boundary';
 
 export const Route = createFileRoute('/_layout/workouts/')({
   loader: async ({ context }) => {
@@ -39,9 +38,10 @@ function RouteComponent() {
     ? useSuspenseQuery(workoutsQueryOptions())
     : useSuspenseQuery(getDemoWorkoutsQueryOptions());
 
-  const { data: contributionData } = user
-    ? useSuspenseQuery(contributionDataQueryOptions())
-    : { data: { days: [] } };
+  const contributionQuery = useQuery({
+    ...contributionDataQueryOptions(),
+    enabled: !!user,
+  });
 
   // Check for workout in progress (pass user.id if authenticated, undefined for demo)
   const hasWorkoutInProgress = loadFromLocalStorage(user?.id) !== null;
@@ -75,13 +75,12 @@ function RouteComponent() {
         <WorkoutSummaryCards workouts={workouts} />
 
         {/* Contribution Graph (authenticated users only) */}
-        {user && (
-          <ErrorBoundary fallback={<ContributionGraphError />}>
-            <WorkoutContributionGraph
-              data={contributionData}
-              defaultOpen={defaultContributionGraphOpen}
-            />
-          </ErrorBoundary>
+        {user && contributionQuery.isError && <ContributionGraphError />}
+        {user && contributionQuery.isSuccess && (
+          <WorkoutContributionGraph
+            data={contributionQuery.data}
+            defaultOpen={defaultContributionGraphOpen}
+          />
         )}
 
         {/* Recent Workouts */}
