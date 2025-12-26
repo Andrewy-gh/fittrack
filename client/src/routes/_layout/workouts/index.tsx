@@ -9,8 +9,10 @@ import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
 import { loadFromLocalStorage } from '@/lib/local-storage';
 import { WorkoutSummaryCards } from '@/components/workouts/workout-summary-cards';
 import { WorkoutContributionGraph } from '@/components/workouts/workout-contribution-graph';
+import { ContributionGraphError } from '@/components/workouts/contribution-graph-error';
 import { RecentWorkoutsCard } from '@/components/workouts/recent-workouts-card';
 import { WorkoutDistributionCard } from '@/components/workouts/workout-distribution-card';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 export const Route = createFileRoute('/_layout/workouts/')({
   loader: async ({ context }) => {
@@ -74,10 +76,12 @@ function RouteComponent() {
 
         {/* Contribution Graph (authenticated users only) */}
         {user && (
-          <WorkoutContributionGraph
-            data={contributionData}
-            defaultOpen={defaultContributionGraphOpen}
-          />
+          <ErrorBoundary fallback={<ContributionGraphError />}>
+            <WorkoutContributionGraph
+              data={contributionData}
+              defaultOpen={defaultContributionGraphOpen}
+            />
+          </ErrorBoundary>
         )}
 
         {/* Recent Workouts */}
