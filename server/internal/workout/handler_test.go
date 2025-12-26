@@ -830,18 +830,28 @@ func TestWorkoutService_CalculateLevelThresholds(t *testing.T) {
 			wantStatic: true,
 		},
 		{
-			name:       "fewer than 10 workout days uses static thresholds",
+			name:       "fewer than 30 workout days uses static thresholds",
 			counts:     []int{5, 10, 3, 8, 2},
 			wantStatic: true,
 		},
 		{
-			name:       "exactly 9 workout days uses static thresholds",
-			counts:     []int{5, 10, 3, 8, 2, 7, 4, 6, 9},
+			name:       "10 workout days (below threshold) uses static thresholds",
+			counts:     []int{5, 10, 3, 8, 2, 7, 4, 6, 9, 11},
 			wantStatic: true,
 		},
 		{
-			name:       "10+ workout days uses dynamic percentile thresholds",
-			counts:     []int{5, 10, 3, 8, 2, 7, 4, 6, 9, 11, 12, 15},
+			name:       "exactly 29 workout days uses static thresholds",
+			counts:     []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29},
+			wantStatic: true,
+		},
+		{
+			name:       "exactly 30 workout days uses dynamic percentile thresholds",
+			counts:     []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30},
+			wantStatic: false,
+		},
+		{
+			name:       "30+ workout days uses dynamic percentile thresholds",
+			counts:     []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35},
 			wantStatic: false,
 		},
 		{
@@ -850,8 +860,8 @@ func TestWorkoutService_CalculateLevelThresholds(t *testing.T) {
 			wantStatic: true,
 		},
 		{
-			name:       "mixed zeros and values - 10+ non-zero uses dynamic",
-			counts:     []int{0, 5, 0, 10, 3, 0, 8, 2, 7, 4, 6, 9, 11, 12},
+			name:       "mixed zeros and values - 30+ non-zero uses dynamic",
+			counts:     []int{0, 1, 0, 2, 3, 0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
 			wantStatic: false,
 		},
 	}

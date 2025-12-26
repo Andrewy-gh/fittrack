@@ -250,8 +250,8 @@ func (ws *WorkoutService) calculateLevelThresholds(counts []int) [4]int {
 		}
 	}
 
-	// Use static thresholds if fewer than 10 workout days
-	if len(nonZeroCounts) < 10 {
+	// Use static thresholds if fewer than 30 workout days
+	if len(nonZeroCounts) < 30 {
 		return [4]int{1, 6, 11, 16} // 0, 1-5, 6-10, 11-15, 16+
 	}
 

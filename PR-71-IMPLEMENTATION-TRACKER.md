@@ -13,11 +13,11 @@
 - [x] Task 1: Fix Frontend Performance - API Changes (6/6 subtasks)
 - [x] Task 2: Verify RLS and Fix Data Leakage (3/3 subtasks)
 - [x] Task 3: Fix Test Cleanup Pattern (2/2 subtasks)
-- [ ] Task 4: Change Threshold 10 → 30 Days (0/2 subtasks)
+- [x] Task 4: Change Threshold 10 → 30 Days (2/2 subtasks)
 - [ ] Task 5: Add Error Boundaries (0/3 subtasks)
 - [ ] Task 6: Add Edge Case Tests (0/3 subtasks)
 
-**Total Progress:** 11/19 subtasks completed
+**Total Progress:** 13/19 subtasks completed
 
 ---
 
@@ -131,24 +131,25 @@
 ## Task 4: Change Dynamic Threshold from 10 to 30 Days
 
 **Priority:** SHOULD-FIX #4 (UX Improvement)
-**Status:** Not Started
+**Status:** Completed
 **Files:** `server/internal/workout/service.go`, `server/internal/workout/handler_test.go`
 
 ### Subtasks
 
-- [ ] **4.1: Update threshold check**
-  - File: `server/internal/workout/service.go` (line 253)
+- [x] **4.1: Update threshold check**
+  - File: `server/internal/workout/service.go` (line 254)
   - Change: `if len(nonZeroCounts) < 10` to `if len(nonZeroCounts) < 30`
   - Update: Code comment to reflect new threshold
-  - Status: Not Started
+  - Status: Completed
 
-- [ ] **4.2: Update threshold tests**
-  - File: `server/internal/workout/handler_test.go` (lines 764-823)
+- [x] **4.2: Update threshold tests**
+  - File: `server/internal/workout/handler_test.go` (lines 822-867)
   - Update: Test names and descriptions for 30-day threshold
   - Add: Test case for exactly 29 days (should use static)
   - Add: Test case for exactly 30 days (should use dynamic)
-  - Verify: Existing 10-day test now expects static thresholds
-  - Status: Not Started
+  - Add: Test case for 10 workout days (verifies old threshold now uses static)
+  - Verify: All tests passing with new 30-day threshold
+  - Status: Completed
 
 ---
 
