@@ -558,18 +558,18 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 9.8 Standardize Custom Error Responses
 
-- [ ] Verify `Unauthorized` errors return 401 or 403 consistently
-- [ ] Verify `NotFound` errors return 404 consistently
-- [ ] Verify validation errors return 400 with formatted messages
-- [ ] Check database constraint errors return appropriate codes
+- [x] Verify `Unauthorized` errors return 401 or 403 consistently
+- [x] Verify `NotFound` errors return 404 consistently
+- [x] Verify validation errors return 400 with formatted messages
+- [x] Check database constraint errors return appropriate codes
 
 #### 9.9 Create Error Response Documentation
 
-- [ ] Document all possible error response formats
-- [ ] Document HTTP status codes and when each is used
-- [ ] Document which error details are exposed to frontend
-- [ ] Create examples for frontend team
-- [ ] Document middleware error responses (rate limit, CORS, basic auth)
+- [x] Document all possible error response formats
+- [x] Document HTTP status codes and when each is used
+- [x] Document which error details are exposed to frontend
+- [x] Create examples for frontend team
+- [x] Document middleware error responses (rate limit, CORS, basic auth)
 
 #### 9.10 Test Error Responses
 
