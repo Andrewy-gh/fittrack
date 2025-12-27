@@ -3,6 +3,7 @@
 **Project:** FitTrack Frontend Error Handling
 **Created:** 2025-12-27
 **Status:** Planning
+**Tasks:** 13 total (6 foundation, 5 component fixes, 2 polish)
 
 ---
 
@@ -109,14 +110,16 @@ This plan addresses frontend error handling to align with the backend error hand
 
 ---
 
-### Task 2: Update API Error Type Definition
+### Task 2: Update API Error Type Definition (OPTIONAL)
 
-**Priority:** High
+**Priority:** Low (skip unless you want request_id tracking)
 **Files:**
 - `server/api/openapi.yaml` (source of truth)
 - `client/src/client/types.gen.ts` (regenerated)
 
-#### Subtasks
+**Decision:** Skip for now. Add later if you implement error monitoring (Sentry, etc.)
+
+#### Subtasks (if implementing)
 - [ ] 2.1 Update OpenAPI spec `ErrorResponse` to include `request_id`
 ```yaml
 ErrorResponse:
@@ -228,14 +231,70 @@ const queryClient = new QueryClient({
 
 ---
 
-### Task 7: Refactor Exercise Edit Dialog Errors
+### Task 7: Add TanStack Form Client-Side Validation
+
+**Priority:** Medium
+**Files:**
+- `client/src/hooks/form.ts` (existing)
+- Form field components
+- Dialogs using forms
+
+**Context:** You already have TanStack Form set up with `createFormHook` pattern. Add validators to fields.
+
+#### How TanStack Form Validation Works
+
+```typescript
+// Field-level validation
+<form.AppField
+  name="exerciseName"
+  validators={{
+    onChange: ({ value }) => {
+      if (!value.trim()) return 'Exercise name is required';
+      if (value.length > 100) return 'Name must be 100 characters or less';
+      return undefined;
+    },
+    // Run on blur for less intrusive UX
+    onBlur: ({ value }) => {
+      if (!value.trim()) return 'Exercise name is required';
+      return undefined;
+    },
+  }}
+>
+  {(field) => (
+    <>
+      <input
+        value={field.state.value}
+        onChange={(e) => field.handleChange(e.target.value)}
+        onBlur={field.handleBlur}
+      />
+      {field.state.meta.errors.length > 0 && (
+        <span className="text-sm text-red-600">
+          {field.state.meta.errors.join(', ')}
+        </span>
+      )}
+    </>
+  )}
+</form.AppField>
+```
+
+#### Subtasks
+- [ ] 7.1 Add `validators` prop to existing form fields
+- [ ] 7.2 Create reusable validation functions (e.g., `required`, `maxLength`)
+- [ ] 7.3 Display `field.state.meta.errors` in field components
+- [ ] 7.4 Use `onBlur` validation for better UX (less intrusive)
+- [ ] 7.5 Use `form.Subscribe` with `canSubmit` to disable submit button
+- [ ] 7.6 Consider Zod schema integration for complex validation
+
+---
+
+### Task 8: Refactor Exercise Edit Dialog Errors
 
 **Priority:** Medium
 **Files:**
 - `client/src/routes/_layout/exercises/-components/exercise-edit-dialog.tsx`
 
 #### Subtasks
-- [ ] 7.1 Replace string matching with proper error type checking
+- [ ] 8.1 Replace string matching with proper error type checking
 ```typescript
 // Before
 if (err.message.includes('already exists')) { ... }
@@ -245,42 +304,42 @@ import { isApiError, getErrorMessage } from '@/lib/errors';
 if (isApiError(err) && err.message.includes('duplicate')) { ... }
 // OR use status code from mutation error
 ```
-- [ ] 7.2 Use `toast.error()` for unexpected errors
-- [ ] 7.3 Keep inline error for validation/duplicate name
-- [ ] 7.4 Test: edit to duplicate name, test server error
+- [ ] 8.2 Use `toast.error()` for unexpected errors
+- [ ] 8.3 Keep inline error for validation/duplicate name
+- [ ] 8.4 Test: edit to duplicate name, test server error
 
 ---
 
-### Task 8: Implement Exercise Delete Dialog Error Handling
+### Task 9: Implement Exercise Delete Dialog Error Handling
 
 **Priority:** Medium
 **Files:**
 - `client/src/routes/_layout/exercises/-components/exercise-delete-dialog.tsx`
 
 #### Subtasks
-- [ ] 8.1 Remove TODO comment
-- [ ] 8.2 Add try-catch with proper error handling
-- [ ] 8.3 Show toast for delete failure
-- [ ] 8.4 Show inline error if makes sense
-- [ ] 8.5 Test: simulate delete failure
+- [ ] 9.1 Remove TODO comment
+- [ ] 9.2 Add try-catch with proper error handling
+- [ ] 9.3 Show toast for delete failure
+- [ ] 9.4 Show inline error if makes sense
+- [ ] 9.5 Test: simulate delete failure
 
 ---
 
-### Task 9: Implement Workout Delete Dialog Error Handling
+### Task 10: Implement Workout Delete Dialog Error Handling
 
 **Priority:** Medium
 **Files:**
 - `client/src/routes/_layout/workouts/-components/delete-dialog.tsx`
 
 #### Subtasks
-- [ ] 9.1 Remove TODO comment
-- [ ] 9.2 Add try-catch with proper error handling
-- [ ] 9.3 Show toast for delete failure
-- [ ] 9.4 Test: simulate delete failure
+- [ ] 10.1 Remove TODO comment
+- [ ] 10.2 Add try-catch with proper error handling
+- [ ] 10.3 Show toast for delete failure
+- [ ] 10.4 Test: simulate delete failure
 
 ---
 
-### Task 10: Refactor Workout New/Edit Alert Errors
+### Task 11: Refactor Workout New/Edit Alert Errors
 
 **Priority:** Medium
 **Files:**
@@ -288,14 +347,14 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 - `client/src/routes/_layout/workouts/$workoutId/edit.tsx`
 
 #### Subtasks
-- [ ] 10.1 Replace `alert(error)` with `toast.error()`
-- [ ] 10.2 Use `getErrorMessage()` helper
-- [ ] 10.3 Consider inline error for form validation
-- [ ] 10.4 Test: create/edit workout failures
+- [ ] 11.1 Replace `alert(error)` with `toast.error()`
+- [ ] 11.2 Use `getErrorMessage()` helper
+- [ ] 11.3 Consider inline error for form validation
+- [ ] 11.4 Test: create/edit workout failures
 
 ---
 
-### Task 11: Add Error Boundary to Critical Routes
+### Task 12: Add Error Boundary to Critical Routes
 
 **Priority:** Low
 **Files:**
@@ -303,22 +362,22 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 - `client/src/components/error-boundary.tsx`
 
 #### Subtasks
-- [ ] 11.1 Wrap Suspense boundaries with ErrorBoundary
-- [ ] 11.2 Create route-specific fallback UIs
-- [ ] 11.3 Test: force component crash
+- [ ] 12.1 Wrap Suspense boundaries with ErrorBoundary
+- [ ] 12.2 Create route-specific fallback UIs
+- [ ] 12.3 Test: force component crash
 
 ---
 
-### Task 12: Consider Alert Dialog for Destructive Failures
+### Task 13: Consider Alert Dialog for Destructive Failures
 
 **Priority:** Low
 **Files:**
 - Various delete flows
 
 #### Subtasks
-- [ ] 12.1 Evaluate if delete failures need AlertDialog
-- [ ] 12.2 If yes, implement pattern for "Delete failed" dialog
-- [ ] 12.3 Include retry option in dialog
+- [ ] 13.1 Evaluate if delete failures need AlertDialog
+- [ ] 13.2 If yes, implement pattern for "Delete failed" dialog
+- [ ] 13.3 Include retry option in dialog
 
 ---
 
@@ -399,22 +458,23 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 ### Phase 1: Foundation
 1. **Task 1**: Enable Sonner (FIRST - unblocks everything)
 2. **Task 3**: Create error utilities
-3. **Task 2**: Update API error type
+3. **Task 2**: Update API error type (OPTIONAL - skip if not using request_id)
 
 ### Phase 2: Global Handlers
 4. **Task 4**: Response error interceptor
 5. **Task 6**: React Query global error handler
 6. **Task 5**: TanStack Router error component
 
-### Phase 3: Component Fixes
-7. **Task 7**: Exercise edit dialog
-8. **Task 8**: Exercise delete dialog
-9. **Task 9**: Workout delete dialog
-10. **Task 10**: Workout new/edit alerts
+### Phase 3: Validation & Component Fixes
+7. **Task 7**: TanStack Form client-side validation
+8. **Task 8**: Exercise edit dialog errors
+9. **Task 9**: Exercise delete dialog errors
+10. **Task 10**: Workout delete dialog errors
+11. **Task 11**: Workout new/edit alert errors
 
 ### Phase 4: Polish
-11. **Task 11**: Error boundaries
-12. **Task 12**: Alert dialog consideration
+12. **Task 12**: Error boundaries
+13. **Task 13**: Alert dialog consideration
 
 ---
 
@@ -433,28 +493,82 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 ---
 
-## Questions to Resolve
+## Questions Resolved
 
-1. **Global mutation toast vs per-mutation?**
-   - Option A: All mutations show toast on error (simpler)
-   - Option B: Per-mutation handlers (more control)
-   - Recommendation: Global default + override when needed
+### 1. Request ID - Is It Needed?
 
-2. **Toast position?**
-   - Top-right is common
-   - Bottom-right is less intrusive
-   - Recommendation: Bottom-right to match mobile patterns
+**Short answer: Nice-to-have, not must-have.**
 
-3. **Request ID display to user?**
-   - Option A: Always show (helps support)
-   - Option B: Only in dev mode
-   - Option C: Behind "details" expansion
-   - Recommendation: Show in dev, hide in prod (log to console)
+**When request_id is useful:**
+- Correlating user-reported errors with backend logs
+- Support tickets: "Error with ID abc-123"
+- Debugging production issues across client/server boundary
 
-4. **Should 401 auto-redirect or show dialog?**
-   - Depends on auth strategy
-   - If token refresh exists, try that first
-   - Recommendation: Check with auth flow
+**When it's NOT needed:**
+- You don't have centralized logging (Sentry, DataDog, etc.)
+- Console logs in deployment are your only debugging tool
+- Small/personal project without support workflow
+
+**Does NOT including it cause data drift?**
+No. It's metadata for debugging, not data. Frontend doesn't need to store or track it.
+
+**Recommendation for your case:**
+- Skip request_id display to users
+- Log it to console in dev for debugging
+- Add it later if you add error monitoring service (Sentry, etc.)
+- Don't update OpenAPI spec unless you want to use it
+
+**Complexity cost:** Minimal if added, but adds noise if unused.
+
+### 2. Toast Position
+**Answer:** Bottom-right
+
+### 3. Request ID Display
+**Answer:** Dev only (console.log), hide in prod
+
+### 4. 401 Handling
+**Answer:** Follow StackFrame auth flow - likely auto-redirect to login
+
+---
+
+## Resolved Question: Global vs Per-Mutation Error Handling
+
+**Pattern: Global default + override**
+
+```typescript
+// lib/api/api.ts - Global default
+const queryClient = new QueryClient({
+  defaultOptions: {
+    mutations: {
+      onError: (error) => {
+        // Default: show toast for all mutations
+        toast.error(getErrorMessage(error));
+      },
+    },
+  },
+});
+
+// In component - Override for specific case
+const mutation = useMutation({
+  ...saveMutation(),
+  onError: (error) => {
+    // Override: show inline error instead of toast
+    setError(getErrorMessage(error));
+  },
+});
+```
+
+**When to override (use per-mutation):**
+- Form validation errors → show inline instead of toast
+- Duplicate name (409) → show inline next to input
+- Custom retry logic needed
+- Need error in local state for UI
+
+**When to use global (toast):**
+- Network errors
+- 500s
+- Unexpected failures
+- Delete operations (no form to show inline error)
 
 ---
 
@@ -474,6 +588,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 ### New Files
 - `client/src/lib/errors.ts` - Error utilities
+- `client/src/lib/validation.ts` - Reusable validation functions (optional)
 - `client/src/components/route-error.tsx` - Route error component
 
 ### Modified Files
@@ -481,11 +596,15 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 - `client/src/lib/api/client-config.ts` - Response interceptor
 - `client/src/lib/api/api.ts` - QueryClient config
 - `client/src/routes/__root.tsx` - Error component
+- `client/src/hooks/form.ts` - Add validation to field components
+- `client/src/components/form/*.tsx` - Add error display to form fields
 - `client/src/routes/_layout/exercises/-components/exercise-edit-dialog.tsx`
 - `client/src/routes/_layout/exercises/-components/exercise-delete-dialog.tsx`
 - `client/src/routes/_layout/workouts/-components/delete-dialog.tsx`
 - `client/src/routes/_layout/workouts/new.tsx`
 - `client/src/routes/_layout/workouts/$workoutId/edit.tsx`
+
+### Optional (if using request_id)
 - `server/api/openapi.yaml` - Add request_id to ErrorResponse
 
 ---
