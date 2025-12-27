@@ -22,6 +22,7 @@ import {
 import { formatWeight } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
+import { ErrorBoundary, FullScreenErrorFallback } from '@/components/error-boundary';
 
 import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
@@ -97,19 +98,29 @@ function WorkoutTracker({
   // MARK: Screens
   if (addExercise) {
     return (
-      <Suspense
+      <ErrorBoundary
         fallback={
-          <div className="fixed inset-0 flex items-center justify-center">
-            <Spinner size="large" />
-          </div>
+          <FullScreenErrorFallback
+            message="Failed to load exercise selection"
+            onAction={() => navigate({ search: {} })}
+            actionLabel="Go Back"
+          />
         }
       >
-        <AddExerciseScreen
-          form={form}
-          exercises={exercises}
-          onBack={() => navigate({ search: {} })}
-        />
-      </Suspense>
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 flex items-center justify-center">
+              <Spinner size="large" />
+            </div>
+          }
+        >
+          <AddExerciseScreen
+            form={form}
+            exercises={exercises}
+            onBack={() => navigate({ search: {} })}
+          />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -127,6 +138,49 @@ function WorkoutTracker({
     const exerciseId = getExerciseId(exerciseName);
 
     return (
+      <ErrorBoundary
+        fallback={
+          <FullScreenErrorFallback
+            message="Failed to load exercise details"
+            onAction={() => navigate({ search: {} })}
+            actionLabel="Go Back"
+          />
+        }
+      >
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 flex items-center justify-center">
+              <Spinner size="large" />
+            </div>
+          }
+        >
+          <ExerciseScreen
+            header={
+              <ExerciseHeader
+                form={form}
+                exerciseIndex={exerciseIndex}
+                onBack={() => navigate({ search: {} })}
+              />
+            }
+            recentSets={
+              <RecentSets exerciseId={exerciseId} user={user} />
+            }
+            sets={
+              <ExerciseSets form={form} exerciseIndex={exerciseIndex} />
+            }
+          />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  // MARK: Render
+  return (
+    <ErrorBoundary
+      fallback={
+        <FullScreenErrorFallback message="Failed to load workout form" />
+      }
+    >
       <Suspense
         fallback={
           <div className="fixed inset-0 flex items-center justify-center">
@@ -134,35 +188,7 @@ function WorkoutTracker({
           </div>
         }
       >
-        <ExerciseScreen
-          header={
-            <ExerciseHeader
-              form={form}
-              exerciseIndex={exerciseIndex}
-              onBack={() => navigate({ search: {} })}
-            />
-          }
-          recentSets={
-            <RecentSets exerciseId={exerciseId} user={user} />
-          }
-          sets={
-            <ExerciseSets form={form} exerciseIndex={exerciseIndex} />
-          }
-        />
-      </Suspense>
-    );
-  }
-
-  // MARK: Render
-  return (
-    <Suspense
-      fallback={
-        <div className="fixed inset-0 flex items-center justify-center">
-          <Spinner size="large" />
-        </div>
-      }
-    >
-      <div className="max-w-md mx-auto space-y-6 px-4 pb-8">
+        <div className="max-w-md mx-auto space-y-6 px-4 pb-8">
         <div className="flex items-center justify-between pt-6 pb-2">
           <div>
             <h1 className="font-bold text-2xl tracking-tight text-foreground">
@@ -321,7 +347,8 @@ function WorkoutTracker({
           </div>
         </form>
       </div>
-    </Suspense>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

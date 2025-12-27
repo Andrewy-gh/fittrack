@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import { getRecentSetsQueryOptions } from '@/lib/api/unified-query-options';
+import { ErrorBoundary, InlineErrorFallback } from '@/components/error-boundary';
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
@@ -110,21 +111,32 @@ export function RecentSets({
   }
 
   return (
-    <Suspense
+    <ErrorBoundary
       fallback={
         <div className="space-y-4">
           <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
             Recent Sets
           </h2>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground text-sm">
-              Loading recent sets...
-            </p>
-          </div>
+          <InlineErrorFallback message="Failed to load recent sets" />
         </div>
       }
     >
-      <RecentSetsDisplay exerciseId={exerciseId} user={user} />
-    </Suspense>
+      <Suspense
+        fallback={
+          <div className="space-y-4">
+            <h2 className="font-semibold text-xl tracking-tight text-foreground mb-4">
+              Recent Sets
+            </h2>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground text-sm">
+                Loading recent sets...
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <RecentSetsDisplay exerciseId={exerciseId} user={user} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }

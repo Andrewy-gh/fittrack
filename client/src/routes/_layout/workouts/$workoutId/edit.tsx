@@ -33,6 +33,7 @@ import type {
 } from '@/client';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
+import { ErrorBoundary, FullScreenErrorFallback } from '@/components/error-boundary';
 
 function EditWorkoutForm({
   user,
@@ -93,20 +94,30 @@ function EditWorkoutForm({
   // MARK: Screens
   if (addExercise) {
     return (
-      <Suspense
+      <ErrorBoundary
         fallback={
-          <div className="fixed inset-0 flex items-center justify-center">
-            <Spinner size="large" />
-          </div>
+          <FullScreenErrorFallback
+            message="Failed to load exercise selection"
+            onAction={() => navigate({ search: {} })}
+            actionLabel="Go Back"
+          />
         }
       >
-        <AddExerciseScreen
-          form={form}
-          exercises={exercises}
-          onAddExercise={(index) => navigate({ search: { exerciseIndex: index } })}
-          onBack={() => navigate({ search: {} })}
-        />
-      </Suspense>
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 flex items-center justify-center">
+              <Spinner size="large" />
+            </div>
+          }
+        >
+          <AddExerciseScreen
+            form={form}
+            exercises={exercises}
+            onAddExercise={(index) => navigate({ search: { exerciseIndex: index } })}
+            onBack={() => navigate({ search: {} })}
+          />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -121,6 +132,44 @@ function EditWorkoutForm({
     }
 
     return (
+      <ErrorBoundary
+        fallback={
+          <FullScreenErrorFallback
+            message="Failed to load exercise details"
+            onAction={() => navigate({ search: {} })}
+            actionLabel="Go Back"
+          />
+        }
+      >
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 flex items-center justify-center">
+              <Spinner size="large" />
+            </div>
+          }
+        >
+          <ExerciseScreen
+            header={
+              <ExerciseHeader
+                form={form}
+                exerciseIndex={exerciseIndex}
+                onBack={() => navigate({ search: {} })}
+              />
+            }
+            sets={<ExerciseSets form={form} exerciseIndex={exerciseIndex} />}
+          />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  // MARK: Render
+  return (
+    <ErrorBoundary
+      fallback={
+        <FullScreenErrorFallback message="Failed to load workout form" />
+      }
+    >
       <Suspense
         fallback={
           <div className="fixed inset-0 flex items-center justify-center">
@@ -128,30 +177,7 @@ function EditWorkoutForm({
           </div>
         }
       >
-        <ExerciseScreen
-          header={
-            <ExerciseHeader
-              form={form}
-              exerciseIndex={exerciseIndex}
-              onBack={() => navigate({ search: {} })}
-            />
-          }
-          sets={<ExerciseSets form={form} exerciseIndex={exerciseIndex} />}
-        />
-      </Suspense>
-    );
-  }
-
-  // MARK: Render
-  return (
-    <Suspense
-      fallback={
-        <div className="fixed inset-0 flex items-center justify-center">
-          <Spinner size="large" />
-        </div>
-      }
-    >
-      <div className="max-w-md mx-auto space-y-6 px-4 pb-8">
+        <div className="max-w-md mx-auto space-y-6 px-4 pb-8">
         <div className="flex items-center justify-between pt-6 pb-2">
           <div>
             <h1 className="font-bold text-2xl tracking-tight text-foreground">
@@ -309,7 +335,8 @@ function EditWorkoutForm({
           </div>
         </form>
       </div>
-    </Suspense>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

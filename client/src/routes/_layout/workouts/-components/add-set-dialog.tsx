@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MOCK_VALUES } from './form-options';
+import { ErrorBoundary, InlineErrorFallback } from '@/components/error-boundary';
 
 type AddSetDialogProps = {
   exerciseIndex: number;
@@ -64,12 +65,18 @@ export const AddSetDialog = withForm({
                 />
               )}
             />
-            <Suspense fallback={<div>Loading...</div>}>
-              <form.AppField
-                name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
-                children={(field) => <field.SetTypeSelect />}
-              />
-            </Suspense>
+            <ErrorBoundary
+              fallback={
+                <InlineErrorFallback message="Failed to load set type selector" />
+              }
+            >
+              <Suspense fallback={<div>Loading...</div>}>
+                <form.AppField
+                  name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
+                  children={(field) => <field.SetTypeSelect />}
+                />
+              </Suspense>
+            </ErrorBoundary>
             <Button
               className="w-full mt-6 text-base font-semibold rounded-lg"
               onClick={onSaveSet}

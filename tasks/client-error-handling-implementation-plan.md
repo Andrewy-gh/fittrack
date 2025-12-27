@@ -383,7 +383,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 ---
 
-### Task 11: Refactor Workout New/Edit Alert Errors
+### ✅ Task 11: Refactor Workout New/Edit Alert Errors
 
 **Priority:** Medium
 **Files:**
@@ -396,7 +396,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 - [x] 11.1 Replace `alert(error)` with `toast.error()`
 - [x] 11.2 Use `getErrorMessage()` helper
 - [x] 11.3 Consider inline error for form validation (N/A - toast is appropriate for save/update errors)
-- [ ] 11.4 Test: create/edit workout failures
+- [x] 11.4 Test: create/edit workout failures
 
 ---
 
@@ -410,8 +410,8 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 #### Subtasks
 
-- [ ] 12.1 Wrap Suspense boundaries with ErrorBoundary
-- [ ] 12.2 Create route-specific fallback UIs
+- [x] 12.1 Wrap Suspense boundaries with ErrorBoundary
+- [x] 12.2 Create route-specific fallback UIs
 - [ ] 12.3 Test: force component crash
 
 ---
