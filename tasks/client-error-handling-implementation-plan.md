@@ -200,9 +200,9 @@ client.interceptors.response.use(async (response) => {
 });
 ```
 
-- [ ] 4.2 Consider global toast for 500/503 errors
-- [ ] 4.3 Handle 401 - redirect to login or refresh token
-- [ ] 4.4 Log request_id for debugging (console in dev, service in prod)
+- [x] 4.2 Consider global toast for 500/503 errors
+- [x] 4.3 Handle 401 - redirect to login or refresh token
+- [x] 4.4 Log request_id for debugging (console in dev, service in prod)
 
 ---
 
