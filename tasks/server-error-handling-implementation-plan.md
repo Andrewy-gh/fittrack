@@ -573,13 +573,13 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 9.10 Test Error Responses
 
-- [ ] Test each error type returns correct status code
-- [ ] Test error messages are properly sanitized
-- [ ] Test request_id is included in all error responses
-- [ ] Verify no sensitive information leaks in error messages
-- [ ] Test middleware error responses return proper JSON format
-- [ ] Test rate limit response includes Retry-After header
-- [ ] Test basic auth response includes WWW-Authenticate header
+- [x] Test each error type returns correct status code
+- [x] Test error messages are properly sanitized
+- [x] Test request_id is included in all error responses
+- [x] Verify no sensitive information leaks in error messages
+- [x] Test middleware error responses return proper JSON format
+- [x] Test rate limit response includes Retry-After header
+- [x] Test basic auth response includes WWW-Authenticate header
 
 ---
 
@@ -594,42 +594,42 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 10.1 Service Tests - Remove Logger Expectations
 
-- [ ] Update `exercise/service_test.go` to remove logger mock calls
-- [ ] Update `workout/service_test.go` to remove logger mock calls
-- [ ] Update `user/service_test.go` if needed
-- [ ] Keep tests for error wrapping and error types
+- [x] Update `exercise/service_test.go` to remove logger mock calls
+- [x] Update `workout/service_test.go` to remove logger mock calls
+- [x] Update `user/service_test.go` if needed
+- [x] Keep tests for error wrapping and error types
 
 #### 10.2 Handler Tests - Add Logger Expectations
 
-- [ ] Update handler tests to verify ErrorJSON logs correctly
-- [ ] Add assertions for log fields (error, path, method, status, request_id)
-- [ ] Test that errors are logged exactly once per request
+- [x] Update handler tests to verify ErrorJSON logs correctly
+- [x] Add assertions for log fields (error, path, method, status, request_id)
+- [x] Test that errors are logged exactly once per request
 
 #### 10.3 Error Type Tests
 
-- [ ] Test shared error types work with `errors.As`
-- [ ] Test shared error types work with `errors.Is` if applicable
-- [ ] Test error wrapping preserves custom error types
+- [x] Test shared error types work with `errors.As`
+- [x] Test shared error types work with `errors.Is` if applicable
+- [x] Test error wrapping preserves custom error types
 
 #### 10.4 Database Error Tests
 
-- [ ] Create tests for new `pgconn.PgError` detection
-- [ ] Test each error code is detected correctly
-- [ ] Test wrapped errors are properly detected
+- [x] Create tests for new `pgconn.PgError` detection
+- [x] Test each error code is detected correctly
+- [x] Test wrapped errors are properly detected
 
 #### 10.5 Integration Tests
 
-- [ ] Run full integration test suite
-- [ ] Verify API error responses are correct
-- [ ] Test error scenarios end-to-end
-- [ ] Verify logs show errors once per request
+- [x] Run full integration test suite
+- [x] Verify API error responses are correct
+- [x] Test error scenarios end-to-end
+- [x] Verify logs show errors once per request
 
 #### 10.6 Test Coverage
 
-- [ ] Measure test coverage for error package
-- [ ] Measure test coverage for error handling paths
-- [ ] Add tests for any uncovered error scenarios
-- [ ] Aim for >80% coverage on error handling code
+- [x] Measure test coverage for error package
+- [x] Measure test coverage for error handling paths
+- [x] Add tests for any uncovered error scenarios
+- [x] Aim for >80% coverage on error handling code
 
 ---
 
