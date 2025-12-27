@@ -10,9 +10,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
-import { useDeleteWorkoutMutation } from '@/lib/api/workouts';
 import { useMutation } from '@tanstack/react-query';
+import { deleteWorkoutsByIdMutation, getWorkoutsQueryKey, getWorkoutsByIdQueryKey, getWorkoutsContributionDataQueryKey } from '@/client/@tanstack/react-query.gen';
 import { deleteDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
+import { getErrorMessage } from '@/lib/errors';
+import { toast } from 'sonner';
+import { queryClient } from '@/lib/api/api';
 
 interface DeleteDialogProps {
   isOpen: boolean;
@@ -30,14 +33,36 @@ export function DeleteDialog({
   const router = useRouter();
   const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
 
-  const authDeleteMutation = useDeleteWorkoutMutation();
-  const demoDeleteMutation = useMutation(deleteDemoWorkoutsByIdMutation());
+  // Override global error handler to prevent double toasts
+  // We handle errors manually in the catch block below
+  const authDeleteMutation = useMutation({
+    ...deleteWorkoutsByIdMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsQueryKey(),
+      });
+      queryClient.removeQueries({
+        queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getWorkoutsContributionDataQueryKey(),
+      });
+    },
+    onError: () => {
+      // Don't show toast - we handle errors manually
+    },
+  });
+  const demoDeleteMutation = useMutation({
+    ...deleteDemoWorkoutsByIdMutation(),
+    onError: () => {
+      // Don't show toast - we handle errors manually
+    },
+  });
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
     setError(null);
     setIsDeleting(true);
-    // ! TODO: handle error
     try {
       await deleteMutation.mutateAsync(
         { path: { id: workoutId } },
@@ -47,6 +72,12 @@ export function DeleteDialog({
           },
         }
       );
+    } catch (err) {
+      // Show toast for delete failure
+      const errorMessage = getErrorMessage(err, 'Failed to delete workout. Please try again.');
+      toast.error(errorMessage);
+      // Also show inline error in dialog
+      setError(errorMessage);
     } finally {
       setIsDeleting(false);
     }

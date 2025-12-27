@@ -318,7 +318,7 @@ const queryClient = new QueryClient({
 - [x] 7.2 Create reusable validation functions (e.g., `required`, `maxLength`)
 - [x] 7.3 Display `field.state.meta.errors` in field components
 - [x] 7.4 Use `onBlur` validation for better UX (less intrusive)
-- [ ] 7.5 Use `form.Subscribe` with `canSubmit` to disable submit button
+- [x] 7.5 Use `form.Subscribe` with `canSubmit` to disable submit button
 - [ ] 7.6 Consider Zod schema integration for complex validation
 
 ---
@@ -376,9 +376,9 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 #### Subtasks
 
-- [ ] 10.1 Remove TODO comment
-- [ ] 10.2 Add try-catch with proper error handling
-- [ ] 10.3 Show toast for delete failure
+- [x] 10.1 Remove TODO comment
+- [x] 10.2 Add try-catch with proper error handling
+- [x] 10.3 Show toast for delete failure
 - [ ] 10.4 Test: simulate delete failure
 
 ---
