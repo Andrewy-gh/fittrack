@@ -20,6 +20,8 @@ import {
   getWorkoutsFocusQueryOptions,
 } from '@/lib/api/unified-query-options';
 import { formatWeight } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors';
+import { toast } from 'sonner';
 
 import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
@@ -70,7 +72,8 @@ function WorkoutTracker({
             navigate({ search: {} });
           },
           onError: (error) => {
-            alert(error);
+            const errorMessage = getErrorMessage(error, 'Failed to save workout. Please try again.');
+            toast.error(errorMessage);
           },
         }
       );

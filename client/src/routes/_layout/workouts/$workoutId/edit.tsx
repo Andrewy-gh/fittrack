@@ -31,6 +31,8 @@ import type {
   ExerciseExerciseResponse,
   WorkoutUpdateWorkoutRequest,
 } from '@/client';
+import { getErrorMessage } from '@/lib/errors';
+import { toast } from 'sonner';
 
 function EditWorkoutForm({
   user,
@@ -73,7 +75,8 @@ function EditWorkoutForm({
             });
           },
           onError: (error) => {
-            alert(`Failed to update workout: ${error}`);
+            const errorMessage = getErrorMessage(error, 'Failed to update workout. Please try again.');
+            toast.error(errorMessage);
           },
         }
       );

@@ -367,7 +367,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 ---
 
-### Task 10: Implement Workout Delete Dialog Error Handling
+### ✅ Task 10: Implement Workout Delete Dialog Error Handling
 
 **Priority:** Medium
 **Files:**
@@ -379,7 +379,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 - [x] 10.1 Remove TODO comment
 - [x] 10.2 Add try-catch with proper error handling
 - [x] 10.3 Show toast for delete failure
-- [ ] 10.4 Test: simulate delete failure
+- [x] 10.4 Test: simulate delete failure
 
 ---
 
@@ -393,9 +393,9 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 #### Subtasks
 
-- [ ] 11.1 Replace `alert(error)` with `toast.error()`
-- [ ] 11.2 Use `getErrorMessage()` helper
-- [ ] 11.3 Consider inline error for form validation
+- [x] 11.1 Replace `alert(error)` with `toast.error()`
+- [x] 11.2 Use `getErrorMessage()` helper
+- [x] 11.3 Consider inline error for form validation (N/A - toast is appropriate for save/update errors)
 - [ ] 11.4 Test: create/edit workout failures
 
 ---
