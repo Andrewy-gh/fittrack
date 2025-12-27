@@ -400,7 +400,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 ---
 
-### Task 12: Add Error Boundary to Critical Routes
+### ✅ Task 12: Add Error Boundary to Critical Routes
 
 **Priority:** Low
 **Files:**
@@ -412,7 +412,7 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 - [x] 12.1 Wrap Suspense boundaries with ErrorBoundary
 - [x] 12.2 Create route-specific fallback UIs
-- [ ] 12.3 Test: force component crash
+- [x] 12.3 Test: force component crash
 
 ---
 

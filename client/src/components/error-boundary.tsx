@@ -52,7 +52,7 @@ export function FullScreenErrorFallback({
   const handleAction = onAction || (() => window.location.reload());
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background">
       <div className="text-center space-y-4 max-w-md">
         <div className="flex justify-center">
           <AlertCircle className="w-12 h-12 text-destructive" />
