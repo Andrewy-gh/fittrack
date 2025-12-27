@@ -283,8 +283,8 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 5.3 Update Any Similar Functions
 
-- [ ] Search for other type assertions on errors in handler files
-- [ ] Update any similar patterns found
+- [x] Search for other type assertions on errors in handler files
+- [x] Update any similar patterns found
 
 ---
 
@@ -301,23 +301,23 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 6.1 Update GetInt Function
 
-- [ ] Locate GetInt function around line 95-96
-- [ ] Add else clause to `strconv.Atoi` error check
-- [ ] Log parsing failure with value and error
-- [ ] Use appropriate log level (Info or Debug)
-- [ ] Include config key name in log message if available
+- [x] Locate GetInt function around line 95-96
+- [x] Add else clause to `strconv.Atoi` error check
+- [x] Log parsing failure with value and error
+- [x] Use appropriate log level (Info or Debug)
+- [x] Include config key name in log message if available
 
 #### 6.2 Audit Other Parsing Functions
 
-- [ ] Check for similar patterns in GetBool, GetFloat64, etc.
-- [ ] Add logging to other parsing failures
-- [ ] Ensure consistent log message format
+- [x] Check for similar patterns in GetBool, GetFloat64, etc.
+- [x] Add logging to other parsing failures
+- [x] Ensure consistent log message format
 
 #### 6.3 Test Config Parsing
 
-- [ ] Test with invalid integer value
-- [ ] Verify log message appears
-- [ ] Verify default value is still returned
+- [x] Test with invalid integer value
+- [x] Verify log message appears
+- [x] Verify default value is still returned
 
 ---
 

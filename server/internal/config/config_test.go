@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"testing"
 )
@@ -265,6 +267,145 @@ func TestLoad_ValidEnvironments(t *testing.T) {
 				t.Errorf("expected Environment to be '%s', got: %s", env, cfg.Environment)
 			}
 		})
+	}
+}
+
+// Test that invalid integer values are logged and default is used
+func TestGetEnvInt_InvalidInteger(t *testing.T) {
+	// Capture log output
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr) // Restore default log output
+
+	tests := []struct {
+		name         string
+		envValue     string
+		defaultValue int
+		expectLog    bool
+	}{
+		{
+			name:         "invalid integer - letters",
+			envValue:     "abc",
+			defaultValue: 100,
+			expectLog:    true,
+		},
+		{
+			name:         "invalid integer - mixed",
+			envValue:     "12abc34",
+			defaultValue: 50,
+			expectLog:    true,
+		},
+		{
+			name:         "invalid integer - float",
+			envValue:     "12.34",
+			defaultValue: 75,
+			expectLog:    true,
+		},
+		{
+			name:         "invalid integer - special chars",
+			envValue:     "!@#$",
+			defaultValue: 200,
+			expectLog:    true,
+		},
+		{
+			name:         "valid integer",
+			envValue:     "500",
+			defaultValue: 100,
+			expectLog:    false,
+		},
+		{
+			name:         "empty string",
+			envValue:     "",
+			defaultValue: 100,
+			expectLog:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset buffer
+			buf.Reset()
+
+			// Set environment variable
+			if tt.envValue != "" {
+				os.Setenv("TEST_INT_VAR", tt.envValue)
+			} else {
+				os.Unsetenv("TEST_INT_VAR")
+			}
+			defer os.Unsetenv("TEST_INT_VAR")
+
+			// Call getEnvInt
+			result := getEnvInt("TEST_INT_VAR", tt.defaultValue)
+
+			// Verify result
+			if tt.envValue == "500" {
+				if result != 500 {
+					t.Errorf("expected result to be 500, got: %d", result)
+				}
+			} else {
+				if result != tt.defaultValue {
+					t.Errorf("expected result to be default value %d, got: %d", tt.defaultValue, result)
+				}
+			}
+
+			// Verify log output
+			logOutput := buf.String()
+			if tt.expectLog {
+				if logOutput == "" {
+					t.Error("expected log output, but got none")
+				}
+				if !bytes.Contains([]byte(logOutput), []byte("TEST_INT_VAR")) {
+					t.Errorf("expected log to contain 'TEST_INT_VAR', got: %s", logOutput)
+				}
+				if !bytes.Contains([]byte(logOutput), []byte("failed to parse")) {
+					t.Errorf("expected log to contain 'failed to parse', got: %s", logOutput)
+				}
+				if !bytes.Contains([]byte(logOutput), []byte(tt.envValue)) {
+					t.Errorf("expected log to contain value '%s', got: %s", tt.envValue, logOutput)
+				}
+			} else {
+				if logOutput != "" {
+					t.Errorf("expected no log output, but got: %s", logOutput)
+				}
+			}
+		})
+	}
+}
+
+// Test that Load() with invalid integer env vars still succeeds (uses defaults)
+func TestLoad_InvalidIntegerValues(t *testing.T) {
+	// Capture log output
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
+	os.Setenv("PROJECT_ID", "test-project-123")
+	os.Setenv("PORT", "not-a-number")
+	os.Setenv("RATE_LIMIT_RPM", "invalid")
+	defer cleanupEnv()
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected no error (should use defaults), got: %v", err)
+	}
+
+	// Should use default values
+	if cfg.Port != 8080 {
+		t.Errorf("expected Port to be default (8080), got: %d", cfg.Port)
+	}
+
+	if cfg.RateLimitRPM != 100 {
+		t.Errorf("expected RateLimitRPM to be default (100), got: %d", cfg.RateLimitRPM)
+	}
+
+	// Verify logs were generated
+	logOutput := buf.String()
+	if !bytes.Contains([]byte(logOutput), []byte("PORT")) {
+		t.Error("expected log to contain 'PORT'")
+	}
+	if !bytes.Contains([]byte(logOutput), []byte("RATE_LIMIT_RPM")) {
+		t.Error("expected log to contain 'RATE_LIMIT_RPM'")
 	}
 }
 
