@@ -188,7 +188,7 @@ export interface ApiError {
 
 #### Subtasks
 
-- [ ] 4.1 Add response interceptor to handle errors globally
+- [x] 4.1 Add response interceptor to handle errors globally
 
 ```typescript
 client.interceptors.response.use(async (response) => {
