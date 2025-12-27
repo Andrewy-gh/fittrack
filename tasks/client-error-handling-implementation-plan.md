@@ -107,7 +107,7 @@ This plan addresses frontend error handling to align with the backend error hand
 
 **IMPORTANT:** Mark each task as completed when you finish it. Add the end of each high level task run `bun run tsc` to make sure there are no typescript errors.
 
-### Task 1: Enable Sonner Toast Infrastructure
+### ✅ Task 1: Enable Sonner Toast Infrastructure
 
 **Priority:** Critical (blocks other tasks)
 **Files:**
@@ -123,19 +123,20 @@ This plan addresses frontend error handling to align with the backend error hand
 
 ---
 
-### Task 2: Update API Error Type Definition (OPTIONAL)
+### ✅ Task 2: Update API Error Type Definition (OPTIONAL)
 
 **Priority:** Low (skip unless you want request_id tracking)
 **Files:**
 
-- `server/api/openapi.yaml` (source of truth)
+- `server/internal/response/types.go` (updated ErrorResponse struct)
+- `server/docs/swagger.json` (regenerated)
 - `client/src/client/types.gen.ts` (regenerated)
 
-**Decision:** Skip for now. Add later if you implement error monitoring (Sentry, etc.)
+**Decision:** ✅ Implemented - request_id now available for debugging
 
 #### Subtasks (if implementing)
 
-- [ ] 2.1 Update OpenAPI spec `ErrorResponse` to include `request_id`
+- [x] 2.1 Update OpenAPI spec `ErrorResponse` to include `request_id`
 
 ```yaml
 ErrorResponse:
@@ -147,8 +148,8 @@ ErrorResponse:
       type: string
 ```
 
-- [ ] 2.2 Regenerate client types: `bun run openapi-ts`
-- [ ] 2.3 Verify `ResponseErrorResponse` now has `request_id?: string`
+- [x] 2.2 Regenerate client types: `bun run openapi-ts`
+- [x] 2.3 Verify `ResponseErrorResponse` now has `request_id?: string`
 
 ---
 
