@@ -31,6 +31,11 @@ func NewHandlerWithPool(logger *slog.Logger, pool PoolPinger) *Handler {
 	}
 }
 
+// HealthResponse represents the response format for the /health endpoint.
+// Note: Health endpoints use a custom response format (not the standard error response format)
+// because they are primarily consumed by monitoring systems (Kubernetes, load balancers, etc.)
+// that expect specific fields. Request IDs are not included in the response body but are
+// logged for debugging purposes.
 type HealthResponse struct {
 	Status    string `json:"status"`
 	Timestamp string `json:"timestamp"`
@@ -58,6 +63,11 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ReadyResponse represents the response format for the /ready endpoint.
+// Note: Like HealthResponse, this uses a custom format for monitoring systems.
+// Database errors are sanitized - the actual error is logged with request_id but
+// only generic status messages ("ok", "unavailable") are returned to clients.
+// This prevents leaking sensitive connection details (hostnames, ports, credentials).
 type ReadyResponse struct {
 	Status    string            `json:"status"`
 	Timestamp string            `json:"timestamp"`

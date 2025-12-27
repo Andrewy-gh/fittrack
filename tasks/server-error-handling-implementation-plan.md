@@ -552,9 +552,9 @@ This plan addresses the error handling improvements identified in `server-error-
 
 - [x] Sanitize database error in ready endpoint response
 - [x] Replace `"failed: " + err.Error()` with generic message
-- [ ] Consider adding request_id to health/ready responses (optional)
-- [ ] Document that health endpoints use custom response format
-- [ ] Verify no sensitive connection details leak in errors
+- [x] Consider adding request_id to health/ready responses (optional)
+- [x] Document that health endpoints use custom response format
+- [x] Verify no sensitive connection details leak in errors
 
 #### 9.8 Standardize Custom Error Responses
 
