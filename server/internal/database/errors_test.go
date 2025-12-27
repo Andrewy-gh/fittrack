@@ -2,8 +2,10 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,22 +16,31 @@ func TestIsUniqueConstraintError(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "postgres duplicate key error",
-			err:      errors.New("ERROR: duplicate key value violates unique constraint \"users_pkey\" (SQLSTATE 23505)"),
+			name: "postgres unique constraint violation",
+			err: &pgconn.PgError{
+				Code:    "23505",
+				Message: "duplicate key value violates unique constraint",
+			},
 			expected: true,
 		},
 		{
-			name:     "postgres unique constraint error",
-			err:      errors.New("ERROR: duplicate key violates unique constraint \"users_email_key\" (SQLSTATE 23505)"),
+			name: "wrapped postgres unique constraint violation",
+			err: fmt.Errorf("failed to insert user: %w", &pgconn.PgError{
+				Code:    "23505",
+				Message: "duplicate key value violates unique constraint \"users_email_key\"",
+			}),
 			expected: true,
 		},
 		{
-			name:     "sqlite unique constraint error",
-			err:      errors.New("UNIQUE constraint failed: users.email"),
-			expected: true,
+			name: "postgres foreign key violation (wrong code)",
+			err: &pgconn.PgError{
+				Code:    "23503",
+				Message: "foreign key constraint violation",
+			},
+			expected: false,
 		},
 		{
-			name:     "other error",
+			name:     "non-postgres error",
 			err:      errors.New("some other error"),
 			expected: false,
 		},
@@ -55,17 +66,31 @@ func TestIsForeignKeyConstraintError(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "postgres foreign key error",
-			err:      errors.New("ERROR: insert or update on table \"workout\" violates foreign key constraint \"workout_user_id_fkey\" (SQLSTATE 23503)"),
+			name: "postgres foreign key violation",
+			err: &pgconn.PgError{
+				Code:    "23503",
+				Message: "insert or update on table violates foreign key constraint",
+			},
 			expected: true,
 		},
 		{
-			name:     "sqlite foreign key error",
-			err:      errors.New("FOREIGN KEY constraint failed"),
+			name: "wrapped postgres foreign key violation",
+			err: fmt.Errorf("failed to create workout: %w", &pgconn.PgError{
+				Code:    "23503",
+				Message: "insert or update on table \"workout\" violates foreign key constraint \"workout_user_id_fkey\"",
+			}),
 			expected: true,
 		},
 		{
-			name:     "other error",
+			name: "postgres unique constraint (wrong code)",
+			err: &pgconn.PgError{
+				Code:    "23505",
+				Message: "duplicate key value",
+			},
+			expected: false,
+		},
+		{
+			name:     "non-postgres error",
 			err:      errors.New("some other error"),
 			expected: false,
 		},
@@ -91,27 +116,41 @@ func TestIsRowLevelSecurityError(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "RLS error",
+			name:     "application-level RLS error",
 			err:      ErrRowLevelSecurity,
 			expected: true,
 		},
 		{
-			name:     "wrapped RLS error",
-			err:      errors.Join(errors.New("other error"), ErrRowLevelSecurity),
+			name:     "wrapped application-level RLS error",
+			err:      fmt.Errorf("access denied: %w", ErrRowLevelSecurity),
 			expected: true,
 		},
 		{
-			name:     "postgres permission denied error",
-			err:      errors.New("ERROR: permission denied for table workout (SQLSTATE 42501)"),
+			name: "postgres insufficient privilege error",
+			err: &pgconn.PgError{
+				Code:    "42501",
+				Message: "permission denied for table workout",
+			},
 			expected: true,
 		},
 		{
-			name:     "insufficient privilege error",
-			err:      errors.New("ERROR: insufficient privilege to access table"),
+			name: "wrapped postgres insufficient privilege error",
+			err: fmt.Errorf("query failed: %w", &pgconn.PgError{
+				Code:    "42501",
+				Message: "insufficient privilege",
+			}),
 			expected: true,
 		},
 		{
-			name:     "other error",
+			name: "postgres other error code",
+			err: &pgconn.PgError{
+				Code:    "23505",
+				Message: "duplicate key",
+			},
+			expected: false,
+		},
+		{
+			name:     "non-postgres error",
 			err:      errors.New("some other error"),
 			expected: false,
 		},
@@ -137,22 +176,17 @@ func TestIsRLSContextError(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "RLS context error",
+			name:     "application-level RLS context error",
 			err:      ErrRLSContext,
 			expected: true,
 		},
 		{
-			name:     "set_config error",
-			err:      errors.New("ERROR: failed to set_config('app.current_user_id', 'user123', false)"),
+			name:     "wrapped RLS context error",
+			err:      fmt.Errorf("failed to set context: %w", ErrRLSContext),
 			expected: true,
 		},
 		{
-			name:     "session variable error",
-			err:      errors.New("ERROR: invalid session variable app.current_user_id"),
-			expected: true,
-		},
-		{
-			name:     "other error",
+			name:     "non-RLS context error",
 			err:      errors.New("some other error"),
 			expected: false,
 		},
