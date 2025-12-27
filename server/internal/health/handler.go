@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -59,7 +59,7 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("failed to encode health response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
+		h.logger.Error("failed to encode health response", "error", err, "request_id", request.GetRequestID(r.Context()))
 	}
 }
 
@@ -89,7 +89,7 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 		// Log the actual error for debugging, but don't expose it to clients
 		h.logger.Error("database health check failed",
 			"error", err,
-			"request_id", middleware.GetRequestID(r.Context()),
+			"request_id", request.GetRequestID(r.Context()),
 		)
 
 		response := ReadyResponse{
@@ -103,7 +103,7 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("failed to encode ready response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
+			h.logger.Error("failed to encode ready response", "error", err, "request_id", request.GetRequestID(r.Context()))
 		}
 		return
 	}
@@ -119,6 +119,6 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("failed to encode ready response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
+		h.logger.Error("failed to encode ready response", "error", err, "request_id", request.GetRequestID(r.Context()))
 	}
 }

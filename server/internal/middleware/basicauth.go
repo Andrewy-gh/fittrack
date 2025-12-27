@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"crypto/subtle"
-	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
 
 // BasicAuth returns a middleware that requires HTTP Basic Authentication
@@ -27,32 +28,11 @@ func BasicAuth(username, password string, logger *slog.Logger) func(http.Handler
 				subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 ||
 				subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
 
-				// Get request ID from context
-				requestID := GetRequestID(r.Context())
-
-				// Log the unauthorized attempt
-				logger.Warn("unauthorized metrics access attempt",
-					"path", r.URL.Path,
-					"method", r.Method,
-					"status", http.StatusUnauthorized,
-					"request_id", requestID,
-				)
-
-				// Set headers
+				// Set WWW-Authenticate header before sending error response
 				w.Header().Set("WWW-Authenticate", `Basic realm="Metrics"`)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
 
 				// Return standardized error response
-				resp := map[string]string{
-					"message": "unauthorized",
-				}
-				if requestID != "" {
-					resp["request_id"] = requestID
-				}
-				if err := json.NewEncoder(w).Encode(resp); err != nil {
-					logger.Error("failed to encode basic auth response", "error", err, "request_id", requestID)
-				}
+				response.ErrorJSON(w, r, logger, http.StatusUnauthorized, "unauthorized", nil)
 				return
 			}
 

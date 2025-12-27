@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
-	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,29 +20,29 @@ import (
 // error responses with correct HTTP status codes and JSON structure.
 func TestAPIErrorResponses(t *testing.T) {
 	tests := []struct {
-		name               string
-		message            string
-		err                error
-		statusCode         int
-		expectedMessage    string
+		name                 string
+		message              string
+		err                  error
+		statusCode           int
+		expectedMessage      string
 		messageShouldContain string
-		sanitized          bool
+		sanitized            bool
 	}{
 		{
-			name:               "Unauthorized error returns 401",
-			message:            "user user123 is not authorized to access exercise",
-			err:                &apperrors.Unauthorized{Resource: "exercise", UserID: "user123"},
-			statusCode:         http.StatusUnauthorized,
+			name:                 "Unauthorized error returns 401",
+			message:              "user user123 is not authorized to access exercise",
+			err:                  &apperrors.Unauthorized{Resource: "exercise", UserID: "user123"},
+			statusCode:           http.StatusUnauthorized,
 			messageShouldContain: "not authorized",
-			sanitized:          false,
+			sanitized:            false,
 		},
 		{
-			name:               "NotFound error returns 404",
-			message:            "workout with id 456 not found",
-			err:                &apperrors.NotFound{Resource: "workout", ID: "456"},
-			statusCode:         http.StatusNotFound,
+			name:                 "NotFound error returns 404",
+			message:              "workout with id 456 not found",
+			err:                  &apperrors.NotFound{Resource: "workout", ID: "456"},
+			statusCode:           http.StatusNotFound,
 			messageShouldContain: "not found",
-			sanitized:          false,
+			sanitized:            false,
 		},
 		{
 			name:            "Database error is sanitized and returns 500",
@@ -53,12 +53,12 @@ func TestAPIErrorResponses(t *testing.T) {
 			sanitized:       true,
 		},
 		{
-			name:               "Generic error returns 500",
-			message:            "something went wrong",
-			err:                errors.New("something went wrong"),
-			statusCode:         http.StatusInternalServerError,
+			name:                 "Generic error returns 500",
+			message:              "something went wrong",
+			err:                  errors.New("something went wrong"),
+			statusCode:           http.StatusInternalServerError,
 			messageShouldContain: "something went wrong",
-			sanitized:          false,
+			sanitized:            false,
 		},
 		{
 			name:            "Wrapped database error is sanitized",
@@ -76,18 +76,11 @@ func TestAPIErrorResponses(t *testing.T) {
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 			w := httptest.NewRecorder()
 
-			// Create request with request ID via header
+			// Create request with request ID in context
 			req := httptest.NewRequest("GET", "/test", nil)
 			requestID := "test-request-id-123"
-			req.Header.Set("X-Request-ID", requestID)
-
-			// Apply RequestID middleware to set it in context
-			var capturedReq *http.Request
-			handler := middleware.RequestID()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				capturedReq = r
-			}))
-			handler.ServeHTTP(httptest.NewRecorder(), req)
-			req = capturedReq
+			ctx := request.WithRequestID(req.Context(), requestID)
+			req = req.WithContext(ctx)
 
 			// Execute
 			ErrorJSON(w, req, logger, tt.statusCode, tt.message, tt.err)
@@ -131,15 +124,9 @@ func TestErrorResponseStructure(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-Request-ID", "req-456")
-
-	// Apply RequestID middleware to set it in context
-	var capturedReq *http.Request
-	handler := middleware.RequestID()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedReq = r
-	}))
-	handler.ServeHTTP(httptest.NewRecorder(), req)
-	req = capturedReq
+	requestID := "req-456"
+	ctx := request.WithRequestID(req.Context(), requestID)
+	req = req.WithContext(ctx)
 
 	ErrorJSON(w, req, logger, http.StatusBadRequest, "validation failed", nil)
 
@@ -215,45 +202,45 @@ func TestHTTPStatusCodeMapping(t *testing.T) {
 // TestErrorMessageSanitization verifies that sensitive information is removed from error messages.
 func TestErrorMessageSanitization(t *testing.T) {
 	tests := []struct {
-		name            string
-		rawMessage      string
-		shouldSanitize  bool
+		name             string
+		rawMessage       string
+		shouldSanitize   bool
 		shouldNotContain []string
 	}{
 		{
-			name:           "PostgreSQL error codes are sanitized",
-			rawMessage:     "ERROR: duplicate key (SQLSTATE 23505)",
-			shouldSanitize: true,
+			name:             "PostgreSQL error codes are sanitized",
+			rawMessage:       "ERROR: duplicate key (SQLSTATE 23505)",
+			shouldSanitize:   true,
 			shouldNotContain: []string{"23505", "SQLSTATE", "ERROR:"},
 		},
 		{
-			name:           "Connection errors are sanitized",
-			rawMessage:     "failed to connect: connection refused",
-			shouldSanitize: true,
+			name:             "Connection errors are sanitized",
+			rawMessage:       "failed to connect: connection refused",
+			shouldSanitize:   true,
 			shouldNotContain: []string{"connection"},
 		},
 		{
-			name:           "Table names are sanitized",
-			rawMessage:     "relation \"users\" does not exist",
-			shouldSanitize: true,
+			name:             "Table names are sanitized",
+			rawMessage:       "relation \"users\" does not exist",
+			shouldSanitize:   true,
 			shouldNotContain: []string{"users", "relation"},
 		},
 		{
-			name:           "JWT tokens are sanitized",
-			rawMessage:     "invalid token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
-			shouldSanitize: true,
+			name:             "JWT tokens are sanitized",
+			rawMessage:       "invalid token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+			shouldSanitize:   true,
 			shouldNotContain: []string{"eyJhbGci", "token:"},
 		},
 		{
-			name:           "Validation errors are NOT sanitized",
-			rawMessage:     "field 'email' is required",
-			shouldSanitize: false,
+			name:             "Validation errors are NOT sanitized",
+			rawMessage:       "field 'email' is required",
+			shouldSanitize:   false,
 			shouldNotContain: []string{},
 		},
 		{
-			name:           "Missing parameter errors are NOT sanitized",
-			rawMessage:     "missing required parameter: name",
-			shouldSanitize: false,
+			name:             "Missing parameter errors are NOT sanitized",
+			rawMessage:       "missing required parameter: name",
+			shouldSanitize:   false,
 			shouldNotContain: []string{},
 		},
 	}

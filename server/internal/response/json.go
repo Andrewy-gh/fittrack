@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 )
 
 type Error struct {
@@ -142,7 +142,7 @@ func isValidationError(message, errMsg string) bool {
 
 func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, message string, err error) {
 	// Get request ID from context
-	requestID := middleware.GetRequestID(r.Context())
+	requestID := request.GetRequestID(r.Context())
 
 	// Log the full error details at Error level for operational monitoring
 	logger.Error(message, "error", err, "path", r.URL.Path, "method", r.Method, "status", status, "request_id", requestID)

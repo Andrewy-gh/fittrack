@@ -1,13 +1,13 @@
 package middleware
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/ulule/limiter/v3"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
@@ -40,28 +40,7 @@ func RateLimit(logger *slog.Logger, requestsPerMinute int64) func(http.Handler) 
 			// Get rate limit context for this user
 			context, err := instance.Get(r.Context(), userID)
 			if err != nil {
-				// Get request ID from context
-				requestID := GetRequestID(r.Context())
-
-				// Log the error with full details
-				logger.Error("failed to get rate limit context",
-					"error", err,
-					"userID", userID,
-					"path", r.URL.Path,
-					"method", r.Method,
-					"status", http.StatusInternalServerError,
-					"request_id", requestID)
-
-				// Return standardized error response
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				resp := map[string]string{
-					"message": "internal error",
-				}
-				if requestID != "" {
-					resp["request_id"] = requestID
-				}
-				json.NewEncoder(w).Encode(resp)
+				response.ErrorJSON(w, r, logger, http.StatusInternalServerError, "internal error", err)
 				return
 			}
 
@@ -79,33 +58,12 @@ func RateLimit(logger *slog.Logger, requestsPerMinute int64) func(http.Handler) 
 					retryAfterSeconds = 0
 				}
 
-				// Get request ID from context
-				requestID := GetRequestID(r.Context())
-
-				// Log the rate limit event
-				logger.Warn("rate limit exceeded",
-					"userID", userID,
-					"path", r.URL.Path,
-					"method", r.Method,
-					"status", http.StatusTooManyRequests,
-					"retry_after_seconds", retryAfterSeconds,
-					"request_id", requestID)
-
-				// Set headers
+				// Set Retry-After header before sending error response
 				w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusTooManyRequests)
 
 				// Return standardized error response
-				response := map[string]string{
-					"message": fmt.Sprintf("rate limit exceeded, retry after %d seconds", retryAfterSeconds),
-				}
-				if requestID != "" {
-					response["request_id"] = requestID
-				}
-				if err := json.NewEncoder(w).Encode(response); err != nil {
-					logger.Error("failed to encode rate limit response", "error", err, "request_id", requestID)
-				}
+				response.ErrorJSON(w, r, logger, http.StatusTooManyRequests,
+					fmt.Sprintf("rate limit exceeded, retry after %d seconds", retryAfterSeconds), nil)
 				return
 			}
 
