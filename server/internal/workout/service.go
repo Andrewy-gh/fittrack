@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
 
@@ -28,22 +29,6 @@ type WorkoutService struct {
 	repo   WorkoutRepository
 }
 
-type ErrUnauthorized struct {
-	Message string
-}
-
-func (e *ErrUnauthorized) Error() string {
-	return e.Message
-}
-
-type ErrNotFound struct {
-	Message string
-}
-
-func (e *ErrNotFound) Error() string {
-	return e.Message
-}
-
 func NewService(logger *slog.Logger, repo WorkoutRepository) *WorkoutService {
 	return &WorkoutService{
 		logger: logger,
@@ -54,7 +39,7 @@ func NewService(logger *slog.Logger, repo WorkoutRepository) *WorkoutService {
 func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 	workouts, err := ws.repo.ListWorkouts(ctx, userID)
 	if err != nil {
@@ -68,7 +53,7 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]WorkoutWithSetsResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
 	if err != nil {
@@ -90,7 +75,7 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]W
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return &ErrUnauthorized{Message: "user not authenticated"}
+		return &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 	// Transform the request to our internal format
 	reformatted, err := ws.transformRequest(requestBody)
@@ -114,7 +99,7 @@ func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateW
 func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req UpdateWorkoutRequest) error {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return &ErrUnauthorized{Message: "user not authenticated"}
+		return &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 
 	// First, validate that the workout exists and belongs to the user
@@ -122,7 +107,7 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 	_, err := ws.repo.GetWorkout(ctx, id, userID)
 	if err != nil {
 		ws.logger.Debug("workout not found for update", "workout_id", id, "user_id", userID, "error", err)
-		return &ErrNotFound{Message: "workout not found"}
+		return &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
 	}
 
 	// Transform the request to our internal format (same as CreateWorkout)
@@ -148,7 +133,7 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return &ErrUnauthorized{Message: "user not authenticated"}
+		return &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 
 	// First, validate that the workout exists and belongs to the user
@@ -156,7 +141,7 @@ func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
 	_, err := ws.repo.GetWorkout(ctx, id, userID)
 	if err != nil {
 		ws.logger.Debug("workout not found for delete", "workout_id", id, "user_id", userID, "error", err)
-		return &ErrNotFound{Message: "workout not found"}
+		return &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
 	}
 
 	// Call repository to delete the workout
@@ -174,7 +159,7 @@ func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
 func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 	focusValues, err := ws.repo.ListWorkoutFocusValues(ctx, userID)
 	if err != nil {
@@ -195,7 +180,7 @@ func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string,
 func (ws *WorkoutService) GetContributionData(ctx context.Context) (*ContributionDataResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 
 	rows, err := ws.repo.GetContributionData(ctx, userID)

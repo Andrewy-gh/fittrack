@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/go-playground/validator/v10"
 )
@@ -41,9 +42,9 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, workoutServi
 func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 	workouts, err := h.workoutService.ListWorkouts(r.Context())
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to list workouts", err)
 		}
@@ -71,9 +72,9 @@ func (h *WorkoutHandler) ListWorkouts(w http.ResponseWriter, r *http.Request) {
 func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.Request) {
 	focusValues, err := h.workoutService.ListWorkoutFocusValues(r.Context())
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to list workout focus values", err)
 		}
@@ -106,9 +107,9 @@ func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.R
 func (h *WorkoutHandler) GetContributionData(w http.ResponseWriter, r *http.Request) {
 	contributionData, err := h.workoutService.GetContributionData(r.Context())
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get contribution data", err)
 		}
@@ -150,9 +151,9 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 
 	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), int32(workoutIDInt))
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get workout with sets", err)
 		}
@@ -192,9 +193,9 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.workoutService.CreateWorkout(r.Context(), req); err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to create workout", err)
 		}
@@ -253,14 +254,14 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 	// Delegate to service layer for business logic
 	if err := h.workoutService.UpdateWorkout(r.Context(), int32(workoutIDInt), req); err != nil {
 		// Handle different error types with appropriate HTTP status codes
-		var errUnauthorized *ErrUnauthorized
-		var errNotFound *ErrNotFound
+		var errUnauthorized *apperrors.Unauthorized
+		var errNotFound *apperrors.NotFound
 
 		switch {
 		case errors.As(err, &errUnauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to update workout", err)
 		}
@@ -304,14 +305,14 @@ func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
 	// Delegate to service layer for business logic
 	if err := h.workoutService.DeleteWorkout(r.Context(), int32(workoutIDInt)); err != nil {
 		// Handle different error types with appropriate HTTP status codes
-		var errUnauthorized *ErrUnauthorized
-		var errNotFound *ErrNotFound
+		var errUnauthorized *apperrors.Unauthorized
+		var errNotFound *apperrors.NotFound
 
 		switch {
 		case errors.As(err, &errUnauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to delete workout", err)
 		}
