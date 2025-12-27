@@ -107,9 +107,9 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 2.3 Update Tests
 
-- [ ] Verify existing tests for GetByID still pass
-- [ ] Add test case for no rows scenario
-- [ ] Ensure test uses proper mocking of `pgx.ErrNoRows`
+- [x] Verify existing tests for GetByID still pass
+- [x] Add test case for no rows scenario
+- [x] Ensure test uses proper mocking of `pgx.ErrNoRows`
 
 ---
 
@@ -269,11 +269,11 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 5.1 Update FormatValidationErrors Function
 
-- [ ] Locate `FormatValidationErrors` function at line 328
-- [ ] Change `validationErrors` from `*validator.ValidationErrors` to `validator.ValidationErrors`
-- [ ] Replace type assertion with `errors.As(err, &validationErrors)`
-- [ ] Update loop to iterate over `validationErrors` directly (not dereference)
-- [ ] Verify function signature doesn't need to change
+- [x] Locate `FormatValidationErrors` function at line 328
+- [x] Change `validationErrors` from `*validator.ValidationErrors` to `validator.ValidationErrors`
+- [x] Replace type assertion with `errors.As(err, &validationErrors)`
+- [x] Update loop to iterate over `validationErrors` directly (not dereference)
+- [x] Verify function signature doesn't need to change
 
 #### 5.2 Test with Wrapped Errors
 

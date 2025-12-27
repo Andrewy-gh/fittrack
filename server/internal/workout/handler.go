@@ -326,9 +326,10 @@ func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
 
 // MARK: FormatValidationErrors
 func FormatValidationErrors(err error) string {
-	if validationErrors, ok := err.(*validator.ValidationErrors); ok {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
 		var messages []string
-		for _, fieldError := range *validationErrors {
+		for _, fieldError := range validationErrors {
 			switch fieldError.Tag() {
 			case "required":
 				messages = append(messages, fmt.Sprintf("%s is required", fieldError.Field()))
