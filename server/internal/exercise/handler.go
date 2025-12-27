@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/go-playground/validator/v10"
 )
@@ -42,9 +43,9 @@ func NewHandler(logger *slog.Logger, validator *validator.Validate, exerciseServ
 func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) {
 	exercises, err := h.exerciseService.ListExercises(r.Context())
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to list exercises", err)
 		}
@@ -96,14 +97,14 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 
 	exerciseWithSets, err := h.exerciseService.GetExerciseWithSets(r.Context(), req.ExerciseID)
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
-		var errNotFound *ErrNotFound
+		var errUnauthorized *apperrors.Unauthorized
+		var errNotFound *apperrors.NotFound
 
 		switch {
 		case errors.As(err, &errUnauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise with sets", err)
 		}
@@ -144,9 +145,9 @@ func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Req
 
 	exercise, err := h.exerciseService.GetOrCreateExercise(r.Context(), req.Name)
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get or create exercise", err)
 		}
@@ -197,9 +198,9 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 
 	sets, err := h.exerciseService.GetRecentSetsForExercise(r.Context(), req.ExerciseID)
 	if err != nil {
-		var errUnauthorized *ErrUnauthorized
+		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get recent sets for exercise", err)
 		}
@@ -254,14 +255,14 @@ func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := h.exerciseService.UpdateExerciseName(r.Context(), int32(exerciseIDInt), req.Name); err != nil {
-		var errUnauthorized *ErrUnauthorized
-		var errNotFound *ErrNotFound
+		var errUnauthorized *apperrors.Unauthorized
+		var errNotFound *apperrors.NotFound
 
 		switch {
 		case errors.As(err, &errUnauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		case db.IsUniqueConstraintError(err):
 			response.ErrorJSON(w, r, h.logger, http.StatusConflict, "Exercise name already exists", nil)
 		default:
@@ -302,14 +303,14 @@ func (h *ExerciseHandler) DeleteExercise(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.exerciseService.DeleteExercise(r.Context(), int32(exerciseIDInt)); err != nil {
-		var errUnauthorized *ErrUnauthorized
-		var errNotFound *ErrNotFound
+		var errUnauthorized *apperrors.Unauthorized
+		var errNotFound *apperrors.NotFound
 
 		switch {
 		case errors.As(err, &errUnauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Message, nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to delete exercise", err)
 		}

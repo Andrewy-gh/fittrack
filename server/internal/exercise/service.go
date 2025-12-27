@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
 
@@ -18,22 +19,6 @@ type ExerciseRepository interface {
 	GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error)
 	UpdateExerciseName(ctx context.Context, id int32, name, userID string) error
 	DeleteExercise(ctx context.Context, id int32, userID string) error
-}
-
-type ErrUnauthorized struct {
-	Message string
-}
-
-func (e *ErrUnauthorized) Error() string {
-	return e.Message
-}
-
-type ErrNotFound struct {
-	Message string
-}
-
-func (e *ErrNotFound) Error() string {
-	return e.Message
 }
 
 type ExerciseService struct {
@@ -51,7 +36,7 @@ func NewService(logger *slog.Logger, repo ExerciseRepository) *ExerciseService {
 func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
 	exercises, err := es.repo.ListExercises(ctx, userID)
@@ -66,13 +51,13 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([]ExerciseWithSetsResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
 	if err != nil {
 		es.logger.Debug("exercise not found", "exercise_id", id, "user_id", userID, "error", err)
-		return nil, &ErrNotFound{Message: "exercise not found"}
+		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
 
 	sets, err := es.repo.GetExerciseWithSets(ctx, id, userID)
@@ -95,7 +80,7 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([
 func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (*db.Exercise, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
 	exercise, err := es.repo.GetOrCreateExercise(ctx, name, userID)
@@ -110,7 +95,7 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int32) ([]db.GetRecentSetsForExerciseRow, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return nil, &ErrUnauthorized{Message: "user not authenticated"}
+		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
 	sets, err := es.repo.GetRecentSetsForExercise(ctx, id, userID)
@@ -126,13 +111,13 @@ func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int3
 func (es *ExerciseService) UpdateExerciseName(ctx context.Context, id int32, name string) error {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return &ErrUnauthorized{Message: "user not authenticated"}
+		return &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
 	if err != nil {
 		es.logger.Debug("exercise not found for update", "exercise_id", id, "user_id", userID, "error", err)
-		return &ErrNotFound{Message: "exercise not found"}
+		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
 
 	if err := es.repo.UpdateExerciseName(ctx, id, name, userID); err != nil {
@@ -149,13 +134,13 @@ func (es *ExerciseService) UpdateExerciseName(ctx context.Context, id int32, nam
 func (es *ExerciseService) DeleteExercise(ctx context.Context, id int32) error {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return &ErrUnauthorized{Message: "user not authenticated"}
+		return &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
 	if err != nil {
 		es.logger.Debug("exercise not found for update", "exercise_id", id, "user_id", userID, "error", err)
-		return &ErrNotFound{Message: "exercise not found"}
+		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
 
 	if err := es.repo.DeleteExercise(ctx, id, userID); err != nil {
