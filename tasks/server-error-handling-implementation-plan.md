@@ -698,10 +698,10 @@ This plan addresses the error handling improvements identified in `server-error-
 
 ### Integration Tests
 
-- [ ] Test error responses from API endpoints
-- [ ] Verify HTTP status codes are correct
-- [ ] Verify error messages are sanitized for frontend
-- [ ] Test request IDs appear in error logs and responses
+- [x] Test error responses from API endpoints
+- [x] Verify HTTP status codes are correct
+- [x] Verify error messages are sanitized for frontend
+- [x] Test request IDs appear in error logs and responses
 
 ### Manual Testing
 
