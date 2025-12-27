@@ -691,10 +691,10 @@ This plan addresses the error handling improvements identified in `server-error-
 
 ### Unit Tests
 
-- [ ] Test each error type independently
-- [ ] Test error detection functions with various error types
-- [ ] Test error wrapping preserves type information
-- [ ] Test `errors.As` and `errors.Is` work correctly
+- [x] Test each error type independently
+- [x] Test error detection functions with various error types
+- [x] Test error wrapping preserves type information
+- [x] Test `errors.As` and `errors.Is` work correctly
 
 ### Integration Tests
 
