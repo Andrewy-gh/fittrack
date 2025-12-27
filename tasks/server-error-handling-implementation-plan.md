@@ -550,8 +550,8 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 9.7 Fix Health Handler Raw Error Exposure (Line 83)
 
-- [ ] Sanitize database error in ready endpoint response
-- [ ] Replace `"failed: " + err.Error()` with generic message
+- [x] Sanitize database error in ready endpoint response
+- [x] Replace `"failed: " + err.Error()` with generic message
 - [ ] Consider adding request_id to health/ready responses (optional)
 - [ ] Document that health endpoints use custom response format
 - [ ] Verify no sensitive connection details leak in errors

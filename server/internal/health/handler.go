@@ -76,11 +76,17 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]string)
 
 	if err := h.pool.Ping(r.Context()); err != nil {
+		// Log the actual error for debugging, but don't expose it to clients
+		h.logger.Error("database health check failed",
+			"error", err,
+			"request_id", middleware.GetRequestID(r.Context()),
+		)
+
 		response := ReadyResponse{
 			Status:    "unhealthy",
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			Checks: map[string]string{
-				"database": "failed: " + err.Error(),
+				"database": "unavailable",
 			},
 		}
 
