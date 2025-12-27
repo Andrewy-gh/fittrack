@@ -277,9 +277,9 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 5.2 Test with Wrapped Errors
 
-- [ ] Create test with wrapped validation error
-- [ ] Verify `errors.As` correctly unwraps to find validation error
-- [ ] Test with non-validation error (should fall back to `err.Error()`)
+- [x] Create test with wrapped validation error
+- [x] Verify `errors.As` correctly unwraps to find validation error
+- [x] Test with non-validation error (should fall back to `err.Error()`)
 
 #### 5.3 Update Any Similar Functions
 
