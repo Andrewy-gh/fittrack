@@ -10,9 +10,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
-import { useDeleteExerciseMutation } from '@/lib/api/exercises';
 import { useMutation } from '@tanstack/react-query';
+import { deleteExercisesByIdMutation, getExercisesQueryKey, getExercisesByIdQueryKey } from '@/client/@tanstack/react-query.gen';
 import { deleteDemoExercisesByIdMutation } from '@/lib/demo-data/query-options';
+import { showErrorToast } from '@/lib/errors';
+import { queryClient } from '@/lib/api/api';
 
 interface ExerciseDeleteDialogProps {
   isOpen: boolean;
@@ -30,14 +32,35 @@ export function ExerciseDeleteDialog({
   const router = useRouter();
   const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
-  const authDeleteMutation = useDeleteExerciseMutation();
-  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutation());
+  // Override global error handler to prevent double toasts
+  // We handle errors manually in the catch block below
+  const authDeleteMutation = useMutation({
+    ...deleteExercisesByIdMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getExercisesQueryKey(),
+      });
+      queryClient.removeQueries({
+        queryKey: getExercisesByIdQueryKey({ path: { id } }),
+      });
+    },
+    onError: () => {
+      // Don't show toast - we handle errors manually
+    },
+  });
+
+  const demoDeleteMutation = useMutation({
+    ...deleteDemoExercisesByIdMutation(),
+    onError: () => {
+      // Don't show toast - we handle errors manually
+    },
+  });
+
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
     setError(null);
     setIsDeleting(true);
-    // ! TODO: handle error
     try {
       await deleteMutation.mutateAsync(
         { path: { id: exerciseId } },
@@ -47,6 +70,11 @@ export function ExerciseDeleteDialog({
           },
         }
       );
+    } catch (error) {
+      // Show toast for delete failure
+      showErrorToast(error, 'Failed to delete exercise. Please try again.');
+      // Also show inline error in dialog
+      setError('Failed to delete exercise. Please try again.');
     } finally {
       setIsDeleting(false);
     }

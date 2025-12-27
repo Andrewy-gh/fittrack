@@ -21,28 +21,37 @@ export default function DatePicker2() {
     }
   };
 
+  const hasErrors = field.state.meta.errors.length > 0;
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CalendarIcon className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-sm tracking-tight">Date</span>
-          </div>
-          <div className="text-card-foreground font-semibold">
-            {field.state.value
-              ? format(field.state.value, 'PPP')
-              : 'Pick a date'}
-          </div>
-        </Card>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={field.state.value}
-          onSelect={handleSelect}
-        />
-      </PopoverContent>
-    </Popover>
+    <div className="space-y-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CalendarIcon className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-sm tracking-tight">Date</span>
+            </div>
+            <div className="text-card-foreground font-semibold">
+              {field.state.value
+                ? format(field.state.value, 'PPP')
+                : 'Pick a date'}
+            </div>
+          </Card>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={field.state.value}
+            onSelect={handleSelect}
+          />
+        </PopoverContent>
+      </Popover>
+      {hasErrors && (
+        <p className="text-sm text-destructive">
+          {field.state.meta.errors.join(', ')}
+        </p>
+      )}
+    </div>
   );
 }

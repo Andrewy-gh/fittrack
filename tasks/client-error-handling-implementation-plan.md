@@ -179,7 +179,7 @@ export interface ApiError {
 
 ---
 
-### Task 4: Add Response Error Interceptor
+### ✅ Task 4: Add Response Error Interceptor
 
 **Priority:** High
 **Files:**
@@ -206,7 +206,7 @@ client.interceptors.response.use(async (response) => {
 
 ---
 
-### Task 5: Add TanStack Router Error Component
+### ✅ Task 5: Add TanStack Router Error Component
 
 **Priority:** Medium
 **Files:**
@@ -216,12 +216,12 @@ client.interceptors.response.use(async (response) => {
 
 #### Subtasks
 
-- [ ] 5.1 Create `RouteError` component
+- [x] 5.1 Create `RouteError` component
   - Show error message
   - Show request_id if available (for support)
   - Provide "Go back" and "Try again" buttons
   - Include `reset` function from props
-- [ ] 5.2 Add `errorComponent` to root route
+- [x] 5.2 Add `errorComponent` to root route
 
 ```typescript
 export const Route = createRootRouteWithContext<RouteContext>()({
@@ -230,11 +230,11 @@ export const Route = createRootRouteWithContext<RouteContext>()({
 });
 ```
 
-- [ ] 5.3 Test by throwing error in route loader
+- [x] 5.3 Test by throwing error in route loader
 
 ---
 
-### Task 6: Configure React Query Global Error Handler
+### ✅ Task 6: Configure React Query Global Error Handler
 
 **Priority:** Medium
 **Files:**
@@ -243,7 +243,7 @@ export const Route = createRootRouteWithContext<RouteContext>()({
 
 #### Subtasks
 
-- [ ] 6.1 Add `onError` callback to QueryClient
+- [x] 6.1 Add `onError` callback to QueryClient
 
 ```typescript
 const queryClient = new QueryClient({
@@ -260,12 +260,12 @@ const queryClient = new QueryClient({
 });
 ```
 
-- [ ] 6.2 Decide: global mutation error toast vs per-mutation handling
-- [ ] 6.3 Test mutation errors show toast
+- [x] 6.2 Decide: global mutation error toast vs per-mutation handling
+- [x] 6.3 Test mutation errors show toast
 
 ---
 
-### Task 7: Add TanStack Form Client-Side Validation
+### ✅ Task 7: Add TanStack Form Client-Side Validation
 
 **Priority:** Medium
 **Files:**
@@ -314,16 +314,16 @@ const queryClient = new QueryClient({
 
 #### Subtasks
 
-- [ ] 7.1 Add `validators` prop to existing form fields
-- [ ] 7.2 Create reusable validation functions (e.g., `required`, `maxLength`)
-- [ ] 7.3 Display `field.state.meta.errors` in field components
-- [ ] 7.4 Use `onBlur` validation for better UX (less intrusive)
+- [x] 7.1 Add `validators` prop to existing form fields
+- [x] 7.2 Create reusable validation functions (e.g., `required`, `maxLength`)
+- [x] 7.3 Display `field.state.meta.errors` in field components
+- [x] 7.4 Use `onBlur` validation for better UX (less intrusive)
 - [ ] 7.5 Use `form.Subscribe` with `canSubmit` to disable submit button
 - [ ] 7.6 Consider Zod schema integration for complex validation
 
 ---
 
-### Task 8: Refactor Exercise Edit Dialog Errors
+### ✅ Task 8: Refactor Exercise Edit Dialog Errors
 
 **Priority:** Medium
 **Files:**
@@ -332,7 +332,7 @@ const queryClient = new QueryClient({
 
 #### Subtasks
 
-- [ ] 8.1 Replace string matching with proper error type checking
+- [x] 8.1 Replace string matching with proper error type checking
 
 ```typescript
 // Before
@@ -344,13 +344,13 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 // OR use status code from mutation error
 ```
 
-- [ ] 8.2 Use `toast.error()` for unexpected errors
-- [ ] 8.3 Keep inline error for validation/duplicate name
-- [ ] 8.4 Test: edit to duplicate name, test server error
+- [x] 8.2 Use `toast.error()` for unexpected errors
+- [x] 8.3 Keep inline error for validation/duplicate name
+- [x] 8.4 Test: edit to duplicate name, test server error
 
 ---
 
-### Task 9: Implement Exercise Delete Dialog Error Handling
+### ✅ Task 9: Implement Exercise Delete Dialog Error Handling
 
 **Priority:** Medium
 **Files:**
@@ -359,11 +359,11 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 #### Subtasks
 
-- [ ] 9.1 Remove TODO comment
-- [ ] 9.2 Add try-catch with proper error handling
-- [ ] 9.3 Show toast for delete failure
-- [ ] 9.4 Show inline error if makes sense
-- [ ] 9.5 Test: simulate delete failure
+- [x] 9.1 Remove TODO comment
+- [x] 9.2 Add try-catch with proper error handling
+- [x] 9.3 Show toast for delete failure
+- [x] 9.4 Show inline error if makes sense
+- [x] 9.5 Test: simulate delete failure
 
 ---
 

@@ -45,6 +45,8 @@ export default function InputField({
     return `${numberClasses} ${customClasses}`.trim();
   };
 
+  const hasErrors = field.state.meta.errors.length > 0;
+
   return (
     <div className="space-y-4">
       <Label className="tracking-wider">{label}</Label>
@@ -59,7 +61,13 @@ export default function InputField({
         placeholder={getDefaultPlaceholder()}
         step={step}
         min={min}
+        aria-invalid={hasErrors}
       />
+      {hasErrors && (
+        <p className="text-sm text-destructive">
+          {field.state.meta.errors.join(', ')}
+        </p>
+      )}
     </div>
   );
 }
