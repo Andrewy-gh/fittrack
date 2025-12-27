@@ -1,11 +1,15 @@
 package middleware
 
-import "net/http"
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+)
 
 // CORS creates a middleware that handles Cross-Origin Resource Sharing (CORS).
 // It accepts a slice of allowed origins and validates incoming requests against them.
 // Unknown origins are rejected for preflight requests.
-func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
+func CORS(allowedOrigins []string, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
@@ -34,7 +38,28 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 					w.WriteHeader(http.StatusOK)
 				} else {
 					// Reject preflight from unknown origins
+					requestID := GetRequestID(r.Context())
+
+					// Log the rejected CORS request
+					logger.Warn("CORS preflight rejected - origin not allowed",
+						"origin", origin,
+						"path", r.URL.Path,
+						"method", r.Method,
+						"status", http.StatusForbidden,
+						"request_id", requestID)
+
+					// Return standardized error response
+					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusForbidden)
+					resp := map[string]string{
+						"message": "CORS policy: Origin not allowed",
+					}
+					if requestID != "" {
+						resp["request_id"] = requestID
+					}
+					if err := json.NewEncoder(w).Encode(resp); err != nil {
+						logger.Error("failed to encode CORS rejection response", "error", err, "request_id", requestID)
+					}
 				}
 				return
 			}

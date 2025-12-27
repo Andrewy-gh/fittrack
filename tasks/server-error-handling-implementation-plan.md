@@ -535,10 +535,18 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 9.6 Fix CORS Middleware Empty 403 Response (Line 37)
 
-- [ ] Add error response body for rejected CORS preflight
-- [ ] Use `response.ErrorJSON()` or document why empty response is intentional
-- [ ] Include appropriate error message explaining CORS rejection
-- [ ] Verify this doesn't break browser CORS handling
+- [x] Add error response body for rejected CORS preflight
+- [x] Add logger parameter to CORS middleware
+- [x] Include appropriate error message explaining CORS rejection
+- [x] Add proper logging for rejected CORS requests
+- [x] Verify this doesn't break browser CORS handling
+
+**Changes:**
+- Added logger parameter to CORS function signature
+- Added JSON response body for rejected CORS preflight: `{message, request_id?}`
+- Added comprehensive logging (Warn level) with origin, path, method, status, request_id
+- Updated all CORS usage (main.go and tests) to include logger
+- All tests pass - CORS handling still works correctly
 
 #### 9.7 Fix Health Handler Raw Error Exposure (Line 83)
 
