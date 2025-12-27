@@ -1,6 +1,4 @@
 // Package request provides utilities for managing request-scoped context values.
-// This package centralizes context key management to avoid import cycles between
-// middleware and other packages that need access to request context data.
 package request
 
 import "context"

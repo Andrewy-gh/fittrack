@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
@@ -29,11 +28,4 @@ func RequestID() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-// GetRequestID retrieves the request ID from the context.
-// Deprecated: Use request.GetRequestID instead. This function is kept for backward compatibility
-// and will be removed in a future version.
-func GetRequestID(ctx context.Context) string {
-	return request.GetRequestID(ctx)
 }
