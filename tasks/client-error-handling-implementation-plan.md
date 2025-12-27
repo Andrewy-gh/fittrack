@@ -153,7 +153,7 @@ ErrorResponse:
 
 ---
 
-### Task 3: Create Error Utilities
+### ✅ Task 3: Create Error Utilities
 
 **Priority:** High
 **Files:**
@@ -162,8 +162,8 @@ ErrorResponse:
 
 #### Subtasks
 
-- [ ] 3.1 Create error utility file
-- [ ] 3.2 Define `ApiError` type matching backend shape
+- [x] 3.1 Create error utility file
+- [x] 3.2 Define `ApiError` type matching backend shape
 
 ```typescript
 export interface ApiError {
@@ -172,10 +172,10 @@ export interface ApiError {
 }
 ```
 
-- [ ] 3.3 Create `isApiError(error: unknown): error is ApiError` type guard
-- [ ] 3.4 Create `getErrorMessage(error: unknown): string` extractor
-- [ ] 3.5 Create `showErrorToast(error: unknown, fallback?: string)` helper
-- [ ] 3.6 Export all utilities
+- [x] 3.3 Create `isApiError(error: unknown): error is ApiError` type guard
+- [x] 3.4 Create `getErrorMessage(error: unknown): string` extractor
+- [x] 3.5 Create `showErrorToast(error: unknown, fallback?: string)` helper
+- [x] 3.6 Export all utilities
 
 ---
 
