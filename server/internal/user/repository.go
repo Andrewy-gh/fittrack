@@ -3,11 +3,13 @@ package user
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -33,7 +35,7 @@ func (r *userRepository) GetUser(ctx context.Context, id string) (db.Users, erro
 
 	user, err := r.queries.GetUserByUserID(ctx, id)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Users{}, sql.ErrNoRows
 		}
 		r.logger.Error("database error getting user", "error", err, "user_id", id)

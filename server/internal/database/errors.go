@@ -2,97 +2,75 @@ package db
 
 import (
 	"errors"
-	"regexp"
-	"strings"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// IsUniqueConstraintError checks if an error is a unique constraint violation
+// IsUniqueConstraintError checks if an error is a unique constraint violation.
+// PostgreSQL error code 23505: unique_violation
 func IsUniqueConstraintError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	msg := err.Error()
-
-	// PostgreSQL unique constraint violation
-	if strings.Contains(msg, "SQLSTATE 23505") {
-		return true
-	}
-
-	// SQLite unique constraint violation
-	if strings.Contains(msg, "UNIQUE constraint failed") {
-		return true
-	}
-
-	// Generic check for duplicate key violations
-	if strings.Contains(msg, "duplicate key") && strings.Contains(msg, "violates") {
-		return true
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		// PostgreSQL unique constraint violation (23505)
+		return pgErr.Code == "23505"
 	}
 
 	return false
 }
 
-// IsForeignKeyConstraintError checks if an error is a foreign key constraint violation
+// IsForeignKeyConstraintError checks if an error is a foreign key constraint violation.
+// PostgreSQL error code 23503: foreign_key_violation
 func IsForeignKeyConstraintError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	msg := err.Error()
-
-	// PostgreSQL foreign key constraint violation
-	if strings.Contains(msg, "SQLSTATE 23503") {
-		return true
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		// PostgreSQL foreign key constraint violation (23503)
+		return pgErr.Code == "23503"
 	}
 
-	// SQLite foreign key constraint violation
-	sqliteFKRegex := regexp.MustCompile(`(?i)foreign key constraint failed`)
-	return sqliteFKRegex.MatchString(msg)
+	return false
 }
 
-// IsRowLevelSecurityError checks if an error is related to row level security
+// IsRowLevelSecurityError checks if an error is related to row level security.
 // When RLS blocks access, PostgreSQL typically returns empty result sets
 // rather than explicit permission errors, so this function may need to be
-// used in conjunction with application-level checks
+// used in conjunction with application-level checks.
+// PostgreSQL error code 42501: insufficient_privilege
 func IsRowLevelSecurityError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	msg := err.Error()
-
-	// Check for explicit RLS permission errors (rare but possible)
-	if strings.Contains(msg, "SQLSTATE 42501") {
+	// Check for application-level RLS errors first
+	if errors.Is(err, ErrRowLevelSecurity) {
 		return true
 	}
 
-	// Check for insufficient privilege errors
-	if strings.Contains(msg, "permission denied") || strings.Contains(msg, "insufficient privilege") {
-		return true
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		// PostgreSQL insufficient privilege error (42501)
+		// This can indicate RLS policy violations
+		return pgErr.Code == "42501"
 	}
 
-	// Check for application-level RLS errors
-	return errors.Is(err, ErrRowLevelSecurity)
+	return false
 }
 
-// IsRLSContextError checks if an error is related to missing or invalid RLS context
+// IsRLSContextError checks if an error is related to missing or invalid RLS context.
+// This primarily relies on the application-level ErrRLSContext sentinel error.
 func IsRLSContextError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	msg := err.Error()
-
-	// Check for session variable related errors
-	if strings.Contains(msg, "app.current_user_id") {
-		return true
-	}
-
-	// Check for set_config related errors
-	if strings.Contains(msg, "set_config") {
-		return true
-	}
-
+	// Check for application-level RLS context errors
 	return errors.Is(err, ErrRLSContext)
 }
 

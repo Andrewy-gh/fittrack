@@ -41,8 +41,6 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 
 	exercises, err := es.repo.ListExercises(ctx, userID)
 	if err != nil {
-		es.logger.Error("failed to list exercises", "error", err)
-		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
 	return exercises, nil
