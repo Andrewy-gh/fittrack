@@ -27,29 +27,32 @@ func BasicAuth(username, password string, logger *slog.Logger) func(http.Handler
 				subtle.ConstantTimeCompare([]byte(user), []byte(username)) != 1 ||
 				subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
 
-				// Get request ID from context if available
+				// Get request ID from context
 				requestID := GetRequestID(r.Context())
 
 				// Log the unauthorized attempt
 				logger.Warn("unauthorized metrics access attempt",
 					"path", r.URL.Path,
 					"method", r.Method,
+					"status", http.StatusUnauthorized,
 					"request_id", requestID,
 				)
 
-				// Set WWW-Authenticate header to prompt for credentials
+				// Set headers
 				w.Header().Set("WWW-Authenticate", `Basic realm="Metrics"`)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 
-				// Write error response
+				// Return standardized error response
 				resp := map[string]string{
 					"message": "unauthorized",
 				}
 				if requestID != "" {
 					resp["request_id"] = requestID
 				}
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					logger.Error("failed to encode basic auth response", "error", err, "request_id", requestID)
+				}
 				return
 			}
 
