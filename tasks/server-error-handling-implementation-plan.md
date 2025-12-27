@@ -34,32 +34,32 @@ This plan addresses the error handling improvements identified in `server-error-
 ### Subtasks
 
 #### 1.1 Add pgconn Import
-- [ ] Add `"github.com/jackc/pgx/v5/pgconn"` to imports in `database/errors.go`
-- [ ] Verify pgx version in `go.mod` supports `pgconn.PgError`
+- [x] Add `"github.com/jackc/pgx/v5/pgconn"` to imports in `database/errors.go`
+- [x] Verify pgx version in `go.mod` supports `pgconn.PgError`
 
 #### 1.2 Refactor IsUniqueConstraintError
-- [ ] Replace string matching with `errors.As(err, &pgErr)`
-- [ ] Check `pgErr.Code == "23505"` for PostgreSQL unique violations
-- [ ] Remove SQLite fallback code (only PostgreSQL is supported)
-- [ ] Add code documentation explaining error code
+- [x] Replace string matching with `errors.As(err, &pgErr)`
+- [x] Check `pgErr.Code == "23505"` for PostgreSQL unique violations
+- [x] Remove SQLite fallback code (only PostgreSQL is supported)
+- [x] Add code documentation explaining error code
 
 #### 1.3 Refactor IsForeignKeyConstraintError
-- [ ] Replace string matching with `errors.As(err, &pgErr)`
-- [ ] Check `pgErr.Code == "23503"` for foreign key violations
-- [ ] Remove SQLite fallback code (only PostgreSQL is supported)
-- [ ] Add code documentation
+- [x] Replace string matching with `errors.As(err, &pgErr)`
+- [x] Check `pgErr.Code == "23503"` for foreign key violations
+- [x] Remove SQLite fallback code (only PostgreSQL is supported)
+- [x] Add code documentation
 
 #### 1.4 Refactor IsRowLevelSecurityError
-- [ ] Replace string matching with `errors.As(err, &pgErr)`
-- [ ] Check `pgErr.Code == "42501"` for insufficient privilege
-- [ ] Verify RLS-specific error codes in PostgreSQL
-- [ ] Update to properly detect RLS policy violations
-- [ ] Keep `errors.Is(err, ErrRowLevelSecurity)` check
+- [x] Replace string matching with `errors.As(err, &pgErr)`
+- [x] Check `pgErr.Code == "42501"` for insufficient privilege
+- [x] Verify RLS-specific error codes in PostgreSQL
+- [x] Update to properly detect RLS policy violations
+- [x] Keep `errors.Is(err, ErrRowLevelSecurity)` check
 
 #### 1.5 Refactor IsRLSContextError
-- [ ] Replace string matching with proper error type checking
-- [ ] Keep `errors.Is(err, ErrRLSContext)` check
-- [ ] Verify context setting error patterns
+- [x] Replace string matching with proper error type checking
+- [x] Keep `errors.Is(err, ErrRLSContext)` check
+- [x] Verify context setting error patterns
 
 #### 1.6 Update Tests
 - [ ] Create/update unit tests for each error detection function
@@ -82,15 +82,15 @@ This plan addresses the error handling improvements identified in `server-error-
 ### Subtasks
 
 #### 2.1 Update Error Check in GetByID
-- [ ] Locate line 36 in `user/repository.go`
-- [ ] Replace `if err.Error() == "no rows in result set"` with `if errors.Is(err, pgx.ErrNoRows)`
-- [ ] Verify `pgx.ErrNoRows` is the correct sentinel error
-- [ ] Test with actual "no rows" scenario
+- [x] Locate line 36 in `user/repository.go`
+- [x] Replace `if err.Error() == "no rows in result set"` with `if errors.Is(err, pgx.ErrNoRows)`
+- [x] Verify `pgx.ErrNoRows` is the correct sentinel error
+- [x] Test with actual "no rows" scenario
 
 #### 2.2 Audit Other String Comparisons
-- [ ] Search entire `user/repository.go` for other `err.Error()` comparisons
-- [ ] Replace any other instances found
-- [ ] Document any intentional string checks that remain
+- [x] Search entire `user/repository.go` for other `err.Error()` comparisons
+- [x] Replace any other instances found
+- [x] Document any intentional string checks that remain
 
 #### 2.3 Update Tests
 - [ ] Verify existing tests for GetByID still pass
@@ -114,41 +114,41 @@ This plan addresses the error handling improvements identified in `server-error-
 ### Subtasks
 
 #### 3.1 Audit Current Logging Points
-- [ ] Create inventory of all error logging in service files
-- [ ] Create inventory of all error logging in handler files
-- [ ] Document the ErrorJSON function's logging behavior
-- [ ] Identify all duplicate logging instances
+- [x] Create inventory of all error logging in service files
+- [x] Create inventory of all error logging in handler files
+- [x] Document the ErrorJSON function's logging behavior
+- [x] Identify all duplicate logging instances
 
 #### 3.2 Remove Service Layer Error Logging - Exercise
-- [ ] Remove `es.logger.Error()` calls from `exercise/service.go` List method
-- [ ] Remove from GetByID method
-- [ ] Remove from Create method
-- [ ] Remove from Update method
-- [ ] Remove from Delete method
-- [ ] Remove from Search method
-- [ ] Remove all `es.logger.Debug()` error detail logging
-- [ ] Keep error wrapping with `fmt.Errorf("...: %w", err)`
+- [x] Remove `es.logger.Error()` calls from `exercise/service.go` List method
+- [x] Remove from GetByID method
+- [x] Remove from Create method
+- [x] Remove from Update method
+- [x] Remove from Delete method
+- [x] Remove from Search method
+- [x] Remove all `es.logger.Debug()` error detail logging
+- [x] Keep error wrapping with `fmt.Errorf("...: %w", err)`
 
 #### 3.3 Remove Service Layer Error Logging - Workout
-- [ ] Remove `ws.logger.Error()` calls from `workout/service.go` Create method
-- [ ] Remove from GetByID method
-- [ ] Remove from List method
-- [ ] Remove from Update method
-- [ ] Remove from Delete method
-- [ ] Remove from all other workout service methods
-- [ ] Remove all `ws.logger.Debug()` error detail logging
-- [ ] Keep error wrapping with `fmt.Errorf("...: %w", err)`
+- [x] Remove `ws.logger.Error()` calls from `workout/service.go` Create method
+- [x] Remove from GetByID method
+- [x] Remove from List method
+- [x] Remove from Update method
+- [x] Remove from Delete method
+- [x] Remove from all other workout service methods
+- [x] Remove all `ws.logger.Debug()` error detail logging
+- [x] Keep error wrapping with `fmt.Errorf("...: %w", err)`
 
 #### 3.4 Remove Service Layer Error Logging - User
-- [ ] Audit `user/service.go` for duplicate logging
-- [ ] Remove duplicate error logging if found
-- [ ] Keep error wrapping
+- [x] Audit `user/service.go` for duplicate logging
+- [x] Remove duplicate error logging if found
+- [x] Keep error wrapping
 
 #### 3.5 Verify Handler Layer Logging
-- [ ] Confirm `response.ErrorJSON()` logs all errors with proper context
-- [ ] Verify request ID, path, method, status are included
-- [ ] Ensure all handlers use `response.ErrorJSON()` consistently
-- [ ] Document any handlers with custom error logging
+- [x] Confirm `response.ErrorJSON()` logs all errors with proper context
+- [x] Verify request ID, path, method, status are included
+- [x] Ensure all handlers use `response.ErrorJSON()` consistently
+- [x] Document any handlers with custom error logging
 
 #### 3.6 Update Tests
 - [ ] Update service tests to not expect logger calls

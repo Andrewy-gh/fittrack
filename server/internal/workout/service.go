@@ -43,8 +43,6 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 	}
 	workouts, err := ws.repo.ListWorkouts(ctx, userID)
 	if err != nil {
-		ws.logger.Error("failed to list workouts", "error", err)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
 	}
 	return workouts, nil
@@ -57,15 +55,12 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]W
 	}
 	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
 	if err != nil {
-		ws.logger.Error("failed to get workout with sets", "error", err)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "workout_id", id, "user_id", userID)
 		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
 	}
 
 	// Convert database rows to response type
 	response, err := ws.convertWorkoutWithSetsRows(workoutWithSets)
 	if err != nil {
-		ws.logger.Error("failed to convert workout with sets rows", "error", err)
 		return nil, fmt.Errorf("failed to convert workout with sets rows: %w", err)
 	}
 
@@ -80,14 +75,11 @@ func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateW
 	// Transform the request to our internal format
 	reformatted, err := ws.transformRequest(requestBody)
 	if err != nil {
-		ws.logger.Error("failed to transform request", "error", err)
 		return fmt.Errorf("failed to transform request: %w", err)
 	}
 
 	// Use repository to save the workout
 	if err := ws.repo.SaveWorkout(ctx, reformatted, userID); err != nil {
-		ws.logger.Error("failed to save workout", "error", err)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return fmt.Errorf("failed to save workout: %w", err)
 	}
 
@@ -106,25 +98,20 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 	// This helps provide better error messages (404 vs generic error)
 	_, err := ws.repo.GetWorkout(ctx, id, userID)
 	if err != nil {
-		ws.logger.Debug("workout not found for update", "workout_id", id, "user_id", userID, "error", err)
 		return &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
 	}
 
 	// Transform the request to our internal format (same as CreateWorkout)
 	reformatted, err := ws.transformUpdateRequest(req)
 	if err != nil {
-		ws.logger.Error("failed to transform update request", "error", err, "workout_id", id, "user_id", userID)
 		return fmt.Errorf("failed to transform update request: %w", err)
 	}
 
 	// Perform the update
 	if err := ws.repo.UpdateWorkout(ctx, id, reformatted, userID); err != nil {
-		ws.logger.Error("failed to update workout", "error", err, "workout_id", id, "user_id", userID)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err))
 		return fmt.Errorf("failed to update workout: %w", err)
 	}
 
-	ws.logger.Info("workout updated successfully", "workout_id", id, "user_id", userID)
 	return nil
 }
 
@@ -140,18 +127,14 @@ func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
 	// This helps provide better error messages (404 vs generic error)
 	_, err := ws.repo.GetWorkout(ctx, id, userID)
 	if err != nil {
-		ws.logger.Debug("workout not found for delete", "workout_id", id, "user_id", userID, "error", err)
 		return &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
 	}
 
 	// Call repository to delete the workout
 	if err := ws.repo.DeleteWorkout(ctx, id, userID); err != nil {
-		ws.logger.Error("failed to delete workout", "error", err, "workout_id", id, "user_id", userID)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err))
 		return fmt.Errorf("failed to delete workout: %w", err)
 	}
 
-	ws.logger.Info("workout deleted successfully", "workout_id", id, "user_id", userID)
 	return nil
 }
 
@@ -163,8 +146,6 @@ func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string,
 	}
 	focusValues, err := ws.repo.ListWorkoutFocusValues(ctx, userID)
 	if err != nil {
-		ws.logger.Error("failed to list workout focus values", "error", err)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to list workout focus values: %w", err)
 	}
 
@@ -185,8 +166,6 @@ func (ws *WorkoutService) GetContributionData(ctx context.Context) (*Contributio
 
 	rows, err := ws.repo.GetContributionData(ctx, userID)
 	if err != nil {
-		ws.logger.Error("failed to get contribution data", "error", err)
-		ws.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "user_id", userID)
 		return nil, fmt.Errorf("failed to get contribution data: %w", err)
 	}
 
@@ -373,7 +352,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 		if row.Weight.Valid {
 			f64, err := row.Weight.Float64Value()
 			if err != nil {
-				ws.logger.Error("failed to convert weight to float64", "error", err, "weight", row.Weight)
 				return nil, fmt.Errorf("failed to convert weight: %w", err)
 			}
 			weight = &f64.Float64
@@ -383,7 +361,6 @@ func (ws *WorkoutService) convertWorkoutWithSetsRows(rows []db.GetWorkoutWithSet
 		if row.Volume.Valid {
 			f64, err := row.Volume.Float64Value()
 			if err != nil {
-				ws.logger.Error("failed to convert volume to float64", "error", err, "volume", row.Volume)
 				return nil, fmt.Errorf("failed to convert volume: %w", err)
 			}
 			volume = f64.Float64

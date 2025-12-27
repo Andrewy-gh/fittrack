@@ -54,21 +54,17 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
 	if err != nil {
-		es.logger.Debug("exercise not found", "exercise_id", id, "user_id", userID, "error", err)
 		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
 
 	sets, err := es.repo.GetExerciseWithSets(ctx, id, userID)
 	if err != nil {
-		es.logger.Error("failed to get exercise with sets", "error", err)
-		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
 		return nil, fmt.Errorf("failed to get exercise with sets: %w", err)
 	}
 
 	// Convert database rows to response type
 	response, err := es.convertExerciseWithSetsRows(sets)
 	if err != nil {
-		es.logger.Error("failed to convert exercise with sets rows", "error", err)
 		return nil, fmt.Errorf("failed to convert exercise with sets rows: %w", err)
 	}
 
@@ -83,8 +79,6 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 
 	exercise, err := es.repo.GetOrCreateExercise(ctx, name, userID)
 	if err != nil {
-		es.logger.Error("repository failed to get or create exercise", "exercise_name", name, "error", err)
-		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_name", name, "user_id", userID)
 		return nil, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 	return &exercise, nil
@@ -98,8 +92,6 @@ func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int3
 
 	sets, err := es.repo.GetRecentSetsForExercise(ctx, id, userID)
 	if err != nil {
-		es.logger.Error("failed to get recent sets for exercise", "error", err)
-		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
 		return nil, fmt.Errorf("failed to get recent sets for exercise: %w", err)
 	}
 	return sets, nil
@@ -114,17 +106,13 @@ func (es *ExerciseService) UpdateExerciseName(ctx context.Context, id int32, nam
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
 	if err != nil {
-		es.logger.Debug("exercise not found for update", "exercise_id", id, "user_id", userID, "error", err)
 		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
 
 	if err := es.repo.UpdateExerciseName(ctx, id, name, userID); err != nil {
-		es.logger.Error("failed to update exercise name", "error", err)
-		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
 		return fmt.Errorf("failed to update exercise name: %w", err)
 	}
 
-	es.logger.Info("exercise name updated successfully", "exercise_id", id, "user_id", userID)
 	return nil
 }
 
@@ -137,17 +125,13 @@ func (es *ExerciseService) DeleteExercise(ctx context.Context, id int32) error {
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
 	if err != nil {
-		es.logger.Debug("exercise not found for update", "exercise_id", id, "user_id", userID, "error", err)
 		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
 
 	if err := es.repo.DeleteExercise(ctx, id, userID); err != nil {
-		es.logger.Error("failed to delete exercise", "error", err)
-		es.logger.Debug("raw database error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "exercise_id", id, "user_id", userID)
 		return fmt.Errorf("failed to delete exercise: %w", err)
 	}
 
-	es.logger.Info("exercise deleted successfully", "exercise_id", id, "user_id", userID)
 	return nil
 }
 
@@ -161,7 +145,6 @@ func (es *ExerciseService) convertExerciseWithSetsRows(rows []db.GetExerciseWith
 		if row.Weight.Valid {
 			f64, err := row.Weight.Float64Value()
 			if err != nil {
-				es.logger.Error("failed to convert weight to float64", "error", err, "weight", row.Weight)
 				return nil, fmt.Errorf("failed to convert weight: %w", err)
 			}
 			weight = &f64.Float64
@@ -172,7 +155,6 @@ func (es *ExerciseService) convertExerciseWithSetsRows(rows []db.GetExerciseWith
 		if row.Volume.Valid {
 			f64, err := row.Volume.Float64Value()
 			if err != nil {
-				es.logger.Error("failed to convert volume to float64", "error", err, "volume", row.Volume)
 				return nil, fmt.Errorf("failed to convert volume: %w", err)
 			}
 			volume = f64.Float64
