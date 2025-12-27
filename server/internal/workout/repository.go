@@ -354,7 +354,7 @@ func (wr *workoutRepository) insertWorkout(ctx context.Context, qtx *db.Queries,
 		UserID:       userID,
 	})
 	if err != nil {
-		return db.Workout{}, err
+		return db.Workout{}, fmt.Errorf("failed to create workout: %w", err)
 	}
 
 	// Create Workout from returned ID

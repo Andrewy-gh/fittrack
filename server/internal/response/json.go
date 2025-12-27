@@ -15,6 +15,14 @@ type Error struct {
 	RequestID string `json:"request_id,omitempty"`
 }
 
+// JSON writes a JSON response to the HTTP response writer.
+//
+// Note on error handling: JSON encoding errors are extremely rare in practice and
+// typically indicate serious programming bugs (attempting to marshal channels, functions,
+// or cyclic data structures). If encoding fails after headers are written, the response
+// will be partial. Callers should log encoding errors for debugging. Adding metrics for
+// these errors would add complexity without significant value unless errors are observed
+// in production logs.
 func JSON(w http.ResponseWriter, status int, data any) error {
 	js, err := json.Marshal(data)
 	if err != nil {

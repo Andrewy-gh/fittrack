@@ -339,28 +339,24 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 7.1 Evaluate Need for Tracking
 
-- [ ] Review logs to see if JSON encoding errors occur in practice
-- [ ] Assess impact of partial responses
-- [ ] Decide whether to add metrics, enhanced logging, or leave as-is (recommendation: leave as-is)
-- [ ] Document decision
+- [x] Review logs to see if JSON encoding errors occur in practice
+- [x] Assess impact of partial responses
+- [x] Decide whether to add metrics, enhanced logging, or leave as-is (recommendation: leave as-is)
+- [x] Document decision
 
 #### 7.2 If Tracking is Needed - Add Metrics
 
-- [ ] Define metric for JSON encoding failures
-- [ ] Increment metric in error paths
-- [ ] Add metric to monitoring dashboard
+- [x] N/A - Decision: Leave as-is (metrics not needed)
 
 #### 7.3 If Tracking is Needed - Enhanced Logging
 
-- [ ] Add structured fields to encoding error logs
-- [ ] Include response size, endpoint, error type
-- [ ] Create alerts for encoding error spikes
+- [x] N/A - Decision: Leave as-is (current logging is sufficient)
 
 #### 7.4 Document Behavior
 
-- [ ] Document that response headers are already written
-- [ ] Explain why execution continues after encoding error
-- [ ] Add code comments explaining the trade-off
+- [x] Document that response headers are already written
+- [x] Explain why execution continues after encoding error
+- [x] Add code comments explaining the trade-off
 
 ---
 
@@ -378,10 +374,10 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 8.1 Fix Unwrapped Error in Workout Repository
 
-- [ ] Locate line 357 in `workout/repository.go`
-- [ ] Wrap error with `fmt.Errorf("...: %w", err)` for consistency
-- [ ] Add descriptive context to error message
-- [ ] Verify tests still pass
+- [x] Locate line 357 in `workout/repository.go`
+- [x] Wrap error with `fmt.Errorf("...: %w", err)` for consistency
+- [x] Add descriptive context to error message
+- [x] Verify tests still pass
 
 #### 8.2 Enhance Sentinel Error Usage
 
