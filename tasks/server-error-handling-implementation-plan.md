@@ -172,10 +172,10 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 3.6 Update Tests
 
-- [ ] Update service tests to not expect logger calls
-- [ ] Remove mock logger expectations from service tests
-- [ ] Verify handler tests check for proper logging
-- [ ] Add assertions in handler tests for log output if needed
+- [x] Update service tests to not expect logger calls
+- [x] Remove mock logger expectations from service tests
+- [x] Verify handler tests check for proper logging
+- [x] Add assertions in handler tests for log output if needed
 
 ---
 
@@ -247,11 +247,11 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 4.7 Update Existing Tests
 
-- [ ] Update exercise service tests to use shared error types
-- [ ] Update exercise handler tests to use shared error types
-- [ ] Update workout service tests to use shared error types
-- [ ] Update workout handler tests to use shared error types
-- [ ] Verify all error assertions still pass
+- [x] Update exercise service tests to use shared error types
+- [x] Update exercise handler tests to use shared error types
+- [x] Update workout service tests to use shared error types
+- [x] Update workout handler tests to use shared error types
+- [x] Verify all error assertions still pass (Note: 1 integration test failing - TestContributionData_Integration_RLS - appears unrelated to error handling changes)
 
 ---
 

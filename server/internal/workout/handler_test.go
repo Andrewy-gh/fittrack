@@ -155,7 +155,7 @@ func TestWorkoutHandler_ListWorkouts(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -262,7 +262,7 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository, id int32) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -408,7 +408,7 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -516,7 +516,7 @@ func TestWorkoutHandler_DeleteWorkout(t *testing.T) {
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
-			expectedError: "workout not found",
+			expectedError: "not found",
 		},
 		{
 			name:      "service error during deletion",
@@ -540,7 +540,7 @@ func TestWorkoutHandler_DeleteWorkout(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository, id int32) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -642,7 +642,7 @@ func TestWorkoutHandler_ListWorkoutFocusValues(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -752,7 +752,7 @@ func TestWorkoutHandler_GetContributionData(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -1124,7 +1124,7 @@ func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 		var resp errorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.NoError(t, err)
-		assert.Contains(t, resp.Message, "user not authenticated")
+		assert.Contains(t, resp.Message, "not authorized")
 	})
 
 	t.Run("Scenario4_GetSpecificWorkout_UserB_CannotAccessUserAWorkout", func(t *testing.T) {
@@ -1314,7 +1314,7 @@ func TestContributionData_Integration_RLS(t *testing.T) {
 		var resp errorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.NoError(t, err)
-		assert.Contains(t, resp.Message, "user not authenticated")
+		assert.Contains(t, resp.Message, "not authorized")
 	})
 }
 
