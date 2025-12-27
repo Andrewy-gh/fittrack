@@ -84,8 +84,30 @@ type RLSLogData struct {
 	ContextSet  bool   `json:"rls_context_set"`
 }
 
-// ErrRowLevelSecurity is returned when a database operation is blocked by RLS
+// Sentinel Errors for Application-Level Error Detection
+//
+// These sentinel errors are designed to be:
+// 1. Wrapped when returned from functions (using fmt.Errorf("context: %w", ErrSentinel))
+// 2. Detected using errors.Is() which unwraps error chains
+// 3. Never returned directly - always provide context when wrapping
+//
+// Example Usage:
+//   // Returning an error (GOOD - includes context):
+//   return fmt.Errorf("failed to set user context: %w", db.ErrRLSContext)
+//
+//   // Checking an error (GOOD - works with wrapped errors):
+//   if errors.Is(err, db.ErrRLSContext) { ... }
+//
+//   // Returning directly (AVOID - loses context):
+//   return db.ErrRLSContext
+//
+// The detection functions (IsRowLevelSecurityError, IsRLSContextError) check for
+// both sentinel errors and PostgreSQL error codes to provide comprehensive coverage.
+
+// ErrRowLevelSecurity is a sentinel error for RLS policy violations.
+// Wrap this error when returning it to preserve context.
 var ErrRowLevelSecurity = errors.New("access denied by row level security policy")
 
-// ErrRLSContext is returned when there's an issue with RLS context setup
+// ErrRLSContext is a sentinel error for RLS context setup failures.
+// Wrap this error when returning it to preserve context.
 var ErrRLSContext = errors.New("failed to set RLS context")

@@ -381,10 +381,10 @@ This plan addresses the error handling improvements identified in `server-error-
 
 #### 8.2 Enhance Sentinel Error Usage
 
-- [ ] Review how `ErrRowLevelSecurity` and `ErrRLSContext` are created
-- [ ] Ensure they're returned directly (not just checked)
-- [ ] Update error detection functions to return sentinel errors when appropriate
-- [ ] Document when sentinel errors should be used vs. wrapped errors
+- [x] Review how `ErrRowLevelSecurity` and `ErrRLSContext` are created
+- [x] Ensure they're returned directly (not just checked)
+- [x] Update error detection functions to return sentinel errors when appropriate
+- [x] Document when sentinel errors should be used vs. wrapped errors
 
 ---
 
