@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
@@ -169,7 +170,7 @@ func TestWorkoutDeletionIntegration(t *testing.T) {
 		err := workoutService.DeleteWorkout(ctxB, workoutAID)
 		assert.Error(t, err, "User B should not be able to delete User A's workout")
 
-		var errNotFound *ErrNotFound
+		var errNotFound *apperrors.NotFound
 		assert.ErrorAs(t, err, &errNotFound, "Should return not found error")
 
 		// Verify User A's workout still exists
@@ -285,7 +286,7 @@ func TestWorkoutDeletionRLSSecurity(t *testing.T) {
 		var errorResp errorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &errorResp)
 		require.NoError(t, err)
-		assert.Contains(t, errorResp.Message, "workout not found")
+		assert.Contains(t, errorResp.Message, "not found")
 
 		// Verify User A's workout still exists
 		ctxA := testutils.SetTestUserContext(context.Background(), t, pool, userA)

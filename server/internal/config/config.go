@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -94,6 +95,8 @@ func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		} else {
+			log.Printf("config: failed to parse %s=%q as integer: %v, using default: %d", key, value, err, defaultValue)
 		}
 	}
 	return defaultValue

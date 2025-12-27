@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/google/uuid"
 )
 
@@ -41,7 +42,7 @@ func TestRequestID(t *testing.T) {
 
 			// Create a test handler that captures the request ID from context
 			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				capturedRequestID = GetRequestID(r.Context())
+				capturedRequestID = request.GetRequestID(r.Context())
 				w.WriteHeader(http.StatusOK)
 			})
 
@@ -98,9 +99,9 @@ func TestRequestID(t *testing.T) {
 }
 
 func TestGetRequestID_NoRequestID(t *testing.T) {
-	// Test GetRequestID when no request ID is in context
+	// Test request.GetRequestID when no request ID is in context
 	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
-	requestID := GetRequestID(req.Context())
+	requestID := request.GetRequestID(req.Context())
 
 	if requestID != "" {
 		t.Errorf("Expected empty string when no request ID in context, got %v", requestID)

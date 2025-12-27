@@ -241,7 +241,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
-			expectedError: "workout not found",
+			expectedError: "not found",
 		},
 		{
 			name:      "service error - database failure",
@@ -281,7 +281,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 

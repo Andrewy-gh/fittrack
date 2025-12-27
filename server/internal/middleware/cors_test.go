@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -91,8 +93,11 @@ func TestCORS(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
+			// Create test logger
+			logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 			// Wrap with CORS middleware
-			handler := CORS(allowedOrigins)(nextHandler)
+			handler := CORS(allowedOrigins, logger)(nextHandler)
 
 			// Create request
 			req := httptest.NewRequest(tt.method, "/api/test", nil)
@@ -166,7 +171,10 @@ func TestCORS_EmptyAllowedOrigins(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := CORS([]string{})(nextHandler)
+	// Create test logger
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	handler := CORS([]string{}, logger)(nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
 	req.Header.Set("Origin", "http://localhost:5173")

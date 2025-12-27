@@ -106,8 +106,8 @@ func TestReady(t *testing.T) {
 				assert.Equal(t, "unhealthy", resp.Status)
 				assert.NotEmpty(t, resp.Timestamp)
 				assert.Contains(t, resp.Checks, "database")
-				assert.Contains(t, resp.Checks["database"], "failed:")
-				assert.Contains(t, resp.Checks["database"], "connection refused")
+				// Error is sanitized - no sensitive details exposed
+				assert.Equal(t, "unavailable", resp.Checks["database"])
 
 				_, err := time.Parse(time.RFC3339, resp.Timestamp)
 				assert.NoError(t, err, "timestamp should be in RFC3339 format")
@@ -122,8 +122,8 @@ func TestReady(t *testing.T) {
 			checkFields: func(t *testing.T, resp ReadyResponse) {
 				assert.Equal(t, "unhealthy", resp.Status)
 				assert.Contains(t, resp.Checks, "database")
-				assert.Contains(t, resp.Checks["database"], "failed:")
-				assert.Contains(t, resp.Checks["database"], "context deadline exceeded")
+				// Error is sanitized - no sensitive details exposed
+				assert.Equal(t, "unavailable", resp.Checks["database"])
 			},
 		},
 	}

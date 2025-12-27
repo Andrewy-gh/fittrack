@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -31,6 +31,11 @@ func NewHandlerWithPool(logger *slog.Logger, pool PoolPinger) *Handler {
 	}
 }
 
+// HealthResponse represents the response format for the /health endpoint.
+// Note: Health endpoints use a custom response format (not the standard error response format)
+// because they are primarily consumed by monitoring systems (Kubernetes, load balancers, etc.)
+// that expect specific fields. Request IDs are not included in the response body but are
+// logged for debugging purposes.
 type HealthResponse struct {
 	Status    string `json:"status"`
 	Timestamp string `json:"timestamp"`
@@ -54,10 +59,15 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("failed to encode health response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
+		h.logger.Error("failed to encode health response", "error", err, "request_id", request.GetRequestID(r.Context()))
 	}
 }
 
+// ReadyResponse represents the response format for the /ready endpoint.
+// Note: Like HealthResponse, this uses a custom format for monitoring systems.
+// Database errors are sanitized - the actual error is logged with request_id but
+// only generic status messages ("ok", "unavailable") are returned to clients.
+// This prevents leaking sensitive connection details (hostnames, ports, credentials).
 type ReadyResponse struct {
 	Status    string            `json:"status"`
 	Timestamp string            `json:"timestamp"`
@@ -76,18 +86,24 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]string)
 
 	if err := h.pool.Ping(r.Context()); err != nil {
+		// Log the actual error for debugging, but don't expose it to clients
+		h.logger.Error("database health check failed",
+			"error", err,
+			"request_id", request.GetRequestID(r.Context()),
+		)
+
 		response := ReadyResponse{
 			Status:    "unhealthy",
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			Checks: map[string]string{
-				"database": "failed: " + err.Error(),
+				"database": "unavailable",
 			},
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			h.logger.Error("failed to encode ready response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
+			h.logger.Error("failed to encode ready response", "error", err, "request_id", request.GetRequestID(r.Context()))
 		}
 		return
 	}
@@ -103,6 +119,6 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("failed to encode ready response", "error", err, "request_id", middleware.GetRequestID(r.Context()))
+		h.logger.Error("failed to encode ready response", "error", err, "request_id", request.GetRequestID(r.Context()))
 	}
 }

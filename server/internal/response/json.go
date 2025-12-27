@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 )
 
 type Error struct {
@@ -15,6 +15,14 @@ type Error struct {
 	RequestID string `json:"request_id,omitempty"`
 }
 
+// JSON writes a JSON response to the HTTP response writer.
+//
+// Note on error handling: JSON encoding errors are extremely rare in practice and
+// typically indicate serious programming bugs (attempting to marshal channels, functions,
+// or cyclic data structures). If encoding fails after headers are written, the response
+// will be partial. Callers should log encoding errors for debugging. Adding metrics for
+// these errors would add complexity without significant value unless errors are observed
+// in production logs.
 func JSON(w http.ResponseWriter, status int, data any) error {
 	js, err := json.Marshal(data)
 	if err != nil {
@@ -134,7 +142,7 @@ func isValidationError(message, errMsg string) bool {
 
 func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, message string, err error) {
 	// Get request ID from context
-	requestID := middleware.GetRequestID(r.Context())
+	requestID := request.GetRequestID(r.Context())
 
 	// Log the full error details at Error level for operational monitoring
 	logger.Error(message, "error", err, "path", r.URL.Path, "method", r.Method, "status", status, "request_id", requestID)

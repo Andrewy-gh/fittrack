@@ -114,7 +114,7 @@ func TestExerciseHandler_ListExercises(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -192,7 +192,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
 			expectJSON:    true,
-			expectedError: "exercise not found",
+			expectedError: "not found",
 		},
 		{
 			name:       "exercise exists but has no sets - returns 200 with empty array",
@@ -212,7 +212,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -304,7 +304,7 @@ func TestExerciseHandler_GetRecentSetsForExercise(t *testing.T) {
 			setupMock:     func(m *MockExerciseRepository, id int32) {},
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -406,7 +406,7 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -512,7 +512,7 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
 			expectJSON:    true,
-			expectedError: "exercise not found",
+			expectedError: "not found",
 		},
 		{
 			name:       "delete operation fails",
@@ -533,7 +533,7 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -652,7 +652,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
 			expectJSON:    true,
-			expectedError: "exercise not found",
+			expectedError: "not found",
 		},
 		{
 			name:       "update operation fails",
@@ -675,7 +675,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.Background(),
 			expectedCode:  http.StatusUnauthorized,
 			expectJSON:    true,
-			expectedError: "user not authenticated",
+			expectedError: "not authorized",
 		},
 	}
 
@@ -842,7 +842,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		var resp errorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.NoError(t, err)
-		assert.Contains(t, resp.Message, "user not authenticated")
+		assert.Contains(t, resp.Message, "not authorized")
 	})
 
 	t.Run("Scenario4_GetSpecificExercise_UserB_CannotAccessUserAExercise", func(t *testing.T) {
@@ -861,7 +861,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		var errorResp response.ErrorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &errorResp)
 		assert.NoError(t, err)
-		assert.Equal(t, "exercise not found", errorResp.Message)
+		assert.Contains(t, errorResp.Message, "not found")
 	})
 
 	t.Run("Scenario5_CreateExercise_UserIsolation", func(t *testing.T) {
@@ -1039,7 +1039,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		var resp errorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.NoError(t, err)
-		assert.Contains(t, resp.Message, "exercise not found")
+		assert.Contains(t, resp.Message, "not found")
 	})
 
 	t.Run("Scenario9_DeleteExercise_CascadeDeletesSets", func(t *testing.T) {
@@ -1097,7 +1097,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		var errorResp2 response.ErrorResponse
 		err = json.Unmarshal(getW2.Body.Bytes(), &errorResp2)
 		assert.NoError(t, err)
-		assert.Equal(t, "exercise not found", errorResp2.Message)
+		assert.Contains(t, errorResp2.Message, "not found")
 	})
 
 	t.Run("Scenario10_DeleteExercise_AnonymousUser_CannotDelete", func(t *testing.T) {
@@ -1115,7 +1115,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		var resp errorResponse
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.NoError(t, err)
-		assert.Contains(t, resp.Message, "user not authenticated")
+		assert.Contains(t, resp.Message, "not authorized")
 	})
 }
 

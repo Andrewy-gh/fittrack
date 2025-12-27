@@ -2,10 +2,12 @@ package exercise
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"testing"
 
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/stretchr/testify/assert"
@@ -116,12 +118,14 @@ func TestExerciseService_DeleteExercise(t *testing.T) {
 				}
 				switch tt.errorType {
 				case "ErrUnauthorized":
-					if _, ok := err.(*ErrUnauthorized); !ok {
-						t.Errorf("expected ErrUnauthorized but got %T", err)
+					var unauthorizedErr *apperrors.Unauthorized
+					if !errors.As(err, &unauthorizedErr) {
+						t.Errorf("expected Unauthorized error but got %T", err)
 					}
 				case "ErrNotFound":
-					if _, ok := err.(*ErrNotFound); !ok {
-						t.Errorf("expected ErrNotFound but got %T", err)
+					var notFoundErr *apperrors.NotFound
+					if !errors.As(err, &notFoundErr) {
+						t.Errorf("expected NotFound error but got %T", err)
 					}
 				}
 			} else {
@@ -212,12 +216,14 @@ func TestExerciseService_UpdateExerciseName(t *testing.T) {
 				}
 				switch tt.errorType {
 				case "ErrUnauthorized":
-					if _, ok := err.(*ErrUnauthorized); !ok {
-						t.Errorf("expected ErrUnauthorized but got %T", err)
+					var unauthorizedErr *apperrors.Unauthorized
+					if !errors.As(err, &unauthorizedErr) {
+						t.Errorf("expected Unauthorized error but got %T", err)
 					}
 				case "ErrNotFound":
-					if _, ok := err.(*ErrNotFound); !ok {
-						t.Errorf("expected ErrNotFound but got %T", err)
+					var notFoundErr *apperrors.NotFound
+					if !errors.As(err, &notFoundErr) {
+						t.Errorf("expected NotFound error but got %T", err)
 					}
 				}
 			} else {

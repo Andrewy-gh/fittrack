@@ -169,7 +169,7 @@ func main() {
 	handler = authenticator.Middleware(handler)
 	handler = middleware.Metrics()(handler)
 	handler = middleware.RequestID()(handler)
-	handler = middleware.CORS(cfg.GetAllowedOrigins())(handler)
+	handler = middleware.CORS(cfg.GetAllowedOrigins(), logger)(handler)
 	handler = middleware.SecurityHeaders()(handler)
 
 	// Configure HTTP server with timeouts

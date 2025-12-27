@@ -1,11 +1,16 @@
 package middleware
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/response"
+)
 
 // CORS creates a middleware that handles Cross-Origin Resource Sharing (CORS).
 // It accepts a slice of allowed origins and validates incoming requests against them.
 // Unknown origins are rejected for preflight requests.
-func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
+func CORS(allowedOrigins []string, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
@@ -33,8 +38,8 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 					// Accept preflight from allowed origins
 					w.WriteHeader(http.StatusOK)
 				} else {
-					// Reject preflight from unknown origins
-					w.WriteHeader(http.StatusForbidden)
+					// Reject preflight from unknown origins - return standardized error response
+					response.ErrorJSON(w, r, logger, http.StatusForbidden, "origin not allowed", nil)
 				}
 				return
 			}
