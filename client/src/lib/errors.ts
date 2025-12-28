@@ -24,22 +24,22 @@ export function isApiError(error: unknown): error is ApiError {
  * Extract error message from various error types
  */
 export function getErrorMessage(error: unknown, fallback = "An unexpected error occurred"): string {
-  // Check if it's an ApiError
-  if (isApiError(error)) {
+  // Check if it's an ApiError with a non-empty message
+  if (isApiError(error) && error.message) {
     return error.message;
   }
 
-  // Check if it's a standard Error object
-  if (error instanceof Error) {
+  // Check if it's a standard Error object with a non-empty message
+  if (error instanceof Error && error.message) {
     return error.message;
   }
 
-  // Check if it's a string
-  if (typeof error === "string") {
+  // Check if it's a non-empty string
+  if (typeof error === "string" && error.trim()) {
     return error;
   }
 
-  // Return fallback for unknown error types
+  // Return fallback for unknown/empty error types
   return fallback;
 }
 

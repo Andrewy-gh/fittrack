@@ -179,6 +179,18 @@ export const deleteDemoExercisesByIdMutation = (): UseMutationOptions<
   },
 });
 
+// Delete mutation without automatic error toasts (for manual error handling)
+export const deleteDemoExercisesByIdMutationSilent = (): UseMutationOptions<
+  void,
+  Error,
+  { path: { id: number } }
+> => ({
+  ...deleteDemoExercisesByIdMutation(),
+  onError: () => {
+    // Suppress automatic error toasts - caller handles errors manually
+  },
+});
+
 // ===========================
 // Workout Mutations
 // ===========================
@@ -243,5 +255,17 @@ export const deleteDemoWorkoutsByIdMutation = (): UseMutationOptions<
     queryClient.removeQueries({
       queryKey: getDemoWorkoutsByIdQueryKey(id),
     });
+  },
+});
+
+// Delete mutation without automatic error toasts (for manual error handling)
+export const deleteDemoWorkoutsByIdMutationSilent = (): UseMutationOptions<
+  void,
+  Error,
+  { path: { id: number } }
+> => ({
+  ...deleteDemoWorkoutsByIdMutation(),
+  onError: () => {
+    // Suppress automatic error toasts - caller handles errors manually
   },
 });

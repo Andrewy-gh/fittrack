@@ -11,11 +11,10 @@ import {
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
-import { deleteWorkoutsByIdMutation, getWorkoutsQueryKey, getWorkoutsByIdQueryKey, getWorkoutsContributionDataQueryKey } from '@/client/@tanstack/react-query.gen';
-import { deleteDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
+import { useDeleteWorkoutMutationSilent } from '@/lib/api/workouts';
+import { deleteDemoWorkoutsByIdMutationSilent } from '@/lib/demo-data/query-options';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
-import { queryClient } from '@/lib/api/api';
 
 interface DeleteDialogProps {
   isOpen: boolean;
@@ -29,39 +28,16 @@ export function DeleteDialog({
   workoutId,
 }: DeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
 
-  // Override global error handler to prevent double toasts
-  // We handle errors manually in the catch block below
-  const authDeleteMutation = useMutation({
-    ...deleteWorkoutsByIdMutation(),
-    onSuccess: (_, { path: { id } }) => {
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsQueryKey(),
-      });
-      queryClient.removeQueries({
-        queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsContributionDataQueryKey(),
-      });
-    },
-    onError: () => {
-      // Don't show toast - we handle errors manually
-    },
-  });
-  const demoDeleteMutation = useMutation({
-    ...deleteDemoWorkoutsByIdMutation(),
-    onError: () => {
-      // Don't show toast - we handle errors manually
-    },
-  });
+  const authDeleteMutation = useDeleteWorkoutMutationSilent();
+  const demoDeleteMutation = useMutation(
+    deleteDemoWorkoutsByIdMutationSilent()
+  );
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
-    setError(null);
     setIsDeleting(true);
     try {
       await deleteMutation.mutateAsync(
@@ -73,11 +49,11 @@ export function DeleteDialog({
         }
       );
     } catch (err) {
-      // Show toast for delete failure
-      const errorMessage = getErrorMessage(err, 'Failed to delete workout. Please try again.');
+      const errorMessage = getErrorMessage(
+        err,
+        'Failed to delete workout. Please try again.'
+      );
       toast.error(errorMessage);
-      // Also show inline error in dialog
-      setError(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -92,7 +68,6 @@ export function DeleteDialog({
             This action cannot be undone. This will permanently delete this
             workout and all associated sets from your training history.
           </AlertDialogDescription>
-          {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>

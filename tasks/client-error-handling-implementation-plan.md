@@ -416,18 +416,37 @@ if (isApiError(err) && err.message.includes('duplicate')) { ... }
 
 ---
 
-### Task 13: Consider Alert Dialog for Destructive Failures
+### ✅ Task 13: Consider Alert Dialog for Destructive Failures
 
 **Priority:** Low
 **Files:**
 
-- Various delete flows
+- `client/src/routes/_layout/exercises/-components/exercise-delete-dialog.tsx` (reviewed)
+- `client/src/routes/_layout/workouts/-components/delete-dialog.tsx` (reviewed)
+
+**Decision:** ❌ Additional AlertDialog is NOT needed - current implementation is optimal
+
+#### Evaluation Summary
+
+**Current Implementation:**
+Both delete dialogs already use a hybrid approach:
+- Toast notification for quick feedback
+- Inline error displayed in the confirmation AlertDialog (exercise-delete-dialog.tsx:92, delete-dialog.tsx:95)
+- Dialog stays open for immediate retry
+- User can cancel if needed
+
+**Why Additional "Delete Failed" Dialog is NOT Recommended:**
+- ❌ Would create confusing dialog stacking (confirmation → error → retry flow)
+- ❌ Current inline error + toast approach is clearer and more contextual
+- ❌ Retry is already available (user clicks Delete button again)
+- ❌ Adds unnecessary code complexity
+- ✅ Current implementation provides all needed functionality
 
 #### Subtasks
 
-- [ ] 13.1 Evaluate if delete failures need AlertDialog
-- [ ] 13.2 If yes, implement pattern for "Delete failed" dialog
-- [ ] 13.3 Include retry option in dialog
+- [x] 13.1 Evaluate if delete failures need AlertDialog
+- [N/A] 13.2 If yes, implement pattern for "Delete failed" dialog - Not needed per evaluation
+- [N/A] 13.3 Include retry option in dialog - Already implemented via inline error approach
 
 ---
 

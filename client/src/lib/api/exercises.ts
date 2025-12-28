@@ -37,7 +37,8 @@ export function recentExerciseSetsQueryOptions(id: number) {
   return getExercisesByIdRecentSetsQueryOptions({ path: { id } });
 }
 
-export function useDeleteExerciseMutation() {
+// Delete mutation without automatic error toasts (for manual error handling)
+export function useDeleteExerciseMutationSilent() {
   return useMutation({
     ...deleteExercisesByIdMutation(),
     onSuccess: (_, { path: { id } }) => {
@@ -47,6 +48,9 @@ export function useDeleteExerciseMutation() {
       queryClient.removeQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id } }),
       });
+    },
+    onError: () => {
+      // Suppress automatic error toasts - caller handles errors manually
     },
   });
 }
