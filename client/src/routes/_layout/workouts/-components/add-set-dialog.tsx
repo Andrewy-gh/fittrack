@@ -8,7 +8,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MOCK_VALUES } from './form-options';
-import { ErrorBoundary, InlineErrorFallback } from '@/components/error-boundary';
+import {
+  ErrorBoundary,
+  InlineErrorFallback,
+} from '@/components/error-boundary';
+import { compose, required, minValue, maxValue } from '@/lib/validation';
 
 type AddSetDialogProps = {
   exerciseIndex: number;
@@ -57,13 +61,25 @@ export const AddSetDialog = withForm({
             />
             <form.AppField
               name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
-              children={(field) => (
-                <field.InputField
-                  label="Reps"
-                  type="number"
-                  className="sm:text-center sm:h-9"
-                />
-              )}
+              validators={{
+                onBlur: ({ value }) => {
+                  const error = compose(
+                    required,
+                    minValue(1),
+                    maxValue(1000)
+                  )(value, 'Reps');
+                  return error;
+                },
+              }}
+              children={(field) => {
+                return (
+                  <field.InputField
+                    label="Reps"
+                    type="number"
+                    className="sm:text-center sm:h-9"
+                  />
+                );
+              }}
             />
             <ErrorBoundary
               fallback={
@@ -77,12 +93,31 @@ export const AddSetDialog = withForm({
                 />
               </Suspense>
             </ErrorBoundary>
-            <Button
-              className="w-full mt-6 text-base font-semibold rounded-lg"
-              onClick={onSaveSet}
-            >
-              Save Set
-            </Button>
+            <form.Subscribe
+              selector={(state) => {
+                const repsFieldState =
+                  state.fieldMeta[
+                    `exercises[${exerciseIndex}].sets[${setIndex}].reps`
+                  ];
+                return {
+                  canSubmit: state.canSubmit,
+                  isValid: state.isValid,
+                  repsIsTouched: repsFieldState?.isTouched || false,
+                };
+              }}
+              children={({ canSubmit, isValid, repsIsTouched }) => {
+                const isDisabled = !canSubmit || !isValid || !repsIsTouched;
+                return (
+                  <Button
+                    className="w-full mt-6 text-base font-semibold rounded-lg"
+                    onClick={onSaveSet}
+                    disabled={isDisabled}
+                  >
+                    Save Set
+                  </Button>
+                );
+              }}
+            />
             <Button
               variant="outline"
               className="w-full mt-6 text-base font-semibold rounded-lg"
