@@ -73,7 +73,6 @@ function WorkoutTracker({
             form.reset(MOCK_VALUES);
             navigate({ search: {} });
           },
-          onError: () => {},
         }
       );
     },
