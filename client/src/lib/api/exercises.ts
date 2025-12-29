@@ -11,15 +11,8 @@ import {
   getExercisesByIdQueryKey,
 } from '@/client/@tanstack/react-query.gen';
 
-/**
- * Exercise data as returned by the API - always has a database ID
- */
 export type DbExercise = Pick<ExerciseExerciseResponse, 'id' | 'name'>;
 
-/**
- * Exercise option for form components - may include manually created exercises without IDs
- * Used in dropdowns and forms where users can create new exercises on-the-fly
- */
 export type ExerciseOption = {
   id: number | null; // null for manually created exercises, number for DB exercises
   name: string;
@@ -37,7 +30,6 @@ export function recentExerciseSetsQueryOptions(id: number) {
   return getExercisesByIdRecentSetsQueryOptions({ path: { id } });
 }
 
-// Delete mutation without automatic error toasts (for manual error handling)
 export function useDeleteExerciseMutation() {
   return useMutation({
     ...deleteExercisesByIdMutation(),

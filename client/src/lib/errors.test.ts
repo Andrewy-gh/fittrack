@@ -21,8 +21,7 @@ describe('isApiError', () => {
 
   it('returns false for Error instances without message property structure', () => {
     const error = new Error('Test error');
-    // Error instances have message, but we want to distinguish ApiError
-    expect(isApiError(error)).toBe(true); // Error has message property
+    expect(isApiError(error)).toBe(true);
   });
 
   it('returns false for objects without message property', () => {

@@ -1,16 +1,10 @@
 import { toast } from "sonner";
 
-/**
- * API Error shape matching backend response.ErrorResponse
- */
 export interface ApiError {
   message: string;
   request_id?: string;
 }
 
-/**
- * Type guard to check if an error is an ApiError
- */
 export function isApiError(error: unknown): error is ApiError {
   return (
     typeof error === "object" &&
@@ -20,9 +14,6 @@ export function isApiError(error: unknown): error is ApiError {
   );
 }
 
-/**
- * Extract error message from various error types
- */
 export function getErrorMessage(error: unknown, fallback = "An unexpected error occurred"): string {
   // Check if it's an ApiError with a non-empty message
   if (isApiError(error) && error.message) {
@@ -43,9 +34,6 @@ export function getErrorMessage(error: unknown, fallback = "An unexpected error 
   return fallback;
 }
 
-/**
- * Show error toast with proper message extraction
- */
 export function showErrorToast(error: unknown, fallback?: string): void {
   const message = getErrorMessage(error, fallback);
   toast.error(message);

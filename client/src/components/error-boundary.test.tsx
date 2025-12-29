@@ -54,10 +54,10 @@ describe('ErrorBoundary', () => {
 
 describe('FullScreenErrorFallback', () => {
   it('renders error message', () => {
-    render(<FullScreenErrorFallback message="Something went wrong" />);
+    render(<FullScreenErrorFallback message="Test error message" />);
 
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument();
+    expect(screen.getByText('Test error message')).toBeInTheDocument();
   });
 
   it('calls onAction when button clicked', async () => {
