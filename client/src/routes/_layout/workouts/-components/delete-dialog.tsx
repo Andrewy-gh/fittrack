@@ -44,6 +44,7 @@ export function DeleteDialog({
         { path: { id: workoutId } },
         {
           onSuccess: () => {
+            toast.success('Workout deleted successfully');
             router.navigate({ to: '/workouts' });
           },
         }

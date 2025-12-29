@@ -14,6 +14,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useDeleteExerciseMutation } from '@/lib/api/exercises';
 import { deleteDemoExercisesByIdMutationWithMeta } from '@/lib/demo-data/query-options';
 import { showErrorToast } from '@/lib/errors';
+import { toast } from 'sonner';
 
 interface ExerciseDeleteDialogProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export function ExerciseDeleteDialog({
         { path: { id: exerciseId } },
         {
           onSuccess: () => {
+            toast.success('Exercise deleted successfully');
             router.navigate({ to: '/exercises' });
           },
         }

@@ -15,6 +15,7 @@ import { type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues, MOCK_VALUES } from './-components/form-options';
 import { postDemoWorkoutsMutation } from '@/lib/demo-data/query-options';
 import { initializeDemoData } from '@/lib/demo-data/storage';
+import { toast } from 'sonner';
 import {
   getExercisesQueryOptions,
   getWorkoutsFocusQueryOptions,
@@ -69,6 +70,7 @@ function WorkoutTracker({
         { body: trimmedValue },
         {
           onSuccess: () => {
+            toast.success('Workout saved successfully');
             clearLocalStorage(user?.id);
             form.reset(MOCK_VALUES);
             navigate({ search: {} });
