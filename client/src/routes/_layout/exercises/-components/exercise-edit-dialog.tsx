@@ -84,6 +84,7 @@ export function ExerciseEditDialog({
         path: { id: exerciseId },
         body: { name: trimmedName },
       });
+      toast.success('Exercise updated successfully');
       onOpenChange(false);
     } catch (err) {
       // Check if it's a duplicate name error (409 conflict)

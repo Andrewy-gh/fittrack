@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import {
   useUpdateWorkoutMutation,
   type WorkoutFocus,
@@ -71,6 +72,7 @@ function EditWorkoutForm({
         },
         {
           onSuccess: () => {
+            toast.success('Workout updated successfully');
             navigate({
               to: '/workouts/$workoutId',
               params: { workoutId },
