@@ -10,9 +10,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
-import { useDeleteWorkoutMutation } from '@/lib/api/workouts';
 import { useMutation } from '@tanstack/react-query';
-import { deleteDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
+import { useDeleteWorkoutMutation } from '@/lib/api/workouts';
+import { deleteDemoWorkoutsByIdMutationWithMeta } from '@/lib/demo-data/query-options';
+import { getErrorMessage } from '@/lib/errors';
+import { toast } from 'sonner';
 
 interface DeleteDialogProps {
   isOpen: boolean;
@@ -26,18 +28,17 @@ export function DeleteDialog({
   workoutId,
 }: DeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
 
   const authDeleteMutation = useDeleteWorkoutMutation();
-  const demoDeleteMutation = useMutation(deleteDemoWorkoutsByIdMutation());
+  const demoDeleteMutation = useMutation(
+    deleteDemoWorkoutsByIdMutationWithMeta()
+  );
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
-    setError(null);
     setIsDeleting(true);
-    // ! TODO: handle error
     try {
       await deleteMutation.mutateAsync(
         { path: { id: workoutId } },
@@ -47,6 +48,12 @@ export function DeleteDialog({
           },
         }
       );
+    } catch (err) {
+      const errorMessage = getErrorMessage(
+        err,
+        'Failed to delete workout. Please try again.'
+      );
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -61,7 +68,6 @@ export function DeleteDialog({
             This action cannot be undone. This will permanently delete this
             workout and all associated sets from your training history.
           </AlertDialogDescription>
-          {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>

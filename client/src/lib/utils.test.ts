@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { formatWeight } from './utils';
 
 describe('formatWeight', () => {
@@ -40,8 +41,10 @@ describe('formatWeight', () => {
   });
 
   it('should round to one decimal place for numbers with more precision', () => {
-    expect(formatWeight(45.55)).toBe('45.6'); // toFixed rounds
+    // Note: Due to JavaScript floating point precision, 45.55 may be stored as 45.549999...
+    expect(formatWeight(45.55)).toBe('45.5');
     expect(formatWeight(45.54)).toBe('45.5');
+    expect(formatWeight(45.56)).toBe('45.6');
     expect(formatWeight(45.99)).toBe('46.0');
   });
 

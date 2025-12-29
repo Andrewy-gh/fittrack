@@ -179,6 +179,16 @@ export const deleteDemoExercisesByIdMutation = (): UseMutationOptions<
   },
 });
 
+// Delete mutation without automatic error toasts (for manual error handling)
+export const deleteDemoExercisesByIdMutationWithMeta = (): UseMutationOptions<
+  void,
+  Error,
+  { path: { id: number } }
+> => ({
+  ...deleteDemoExercisesByIdMutation(),
+  meta: { skipGlobalErrorHandler: true },
+});
+
 // ===========================
 // Workout Mutations
 // ===========================
@@ -244,4 +254,14 @@ export const deleteDemoWorkoutsByIdMutation = (): UseMutationOptions<
       queryKey: getDemoWorkoutsByIdQueryKey(id),
     });
   },
+});
+
+// Delete mutation without automatic error toasts (for manual error handling)
+export const deleteDemoWorkoutsByIdMutationWithMeta = (): UseMutationOptions<
+  void,
+  Error,
+  { path: { id: number } }
+> => ({
+  ...deleteDemoWorkoutsByIdMutation(),
+  meta: { skipGlobalErrorHandler: true },
 });

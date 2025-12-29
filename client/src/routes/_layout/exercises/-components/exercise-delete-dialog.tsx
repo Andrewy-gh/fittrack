@@ -10,9 +10,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
-import { useDeleteExerciseMutation } from '@/lib/api/exercises';
 import { useMutation } from '@tanstack/react-query';
-import { deleteDemoExercisesByIdMutation } from '@/lib/demo-data/query-options';
+import { useDeleteExerciseMutation } from '@/lib/api/exercises';
+import { deleteDemoExercisesByIdMutationWithMeta } from '@/lib/demo-data/query-options';
+import { showErrorToast } from '@/lib/errors';
 
 interface ExerciseDeleteDialogProps {
   isOpen: boolean;
@@ -26,18 +27,15 @@ export function ExerciseDeleteDialog({
   exerciseId,
 }: ExerciseDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
   const authDeleteMutation = useDeleteExerciseMutation();
-  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutation());
+  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutationWithMeta());
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
-    setError(null);
     setIsDeleting(true);
-    // ! TODO: handle error
     try {
       await deleteMutation.mutateAsync(
         { path: { id: exerciseId } },
@@ -47,6 +45,8 @@ export function ExerciseDeleteDialog({
           },
         }
       );
+    } catch (error) {
+      showErrorToast(error, 'Failed to delete exercise. Please try again.');
     } finally {
       setIsDeleting(false);
     }
@@ -61,7 +61,6 @@ export function ExerciseDeleteDialog({
             This action cannot be undone. This will permanently delete this
             exercise and all associated sets from your training history.
           </AlertDialogDescription>
-          {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>

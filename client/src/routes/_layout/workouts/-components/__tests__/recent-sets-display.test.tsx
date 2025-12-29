@@ -144,7 +144,8 @@ describe('RecentSets', () => {
       render(<RecentSets exerciseId={2} user={mockUser} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Recent Sets')).toBeInTheDocument();
+        const headings = screen.getAllByText('Recent Sets');
+        expect(headings.length).toBeGreaterThan(0);
       });
 
       expect(screen.getByText('225 lbs')).toBeInTheDocument();

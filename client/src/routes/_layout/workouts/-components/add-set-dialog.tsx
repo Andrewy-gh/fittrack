@@ -8,6 +8,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MOCK_VALUES } from './form-options';
+import {
+  ErrorBoundary,
+  InlineErrorFallback,
+} from '@/components/error-boundary';
+import { compose, minValue, maxValue } from '@/lib/validation';
 
 type AddSetDialogProps = {
   exerciseIndex: number;
@@ -56,26 +61,57 @@ export const AddSetDialog = withForm({
             />
             <form.AppField
               name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
-              children={(field) => (
-                <field.InputField
-                  label="Reps"
-                  type="number"
-                  className="sm:text-center sm:h-9"
-                />
-              )}
+              validators={{
+                onChange: ({ value }) => {
+                  const error = compose(
+                    minValue(1),
+                    maxValue(1000)
+                  )(value, 'Reps');
+                  return error;
+                },
+              }}
+              children={(field) => {
+                return (
+                  <field.InputField
+                    label="Reps"
+                    type="number"
+                    className="sm:text-center sm:h-9"
+                  />
+                );
+              }}
             />
-            <Suspense fallback={<div>Loading...</div>}>
-              <form.AppField
-                name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
-                children={(field) => <field.SetTypeSelect />}
-              />
-            </Suspense>
-            <Button
-              className="w-full mt-6 text-base font-semibold rounded-lg"
-              onClick={onSaveSet}
+            <ErrorBoundary
+              fallback={
+                <InlineErrorFallback message="Failed to load set type selector" />
+              }
             >
-              Save Set
-            </Button>
+              <Suspense fallback={<div>Loading...</div>}>
+                <form.AppField
+                  name={`exercises[${exerciseIndex}].sets[${setIndex}].setType`}
+                  children={(field) => <field.SetTypeSelect />}
+                />
+              </Suspense>
+            </ErrorBoundary>
+            <form.Subscribe
+              selector={(state) => {
+                return {
+                  canSubmit: state.canSubmit,
+                  isValid: state.isValid,
+                };
+              }}
+              children={({ canSubmit, isValid }) => {
+                const isDisabled = !canSubmit || !isValid;
+                return (
+                  <Button
+                    className="w-full mt-6 text-base font-semibold rounded-lg"
+                    onClick={onSaveSet}
+                    disabled={isDisabled}
+                  >
+                    Save Set
+                  </Button>
+                );
+              }}
+            />
             <Button
               variant="outline"
               className="w-full mt-6 text-base font-semibold rounded-lg"

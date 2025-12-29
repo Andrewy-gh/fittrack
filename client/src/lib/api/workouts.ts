@@ -81,9 +81,11 @@ export function useUpdateWorkoutMutation() {
 }
 
 // MARK: Delete
+// Delete mutation without automatic error toasts (for manual error handling)
 export function useDeleteWorkoutMutation() {
   return useMutation({
     ...deleteWorkoutsByIdMutation(),
+    meta: { skipGlobalErrorHandler: true },
     onSuccess: (_, { path: { id } }) => {
       queryClient.invalidateQueries({
         queryKey: getWorkoutsQueryKey(),

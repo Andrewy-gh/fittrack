@@ -66,6 +66,7 @@ export type HealthReadyResponse = {
 
 export type ResponseErrorResponse = {
   message?: string;
+  request_id?: string;
 };
 
 export type ResponseSuccessResponse = {

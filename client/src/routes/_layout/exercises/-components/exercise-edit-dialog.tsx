@@ -10,9 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { useRouteContext } from '@tanstack/react-router';
-import { useUpdateExerciseMutation } from '@/lib/api/exercises';
 import { useMutation } from '@tanstack/react-query';
+import { patchExercisesByIdMutation, getExercisesQueryKey, getExercisesByIdQueryKey } from '@/client/@tanstack/react-query.gen';
 import { patchDemoExercisesByIdMutation } from '@/lib/demo-data/query-options';
+import { isApiError, getErrorMessage } from '@/lib/errors';
+import { toast } from 'sonner';
+import { queryClient } from '@/lib/api/api';
 
 interface ExerciseEditDialogProps {
   isOpen: boolean;
@@ -32,8 +35,30 @@ export function ExerciseEditDialog({
   const [error, setError] = useState<string | null>(null);
   const { user } = useRouteContext({ from: '/_layout/exercises/$exerciseId' });
 
-  const authUpdateMutation = useUpdateExerciseMutation();
-  const demoUpdateMutation = useMutation(patchDemoExercisesByIdMutation());
+  // Override global error handler to prevent double toasts
+  // We handle errors manually in the catch block below
+  const authUpdateMutation = useMutation({
+    ...patchExercisesByIdMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getExercisesQueryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getExercisesByIdQueryKey({ path: { id } }),
+      });
+    },
+    onError: () => {
+      // Don't show toast - we handle errors manually
+    },
+  });
+
+  const demoUpdateMutation = useMutation({
+    ...patchDemoExercisesByIdMutation(),
+    onError: () => {
+      // Don't show toast - we handle errors manually
+    },
+  });
+
   const updateMutation = user ? authUpdateMutation : demoUpdateMutation;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,13 +86,16 @@ export function ExerciseEditDialog({
       });
       onOpenChange(false);
     } catch (err) {
-      // Handle duplicate name error (409 conflict)
-      if (err instanceof Error) {
-        if (err.message.includes('already exists')) {
-          setError(`You already have an exercise named '${trimmedName}'`);
-        } else {
-          setError('Failed to update exercise. Please try again.');
-        }
+      // Check if it's a duplicate name error (409 conflict)
+      if (isApiError(err) && err.message.toLowerCase().includes('already exists')) {
+        // Show inline error for duplicate name so user can fix it
+        setError(`You already have an exercise named '${trimmedName}'`);
+      } else {
+        // For other errors (network, server errors, etc.), show toast
+        // The global mutation error handler will also show a toast,
+        // but we override it here to prevent double toasts
+        const errorMessage = getErrorMessage(err, 'Failed to update exercise. Please try again.');
+        toast.error(errorMessage);
       }
     } finally {
       setIsSubmitting(false);

@@ -40,15 +40,23 @@ export default function NotesTextarea2() {
             Enter any notes, focus areas, or observations for this workout.
           </DialogDescription>
         </DialogHeader>
-        <Textarea
-          id={field.name}
-          name={field.name}
-          value={field.state.value}
-          onBlur={field.handleBlur}
-          onChange={(e) => field.handleChange(e.target.value)}
-          className="min-h-[80px]"
-          data-testid="notes-textarea"
-        />
+        <div className="space-y-2">
+          <Textarea
+            id={field.name}
+            name={field.name}
+            value={field.state.value}
+            onBlur={field.handleBlur}
+            onChange={(e) => field.handleChange(e.target.value)}
+            className="min-h-[80px]"
+            data-testid="notes-textarea"
+            aria-invalid={field.state.meta.errors.length > 0}
+          />
+          {field.state.meta.errors.length > 0 && (
+            <p className="text-sm text-destructive">
+              {field.state.meta.errors.join(', ')}
+            </p>
+          )}
+        </div>
         <DialogFooter className="sm:justify-start">
           <DialogClose asChild data-testid="notes-close">
             <Button type="button" variant="outline">
