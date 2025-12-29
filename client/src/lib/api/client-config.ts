@@ -1,7 +1,7 @@
 import { client } from '@/client/client.gen';
 import { stackClientApp } from '@/stack';
 import type { ApiError } from '@/lib/errors';
-import { showErrorToast } from '@/lib/errors';
+import { toast } from 'sonner';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -39,27 +39,18 @@ client.interceptors.response.use(async (response) => {
       });
     }
 
-    // Handle specific status codes
-    switch (response.status) {
-      case 401:
-        // Unauthorized - session expired or invalid
-        // Sign out and let Stack auth handle re-authentication
-        stackClientApp.getUser().then((user) => {
-          if (user) {
-            user.signOut().catch((err: unknown) => {
-              console.error('Error signing out on 401:', err);
-            });
-          }
-        }).catch((err: unknown) => {
-          console.error('Error getting user on 401:', err);
-        });
-        // The error will still be thrown for the mutation to handle
-        break;
-      case 500:
-      case 503:
-        // Show toast for server errors - user can't fix these
-        showErrorToast(error, 'Server error. Please try again later.');
-        break;
+    // Handle 401: session expired or invalid
+    if (response.status === 401) {
+      toast.error('Session expired. Please log in again.');
+      stackClientApp.getUser().then((user) => {
+        if (user) {
+          user.signOut().catch((err: unknown) => {
+            console.error('Error signing out on 401:', err);
+          });
+        }
+      }).catch((err: unknown) => {
+        console.error('Error getting user on 401:', err);
+      });
     }
 
     // Throw the structured error for mutation handlers to catch

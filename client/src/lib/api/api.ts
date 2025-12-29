@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryClient } from '@tanstack/react-query';
 import { showErrorToast } from '@/lib/errors';
 
 export const queryClient = new QueryClient({
@@ -7,13 +7,12 @@ export const queryClient = new QueryClient({
       retry: 1,
       staleTime: 5 * 60 * 1000, // 5 minutes
     },
-    mutations: {
-      onError: (error) => {
-        // Default: show toast for all mutation errors
-        // This can be overridden on a per-mutation basis by providing
-        // a custom onError handler in the mutation options
-        showErrorToast(error);
-      },
-    },
   },
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      // Skip global error handler if mutation opts out via meta
+      if (mutation.options.meta?.skipGlobalErrorHandler) return;
+      showErrorToast(error);
+    },
+  }),
 });
