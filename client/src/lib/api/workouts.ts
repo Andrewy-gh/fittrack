@@ -82,9 +82,10 @@ export function useUpdateWorkoutMutation() {
 
 // MARK: Delete
 // Delete mutation without automatic error toasts (for manual error handling)
-export function useDeleteWorkoutMutationSilent() {
+export function useDeleteWorkoutMutation() {
   return useMutation({
     ...deleteWorkoutsByIdMutation(),
+    meta: { skipGlobalErrorHandler: true },
     onSuccess: (_, { path: { id } }) => {
       queryClient.invalidateQueries({
         queryKey: getWorkoutsQueryKey(),
@@ -95,9 +96,6 @@ export function useDeleteWorkoutMutationSilent() {
       queryClient.invalidateQueries({
         queryKey: getWorkoutsContributionDataQueryKey(),
       });
-    },
-    onError: () => {
-      // Suppress automatic error toasts - caller handles errors manually
     },
   });
 }

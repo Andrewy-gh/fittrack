@@ -180,15 +180,13 @@ export const deleteDemoExercisesByIdMutation = (): UseMutationOptions<
 });
 
 // Delete mutation without automatic error toasts (for manual error handling)
-export const deleteDemoExercisesByIdMutationSilent = (): UseMutationOptions<
+export const deleteDemoExercisesByIdMutationWithMeta = (): UseMutationOptions<
   void,
   Error,
   { path: { id: number } }
 > => ({
   ...deleteDemoExercisesByIdMutation(),
-  onError: () => {
-    // Suppress automatic error toasts - caller handles errors manually
-  },
+  meta: { skipGlobalErrorHandler: true },
 });
 
 // ===========================
@@ -259,13 +257,11 @@ export const deleteDemoWorkoutsByIdMutation = (): UseMutationOptions<
 });
 
 // Delete mutation without automatic error toasts (for manual error handling)
-export const deleteDemoWorkoutsByIdMutationSilent = (): UseMutationOptions<
+export const deleteDemoWorkoutsByIdMutationWithMeta = (): UseMutationOptions<
   void,
   Error,
   { path: { id: number } }
 > => ({
   ...deleteDemoWorkoutsByIdMutation(),
-  onError: () => {
-    // Suppress automatic error toasts - caller handles errors manually
-  },
+  meta: { skipGlobalErrorHandler: true },
 });

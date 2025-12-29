@@ -11,8 +11,8 @@ import {
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
-import { useDeleteWorkoutMutationSilent } from '@/lib/api/workouts';
-import { deleteDemoWorkoutsByIdMutationSilent } from '@/lib/demo-data/query-options';
+import { useDeleteWorkoutMutation } from '@/lib/api/workouts';
+import { deleteDemoWorkoutsByIdMutationWithMeta } from '@/lib/demo-data/query-options';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
 
@@ -31,9 +31,9 @@ export function DeleteDialog({
   const router = useRouter();
   const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
 
-  const authDeleteMutation = useDeleteWorkoutMutationSilent();
+  const authDeleteMutation = useDeleteWorkoutMutation();
   const demoDeleteMutation = useMutation(
-    deleteDemoWorkoutsByIdMutationSilent()
+    deleteDemoWorkoutsByIdMutationWithMeta()
   );
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 

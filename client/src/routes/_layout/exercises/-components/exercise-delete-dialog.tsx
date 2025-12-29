@@ -11,8 +11,8 @@ import {
 import { useState } from 'react';
 import { useRouter, useRouteContext } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
-import { useDeleteExerciseMutationSilent } from '@/lib/api/exercises';
-import { deleteDemoExercisesByIdMutationSilent } from '@/lib/demo-data/query-options';
+import { useDeleteExerciseMutation } from '@/lib/api/exercises';
+import { deleteDemoExercisesByIdMutationWithMeta } from '@/lib/demo-data/query-options';
 import { showErrorToast } from '@/lib/errors';
 
 interface ExerciseDeleteDialogProps {
@@ -30,8 +30,8 @@ export function ExerciseDeleteDialog({
   const router = useRouter();
   const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
-  const authDeleteMutation = useDeleteExerciseMutationSilent();
-  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutationSilent());
+  const authDeleteMutation = useDeleteExerciseMutation();
+  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutationWithMeta());
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
