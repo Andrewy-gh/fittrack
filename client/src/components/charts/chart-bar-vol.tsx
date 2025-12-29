@@ -62,7 +62,7 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
               // Margin around the chart (not padding, affects axis labels and legends)
               margin={{
                 top: 5,
-                right: 30, // Extra space for right-side labels
+                right: 60, // Extra space for right-side labels and brush handle
                 // left: 20, // Space for Y-axis labels
                 bottom: 5, // Space for X-axis labels
               }}
@@ -141,7 +141,7 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
               {/* Brush/Slider for navigating the chart */}
               <Brush
                 dataKey="date" // Key to brush on
-                height={30} // Height of the brush area
+                height={40} // Height of the brush area (increased for better mobile UX)
                 stroke="var(--color-foreground)" // Color of the brush handles
                 fill="var(--color-background)" // Background of the brush area
                 // Format dates in the brush
