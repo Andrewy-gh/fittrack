@@ -247,8 +247,8 @@ describe('FullScreenErrorFallback', () => {
 
 1. [x] Task 1 + Task 3 (QueryClient refactor + remove interceptor toast)
 2. [x] Task 2 (Update silent mutations to use meta pattern)
-3. [ ] Task 4 (Fix add-set-dialog validation)
-4. [ ] Task 5 + Task 6 + Task 7 (Unit tests - parallel)
+3. [x] Task 4 (Fix add-set-dialog validation)
+4. [x] Task 5 + Task 6 + Task 7 (Unit tests - parallel)
 5. [ ] Task 8 (Delete docs file)
 6. [ ] Task 9 (Update CLAUDE.local.md)
 7. [ ] Run tests, verify build

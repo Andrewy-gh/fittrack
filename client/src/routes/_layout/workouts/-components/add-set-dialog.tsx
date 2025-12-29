@@ -12,7 +12,7 @@ import {
   ErrorBoundary,
   InlineErrorFallback,
 } from '@/components/error-boundary';
-import { compose, required, minValue, maxValue } from '@/lib/validation';
+import { compose, minValue, maxValue } from '@/lib/validation';
 
 type AddSetDialogProps = {
   exerciseIndex: number;
@@ -62,9 +62,8 @@ export const AddSetDialog = withForm({
             <form.AppField
               name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
               validators={{
-                onBlur: ({ value }) => {
+                onChange: ({ value }) => {
                   const error = compose(
-                    required,
                     minValue(1),
                     maxValue(1000)
                   )(value, 'Reps');
@@ -95,18 +94,13 @@ export const AddSetDialog = withForm({
             </ErrorBoundary>
             <form.Subscribe
               selector={(state) => {
-                const repsFieldState =
-                  state.fieldMeta[
-                    `exercises[${exerciseIndex}].sets[${setIndex}].reps`
-                  ];
                 return {
                   canSubmit: state.canSubmit,
                   isValid: state.isValid,
-                  repsIsTouched: repsFieldState?.isTouched || false,
                 };
               }}
-              children={({ canSubmit, isValid, repsIsTouched }) => {
-                const isDisabled = !canSubmit || !isValid || !repsIsTouched;
+              children={({ canSubmit, isValid }) => {
+                const isDisabled = !canSubmit || !isValid;
                 return (
                   <Button
                     className="w-full mt-6 text-base font-semibold rounded-lg"
