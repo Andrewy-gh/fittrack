@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useSuspenseQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { Clock, Plus } from 'lucide-react';
+import { Clock, Plus, Activity } from 'lucide-react';
 import {
   workoutsQueryOptions,
   contributionDataQueryOptions,
@@ -78,10 +78,6 @@ function RouteComponent() {
   // Check for workout in progress (pass user.id if authenticated, undefined for demo)
   const hasWorkoutInProgress = loadFromLocalStorage(user?.id) !== null;
 
-  // Determine default open state for contribution graph (desktop vs mobile)
-  const defaultContributionGraphOpen =
-    typeof window !== 'undefined' && window.innerWidth >= 768;
-
   const newWorkoutLink = '/workouts/new';
 
   // Filter state
@@ -113,17 +109,35 @@ function RouteComponent() {
           </Button>
         </div>
 
-        {/* Summary Cards */}
-        <WorkoutSummaryCards workouts={workouts} />
+        {/* Activity Accordion */}
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          defaultValue="activity"
+        >
+          <AccordionItem value="activity" className="border-none">
+            <AccordionTrigger className="flex items-center gap-2 hover:no-underline py-2 px-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                <span className="font-semibold text-sm">Activity</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-4 pb-2 px-4 space-y-4">
+              {/* Summary Cards */}
+              <WorkoutSummaryCards workouts={workouts} />
 
-        {/* Contribution Graph (authenticated users only) */}
-        {user && contributionQuery.isError && <ContributionGraphError />}
-        {user && contributionQuery.isSuccess && (
-          <WorkoutContributionGraph
-            data={contributionQuery.data}
-            defaultOpen={defaultContributionGraphOpen}
-          />
-        )}
+              {/* Contribution Graph (authenticated users only) */}
+              {user && contributionQuery.isError && <ContributionGraphError />}
+              {user && contributionQuery.isSuccess && (
+                <WorkoutContributionGraph
+                  data={contributionQuery.data}
+                  showHeader={false}
+                />
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         {/* Filtering and Sorting (Now below activity) */}
         <Accordion type="single" collapsible className="w-full">
