@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { mockVolumeData, type RangeType } from './data/mockData';
+import { mockVolumeData } from './data/mockData';
+import { RechartsDemo } from './components/RechartsDemo';
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -81,22 +82,8 @@ function App() {
         </p>
 
         <div className="chart-grid">
-          {/* Placeholder for chart demos */}
-          <div className="card">
-            <h3 className="card-title">1. Recharts + Custom Buttons</h3>
-            <p className="card-description">Implementation coming soon...</p>
-            <div style={{
-              height: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--color-muted)',
-              borderRadius: 'var(--radius-md)',
-              marginTop: '1rem'
-            }}>
-              <span style={{ color: 'var(--color-muted-foreground)' }}>Chart placeholder</span>
-            </div>
-          </div>
+          {/* Recharts Demo */}
+          <RechartsDemo />
 
           <div className="card">
             <h3 className="card-title">2. Tremor BarChart</h3>
