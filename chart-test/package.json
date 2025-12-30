@@ -12,6 +12,7 @@
   "dependencies": {
     "@nivo/bar": "^0.99.0",
     "@nivo/core": "^0.99.0",
+    "@tailwindcss/vite": "^4.1.18",
     "@tremor/react": "^3.18.7",
     "apexcharts": "^5.3.6",
     "chart.js": "^4.5.1",
@@ -20,7 +21,8 @@
     "react-apexcharts": "^1.9.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.0",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
