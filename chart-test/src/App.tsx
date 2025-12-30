@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { mockVolumeData } from './data/mockData';
 import { RechartsDemo } from './components/RechartsDemo';
+import { TremorDemo } from './components/TremorDemo';
+import { NivoDemo } from './components/NivoDemo';
+import { ChartJsDemo } from './components/ChartJsDemo';
+import { ApexDemo } from './components/ApexDemo';
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -82,72 +86,11 @@ function App() {
         </p>
 
         <div className="chart-grid">
-          {/* Recharts Demo */}
           <RechartsDemo />
-
-          <div className="card">
-            <h3 className="card-title">2. Tremor BarChart</h3>
-            <p className="card-description">Implementation coming soon...</p>
-            <div style={{
-              height: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--color-muted)',
-              borderRadius: 'var(--radius-md)',
-              marginTop: '1rem'
-            }}>
-              <span style={{ color: 'var(--color-muted-foreground)' }}>Chart placeholder</span>
-            </div>
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">3. Nivo ResponsiveBar</h3>
-            <p className="card-description">Implementation coming soon...</p>
-            <div style={{
-              height: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--color-muted)',
-              borderRadius: 'var(--radius-md)',
-              marginTop: '1rem'
-            }}>
-              <span style={{ color: 'var(--color-muted-foreground)' }}>Chart placeholder</span>
-            </div>
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">4. Chart.js</h3>
-            <p className="card-description">Implementation coming soon...</p>
-            <div style={{
-              height: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--color-muted)',
-              borderRadius: 'var(--radius-md)',
-              marginTop: '1rem'
-            }}>
-              <span style={{ color: 'var(--color-muted-foreground)' }}>Chart placeholder</span>
-            </div>
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">5. ApexCharts</h3>
-            <p className="card-description">Implementation coming soon...</p>
-            <div style={{
-              height: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'var(--color-muted)',
-              borderRadius: 'var(--radius-md)',
-              marginTop: '1rem'
-            }}>
-              <span style={{ color: 'var(--color-muted-foreground)' }}>Chart placeholder</span>
-            </div>
-          </div>
+          <TremorDemo />
+          <NivoDemo />
+          <ChartJsDemo />
+          <ApexDemo />
         </div>
       </section>
 
