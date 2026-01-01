@@ -12,7 +12,7 @@ import { Bar } from 'react-chartjs-2';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
-import { mockVolumeData, filterDataByRange, type RangeType } from '@/data/mockData';
+import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
 
 // Register Chart.js components
 ChartJS.register(
@@ -37,7 +37,7 @@ export function ChartJsDemo() {
   };
 
   const chartData = {
-    labels: filteredData.map((d) => format(parseISO(d.date), 'MMM d')),
+    labels: filteredData.map((d) => format(parseISO(d.date), getDateFormat(selectedRange))),
     datasets: [
       {
         label: 'Volume',
@@ -130,7 +130,7 @@ export function ChartJsDemo() {
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">
-          <span>Showing {filteredData.length} days</span>
+          <span>{getRangeLabel(selectedRange, filteredData.length)}</span>
           <span>
             Avg:{' '}
             {filteredData.length > 0

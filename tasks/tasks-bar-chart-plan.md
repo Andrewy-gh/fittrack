@@ -33,18 +33,18 @@
 ## Implementation Tasks
 
 ### 1. Bug Fixes
-- [ ] Fix Tremor color theming issue
-- [ ] Debug Nivo rendering (check data format, container height, theme conflicts)
+- [x] Fix Tremor color theming issue
+- [x] Debug Nivo rendering (check data format, container height, theme conflicts)
 
 ### 2. Data Aggregation Logic
-- [ ] Add `aggregateToWeekly()` util (Monday start, average volumes)
-- [ ] Add `aggregateToMonthly()` util (30-day rolling from current date, average volumes)
-- [ ] Update `filterDataByRange()`:
+- [x] Add `aggregateToWeekly()` util (Monday start, average volumes)
+- [x] Add `aggregateToMonthly()` util (30-day rolling from current date, average volumes)
+- [x] Update `filterDataByRange()`:
   - W: Last 7 daily bars
   - M: Last 30 daily bars (test, reduce to 20-25 if condensed)
   - 6M: Last ~26 weekly bars
   - Y: Last ~12 monthly bars
-- [ ] Update all demos to use new aggregation
+- [x] Update all demos to use new aggregation
 
 ### 3. Horizontal Scroll
 - [ ] Research production data implications (1yr daily data ~365 points, aggregated ~26-52 points)

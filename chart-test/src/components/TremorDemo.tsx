@@ -3,7 +3,7 @@ import { BarChart } from '@tremor/react';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
-import { mockVolumeData, filterDataByRange, type RangeType } from '@/data/mockData';
+import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
 
 export function TremorDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
@@ -22,7 +22,7 @@ export function TremorDemo() {
 
   // Transform data for Tremor (needs string values for display)
   const tremorData = filteredData.map((d) => ({
-    date: format(parseISO(d.date), 'MMM d'),
+    date: format(parseISO(d.date), getDateFormat(selectedRange)),
     Volume: d.volume,
   }));
 
@@ -87,7 +87,7 @@ export function TremorDemo() {
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">
-          <span>Showing {filteredData.length} days</span>
+          <span>{getRangeLabel(selectedRange, filteredData.length)}</span>
           <span>
             Avg:{' '}
             {filteredData.length > 0
