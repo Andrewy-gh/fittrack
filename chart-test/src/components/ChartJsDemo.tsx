@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -7,6 +7,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  TooltipPositionerFunction,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { format, parseISO } from 'date-fns';
@@ -23,6 +24,31 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
+// Custom tooltip positioner - anchors above bar, fixed Y position
+const customPositioner: TooltipPositionerFunction<'bar'> = function(items) {
+  if (!items.length) {
+    return { x: 0, y: 0 };
+  }
+
+  const pos = Tooltip.positioners.average.call(this, items);
+  if (pos === false) {
+    return { x: 0, y: 0 };
+  }
+
+  // Fixed Y position (top of chart area, under buttons)
+  const fixedY = this.chart.chartArea.top;
+
+  return {
+    x: pos.x,
+    y: fixedY,
+    xAlign: 'center',
+    yAlign: 'bottom',
+  };
+};
+
+// Register custom positioner
+Tooltip.positioners.fixedTop = customPositioner;
 
 export function ChartJsDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
@@ -57,6 +83,7 @@ export function ChartJsDemo() {
         display: false,
       },
       tooltip: {
+        position: 'fixedTop' as any, // Custom positioner
         backgroundColor: getComputedColor('--color-background'),
         titleColor: getComputedColor('--color-foreground'),
         bodyColor: getComputedColor('--color-foreground'),

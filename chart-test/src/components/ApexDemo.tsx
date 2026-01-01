@@ -96,6 +96,12 @@ export function ApexDemo() {
       style: {
         fontSize: '14px',
       },
+      fixed: {
+        enabled: true,
+        position: 'topLeft',
+        offsetX: 120,
+        offsetY: 0,
+      },
       custom: function ({ series, seriesIndex, dataPointIndex, w }) {
         const value = series[seriesIndex][dataPointIndex];
         const category = w.globals.labels[dataPointIndex];

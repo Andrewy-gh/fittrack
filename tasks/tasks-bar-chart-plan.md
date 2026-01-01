@@ -56,9 +56,9 @@
 - [x] Document limitations per library
 
 ### 4. Tooltip Positioning
-- [ ] Research tooltip positioning APIs per library
-- [ ] Implement fixed position under buttons if possible
-- [ ] Document limitations per library
+- [x] Research tooltip positioning APIs per library
+- [x] Implement fixed position under buttons if possible
+- [x] Document limitations per library (see `tooltip-positioning-research.md`)
 
 ### 5. UI Updates
 - [x] Remove 'D' from RangeType type

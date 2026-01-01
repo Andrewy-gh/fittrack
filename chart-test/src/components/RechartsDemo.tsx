@@ -74,6 +74,7 @@ export function RechartsDemo() {
 
               <Tooltip
                 cursor={false}
+                position={{ y: 0 }}
                 contentStyle={{
                   backgroundColor: 'var(--color-background)',
                   border: '1px solid var(--color-border)',
