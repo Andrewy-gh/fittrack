@@ -11,6 +11,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
+import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
 
 export function RechartsDemo() {
@@ -31,15 +32,15 @@ export function RechartsDemo() {
           />
         </div>
 
-        {/* Chart */}
-        <div className="h-80 w-full">
+        {/* Chart with Horizontal Scroll */}
+        <ScrollableChart dataLength={filteredData.length} barWidth={50}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={filteredData}
               margin={{
                 top: 5,
                 right: 30,
-                left: 0,
+                left: 60,
                 bottom: 5,
               }}
             >
@@ -102,7 +103,7 @@ export function RechartsDemo() {
               />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ScrollableChart>
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">

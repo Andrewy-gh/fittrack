@@ -3,6 +3,7 @@ import { ResponsiveBar } from '@nivo/bar';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
+import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
 
 export function NivoDemo() {
@@ -40,8 +41,8 @@ export function NivoDemo() {
           />
         </div>
 
-        {/* Chart */}
-        <div className="h-80 w-full">
+        {/* Chart with Horizontal Scroll */}
+        <ScrollableChart dataLength={filteredData.length} barWidth={50}>
           <ResponsiveBar
             data={nivoData}
             keys={['volume']}
@@ -152,7 +153,7 @@ export function NivoDemo() {
             role="application"
             ariaLabel="Nivo bar chart demo"
           />
-        </div>
+        </ScrollableChart>
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">

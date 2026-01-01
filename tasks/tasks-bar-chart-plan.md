@@ -47,13 +47,13 @@
 - [x] Update all demos to use new aggregation
 
 ### 3. Horizontal Scroll
-- [ ] Research production data implications (1yr daily data ~365 points, aggregated ~26-52 points)
-- [ ] Research scroll APIs per library
-- [ ] Implement scroll with all data loaded upfront
-- [ ] Set initial scroll position to right (most recent)
-- [ ] Add scroll buttons for non-touch (left/right arrows)
-- [ ] Handle edge case: scroll to data start
-- [ ] Document limitations per library
+- [x] Research production data implications (1yr daily data ~365 points, aggregated ~26-52 points)
+- [x] Research scroll APIs per library
+- [x] Implement scroll with all data loaded upfront
+- [x] Set initial scroll position to right (most recent)
+- [x] Add scroll buttons for non-touch (left/right arrows)
+- [x] Handle edge case: scroll to data start
+- [x] Document limitations per library
 
 ### 4. Tooltip Positioning
 - [ ] Research tooltip positioning APIs per library
