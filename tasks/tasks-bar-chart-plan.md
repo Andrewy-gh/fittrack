@@ -66,13 +66,21 @@
 - [x] Update ranges object in mockData.ts
 
 ### 6. Production Data Research
-- [ ] Calculate data payload sizes:
-  - Daily data (365 points): ~X KB JSON
-  - Weekly aggregated (52 points): ~X KB JSON
-  - Monthly aggregated (12 points): ~X KB JSON
-- [ ] Research bundle impact per library with full dataset
-- [ ] Test rendering performance with 365 bars (worst case M range)
-- [ ] Recommendation: Client-side vs server-side aggregation
+- [x] Calculate data payload sizes:
+  - Daily data (~249 points with rest days): 8.75 KB / 1.75 KB gzipped
+  - Weekly aggregated (~54 points): 1.90 KB / 0.38 KB gzipped
+  - Monthly aggregated (~12 points): 0.42 KB / 0.08 KB gzipped
+- [x] Research bundle impact per library with full dataset
+  - Chart.js: 70.6 KB gzipped (smallest)
+  - Recharts: 140.1 KB, Nivo: 140.9 KB, ApexCharts: 154.5 KB
+  - Tremor: 244.7 KB (includes date-fns, headlessui)
+- [x] Test rendering performance with 365 bars (worst case M range)
+  - All libraries handle aggregated data excellently
+  - Chart.js best for large datasets (canvas-based)
+- [x] Recommendation: **Client-side aggregation** (see `production-data-research.md`)
+  - Full year payload only 1.75 KB gzipped
+  - Instant range switching vs 200-500ms server RTT
+  - Simpler architecture, better UX
 
 ### 7. Documentation
 Create comparison matrix:
