@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ResponsiveBar } from '@nivo/bar';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
@@ -7,7 +7,18 @@ import { mockVolumeData, filterDataByRange, type RangeType } from '@/data/mockDa
 
 export function NivoDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const [primaryColor, setPrimaryColor] = useState('#ea580c');
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
+
+  // Get the computed color value from CSS variable
+  useEffect(() => {
+    const computedColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-primary')
+      .trim();
+    if (computedColor) {
+      setPrimaryColor(computedColor);
+    }
+  }, []);
 
   // Transform data for Nivo
   const nivoData = filteredData.map((d) => ({
@@ -39,7 +50,7 @@ export function NivoDemo() {
             padding={0.3}
             valueScale={{ type: 'linear' }}
             indexScale={{ type: 'band', round: true }}
-            colors={['var(--color-primary)']}
+            colors={[primaryColor]}
             borderRadius={4}
             borderColor={{
               from: 'color',
