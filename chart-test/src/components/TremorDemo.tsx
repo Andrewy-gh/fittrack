@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart } from '@tremor/react';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
@@ -7,7 +7,18 @@ import { mockVolumeData, filterDataByRange, type RangeType } from '@/data/mockDa
 
 export function TremorDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const [primaryColor, setPrimaryColor] = useState('#ea580c');
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
+
+  // Get the computed color value from CSS variable
+  useEffect(() => {
+    const computedColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-primary')
+      .trim();
+    if (computedColor) {
+      setPrimaryColor(computedColor);
+    }
+  }, []);
 
   // Transform data for Tremor (needs string values for display)
   const tremorData = filteredData.map((d) => ({
@@ -35,7 +46,7 @@ export function TremorDemo() {
             data={tremorData}
             index="date"
             categories={['Volume']}
-            colors={['var(--color-primary)']}
+            colors={[primaryColor]}
             valueFormatter={(value) => `${value.toLocaleString()} kg`}
             showLegend={false}
             showGridLines={true}
