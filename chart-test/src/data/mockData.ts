@@ -80,10 +80,9 @@ export const sampleVolumeData: VolumeData[] = [
 /**
  * Range types matching the Apple Health-style segmented control
  */
-export type RangeType = 'D' | 'W' | 'M' | '6M' | 'Y';
+export type RangeType = 'W' | 'M' | '6M' | 'Y';
 
 export const ranges: Record<RangeType, number> = {
-  D: 1,     // 1 day
   W: 7,     // 7 days
   M: 30,    // 30 days
   '6M': 180, // 180 days
@@ -107,10 +106,6 @@ export function filterDataByDays(data: VolumeData[], days: number): VolumeData[]
  */
 export function filterDataByRange(data: VolumeData[], range: RangeType): VolumeData[] {
   switch (range) {
-    case 'D':
-      // Single day - last day only
-      return filterDataByDays(data, 1);
-
     case 'W':
       // Week - last 7 daily bars
       return filterDataByDays(data, 7);
@@ -223,8 +218,6 @@ export function aggregateToMonthly(data: VolumeData[]): VolumeData[] {
  */
 export function getRangeLabel(range: RangeType, count: number): string {
   switch (range) {
-    case 'D':
-      return `Showing ${count} day${count !== 1 ? 's' : ''}`;
     case 'W':
       return `Showing ${count} day${count !== 1 ? 's' : ''}`;
     case 'M':
@@ -243,8 +236,6 @@ export function getRangeLabel(range: RangeType, count: number): string {
  */
 export function getDateFormat(range: RangeType): string {
   switch (range) {
-    case 'D':
-      return 'PPP'; // Full date: January 1, 2024
     case 'W':
     case 'M':
       return 'MMM d'; // Short date: Jan 1

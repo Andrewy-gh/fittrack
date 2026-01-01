@@ -6,7 +6,6 @@ interface RangeSelectorProps {
 }
 
 const ranges: Array<{ value: RangeType; label: string }> = [
-  { value: 'D', label: 'D' },
   { value: 'W', label: 'W' },
   { value: 'M', label: 'M' },
   { value: '6M', label: '6M' },
