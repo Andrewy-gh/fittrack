@@ -3,7 +3,7 @@ import { ResponsiveBar } from '@nivo/bar';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
-import { mockVolumeData, filterDataByRange, type RangeType } from '@/data/mockData';
+import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
 
 export function NivoDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
@@ -22,7 +22,7 @@ export function NivoDemo() {
 
   // Transform data for Nivo
   const nivoData = filteredData.map((d) => ({
-    date: format(parseISO(d.date), 'MMM d'),
+    date: format(parseISO(d.date), getDateFormat(selectedRange)),
     volume: d.volume,
   }));
 
@@ -156,7 +156,7 @@ export function NivoDemo() {
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">
-          <span>Showing {filteredData.length} days</span>
+          <span>{getRangeLabel(selectedRange, filteredData.length)}</span>
           <span>
             Avg:{' '}
             {filteredData.length > 0

@@ -11,7 +11,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
-import { mockVolumeData, filterDataByRange, type RangeType } from '@/data/mockData';
+import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
 
 export function RechartsDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
@@ -54,7 +54,7 @@ export function RechartsDemo() {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(str) => format(parseISO(str), 'MMM d')}
+                tickFormatter={(str) => format(parseISO(str), getDateFormat(selectedRange))}
                 tick={{
                   fill: 'var(--color-foreground)',
                 }}
@@ -89,7 +89,10 @@ export function RechartsDemo() {
                   fontSize: '0.875rem',
                   marginBottom: '0.25rem',
                 }}
-                labelFormatter={(label) => format(parseISO(label as string), 'PPP')}
+                labelFormatter={(label) => {
+                  const dateFormat = selectedRange === 'Y' ? 'MMM yyyy' : 'PPP';
+                  return format(parseISO(label as string), dateFormat);
+                }}
               />
 
               <Bar
@@ -103,7 +106,7 @@ export function RechartsDemo() {
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">
-          <span>Showing {filteredData.length} days</span>
+          <span>{getRangeLabel(selectedRange, filteredData.length)}</span>
           <span>
             Avg:{' '}
             {filteredData.length > 0
