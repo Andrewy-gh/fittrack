@@ -83,13 +83,14 @@
   - Simpler architecture, better UX
 
 ### 7. Documentation
-Create comparison matrix:
-- Horizontal scroll: Supported/Partial/No
-- Fixed tooltip position: Supported/No
-- Color theming: Works/Issues
-- Mobile UX: Excellent/Good/Fair
-- Data loading performance: Excellent/Good/Fair
-- Recommendation: Keep/Consider/Reject
+- [x] Create comparison matrix (see `library-comparison-matrix.md`)
+- [x] Horizontal scroll: All ✅ except ApexCharts (⚠️ conflicts with built-in zoom)
+- [x] Fixed tooltip position: Chart.js only ✅, others ❌ or ⚠️
+- [x] Color theming: All ✅ (Tremor needs useEffect)
+- [x] Mobile UX: Chart.js & Nivo ⭐ Excellent, others ✅ Good
+- [x] Bundle size: Chart.js ⭐ 70.6KB, others 140-245KB
+- [x] Performance: Chart.js ⭐ Excellent (canvas), others ✅ Good (SVG)
+- [x] **Final Recommendation:** Chart.js (custom tooltips, smallest, fastest)
 
 ## Open Questions
 None currently.
