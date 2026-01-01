@@ -61,9 +61,9 @@
 - [ ] Document limitations per library
 
 ### 5. UI Updates
-- [ ] Remove 'D' from RangeType type
-- [ ] Update RangeSelector component (W/M/6M/Y only)
-- [ ] Update ranges object in mockData.ts
+- [x] Remove 'D' from RangeType type
+- [x] Update RangeSelector component (W/M/6M/Y only)
+- [x] Update ranges object in mockData.ts
 
 ### 6. Production Data Research
 - [ ] Calculate data payload sizes:
