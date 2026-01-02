@@ -1,4 +1,6 @@
 import { type RangeType } from '@/data/mockData';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 interface RangeSelectorProps {
   selectedRange: RangeType;
@@ -13,14 +15,18 @@ const ranges: Array<{ value: RangeType; label: string }> = [
 ];
 
 export function RangeSelector({ selectedRange, onRangeChange }: RangeSelectorProps) {
+  const breakpoint = useBreakpoint();
+  const containerClasses = getResponsiveValue(responsiveConfig.containerGap, breakpoint);
+  const buttonPadding = getResponsiveValue(responsiveConfig.buttonPadding, breakpoint);
+
   return (
-    <div className="inline-flex bg-[var(--color-secondary)] rounded-[var(--radius-md)] p-1 gap-1">
+    <div className={`inline-flex bg-[var(--color-secondary)] rounded-[var(--radius-md)] ${containerClasses}`}>
       {ranges.map(({ value, label }) => (
         <button
           key={value}
           onClick={() => onRangeChange(value)}
           className={`
-            px-4 py-2 rounded-[var(--radius-sm)] border-0 text-sm font-medium
+            ${buttonPadding} rounded-[var(--radius-sm)] border-0 font-medium
             transition-all duration-200 ease-in-out cursor-pointer
             ${
               selectedRange === value
