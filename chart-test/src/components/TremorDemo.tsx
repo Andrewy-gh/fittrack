@@ -5,10 +5,13 @@ import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
 import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 export function TremorDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
   const [primaryColor, setPrimaryColor] = useState('#ea580c');
+  const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
 
   // Get the computed color value from CSS variable
@@ -42,7 +45,10 @@ export function TremorDemo() {
         </div>
 
         {/* Chart with Horizontal Scroll */}
-        <ScrollableChart dataLength={filteredData.length} barWidth={50}>
+        <ScrollableChart
+          dataLength={filteredData.length}
+          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        >
           <BarChart
             data={tremorData}
             index="date"
@@ -53,7 +59,7 @@ export function TremorDemo() {
             showGridLines={true}
             showXAxis={true}
             showYAxis={true}
-            yAxisWidth={48}
+            yAxisWidth={getResponsiveValue(responsiveConfig.yAxisWidth, breakpoint)}
             className="h-80"
             customTooltip={(props) => {
               if (!props.active || !props.payload || props.payload.length === 0) {

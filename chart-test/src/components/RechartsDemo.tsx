@@ -13,9 +13,12 @@ import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
 import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 export function RechartsDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
 
   return (
@@ -33,16 +36,14 @@ export function RechartsDemo() {
         </div>
 
         {/* Chart with Horizontal Scroll */}
-        <ScrollableChart dataLength={filteredData.length} barWidth={50}>
+        <ScrollableChart
+          dataLength={filteredData.length}
+          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={filteredData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 60,
-                bottom: 5,
-              }}
+              margin={getResponsiveValue(responsiveConfig.chartMargins, breakpoint)}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -52,7 +53,7 @@ export function RechartsDemo() {
               <XAxis
                 dataKey="date"
                 stroke="var(--color-muted-foreground)"
-                fontSize={12}
+                fontSize={getResponsiveValue(responsiveConfig.fontSize, breakpoint)}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(str) => format(parseISO(str), getDateFormat(selectedRange))}
@@ -63,7 +64,7 @@ export function RechartsDemo() {
 
               <YAxis
                 stroke="var(--color-muted-foreground)"
-                fontSize={12}
+                fontSize={getResponsiveValue(responsiveConfig.fontSize, breakpoint)}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `${value}`}

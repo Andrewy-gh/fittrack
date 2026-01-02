@@ -5,10 +5,13 @@ import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
 import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 export function NivoDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
   const [primaryColor, setPrimaryColor] = useState('#ea580c');
+  const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
 
   // Get the computed color value from CSS variable
@@ -42,12 +45,15 @@ export function NivoDemo() {
         </div>
 
         {/* Chart with Horizontal Scroll */}
-        <ScrollableChart dataLength={filteredData.length} barWidth={50}>
+        <ScrollableChart
+          dataLength={filteredData.length}
+          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        >
           <ResponsiveBar
             data={nivoData}
             keys={['volume']}
             indexBy="date"
-            margin={{ top: 20, right: 30, bottom: 50, left: 60 }}
+            margin={getResponsiveValue(responsiveConfig.nivoMargins, breakpoint)}
             padding={0.3}
             valueScale={{ type: 'linear' }}
             indexScale={{ type: 'band', round: true }}
@@ -61,14 +67,14 @@ export function NivoDemo() {
             axisRight={null}
             axisBottom={{
               tickSize: 0,
-              tickPadding: 5,
+              tickPadding: breakpoint === 'mobile' ? 3 : 5,
               tickRotation: 0,
               legendPosition: 'middle',
               legendOffset: 32,
             }}
             axisLeft={{
               tickSize: 0,
-              tickPadding: 5,
+              tickPadding: breakpoint === 'mobile' ? 3 : 5,
               tickRotation: 0,
               legendPosition: 'middle',
               legendOffset: -40,
@@ -86,7 +92,7 @@ export function NivoDemo() {
               background: 'transparent',
               text: {
                 fill: 'var(--color-foreground)',
-                fontSize: 12,
+                fontSize: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
               },
               axis: {
                 domain: {
