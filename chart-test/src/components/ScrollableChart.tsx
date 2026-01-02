@@ -1,9 +1,11 @@
 import { type ReactNode, useRef, useEffect, useState } from 'react';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 interface ScrollableChartProps {
   children: ReactNode;
   dataLength: number;
-  /** Minimum width per bar in pixels (default: 40) */
+  /** Minimum width per bar in pixels (default: responsive 30/40/50) */
   barWidth?: number;
   /** Container height in pixels (default: 320 for h-80) */
   height?: number;
@@ -18,15 +20,22 @@ interface ScrollableChartProps {
 export function ScrollableChart({
   children,
   dataLength,
-  barWidth = 40,
+  barWidth,
   height = 320
 }: ScrollableChartProps) {
+  const breakpoint = useBreakpoint();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  // Use responsive bar width if not explicitly provided
+  const effectiveBarWidth = barWidth ?? getResponsiveValue(responsiveConfig.barWidth, breakpoint);
+
   // Calculate minimum width needed to show all bars
-  const minChartWidth = dataLength * barWidth;
+  const minChartWidth = dataLength * effectiveBarWidth;
+
+  // Get responsive scroll button config
+  const buttonConfig = responsiveConfig.scrollButton[breakpoint];
 
   // Check scroll position and update button states
   const checkScrollPosition = () => {
@@ -88,12 +97,12 @@ export function ScrollableChart({
       {canScrollLeft && (
         <button
           onClick={() => scroll('left')}
-          className="absolute left-2 top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full p-2 shadow-lg hover:bg-[var(--color-muted)] transition-colors"
+          className={`absolute ${breakpoint === 'mobile' ? 'left-1' : 'left-2'} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
           aria-label="Scroll left"
         >
           <svg
-            width="16"
-            height="16"
+            width={buttonConfig.iconSize}
+            height={buttonConfig.iconSize}
             viewBox="0 0 16 16"
             fill="none"
             stroke="currentColor"
@@ -110,12 +119,12 @@ export function ScrollableChart({
       {canScrollRight && (
         <button
           onClick={() => scroll('right')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full p-2 shadow-lg hover:bg-[var(--color-muted)] transition-colors"
+          className={`absolute ${breakpoint === 'mobile' ? 'right-1' : 'right-2'} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
           aria-label="Scroll right"
         >
           <svg
-            width="16"
-            height="16"
+            width={buttonConfig.iconSize}
+            height={buttonConfig.iconSize}
             viewBox="0 0 16 16"
             fill="none"
             stroke="currentColor"
