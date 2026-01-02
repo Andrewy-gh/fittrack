@@ -13,7 +13,10 @@ import { Bar } from 'react-chartjs-2';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
+import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 // Register Chart.js components
 ChartJS.register(
@@ -52,6 +55,7 @@ Tooltip.positioners.fixedTop = customPositioner;
 
 export function ChartJsDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
 
   // Get CSS variable values
@@ -112,7 +116,7 @@ export function ChartJsDemo() {
         ticks: {
           color: getComputedColor('--color-foreground'),
           font: {
-            size: 12,
+            size: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
           },
         },
       },
@@ -129,7 +133,7 @@ export function ChartJsDemo() {
         ticks: {
           color: getComputedColor('--color-foreground'),
           font: {
-            size: 12,
+            size: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
           },
         },
       },
@@ -150,10 +154,13 @@ export function ChartJsDemo() {
           />
         </div>
 
-        {/* Chart */}
-        <div className="h-80 w-full">
+        {/* Chart with Horizontal Scroll */}
+        <ScrollableChart
+          dataLength={filteredData.length}
+          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        >
           <Bar data={chartData} options={options} />
-        </div>
+        </ScrollableChart>
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">

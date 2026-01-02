@@ -4,10 +4,14 @@ import type { ApexOptions } from 'apexcharts';
 import { format, parseISO } from 'date-fns';
 import { ChartWrapper } from './ChartWrapper';
 import { RangeSelector } from './RangeSelector';
+import { ScrollableChart } from './ScrollableChart';
 import { mockVolumeData, filterDataByRange, getRangeLabel, getDateFormat, type RangeType } from '@/data/mockData';
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { responsiveConfig, getResponsiveValue } from '../utils/responsiveConfig';
 
 export function ApexDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
 
   // Get CSS variable values
@@ -42,7 +46,7 @@ export function ApexDemo() {
       bar: {
         borderRadius: 4,
         borderRadiusApplication: 'end',
-        columnWidth: '70%',
+        columnWidth: breakpoint === 'mobile' ? '60%' : '70%',
       },
     },
     colors: [getComputedColor('--color-primary')],
@@ -71,7 +75,7 @@ export function ApexDemo() {
       labels: {
         style: {
           colors: getComputedColor('--color-foreground'),
-          fontSize: '12px',
+          fontSize: `${getResponsiveValue(responsiveConfig.fontSize, breakpoint)}px`,
         },
       },
       axisBorder: {
@@ -85,7 +89,7 @@ export function ApexDemo() {
       labels: {
         style: {
           colors: getComputedColor('--color-foreground'),
-          fontSize: '12px',
+          fontSize: `${getResponsiveValue(responsiveConfig.fontSize, breakpoint)}px`,
         },
         formatter: (value) => `${value.toLocaleString()}`,
       },
@@ -143,15 +147,18 @@ export function ApexDemo() {
           />
         </div>
 
-        {/* Chart */}
-        <div className="h-80 w-full">
+        {/* Chart with Horizontal Scroll */}
+        <ScrollableChart
+          dataLength={filteredData.length}
+          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        >
           <ReactApexChart
             options={options}
             series={series}
             type="bar"
             height={320}
           />
-        </div>
+        </ScrollableChart>
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">
