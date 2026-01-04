@@ -140,7 +140,7 @@ WHERE id = $1
   AND user_id = $2;
 
 -- name: GetRecentSetsForExercise :many
-SELECT 
+SELECT
     s.id AS set_id,
     w.id AS workout_id,
     w.date AS workout_date,
@@ -153,7 +153,7 @@ SELECT
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at DESC
+ORDER BY w.date DESC, s.set_order DESC
 LIMIT 3;
 
 -- name: ListWorkoutFocusValues :many
