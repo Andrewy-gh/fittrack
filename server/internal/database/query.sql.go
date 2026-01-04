@@ -169,6 +169,10 @@ type GetContributionDataRow struct {
 	Workouts []byte      `json:"workouts"`
 }
 
+// Security: This query is protected by both application-level filtering and RLS policies.
+// The WHERE clause filters by user_id (parameter $1), ensuring only the authenticated user's
+// workouts are retrieved. RLS policies on the workout table provide defense-in-depth.
+// The GROUP BY on date and JSON_AGG of workout metadata ensures no cross-user data leakage.
 func (q *Queries) GetContributionData(ctx context.Context, userID string) ([]GetContributionDataRow, error) {
 	rows, err := q.db.Query(ctx, getContributionData, userID)
 	if err != nil {
@@ -328,7 +332,7 @@ func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerci
 }
 
 const getRecentSetsForExercise = `-- name: GetRecentSetsForExercise :many
-SELECT 
+SELECT
     s.id AS set_id,
     w.id AS workout_id,
     w.date AS workout_date,
@@ -341,7 +345,7 @@ SELECT
 FROM "set" s
 JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
-ORDER BY w.date DESC, s.exercise_order, s.set_order, s.created_at DESC
+ORDER BY w.date DESC, s.set_order DESC
 LIMIT 3
 `
 
