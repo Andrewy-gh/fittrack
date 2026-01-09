@@ -10,9 +10,10 @@ export function WorkoutSummaryCards({ workouts }: WorkoutSummaryCardsProps) {
   const totalWorkouts = workouts.length;
   const thisWeekWorkouts = workouts.filter((workout) => {
     const workoutDate = new Date(workout.date);
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return workoutDate >= weekAgo;
+    const sixDaysAgo = new Date();
+    sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+    sixDaysAgo.setHours(0, 0, 0, 0);
+    return workoutDate >= sixDaysAgo;
   }).length;
 
   return (
