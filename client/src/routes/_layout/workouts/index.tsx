@@ -136,6 +136,13 @@ function RouteComponent() {
         <WorkoutSummaryCards workouts={workouts} />
 
         {/* Contribution Graph (authenticated users only) */}
+        {user && contributionQuery.isLoading && (
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Loading contribution graph...
+            </CardContent>
+          </Card>
+        )}
         {user && contributionQuery.isError && <ContributionGraphError />}
         {user && contributionQuery.isSuccess && (
           <WorkoutContributionGraph

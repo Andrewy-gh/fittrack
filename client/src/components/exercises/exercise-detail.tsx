@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Activity,
+  ArrowDownAz,
+  ArrowUpAz,
   BarChart3,
   Calendar,
   Edit,
@@ -13,6 +15,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Toggle } from '@/components/ui/toggle';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { formatDate, formatTime, formatWeight, sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
 import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
@@ -21,11 +41,23 @@ import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exerc
 export interface ExerciseDetailProps {
   exerciseSets: ExerciseExerciseWithSetsResponse[];
   exerciseId: number;
+  sortOrder: 'asc' | 'desc';
+  itemsPerPage: number;
+  page?: number;
+  onSortOrderChange: (sortOrder: 'asc' | 'desc') => void;
+  onItemsPerPageChange: (itemsPerPage: number) => void;
+  onPageChange: (page: number) => void;
 }
 
 export function ExerciseDetail({
   exerciseSets,
   exerciseId,
+  sortOrder,
+  itemsPerPage,
+  page,
+  onSortOrderChange,
+  onItemsPerPageChange,
+  onPageChange,
 }: ExerciseDetailProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -47,23 +79,54 @@ export function ExerciseDetail({
 
   const sortedExerciseSets = sortByExerciseAndSetOrder(exerciseSets);
 
-  // Group sets by workout while preserving order
-  const workoutGroups = sortedExerciseSets.reduce(
-    (acc, set) => {
-      if (!acc[set.workout_id]) {
-        acc[set.workout_id] = {
+  const workoutEntries = useMemo(() => {
+    const groups = new Map<
+      number,
+      { workoutId: number; date: string; notes: string | null; sets: typeof exerciseSets }
+    >();
+    const ordered: Array<{
+      workoutId: number;
+      date: string;
+      notes: string | null;
+      sets: typeof exerciseSets;
+    }> = [];
+
+    sortedExerciseSets.forEach((set) => {
+      let group = groups.get(set.workout_id);
+      if (!group) {
+        group = {
+          workoutId: set.workout_id,
           date: set.workout_date,
           notes: set.workout_notes || null,
           sets: [],
         };
+        groups.set(set.workout_id, group);
+        ordered.push(group);
       }
-      acc[set.workout_id].sets.push(set);
-      return acc;
-    },
-    {} as Record<
-      number,
-      { date: string; notes: string | null; sets: typeof exerciseSets }
-    >
+      group.sets.push(set);
+    });
+
+    return ordered;
+  }, [sortedExerciseSets]);
+
+  const sortedWorkouts = useMemo(() => {
+    const direction = sortOrder === 'asc' ? 1 : -1;
+    return [...workoutEntries].sort((a, b) => {
+      const aTime = new Date(a.date).getTime();
+      const bTime = new Date(b.date).getTime();
+      return (aTime - bTime) * direction;
+    });
+  }, [sortOrder, workoutEntries]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedWorkouts.length / itemsPerPage)
+  );
+  const currentPage = Math.min(Math.max(1, page ?? 1), totalPages);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const pagedWorkouts = sortedWorkouts.slice(
+    startIndex,
+    startIndex + itemsPerPage
   );
 
   const exerciseName = exerciseSets[0]?.exercise_name || 'Exercise';
@@ -175,7 +238,63 @@ export function ExerciseDetail({
         {/* MARK: Workouts */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Workouts</h2>
-          {Object.entries(workoutGroups).map(([workoutId, workout]) => {
+          <Card>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    Sort Order
+                  </Label>
+                  <Toggle
+                    pressed={sortOrder === 'asc'}
+                    onPressedChange={(pressed) =>
+                      onSortOrderChange(pressed ? 'asc' : 'desc')
+                    }
+                    aria-label="Toggle sort order"
+                    className="px-3 py-1.5 inline-flex items-center justify-start gap-2"
+                  >
+                    <span className="text-sm">
+                      {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                    </span>
+                    {sortOrder === 'asc' ? (
+                      <ArrowUpAz className="w-4 h-4 opacity-70" />
+                    ) : (
+                      <ArrowDownAz className="w-4 h-4 opacity-70" />
+                    )}
+                  </Toggle>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex items-center gap-2 justify-center px-1">
+            <Label htmlFor="items-per-page" className="text-xs whitespace-nowrap">
+              Show
+            </Label>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(value) => onItemsPerPageChange(Number(value))}
+            >
+              <SelectTrigger id="items-per-page" className="h-8 w-[70px]">
+                <SelectValue placeholder="10" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">per page</span>
+          </div>
+
+          {pagedWorkouts.length === 0 && (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                No workouts logged for this exercise yet.
+              </CardContent>
+            </Card>
+          )}
+          {pagedWorkouts.map((workout) => {
             const exerciseReps = workout.sets.reduce(
               (sum, set) => sum + set.reps,
               0
@@ -186,7 +305,7 @@ export function ExerciseDetail({
             );
             return (
               <Card
-                key={workoutId}
+                key={workout.workoutId}
                 className="border-0 shadow-sm backdrop-blur-sm"
               >
                 <CardHeader>
@@ -246,6 +365,39 @@ export function ExerciseDetail({
             );
           })}
         </div>
+
+        {totalPages > 1 && (
+          <Pagination className="flex justify-center py-2">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onPageChange(Math.max(1, currentPage - 1));
+                  }}
+                />
+              </PaginationItem>
+              <PaginationItem className="hidden sm:inline-block">
+                <PaginationLink href="#" isActive>
+                  {currentPage}
+                </PaginationLink>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onPageChange(Math.min(totalPages, currentPage + 1));
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
         {/* MARK: Dialogs */}
         <ExerciseEditDialog
           isOpen={isEditDialogOpen}
