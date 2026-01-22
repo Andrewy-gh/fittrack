@@ -31,7 +31,7 @@ After swagger documentation is updated:
 
 ```bash
 cd client
-npm run generate:api
+bun run openapi-ts
 ```
 
 This generates TypeScript client code and types from the updated swagger specification.
@@ -99,36 +99,36 @@ make docker-up     # Start PostgreSQL container
 
 #### Frontend (client/)
 ```bash
-npm run dev           # Development server
-npm run build         # Production build
-npm run generate:api  # Generate API client from OpenAPI spec
-npm run test          # Run tests
+bun run dev           # Development server
+bun run build         # Production build
+bun run openapi-ts    # Generate API client from OpenAPI spec
+bun run test          # Run tests
 ```
 
 ## Project Structure
 
 ```
-├── server/           # Go backend
-│   ├── cmd/api/     # API entry point
-│   ├── docs/        # Generated OpenAPI docs
-│   ├── internal/    # Internal packages
-│   └── migrations/  # Database migrations
-├── client/          # React frontend
-│   ├── src/
-│   │   └── generated/  # Generated API client
-│   └── package.json
-└── config/          # Shared configuration
+.
++-- server/           # Go backend
+|   +-- cmd/api/      # API entry point
+|   +-- docs/         # Generated OpenAPI docs
+|   +-- internal/     # Internal packages
+|   +-- migrations/   # Database migrations
++-- client/           # React frontend
+|   +-- src/
+|   |   +-- generated/  # Generated API client
+|   +-- package.json
++-- docs/             # Design and API notes
 ```
 
 ## Contributing
 
 1. Create a feature branch
 2. Make your changes following the type-safe workflow above
-3. Ensure tests pass: `make test` (backend) and `npm run test` (frontend)
+3. Ensure tests pass: `make test` (backend) and `bun run test` (frontend)
 4. Submit a pull request
 
 ## Documentation
 
 - [Backend Setup](server/README.md) - Detailed backend development guide
 - [Frontend Setup](client/README.md) - React/TanStack development guide
-- [Database RLS](server/docs/rls.md) - Row Level Security documentation
