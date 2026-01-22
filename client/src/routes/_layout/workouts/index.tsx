@@ -36,6 +36,12 @@ import { WorkoutContributionGraph } from "@/components/workouts/workout-contribu
 import { ContributionGraphError } from "@/components/workouts/contribution-graph-error";
 import { RecentWorkoutsCard } from "@/components/workouts/recent-workouts-card";
 import { WorkoutDistributionCard } from "@/components/workouts/workout-distribution-card";
+import {
+  filterWorkoutsByFocus,
+  getFocusAreas,
+  paginateWorkouts,
+  sortWorkoutsByCreatedAt,
+} from "@/lib/workouts-filters";
 
 const workoutsSearchSchema = z.object({
   focusArea: z.string().optional(),
@@ -91,47 +97,19 @@ function RouteComponent() {
     ? (itemsPerPage ?? 10)
     : 10;
 
-  const focusAreas = useMemo(
+  const focusAreas = useMemo(() => getFocusAreas(workouts), [workouts]);
+  const filteredWorkouts = useMemo(
+    () => filterWorkoutsByFocus(workouts, normalizedFocusArea),
+    [normalizedFocusArea, workouts],
+  );
+  const sortedWorkouts = useMemo(
+    () => sortWorkoutsByCreatedAt(filteredWorkouts, normalizedSortOrder),
+    [filteredWorkouts, normalizedSortOrder],
+  );
+  const { pagedWorkouts, totalPages, currentPage } = useMemo(
     () =>
-      Array.from(
-        new Set(
-          workouts
-            .map((workout) => workout.workout_focus)
-            .filter((focus): focus is string => !!focus),
-        ),
-      ).sort((a, b) => a.localeCompare(b)),
-    [workouts],
-  );
-
-  const filteredWorkouts = useMemo(() => {
-    if (normalizedFocusArea === "all") {
-      return workouts;
-    }
-
-    return workouts.filter(
-      (workout) => workout.workout_focus === normalizedFocusArea,
-    );
-  }, [normalizedFocusArea, workouts]);
-
-  const sortedWorkouts = useMemo(() => {
-    const sorted = [...filteredWorkouts].sort((a, b) => {
-      const aTime = new Date(a.created_at).getTime();
-      const bTime = new Date(b.created_at).getTime();
-      return normalizedSortOrder === "asc" ? aTime - bTime : bTime - aTime;
-    });
-
-    return sorted;
-  }, [filteredWorkouts, normalizedSortOrder]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(sortedWorkouts.length / normalizedItemsPerPage),
-  );
-  const currentPage = Math.min(Math.max(1, page ?? 1), totalPages);
-  const startIndex = (currentPage - 1) * normalizedItemsPerPage;
-  const pagedWorkouts = sortedWorkouts.slice(
-    startIndex,
-    startIndex + normalizedItemsPerPage,
+      paginateWorkouts(sortedWorkouts, normalizedItemsPerPage, page),
+    [sortedWorkouts, normalizedItemsPerPage, page],
   );
 
   return (
