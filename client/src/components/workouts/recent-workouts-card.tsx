@@ -53,23 +53,21 @@ export function RecentWorkoutsCard({
               workoutId: workout.id,
             }}
             data-testid="workout-card"
-            className="flex cursor-pointer items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-muted/50 px-3 py-2"
           >
-            <div className="flex items-center space-x-4">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
               {workout.workout_focus && (
-                <div className="flex items-center space-x-2">
-                  <Badge
-                    variant="outline"
-                    className="border-border bg-muted text-xs"
-                  >
-                    {workout.workout_focus.toUpperCase()}
-                  </Badge>
-                </div>
+                <Badge
+                  variant="outline"
+                  className="border-border bg-muted text-xs leading-snug whitespace-normal break-words text-left max-w-[220px] sm:max-w-[280px]"
+                >
+                  {workout.workout_focus.toUpperCase()}
+                </Badge>
               )}
-              <div className="flex items-center space-x-2 text-sm mt-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap mt-1">
                 <span>{formatDate(workout.date)}</span>
                 <span>•</span>
-                <span className="text-muted-foreground">
+                <span>
                   {formatTime(workout.created_at)}
                 </span>
               </div>
@@ -81,3 +79,4 @@ export function RecentWorkoutsCard({
     </Card>
   );
 }
+
