@@ -24,15 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { PaginationControl } from '@/components/ui/pagination-control';
 import { formatDate, formatTime, formatWeight, sortByExerciseAndSetOrder } from '@/lib/utils';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
 import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
@@ -366,38 +358,11 @@ export function ExerciseDetail({
           })}
         </div>
 
-        {totalPages > 1 && (
-          <Pagination className="flex justify-center py-2">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    onPageChange(Math.max(1, currentPage - 1));
-                  }}
-                />
-              </PaginationItem>
-              <PaginationItem className="hidden sm:inline-block">
-                <PaginationLink href="#" isActive>
-                  {currentPage}
-                </PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationEllipsis />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    onPageChange(Math.min(totalPages, currentPage + 1));
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+        <PaginationControl
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
         {/* MARK: Dialogs */}
         <ExerciseEditDialog
           isOpen={isEditDialogOpen}

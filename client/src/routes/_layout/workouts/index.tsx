@@ -14,15 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { PaginationControl } from "@/components/ui/pagination-control";
 import { ArrowDownAz, ArrowUpAz, Clock, Plus } from "lucide-react";
 import {
   workoutsQueryOptions,
@@ -254,48 +246,18 @@ function RouteComponent() {
           newWorkoutLink={newWorkoutLink}
         />
 
-        {totalPages > 1 && (
-          <Pagination className="flex justify-center py-2">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        page: Math.max(1, currentPage - 1),
-                      }),
-                    });
-                  }}
-                />
-              </PaginationItem>
-              <PaginationItem className="hidden sm:inline-block">
-                <PaginationLink href="#" isActive>
-                  {currentPage}
-                </PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationEllipsis />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        page: Math.min(totalPages, currentPage + 1),
-                      }),
-                    });
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+        <PaginationControl
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(nextPage) =>
+            navigate({
+              search: (prev) => ({
+                ...prev,
+                page: nextPage,
+              }),
+            })
+          }
+        />
 
         {/* Workout Distribution */}
         <WorkoutDistributionCard workouts={workouts} />
