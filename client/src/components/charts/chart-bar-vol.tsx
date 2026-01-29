@@ -1,8 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
-  Brush,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -11,21 +10,28 @@ import {
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
+import {
+  filterDataByRange,
+  getDateFormat,
+  getRangeLabel,
+  getResponsiveValue,
+  responsiveConfig,
+  useBreakpoint,
+  type RangeType,
+  type VolumeData,
+} from './chart-bar-vol.utils';
+import { RangeSelector, ScrollableChart } from './chart-bar-vol.components';
 
 interface ChartBarVolProps {
   data: Array<ExerciseExerciseWithSetsResponse>;
 }
 
 export function ChartBarVol({ data }: ChartBarVolProps) {
-  const dailyVolume = useMemo(() => {
+  const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const breakpoint = useBreakpoint();
+
+  const dailyVolume = useMemo<VolumeData[]>(() => {
     const volumeByDay: { [key: string]: number } = {};
 
     data.forEach((set) => {
@@ -44,117 +50,173 @@ export function ChartBarVol({ data }: ChartBarVolProps) {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [data]);
 
+  const filteredData = useMemo(
+    () => filterDataByRange(dailyVolume, selectedRange),
+    [dailyVolume, selectedRange]
+  );
+
+  const barWidth = getResponsiveValue(responsiveConfig.barWidth, breakpoint);
+  const yAxisWidth = getResponsiveValue(
+    responsiveConfig.yAxisWidth,
+    breakpoint
+  );
+  const chartMargins = getResponsiveValue(
+    responsiveConfig.chartMargins,
+    breakpoint
+  );
+  const axisMargins = { ...chartMargins, left: 0, right: 0 };
+  const plotMargins = { ...chartMargins, left: 0 };
+  const chartHeight = 320;
+
+  const averageVolume = filteredData.length > 0
+    ? Math.round(
+        filteredData.reduce((sum, entry) => sum + entry.volume, 0) /
+          filteredData.length
+      ).toLocaleString()
+    : '0';
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Daily Volume</CardTitle>
-        <CardDescription>Total training volume per day.</CardDescription>
-      </CardHeader>
-      <CardContent className="px-0">
-        {/* Responsive container ensures the chart fits its parent */}
-        <div className="h-80 w-full">
-          {/* ResponsiveContainer makes the chart responsive */}
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-xl font-semibold">Daily Volume</h2>
+        <p className="text-sm text-muted-foreground">
+          Total training volume per day.
+        </p>
+      </div>
+
+      <div className="flex justify-center">
+        <RangeSelector
+          selectedRange={selectedRange}
+          onRangeChange={setSelectedRange}
+        />
+      </div>
+
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `${yAxisWidth}px 1fr` }}
+      >
+        <div className="min-w-0" style={{ width: yAxisWidth, height: chartHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            {/* BarChart is the main container for bar charts */}
             <BarChart
-              // Data array containing objects with date and volume properties
-              data={dailyVolume}
-              // Margin around the chart (not padding, affects axis labels and legends)
-              margin={{
-                top: 5,
-                right: 60, // Extra space for right-side labels and brush handle
-                // left: 20, // Space for Y-axis labels
-                bottom: 5, // Space for X-axis labels
-              }}
+              data={filteredData}
+              margin={axisMargins}
             >
-              {/* Grid lines for better readability */}
-              <CartesianGrid
-                strokeDasharray="3 3" // Dashed lines
-                stroke="var(--color-muted)" // Muted color from theme
-              />
-
-              {/* X-Axis Configuration */}
               <XAxis
-                dataKey="date" // Key in data object for X values
-                stroke="hsl(var(--muted-foreground))" // Axis line color
-                fontSize={12}
-                tickLine={false} // Hide tick lines
-                axisLine={false} // Hide axis line
-                // Format date ticks (e.g., "Jul 8")
-                tickFormatter={(str) => format(parseISO(str), 'MMM d')}
-                // Style for axis ticks
-                tick={{
-                  fill: 'currentColor',
-                  // className: 'text-neutral-300',
-                }}
-              />
-
-              {/* Y-Axis Configuration */}
-              <YAxis
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
+                dataKey="date"
+                tick={false}
                 tickLine={false}
                 axisLine={false}
-                // Format number values (empty string means show as is)
+              />
+              <YAxis
+                dataKey="volume"
+                width={yAxisWidth}
+                stroke="var(--color-muted-foreground)"
+                fontSize={getResponsiveValue(
+                  responsiveConfig.fontSize,
+                  breakpoint
+                )}
+                tickLine={false}
+                axisLine={false}
                 tickFormatter={(value) => `${value}`}
                 tick={{
-                  fill: 'currentColor',
-                  // className: 'text-neutral-300',
+                  fill: 'var(--color-foreground)',
                 }}
+                domain={[0, 'dataMax']}
+                tickCount={5}
               />
-
-              {/* Tooltip Configuration */}
-              <Tooltip
-                cursor={false}
-                // Styling for the tooltip container
-                contentStyle={{
-                  backgroundColor: 'var(--color-background)', // Dark background
-                  border: 'var(--border-popover)', // Border color
-                  borderRadius: '0.5rem',
-                  // color: 'hsl(0 0% 98%)', // Light text
-                  boxShadow:
-                    '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-                }}
-                // Style for individual items in the tooltip
-                itemStyle={{
-                  color: 'var(--color-foreground)',
-                  fontSize: '0.875rem',
-                  textTransform: 'capitalize',
-                }}
-                // Style for the label at the top of the tooltip
-                labelStyle={{
-                  color: 'var(--color-foreground)',
-                  fontSize: '0.875rem',
-                  marginBottom: '0.25rem',
-                }}
-                // Format the date in the tooltip (e.g., "July 8, 2025")
-                labelFormatter={(label) => format(parseISO(label), 'PPP')}
-              />
-
-              {/* Bar Series */}
               <Bar
-                dataKey="volume" // Key in data object for Y values
-                fill="var(--color-primary)"
-                radius={4} // Rounded top corners
-              />
-
-              {/* Brush/Slider for navigating the chart */}
-              <Brush
-                dataKey="date" // Key to brush on
-                height={40} // Height of the brush area (increased for better mobile UX)
-                stroke="var(--color-foreground)" // Color of the brush handles
-                fill="var(--color-background)" // Background of the brush area
-                // Format dates in the brush
-                tickFormatter={(str) => format(parseISO(str), 'MMM d')}
-                role="slider"
-                className="text-xs"
-                // x={50} // move brush 50px from left edge
-                // width={380}
+                dataKey="volume"
+                fill="transparent"
+                stroke="transparent"
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="min-w-0">
+          <ScrollableChart
+            dataLength={filteredData.length}
+            barWidth={barWidth}
+            height={chartHeight}
+            resetKey={selectedRange}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={filteredData}
+                margin={plotMargins}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--color-muted)"
+                />
+
+                <XAxis
+                  dataKey="date"
+                  stroke="var(--color-muted-foreground)"
+                  fontSize={getResponsiveValue(
+                    responsiveConfig.fontSize,
+                    breakpoint
+                  )}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(str) =>
+                    format(parseISO(str), getDateFormat(selectedRange))
+                  }
+                  tick={{
+                    fill: 'var(--color-foreground)',
+                  }}
+                />
+
+                <YAxis
+                  dataKey="volume"
+                  hide
+                  width={0}
+                  domain={[0, 'dataMax']}
+                  tickCount={5}
+                />
+
+                <Tooltip
+                  cursor={false}
+                  position={{ y: 0 }}
+                  contentStyle={{
+                    backgroundColor: 'var(--color-background)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow)',
+                  }}
+                  itemStyle={{
+                    color: 'var(--color-foreground)',
+                    fontSize: '0.875rem',
+                    textTransform: 'capitalize',
+                  }}
+                  labelStyle={{
+                    color: 'var(--color-foreground)',
+                    fontSize: '0.875rem',
+                    marginBottom: '0.25rem',
+                  }}
+                  labelFormatter={(label) => {
+                    const dateFormat =
+                      selectedRange === 'Y' ? 'MMM yyyy' : 'PPP';
+                    return format(parseISO(label as string), dateFormat);
+                  }}
+                />
+
+                <Bar
+                  dataKey="volume"
+                  fill="var(--color-primary)"
+                  radius={4}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ScrollableChart>
+        </div>
+      </div>
+
+      <div className="flex justify-between text-sm text-muted-foreground">
+        <span>{getRangeLabel(selectedRange, filteredData.length)}</span>
+        <span>Avg: {averageVolume} vol</span>
+      </div>
+    </section>
   );
 }
