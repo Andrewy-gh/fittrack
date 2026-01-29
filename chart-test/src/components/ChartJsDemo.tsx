@@ -57,6 +57,8 @@ export function ChartJsDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
   const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
+  const yAxisWidth = getResponsiveValue(responsiveConfig.yAxisWidth, breakpoint);
+  const chartHeight = 320;
 
   // Get CSS variable values
   const getComputedColor = (variable: string) => {
@@ -64,6 +66,19 @@ export function ChartJsDemo() {
     return getComputedStyle(document.documentElement)
       .getPropertyValue(variable)
       .trim();
+  };
+
+  const maxValue = filteredData.reduce((max, d) => Math.max(max, d.volume), 0);
+  const yAxisMax = maxValue > 0 ? maxValue : 10;
+  const formatYAxisTick = (value: number) => {
+    if (value >= 1000) {
+      const rounded = value / 1000;
+      const formatted = rounded >= 10
+        ? Math.round(rounded).toString()
+        : rounded.toFixed(1).replace(/\.0$/, '');
+      return `${formatted}k`;
+    }
+    return `${value}`;
   };
 
   const chartData = {
@@ -79,13 +94,87 @@ export function ChartJsDemo() {
     ],
   };
 
-  const options = {
+  const baseOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         display: false,
       },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        border: {
+          display: false,
+        },
+        ticks: {
+          color: getComputedColor('--color-foreground'),
+          font: {
+            size: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        max: yAxisMax,
+        grid: {
+          color: getComputedColor('--color-muted'),
+          lineWidth: 1,
+          drawBorder: false,
+        },
+        border: {
+          display: false,
+          dash: [3, 3],
+        },
+        ticks: {
+          color: getComputedColor('--color-foreground'),
+          font: {
+            size: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
+          },
+          maxTicksLimit: 5,
+          callback: (value: string | number) => formatYAxisTick(Number(value)),
+        },
+      },
+    },
+  };
+
+  const axisData = {
+    labels: chartData.labels,
+    datasets: [
+      {
+        ...chartData.datasets[0],
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+      },
+    ],
+  };
+
+  const axisOptions = {
+    ...baseOptions,
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: false },
+    },
+    scales: {
+      x: {
+        display: false,
+      },
+      y: {
+        ...baseOptions.scales.y,
+        ticks: {
+          ...baseOptions.scales.y.ticks,
+        },
+      },
+    },
+  };
+
+  const plotOptions = {
+    ...baseOptions,
+    plugins: {
+      legend: { display: false },
       tooltip: {
         position: 'fixedTop' as any, // Custom positioner
         backgroundColor: getComputedColor('--color-background'),
@@ -106,35 +195,12 @@ export function ChartJsDemo() {
       },
     },
     scales: {
-      x: {
-        grid: {
-          display: false,
-        },
-        border: {
-          display: false,
-        },
-        ticks: {
-          color: getComputedColor('--color-foreground'),
-          font: {
-            size: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
-          },
-        },
-      },
+      x: baseOptions.scales.x,
       y: {
-        grid: {
-          color: getComputedColor('--color-muted'),
-          lineWidth: 1,
-          drawBorder: false,
-        },
-        border: {
-          display: false,
-          dash: [3, 3],
-        },
+        ...baseOptions.scales.y,
         ticks: {
-          color: getComputedColor('--color-foreground'),
-          font: {
-            size: getResponsiveValue(responsiveConfig.fontSize, breakpoint),
-          },
+          ...baseOptions.scales.y.ticks,
+          callback: () => '',
         },
       },
     },
@@ -155,12 +221,23 @@ export function ChartJsDemo() {
         </div>
 
         {/* Chart with Horizontal Scroll */}
-        <ScrollableChart
-          dataLength={filteredData.length}
-          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        <div
+          className="chart-axis-layout"
+          style={{ gridTemplateColumns: `${yAxisWidth}px 1fr` }}
         >
-          <Bar data={chartData} options={options} />
-        </ScrollableChart>
+          <div className="chart-axis" style={{ width: yAxisWidth, height: chartHeight }}>
+            <Bar data={axisData} options={axisOptions} />
+          </div>
+          <div className="chart-plot">
+            <ScrollableChart
+              dataLength={filteredData.length}
+              barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+              height={chartHeight}
+            >
+              <Bar data={chartData} options={plotOptions} />
+            </ScrollableChart>
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">

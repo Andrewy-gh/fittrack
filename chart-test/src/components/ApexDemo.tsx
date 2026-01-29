@@ -13,6 +13,8 @@ export function ApexDemo() {
   const [selectedRange, setSelectedRange] = useState<RangeType>('M');
   const breakpoint = useBreakpoint();
   const filteredData = filterDataByRange(mockVolumeData, selectedRange);
+  const yAxisWidth = getResponsiveValue(responsiveConfig.yAxisWidth, breakpoint);
+  const chartHeight = 320;
 
   // Get CSS variable values
   const getComputedColor = (variable: string) => {
@@ -32,10 +34,61 @@ export function ApexDemo() {
     },
   ];
 
+  const maxValue = filteredData.reduce((max, d) => Math.max(max, d.volume), 0);
+  const yAxisMax = maxValue > 0 ? maxValue : 10;
+
+  const axisOptions: ApexOptions = {
+    chart: {
+      type: 'bar',
+      height: chartHeight,
+      toolbar: { show: false },
+      background: 'transparent',
+      fontFamily: 'inherit',
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 0,
+        columnWidth: '1%',
+      },
+    },
+    colors: ['transparent'],
+    fill: {
+      opacity: 0,
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    stroke: {
+      show: false,
+    },
+    grid: {
+      show: false,
+    },
+    xaxis: {
+      labels: { show: false },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      min: 0,
+      max: yAxisMax,
+      tickAmount: 5,
+      labels: {
+        style: {
+          colors: getComputedColor('--color-foreground'),
+          fontSize: `${getResponsiveValue(responsiveConfig.fontSize, breakpoint)}px`,
+        },
+      },
+    },
+    tooltip: {
+      enabled: false,
+    },
+  };
+
   const options: ApexOptions = {
     chart: {
       type: 'bar',
-      height: 320,
+      height: chartHeight,
       toolbar: {
         show: false,
       },
@@ -86,7 +139,11 @@ export function ApexDemo() {
       },
     },
     yaxis: {
+      min: 0,
+      max: yAxisMax,
+      tickAmount: 5,
       labels: {
+        show: false,
         style: {
           colors: getComputedColor('--color-foreground'),
           fontSize: `${getResponsiveValue(responsiveConfig.fontSize, breakpoint)}px`,
@@ -148,17 +205,33 @@ export function ApexDemo() {
         </div>
 
         {/* Chart with Horizontal Scroll */}
-        <ScrollableChart
-          dataLength={filteredData.length}
-          barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+        <div
+          className="chart-axis-layout"
+          style={{ gridTemplateColumns: `${yAxisWidth}px 1fr` }}
         >
-          <ReactApexChart
-            options={options}
-            series={series}
-            type="bar"
-            height={320}
-          />
-        </ScrollableChart>
+          <div className="chart-axis" style={{ width: yAxisWidth, height: chartHeight }}>
+            <ReactApexChart
+              options={axisOptions}
+              series={series}
+              type="bar"
+              height={chartHeight}
+            />
+          </div>
+          <div className="chart-plot">
+            <ScrollableChart
+              dataLength={filteredData.length}
+              barWidth={getResponsiveValue(responsiveConfig.barWidth, breakpoint)}
+              height={chartHeight}
+            >
+              <ReactApexChart
+                options={options}
+                series={series}
+                type="bar"
+                height={chartHeight}
+              />
+            </ScrollableChart>
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="flex justify-between text-sm text-[var(--color-muted-foreground)]">

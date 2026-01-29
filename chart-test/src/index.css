@@ -110,6 +110,20 @@ h6 {
   min-width: 0;
 }
 
+.chart-axis-layout {
+  display: grid;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.chart-axis {
+  min-width: 0;
+}
+
+.chart-plot {
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   #root {
     padding: 0.75rem;
@@ -127,6 +141,10 @@ h6 {
   .chart-card {
     padding: 0.5rem;
     border-radius: var(--radius-md);
+  }
+
+  .chart-axis-layout {
+    gap: 0.25rem;
   }
 
   .overflow-x-auto {
