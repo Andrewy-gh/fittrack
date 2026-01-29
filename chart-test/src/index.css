@@ -89,14 +89,44 @@ h6 {
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
 }
 
+.chart-grid > * {
+  min-width: 0;
+}
+
+.chart-card {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  padding: 1rem;
+}
+
+.chart-card .card-header {
+  margin-bottom: 0.5rem;
+}
+
+.chart-scroll {
+  max-width: 100%;
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   #root {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 
   .chart-grid {
-    gap: 1.5rem;
+    gap: 1rem;
     grid-template-columns: 1fr;
+  }
+
+  .section {
+    margin-bottom: 2rem;
+  }
+
+  .chart-card {
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
   }
 
   .overflow-x-auto {

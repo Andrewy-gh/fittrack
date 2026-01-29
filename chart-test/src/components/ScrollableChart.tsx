@@ -85,7 +85,7 @@ export function ScrollableChart({
       <div
         ref={scrollRef}
         onScroll={checkScrollPosition}
-        className="overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-[var(--color-muted)] scrollbar-track-transparent hover:scrollbar-thumb-[var(--color-muted-foreground)]"
+        className="chart-scroll overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-[var(--color-muted)] scrollbar-track-transparent hover:scrollbar-thumb-[var(--color-muted-foreground)]"
         style={{ height: `${height}px` }}
       >
         <div style={{ minWidth: `${minChartWidth}px`, height: '100%' }}>

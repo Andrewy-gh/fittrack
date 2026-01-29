@@ -8,7 +8,7 @@ interface ChartWrapperProps {
 
 export function ChartWrapper({ title, description, children }: ChartWrapperProps) {
   return (
-    <div className="card">
+    <div className="chart-card">
       <div className="card-header">
         <h3 className="card-title">{title}</h3>
         <p className="card-description">{description}</p>
