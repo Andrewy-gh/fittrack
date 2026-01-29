@@ -12,7 +12,9 @@
     "openapi-ts": "openapi-ts",
     "tsc": "tsc --noEmit",
     "test:e2e": "bunx playwright test",
-    "test:e2e:ui": "bunx playwright test --ui"
+    "test:e2e:ui": "bunx playwright test --ui",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -63,6 +65,7 @@
     "@vitest/browser": "^3.2.4",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
+    "oxlint": "^1.42.0",
     "playwright": "^1.56.0",
     "typescript": "^5.9.2",
     "vite": "^6.1.0",
