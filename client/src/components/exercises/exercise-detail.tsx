@@ -310,17 +310,6 @@ export function ExerciseDetail({
                         <p className="text-sm text-muted-foreground">
                           {formatTime(workout.date)}
                         </p>
-                        {workout.notes && (
-                          <>
-                            <span className="text-muted-foreground">•</span>
-                            <Badge
-                              variant="outline"
-                              className="border-border bg-muted text-xs"
-                            >
-                              {workout.notes.toUpperCase()}
-                            </Badge>
-                          </>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
