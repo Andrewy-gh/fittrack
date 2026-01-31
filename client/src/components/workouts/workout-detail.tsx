@@ -1,12 +1,12 @@
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dumbbell, Edit, Hash, RotateCcw, Weight, Trash } from 'lucide-react';
-import { formatDate, formatTime, formatWeight, sortByExerciseAndSetOrder } from '@/lib/utils';
+import { Edit, Trash } from 'lucide-react';
 import { DeleteDialog } from '@/routes/_layout/workouts/-components/delete-dialog';
 import type { WorkoutWorkoutWithSetsResponse } from '@/client';
+import { WorkoutDetailExercises } from '@/components/workouts/workout-detail-exercises';
+import { WorkoutDetailHeader } from '@/components/workouts/workout-detail-header';
+import { WorkoutDetailSummaryCards } from '@/components/workouts/workout-detail-summary-cards';
 
 export interface WorkoutDetailProps {
   workout: WorkoutWorkoutWithSetsResponse[];
@@ -22,32 +22,10 @@ function WorkoutDetailBase({
   headerActions,
   dialogSlot,
 }: WorkoutDetailBaseProps) {
-  // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
   const totalSets = workout.length;
   const totalReps = workout.reduce((sum, w) => sum + (w.reps || 0), 0);
   const totalVolume = workout.reduce((sum, w) => sum + (w.volume || 0), 0);
-
-  const sortedWorkouts = sortByExerciseAndSetOrder(workout);
-
-  // Group exercises while preserving order
-  const exerciseGroups = sortedWorkouts.reduce(
-    (acc, w) => {
-      const exerciseId = w.exercise_id || 0;
-      const exerciseOrder = w.exercise_order ?? w.exercise_id ?? 0;
-
-      if (!acc[exerciseId]) {
-        acc[exerciseId] = {
-          name: w.exercise_name || 'Unknown Exercise',
-          sets: [],
-          order: exerciseOrder,
-        };
-      }
-      acc[exerciseId].sets.push(w);
-      return acc;
-    },
-    {} as Record<number, { name: string; sets: typeof workout; order: number }>
-  );
 
   const workoutDate = workout[0]?.workout_date;
   const workoutFocus = workout[0]?.workout_focus;
@@ -55,151 +33,18 @@ function WorkoutDetailBase({
   return (
     <main>
       <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
-        {/* Header */}
-        <div className="flex items-center justify-between pt-4">
-          <div>
-            <div className="mb-2">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                {formatDate(workoutDate)}
-              </h1>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-sm md:text-base text-muted-foreground">
-                {formatTime(workoutDate)}
-              </p>
-              {workoutFocus && (
-                <>
-                  <span className="text-muted-foreground">•</span>
-                  <Badge
-                    variant="outline"
-                    className="border-border bg-muted text-xs"
-                  >
-                    {workoutFocus.toUpperCase()}
-                  </Badge>
-                </>
-              )}
-            </div>
-          </div>
-          {headerActions && (
-            <div className="flex flex-col items-center gap-3 md:flex-row">
-              {headerActions}
-            </div>
-          )}
-        </div>
-
-        {/* MARK: Summary Cards */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Dumbbell className="w-5 h-5 text-primary" />
-              <span className="text-sm font-semibold">Exercises</span>
-            </div>
-            <div className="text-2xl text-card-foreground font-bold">
-              {uniqueExercises}
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Hash className="w-5 h-5 text-primary" />
-              <span className="text-sm font-semibold">Total Sets</span>
-            </div>
-            <div className="text-2xl text-card-foreground font-bold">
-              {totalSets}
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <RotateCcw className="w-5 h-5 text-primary" />
-              <span className="text-sm font-semibold">Total Reps</span>
-            </div>
-            <div className="text-2xl text-card-foreground font-bold">
-              {totalReps}
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Weight className="w-5 h-5 text-primary" />
-              <span className="text-sm font-semibold">Volume</span>
-            </div>
-            <div className="text-2xl text-card-foreground font-bold">
-              {formatWeight(totalVolume)}
-            </div>
-          </Card>
-        </div>
-
-        {/* MARK: Exercises */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Exercises</h2>
-          {Object.entries(exerciseGroups)
-            .sort(([, a], [, b]) => a.order - b.order)
-            .map(([exerciseId, exercise]) => {
-              const exerciseReps = exercise.sets.reduce(
-                (sum, set) => sum + (set.reps || 0),
-                0
-              );
-              const exerciseVolume = exercise.sets.reduce(
-                (sum, set) => sum + (set.volume || 0),
-                0
-              );
-
-              return (
-                <Card
-                  key={exerciseId}
-                  className="border-0 shadow-sm backdrop-blur-sm"
-                  data-testid="workout-detail-exercise-card"
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-semibold">
-                        <Link
-                          to="/exercises/$exerciseId"
-                          params={{ exerciseId: Number(exerciseId) }}
-                        >
-                          {exercise.name}
-                        </Link>
-                      </CardTitle>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{exerciseReps} reps</span>
-                        <span className="text-primary">
-                          {formatWeight(exerciseVolume)} vol
-                        </span>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {exercise.sets.map((set, index) => (
-                      <div
-                        key={set.set_id}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <span className="text-sm font-medium text-muted-foreground w-8">
-                            {set.set_order ?? index + 1}
-                          </span>
-                          <div className="flex items-center space-x-4 text-sm">
-                            <span className="font-medium">
-                              {formatWeight(set.weight || 0)} lbs
-                            </span>
-                            <span>&times;</span>
-                            <span className="font-medium">
-                              {set.reps || 0} reps
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {formatWeight(set.volume || 0)} vol
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              );
-            })}
-        </div>
-        {/* MARK: Dialog */}
+        <WorkoutDetailHeader
+          workoutDate={workoutDate}
+          workoutFocus={workoutFocus}
+          actions={headerActions}
+        />
+        <WorkoutDetailSummaryCards
+          uniqueExercises={uniqueExercises}
+          totalSets={totalSets}
+          totalReps={totalReps}
+          totalVolume={totalVolume}
+        />
+        <WorkoutDetailExercises workout={workout} />
         {dialogSlot}
       </div>
     </main>
