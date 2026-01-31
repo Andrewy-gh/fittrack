@@ -47,6 +47,7 @@ export default function NotesTextarea2() {
             value={field.state.value}
             onBlur={field.handleBlur}
             onChange={(e) => field.handleChange(e.target.value)}
+            autoFocus
             className="min-h-[80px]"
             data-testid="notes-textarea"
             aria-invalid={field.state.meta.errors.length > 0}
