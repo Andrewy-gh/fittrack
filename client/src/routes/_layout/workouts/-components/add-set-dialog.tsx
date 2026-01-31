@@ -33,12 +33,30 @@ export const AddSetDialog = withForm({
     onClose,
     onRemoveSet,
   }) {
+    const defaultSetType = 'working';
+
+    const isSetEmpty = (values: typeof form.state.values) => {
+      const set = values.exercises?.[exerciseIndex]?.sets?.[setIndex];
+      const weight = Number(set?.weight ?? 0);
+      const reps = Number(set?.reps ?? 0);
+      const setType = set?.setType ?? defaultSetType;
+      return weight <= 0 && reps <= 0 && setType === defaultSetType;
+    };
+
+    const handleDismiss = () => {
+      if (isSetEmpty(form.state.values)) {
+        onRemoveSet();
+        return;
+      }
+      onClose();
+    };
+
     return (
       <Dialog
         open={true}
         onOpenChange={(open) => {
           if (!open) {
-            onClose();
+            handleDismiss();
           }
         }}
       >
@@ -112,13 +130,18 @@ export const AddSetDialog = withForm({
                 );
               }}
             />
-            <Button
-              variant="outline"
-              className="w-full mt-6 text-base font-semibold rounded-lg"
-              onClick={onRemoveSet}
-            >
-              Remove Set
-            </Button>
+            <form.Subscribe
+              selector={(state) => isSetEmpty(state.values)}
+              children={(isEmpty) => (
+                <Button
+                  variant="outline"
+                  className="w-full mt-6 text-base font-semibold rounded-lg"
+                  onClick={onRemoveSet}
+                >
+                  {isEmpty ? 'Cancel' : 'Remove Set'}
+                </Button>
+              )}
+            />
           </div>
         </DialogContent>
       </Dialog>

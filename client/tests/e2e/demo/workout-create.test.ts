@@ -74,6 +74,55 @@ test.describe('Demo Mode - Workout Create', () => {
     await expect(exerciseCards).toHaveCount(0);
   });
 
+  test('should not add empty sets when dialog is dismissed', async ({
+    page,
+  }) => {
+    await page.getByRole('link', { name: /new workout/i }).click();
+
+    await page.getByRole('link', { name: /add exercise/i }).click();
+    await page.getByText('Bench Press', { exact: true }).click();
+
+    await page.getByRole('button', { name: /add set/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /close/i }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /add set/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
+
+    await page
+      .locator('[data-slot="dialog-overlay"]')
+      .click({ position: { x: 10, y: 10 } });
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(0);
+  });
+
+  test('should keep set when only set type changes', async ({ page }) => {
+    await page.getByRole('link', { name: /new workout/i }).click();
+
+    await page.getByRole('link', { name: /add exercise/i }).click();
+    await page.getByText('Bench Press', { exact: true }).click();
+
+    await page.getByRole('button', { name: /add set/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    await page.locator('[data-slot="select-trigger"]').click();
+    await page
+      .locator('[data-slot="select-item"]', { hasText: /warmup/i })
+      .click();
+    await expect(
+      page.getByRole('button', { name: /remove set/i })
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: /close/i }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(1);
+  });
+
   test('should persist created workout to localStorage', async ({ page }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
