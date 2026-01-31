@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import {
   ContributionGraph,
   ContributionGraphBlock,
@@ -41,6 +42,9 @@ export function WorkoutContributionGraph({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isSmallScreen = useMediaQuery('(max-width: 639px)');
+  const isTouchDevice = useMediaQuery('(pointer: coarse)');
+  const isLinkingEnabled = !(isSmallScreen || isTouchDevice);
 
   // Transform API response to Activity[] format and track workout IDs
   const activities: Activity[] =
@@ -122,6 +126,7 @@ export function WorkoutContributionGraph({
                     const hasMultipleWorkouts = workoutIds.length > 1;
 
                     const handleClick = () => {
+                      if (!isLinkingEnabled) return;
                       if (hasSingleWorkout) {
                         navigate({
                           to: '/workouts/$workoutId',
@@ -136,12 +141,15 @@ export function WorkoutContributionGraph({
                         dayIndex={dayIndex}
                         weekIndex={weekIndex}
                         onClick={handleClick}
-                        className="data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80 cursor-pointer"
+                        className={cn(
+                          "data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80",
+                          isLinkingEnabled ? 'cursor-pointer' : 'cursor-default'
+                        )}
                       />
                     );
 
                     // For multiple workouts, wrap with Popover
-                    if (hasMultipleWorkouts) {
+                    if (hasMultipleWorkouts && isLinkingEnabled) {
                       return (
                         <Popover
                           open={openPopover === activity.date}
