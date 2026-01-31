@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,14 +10,18 @@ import type { WorkoutWorkoutWithSetsResponse } from '@/client';
 
 export interface WorkoutDetailProps {
   workout: WorkoutWorkoutWithSetsResponse[];
-  showEditDelete?: boolean;
 }
 
-export function WorkoutDetail({
+type WorkoutDetailBaseProps = WorkoutDetailProps & {
+  headerActions?: ReactNode;
+  dialogSlot?: ReactNode;
+};
+
+function WorkoutDetailBase({
   workout,
-  showEditDelete = true
-}: WorkoutDetailProps) {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  headerActions,
+  dialogSlot,
+}: WorkoutDetailBaseProps) {
   // Calculate summary statistics
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
   const totalSets = workout.length;
@@ -48,10 +52,6 @@ export function WorkoutDetail({
   const workoutDate = workout[0]?.workout_date;
   const workoutFocus = workout[0]?.workout_focus;
 
-  const handleOpenDeleteDialog = () => {
-    setIsDeleteDialogOpen(true);
-  };
-
   return (
     <main>
       <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
@@ -80,25 +80,9 @@ export function WorkoutDetail({
               )}
             </div>
           </div>
-          {showEditDelete && (
+          {headerActions && (
             <div className="flex flex-col items-center gap-3 md:flex-row">
-              <Button size="sm" variant="outline" asChild>
-                <Link
-                  to="/workouts/$workoutId/edit"
-                  params={{ workoutId: workout[0]?.workout_id }}
-                >
-                  <Edit className="mr-2 hidden h-4 w-4 md:block" />
-                  Edit
-                </Link>
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleOpenDeleteDialog}
-              >
-                <Trash className="mr-2 hidden h-4 w-4 md:block" />
-                Delete
-              </Button>
+              {headerActions}
             </div>
           )}
         </div>
@@ -216,12 +200,55 @@ export function WorkoutDetail({
             })}
         </div>
         {/* MARK: Dialog */}
+        {dialogSlot}
+      </div>
+    </main>
+  );
+}
+
+export function WorkoutDetail({ workout }: WorkoutDetailProps) {
+  return <WorkoutDetailBase workout={workout} />;
+}
+
+export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const workoutId = workout[0]?.workout_id ?? 0;
+
+  const handleOpenDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
+  return (
+    <WorkoutDetailBase
+      workout={workout}
+      headerActions={
+        <>
+          <Button size="sm" variant="outline" asChild>
+            <Link
+              to="/workouts/$workoutId/edit"
+              params={{ workoutId }}
+            >
+              <Edit className="mr-2 hidden h-4 w-4 md:block" />
+              Edit
+            </Link>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleOpenDeleteDialog}
+          >
+            <Trash className="mr-2 hidden h-4 w-4 md:block" />
+            Delete
+          </Button>
+        </>
+      }
+      dialogSlot={
         <DeleteDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
-          workoutId={workout[0]?.workout_id || 0}
+          workoutId={workoutId}
         />
-      </div>
-    </main>
+      }
+    />
   );
 }
