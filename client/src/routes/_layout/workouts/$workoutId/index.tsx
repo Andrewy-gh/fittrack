@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { workoutQueryOptions } from '@/lib/api/workouts';
 import { getDemoWorkoutsByIdQueryOptions } from '@/lib/demo-data/query-options';
 import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
-import { WorkoutDetail } from '@/components/workouts/workout-detail';
+import { WorkoutDetailEditable } from '@/components/workouts/workout-detail';
 
 export const Route = createFileRoute('/_layout/workouts/$workoutId/')({
   params: {
@@ -43,5 +43,5 @@ function RouteComponent() {
     : useSuspenseQuery(getDemoWorkoutsByIdQueryOptions(workoutId));
 
   // Show edit/delete in both auth and demo modes (demo has mutations)
-  return <WorkoutDetail workout={workout} showEditDelete={true} />;
+  return <WorkoutDetailEditable workout={workout} />;
 }
