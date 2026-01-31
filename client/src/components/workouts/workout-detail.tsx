@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Edit, Trash } from 'lucide-react';
 import { DeleteDialog } from '@/routes/_layout/workouts/-components/delete-dialog';
 import type { WorkoutWorkoutWithSetsResponse } from '@/client';
@@ -22,6 +23,20 @@ function WorkoutDetailBase({
   headerActions,
   dialogSlot,
 }: WorkoutDetailBaseProps) {
+  if (workout.length === 0) {
+    return (
+      <main>
+        <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              No workout data available.
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
   const uniqueExercises = new Set(workout.map((w) => w.exercise_id)).size;
   const totalSets = workout.length;
   const totalReps = workout.reduce((sum, w) => sum + (w.reps || 0), 0);
@@ -57,6 +72,9 @@ export function WorkoutDetail({ workout }: WorkoutDetailProps) {
 
 export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  if (workout.length === 0) {
+    return <WorkoutDetailBase workout={workout} />;
+  }
   const workoutId = workout[0]?.workout_id ?? 0;
 
   const handleOpenDeleteDialog = () => {
