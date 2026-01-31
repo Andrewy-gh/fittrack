@@ -1,77 +1,66 @@
-// import { Label } from '@/components/ui/label';
-// import { Button } from '@/components/ui/button';
-// import { Plus } from 'lucide-react';
-// import { ExerciseCombobox } from '@/components/exercise-combobox';
-// import { useFieldContext } from '@/hooks/form';
-// import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import type { DbExercise, ExerciseOption } from '@/lib/api/exercises';
+import { Plus } from 'lucide-react';
+import { ExerciseCombobox } from '@/components/exercise-combobox';
+import { useFieldContext } from '@/hooks/form';
+import { useState } from 'react';
+import type { WorkoutExerciseInput } from '@/client';
 
-export default function AddExerciseField() {
-  return <div>Ready to delete</div>
-//   showTitle = true,
-//   onExerciseAdded,
-//   exercises,
-// }: {
-//   showTitle?: boolean;
-//   onExerciseAdded?: () => void;
-//   exercises: ExerciseOption[];
-// }) {
-//   const field = useFieldContext<Exercise[]>();
-//   const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>();
-  
-//   function handleSelect(option: ExerciseOption) {
-//     console.log('handleSelect');
-//     console.log(option);
-//     setSelectedExercise(option);
-//   }
+export default function AddExerciseField({
+  exercises,
+  onAddExercise,
+}: {
+  exercises: DbExercise[]; // Input: exercises from the database with guaranteed IDs
+  onAddExercise: (exerciseIndex: number, exerciseId?: number) => void;
+}) {
+  const field = useFieldContext<Array<WorkoutExerciseInput>>();
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseOption>(); // State: may include manually created exercises
 
-//   // ! MARK: TODO
-//   function handleAppendGroup(name: NewExerciseOption['name']) {
-//     const newExercise: ExerciseOption = {
-//       id: exercises.length + 1,
-//       name,
-//       created_at: new Date().toISOString(),
-//       updated_at: null,
-//     };
-//     exercises.push(newExercise);
-//     console.log('handleAppendGroup');
-//     console.log(newExercise);
-//     handleSelect(newExercise);
-//   }
+  // Working list of exercises that can include both DB and manually created ones
+  const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
+    exercises.map((ex) => ({ id: ex.id, name: ex.name }))
+  );
 
-//   return (
-//     <div className="flex flex-col gap-3">
-//       <div className="space-y-2">
-//         {showTitle && (
-//           <Label className="text-xs text-neutral-400 tracking-wider">
-//             EXERCISE DATABASE
-//           </Label>
-//         )}
-//         <div className="flex flex-col sm:flex-row gap-3">
-//           <div className="flex-1">
-//             <ExerciseCombobox
-//               options={exercises}
-//               selected={selectedExercise?.name ?? ''}
-//               onChange={handleSelect}
-//               onCreate={handleAppendGroup}
-//             />
-//           </div>
-//           <Button
-//             onClick={() => {
-//               field.pushValue({
-//                 name: selectedExercise?.name ?? '',
-//                 sets: [],
-//               });
-//               onExerciseAdded?.();
-//             }}
-//             type="button"
-//             className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
-//             disabled={!selectedExercise?.name}
-//           >
-//             <Plus className="w-4 h-4 mr-2" />
-//             Add Exercise
-//           </Button>
-//         </div>
-//       </div>
-//     </div>
-//   );
+  function handleSelect(option: ExerciseOption) {
+    setSelectedExercise(option);
+  }
+
+  function handleAppendGroup(name: string) {
+    // For new exercises, use null ID to indicate they're not in the database
+    const newExercise: ExerciseOption = {
+      id: null, // null ID for new exercises not yet in the database
+      name,
+    };
+    setWorkingExercises((prev) => [...prev, newExercise]);
+    handleSelect(newExercise);
+  }
+
+  return (
+    <div className="space-y-4">
+      <ExerciseCombobox
+        options={workingExercises} // Use working list that can include manually created exercises
+        selected={selectedExercise?.name ?? ''}
+        onChange={handleSelect}
+        onCreate={handleAppendGroup}
+      />
+      <Button
+        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full py-4 text-base font-semibold rounded-lg"
+        disabled={!selectedExercise?.name.trim()}
+        onClick={() => {
+          field.pushValue({
+            name: selectedExercise?.name ?? '',
+            sets: [],
+          });
+          const exerciseIndex = field.state.value.length - 1;
+          // Only pass exerciseId if it's not null (real DB ID)
+          const exerciseId = selectedExercise?.id || undefined;
+          onAddExercise(exerciseIndex, exerciseId);
+          setSelectedExercise(undefined);
+        }}
+      >
+        <Plus className="w-4 h-4 mr-2" />
+        Add Exercise
+      </Button>
+    </div>
+  );
 }

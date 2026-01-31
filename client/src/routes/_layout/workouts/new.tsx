@@ -213,7 +213,7 @@ function WorkoutTracker({
               {/* MARK: Date/Notes/Focus */}
               <form.AppField
                 name="date"
-                children={(field) => <field.DatePicker2 />}
+                children={(field) => <field.DatePicker />}
               />
               <form.AppField
                 name="workoutFocus"
@@ -224,7 +224,7 @@ function WorkoutTracker({
               <div className="col-span-2">
                 <form.AppField
                   name="notes"
-                  children={(field) => <field.NotesTextarea2 />}
+                  children={(field) => <field.NotesTextarea />}
                 />
               </div>
             </div>

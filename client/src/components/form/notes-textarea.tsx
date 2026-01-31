@@ -1,26 +1,71 @@
-import { useFieldContext } from "@/hooks/form";
-import { Label } from "@/components/ui/label";
-import {Textarea} from "@/components/ui/textarea";
+import { useState } from 'react';
+import { useFieldContext } from '@/hooks/form';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { FileText } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
 
 export default function NotesTextarea() {
-    const field = useFieldContext<string>();
-    return (
-      <div className="space-y-3">
-        <Label
-          htmlFor={field.name}
-          className="text-xs text-neutral-400 tracking-wider"
-        >
-          SESSION NOTES
-        </Label>
-        <Textarea
-          id={field.name}
-          name={field.name}
-          value={field.state.value}
-          onBlur={field.handleBlur}
-          onChange={(e) => field.handleChange(e.target.value)}
-          className="bg-neutral-800 border-neutral-600 text-white placeholder-neutral-500 min-h-[80px]"
-          placeholder="Enter workout notes, focus areas, or observations..."
-        />
-      </div>
-    );
+  const field = useFieldContext<string>();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Card className="p-4" data-testid="notes-card">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm tracking-tight">Notes</span>
+          </div>
+          <div className="text-xs font-semibold text-card-foreground">
+            {field.state.value ||
+              'Enter any notes, focus areas, or observations for this workout.'}
+          </div>
+        </Card>
+      </DialogTrigger>
+      <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
+        <DialogHeader>
+          <DialogTitle>Notes</DialogTitle>
+          <DialogDescription>
+            Enter any notes, focus areas, or observations for this workout.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Textarea
+            id={field.name}
+            name={field.name}
+            value={field.state.value}
+            onBlur={field.handleBlur}
+            onChange={(e) => field.handleChange(e.target.value)}
+            autoFocus
+            className="min-h-[80px]"
+            data-testid="notes-textarea"
+            aria-invalid={field.state.meta.errors.length > 0}
+          />
+          {field.state.meta.errors.length > 0 && (
+            <p className="text-sm text-destructive">
+              {field.state.meta.errors.join(', ')}
+            </p>
+          )}
+        </div>
+        <DialogFooter className="sm:justify-start">
+          <DialogClose asChild data-testid="notes-close">
+            <Button type="button" variant="outline">
+              Close
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
