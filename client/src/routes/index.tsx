@@ -17,12 +17,9 @@ import {
   BarChart3,
   Dumbbell,
 } from 'lucide-react';
-import {
-  type CurrentUser,
-  type CurrentInternalUser,
-  UserButton,
-} from '@stackframe/react';
+import { type CurrentUser, type CurrentInternalUser } from '@stackframe/react';
 import { CustomUserButton } from '@/components/custom-user-button';
+import { GuestUserButton } from '@/components/guest-user-button';
 
 function HomePage({
   user,
@@ -108,7 +105,7 @@ function HomePage({
               FITTRACK
             </span>
           </div>
-          {user ? <CustomUserButton /> : <UserButton />}
+          {user ? <CustomUserButton /> : <GuestUserButton />}
         </div>
       </nav>
 
