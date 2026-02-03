@@ -62,8 +62,33 @@ export function PwaInstallPrompt() {
       return
     }
 
+    const header = document.querySelector<HTMLElement>("[data-app-header]")
+    const updateHeaderHeight = () => {
+      if (!header) {
+        return
+      }
+      const height = Math.ceil(header.getBoundingClientRect().height)
+      document.documentElement.style.setProperty(
+        "--app-header-height",
+        `${height}px`
+      )
+    }
+
+    updateHeaderHeight()
+
+    let observer: ResizeObserver | null = null
+    if ("ResizeObserver" in window && header) {
+      observer = new ResizeObserver(updateHeaderHeight)
+      observer.observe(header)
+    }
+    window.addEventListener("resize", updateHeaderHeight)
+
     const nextPlatform = getPlatform()
     if (isStandalone() || !isMobileTouch(nextPlatform)) {
+      if (observer) {
+        observer.disconnect()
+      }
+      window.removeEventListener("resize", updateHeaderHeight)
       return
     }
 
@@ -77,6 +102,13 @@ export function PwaInstallPrompt() {
 
     setPlatform(nextPlatform)
     setVisible(true)
+
+    return () => {
+      if (observer) {
+        observer.disconnect()
+      }
+      window.removeEventListener("resize", updateHeaderHeight)
+    }
   }, [])
 
   const dismiss = () => {
@@ -96,7 +128,7 @@ export function PwaInstallPrompt() {
 
   return (
     <div
-      className="fixed left-1/2 z-50 w-[min(94vw,520px)] -translate-x-1/2 rounded-xl border border-destructive/40 bg-destructive p-3 text-destructive-foreground shadow-lg top-[calc(env(safe-area-inset-top)+0.75rem)]"
+      className="fixed left-1/2 z-50 w-[min(94vw,520px)] -translate-x-1/2 rounded-xl border border-destructive/40 bg-destructive p-3 text-destructive-foreground shadow-lg top-[calc(env(safe-area-inset-top)+var(--app-header-height,0px)+0.75rem)]"
       role="status"
       aria-live="polite"
     >
