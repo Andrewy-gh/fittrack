@@ -11,7 +11,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
   test.use({ storageState: authStatePath });
   test.describe.configure({ mode: 'serial' });
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(() => {
     test.skip(
       !existsSync(authStatePath),
       'Missing auth state. Ensure server/.env has PROJECT_ID + SECRET_SERVER_KEY or set E2E_STACK_EMAIL/E2E_STACK_PASSWORD.'

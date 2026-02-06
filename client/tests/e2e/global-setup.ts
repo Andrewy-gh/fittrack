@@ -276,6 +276,10 @@ async function globalSetup(config: FullConfig) {
       })
     );
   } else if (canUseUiAuth) {
+    if (!email || !password) {
+      await browser.close();
+      return;
+    }
     const page = await context.newPage();
     await signInWithStack(page, email, password);
   } else {
