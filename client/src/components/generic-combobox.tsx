@@ -25,6 +25,10 @@ interface ComboboxProps<T extends { name: string }> {
   selected: string;
   /** Additional CSS classes to apply to the trigger button */
   className?: string;
+  /** Accessible label for the combobox trigger */
+  ariaLabel?: string;
+  /** Accessible label for the search input */
+  inputAriaLabel?: string;
   /** Placeholder text to display when no option is selected */
   placeholder?: string;
   /** Whether the combobox is disabled */
@@ -47,6 +51,8 @@ function CommandAddItem({
 }) {
   return (
     <div
+      role="option"
+      aria-label={`Create "${query}"`}
       tabIndex={0}
       onClick={onCreate}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
@@ -71,6 +77,7 @@ function GenericList<T extends { name: string }>({
   setOpen,
   onChange,
   onCreate,
+  inputAriaLabel,
 }: {
   options: T[];
   selected: string;
@@ -80,6 +87,7 @@ function GenericList<T extends { name: string }>({
   setOpen: (open: boolean) => void;
   onChange: (option: T) => void;
   onCreate?: (label: string) => void;
+  inputAriaLabel?: string;
 }) {
   function handleSelect(option: T) {
     if (onChange) {
@@ -109,6 +117,7 @@ function GenericList<T extends { name: string }>({
     >
       <CommandInput
         placeholder="Search options..."
+        aria-label={inputAriaLabel ?? 'Search options'}
         value={query}
         onValueChange={(value: string) => setQuery(value)}
         onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
@@ -170,6 +179,8 @@ export function GenericCombobox<T extends { name: string }>({
   options,
   selected,
   className,
+  ariaLabel,
+  inputAriaLabel,
   placeholder,
   disabled,
   onChange,
@@ -191,6 +202,7 @@ export function GenericCombobox<T extends { name: string }>({
       type="button"
       variant="outline"
       role="combobox"
+      aria-label={ariaLabel}
       disabled={disabled ?? false}
       aria-expanded={open}
       className={cn('w-full justify-between font-normal', className)}
@@ -220,6 +232,7 @@ export function GenericCombobox<T extends { name: string }>({
             setOpen={setOpen}
             onChange={onChange}
             onCreate={onCreate}
+            inputAriaLabel={inputAriaLabel}
           />
         </PopoverContent>
       </Popover>
@@ -240,6 +253,7 @@ export function GenericCombobox<T extends { name: string }>({
             setOpen={setOpen}
             onChange={onChange}
             onCreate={onCreate}
+            inputAriaLabel={inputAriaLabel}
           />
         </div>
       </DrawerContent>
