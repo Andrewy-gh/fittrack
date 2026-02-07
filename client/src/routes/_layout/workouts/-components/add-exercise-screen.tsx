@@ -86,6 +86,7 @@ export const AddExerciseScreen = withForm({
             <Input
               autoFocus
               placeholder="Search/add exercises"
+              aria-label="Search exercises"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 text-base"

@@ -49,7 +49,9 @@ export default function InputField({
 
   return (
     <div className="space-y-4">
-      <Label className="tracking-wider">{label}</Label>
+      <Label htmlFor={field.name} className="tracking-wider">
+        {label}
+      </Label>
       <Input
         id={field.name}
         name={field.name}

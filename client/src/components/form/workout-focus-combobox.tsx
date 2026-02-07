@@ -90,6 +90,8 @@ export default function WorkoutFocusCombobox({
           <GenericCombobox
             options={workingWorkoutsFocus} // Use working list that can include manually created values
             selected={selectedWorkoutFocus?.name ?? field.state.value ?? ''}
+            ariaLabel="Workout focus options"
+            inputAriaLabel="Workout focus search"
             onChange={handleSelect}
             onCreate={handleAppendGroup}
           />

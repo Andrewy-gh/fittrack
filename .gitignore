@@ -3,3 +3,12 @@
 .claude
 ai-dev-tasks
 **/CLAUDE.local.md
+
+# opensrc - source code for packages
+opensrc/
+
+# Playwright auth state
+client/tests/e2e/.auth/
+
+# Husky generated hook scripts
+.husky/_/
