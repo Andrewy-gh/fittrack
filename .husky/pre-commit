@@ -1,5 +1,14 @@
 #!/usr/bin/env sh
 
-pnpm -C client lint
-pnpm -C client test
+set -e
 
+changed_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+if echo "$changed_files" | grep -q '^client/'; then
+  pnpm -C client lint
+  pnpm -C client test
+fi
+
+if echo "$changed_files" | grep -q '^server/'; then
+  (cd server && go test -short ./...)
+fi
