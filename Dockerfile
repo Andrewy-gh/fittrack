@@ -3,6 +3,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --link client/package.json client/bun.lock ./
+COPY --link client/scripts ./scripts
 RUN bun install --frozen-lockfile
 
 COPY --link client .
