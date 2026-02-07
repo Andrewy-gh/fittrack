@@ -9,3 +9,6 @@ opensrc/
 
 # Playwright auth state
 client/tests/e2e/.auth/
+
+# Husky generated hook scripts
+.husky/_/
