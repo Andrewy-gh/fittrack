@@ -24,18 +24,28 @@ import {
   exerciseHistorical1RmQueryOptions,
   useUpdateExerciseHistorical1RmMutation,
 } from '@/lib/api/exercises';
+import {
+  getDemoExerciseHistorical1Rm,
+  recomputeDemoExerciseHistorical1Rm,
+  setDemoExerciseHistorical1RmManual,
+} from '@/lib/demo-data/historical-1rm';
 
-function computeBestE1rmFromSets(sets: ExerciseExerciseWithSetsResponse[]): number | null {
+function computeBestE1rmFromSets(sets: ExerciseExerciseWithSetsResponse[]): { best: number; workoutId: number } | null {
   let best: number | null = null;
+  let workoutId: number | null = null;
   for (const s of sets) {
     if (s.set_type !== 'working') continue;
     const w = s.weight ?? 0;
     const reps = s.reps ?? 0;
     const e1rm = w * (1 + reps / 30);
     if (!Number.isFinite(e1rm)) continue;
-    if (best == null || e1rm > best) best = e1rm;
+    if (best == null || e1rm > best) {
+      best = e1rm;
+      workoutId = s.workout_id;
+    }
   }
-  return best;
+  if (best == null || workoutId == null) return null;
+  return { best, workoutId };
 }
 
 function fmtLb(n: number | null | undefined): string {
@@ -55,6 +65,7 @@ export function ExerciseHistorical1RmCard({
   const [isOpen, setIsOpen] = useState(false);
 
   const demoBest = useMemo(() => computeBestE1rmFromSets(exerciseSets), [exerciseSets]);
+  const demoStored = isDemoMode ? getDemoExerciseHistorical1Rm(exerciseId) : null;
 
   const query = useQuery({
     ...exerciseHistorical1RmQueryOptions(exerciseId),
@@ -63,11 +74,13 @@ export function ExerciseHistorical1RmCard({
   const data = (query.data ?? null) as ExerciseExerciseHistorical1RmResponse | null;
   const isLoading = !isDemoMode && query.isLoading;
 
-  const stored = isDemoMode ? null : data?.historical_1rm;
-  const storedUpdatedAt = isDemoMode ? null : data?.historical_1rm_updated_at;
-  const storedSourceWorkoutId = isDemoMode ? null : data?.historical_1rm_source_workout_id;
-  const computed = isDemoMode ? demoBest : data?.computed_best_e1rm;
-  const computedWorkoutId = isDemoMode ? null : data?.computed_best_workout_id;
+  const stored = isDemoMode ? demoStored?.historical_1rm ?? null : data?.historical_1rm;
+  const storedUpdatedAt = isDemoMode ? demoStored?.updated_at ?? null : data?.historical_1rm_updated_at;
+  const storedSourceWorkoutId = isDemoMode
+    ? demoStored?.source_workout_id ?? null
+    : data?.historical_1rm_source_workout_id;
+  const computed = isDemoMode ? demoBest?.best ?? null : data?.computed_best_e1rm;
+  const computedWorkoutId = isDemoMode ? demoBest?.workoutId ?? null : data?.computed_best_workout_id;
 
   const primaryValue = isLoading ? null : stored ?? computed ?? null;
 
@@ -84,7 +97,6 @@ export function ExerciseHistorical1RmCard({
                 {fmtLb(primaryValue)}
               </div>
               <MetaLine
-                isDemoMode={isDemoMode}
                 isLoading={isLoading}
                 stored={stored ?? null}
                 storedUpdatedAt={storedUpdatedAt ?? null}
@@ -98,9 +110,9 @@ export function ExerciseHistorical1RmCard({
               size="sm"
               variant="outline"
               onClick={() => setIsOpen(true)}
-              disabled={isDemoMode || isLoading}
+              disabled={isLoading}
               title={
-                isDemoMode ? 'Disabled in demo mode' : isLoading ? 'Loading...' : 'Set historical 1RM'
+                isLoading ? 'Loading...' : 'Set historical 1RM'
               }
             >
               Set
@@ -123,7 +135,6 @@ export function ExerciseHistorical1RmCard({
 }
 
 function MetaLine({
-  isDemoMode,
   isLoading,
   stored,
   storedUpdatedAt,
@@ -131,7 +142,6 @@ function MetaLine({
   computed,
   computedWorkoutId,
 }: {
-  isDemoMode: boolean;
   isLoading: boolean;
   stored: number | null;
   storedUpdatedAt: string | null;
@@ -142,14 +152,6 @@ function MetaLine({
   const router = useRouter();
   const onWorkoutClick = (workoutId: number) =>
     router.navigate({ to: '/workouts/$workoutId', params: { workoutId } });
-
-  if (isDemoMode) {
-    return (
-      <div className="text-xs text-muted-foreground">
-        Demo: computed from working sets (editing disabled).
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -252,8 +254,6 @@ function ExerciseHistorical1RmDialog({
   };
 
   const submitManual = async () => {
-    if (isDemoMode) return;
-
     const trimmed = value.trim();
     const parsed = trimmed === '' ? null : Number(trimmed);
     if (parsed != null && (!Number.isFinite(parsed) || parsed < 0)) {
@@ -263,12 +263,16 @@ function ExerciseHistorical1RmDialog({
 
     setIsSubmitting(true);
     try {
-      await mutation.mutateAsync({
-        path: { id: exerciseId },
-        body: parsed == null
-          ? { mode: 'manual' }
-          : { mode: 'manual', historical_1rm: parsed },
-      });
+      if (isDemoMode) {
+        setDemoExerciseHistorical1RmManual(exerciseId, parsed);
+      } else {
+        await mutation.mutateAsync({
+          path: { id: exerciseId },
+          body: parsed == null
+            ? { mode: 'manual' }
+            : { mode: 'manual', historical_1rm: parsed },
+        });
+      }
       toast.success('Historical 1RM updated');
       handleClose(false);
     } catch {
@@ -279,13 +283,16 @@ function ExerciseHistorical1RmDialog({
   };
 
   const submitRecompute = async () => {
-    if (isDemoMode) return;
     setIsSubmitting(true);
     try {
-      await mutation.mutateAsync({
-        path: { id: exerciseId },
-        body: { mode: 'recompute' },
-      });
+      if (isDemoMode) {
+        recomputeDemoExerciseHistorical1Rm(exerciseId);
+      } else {
+        await mutation.mutateAsync({
+          path: { id: exerciseId },
+          body: { mode: 'recompute' },
+        });
+      }
       toast.success('Historical 1RM recomputed');
       handleClose(false);
     } catch {
@@ -316,7 +323,7 @@ function ExerciseHistorical1RmDialog({
               placeholder={defaultValue || 'e.g. 315'}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              disabled={isSubmitting || isDemoMode}
+              disabled={isSubmitting}
             />
             <div className="text-xs text-muted-foreground">
               Stored: {fmtLb(stored)} • Best e1RM: {fmtLb(computed)}
@@ -338,14 +345,14 @@ function ExerciseHistorical1RmDialog({
             type="button"
             variant="outline"
             onClick={submitRecompute}
-            disabled={isSubmitting || isDemoMode}
+            disabled={isSubmitting}
           >
             Use Best
           </Button>
           <Button
             type="button"
             onClick={submitManual}
-            disabled={isSubmitting || isDemoMode}
+            disabled={isSubmitting}
           >
             Save
           </Button>
