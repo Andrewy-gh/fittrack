@@ -14,8 +14,12 @@
 - Implemented historical 1RM lifecycle:
   - Endpoints: `GET /api/exercises/{id}/historical-1rm`, `PATCH /api/exercises/{id}/historical-1rm` (`manual|recompute`)
   - Auto PR detection on workout create; recompute on workout update/delete when PR was sourced from that workout
-  - UI: "Historical 1RM" tile + dialog on exercise detail (demo shows computed only)
+  - UI: "Historical 1RM" tile + dialog on exercise detail (demo supports manual override + recompute via localStorage)
   - Tests: handler tests + integration PR lifecycle (`server/internal/workout/historical_1rm_pr_integration_test.go`)
+- Demo-mode parity for historical 1RM:
+  - localStorage key: `fittrack-demo-historical-1rm`; bootstrapped from working sets; lifecycle hooks on workout create/update/delete + exercise delete
+  - Test: `client/tests/e2e/demo/exercise-historical-1rm.test.ts`
+- Stack Auth optional (dev/test ergonomics): app runs in demo-mode even if `VITE_PROJECT_ID` / `VITE_PUBLISHABLE_CLIENT_KEY` missing
 
 ## Infra / Gotchas
 
@@ -24,6 +28,5 @@
 
 ## Next Chunk
 
-- Optional: demo-mode parity for historical 1RM (localStorage)
 - Optional: simplify API: fold historical 1RM payload into `GET /api/exercises/{id}` to avoid extra query
 - Optional: migrate existing volume chart to consume backend `metrics-history` range semantics (avoid client-side slice-by-points divergence)
