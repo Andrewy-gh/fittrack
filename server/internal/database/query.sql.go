@@ -214,6 +214,78 @@ func (q *Queries) GetExercise(ctx context.Context, arg GetExerciseParams) (GetEx
 	return i, err
 }
 
+const getExerciseBestE1rmWithWorkout = `-- name: GetExerciseBestE1rmWithWorkout :one
+WITH working AS (
+    SELECT
+        s.workout_id,
+        w.date AS workout_date,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))::numeric(8,2) AS e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    WHERE s.user_id = $1
+      AND s.exercise_id = $2
+      AND s.set_type = 'working'
+)
+SELECT workout_id, e1rm
+FROM working
+ORDER BY e1rm DESC, workout_date DESC, workout_id DESC
+LIMIT 1
+`
+
+type GetExerciseBestE1rmWithWorkoutParams struct {
+	UserID     string `json:"user_id"`
+	ExerciseID int32  `json:"exercise_id"`
+}
+
+type GetExerciseBestE1rmWithWorkoutRow struct {
+	WorkoutID int32          `json:"workout_id"`
+	E1rm      pgtype.Numeric `json:"e1rm"`
+}
+
+func (q *Queries) GetExerciseBestE1rmWithWorkout(ctx context.Context, arg GetExerciseBestE1rmWithWorkoutParams) (GetExerciseBestE1rmWithWorkoutRow, error) {
+	row := q.db.QueryRow(ctx, getExerciseBestE1rmWithWorkout, arg.UserID, arg.ExerciseID)
+	var i GetExerciseBestE1rmWithWorkoutRow
+	err := row.Scan(&i.WorkoutID, &i.E1rm)
+	return i, err
+}
+
+const getExerciseBestE1rmWithWorkoutExcludingWorkout = `-- name: GetExerciseBestE1rmWithWorkoutExcludingWorkout :one
+WITH working AS (
+    SELECT
+        s.workout_id,
+        w.date AS workout_date,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))::numeric(8,2) AS e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    WHERE s.user_id = $1
+      AND s.exercise_id = $2
+      AND s.workout_id <> $3
+      AND s.set_type = 'working'
+)
+SELECT workout_id, e1rm
+FROM working
+ORDER BY e1rm DESC, workout_date DESC, workout_id DESC
+LIMIT 1
+`
+
+type GetExerciseBestE1rmWithWorkoutExcludingWorkoutParams struct {
+	UserID     string `json:"user_id"`
+	ExerciseID int32  `json:"exercise_id"`
+	WorkoutID  int32  `json:"workout_id"`
+}
+
+type GetExerciseBestE1rmWithWorkoutExcludingWorkoutRow struct {
+	WorkoutID int32          `json:"workout_id"`
+	E1rm      pgtype.Numeric `json:"e1rm"`
+}
+
+func (q *Queries) GetExerciseBestE1rmWithWorkoutExcludingWorkout(ctx context.Context, arg GetExerciseBestE1rmWithWorkoutExcludingWorkoutParams) (GetExerciseBestE1rmWithWorkoutExcludingWorkoutRow, error) {
+	row := q.db.QueryRow(ctx, getExerciseBestE1rmWithWorkoutExcludingWorkout, arg.UserID, arg.ExerciseID, arg.WorkoutID)
+	var i GetExerciseBestE1rmWithWorkoutExcludingWorkoutRow
+	err := row.Scan(&i.WorkoutID, &i.E1rm)
+	return i, err
+}
+
 const getExerciseByName = `-- name: GetExerciseByName :one
 SELECT id, name FROM exercise WHERE name = $1 AND user_id = $2
 `
@@ -233,6 +305,448 @@ func (q *Queries) GetExerciseByName(ctx context.Context, arg GetExerciseByNamePa
 	var i GetExerciseByNameRow
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
+}
+
+const getExerciseHistorical1RM = `-- name: GetExerciseHistorical1RM :one
+SELECT historical_1rm, historical_1rm_updated_at, historical_1rm_source_workout_id
+FROM exercise
+WHERE id = $1 AND user_id = $2
+`
+
+type GetExerciseHistorical1RMParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type GetExerciseHistorical1RMRow struct {
+	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
+	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
+	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
+}
+
+func (q *Queries) GetExerciseHistorical1RM(ctx context.Context, arg GetExerciseHistorical1RMParams) (GetExerciseHistorical1RMRow, error) {
+	row := q.db.QueryRow(ctx, getExerciseHistorical1RM, arg.ID, arg.UserID)
+	var i GetExerciseHistorical1RMRow
+	err := row.Scan(&i.Historical1rm, &i.Historical1rmUpdatedAt, &i.Historical1rmSourceWorkoutID)
+	return i, err
+}
+
+const getExerciseMetricsHistoryMonthlyYear = `-- name: GetExerciseMetricsHistoryMonthlyYear :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date AS workout_date,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day) AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM working_sets
+    GROUP BY workout_id
+),
+end_day AS (
+    SELECT MAX(workout_day) AS end_day
+    FROM workout_metrics
+),
+filtered_workouts AS (
+    SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working, end_day
+    FROM workout_metrics, end_day
+    WHERE workout_day >= end_day - interval '1 year'
+),
+bucketed AS (
+    SELECT
+        date_trunc('month', workout_day)::date AS bucket_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(session_avg_e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(session_avg_intensity), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(session_best_intensity), 0)::float8 AS session_best_intensity,
+        COALESCE(AVG(total_volume_working), 0)::float8 AS total_volume_working
+    FROM filtered_workouts
+    GROUP BY bucket_day
+)
+SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM (
+    SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+    FROM bucketed
+    ORDER BY bucket_day DESC
+    LIMIT 12
+) t
+ORDER BY bucket_day ASC
+`
+
+type GetExerciseMetricsHistoryMonthlyYearParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExerciseMetricsHistoryMonthlyYearRow struct {
+	BucketDay            pgtype.Date `json:"bucket_day"`
+	SessionBestE1rm      float64     `json:"session_best_e1rm"`
+	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
+	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
+	SessionBestIntensity float64     `json:"session_best_intensity"`
+	TotalVolumeWorking   float64     `json:"total_volume_working"`
+}
+
+func (q *Queries) GetExerciseMetricsHistoryMonthlyYear(ctx context.Context, arg GetExerciseMetricsHistoryMonthlyYearParams) ([]GetExerciseMetricsHistoryMonthlyYearRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryMonthlyYear, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseMetricsHistoryMonthlyYearRow
+	for rows.Next() {
+		var i GetExerciseMetricsHistoryMonthlyYearRow
+		if err := rows.Scan(
+			&i.BucketDay,
+			&i.SessionBestE1rm,
+			&i.SessionAvgE1rm,
+			&i.SessionAvgIntensity,
+			&i.SessionBestIntensity,
+			&i.TotalVolumeWorking,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getExerciseMetricsHistoryRawMonth = `-- name: GetExerciseMetricsHistoryRawMonth :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+end_day AS (
+    SELECT MAX(workout_day) AS end_day
+    FROM working_sets
+),
+filtered AS (
+    SELECT workout_id, workout_day, weight, reps, volume, e1rm, historical_1rm, session_best_e1rm, end_day
+    FROM working_sets, end_day
+    WHERE workout_day >= end_day - interval '30 days'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day)::date AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM filtered
+    GROUP BY workout_id
+)
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC
+`
+
+type GetExerciseMetricsHistoryRawMonthParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExerciseMetricsHistoryRawMonthRow struct {
+	WorkoutID            int32       `json:"workout_id"`
+	WorkoutDay           pgtype.Date `json:"workout_day"`
+	SessionBestE1rm      float64     `json:"session_best_e1rm"`
+	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
+	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
+	SessionBestIntensity float64     `json:"session_best_intensity"`
+	TotalVolumeWorking   float64     `json:"total_volume_working"`
+}
+
+func (q *Queries) GetExerciseMetricsHistoryRawMonth(ctx context.Context, arg GetExerciseMetricsHistoryRawMonthParams) ([]GetExerciseMetricsHistoryRawMonthRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryRawMonth, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseMetricsHistoryRawMonthRow
+	for rows.Next() {
+		var i GetExerciseMetricsHistoryRawMonthRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDay,
+			&i.SessionBestE1rm,
+			&i.SessionAvgE1rm,
+			&i.SessionAvgIntensity,
+			&i.SessionBestIntensity,
+			&i.TotalVolumeWorking,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getExerciseMetricsHistoryRawWeek = `-- name: GetExerciseMetricsHistoryRawWeek :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+end_day AS (
+    SELECT MAX(workout_day) AS end_day
+    FROM working_sets
+),
+filtered AS (
+    SELECT workout_id, workout_day, weight, reps, volume, e1rm, historical_1rm, session_best_e1rm, end_day
+    FROM working_sets, end_day
+    WHERE workout_day >= end_day - interval '7 days'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day)::date AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM filtered
+    GROUP BY workout_id
+)
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC
+`
+
+type GetExerciseMetricsHistoryRawWeekParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExerciseMetricsHistoryRawWeekRow struct {
+	WorkoutID            int32       `json:"workout_id"`
+	WorkoutDay           pgtype.Date `json:"workout_day"`
+	SessionBestE1rm      float64     `json:"session_best_e1rm"`
+	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
+	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
+	SessionBestIntensity float64     `json:"session_best_intensity"`
+	TotalVolumeWorking   float64     `json:"total_volume_working"`
+}
+
+func (q *Queries) GetExerciseMetricsHistoryRawWeek(ctx context.Context, arg GetExerciseMetricsHistoryRawWeekParams) ([]GetExerciseMetricsHistoryRawWeekRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryRawWeek, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseMetricsHistoryRawWeekRow
+	for rows.Next() {
+		var i GetExerciseMetricsHistoryRawWeekRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDay,
+			&i.SessionBestE1rm,
+			&i.SessionAvgE1rm,
+			&i.SessionAvgIntensity,
+			&i.SessionBestIntensity,
+			&i.TotalVolumeWorking,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getExerciseMetricsHistoryWeekly6M = `-- name: GetExerciseMetricsHistoryWeekly6M :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date AS workout_date,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day) AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM working_sets
+    GROUP BY workout_id
+),
+end_day AS (
+    SELECT MAX(workout_day) AS end_day
+    FROM workout_metrics
+),
+filtered_workouts AS (
+    SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working, end_day
+    FROM workout_metrics, end_day
+    WHERE workout_day >= end_day - interval '6 months'
+),
+bucketed AS (
+    SELECT
+        date_trunc('week', workout_day)::date AS bucket_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(session_avg_e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(session_avg_intensity), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(session_best_intensity), 0)::float8 AS session_best_intensity,
+        COALESCE(AVG(total_volume_working), 0)::float8 AS total_volume_working
+    FROM filtered_workouts
+    GROUP BY bucket_day
+)
+SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM (
+    SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+    FROM bucketed
+    ORDER BY bucket_day DESC
+    LIMIT 26
+) t
+ORDER BY bucket_day ASC
+`
+
+type GetExerciseMetricsHistoryWeekly6MParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExerciseMetricsHistoryWeekly6MRow struct {
+	BucketDay            pgtype.Date `json:"bucket_day"`
+	SessionBestE1rm      float64     `json:"session_best_e1rm"`
+	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
+	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
+	SessionBestIntensity float64     `json:"session_best_intensity"`
+	TotalVolumeWorking   float64     `json:"total_volume_working"`
+}
+
+func (q *Queries) GetExerciseMetricsHistoryWeekly6M(ctx context.Context, arg GetExerciseMetricsHistoryWeekly6MParams) ([]GetExerciseMetricsHistoryWeekly6MRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryWeekly6M, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseMetricsHistoryWeekly6MRow
+	for rows.Next() {
+		var i GetExerciseMetricsHistoryWeekly6MRow
+		if err := rows.Scan(
+			&i.BucketDay,
+			&i.SessionBestE1rm,
+			&i.SessionAvgE1rm,
+			&i.SessionAvgIntensity,
+			&i.SessionBestIntensity,
+			&i.TotalVolumeWorking,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getExerciseWithSets = `-- name: GetExerciseWithSets :many
@@ -493,6 +1007,47 @@ func (q *Queries) GetWorkout(ctx context.Context, arg GetWorkoutParams) (GetWork
 	return i, err
 }
 
+const getWorkoutBestE1rmByExercise = `-- name: GetWorkoutBestE1rmByExercise :many
+SELECT
+    s.exercise_id,
+    MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)))::numeric(8,2) AS best_e1rm
+FROM "set" s
+WHERE s.workout_id = $1
+  AND s.user_id = $2
+  AND s.set_type = 'working'
+GROUP BY s.exercise_id
+`
+
+type GetWorkoutBestE1rmByExerciseParams struct {
+	WorkoutID int32  `json:"workout_id"`
+	UserID    string `json:"user_id"`
+}
+
+type GetWorkoutBestE1rmByExerciseRow struct {
+	ExerciseID int32          `json:"exercise_id"`
+	BestE1rm   pgtype.Numeric `json:"best_e1rm"`
+}
+
+func (q *Queries) GetWorkoutBestE1rmByExercise(ctx context.Context, arg GetWorkoutBestE1rmByExerciseParams) ([]GetWorkoutBestE1rmByExerciseRow, error) {
+	rows, err := q.db.Query(ctx, getWorkoutBestE1rmByExercise, arg.WorkoutID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWorkoutBestE1rmByExerciseRow
+	for rows.Next() {
+		var i GetWorkoutBestE1rmByExerciseRow
+		if err := rows.Scan(&i.ExerciseID, &i.BestE1rm); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWorkoutWithSets = `-- name: GetWorkoutWithSets :many
 SELECT 
     w.id as workout_id,
@@ -593,6 +1148,37 @@ func (q *Queries) ListExercises(ctx context.Context, userID string) ([]ListExerc
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExercisesWithHistorical1RMSourceWorkout = `-- name: ListExercisesWithHistorical1RMSourceWorkout :many
+SELECT id
+FROM exercise
+WHERE user_id = $1 AND historical_1rm_source_workout_id = $2
+`
+
+type ListExercisesWithHistorical1RMSourceWorkoutParams struct {
+	UserID                       string      `json:"user_id"`
+	Historical1rmSourceWorkoutID pgtype.Int4 `json:"historical_1rm_source_workout_id"`
+}
+
+func (q *Queries) ListExercisesWithHistorical1RMSourceWorkout(ctx context.Context, arg ListExercisesWithHistorical1RMSourceWorkoutParams) ([]int32, error) {
+	rows, err := q.db.Query(ctx, listExercisesWithHistorical1RMSourceWorkout, arg.UserID, arg.Historical1rmSourceWorkoutID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -716,6 +1302,83 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 		return nil, err
 	}
 	return items, nil
+}
+
+const setExerciseHistorical1RM = `-- name: SetExerciseHistorical1RM :exec
+UPDATE exercise
+SET
+    historical_1rm = $2,
+    historical_1rm_updated_at = NOW(),
+    historical_1rm_source_workout_id = $3,
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $4
+`
+
+type SetExerciseHistorical1RMParams struct {
+	ID                           int32          `json:"id"`
+	Historical1rm                pgtype.Numeric `json:"historical_1rm"`
+	Historical1rmSourceWorkoutID pgtype.Int4    `json:"historical_1rm_source_workout_id"`
+	UserID                       string         `json:"user_id"`
+}
+
+func (q *Queries) SetExerciseHistorical1RM(ctx context.Context, arg SetExerciseHistorical1RMParams) error {
+	_, err := q.db.Exec(ctx, setExerciseHistorical1RM,
+		arg.ID,
+		arg.Historical1rm,
+		arg.Historical1rmSourceWorkoutID,
+		arg.UserID,
+	)
+	return err
+}
+
+const updateExerciseHistorical1RMFromWorkoutIfBetter = `-- name: UpdateExerciseHistorical1RMFromWorkoutIfBetter :exec
+UPDATE exercise
+SET
+    historical_1rm = $2,
+    historical_1rm_updated_at = NOW(),
+    historical_1rm_source_workout_id = $3,
+    updated_at = NOW()
+WHERE id = $1
+  AND user_id = $4
+  AND (historical_1rm IS NULL OR historical_1rm < $2)
+`
+
+type UpdateExerciseHistorical1RMFromWorkoutIfBetterParams struct {
+	ID                           int32          `json:"id"`
+	Historical1rm                pgtype.Numeric `json:"historical_1rm"`
+	Historical1rmSourceWorkoutID pgtype.Int4    `json:"historical_1rm_source_workout_id"`
+	UserID                       string         `json:"user_id"`
+}
+
+func (q *Queries) UpdateExerciseHistorical1RMFromWorkoutIfBetter(ctx context.Context, arg UpdateExerciseHistorical1RMFromWorkoutIfBetterParams) error {
+	_, err := q.db.Exec(ctx, updateExerciseHistorical1RMFromWorkoutIfBetter,
+		arg.ID,
+		arg.Historical1rm,
+		arg.Historical1rmSourceWorkoutID,
+		arg.UserID,
+	)
+	return err
+}
+
+const updateExerciseHistorical1RMManual = `-- name: UpdateExerciseHistorical1RMManual :exec
+UPDATE exercise
+SET
+    historical_1rm = $2,
+    historical_1rm_updated_at = NOW(),
+    historical_1rm_source_workout_id = NULL,
+    updated_at = NOW()
+WHERE id = $1 AND user_id = $3
+`
+
+type UpdateExerciseHistorical1RMManualParams struct {
+	ID            int32          `json:"id"`
+	Historical1rm pgtype.Numeric `json:"historical_1rm"`
+	UserID        string         `json:"user_id"`
+}
+
+func (q *Queries) UpdateExerciseHistorical1RMManual(ctx context.Context, arg UpdateExerciseHistorical1RMManualParams) error {
+	_, err := q.db.Exec(ctx, updateExerciseHistorical1RMManual, arg.ID, arg.Historical1rm, arg.UserID)
+	return err
 }
 
 const updateExerciseName = `-- name: UpdateExerciseName :exec

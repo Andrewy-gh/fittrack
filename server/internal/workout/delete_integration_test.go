@@ -430,20 +430,21 @@ func cleanupDeletionTestData(t *testing.T, pool *pgxpool.Pool) {
 	testUserPatterns := []string{"delete-test-user%", "delete-user-%", "rls-delete-user-%", "rls-direct-user-%", "rls-http-user-%"}
 
 	for _, pattern := range testUserPatterns {
-		// Clean up dependent data first
-		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id LIKE $1)", pattern)
+		// Clean up dependent data first (sets → exercises → workouts → users)
+		// exercise.historical_1rm_source_workout_id references workout(id), so exercises must be removed before workouts.
+		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE user_id LIKE $1", pattern)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up set data for pattern %s: %v", pattern, err)
-		}
-
-		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id LIKE $1", pattern)
-		if err != nil {
-			t.Logf("Warning: Failed to clean up workout data for pattern %s: %v", pattern, err)
 		}
 
 		_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id LIKE $1", pattern)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up exercise data for pattern %s: %v", pattern, err)
+		}
+
+		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id LIKE $1", pattern)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up workout data for pattern %s: %v", pattern, err)
 		}
 
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id LIKE $1", pattern)
@@ -495,20 +496,20 @@ func cleanupSpecificTestUsers(t *testing.T, pool *pgxpool.Pool, userIDs []string
 
 	// Clean up test data for specific users
 	for _, userID := range userIDs {
-		// Clean up dependent data first
-		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id = $1)", userID)
+		// Clean up dependent data first (sets → exercises → workouts → users)
+		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE user_id = $1", userID)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up set data for user %s: %v", userID, err)
-		}
-
-		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id = $1", userID)
-		if err != nil {
-			t.Logf("Warning: Failed to clean up workout data for user %s: %v", userID, err)
 		}
 
 		_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id = $1", userID)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up exercise data for user %s: %v", userID, err)
+		}
+
+		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up workout data for user %s: %v", userID, err)
 		}
 
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", userID)

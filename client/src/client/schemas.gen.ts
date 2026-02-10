@@ -37,6 +37,75 @@ export const exercise_CreateExerciseResponseSchema = {
   },
 } as const;
 
+export const exercise_ExerciseHistorical1RMResponseSchema = {
+  type: "object",
+  properties: {
+    computed_best_e1rm: {
+      type: "number",
+    },
+    computed_best_workout_id: {
+      type: "integer",
+    },
+    historical_1rm: {
+      type: "number",
+    },
+    historical_1rm_source_workout_id: {
+      type: "integer",
+    },
+    historical_1rm_updated_at: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const exercise_ExerciseMetricsHistoryPointSchema = {
+  type: "object",
+  properties: {
+    date: {
+      type: "string",
+    },
+    session_avg_e1rm: {
+      type: "number",
+    },
+    session_avg_intensity: {
+      type: "number",
+    },
+    session_best_e1rm: {
+      type: "number",
+    },
+    session_best_intensity: {
+      type: "number",
+    },
+    total_volume_working: {
+      type: "number",
+    },
+    workout_id: {
+      type: "integer",
+    },
+    x: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const exercise_ExerciseMetricsHistoryResponseSchema = {
+  type: "object",
+  properties: {
+    bucket: {
+      $ref: "#/definitions/exercise.MetricsHistoryBucket",
+    },
+    points: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/exercise.ExerciseMetricsHistoryPoint",
+      },
+    },
+    range: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const exercise_ExerciseResponseSchema = {
   type: "object",
   required: ["created_at", "id", "name", "updated_at", "user_id"],
@@ -128,6 +197,16 @@ export const exercise_ExerciseWithSetsResponseSchema = {
   },
 } as const;
 
+export const exercise_MetricsHistoryBucketSchema = {
+  type: "string",
+  enum: ["workout", "week", "month"],
+  "x-enum-varnames": [
+    "MetricsHistoryBucketWorkout",
+    "MetricsHistoryBucketWeek",
+    "MetricsHistoryBucketMonth",
+  ],
+} as const;
+
 export const exercise_RecentSetsResponseSchema = {
   type: "object",
   required: ["created_at", "reps", "set_id", "workout_date", "workout_id"],
@@ -163,6 +242,21 @@ export const exercise_RecentSetsResponseSchema = {
     workout_id: {
       type: "integer",
       example: 1,
+    },
+  },
+} as const;
+
+export const exercise_UpdateExerciseHistorical1RMRequestSchema = {
+  type: "object",
+  properties: {
+    historical_1rm: {
+      type: "number",
+      maximum: 999999.99,
+      minimum: 0,
+    },
+    mode: {
+      type: "string",
+      enum: ["manual", "recompute"],
     },
   },
 } as const;

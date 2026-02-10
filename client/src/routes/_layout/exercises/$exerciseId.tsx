@@ -61,6 +61,7 @@ function RouteComponent() {
     <ExerciseDetail
       exerciseSets={exerciseSets}
       exerciseId={exerciseId}
+      isDemoMode={!user}
       sortOrder={normalizedSortOrder}
       itemsPerPage={normalizedItemsPerPage}
       page={page}

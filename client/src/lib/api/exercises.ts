@@ -4,11 +4,15 @@ import type { ExerciseExerciseResponse } from '@/client';
 import {
   getExercisesQueryOptions,
   getExercisesByIdQueryOptions,
+  getExercisesByIdHistorical1RmQueryOptions,
   getExercisesByIdRecentSetsQueryOptions,
+  getExercisesByIdMetricsHistoryQueryOptions,
   deleteExercisesByIdMutation,
   patchExercisesByIdMutation,
+  patchExercisesByIdHistorical1RmMutation,
   getExercisesQueryKey,
   getExercisesByIdQueryKey,
+  getExercisesByIdHistorical1RmQueryKey,
 } from '@/client/@tanstack/react-query.gen';
 
 export type DbExercise = Pick<ExerciseExerciseResponse, 'id' | 'name'>;
@@ -26,8 +30,21 @@ export function exerciseByIdQueryOptions(id: number) {
   return getExercisesByIdQueryOptions({ path: { id } });
 }
 
+export function exerciseHistorical1RmQueryOptions(id: number) {
+  return getExercisesByIdHistorical1RmQueryOptions({ path: { id } });
+}
+
 export function recentExerciseSetsQueryOptions(id: number) {
   return getExercisesByIdRecentSetsQueryOptions({ path: { id } });
+}
+
+export type MetricsHistoryRange = 'W' | 'M' | '6M' | 'Y';
+
+export function exerciseMetricsHistoryQueryOptions(id: number, range: MetricsHistoryRange) {
+  return getExercisesByIdMetricsHistoryQueryOptions({
+    path: { id },
+    query: { range },
+  });
 }
 
 export function useDeleteExerciseMutation() {
@@ -54,6 +71,28 @@ export function useUpdateExerciseMutation() {
       });
       queryClient.invalidateQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id } }),
+      });
+    },
+  });
+}
+
+export function useUpdateExerciseHistorical1RmMutation() {
+  return useMutation({
+    ...patchExercisesByIdHistorical1RmMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({
+        queryKey: getExercisesByIdHistorical1RmQueryKey({ path: { id } }),
+      });
+
+      // historical 1RM affects metrics-history intensity calculations; invalidate all ranges.
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const key0 = q.queryKey?.[0] as any;
+          return (
+            key0?._id === 'getExercisesByIdMetricsHistory' &&
+            key0?.path?.id === id
+          );
+        },
       });
     },
   });

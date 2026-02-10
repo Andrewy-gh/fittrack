@@ -18,14 +18,17 @@ import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exe
 import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exercise-edit-dialog';
 import { ExerciseDetailHeader } from '@/components/exercises/exercise-detail-header';
 import { ExerciseSummaryCards } from '@/components/exercises/exercise-summary-cards';
+import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
 import {
   ExerciseWorkoutCards,
   type ExerciseWorkoutEntry,
 } from '@/components/exercises/exercise-workout-cards';
+import { ExerciseHistorical1RmCard } from '@/routes/_layout/exercises/-components/exercise-historical-1rm';
 
 export interface ExerciseDetailProps {
   exerciseSets: ExerciseExerciseWithSetsResponse[];
   exerciseId: number;
+  isDemoMode: boolean;
   sortOrder: 'asc' | 'desc';
   itemsPerPage: number;
   page?: number;
@@ -37,6 +40,7 @@ export interface ExerciseDetailProps {
 export function ExerciseDetail({
   exerciseSets,
   exerciseId,
+  isDemoMode,
   sortOrder,
   itemsPerPage,
   page,
@@ -128,6 +132,12 @@ export function ExerciseDetail({
           onDelete={handleOpenDeleteDialog}
         />
 
+        <ExerciseHistorical1RmCard
+          exerciseId={exerciseId}
+          exerciseSets={exerciseSets}
+          isDemoMode={isDemoMode}
+        />
+
         <ExerciseSummaryCards
           totalSets={totalSets}
           uniqueWorkouts={uniqueWorkouts}
@@ -138,6 +148,12 @@ export function ExerciseDetail({
         />
 
         <ChartBarVol data={exerciseSets} />
+
+        <ExerciseMetricCharts
+          exerciseId={exerciseId}
+          exerciseSets={exerciseSets}
+          isDemoMode={isDemoMode}
+        />
 
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Workouts</h2>

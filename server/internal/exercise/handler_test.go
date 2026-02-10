@@ -62,6 +62,11 @@ func (m *MockExerciseRepository) GetRecentSetsForExercise(ctx context.Context, i
 	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
 }
 
+func (m *MockExerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
+	args := m.Called(ctx, req, userID)
+	return args.Get(0).([]ExerciseMetricsHistoryPoint), args.Get(1).(MetricsHistoryBucket), args.Error(2)
+}
+
 func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
 	args := m.Called(ctx, id, userID)
 	return args.Error(0)
@@ -69,6 +74,26 @@ func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, u
 
 func (m *MockExerciseRepository) UpdateExerciseName(ctx context.Context, id int32, name string, userID string) error {
 	args := m.Called(ctx, id, name, userID)
+	return args.Error(0)
+}
+
+func (m *MockExerciseRepository) GetExerciseHistorical1RM(ctx context.Context, id int32, userID string) (db.GetExerciseHistorical1RMRow, error) {
+	args := m.Called(ctx, id, userID)
+	return args.Get(0).(db.GetExerciseHistorical1RMRow), args.Error(1)
+}
+
+func (m *MockExerciseRepository) GetExerciseBestE1rmWithWorkout(ctx context.Context, exerciseID int32, userID string) (db.GetExerciseBestE1rmWithWorkoutRow, error) {
+	args := m.Called(ctx, exerciseID, userID)
+	return args.Get(0).(db.GetExerciseBestE1rmWithWorkoutRow), args.Error(1)
+}
+
+func (m *MockExerciseRepository) UpdateExerciseHistorical1RMManual(ctx context.Context, id int32, historical1rm *float64, userID string) error {
+	args := m.Called(ctx, id, historical1rm, userID)
+	return args.Error(0)
+}
+
+func (m *MockExerciseRepository) SetExerciseHistorical1RM(ctx context.Context, id int32, historical1rm *float64, sourceWorkoutID *int32, userID string) error {
+	args := m.Called(ctx, id, historical1rm, sourceWorkoutID, userID)
 	return args.Error(0)
 }
 

@@ -348,6 +348,8 @@ type SessionMetrics struct {
 
 ## Frontend Implementation (React/TypeScript)
 
+Note: bucketing/aggregation rules for long-range charts (`6M`, `Y`) are defined in `docs/new-metrics/metrics-history-bucketing.md`.
+
 ### API Client Updates (`client/src/`)
 
 #### Generated Types
@@ -465,7 +467,7 @@ interface ChartBarIntensityProps {
 
 export function ChartBarIntensity({ title, data, exerciseName }: ChartBarIntensityProps) {
   // Implementation for intensity percentage charts
-  // Y-axis shows 0-100% scale
+  // Y-axis should allow >100% (dynamic [0, dataMax]); optionally show a 100% reference line.
 }
 ```
 

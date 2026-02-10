@@ -17,6 +17,15 @@ import type {
   PatchExercisesByIdData,
   PatchExercisesByIdResponses,
   PatchExercisesByIdErrors,
+  GetExercisesByIdHistorical1RmData,
+  GetExercisesByIdHistorical1RmResponses,
+  GetExercisesByIdHistorical1RmErrors,
+  PatchExercisesByIdHistorical1RmData,
+  PatchExercisesByIdHistorical1RmResponses,
+  PatchExercisesByIdHistorical1RmErrors,
+  GetExercisesByIdMetricsHistoryData,
+  GetExercisesByIdMetricsHistoryResponses,
+  GetExercisesByIdMetricsHistoryErrors,
   GetExercisesByIdRecentSetsData,
   GetExercisesByIdRecentSetsResponses,
   GetExercisesByIdRecentSetsErrors,
@@ -186,6 +195,85 @@ export const patchExercisesById = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Get exercise historical 1RM
+ * Get stored historical 1RM metadata for an exercise, plus a computed best e1RM suggestion from working sets.
+ */
+export const getExercisesByIdHistorical1Rm = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetExercisesByIdHistorical1RmData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetExercisesByIdHistorical1RmResponses,
+    GetExercisesByIdHistorical1RmErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}/historical-1rm",
+    ...options,
+  });
+};
+
+/**
+ * Update exercise historical 1RM
+ * Set a manual historical 1RM (clears source workout) or recompute from best working-set e1RM across history.
+ */
+export const patchExercisesByIdHistorical1Rm = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<PatchExercisesByIdHistorical1RmData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    PatchExercisesByIdHistorical1RmResponses,
+    PatchExercisesByIdHistorical1RmErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}/historical-1rm",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Get exercise metrics history
+ * Get time-series session metrics for an exercise. Range controls bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.
+ */
+export const getExercisesByIdMetricsHistory = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetExercisesByIdMetricsHistoryData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetExercisesByIdMetricsHistoryResponses,
+    GetExercisesByIdMetricsHistoryErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}/metrics-history",
+    ...options,
   });
 };
 
