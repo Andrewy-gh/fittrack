@@ -78,6 +78,10 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*
 	if err != nil {
 		return nil, err
 	}
+	bestE1RM, err := floatPtrFromNumeric(exercise.BestE1rm)
+	if err != nil {
+		return nil, err
+	}
 
 	var historical1rmUpdatedAt *time.Time
 	if exercise.Historical1rmUpdatedAt.Valid {
@@ -101,6 +105,7 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*
 			Historical1RM:                historical1rm,
 			Historical1RMUpdatedAt:       historical1rmUpdatedAt,
 			Historical1RMSourceWorkoutID: historical1rmSourceWorkoutID,
+			BestE1RM:                     bestE1RM,
 		},
 		Sets: setResponses,
 	}, nil

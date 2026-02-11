@@ -38,6 +38,7 @@ type ExerciseDetailExerciseResponse struct {
 	Historical1RM                *float64   `json:"historical_1rm,omitempty" example:"315.0"`
 	Historical1RMUpdatedAt       *time.Time `json:"historical_1rm_updated_at,omitempty" example:"2023-01-01T15:04:05Z"`
 	Historical1RMSourceWorkoutID *int32     `json:"historical_1rm_source_workout_id,omitempty" example:"42"`
+	BestE1RM                     *float64   `json:"best_e1rm,omitempty" example:"305.0"`
 }
 
 // ExerciseDetailResponse is the response for GET /exercises/{id}.

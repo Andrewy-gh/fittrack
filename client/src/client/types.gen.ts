@@ -13,6 +13,7 @@ export type ExerciseCreateExerciseResponse = {
 };
 
 export type ExerciseExerciseDetailExerciseResponse = {
+  best_e1rm?: number;
   created_at: string;
   historical_1rm?: number;
   historical_1rm_source_workout_id?: number;

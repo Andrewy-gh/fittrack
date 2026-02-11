@@ -195,6 +195,8 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				var hist pgtype.Numeric
 				_ = hist.Scan("315.0")
+				var best pgtype.Numeric
+				_ = best.Scan("222.2")
 
 				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{
 					ID:        id,
@@ -206,6 +208,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 					Historical1rm:                hist,
 					Historical1rmUpdatedAt:       pgtype.Timestamptz{Time: time.Date(2026, 2, 3, 0, 0, 0, 0, time.UTC), Valid: true},
 					Historical1rmSourceWorkoutID: pgtype.Int4{Int32: 42, Valid: true},
+					BestE1rm:                     best,
 				}, nil)
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{
 					{
@@ -316,7 +319,18 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 				require.NotNil(t, resp.Exercise.Historical1RMUpdatedAt)
 				require.NotNil(t, resp.Exercise.Historical1RMSourceWorkoutID)
 				assert.Equal(t, int32(42), *resp.Exercise.Historical1RMSourceWorkoutID)
+				require.NotNil(t, resp.Exercise.BestE1RM)
+				assert.InDelta(t, 222.2, *resp.Exercise.BestE1RM, 0.0001)
 				require.Len(t, resp.Sets, 1)
+			}
+			if tt.name == "exercise exists but has no sets - returns 200 with empty sets" && tt.expectedCode == http.StatusOK {
+				var resp ExerciseDetailResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				require.NoError(t, err)
+				assert.Equal(t, int32(999), resp.Exercise.ID)
+				assert.Nil(t, resp.Exercise.BestE1RM)
+				require.NotNil(t, resp.Sets)
+				assert.Len(t, resp.Sets, 0)
 			}
 
 			mockRepo.AssertExpectations(t)

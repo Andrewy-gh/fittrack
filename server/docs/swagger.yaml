@@ -33,6 +33,9 @@ definitions:
     type: object
   exercise.ExerciseDetailExerciseResponse:
     properties:
+      best_e1rm:
+        example: 305
+        type: number
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string

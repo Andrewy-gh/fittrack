@@ -41,6 +41,10 @@ export const exercise_ExerciseDetailExerciseResponseSchema = {
   type: "object",
   required: ["created_at", "id", "name", "updated_at", "user_id"],
   properties: {
+    best_e1rm: {
+      type: "number",
+      example: 305,
+    },
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",

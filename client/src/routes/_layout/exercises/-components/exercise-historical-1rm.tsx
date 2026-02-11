@@ -46,6 +46,24 @@ function computeBestE1rmFromSets(sets: ExerciseExerciseWithSetsResponse[]): { be
   return { best, workoutId };
 }
 
+export function resolveBestE1rmForDisplay({
+  isDemoMode,
+  apiBestE1RM,
+  exerciseSets,
+}: {
+  isDemoMode: boolean;
+  apiBestE1RM: number | null | undefined;
+  exerciseSets: ExerciseExerciseWithSetsResponse[];
+}): { best: number | null; workoutId: number | null } {
+  const shouldFallbackFromSets = isDemoMode || apiBestE1RM == null;
+  const bestFromSets = shouldFallbackFromSets ? computeBestE1rmFromSets(exerciseSets) : null;
+
+  return {
+    best: apiBestE1RM ?? bestFromSets?.best ?? null,
+    workoutId: bestFromSets?.workoutId ?? null,
+  };
+}
+
 function fmtLb(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—';
   return `${n.toFixed(1)} lb`;
@@ -64,7 +82,15 @@ export function ExerciseHistorical1RmCard({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const bestFromSets = useMemo(() => computeBestE1rmFromSets(exerciseSets), [exerciseSets]);
+  const computedBest = useMemo(
+    () =>
+      resolveBestE1rmForDisplay({
+        isDemoMode,
+        apiBestE1RM: exercise.best_e1rm,
+        exerciseSets,
+      }),
+    [isDemoMode, exercise.best_e1rm, exerciseSets]
+  );
   const demoStored = isDemoMode ? getDemoExerciseHistorical1Rm(exerciseId) : null;
 
   const stored = isDemoMode
@@ -76,12 +102,8 @@ export function ExerciseHistorical1RmCard({
   const storedSourceWorkoutId = isDemoMode
     ? demoStored?.source_workout_id ?? null
     : exercise.historical_1rm_source_workout_id ?? null;
-  const computed = isDemoMode
-    ? bestFromSets?.best ?? null
-    : bestFromSets?.best ?? null;
-  const computedWorkoutId = isDemoMode
-    ? bestFromSets?.workoutId ?? null
-    : bestFromSets?.workoutId ?? null;
+  const computed = computedBest.best;
+  const computedWorkoutId = computedBest.workoutId;
 
   const primaryValue = stored ?? computed ?? null;
 

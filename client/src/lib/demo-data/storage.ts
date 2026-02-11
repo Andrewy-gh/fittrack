@@ -202,12 +202,28 @@ export function getExerciseWithSets(exerciseId: number): ExerciseExerciseWithSet
   });
 }
 
+function computeBestE1rmFromWorkingSets(sets: ExerciseExerciseWithSetsResponse[]): number | undefined {
+  let best: number | undefined;
+  for (const set of sets) {
+    if (set.set_type !== 'working') continue;
+    const weight = set.weight ?? 0;
+    const e1rm = weight * (1 + set.reps / 30);
+    if (!Number.isFinite(e1rm)) continue;
+    if (best == null || e1rm > best) {
+      best = e1rm;
+    }
+  }
+  return best;
+}
+
 export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailResponse {
   const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
   const exercise = exercises.find((e) => e.id === exerciseId);
   if (!exercise) throw new Error('Exercise not found');
 
   const hist = getDemoExerciseHistorical1Rm(exerciseId);
+  const sets = getExerciseWithSets(exerciseId);
+  const bestE1rm = computeBestE1rmFromWorkingSets(sets);
 
   const exerciseResp: ExerciseExerciseDetailExerciseResponse = {
     id: exercise.id,
@@ -218,11 +234,12 @@ export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailRes
     historical_1rm: hist?.historical_1rm,
     historical_1rm_updated_at: hist?.updated_at,
     historical_1rm_source_workout_id: hist?.source_workout_id ?? undefined,
+    best_e1rm: bestE1rm,
   };
 
   return {
     exercise: exerciseResp,
-    sets: getExerciseWithSets(exerciseId),
+    sets,
   };
 }
 

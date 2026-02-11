@@ -10,16 +10,23 @@ SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2;
 
 -- name: GetExerciseDetail :one
 SELECT
-    id,
-    name,
-    created_at,
-    updated_at,
-    user_id,
-    historical_1rm,
-    historical_1rm_updated_at,
-    historical_1rm_source_workout_id
-FROM exercise
-WHERE id = $1 AND user_id = $2;
+    e.id,
+    e.name,
+    e.created_at,
+    e.updated_at,
+    e.user_id,
+    e.historical_1rm,
+    e.historical_1rm_updated_at,
+    e.historical_1rm_source_workout_id,
+    (
+        SELECT MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)))::numeric(8,2)
+        FROM "set" s
+        WHERE s.exercise_id = e.id
+          AND s.user_id = e.user_id
+          AND s.set_type = 'working'
+    ) AS best_e1rm
+FROM exercise e
+WHERE e.id = $1 AND e.user_id = $2;
 
 -- name: ListExercises :many
 SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name;
