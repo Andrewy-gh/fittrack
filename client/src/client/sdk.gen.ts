@@ -17,9 +17,6 @@ import type {
   PatchExercisesByIdData,
   PatchExercisesByIdResponses,
   PatchExercisesByIdErrors,
-  GetExercisesByIdHistorical1RmData,
-  GetExercisesByIdHistorical1RmResponses,
-  GetExercisesByIdHistorical1RmErrors,
   PatchExercisesByIdHistorical1RmData,
   PatchExercisesByIdHistorical1RmResponses,
   PatchExercisesByIdHistorical1RmErrors,
@@ -195,31 +192,6 @@ export const patchExercisesById = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
-  });
-};
-
-/**
- * Get exercise historical 1RM
- * Get stored historical 1RM metadata for an exercise, plus a computed best e1RM suggestion from working sets.
- */
-export const getExercisesByIdHistorical1Rm = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<GetExercisesByIdHistorical1RmData, ThrowOnError>,
-) => {
-  return (options.client ?? _heyApiClient).get<
-    GetExercisesByIdHistorical1RmResponses,
-    GetExercisesByIdHistorical1RmErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        name: "x-stack-access-token",
-        type: "apiKey",
-      },
-    ],
-    url: "/exercises/{id}/historical-1rm",
-    ...options,
   });
 };
 

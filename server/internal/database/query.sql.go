@@ -353,30 +353,6 @@ func (q *Queries) GetExerciseDetail(ctx context.Context, arg GetExerciseDetailPa
 	return i, err
 }
 
-const getExerciseHistorical1RM = `-- name: GetExerciseHistorical1RM :one
-SELECT historical_1rm, historical_1rm_updated_at, historical_1rm_source_workout_id
-FROM exercise
-WHERE id = $1 AND user_id = $2
-`
-
-type GetExerciseHistorical1RMParams struct {
-	ID     int32  `json:"id"`
-	UserID string `json:"user_id"`
-}
-
-type GetExerciseHistorical1RMRow struct {
-	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
-	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
-	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
-}
-
-func (q *Queries) GetExerciseHistorical1RM(ctx context.Context, arg GetExerciseHistorical1RMParams) (GetExerciseHistorical1RMRow, error) {
-	row := q.db.QueryRow(ctx, getExerciseHistorical1RM, arg.ID, arg.UserID)
-	var i GetExerciseHistorical1RMRow
-	err := row.Scan(&i.Historical1rm, &i.Historical1rmUpdatedAt, &i.Historical1rmSourceWorkoutID)
-	return i, err
-}
-
 const getExerciseMetricsHistoryMonthlyYear = `-- name: GetExerciseMetricsHistoryMonthlyYear :many
 WITH working_sets AS (
     SELECT

@@ -21,7 +21,6 @@ type ExerciseRepository interface {
 	GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error)
 	GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error)
 	UpdateExerciseName(ctx context.Context, id int32, name, userID string) error
-	GetExerciseHistorical1RM(ctx context.Context, id int32, userID string) (db.GetExerciseHistorical1RMRow, error)
 	GetExerciseBestE1rmWithWorkout(ctx context.Context, exerciseID int32, userID string) (db.GetExerciseBestE1rmWithWorkoutRow, error)
 	UpdateExerciseHistorical1RMManual(ctx context.Context, id int32, historical1rm *float64, userID string) error
 	SetExerciseHistorical1RM(ctx context.Context, id int32, historical1rm *float64, sourceWorkoutID *int32, userID string) error

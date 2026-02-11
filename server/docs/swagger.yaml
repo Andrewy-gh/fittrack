@@ -76,19 +76,6 @@ definitions:
     - exercise
     - sets
     type: object
-  exercise.ExerciseHistorical1RMResponse:
-    properties:
-      computed_best_e1rm:
-        type: number
-      computed_best_workout_id:
-        type: integer
-      historical_1rm:
-        type: number
-      historical_1rm_source_workout_id:
-        type: integer
-      historical_1rm_updated_at:
-        type: string
-    type: object
   exercise.ExerciseMetricsHistoryPoint:
     properties:
       date:
@@ -705,45 +692,6 @@ paths:
       tags:
       - exercises
   /exercises/{id}/historical-1rm:
-    get:
-      consumes:
-      - application/json
-      description: Get stored historical 1RM metadata for an exercise, plus a computed
-        best e1RM suggestion from working sets.
-      parameters:
-      - description: Exercise ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/exercise.ExerciseHistorical1RMResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-        "404":
-          description: Not Found - Exercise not found or doesn't belong to user
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.ErrorResponse'
-      security:
-      - StackAuth: []
-      summary: Get exercise historical 1RM
-      tags:
-      - exercises
     patch:
       consumes:
       - application/json

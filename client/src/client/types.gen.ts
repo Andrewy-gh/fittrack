@@ -28,14 +28,6 @@ export type ExerciseExerciseDetailResponse = {
   sets: Array<ExerciseExerciseWithSetsResponse>;
 };
 
-export type ExerciseExerciseHistorical1RmResponse = {
-  computed_best_e1rm?: number;
-  computed_best_workout_id?: number;
-  historical_1rm?: number;
-  historical_1rm_source_workout_id?: number;
-  historical_1rm_updated_at?: string;
-};
-
 export type ExerciseExerciseMetricsHistoryPoint = {
   date?: string;
   session_avg_e1rm?: number;
@@ -418,50 +410,6 @@ export type PatchExercisesByIdResponses = {
    */
   204: unknown;
 };
-
-export type GetExercisesByIdHistorical1RmData = {
-  body?: never;
-  path: {
-    /**
-     * Exercise ID
-     */
-    id: number;
-  };
-  query?: never;
-  url: "/exercises/{id}/historical-1rm";
-};
-
-export type GetExercisesByIdHistorical1RmErrors = {
-  /**
-   * Bad Request
-   */
-  400: ResponseErrorResponse;
-  /**
-   * Unauthorized
-   */
-  401: ResponseErrorResponse;
-  /**
-   * Not Found - Exercise not found or doesn't belong to user
-   */
-  404: ResponseErrorResponse;
-  /**
-   * Internal Server Error
-   */
-  500: ResponseErrorResponse;
-};
-
-export type GetExercisesByIdHistorical1RmError =
-  GetExercisesByIdHistorical1RmErrors[keyof GetExercisesByIdHistorical1RmErrors];
-
-export type GetExercisesByIdHistorical1RmResponses = {
-  /**
-   * OK
-   */
-  200: ExerciseExerciseHistorical1RmResponse;
-};
-
-export type GetExercisesByIdHistorical1RmResponse =
-  GetExercisesByIdHistorical1RmResponses[keyof GetExercisesByIdHistorical1RmResponses];
 
 export type PatchExercisesByIdHistorical1RmData = {
   /**

@@ -451,16 +451,6 @@ func numericFromFloat(val *float64) (pgtype.Numeric, error) {
 	return n, nil
 }
 
-func (er *exerciseRepository) GetExerciseHistorical1RM(ctx context.Context, id int32, userID string) (db.GetExerciseHistorical1RMRow, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	return er.queries.GetExerciseHistorical1RM(ctx, db.GetExerciseHistorical1RMParams{
-		ID:     id,
-		UserID: userID,
-	})
-}
-
 func (er *exerciseRepository) GetExerciseBestE1rmWithWorkout(ctx context.Context, exerciseID int32, userID string) (db.GetExerciseBestE1rmWithWorkoutRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

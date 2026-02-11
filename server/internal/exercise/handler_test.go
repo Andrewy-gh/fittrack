@@ -84,11 +84,6 @@ func (m *MockExerciseRepository) UpdateExerciseName(ctx context.Context, id int3
 	return args.Error(0)
 }
 
-func (m *MockExerciseRepository) GetExerciseHistorical1RM(ctx context.Context, id int32, userID string) (db.GetExerciseHistorical1RMRow, error) {
-	args := m.Called(ctx, id, userID)
-	return args.Get(0).(db.GetExerciseHistorical1RMRow), args.Error(1)
-}
-
 func (m *MockExerciseRepository) GetExerciseBestE1rmWithWorkout(ctx context.Context, exerciseID int32, userID string) (db.GetExerciseBestE1rmWithWorkoutRow, error) {
 	args := m.Called(ctx, exerciseID, userID)
 	return args.Get(0).(db.GetExerciseBestE1rmWithWorkoutRow), args.Error(1)

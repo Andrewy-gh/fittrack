@@ -7,7 +7,6 @@ import {
   deleteExercisesById,
   getExercisesById,
   patchExercisesById,
-  getExercisesByIdHistorical1Rm,
   patchExercisesByIdHistorical1Rm,
   getExercisesByIdMetricsHistory,
   getExercisesByIdRecentSets,
@@ -32,7 +31,6 @@ import type {
   GetExercisesByIdData,
   PatchExercisesByIdData,
   PatchExercisesByIdError,
-  GetExercisesByIdHistorical1RmData,
   PatchExercisesByIdHistorical1RmData,
   PatchExercisesByIdHistorical1RmError,
   GetExercisesByIdMetricsHistoryData,
@@ -249,34 +247,6 @@ export const patchExercisesByIdMutation = (
     },
   };
   return mutationOptions;
-};
-
-export const getExercisesByIdHistorical1RmQueryKey = (
-  options: Options<GetExercisesByIdHistorical1RmData>,
-) =>
-  createQueryKey("getExercisesByIdHistorical1Rm", options, false, [
-    "exercises",
-  ]);
-
-/**
- * Get exercise historical 1RM
- * Get stored historical 1RM metadata for an exercise, plus a computed best e1RM suggestion from working sets.
- */
-export const getExercisesByIdHistorical1RmQueryOptions = (
-  options: Options<GetExercisesByIdHistorical1RmData>,
-) => {
-  return queryOptions({
-    queryFn: async ({ queryKey, signal }) => {
-      const { data } = await getExercisesByIdHistorical1Rm({
-        ...options,
-        ...queryKey[0],
-        signal,
-        throwOnError: true,
-      });
-      return data;
-    },
-    queryKey: getExercisesByIdHistorical1RmQueryKey(options),
-  });
 };
 
 /**

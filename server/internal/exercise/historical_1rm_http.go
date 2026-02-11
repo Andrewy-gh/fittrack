@@ -10,61 +10,6 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
 
-// MARK: GetExerciseHistorical1RM
-// GetExerciseHistorical1RM godoc
-// @Summary Get exercise historical 1RM
-// @Description Get stored historical 1RM metadata for an exercise, plus a computed best e1RM suggestion from working sets.
-// @Tags exercises
-// @Accept json
-// @Produce json
-// @Security StackAuth
-// @Param id path int true "Exercise ID"
-// @Success 200 {object} exercise.ExerciseHistorical1RMResponse
-// @Failure 400 {object} response.ErrorResponse "Bad Request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
-// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
-// @Router /exercises/{id}/historical-1rm [get]
-func (h *ExerciseHandler) GetExerciseHistorical1RM(w http.ResponseWriter, r *http.Request) {
-	exerciseID := r.PathValue("id")
-	if exerciseID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
-		return
-	}
-
-	exerciseIDInt, err := strconv.Atoi(exerciseID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
-		return
-	}
-
-	if err := h.validator.Struct(GetExerciseWithSetsRequest{ExerciseID: int32(exerciseIDInt)}); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID: must be positive", err)
-		return
-	}
-
-	resp, err := h.exerciseService.GetExerciseHistorical1RM(r.Context(), int32(exerciseIDInt))
-	if err != nil {
-		var errUnauthorized *apperrors.Unauthorized
-		var errNotFound *apperrors.NotFound
-
-		switch {
-		case errors.As(err, &errUnauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
-		case errors.As(err, &errNotFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
-		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise historical 1RM", err)
-		}
-		return
-	}
-
-	if err := response.JSON(w, http.StatusOK, resp); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
-		return
-	}
-}
-
 // MARK: UpdateExerciseHistorical1RM
 // UpdateExerciseHistorical1RM godoc
 // @Summary Update exercise historical 1RM

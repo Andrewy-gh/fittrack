@@ -92,27 +92,6 @@ export const exercise_ExerciseDetailResponseSchema = {
   },
 } as const;
 
-export const exercise_ExerciseHistorical1RMResponseSchema = {
-  type: "object",
-  properties: {
-    computed_best_e1rm: {
-      type: "number",
-    },
-    computed_best_workout_id: {
-      type: "integer",
-    },
-    historical_1rm: {
-      type: "number",
-    },
-    historical_1rm_source_workout_id: {
-      type: "integer",
-    },
-    historical_1rm_updated_at: {
-      type: "string",
-    },
-  },
-} as const;
-
 export const exercise_ExerciseMetricsHistoryPointSchema = {
   type: "object",
   properties: {

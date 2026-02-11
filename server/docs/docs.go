@@ -311,65 +311,6 @@ const docTemplate = `{
             }
         },
         "/exercises/{id}/historical-1rm": {
-            "get": {
-                "security": [
-                    {
-                        "StackAuth": []
-                    }
-                ],
-                "description": "Get stored historical 1RM metadata for an exercise, plus a computed best e1RM suggestion from working sets.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "exercises"
-                ],
-                "summary": "Get exercise historical 1RM",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Exercise ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/exercise.ExerciseHistorical1RMResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found - Exercise not found or doesn't belong to user",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.ErrorResponse"
-                        }
-                    }
-                }
-            },
             "patch": {
                 "security": [
                     {
@@ -1078,26 +1019,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/exercise.ExerciseWithSetsResponse"
                     }
-                }
-            }
-        },
-        "exercise.ExerciseHistorical1RMResponse": {
-            "type": "object",
-            "properties": {
-                "computed_best_e1rm": {
-                    "type": "number"
-                },
-                "computed_best_workout_id": {
-                    "type": "integer"
-                },
-                "historical_1rm": {
-                    "type": "number"
-                },
-                "historical_1rm_source_workout_id": {
-                    "type": "integer"
-                },
-                "historical_1rm_updated_at": {
-                    "type": "string"
                 }
             }
         },

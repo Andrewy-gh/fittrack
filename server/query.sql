@@ -320,11 +320,6 @@ UPDATE exercise
 SET name = $2, updated_at = NOW()
 WHERE id = $1 AND user_id = $3;
 
--- name: GetExerciseHistorical1RM :one
-SELECT historical_1rm, historical_1rm_updated_at, historical_1rm_source_workout_id
-FROM exercise
-WHERE id = $1 AND user_id = $2;
-
 -- name: UpdateExerciseHistorical1RMManual :exec
 UPDATE exercise
 SET

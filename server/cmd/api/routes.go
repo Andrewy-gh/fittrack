@@ -42,7 +42,6 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExerciseWithSets)
 	mux.HandleFunc("GET /api/exercises/{id}/recent-sets", eh.GetRecentSetsForExercise)
 	mux.HandleFunc("GET /api/exercises/{id}/metrics-history", eh.GetExerciseMetricsHistory)
-	mux.HandleFunc("GET /api/exercises/{id}/historical-1rm", eh.GetExerciseHistorical1RM)
 	mux.HandleFunc("PATCH /api/exercises/{id}", eh.UpdateExerciseName)
 	mux.HandleFunc("PATCH /api/exercises/{id}/historical-1rm", eh.UpdateExerciseHistorical1RM)
 	mux.HandleFunc("DELETE /api/exercises/{id}", eh.DeleteExercise)
