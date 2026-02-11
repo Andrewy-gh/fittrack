@@ -1052,7 +1052,7 @@ func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	validator := validator.New()
 	queries := db.New(pool)
-	
+
 	// Initialize repositories
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
 	workoutRepo := NewRepository(logger, queries, pool, exerciseRepo)
@@ -1631,7 +1631,7 @@ func setupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 
 	// Setup users table entries
 	setupTestUsers(t, pool)
-	
+
 	// Backfill order columns for existing test data if they exist
 	// This ensures tests work with both old and new database schemas
 	backfillOrderColumnsForTests(t, pool)
@@ -1673,7 +1673,6 @@ func setupRLS(t *testing.T, pool *pgxpool.Pool) {
 	require.Greater(t, policyCount, 0, "RLS policies should exist from migration")
 }
 
-
 func setupTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
@@ -1712,7 +1711,7 @@ func setupTestWorkout(t *testing.T, pool *pgxpool.Pool, userID, notes string) in
 
 	// Create workout
 	var workoutID int32
-	err := pool.QueryRow(ctx, 
+	err := pool.QueryRow(ctx,
 		"INSERT INTO workout (date, notes, user_id) VALUES (NOW(), $1, $2) RETURNING id",
 		notes, userID).Scan(&workoutID)
 	require.NoError(t, err, "Failed to create test workout for user %s", userID)
@@ -1777,20 +1776,21 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 
 	// Clean up data for each registered test user
 	for _, userID := range testUserIDs {
-		// Clean up dependent data first (sets → workouts → exercises → users)
-		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE workout_id IN (SELECT id FROM workout WHERE user_id = $1)", userID)
+		// Clean up dependent data first (sets → exercises → workouts → users)
+		// exercise.historical_1rm_source_workout_id references workout(id), so exercises must be removed before workouts.
+		_, err := pool.Exec(ctx, "DELETE FROM \"set\" WHERE user_id = $1", userID)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up set data for user %s: %v", userID, err)
-		}
-
-		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id = $1", userID)
-		if err != nil {
-			t.Logf("Warning: Failed to clean up workout data for user %s: %v", userID, err)
 		}
 
 		_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id = $1", userID)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up exercise data for user %s: %v", userID, err)
+		}
+
+		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up workout data for user %s: %v", userID, err)
 		}
 
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", userID)
@@ -1890,8 +1890,8 @@ func TestFormatValidationErrors(t *testing.T) {
 		}
 
 		testData := ValidationTestStruct{
-			Username: "ab",     // fails min=3
-			Count:    0,        // fails gte=1
+			Username: "ab",      // fails min=3
+			Count:    0,         // fails gte=1
 			Created:  "invalid", // fails datetime
 		}
 

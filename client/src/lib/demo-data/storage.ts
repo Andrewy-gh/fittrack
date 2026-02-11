@@ -5,6 +5,8 @@ import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
   ExerciseExerciseResponse,
+  ExerciseExerciseDetailExerciseResponse,
+  ExerciseExerciseDetailResponse,
   ExerciseExerciseWithSetsResponse,
   ExerciseRecentSetsResponse,
 } from './types';
@@ -15,6 +17,16 @@ import {
   INITIAL_WORKOUTS,
   getNextId,
 } from './initial-data';
+import {
+  bootstrapDemoHistorical1Rm,
+  clearDemoHistorical1Rm,
+  getDemoExerciseHistorical1Rm,
+  handleDemoExerciseDeleted,
+  handleDemoWorkoutCreated,
+  handleDemoWorkoutDeleted,
+  handleDemoWorkoutUpdated,
+  resetDemoHistorical1Rm,
+} from './historical-1rm';
 
 // ===========================
 // localStorage Utilities
@@ -51,6 +63,7 @@ export function initializeDemoData(): void {
     setInStorage(STORAGE_KEYS.EXERCISES, INITIAL_EXERCISES);
     setInStorage(STORAGE_KEYS.WORKOUTS, INITIAL_WORKOUTS);
     setInStorage(STORAGE_KEYS.SETS, INITIAL_SETS);
+    bootstrapDemoHistorical1Rm();
   }
 }
 
@@ -58,6 +71,7 @@ export function resetDemoData(): void {
   setInStorage(STORAGE_KEYS.EXERCISES, INITIAL_EXERCISES);
   setInStorage(STORAGE_KEYS.WORKOUTS, INITIAL_WORKOUTS);
   setInStorage(STORAGE_KEYS.SETS, INITIAL_SETS);
+  resetDemoHistorical1Rm();
 }
 
 export function clearDemoData(): void {
@@ -65,6 +79,7 @@ export function clearDemoData(): void {
   localStorage.removeItem(STORAGE_KEYS.EXERCISES);
   localStorage.removeItem(STORAGE_KEYS.WORKOUTS);
   localStorage.removeItem(STORAGE_KEYS.SETS);
+  clearDemoHistorical1Rm();
 }
 
 // ===========================
@@ -152,6 +167,7 @@ export function deleteExercise(id: number): boolean {
   const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
   const filteredSets = sets.filter((set) => set.exercise_id !== id);
   setInStorage(STORAGE_KEYS.SETS, filteredSets);
+  handleDemoExerciseDeleted(id);
 
   setInStorage(STORAGE_KEYS.EXERCISES, filtered);
   return true;
@@ -184,6 +200,47 @@ export function getExerciseWithSets(exerciseId: number): ExerciseExerciseWithSet
       volume: (set.weight || 0) * set.reps,
     };
   });
+}
+
+function computeBestE1rmFromWorkingSets(sets: ExerciseExerciseWithSetsResponse[]): number | undefined {
+  let best: number | undefined;
+  for (const set of sets) {
+    if (set.set_type !== 'working') continue;
+    const weight = set.weight ?? 0;
+    const e1rm = weight * (1 + set.reps / 30);
+    if (!Number.isFinite(e1rm)) continue;
+    if (best == null || e1rm > best) {
+      best = e1rm;
+    }
+  }
+  return best;
+}
+
+export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailResponse {
+  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercise = exercises.find((e) => e.id === exerciseId);
+  if (!exercise) throw new Error('Exercise not found');
+
+  const hist = getDemoExerciseHistorical1Rm(exerciseId);
+  const sets = getExerciseWithSets(exerciseId);
+  const bestE1rm = computeBestE1rmFromWorkingSets(sets);
+
+  const exerciseResp: ExerciseExerciseDetailExerciseResponse = {
+    id: exercise.id,
+    name: exercise.name,
+    created_at: exercise.created_at,
+    updated_at: exercise.updated_at,
+    user_id: exercise.user_id,
+    historical_1rm: hist?.historical_1rm,
+    historical_1rm_updated_at: hist?.updated_at,
+    historical_1rm_source_workout_id: hist?.source_workout_id ?? undefined,
+    best_e1rm: bestE1rm,
+  };
+
+  return {
+    exercise: exerciseResp,
+    sets,
+  };
 }
 
 // Get recent sets for an exercise
@@ -339,6 +396,7 @@ export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
 
   setInStorage(STORAGE_KEYS.EXERCISES, exercises);
   setInStorage(STORAGE_KEYS.SETS, sets);
+  handleDemoWorkoutCreated(newWorkout.id);
 
   return { success: true };
 }
@@ -402,6 +460,7 @@ export function updateWorkout(
   setInStorage(STORAGE_KEYS.WORKOUTS, workouts);
   setInStorage(STORAGE_KEYS.EXERCISES, exercises);
   setInStorage(STORAGE_KEYS.SETS, [...filteredSets, ...newSets]);
+  handleDemoWorkoutUpdated(id);
 
   return { success: true };
 }
@@ -418,6 +477,7 @@ export function deleteWorkout(id: number): boolean {
 
   setInStorage(STORAGE_KEYS.WORKOUTS, filtered);
   setInStorage(STORAGE_KEYS.SETS, filteredSets);
+  handleDemoWorkoutDeleted(id);
 
   return true;
 }

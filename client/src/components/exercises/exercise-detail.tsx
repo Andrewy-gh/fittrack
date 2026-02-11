@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowDownAz, ArrowUpAz } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Label } from '@/components/ui/label';
 import { Toggle } from '@/components/ui/toggle';
 import {
@@ -13,19 +12,23 @@ import {
 } from '@/components/ui/select';
 import { PaginationControl } from '@/components/ui/pagination-control';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
-import type { ExerciseExerciseWithSetsResponse } from '@/client';
+import type { ExerciseExerciseDetailExerciseResponse, ExerciseExerciseWithSetsResponse } from '@/client';
 import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
 import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exercise-edit-dialog';
 import { ExerciseDetailHeader } from '@/components/exercises/exercise-detail-header';
 import { ExerciseSummaryCards } from '@/components/exercises/exercise-summary-cards';
+import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
 import {
   ExerciseWorkoutCards,
   type ExerciseWorkoutEntry,
 } from '@/components/exercises/exercise-workout-cards';
+import { ExerciseHistorical1RmCard } from '@/routes/_layout/exercises/-components/exercise-historical-1rm';
 
 export interface ExerciseDetailProps {
+  exercise: ExerciseExerciseDetailExerciseResponse;
   exerciseSets: ExerciseExerciseWithSetsResponse[];
   exerciseId: number;
+  isDemoMode: boolean;
   sortOrder: 'asc' | 'desc';
   itemsPerPage: number;
   page?: number;
@@ -35,8 +38,10 @@ export interface ExerciseDetailProps {
 }
 
 export function ExerciseDetail({
+  exercise,
   exerciseSets,
   exerciseId,
+  isDemoMode,
   sortOrder,
   itemsPerPage,
   page,
@@ -109,7 +114,7 @@ export function ExerciseDetail({
     startIndex + itemsPerPage
   );
 
-  const exerciseName = exerciseSets[0]?.exercise_name || 'Exercise';
+  const exerciseName = exercise.name;
 
   const handleOpenEditDialog = () => {
     setIsEditDialogOpen(true);
@@ -128,6 +133,13 @@ export function ExerciseDetail({
           onDelete={handleOpenDeleteDialog}
         />
 
+        <ExerciseHistorical1RmCard
+          exercise={exercise}
+          exerciseId={exerciseId}
+          exerciseSets={exerciseSets}
+          isDemoMode={isDemoMode}
+        />
+
         <ExerciseSummaryCards
           totalSets={totalSets}
           uniqueWorkouts={uniqueWorkouts}
@@ -137,7 +149,11 @@ export function ExerciseDetail({
           maxVolume={maxVolume}
         />
 
-        <ChartBarVol data={exerciseSets} />
+        <ExerciseMetricCharts
+          exerciseId={exerciseId}
+          exerciseSets={exerciseSets}
+          isDemoMode={isDemoMode}
+        />
 
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Workouts</h2>

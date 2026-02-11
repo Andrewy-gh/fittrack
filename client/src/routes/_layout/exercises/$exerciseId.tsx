@@ -48,7 +48,7 @@ function RouteComponent() {
   const { sortOrder, itemsPerPage, page } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  const { data: exerciseSets } = user
+  const { data: exerciseDetail } = user
     ? useSuspenseQuery(exerciseByIdQueryOptions(exerciseId))
     : useSuspenseQuery(getDemoExercisesByIdQueryOptions(exerciseId));
 
@@ -59,8 +59,10 @@ function RouteComponent() {
 
   return (
     <ExerciseDetail
-      exerciseSets={exerciseSets}
+      exercise={exerciseDetail.exercise}
+      exerciseSets={exerciseDetail.sets}
       exerciseId={exerciseId}
+      isDemoMode={!user}
       sortOrder={normalizedSortOrder}
       itemsPerPage={normalizedItemsPerPage}
       page={page}

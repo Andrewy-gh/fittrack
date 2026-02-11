@@ -231,12 +231,9 @@ async function globalSetup(config: FullConfig) {
   const serverEnv = await loadEnvFile(serverEnvPath);
   const clientEnv = await loadEnvFile(clientEnvPath);
 
-  const projectId =
-    process.env.STACK_PROJECT_ID ||
-    process.env.VITE_PROJECT_ID ||
-    serverEnv.PROJECT_ID ||
-    serverEnv.VITE_PROJECT_ID ||
-    clientEnv.VITE_PROJECT_ID;
+  // The browser app uses Vite-exposed env vars, so only consider VITE_* here.
+  // If Stack isn't configured for the client, skip auth state generation so auth e2e tests will skip.
+  const projectId = process.env.VITE_PROJECT_ID || clientEnv.VITE_PROJECT_ID;
   const secretServerKey =
     process.env.SECRET_SERVER_KEY || serverEnv.SECRET_SERVER_KEY;
   const publishableClientKey =

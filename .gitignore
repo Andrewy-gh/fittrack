@@ -12,3 +12,15 @@ client/tests/e2e/.auth/
 
 # Husky generated hook scripts
 .husky/_/
+
+# Local env
+.env
+
+# Local dev postgres volume (docker-compose in server/)
+server/db-data/
+server/_db-data/
+server/db-data.bak-*/
+server/_db-data.bak-*/
+
+# Local go build output
+server/api

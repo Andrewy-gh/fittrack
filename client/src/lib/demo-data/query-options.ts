@@ -4,7 +4,7 @@ import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
   ExerciseExerciseResponse,
-  ExerciseExerciseWithSetsResponse,
+  ExerciseExerciseDetailResponse,
   ExerciseRecentSetsResponse,
   WorkoutCreateWorkoutRequest,
   WorkoutUpdateWorkoutRequest,
@@ -15,7 +15,7 @@ import {
   createExercise,
   updateExercise,
   deleteExercise,
-  getExerciseWithSets,
+  getExerciseDetail,
   getExerciseRecentSets,
   getAllWorkouts,
   getWorkoutById,
@@ -69,9 +69,9 @@ export const getDemoExercisesQueryOptions = () => {
 export const getDemoExercisesByIdQueryOptions = (id: number) => {
   return queryOptions({
     queryKey: getDemoExercisesByIdQueryKey(id),
-    queryFn: async (): Promise<ExerciseExerciseWithSetsResponse[]> => {
+    queryFn: async (): Promise<ExerciseExerciseDetailResponse> => {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      return getExerciseWithSets(id);
+      return getExerciseDetail(id);
     },
   });
 };

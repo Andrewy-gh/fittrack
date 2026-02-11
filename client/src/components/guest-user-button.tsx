@@ -8,9 +8,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogIn, Moon, Sun, User, UserPlus } from 'lucide-react';
-import { useStackApp } from '@stackframe/react';
 import { useTheme } from '@/components/theme-provider';
 import React from 'react';
+import { stackClientApp } from '@/stack';
 
 const Typography: React.FC<{ children: React.ReactNode; className?: string }> =
   ({ children, className = '' }) => (
@@ -19,7 +19,6 @@ const Typography: React.FC<{ children: React.ReactNode; className?: string }> =
 
 export function GuestUserButton() {
   const { theme, setTheme } = useTheme();
-  const app = useStackApp();
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -57,13 +56,21 @@ export function GuestUserButton() {
           </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => app.redirectToSignIn()}>
+        <DropdownMenuItem
+          disabled={!stackClientApp}
+          onClick={() => stackClientApp?.redirectToSignIn()}
+          title={!stackClientApp ? 'Auth not configured' : undefined}
+        >
           <div className="flex gap-2 items-center">
             <LogIn {...iconProps} />
             <Typography>Sign in</Typography>
           </div>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => app.redirectToSignUp()}>
+        <DropdownMenuItem
+          disabled={!stackClientApp}
+          onClick={() => stackClientApp?.redirectToSignUp()}
+          title={!stackClientApp ? 'Auth not configured' : undefined}
+        >
           <div className="flex gap-2 items-center">
             <UserPlus {...iconProps} />
             <Typography>Sign up</Typography>

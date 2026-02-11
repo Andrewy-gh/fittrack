@@ -7,6 +7,8 @@ import {
   deleteExercisesById,
   getExercisesById,
   patchExercisesById,
+  patchExercisesByIdHistorical1Rm,
+  getExercisesByIdMetricsHistory,
   getExercisesByIdRecentSets,
   getHealth,
   getReady,
@@ -29,6 +31,9 @@ import type {
   GetExercisesByIdData,
   PatchExercisesByIdData,
   PatchExercisesByIdError,
+  PatchExercisesByIdHistorical1RmData,
+  PatchExercisesByIdHistorical1RmError,
+  GetExercisesByIdMetricsHistoryData,
   GetExercisesByIdRecentSetsData,
   GetHealthData,
   GetReadyData,
@@ -197,7 +202,7 @@ export const getExercisesByIdQueryKey = (
 
 /**
  * Get exercise with sets
- * Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
+ * Get a specific exercise (metadata) plus all its sets from workouts. Sets is empty when exercise exists but has no sets.
  */
 export const getExercisesByIdQueryOptions = (
   options: Options<GetExercisesByIdData>,
@@ -242,6 +247,62 @@ export const patchExercisesByIdMutation = (
     },
   };
   return mutationOptions;
+};
+
+/**
+ * Update exercise historical 1RM
+ * Set a manual historical 1RM (clears source workout) or recompute from best working-set e1RM across history.
+ */
+export const patchExercisesByIdHistorical1RmMutation = (
+  options?: Partial<Options<PatchExercisesByIdHistorical1RmData>>,
+): UseMutationOptions<
+  unknown,
+  PatchExercisesByIdHistorical1RmError,
+  Options<PatchExercisesByIdHistorical1RmData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    PatchExercisesByIdHistorical1RmError,
+    Options<PatchExercisesByIdHistorical1RmData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await patchExercisesByIdHistorical1Rm({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getExercisesByIdMetricsHistoryQueryKey = (
+  options: Options<GetExercisesByIdMetricsHistoryData>,
+) =>
+  createQueryKey("getExercisesByIdMetricsHistory", options, false, [
+    "exercises",
+  ]);
+
+/**
+ * Get exercise metrics history
+ * Get time-series session metrics for an exercise. Range controls bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.
+ */
+export const getExercisesByIdMetricsHistoryQueryOptions = (
+  options: Options<GetExercisesByIdMetricsHistoryData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getExercisesByIdMetricsHistory({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getExercisesByIdMetricsHistoryQueryKey(options),
+  });
 };
 
 export const getExercisesByIdRecentSetsQueryKey = (

@@ -44,6 +44,11 @@ func (m *MockExerciseRepositoryForTest) GetRecentSetsForExercise(ctx context.Con
 	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
 }
 
+func (m *MockExerciseRepositoryForTest) GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
+	args := m.Called(ctx, req, userID)
+	return args.Get(0).([]ExerciseMetricsHistoryPoint), args.Get(1).(MetricsHistoryBucket), args.Error(2)
+}
+
 func TestExerciseRepository_GetRecentSetsForExercise(t *testing.T) {
 	mockRepo := &MockExerciseRepositoryForTest{}
 
@@ -66,4 +71,3 @@ func TestExerciseRepository_GetRecentSetsForExercise(t *testing.T) {
 
 	mockRepo.AssertExpectations(t)
 }
-
