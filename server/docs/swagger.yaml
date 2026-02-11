@@ -109,6 +109,17 @@ definitions:
       exercise_order:
         example: 0
         type: integer
+      historical_1rm:
+        example: 315
+        type: number
+      historical_1rm_source_workout_id:
+        description: workout that sourced historical_1rm (null means manual override)
+        example: 42
+        type: integer
+      historical_1rm_updated_at:
+        description: when historical_1rm was last changed (manual set or recompute)
+        example: "2023-01-01T15:04:05Z"
+        type: string
       reps:
         example: 10
         type: integer

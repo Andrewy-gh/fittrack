@@ -158,6 +158,22 @@ export const exercise_ExerciseWithSetsResponseSchema = {
       type: "integer",
       example: 0,
     },
+    historical_1rm: {
+      type: "number",
+      example: 315,
+    },
+    historical_1rm_source_workout_id: {
+      description:
+        "workout that sourced historical_1rm (null means manual override)",
+      type: "integer",
+      example: 42,
+    },
+    historical_1rm_updated_at: {
+      description:
+        "when historical_1rm was last changed (manual set or recompute)",
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
     reps: {
       type: "integer",
       example: 10,

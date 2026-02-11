@@ -84,6 +84,11 @@ export function useUpdateExerciseHistorical1RmMutation() {
         queryKey: getExercisesByIdHistorical1RmQueryKey({ path: { id } }),
       });
 
+      // GET /exercises/{id} now carries historical_1rm fields; keep it fresh.
+      queryClient.invalidateQueries({
+        queryKey: getExercisesByIdQueryKey({ path: { id } }),
+      });
+
       // historical 1RM affects metrics-history intensity calculations; invalidate all ranges.
       queryClient.invalidateQueries({
         predicate: (q) => {

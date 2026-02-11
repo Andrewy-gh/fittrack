@@ -64,23 +64,34 @@ export function ExerciseHistorical1RmCard({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const demoBest = useMemo(() => computeBestE1rmFromSets(exerciseSets), [exerciseSets]);
+  const bestFromSets = useMemo(() => computeBestE1rmFromSets(exerciseSets), [exerciseSets]);
   const demoStored = isDemoMode ? getDemoExerciseHistorical1Rm(exerciseId) : null;
 
   const query = useQuery({
     ...exerciseHistorical1RmQueryOptions(exerciseId),
-    enabled: !isDemoMode,
+    // avoid extra query when we already have sets (and exercise historical_1rm fields) from GET /exercises/{id}
+    enabled: !isDemoMode && exerciseSets.length === 0,
   });
   const data = (query.data ?? null) as ExerciseExerciseHistorical1RmResponse | null;
-  const isLoading = !isDemoMode && query.isLoading;
+  const isLoading = !isDemoMode && exerciseSets.length === 0 && query.isLoading;
 
-  const stored = isDemoMode ? demoStored?.historical_1rm ?? null : data?.historical_1rm;
-  const storedUpdatedAt = isDemoMode ? demoStored?.updated_at ?? null : data?.historical_1rm_updated_at;
+  const stored = isDemoMode
+    ? demoStored?.historical_1rm ?? null
+    : exerciseSets[0]?.historical_1rm ?? data?.historical_1rm ?? null;
+  const storedUpdatedAt = isDemoMode
+    ? demoStored?.updated_at ?? null
+    : exerciseSets[0]?.historical_1rm_updated_at ?? data?.historical_1rm_updated_at ?? null;
   const storedSourceWorkoutId = isDemoMode
     ? demoStored?.source_workout_id ?? null
-    : data?.historical_1rm_source_workout_id;
-  const computed = isDemoMode ? demoBest?.best ?? null : data?.computed_best_e1rm;
-  const computedWorkoutId = isDemoMode ? demoBest?.workoutId ?? null : data?.computed_best_workout_id;
+    : exerciseSets[0]?.historical_1rm_source_workout_id ??
+      data?.historical_1rm_source_workout_id ??
+      null;
+  const computed = isDemoMode
+    ? bestFromSets?.best ?? null
+    : bestFromSets?.best ?? data?.computed_best_e1rm ?? null;
+  const computedWorkoutId = isDemoMode
+    ? bestFromSets?.workoutId ?? null
+    : bestFromSets?.workoutId ?? data?.computed_best_workout_id ?? null;
 
   const primaryValue = isLoading ? null : stored ?? computed ?? null;
 

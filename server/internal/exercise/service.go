@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
@@ -182,19 +183,39 @@ func (es *ExerciseService) convertExerciseWithSetsRows(rows []db.GetExerciseWith
 			workoutNotes = &row.WorkoutNotes.String
 		}
 
+		historical1rm, err := floatPtrFromNumeric(row.Historical1rm)
+		if err != nil {
+			return nil, err
+		}
+
+		var historical1rmUpdatedAt *time.Time
+		if row.Historical1rmUpdatedAt.Valid {
+			t := row.Historical1rmUpdatedAt.Time
+			historical1rmUpdatedAt = &t
+		}
+
+		var historical1rmSourceWorkoutID *int32
+		if row.Historical1rmSourceWorkoutID.Valid {
+			id := row.Historical1rmSourceWorkoutID.Int32
+			historical1rmSourceWorkoutID = &id
+		}
+
 		response[i] = ExerciseWithSetsResponse{
-			WorkoutID:     row.WorkoutID,
-			WorkoutDate:   row.WorkoutDate.Time,
-			WorkoutNotes:  workoutNotes,
-			SetID:         row.SetID,
-			Weight:        weight,
-			Reps:          row.Reps,
-			SetType:       row.SetType,
-			ExerciseID:    row.ExerciseID,
-			ExerciseName:  row.ExerciseName,
-			ExerciseOrder: exerciseOrder,
-			SetOrder:      setOrder,
-			Volume:        volume,
+			WorkoutID:                    row.WorkoutID,
+			WorkoutDate:                  row.WorkoutDate.Time,
+			WorkoutNotes:                 workoutNotes,
+			SetID:                        row.SetID,
+			Weight:                       weight,
+			Reps:                         row.Reps,
+			SetType:                      row.SetType,
+			ExerciseID:                   row.ExerciseID,
+			ExerciseName:                 row.ExerciseName,
+			Historical1RM:                historical1rm,
+			Historical1RMUpdatedAt:       historical1rmUpdatedAt,
+			Historical1RMSourceWorkoutID: historical1rmSourceWorkoutID,
+			ExerciseOrder:                exerciseOrder,
+			SetOrder:                     setOrder,
+			Volume:                       volume,
 		}
 	}
 

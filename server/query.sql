@@ -32,6 +32,9 @@ SELECT
     s.set_type,
     e.id as exercise_id,
     e.name as exercise_name,
+    e.historical_1rm as historical_1rm,
+    e.historical_1rm_updated_at as historical_1rm_updated_at,
+    e.historical_1rm_source_workout_id as historical_1rm_source_workout_id,
     s.exercise_order,
     s.set_order,
     (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume

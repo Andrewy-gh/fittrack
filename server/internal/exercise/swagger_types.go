@@ -22,9 +22,14 @@ type ExerciseWithSetsResponse struct {
 	SetType       string    `json:"set_type" validate:"required" example:"working"`
 	ExerciseID    int32     `json:"exercise_id" validate:"required" example:"1"`
 	ExerciseName  string    `json:"exercise_name" validate:"required" example:"Bench Press"`
-	ExerciseOrder *int32    `json:"exercise_order,omitempty" example:"0"`
-	SetOrder      *int32    `json:"set_order,omitempty" example:"1"`
-	Volume        float64   `json:"volume" validate:"required" example:"2250.5"`
+	Historical1RM *float64  `json:"historical_1rm,omitempty" example:"315.0"`
+	// when historical_1rm was last changed (manual set or recompute)
+	Historical1RMUpdatedAt *time.Time `json:"historical_1rm_updated_at,omitempty" example:"2023-01-01T15:04:05Z"`
+	// workout that sourced historical_1rm (null means manual override)
+	Historical1RMSourceWorkoutID *int32  `json:"historical_1rm_source_workout_id,omitempty" example:"42"`
+	ExerciseOrder                *int32  `json:"exercise_order,omitempty" example:"0"`
+	SetOrder                     *int32  `json:"set_order,omitempty" example:"1"`
+	Volume                       float64 `json:"volume" validate:"required" example:"2250.5"`
 }
 
 // CreateExerciseResponse represents the response when creating/getting an exercise

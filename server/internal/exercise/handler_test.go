@@ -14,12 +14,14 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -191,9 +193,26 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			name:       "successful fetch",
 			exerciseID: "1",
 			setupMock: func(m *MockExerciseRepository, id int32) {
+				var hist pgtype.Numeric
+				_ = hist.Scan("315.0")
+
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Bench Press"}, nil)
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{
-					{ExerciseID: id, ExerciseName: "Bench Press"},
+					{
+						WorkoutID:     7,
+						WorkoutDate:   pgtype.Timestamptz{Time: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+						SetID:         1,
+						Reps:          5,
+						SetType:       "working",
+						ExerciseID:    id,
+						ExerciseName:  "Bench Press",
+						Historical1rm: hist,
+						Historical1rmUpdatedAt: pgtype.Timestamptz{
+							Time:  time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC),
+							Valid: true,
+						},
+						Historical1rmSourceWorkoutID: pgtype.Int4{Int32: 42, Valid: true},
+					},
 				}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
@@ -274,6 +293,18 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 				if tt.expectedError != "" {
 					assertJSONError(t, w, tt.expectedError)
 				}
+			}
+
+			if tt.name == "successful fetch" && tt.expectedCode == http.StatusOK {
+				var resp []ExerciseWithSetsResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				require.NoError(t, err)
+				require.Len(t, resp, 1)
+				require.NotNil(t, resp[0].Historical1RM)
+				assert.InDelta(t, 315.0, *resp[0].Historical1RM, 0.0001)
+				require.NotNil(t, resp[0].Historical1RMUpdatedAt)
+				require.NotNil(t, resp[0].Historical1RMSourceWorkoutID)
+				assert.Equal(t, int32(42), *resp[0].Historical1RMSourceWorkoutID)
 			}
 
 			mockRepo.AssertExpectations(t)
@@ -616,8 +647,8 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:       "successful update",
-			exerciseID: "1",
+			name:        "successful update",
+			exerciseID:  "1",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Old Exercise"}, nil)
@@ -668,8 +699,8 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			expectedError: "Validation failed",
 		},
 		{
-			name:       "exercise not found",
-			exerciseID: "999",
+			name:        "exercise not found",
+			exerciseID:  "999",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
@@ -680,8 +711,8 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			expectedError: "not found",
 		},
 		{
-			name:       "update operation fails",
-			exerciseID: "1",
+			name:        "update operation fails",
+			exerciseID:  "1",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Old Exercise"}, nil)

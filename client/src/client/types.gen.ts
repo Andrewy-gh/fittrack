@@ -49,6 +49,15 @@ export type ExerciseExerciseWithSetsResponse = {
   exercise_id: number;
   exercise_name: string;
   exercise_order?: number;
+  historical_1rm?: number;
+  /**
+   * workout that sourced historical_1rm (null means manual override)
+   */
+  historical_1rm_source_workout_id?: number;
+  /**
+   * when historical_1rm was last changed (manual set or recompute)
+   */
+  historical_1rm_updated_at?: string;
   reps: number;
   set_id: number;
   set_order?: number;
