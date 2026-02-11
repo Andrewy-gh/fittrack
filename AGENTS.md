@@ -45,3 +45,8 @@
 
 - Optional: include `best_e1rm_source_workout_id` in `GET /api/exercises/{id}` to avoid set-derived fallback for workout link
 - Add authenticated UI regression for `best_e1rm` render path when Stack Auth e2e env is configured
+
+## Handoff Note
+
+- Branch `feat-new-metrics` is PR-ready with full gate passing (lint/typecheck/tests/docs + demo e2e).
+- Authenticated `best_e1rm` UI e2e remains as follow-up once local Stack env vars are set.
