@@ -104,6 +104,10 @@ function MetricChartsBody({
     () => toMetricPoints(points, (p) => p.session_best_intensity ?? 0),
     [points]
   );
+  const volumeWorking = useMemo(
+    () => toMetricPoints(points, (p) => p.total_volume_working ?? 0),
+    [points]
+  );
 
   if (points.length === 0) return null;
 
@@ -138,6 +142,15 @@ function MetricChartsBody({
         range={range}
         data={bestIntensity}
         unit="%"
+        onWorkoutClick={onWorkoutClick}
+      />
+
+      <ChartBarMetric
+        title="Working-Set Volume"
+        description="Total volume from working sets."
+        range={range}
+        data={volumeWorking}
+        unit="vol"
         onWorkoutClick={onWorkoutClick}
       />
     </div>

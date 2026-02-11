@@ -27,10 +27,11 @@ export type MetricPoint = {
   value: number;
 };
 
-type Unit = 'lb' | '%';
+type Unit = 'lb' | '%' | 'vol';
 
 function formatValue(unit: Unit, value: number) {
   if (unit === '%') return `${value.toFixed(1)}%`;
+  if (unit === 'vol') return `${Math.round(value).toLocaleString()} vol`;
   return `${Math.round(value).toLocaleString()} lb`;
 }
 
@@ -175,4 +176,3 @@ export function ChartBarMetric({
     </section>
   );
 }
-

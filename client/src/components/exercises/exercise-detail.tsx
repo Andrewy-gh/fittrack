@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowDownAz, ArrowUpAz } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChartBarVol } from '@/components/charts/chart-bar-vol';
 import { Label } from '@/components/ui/label';
 import { Toggle } from '@/components/ui/toggle';
 import {
@@ -146,8 +145,6 @@ export function ExerciseDetail({
           averageVolume={averageVolume}
           maxVolume={maxVolume}
         />
-
-        <ChartBarVol data={exerciseSets} />
 
         <ExerciseMetricCharts
           exerciseId={exerciseId}
