@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { PaginationControl } from '@/components/ui/pagination-control';
 import { sortByExerciseAndSetOrder } from '@/lib/utils';
-import type { ExerciseExerciseWithSetsResponse } from '@/client';
+import type { ExerciseExerciseDetailExerciseResponse, ExerciseExerciseWithSetsResponse } from '@/client';
 import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
 import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exercise-edit-dialog';
 import { ExerciseDetailHeader } from '@/components/exercises/exercise-detail-header';
@@ -25,6 +25,7 @@ import {
 import { ExerciseHistorical1RmCard } from '@/routes/_layout/exercises/-components/exercise-historical-1rm';
 
 export interface ExerciseDetailProps {
+  exercise: ExerciseExerciseDetailExerciseResponse;
   exerciseSets: ExerciseExerciseWithSetsResponse[];
   exerciseId: number;
   isDemoMode: boolean;
@@ -37,6 +38,7 @@ export interface ExerciseDetailProps {
 }
 
 export function ExerciseDetail({
+  exercise,
   exerciseSets,
   exerciseId,
   isDemoMode,
@@ -112,7 +114,7 @@ export function ExerciseDetail({
     startIndex + itemsPerPage
   );
 
-  const exerciseName = exerciseSets[0]?.exercise_name || 'Exercise';
+  const exerciseName = exercise.name;
 
   const handleOpenEditDialog = () => {
     setIsEditDialogOpen(true);
@@ -132,6 +134,7 @@ export function ExerciseDetail({
         />
 
         <ExerciseHistorical1RmCard
+          exercise={exercise}
           exerciseId={exerciseId}
           exerciseSets={exerciseSets}
           isDemoMode={isDemoMode}

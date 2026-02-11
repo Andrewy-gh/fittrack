@@ -106,6 +106,34 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID 
 	return exercise, nil
 }
 
+func (er *exerciseRepository) GetExerciseDetail(ctx context.Context, id int32, userID string) (db.GetExerciseDetailRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	params := db.GetExerciseDetailParams{
+		ID:     id,
+		UserID: userID,
+	}
+	row, err := er.queries.GetExerciseDetail(ctx, params)
+	if err != nil {
+		if db.IsRowLevelSecurityError(err) {
+			er.logger.Error("get exercise detail query failed - RLS policy violation",
+				"error", err,
+				"exercise_id", id,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			er.logger.Error("get exercise detail query failed",
+				"exercise_id", id,
+				"user_id", userID,
+				"error", err)
+		}
+		return db.GetExerciseDetailRow{}, fmt.Errorf("failed to get exercise detail (id: %d): %w", id, err)
+	}
+
+	return row, nil
+}
+
 func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name string, userID string) (db.Exercise, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

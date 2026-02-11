@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,11 +16,10 @@ import {
 } from '@/components/ui/dialog';
 
 import type {
-  ExerciseExerciseHistorical1RmResponse,
+  ExerciseExerciseDetailExerciseResponse,
   ExerciseExerciseWithSetsResponse,
 } from '@/client';
 import {
-  exerciseHistorical1RmQueryOptions,
   useUpdateExerciseHistorical1RmMutation,
 } from '@/lib/api/exercises';
 import {
@@ -54,10 +52,12 @@ function fmtLb(n: number | null | undefined): string {
 }
 
 export function ExerciseHistorical1RmCard({
+  exercise,
   exerciseId,
   exerciseSets,
   isDemoMode,
 }: {
+  exercise: ExerciseExerciseDetailExerciseResponse;
   exerciseId: number;
   exerciseSets: ExerciseExerciseWithSetsResponse[];
   isDemoMode: boolean;
@@ -67,33 +67,23 @@ export function ExerciseHistorical1RmCard({
   const bestFromSets = useMemo(() => computeBestE1rmFromSets(exerciseSets), [exerciseSets]);
   const demoStored = isDemoMode ? getDemoExerciseHistorical1Rm(exerciseId) : null;
 
-  const query = useQuery({
-    ...exerciseHistorical1RmQueryOptions(exerciseId),
-    // avoid extra query when we already have sets (and exercise historical_1rm fields) from GET /exercises/{id}
-    enabled: !isDemoMode && exerciseSets.length === 0,
-  });
-  const data = (query.data ?? null) as ExerciseExerciseHistorical1RmResponse | null;
-  const isLoading = !isDemoMode && exerciseSets.length === 0 && query.isLoading;
-
   const stored = isDemoMode
     ? demoStored?.historical_1rm ?? null
-    : exerciseSets[0]?.historical_1rm ?? data?.historical_1rm ?? null;
+    : exercise.historical_1rm ?? null;
   const storedUpdatedAt = isDemoMode
     ? demoStored?.updated_at ?? null
-    : exerciseSets[0]?.historical_1rm_updated_at ?? data?.historical_1rm_updated_at ?? null;
+    : exercise.historical_1rm_updated_at ?? null;
   const storedSourceWorkoutId = isDemoMode
     ? demoStored?.source_workout_id ?? null
-    : exerciseSets[0]?.historical_1rm_source_workout_id ??
-      data?.historical_1rm_source_workout_id ??
-      null;
+    : exercise.historical_1rm_source_workout_id ?? null;
   const computed = isDemoMode
     ? bestFromSets?.best ?? null
-    : bestFromSets?.best ?? data?.computed_best_e1rm ?? null;
+    : bestFromSets?.best ?? null;
   const computedWorkoutId = isDemoMode
     ? bestFromSets?.workoutId ?? null
-    : bestFromSets?.workoutId ?? data?.computed_best_workout_id ?? null;
+    : bestFromSets?.workoutId ?? null;
 
-  const primaryValue = isLoading ? null : stored ?? computed ?? null;
+  const primaryValue = stored ?? computed ?? null;
 
   return (
     <>
@@ -108,7 +98,6 @@ export function ExerciseHistorical1RmCard({
                 {fmtLb(primaryValue)}
               </div>
               <MetaLine
-                isLoading={isLoading}
                 stored={stored ?? null}
                 storedUpdatedAt={storedUpdatedAt ?? null}
                 storedSourceWorkoutId={storedSourceWorkoutId ?? null}
@@ -121,10 +110,7 @@ export function ExerciseHistorical1RmCard({
               size="sm"
               variant="outline"
               onClick={() => setIsOpen(true)}
-              disabled={isLoading}
-              title={
-                isLoading ? 'Loading...' : 'Set historical 1RM'
-              }
+              title="Set historical 1RM"
             >
               Set
             </Button>
@@ -146,14 +132,12 @@ export function ExerciseHistorical1RmCard({
 }
 
 function MetaLine({
-  isLoading,
   stored,
   storedUpdatedAt,
   storedSourceWorkoutId,
   computed,
   computedWorkoutId,
 }: {
-  isLoading: boolean;
   stored: number | null;
   storedUpdatedAt: string | null;
   storedSourceWorkoutId: number | null;
@@ -163,14 +147,6 @@ function MetaLine({
   const router = useRouter();
   const onWorkoutClick = (workoutId: number) =>
     router.navigate({ to: '/workouts/$workoutId', params: { workoutId } });
-
-  if (isLoading) {
-    return (
-      <div className="text-xs text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
 
   if (stored != null) {
     const updated = storedUpdatedAt ? new Date(storedUpdatedAt) : null;

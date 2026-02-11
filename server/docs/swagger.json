@@ -126,7 +126,7 @@
                         "StackAuth": []
                     }
                 ],
-                "description": "Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.",
+                "description": "Get a specific exercise (metadata) plus all its sets from workouts. Sets is empty when exercise exists but has no sets.",
                 "consumes": [
                     "application/json"
                 ],
@@ -148,12 +148,9 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Success (may be empty array if exercise has no sets)",
+                        "description": "Success (sets may be empty)",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/exercise.ExerciseWithSetsResponse"
-                            }
+                            "$ref": "#/definitions/exercise.ExerciseDetailResponse"
                         }
                     },
                     "400": {
@@ -1019,6 +1016,68 @@
                 }
             }
         },
+        "exercise.ExerciseDetailExerciseResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "id",
+                "name",
+                "updated_at",
+                "user_id"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "historical_1rm": {
+                    "type": "number",
+                    "example": 315
+                },
+                "historical_1rm_source_workout_id": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "historical_1rm_updated_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Bench Press"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "user-123"
+                }
+            }
+        },
+        "exercise.ExerciseDetailResponse": {
+            "type": "object",
+            "required": [
+                "exercise",
+                "sets"
+            ],
+            "properties": {
+                "exercise": {
+                    "$ref": "#/definitions/exercise.ExerciseDetailExerciseResponse"
+                },
+                "sets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/exercise.ExerciseWithSetsResponse"
+                    }
+                }
+            }
+        },
         "exercise.ExerciseHistorical1RMResponse": {
             "type": "object",
             "properties": {
@@ -1141,20 +1200,6 @@
                 "exercise_order": {
                     "type": "integer",
                     "example": 0
-                },
-                "historical_1rm": {
-                    "type": "number",
-                    "example": 315
-                },
-                "historical_1rm_source_workout_id": {
-                    "description": "workout that sourced historical_1rm (null means manual override)",
-                    "type": "integer",
-                    "example": 42
-                },
-                "historical_1rm_updated_at": {
-                    "description": "when historical_1rm was last changed (manual set or recompute)",
-                    "type": "string",
-                    "example": "2023-01-01T15:04:05Z"
                 },
                 "reps": {
                     "type": "integer",

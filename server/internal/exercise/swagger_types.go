@@ -22,14 +22,28 @@ type ExerciseWithSetsResponse struct {
 	SetType       string    `json:"set_type" validate:"required" example:"working"`
 	ExerciseID    int32     `json:"exercise_id" validate:"required" example:"1"`
 	ExerciseName  string    `json:"exercise_name" validate:"required" example:"Bench Press"`
-	Historical1RM *float64  `json:"historical_1rm,omitempty" example:"315.0"`
-	// when historical_1rm was last changed (manual set or recompute)
-	Historical1RMUpdatedAt *time.Time `json:"historical_1rm_updated_at,omitempty" example:"2023-01-01T15:04:05Z"`
-	// workout that sourced historical_1rm (null means manual override)
-	Historical1RMSourceWorkoutID *int32  `json:"historical_1rm_source_workout_id,omitempty" example:"42"`
-	ExerciseOrder                *int32  `json:"exercise_order,omitempty" example:"0"`
-	SetOrder                     *int32  `json:"set_order,omitempty" example:"1"`
-	Volume                       float64 `json:"volume" validate:"required" example:"2250.5"`
+	ExerciseOrder *int32    `json:"exercise_order,omitempty" example:"0"`
+	SetOrder      *int32    `json:"set_order,omitempty" example:"1"`
+	Volume        float64   `json:"volume" validate:"required" example:"2250.5"`
+}
+
+// ExerciseDetailExerciseResponse represents exercise metadata for the exercise detail page.
+type ExerciseDetailExerciseResponse struct {
+	ID        int32     `json:"id" validate:"required" example:"1"`
+	Name      string    `json:"name" validate:"required" example:"Bench Press"`
+	CreatedAt time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt time.Time `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UserID    string    `json:"user_id" validate:"required" example:"user-123"`
+
+	Historical1RM                *float64   `json:"historical_1rm,omitempty" example:"315.0"`
+	Historical1RMUpdatedAt       *time.Time `json:"historical_1rm_updated_at,omitempty" example:"2023-01-01T15:04:05Z"`
+	Historical1RMSourceWorkoutID *int32     `json:"historical_1rm_source_workout_id,omitempty" example:"42"`
+}
+
+// ExerciseDetailResponse is the response for GET /exercises/{id}.
+type ExerciseDetailResponse struct {
+	Exercise ExerciseDetailExerciseResponse `json:"exercise" validate:"required"`
+	Sets     []ExerciseWithSetsResponse     `json:"sets" validate:"required"`
 }
 
 // CreateExerciseResponse represents the response when creating/getting an exercise

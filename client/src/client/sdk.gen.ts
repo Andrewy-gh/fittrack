@@ -150,7 +150,7 @@ export const deleteExercisesById = <ThrowOnError extends boolean = false>(
 
 /**
  * Get exercise with sets
- * Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
+ * Get a specific exercise (metadata) plus all its sets from workouts. Sets is empty when exercise exists but has no sets.
  */
 export const getExercisesById = <ThrowOnError extends boolean = false>(
   options: Options<GetExercisesByIdData, ThrowOnError>,

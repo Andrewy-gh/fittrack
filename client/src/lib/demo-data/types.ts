@@ -14,6 +14,8 @@ export type {
 
   // Exercise types
   ExerciseExerciseResponse,
+  ExerciseExerciseDetailResponse,
+  ExerciseExerciseDetailExerciseResponse,
   ExerciseExerciseWithSetsResponse,
   ExerciseRecentSetsResponse,
   ExerciseCreateExerciseRequest,

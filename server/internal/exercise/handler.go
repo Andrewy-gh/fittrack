@@ -61,13 +61,13 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 // MARK: GetExerciseWithSets
 // GetExerciseWithSets godoc
 // @Summary Get exercise with sets
-// @Description Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
+// @Description Get a specific exercise (metadata) plus all its sets from workouts. Sets is empty when exercise exists but has no sets.
 // @Tags exercises
 // @Accept json
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Exercise ID"
-// @Success 200 {array} exercise.ExerciseWithSetsResponse "Success (may be empty array if exercise has no sets)"
+// @Success 200 {object} exercise.ExerciseDetailResponse "Success (sets may be empty)"
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"

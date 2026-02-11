@@ -5,6 +5,8 @@ import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
   ExerciseExerciseResponse,
+  ExerciseExerciseDetailExerciseResponse,
+  ExerciseExerciseDetailResponse,
   ExerciseExerciseWithSetsResponse,
   ExerciseRecentSetsResponse,
 } from './types';
@@ -18,6 +20,7 @@ import {
 import {
   bootstrapDemoHistorical1Rm,
   clearDemoHistorical1Rm,
+  getDemoExerciseHistorical1Rm,
   handleDemoExerciseDeleted,
   handleDemoWorkoutCreated,
   handleDemoWorkoutDeleted,
@@ -197,6 +200,30 @@ export function getExerciseWithSets(exerciseId: number): ExerciseExerciseWithSet
       volume: (set.weight || 0) * set.reps,
     };
   });
+}
+
+export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailResponse {
+  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercise = exercises.find((e) => e.id === exerciseId);
+  if (!exercise) throw new Error('Exercise not found');
+
+  const hist = getDemoExerciseHistorical1Rm(exerciseId);
+
+  const exerciseResp: ExerciseExerciseDetailExerciseResponse = {
+    id: exercise.id,
+    name: exercise.name,
+    created_at: exercise.created_at,
+    updated_at: exercise.updated_at,
+    user_id: exercise.user_id,
+    historical_1rm: hist?.historical_1rm,
+    historical_1rm_updated_at: hist?.updated_at,
+    historical_1rm_source_workout_id: hist?.source_workout_id ?? undefined,
+  };
+
+  return {
+    exercise: exerciseResp,
+    sets: getExerciseWithSets(exerciseId),
+  };
 }
 
 // Get recent sets for an exercise

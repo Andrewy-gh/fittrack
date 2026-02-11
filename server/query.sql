@@ -8,6 +8,19 @@ SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE
 -- name: GetExercise :one
 SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2;
 
+-- name: GetExerciseDetail :one
+SELECT
+    id,
+    name,
+    created_at,
+    updated_at,
+    user_id,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id
+FROM exercise
+WHERE id = $1 AND user_id = $2;
+
 -- name: ListExercises :many
 SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name;
 
@@ -32,9 +45,6 @@ SELECT
     s.set_type,
     e.id as exercise_id,
     e.name as exercise_name,
-    e.historical_1rm as historical_1rm,
-    e.historical_1rm_updated_at as historical_1rm_updated_at,
-    e.historical_1rm_source_workout_id as historical_1rm_source_workout_id,
     s.exercise_order,
     s.set_order,
     (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume

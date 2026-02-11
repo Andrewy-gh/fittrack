@@ -307,6 +307,52 @@ func (q *Queries) GetExerciseByName(ctx context.Context, arg GetExerciseByNamePa
 	return i, err
 }
 
+const getExerciseDetail = `-- name: GetExerciseDetail :one
+SELECT
+    id,
+    name,
+    created_at,
+    updated_at,
+    user_id,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id
+FROM exercise
+WHERE id = $1 AND user_id = $2
+`
+
+type GetExerciseDetailParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+type GetExerciseDetailRow struct {
+	ID                           int32              `json:"id"`
+	Name                         string             `json:"name"`
+	CreatedAt                    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                    pgtype.Timestamptz `json:"updated_at"`
+	UserID                       string             `json:"user_id"`
+	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
+	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
+	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
+}
+
+func (q *Queries) GetExerciseDetail(ctx context.Context, arg GetExerciseDetailParams) (GetExerciseDetailRow, error) {
+	row := q.db.QueryRow(ctx, getExerciseDetail, arg.ID, arg.UserID)
+	var i GetExerciseDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.Historical1rm,
+		&i.Historical1rmUpdatedAt,
+		&i.Historical1rmSourceWorkoutID,
+	)
+	return i, err
+}
+
 const getExerciseHistorical1RM = `-- name: GetExerciseHistorical1RM :one
 SELECT historical_1rm, historical_1rm_updated_at, historical_1rm_source_workout_id
 FROM exercise
@@ -761,9 +807,6 @@ SELECT
     s.set_type,
     e.id as exercise_id,
     e.name as exercise_name,
-    e.historical_1rm as historical_1rm,
-    e.historical_1rm_updated_at as historical_1rm_updated_at,
-    e.historical_1rm_source_workout_id as historical_1rm_source_workout_id,
     s.exercise_order,
     s.set_order,
     (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume
@@ -780,22 +823,19 @@ type GetExerciseWithSetsParams struct {
 }
 
 type GetExerciseWithSetsRow struct {
-	WorkoutID                    int32              `json:"workout_id"`
-	WorkoutDate                  pgtype.Timestamptz `json:"workout_date"`
-	WorkoutNotes                 pgtype.Text        `json:"workout_notes"`
-	WorkoutFocus                 pgtype.Text        `json:"workout_focus"`
-	SetID                        int32              `json:"set_id"`
-	Weight                       pgtype.Numeric     `json:"weight"`
-	Reps                         int32              `json:"reps"`
-	SetType                      string             `json:"set_type"`
-	ExerciseID                   int32              `json:"exercise_id"`
-	ExerciseName                 string             `json:"exercise_name"`
-	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
-	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
-	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
-	ExerciseOrder                int32              `json:"exercise_order"`
-	SetOrder                     int32              `json:"set_order"`
-	Volume                       pgtype.Numeric     `json:"volume"`
+	WorkoutID     int32              `json:"workout_id"`
+	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	WorkoutNotes  pgtype.Text        `json:"workout_notes"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
+	SetID         int32              `json:"set_id"`
+	Weight        pgtype.Numeric     `json:"weight"`
+	Reps          int32              `json:"reps"`
+	SetType       string             `json:"set_type"`
+	ExerciseID    int32              `json:"exercise_id"`
+	ExerciseName  string             `json:"exercise_name"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
+	Volume        pgtype.Numeric     `json:"volume"`
 }
 
 func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSetsParams) ([]GetExerciseWithSetsRow, error) {
@@ -818,9 +858,6 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 			&i.SetType,
 			&i.ExerciseID,
 			&i.ExerciseName,
-			&i.Historical1rm,
-			&i.Historical1rmUpdatedAt,
-			&i.Historical1rmSourceWorkoutID,
 			&i.ExerciseOrder,
 			&i.SetOrder,
 			&i.Volume,

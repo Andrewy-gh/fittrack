@@ -14,6 +14,7 @@ import (
 type ExerciseRepository interface {
 	ListExercises(ctx context.Context, userID string) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error)
+	GetExerciseDetail(ctx context.Context, id int32, userID string) (db.GetExerciseDetailRow, error)
 	GetOrCreateExercise(ctx context.Context, name, userID string) (db.Exercise, error)
 	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
@@ -52,13 +53,13 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	return exercises, nil
 }
 
-func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([]ExerciseWithSetsResponse, error) {
+func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*ExerciseDetailResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
-	_, err := es.repo.GetExercise(ctx, id, userID)
+	exercise, err := es.repo.GetExerciseDetail(ctx, id, userID)
 	if err != nil {
 		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
@@ -69,12 +70,41 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([
 	}
 
 	// Convert database rows to response type
-	response, err := es.convertExerciseWithSetsRows(sets)
+	setResponses, err := es.convertExerciseWithSetsRows(sets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert exercise with sets rows: %w", err)
 	}
 
-	return response, nil
+	historical1rm, err := floatPtrFromNumeric(exercise.Historical1rm)
+	if err != nil {
+		return nil, err
+	}
+
+	var historical1rmUpdatedAt *time.Time
+	if exercise.Historical1rmUpdatedAt.Valid {
+		t := exercise.Historical1rmUpdatedAt.Time
+		historical1rmUpdatedAt = &t
+	}
+
+	var historical1rmSourceWorkoutID *int32
+	if exercise.Historical1rmSourceWorkoutID.Valid {
+		id := exercise.Historical1rmSourceWorkoutID.Int32
+		historical1rmSourceWorkoutID = &id
+	}
+
+	return &ExerciseDetailResponse{
+		Exercise: ExerciseDetailExerciseResponse{
+			ID:                           exercise.ID,
+			Name:                         exercise.Name,
+			CreatedAt:                    exercise.CreatedAt.Time,
+			UpdatedAt:                    exercise.UpdatedAt.Time,
+			UserID:                       exercise.UserID,
+			Historical1RM:                historical1rm,
+			Historical1RMUpdatedAt:       historical1rmUpdatedAt,
+			Historical1RMSourceWorkoutID: historical1rmSourceWorkoutID,
+		},
+		Sets: setResponses,
+	}, nil
 }
 
 func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (*db.Exercise, error) {
@@ -183,39 +213,19 @@ func (es *ExerciseService) convertExerciseWithSetsRows(rows []db.GetExerciseWith
 			workoutNotes = &row.WorkoutNotes.String
 		}
 
-		historical1rm, err := floatPtrFromNumeric(row.Historical1rm)
-		if err != nil {
-			return nil, err
-		}
-
-		var historical1rmUpdatedAt *time.Time
-		if row.Historical1rmUpdatedAt.Valid {
-			t := row.Historical1rmUpdatedAt.Time
-			historical1rmUpdatedAt = &t
-		}
-
-		var historical1rmSourceWorkoutID *int32
-		if row.Historical1rmSourceWorkoutID.Valid {
-			id := row.Historical1rmSourceWorkoutID.Int32
-			historical1rmSourceWorkoutID = &id
-		}
-
 		response[i] = ExerciseWithSetsResponse{
-			WorkoutID:                    row.WorkoutID,
-			WorkoutDate:                  row.WorkoutDate.Time,
-			WorkoutNotes:                 workoutNotes,
-			SetID:                        row.SetID,
-			Weight:                       weight,
-			Reps:                         row.Reps,
-			SetType:                      row.SetType,
-			ExerciseID:                   row.ExerciseID,
-			ExerciseName:                 row.ExerciseName,
-			Historical1RM:                historical1rm,
-			Historical1RMUpdatedAt:       historical1rmUpdatedAt,
-			Historical1RMSourceWorkoutID: historical1rmSourceWorkoutID,
-			ExerciseOrder:                exerciseOrder,
-			SetOrder:                     setOrder,
-			Volume:                       volume,
+			WorkoutID:     row.WorkoutID,
+			WorkoutDate:   row.WorkoutDate.Time,
+			WorkoutNotes:  workoutNotes,
+			SetID:         row.SetID,
+			Weight:        weight,
+			Reps:          row.Reps,
+			SetType:       row.SetType,
+			ExerciseID:    row.ExerciseID,
+			ExerciseName:  row.ExerciseName,
+			ExerciseOrder: exerciseOrder,
+			SetOrder:      setOrder,
+			Volume:        volume,
 		}
 	}
 

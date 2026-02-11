@@ -4,7 +4,6 @@ import type { ExerciseExerciseResponse } from '@/client';
 import {
   getExercisesQueryOptions,
   getExercisesByIdQueryOptions,
-  getExercisesByIdHistorical1RmQueryOptions,
   getExercisesByIdRecentSetsQueryOptions,
   getExercisesByIdMetricsHistoryQueryOptions,
   deleteExercisesByIdMutation,
@@ -12,7 +11,6 @@ import {
   patchExercisesByIdHistorical1RmMutation,
   getExercisesQueryKey,
   getExercisesByIdQueryKey,
-  getExercisesByIdHistorical1RmQueryKey,
 } from '@/client/@tanstack/react-query.gen';
 
 export type DbExercise = Pick<ExerciseExerciseResponse, 'id' | 'name'>;
@@ -28,10 +26,6 @@ export function exercisesQueryOptions() {
 
 export function exerciseByIdQueryOptions(id: number) {
   return getExercisesByIdQueryOptions({ path: { id } });
-}
-
-export function exerciseHistorical1RmQueryOptions(id: number) {
-  return getExercisesByIdHistorical1RmQueryOptions({ path: { id } });
 }
 
 export function recentExerciseSetsQueryOptions(id: number) {
@@ -80,10 +74,6 @@ export function useUpdateExerciseHistorical1RmMutation() {
   return useMutation({
     ...patchExercisesByIdHistorical1RmMutation(),
     onSuccess: (_, { path: { id } }) => {
-      queryClient.invalidateQueries({
-        queryKey: getExercisesByIdHistorical1RmQueryKey({ path: { id } }),
-      });
-
       // GET /exercises/{id} now carries historical_1rm fields; keep it fresh.
       queryClient.invalidateQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id } }),

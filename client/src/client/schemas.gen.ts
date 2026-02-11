@@ -37,6 +37,61 @@ export const exercise_CreateExerciseResponseSchema = {
   },
 } as const;
 
+export const exercise_ExerciseDetailExerciseResponseSchema = {
+  type: "object",
+  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  properties: {
+    created_at: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    historical_1rm: {
+      type: "number",
+      example: 315,
+    },
+    historical_1rm_source_workout_id: {
+      type: "integer",
+      example: 42,
+    },
+    historical_1rm_updated_at: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    id: {
+      type: "integer",
+      example: 1,
+    },
+    name: {
+      type: "string",
+      example: "Bench Press",
+    },
+    updated_at: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    user_id: {
+      type: "string",
+      example: "user-123",
+    },
+  },
+} as const;
+
+export const exercise_ExerciseDetailResponseSchema = {
+  type: "object",
+  required: ["exercise", "sets"],
+  properties: {
+    exercise: {
+      $ref: "#/definitions/exercise.ExerciseDetailExerciseResponse",
+    },
+    sets: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/exercise.ExerciseWithSetsResponse",
+      },
+    },
+  },
+} as const;
+
 export const exercise_ExerciseHistorical1RMResponseSchema = {
   type: "object",
   properties: {
@@ -157,22 +212,6 @@ export const exercise_ExerciseWithSetsResponseSchema = {
     exercise_order: {
       type: "integer",
       example: 0,
-    },
-    historical_1rm: {
-      type: "number",
-      example: 315,
-    },
-    historical_1rm_source_workout_id: {
-      description:
-        "workout that sourced historical_1rm (null means manual override)",
-      type: "integer",
-      example: 42,
-    },
-    historical_1rm_updated_at: {
-      description:
-        "when historical_1rm was last changed (manual set or recompute)",
-      type: "string",
-      example: "2023-01-01T15:04:05Z",
     },
     reps: {
       type: "integer",
