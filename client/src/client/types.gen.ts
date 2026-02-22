@@ -12,6 +12,40 @@ export type ExerciseCreateExerciseResponse = {
   user_id: string;
 };
 
+export type ExerciseExerciseDetailExerciseResponse = {
+  best_e1rm?: number;
+  created_at: string;
+  historical_1rm?: number;
+  historical_1rm_source_workout_id?: number;
+  historical_1rm_updated_at?: string;
+  id: number;
+  name: string;
+  updated_at: string;
+  user_id: string;
+};
+
+export type ExerciseExerciseDetailResponse = {
+  exercise: ExerciseExerciseDetailExerciseResponse;
+  sets: Array<ExerciseExerciseWithSetsResponse>;
+};
+
+export type ExerciseExerciseMetricsHistoryPoint = {
+  date?: string;
+  session_avg_e1rm?: number;
+  session_avg_intensity?: number;
+  session_best_e1rm?: number;
+  session_best_intensity?: number;
+  total_volume_working?: number;
+  workout_id?: number;
+  x?: string;
+};
+
+export type ExerciseExerciseMetricsHistoryResponse = {
+  bucket?: ExerciseMetricsHistoryBucket;
+  points?: Array<ExerciseExerciseMetricsHistoryPoint>;
+  range?: string;
+};
+
 export type ExerciseExerciseResponse = {
   created_at: string;
   id: number;
@@ -35,6 +69,24 @@ export type ExerciseExerciseWithSetsResponse = {
   workout_notes?: string;
 };
 
+export const ExerciseMetricsHistoryBucket = {
+  /**
+   * MetricsHistoryBucketWorkout
+   */
+  METRICS_HISTORY_BUCKET_WORKOUT: "workout",
+  /**
+   * MetricsHistoryBucketWeek
+   */
+  METRICS_HISTORY_BUCKET_WEEK: "week",
+  /**
+   * MetricsHistoryBucketMonth
+   */
+  METRICS_HISTORY_BUCKET_MONTH: "month",
+} as const;
+
+export type ExerciseMetricsHistoryBucket =
+  (typeof ExerciseMetricsHistoryBucket)[keyof typeof ExerciseMetricsHistoryBucket];
+
 export type ExerciseRecentSetsResponse = {
   created_at: string;
   exercise_order?: number;
@@ -44,6 +96,11 @@ export type ExerciseRecentSetsResponse = {
   weight?: number;
   workout_date: string;
   workout_id: number;
+};
+
+export type ExerciseUpdateExerciseHistorical1RmRequest = {
+  historical_1rm?: number;
+  mode?: "manual" | "recompute";
 };
 
 export type ExerciseUpdateExerciseNameRequest = {
@@ -299,9 +356,9 @@ export type GetExercisesByIdError =
 
 export type GetExercisesByIdResponses = {
   /**
-   * Success (may be empty array if exercise has no sets)
+   * Success (sets may be empty)
    */
-  200: Array<ExerciseExerciseWithSetsResponse>;
+  200: ExerciseExerciseDetailResponse;
 };
 
 export type GetExercisesByIdResponse =
@@ -354,6 +411,99 @@ export type PatchExercisesByIdResponses = {
    */
   204: unknown;
 };
+
+export type PatchExercisesByIdHistorical1RmData = {
+  /**
+   * Historical 1RM update request
+   */
+  body: ExerciseUpdateExerciseHistorical1RmRequest;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/exercises/{id}/historical-1rm";
+};
+
+export type PatchExercisesByIdHistorical1RmErrors = {
+  /**
+   * Bad Request - Invalid exercise ID or validation error
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized - Invalid token
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found - Exercise not found or doesn't belong to user
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type PatchExercisesByIdHistorical1RmError =
+  PatchExercisesByIdHistorical1RmErrors[keyof PatchExercisesByIdHistorical1RmErrors];
+
+export type PatchExercisesByIdHistorical1RmResponses = {
+  /**
+   * No Content - Exercise historical 1RM updated successfully
+   */
+  204: unknown;
+};
+
+export type GetExercisesByIdMetricsHistoryData = {
+  body?: never;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: {
+    /**
+     * Range selector
+     */
+    range?: "W" | "M" | "6M" | "Y";
+  };
+  url: "/exercises/{id}/metrics-history";
+};
+
+export type GetExercisesByIdMetricsHistoryErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found - Exercise not found or doesn't belong to user
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetExercisesByIdMetricsHistoryError =
+  GetExercisesByIdMetricsHistoryErrors[keyof GetExercisesByIdMetricsHistoryErrors];
+
+export type GetExercisesByIdMetricsHistoryResponses = {
+  /**
+   * OK
+   */
+  200: ExerciseExerciseMetricsHistoryResponse;
+};
+
+export type GetExercisesByIdMetricsHistoryResponse =
+  GetExercisesByIdMetricsHistoryResponses[keyof GetExercisesByIdMetricsHistoryResponses];
 
 export type GetExercisesByIdRecentSetsData = {
   body?: never;

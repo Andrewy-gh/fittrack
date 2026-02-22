@@ -14,6 +14,8 @@ export type {
 
   // Exercise types
   ExerciseExerciseResponse,
+  ExerciseExerciseDetailResponse,
+  ExerciseExerciseDetailExerciseResponse,
   ExerciseExerciseWithSetsResponse,
   ExerciseRecentSetsResponse,
   ExerciseCreateExerciseRequest,
@@ -31,6 +33,7 @@ export const STORAGE_KEYS = {
   WORKOUTS: 'fittrack-demo-workouts',
   EXERCISES: 'fittrack-demo-exercises',
   SETS: 'fittrack-demo-sets',
+  HISTORICAL_1RM: 'fittrack-demo-historical-1rm',
 } as const;
 
 // Internal storage types (not exposed via API)

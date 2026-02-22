@@ -10,6 +10,8 @@ client.setConfig({
 });
 
 client.interceptors.request.use(async (request) => {
+  if (!stackClientApp) return request;
+
   const user = await stackClientApp.getUser();
   if (user) {
     const { accessToken } = await user.getAuthJson();
@@ -42,15 +44,20 @@ client.interceptors.response.use(async (response) => {
     // Handle 401: session expired or invalid
     if (response.status === 401) {
       toast.error('Session expired. Please log in again.');
-      stackClientApp.getUser().then((user) => {
-        if (user) {
-          user.signOut().catch((err: unknown) => {
-            console.error('Error signing out on 401:', err);
+      if (stackClientApp) {
+        stackClientApp
+          .getUser()
+          .then((user) => {
+            if (user) {
+              user.signOut().catch((err: unknown) => {
+                console.error('Error signing out on 401:', err);
+              });
+            }
+          })
+          .catch((err: unknown) => {
+            console.error('Error getting user on 401:', err);
           });
-        }
-      }).catch((err: unknown) => {
-        console.error('Error getting user on 401:', err);
-      });
+      }
     }
 
     // Throw the structured error for mutation handlers to catch

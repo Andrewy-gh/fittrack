@@ -61,13 +61,13 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 // MARK: GetExerciseWithSets
 // GetExerciseWithSets godoc
 // @Summary Get exercise with sets
-// @Description Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
+// @Description Get a specific exercise (metadata) plus all its sets from workouts. Sets is empty when exercise exists but has no sets.
 // @Tags exercises
 // @Accept json
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Exercise ID"
-// @Success 200 {array} exercise.ExerciseWithSetsResponse "Success (may be empty array if exercise has no sets)"
+// @Success 200 {object} exercise.ExerciseDetailResponse "Success (sets may be empty)"
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
@@ -208,6 +208,72 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 	}
 
 	if err := response.JSON(w, http.StatusOK, sets); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		return
+	}
+}
+
+// MARK: GetExerciseMetricsHistory
+// GetExerciseMetricsHistory godoc
+// @Summary Get exercise metrics history
+// @Description Get time-series session metrics for an exercise. Range controls bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.
+// @Tags exercises
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Exercise ID"
+// @Param range query string false "Range selector" Enums(W,M,6M,Y) default(M)
+// @Success 200 {object} exercise.ExerciseMetricsHistoryResponse
+// @Failure 400 {object} response.ErrorResponse "Bad Request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /exercises/{id}/metrics-history [get]
+func (h *ExerciseHandler) GetExerciseMetricsHistory(w http.ResponseWriter, r *http.Request) {
+	exerciseID := r.PathValue("id")
+	if exerciseID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+		return
+	}
+
+	exerciseIDInt, err := strconv.Atoi(exerciseID)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+		return
+	}
+
+	rng := r.URL.Query().Get("range")
+	if rng == "" {
+		rng = "M"
+	}
+
+	req := GetExerciseMetricsHistoryRequest{
+		ExerciseID: int32(exerciseIDInt),
+		Range:      rng,
+	}
+
+	if err := h.validator.Struct(req); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	history, err := h.exerciseService.GetExerciseMetricsHistory(r.Context(), req.ExerciseID, req.Range)
+	if err != nil {
+		var errUnauthorized *apperrors.Unauthorized
+		var errNotFound *apperrors.NotFound
+
+		switch {
+		case errors.As(err, &errUnauthorized):
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
+		case errors.As(err, &errNotFound):
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
+		default:
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise metrics history", err)
+		}
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, history); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
 		return
 	}

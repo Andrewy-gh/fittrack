@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
@@ -13,11 +14,16 @@ import (
 type ExerciseRepository interface {
 	ListExercises(ctx context.Context, userID string) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error)
+	GetExerciseDetail(ctx context.Context, id int32, userID string) (db.GetExerciseDetailRow, error)
 	GetOrCreateExercise(ctx context.Context, name, userID string) (db.Exercise, error)
 	GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error)
 	GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error)
 	GetRecentSetsForExercise(ctx context.Context, id int32, userID string) ([]db.GetRecentSetsForExerciseRow, error)
+	GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error)
 	UpdateExerciseName(ctx context.Context, id int32, name, userID string) error
+	GetExerciseBestE1rmWithWorkout(ctx context.Context, exerciseID int32, userID string) (db.GetExerciseBestE1rmWithWorkoutRow, error)
+	UpdateExerciseHistorical1RMManual(ctx context.Context, id int32, historical1rm *float64, userID string) error
+	SetExerciseHistorical1RM(ctx context.Context, id int32, historical1rm *float64, sourceWorkoutID *int32, userID string) error
 	DeleteExercise(ctx context.Context, id int32, userID string) error
 }
 
@@ -46,13 +52,13 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	return exercises, nil
 }
 
-func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([]ExerciseWithSetsResponse, error) {
+func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*ExerciseDetailResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
 	}
 
-	_, err := es.repo.GetExercise(ctx, id, userID)
+	exercise, err := es.repo.GetExerciseDetail(ctx, id, userID)
 	if err != nil {
 		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
 	}
@@ -63,12 +69,46 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) ([
 	}
 
 	// Convert database rows to response type
-	response, err := es.convertExerciseWithSetsRows(sets)
+	setResponses, err := es.convertExerciseWithSetsRows(sets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert exercise with sets rows: %w", err)
 	}
 
-	return response, nil
+	historical1rm, err := floatPtrFromNumeric(exercise.Historical1rm)
+	if err != nil {
+		return nil, err
+	}
+	bestE1RM, err := floatPtrFromNumeric(exercise.BestE1rm)
+	if err != nil {
+		return nil, err
+	}
+
+	var historical1rmUpdatedAt *time.Time
+	if exercise.Historical1rmUpdatedAt.Valid {
+		t := exercise.Historical1rmUpdatedAt.Time
+		historical1rmUpdatedAt = &t
+	}
+
+	var historical1rmSourceWorkoutID *int32
+	if exercise.Historical1rmSourceWorkoutID.Valid {
+		id := exercise.Historical1rmSourceWorkoutID.Int32
+		historical1rmSourceWorkoutID = &id
+	}
+
+	return &ExerciseDetailResponse{
+		Exercise: ExerciseDetailExerciseResponse{
+			ID:                           exercise.ID,
+			Name:                         exercise.Name,
+			CreatedAt:                    exercise.CreatedAt.Time,
+			UpdatedAt:                    exercise.UpdatedAt.Time,
+			UserID:                       exercise.UserID,
+			Historical1RM:                historical1rm,
+			Historical1RMUpdatedAt:       historical1rmUpdatedAt,
+			Historical1RMSourceWorkoutID: historical1rmSourceWorkoutID,
+			BestE1RM:                     bestE1RM,
+		},
+		Sets: setResponses,
+	}, nil
 }
 
 func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (*db.Exercise, error) {

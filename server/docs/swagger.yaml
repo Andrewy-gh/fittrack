@@ -31,6 +31,84 @@ definitions:
     - updated_at
     - user_id
     type: object
+  exercise.ExerciseDetailExerciseResponse:
+    properties:
+      best_e1rm:
+        example: 305
+        type: number
+      created_at:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      historical_1rm:
+        example: 315
+        type: number
+      historical_1rm_source_workout_id:
+        example: 42
+        type: integer
+      historical_1rm_updated_at:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Bench Press
+        type: string
+      updated_at:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      user_id:
+        example: user-123
+        type: string
+    required:
+    - created_at
+    - id
+    - name
+    - updated_at
+    - user_id
+    type: object
+  exercise.ExerciseDetailResponse:
+    properties:
+      exercise:
+        $ref: '#/definitions/exercise.ExerciseDetailExerciseResponse'
+      sets:
+        items:
+          $ref: '#/definitions/exercise.ExerciseWithSetsResponse'
+        type: array
+    required:
+    - exercise
+    - sets
+    type: object
+  exercise.ExerciseMetricsHistoryPoint:
+    properties:
+      date:
+        type: string
+      session_avg_e1rm:
+        type: number
+      session_avg_intensity:
+        type: number
+      session_best_e1rm:
+        type: number
+      session_best_intensity:
+        type: number
+      total_volume_working:
+        type: number
+      workout_id:
+        type: integer
+      x:
+        type: string
+    type: object
+  exercise.ExerciseMetricsHistoryResponse:
+    properties:
+      bucket:
+        $ref: '#/definitions/exercise.MetricsHistoryBucket'
+      points:
+        items:
+          $ref: '#/definitions/exercise.ExerciseMetricsHistoryPoint'
+        type: array
+      range:
+        type: string
+    type: object
   exercise.ExerciseResponse:
     properties:
       created_at:
@@ -103,6 +181,16 @@ definitions:
     - workout_date
     - workout_id
     type: object
+  exercise.MetricsHistoryBucket:
+    enum:
+    - workout
+    - week
+    - month
+    type: string
+    x-enum-varnames:
+    - MetricsHistoryBucketWorkout
+    - MetricsHistoryBucketWeek
+    - MetricsHistoryBucketMonth
   exercise.RecentSetsResponse:
     properties:
       created_at:
@@ -135,6 +223,18 @@ definitions:
     - set_id
     - workout_date
     - workout_id
+    type: object
+  exercise.UpdateExerciseHistorical1RMRequest:
+    properties:
+      historical_1rm:
+        maximum: 999999.99
+        minimum: 0
+        type: number
+      mode:
+        enum:
+        - manual
+        - recompute
+        type: string
     type: object
   exercise.UpdateExerciseNameRequest:
     properties:
@@ -511,8 +611,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get a specific exercise with all its sets from workouts. Returns
-        empty array when exercise exists but has no sets.
+      description: Get a specific exercise (metadata) plus all its sets from workouts.
+        Sets is empty when exercise exists but has no sets.
       parameters:
       - description: Exercise ID
         in: path
@@ -523,11 +623,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Success (may be empty array if exercise has no sets)
+          description: Success (sets may be empty)
           schema:
-            items:
-              $ref: '#/definitions/exercise.ExerciseWithSetsResponse'
-            type: array
+            $ref: '#/definitions/exercise.ExerciseDetailResponse'
         "400":
           description: Bad Request
           schema:
@@ -594,6 +692,100 @@ paths:
       security:
       - StackAuth: []
       summary: Update an exercise name
+      tags:
+      - exercises
+  /exercises/{id}/historical-1rm:
+    patch:
+      consumes:
+      - application/json
+      description: Set a manual historical 1RM (clears source workout) or recompute
+        from best working-set e1RM across history.
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Historical 1RM update request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/exercise.UpdateExerciseHistorical1RMRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content - Exercise historical 1RM updated successfully
+        "400":
+          description: Bad Request - Invalid exercise ID or validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid token
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found - Exercise not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Update exercise historical 1RM
+      tags:
+      - exercises
+  /exercises/{id}/metrics-history:
+    get:
+      consumes:
+      - application/json
+      description: 'Get time-series session metrics for an exercise. Range controls
+        bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.'
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: M
+        description: Range selector
+        enum:
+        - W
+        - M
+        - 6M
+        - "Y"
+        in: query
+        name: range
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/exercise.ExerciseMetricsHistoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found - Exercise not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Get exercise metrics history
       tags:
       - exercises
   /exercises/{id}/recent-sets:

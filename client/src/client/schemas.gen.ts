@@ -37,6 +37,113 @@ export const exercise_CreateExerciseResponseSchema = {
   },
 } as const;
 
+export const exercise_ExerciseDetailExerciseResponseSchema = {
+  type: "object",
+  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  properties: {
+    best_e1rm: {
+      type: "number",
+      example: 305,
+    },
+    created_at: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    historical_1rm: {
+      type: "number",
+      example: 315,
+    },
+    historical_1rm_source_workout_id: {
+      type: "integer",
+      example: 42,
+    },
+    historical_1rm_updated_at: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    id: {
+      type: "integer",
+      example: 1,
+    },
+    name: {
+      type: "string",
+      example: "Bench Press",
+    },
+    updated_at: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    user_id: {
+      type: "string",
+      example: "user-123",
+    },
+  },
+} as const;
+
+export const exercise_ExerciseDetailResponseSchema = {
+  type: "object",
+  required: ["exercise", "sets"],
+  properties: {
+    exercise: {
+      $ref: "#/definitions/exercise.ExerciseDetailExerciseResponse",
+    },
+    sets: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/exercise.ExerciseWithSetsResponse",
+      },
+    },
+  },
+} as const;
+
+export const exercise_ExerciseMetricsHistoryPointSchema = {
+  type: "object",
+  properties: {
+    date: {
+      type: "string",
+    },
+    session_avg_e1rm: {
+      type: "number",
+    },
+    session_avg_intensity: {
+      type: "number",
+    },
+    session_best_e1rm: {
+      type: "number",
+    },
+    session_best_intensity: {
+      type: "number",
+    },
+    total_volume_working: {
+      type: "number",
+    },
+    workout_id: {
+      type: "integer",
+    },
+    x: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const exercise_ExerciseMetricsHistoryResponseSchema = {
+  type: "object",
+  properties: {
+    bucket: {
+      $ref: "#/definitions/exercise.MetricsHistoryBucket",
+    },
+    points: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/exercise.ExerciseMetricsHistoryPoint",
+      },
+    },
+    range: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const exercise_ExerciseResponseSchema = {
   type: "object",
   required: ["created_at", "id", "name", "updated_at", "user_id"],
@@ -128,6 +235,16 @@ export const exercise_ExerciseWithSetsResponseSchema = {
   },
 } as const;
 
+export const exercise_MetricsHistoryBucketSchema = {
+  type: "string",
+  enum: ["workout", "week", "month"],
+  "x-enum-varnames": [
+    "MetricsHistoryBucketWorkout",
+    "MetricsHistoryBucketWeek",
+    "MetricsHistoryBucketMonth",
+  ],
+} as const;
+
 export const exercise_RecentSetsResponseSchema = {
   type: "object",
   required: ["created_at", "reps", "set_id", "workout_date", "workout_id"],
@@ -163,6 +280,21 @@ export const exercise_RecentSetsResponseSchema = {
     workout_id: {
       type: "integer",
       example: 1,
+    },
+  },
+} as const;
+
+export const exercise_UpdateExerciseHistorical1RMRequestSchema = {
+  type: "object",
+  properties: {
+    historical_1rm: {
+      type: "number",
+      maximum: 999999.99,
+      minimum: 0,
+    },
+    mode: {
+      type: "string",
+      enum: ["manual", "recompute"],
     },
   },
 } as const;

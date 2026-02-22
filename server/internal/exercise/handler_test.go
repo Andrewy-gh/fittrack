@@ -14,12 +14,14 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +44,11 @@ func (m *MockExerciseRepository) GetExercise(ctx context.Context, id int32, user
 	return args.Get(0).(db.Exercise), args.Error(1)
 }
 
+func (m *MockExerciseRepository) GetExerciseDetail(ctx context.Context, id int32, userID string) (db.GetExerciseDetailRow, error) {
+	args := m.Called(ctx, id, userID)
+	return args.Get(0).(db.GetExerciseDetailRow), args.Error(1)
+}
+
 func (m *MockExerciseRepository) GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error) {
 	args := m.Called(ctx, id, userID)
 	return args.Get(0).([]db.GetExerciseWithSetsRow), args.Error(1)
@@ -62,6 +69,11 @@ func (m *MockExerciseRepository) GetRecentSetsForExercise(ctx context.Context, i
 	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
 }
 
+func (m *MockExerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
+	args := m.Called(ctx, req, userID)
+	return args.Get(0).([]ExerciseMetricsHistoryPoint), args.Get(1).(MetricsHistoryBucket), args.Error(2)
+}
+
 func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, userID string) error {
 	args := m.Called(ctx, id, userID)
 	return args.Error(0)
@@ -69,6 +81,21 @@ func (m *MockExerciseRepository) DeleteExercise(ctx context.Context, id int32, u
 
 func (m *MockExerciseRepository) UpdateExerciseName(ctx context.Context, id int32, name string, userID string) error {
 	args := m.Called(ctx, id, name, userID)
+	return args.Error(0)
+}
+
+func (m *MockExerciseRepository) GetExerciseBestE1rmWithWorkout(ctx context.Context, exerciseID int32, userID string) (db.GetExerciseBestE1rmWithWorkoutRow, error) {
+	args := m.Called(ctx, exerciseID, userID)
+	return args.Get(0).(db.GetExerciseBestE1rmWithWorkoutRow), args.Error(1)
+}
+
+func (m *MockExerciseRepository) UpdateExerciseHistorical1RMManual(ctx context.Context, id int32, historical1rm *float64, userID string) error {
+	args := m.Called(ctx, id, historical1rm, userID)
+	return args.Error(0)
+}
+
+func (m *MockExerciseRepository) SetExerciseHistorical1RM(ctx context.Context, id int32, historical1rm *float64, sourceWorkoutID *int32, userID string) error {
+	args := m.Called(ctx, id, historical1rm, sourceWorkoutID, userID)
 	return args.Error(0)
 }
 
@@ -166,9 +193,33 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			name:       "successful fetch",
 			exerciseID: "1",
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Bench Press"}, nil)
+				var hist pgtype.Numeric
+				_ = hist.Scan("315.0")
+				var best pgtype.Numeric
+				_ = best.Scan("222.2")
+
+				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{
+					ID:        id,
+					Name:      "Bench Press",
+					CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+					UpdatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC), Valid: true},
+					UserID:    userID,
+
+					Historical1rm:                hist,
+					Historical1rmUpdatedAt:       pgtype.Timestamptz{Time: time.Date(2026, 2, 3, 0, 0, 0, 0, time.UTC), Valid: true},
+					Historical1rmSourceWorkoutID: pgtype.Int4{Int32: 42, Valid: true},
+					BestE1rm:                     best,
+				}, nil)
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{
-					{ExerciseID: id, ExerciseName: "Bench Press"},
+					{
+						WorkoutID:    7,
+						WorkoutDate:  pgtype.Timestamptz{Time: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+						SetID:        1,
+						Reps:         5,
+						SetType:      "working",
+						ExerciseID:   id,
+						ExerciseName: "Bench Press",
+					},
 				}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
@@ -187,7 +238,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			name:       "exercise not found",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
+				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{}, assert.AnError)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
@@ -195,10 +246,16 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			expectedError: "not found",
 		},
 		{
-			name:       "exercise exists but has no sets - returns 200 with empty array",
+			name:       "exercise exists but has no sets - returns 200 with empty sets",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "New Exercise"}, nil)
+				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{
+					ID:        id,
+					Name:      "New Exercise",
+					CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+					UpdatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC), Valid: true},
+					UserID:    userID,
+				}, nil)
 				m.On("GetExerciseWithSets", mock.Anything, id, userID).Return([]db.GetExerciseWithSetsRow{}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
@@ -249,6 +306,31 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 				if tt.expectedError != "" {
 					assertJSONError(t, w, tt.expectedError)
 				}
+			}
+
+			if tt.name == "successful fetch" && tt.expectedCode == http.StatusOK {
+				var resp ExerciseDetailResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				require.NoError(t, err)
+				assert.Equal(t, int32(1), resp.Exercise.ID)
+				assert.Equal(t, "Bench Press", resp.Exercise.Name)
+				require.NotNil(t, resp.Exercise.Historical1RM)
+				assert.InDelta(t, 315.0, *resp.Exercise.Historical1RM, 0.0001)
+				require.NotNil(t, resp.Exercise.Historical1RMUpdatedAt)
+				require.NotNil(t, resp.Exercise.Historical1RMSourceWorkoutID)
+				assert.Equal(t, int32(42), *resp.Exercise.Historical1RMSourceWorkoutID)
+				require.NotNil(t, resp.Exercise.BestE1RM)
+				assert.InDelta(t, 222.2, *resp.Exercise.BestE1RM, 0.0001)
+				require.Len(t, resp.Sets, 1)
+			}
+			if tt.name == "exercise exists but has no sets - returns 200 with empty sets" && tt.expectedCode == http.StatusOK {
+				var resp ExerciseDetailResponse
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				require.NoError(t, err)
+				assert.Equal(t, int32(999), resp.Exercise.ID)
+				assert.Nil(t, resp.Exercise.BestE1RM)
+				require.NotNil(t, resp.Sets)
+				assert.Len(t, resp.Sets, 0)
 			}
 
 			mockRepo.AssertExpectations(t)
@@ -591,8 +673,8 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:       "successful update",
-			exerciseID: "1",
+			name:        "successful update",
+			exerciseID:  "1",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Old Exercise"}, nil)
@@ -643,8 +725,8 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			expectedError: "Validation failed",
 		},
 		{
-			name:       "exercise not found",
-			exerciseID: "999",
+			name:        "exercise not found",
+			exerciseID:  "999",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
@@ -655,8 +737,8 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			expectedError: "not found",
 		},
 		{
-			name:       "update operation fails",
-			exerciseID: "1",
+			name:        "update operation fails",
+			exerciseID:  "1",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
 				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{ID: id, Name: "Old Exercise"}, nil)
@@ -1073,10 +1155,10 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.GetExerciseWithSets(getW, getReq)
 		assert.Equal(t, http.StatusOK, getW.Code)
 
-		var exerciseWithSets []db.GetExerciseWithSetsRow
+		var exerciseWithSets ExerciseDetailResponse
 		err = json.Unmarshal(getW.Body.Bytes(), &exerciseWithSets)
 		assert.NoError(t, err)
-		assert.Len(t, exerciseWithSets, 3, "Exercise should have 3 sets")
+		assert.Len(t, exerciseWithSets.Sets, 3, "Exercise should have 3 sets")
 
 		// Delete the exercise
 		deleteReq := httptest.NewRequest("DELETE", fmt.Sprintf("/api/exercises/%d", createdExercise.ID), nil).WithContext(ctxA)
