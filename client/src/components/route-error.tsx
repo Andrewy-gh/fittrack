@@ -8,6 +8,12 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
   const errorMessage = getErrorMessage(error);
+  const loweredMessage = errorMessage.toLowerCase();
+  const isModuleLoadError =
+    loweredMessage.includes('importing a module script failed') ||
+    loweredMessage.includes('failed to fetch dynamically imported module') ||
+    loweredMessage.includes('loading chunk') ||
+    loweredMessage.includes('mime type');
 
   // Extract request_id if it's an API error
   const errorAsUnknown = error as unknown;
@@ -47,10 +53,16 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
             Go Back
           </Button>
           <Button
-            onClick={() => reset()}
+            onClick={() => {
+              if (isModuleLoadError) {
+                window.location.href = `${window.location.pathname}?v=${Date.now()}`;
+                return;
+              }
+              reset();
+            }}
             className="flex-1"
           >
-            Try Again
+            {isModuleLoadError ? 'Refresh App' : 'Try Again'}
           </Button>
         </div>
       </div>
