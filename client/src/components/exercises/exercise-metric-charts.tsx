@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 
@@ -88,6 +89,8 @@ function MetricChartsBody({
   range: RangeType;
   onWorkoutClick: (workoutId: number) => void;
 }) {
+  const [activeChartIndex, setActiveChartIndex] = useState(0);
+
   const best1rm = useMemo(
     () => toMetricPoints(points, (p) => p.session_best_e1rm ?? 0),
     [points]
@@ -109,50 +112,81 @@ function MetricChartsBody({
     [points]
   );
 
+  const charts: Array<{
+    title: string;
+    data: MetricPoint[];
+    unit: 'lb' | '%' | 'vol';
+    description?: string;
+  }> = [
+    {
+      title: 'Session Best 1RM',
+      data: best1rm,
+      unit: 'lb',
+    },
+    {
+      title: 'Session Average 1RM',
+      data: avg1rm,
+      unit: 'lb',
+    },
+    {
+      title: 'Session Average Intensity',
+      data: avgIntensity,
+      unit: '%',
+    },
+    {
+      title: 'Session Best Intensity',
+      data: bestIntensity,
+      unit: '%',
+    },
+    {
+      title: 'Working-Set Volume',
+      description: 'Total volume from working sets.',
+      data: volumeWorking,
+      unit: 'vol',
+    },
+  ] as const;
+
   if (points.length === 0) return null;
 
+  const safeIndex = Math.min(activeChartIndex, charts.length - 1);
+  const activeChart = charts[safeIndex];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <ChartBarMetric
-        title="Session Best 1RM"
+        title={activeChart.title}
+        description={activeChart.description}
         range={range}
-        data={best1rm}
-        unit="lb"
+        data={activeChart.data}
+        unit={activeChart.unit}
         onWorkoutClick={onWorkoutClick}
       />
 
-      <ChartBarMetric
-        title="Session Average 1RM"
-        range={range}
-        data={avg1rm}
-        unit="lb"
-        onWorkoutClick={onWorkoutClick}
-      />
+      <div className="flex items-center justify-center gap-4 pb-1">
+        <button
+          type="button"
+          aria-label="Previous graph"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-foreground disabled:opacity-40"
+          onClick={() => setActiveChartIndex((prev) => Math.max(0, prev - 1))}
+          disabled={safeIndex === 0}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
 
-      <ChartBarMetric
-        title="Session Average Intensity"
-        range={range}
-        data={avgIntensity}
-        unit="%"
-        onWorkoutClick={onWorkoutClick}
-      />
+        <p className="text-xs text-muted-foreground">
+          Graph {safeIndex + 1} of {charts.length}
+        </p>
 
-      <ChartBarMetric
-        title="Session Best Intensity"
-        range={range}
-        data={bestIntensity}
-        unit="%"
-        onWorkoutClick={onWorkoutClick}
-      />
-
-      <ChartBarMetric
-        title="Working-Set Volume"
-        description="Total volume from working sets."
-        range={range}
-        data={volumeWorking}
-        unit="vol"
-        onWorkoutClick={onWorkoutClick}
-      />
+        <button
+          type="button"
+          aria-label="Next graph"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-foreground disabled:opacity-40"
+          onClick={() => setActiveChartIndex((prev) => Math.min(charts.length - 1, prev + 1))}
+          disabled={safeIndex === charts.length - 1}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
     </div>
   );
 }
