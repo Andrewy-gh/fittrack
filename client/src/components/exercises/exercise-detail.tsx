@@ -52,11 +52,13 @@ export function ExerciseDetail({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const totalSets = exerciseSets.length;
-  const uniqueWorkouts = new Set(exerciseSets.map((set) => set.workout_id))
+  const safeExerciseSets = Array.isArray(exerciseSets) ? exerciseSets : [];
+
+  const totalSets = safeExerciseSets.length;
+  const uniqueWorkouts = new Set(safeExerciseSets.map((set) => set.workout_id))
     .size;
-  const weights = exerciseSets.map((set) => set.weight || 0);
-  const volumes = exerciseSets.map((set) => set.volume);
+  const weights = safeExerciseSets.map((set) => set.weight || 0);
+  const volumes = safeExerciseSets.map((set) => set.volume);
 
   const averageWeight = totalSets > 0
     ? weights.reduce((sum, weight) => sum + weight, 0) / weights.length
@@ -67,7 +69,7 @@ export function ExerciseDetail({
     : 0;
   const maxVolume = totalSets > 0 ? Math.max(...volumes) : 0;
 
-  const sortedExerciseSets = sortByExerciseAndSetOrder(exerciseSets);
+  const sortedExerciseSets = sortByExerciseAndSetOrder(safeExerciseSets);
 
   const workoutEntries = useMemo<ExerciseWorkoutEntry[]>(() => {
     const groups = new Map<
@@ -136,7 +138,7 @@ export function ExerciseDetail({
         <ExerciseHistorical1RmCard
           exercise={exercise}
           exerciseId={exerciseId}
-          exerciseSets={exerciseSets}
+          exerciseSets={safeExerciseSets}
           isDemoMode={isDemoMode}
         />
 
@@ -151,7 +153,7 @@ export function ExerciseDetail({
 
         <ExerciseMetricCharts
           exerciseId={exerciseId}
-          exerciseSets={exerciseSets}
+          exerciseSets={safeExerciseSets}
           isDemoMode={isDemoMode}
         />
 

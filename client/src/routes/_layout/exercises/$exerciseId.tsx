@@ -57,10 +57,14 @@ function RouteComponent() {
     ? (itemsPerPage ?? 10)
     : 10;
 
+  const safeExerciseSets = Array.isArray(exerciseDetail?.sets)
+    ? exerciseDetail.sets
+    : [];
+
   return (
     <ExerciseDetail
       exercise={exerciseDetail.exercise}
-      exerciseSets={exerciseDetail.sets}
+      exerciseSets={safeExerciseSets}
       exerciseId={exerciseId}
       isDemoMode={!user}
       sortOrder={normalizedSortOrder}
