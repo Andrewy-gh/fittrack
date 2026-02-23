@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import { z } from 'zod';
 
 import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
@@ -139,6 +140,65 @@ function buildDemoContributionData(workouts: WorkoutWorkoutResponse[]): WorkoutC
   return { days };
 }
 
+function getWorkoutSummary(days: WorkoutContributionDataResponse['days'] = []) {
+  const today = new Date();
+  const start30 = addDays(today, -29);
+
+  const normalized = (days ?? [])
+    .filter((d): d is NonNullable<typeof d> => Boolean(d?.date))
+    .map((d) => ({
+      date: d.date!,
+      count: d.count ?? 0,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const countByDate = new Map(normalized.map((d) => [d.date, d.count]));
+
+  let totalWorkouts30d = 0;
+  for (let i = 0; i < 30; i++) {
+    const day = format(addDays(start30, i), 'yyyy-MM-dd');
+    totalWorkouts30d += countByDate.get(day) ?? 0;
+  }
+
+  const avgWorkoutsPerWeek = Number(((totalWorkouts30d / 30) * 7).toFixed(1));
+
+  let currentStreak = 0;
+  for (let i = 0; i < 3650; i++) {
+    const day = format(addDays(today, -i), 'yyyy-MM-dd');
+    if ((countByDate.get(day) ?? 0) > 0) {
+      currentStreak += 1;
+    } else {
+      break;
+    }
+  }
+
+  let longestStreak = 0;
+  let runningStreak = 0;
+  let previousDate: Date | null = null;
+
+  for (const item of normalized) {
+    if (item.count <= 0) continue;
+
+    const currentDate = new Date(`${item.date}T00:00:00`);
+    if (!previousDate) {
+      runningStreak = 1;
+    } else {
+      const diff = differenceInCalendarDays(currentDate, previousDate);
+      runningStreak = diff === 1 ? runningStreak + 1 : 1;
+    }
+
+    previousDate = currentDate;
+    longestStreak = Math.max(longestStreak, runningStreak);
+  }
+
+  return {
+    totalWorkouts30d,
+    avgWorkoutsPerWeek,
+    currentStreak,
+    longestStreak,
+  };
+}
+
 function AnalyticsLayout({
   isLoadingExercises,
   exercises,
@@ -159,6 +219,7 @@ function AnalyticsLayout({
   workoutContributionData?: WorkoutContributionDataResponse;
 }) {
   const safeSets = Array.isArray(exerciseSets) ? exerciseSets : [];
+  const summary = getWorkoutSummary(workoutContributionData?.days);
 
   if (isLoadingExercises) {
     return (
@@ -186,6 +247,33 @@ function AnalyticsLayout({
         <p className="text-sm text-muted-foreground">
           Track performance trends per exercise.
         </p>
+      </section>
+
+      <section className="grid grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs text-muted-foreground">Workouts (30d)</p>
+            <p className="text-2xl font-semibold">{summary.totalWorkouts30d}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs text-muted-foreground">Avg / week</p>
+            <p className="text-2xl font-semibold">{summary.avgWorkoutsPerWeek}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs text-muted-foreground">Current streak</p>
+            <p className="text-2xl font-semibold">{summary.currentStreak}d</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs text-muted-foreground">Longest streak</p>
+            <p className="text-2xl font-semibold">{summary.longestStreak}d</p>
+          </CardContent>
+        </Card>
       </section>
 
       <Card>
