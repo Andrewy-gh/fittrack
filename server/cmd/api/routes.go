@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"path"
+	"strings"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
@@ -57,10 +59,26 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := http.Dir("./dist").Open(r.URL.Path)
-		if err != nil {
+		if err == nil {
+			fs.ServeHTTP(w, r)
+			return
+		}
+
+		// For missing static assets (e.g. old hashed JS chunks), return 404.
+		// Serving index.html for asset paths causes MIME errors like:
+		// "text/html is not a valid JavaScript MIME type".
+		if path.Ext(r.URL.Path) != "" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// SPA fallback only for browser navigation requests.
+		accept := r.Header.Get("Accept")
+		if r.Method == http.MethodGet && strings.Contains(accept, "text/html") {
 			http.ServeFile(w, r, "./dist/index.html")
 			return
 		}
-		fs.ServeHTTP(w, r)
+
+		http.NotFound(w, r)
 	}
 }
