@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
+import { WorkoutContributionGraph } from '@/components/workouts/workout-contribution-graph';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,10 +17,13 @@ import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
 } from '@/lib/api/exercises';
+import { contributionDataQueryOptions } from '@/lib/api/workouts';
 import {
   getDemoExercisesByIdQueryOptions,
   getDemoExercisesQueryOptions,
+  getDemoWorkoutsQueryOptions,
 } from '@/lib/demo-data/query-options';
+import type { WorkoutContributionDataResponse, WorkoutWorkoutResponse } from '@/client';
 
 const analyticsSearchSchema = z.object({
   exerciseId: z.coerce.number().int().positive().optional(),
@@ -51,6 +55,7 @@ function AuthedAnalytics() {
     ...exerciseByIdQueryOptions(selectedExerciseId ?? 0),
     enabled: Boolean(selectedExerciseId),
   });
+  const contributionQuery = useQuery(contributionDataQueryOptions());
 
   return (
     <AnalyticsLayout
@@ -63,6 +68,7 @@ function AuthedAnalytics() {
       isLoadingDetails={exerciseDetailQuery.isLoading}
       exerciseSets={exerciseDetailQuery.data?.sets}
       isDemoMode={false}
+      workoutContributionData={contributionQuery.data}
     />
   );
 }
@@ -83,6 +89,7 @@ function DemoAnalytics() {
     ...getDemoExercisesByIdQueryOptions(selectedExerciseId ?? 0),
     enabled: Boolean(selectedExerciseId),
   });
+  const demoWorkoutsQuery = useQuery(getDemoWorkoutsQueryOptions());
 
   return (
     <AnalyticsLayout
@@ -95,8 +102,41 @@ function DemoAnalytics() {
       isLoadingDetails={exerciseDetailQuery.isLoading}
       exerciseSets={exerciseDetailQuery.data?.sets}
       isDemoMode
+      workoutContributionData={buildDemoContributionData(demoWorkoutsQuery.data ?? [])}
     />
   );
+}
+
+function buildDemoContributionData(workouts: WorkoutWorkoutResponse[]): WorkoutContributionDataResponse {
+  const byDate = new Map<string, WorkoutWorkoutResponse[]>();
+
+  for (const workout of workouts) {
+    const day = (workout.date || '').split('T')[0];
+    if (!day) continue;
+    const list = byDate.get(day) ?? [];
+    list.push(workout);
+    byDate.set(day, list);
+  }
+
+  const days = Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, items]) => {
+      const count = items.length;
+      const level = count === 0 ? 0 : count < 2 ? 1 : count < 3 ? 2 : count < 4 ? 3 : 4;
+
+      return {
+        date,
+        count,
+        level,
+        workouts: items.map((w) => ({
+          id: w.id,
+          focus: w.workout_focus,
+          time: w.date,
+        })),
+      };
+    });
+
+  return { days };
 }
 
 function AnalyticsLayout({
@@ -107,6 +147,7 @@ function AnalyticsLayout({
   isLoadingDetails,
   exerciseSets,
   isDemoMode,
+  workoutContributionData,
 }: {
   isLoadingExercises: boolean;
   exercises: Array<{ id: number; name: string }>;
@@ -115,6 +156,7 @@ function AnalyticsLayout({
   isLoadingDetails: boolean;
   exerciseSets?: unknown;
   isDemoMode: boolean;
+  workoutContributionData?: WorkoutContributionDataResponse;
 }) {
   const safeSets = Array.isArray(exerciseSets) ? exerciseSets : [];
 
@@ -176,6 +218,21 @@ function AnalyticsLayout({
           isDemoMode={isDemoMode}
         />
       )}
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-xl font-semibold">Workout Trends</h2>
+          <p className="text-sm text-muted-foreground">
+            Weekly activity heatmap from your logged workouts.
+          </p>
+        </div>
+
+        {workoutContributionData ? (
+          <WorkoutContributionGraph data={workoutContributionData} defaultOpen />
+        ) : (
+          <p className="text-sm text-muted-foreground">Loading workout trends…</p>
+        )}
+      </section>
     </main>
   );
 }
