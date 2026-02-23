@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as IndexImport } from './routes/index'
 import { Route as HandlerSplatImport } from './routes/handler.$'
+import { Route as LayoutAnalyticsImport } from './routes/_layout/analytics'
 import { Route as LayoutWorkoutsIndexImport } from './routes/_layout/workouts/index'
 import { Route as LayoutExercisesIndexImport } from './routes/_layout/exercises/index'
 import { Route as LayoutWorkoutsNewImport } from './routes/_layout/workouts/new'
@@ -38,6 +39,12 @@ const HandlerSplatRoute = HandlerSplatImport.update({
   id: '/handler/$',
   path: '/handler/$',
   getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutAnalyticsRoute = LayoutAnalyticsImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => LayoutRoute,
 } as any)
 
 const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexImport.update({
@@ -96,6 +103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutImport
       parentRoute: typeof rootRoute
     }
+    '/_layout/analytics': {
+      id: '/_layout/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof LayoutAnalyticsImport
+      parentRoute: typeof LayoutImport
+    }
     '/handler/$': {
       id: '/handler/$'
       path: '/handler/$'
@@ -151,6 +165,7 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface LayoutRouteChildren {
+  LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute
   LayoutExercisesExerciseIdRoute: typeof LayoutExercisesExerciseIdRoute
   LayoutWorkoutsNewRoute: typeof LayoutWorkoutsNewRoute
   LayoutExercisesIndexRoute: typeof LayoutExercisesIndexRoute
@@ -160,6 +175,7 @@ interface LayoutRouteChildren {
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutAnalyticsRoute: LayoutAnalyticsRoute,
   LayoutExercisesExerciseIdRoute: LayoutExercisesExerciseIdRoute,
   LayoutWorkoutsNewRoute: LayoutWorkoutsNewRoute,
   LayoutExercisesIndexRoute: LayoutExercisesIndexRoute,
@@ -174,6 +190,7 @@ const LayoutRouteWithChildren =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '': typeof LayoutRouteWithChildren
+  '/analytics': typeof LayoutAnalyticsRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
@@ -186,6 +203,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '': typeof LayoutRouteWithChildren
+  '/analytics': typeof LayoutAnalyticsRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
@@ -199,6 +217,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
+  '/_layout/analytics': typeof LayoutAnalyticsRoute
   '/handler/$': typeof HandlerSplatRoute
   '/_layout/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
@@ -213,6 +232,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | ''
+    | '/analytics'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -224,6 +244,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | ''
+    | '/analytics'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -235,6 +256,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_layout'
+    | '/_layout/analytics'
     | '/handler/$'
     | '/_layout/exercises/$exerciseId'
     | '/_layout/workouts/new'
@@ -278,6 +300,7 @@ export const routeTree = rootRoute
     "/_layout": {
       "filePath": "_layout.tsx",
       "children": [
+        "/_layout/analytics",
         "/_layout/exercises/$exerciseId",
         "/_layout/workouts/new",
         "/_layout/exercises/",
@@ -285,6 +308,10 @@ export const routeTree = rootRoute
         "/_layout/workouts/$workoutId/edit",
         "/_layout/workouts/$workoutId/"
       ]
+    },
+    "/_layout/analytics": {
+      "filePath": "_layout/analytics.tsx",
+      "parent": "/_layout"
     },
     "/handler/$": {
       "filePath": "handler.$.tsx"

@@ -17,6 +17,9 @@ export function Header() {
         <div className="px-2 font-bold">
           <Link to="/exercises">Exercises</Link>
         </div>
+        <div className="px-2 font-bold">
+          <Link to="/analytics">Analytics</Link>
+        </div>
       </nav>
       <CustomUserButton />
     </header>
