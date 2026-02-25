@@ -14,7 +14,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'logo192.png', 'logo512.png'],
       manifest: {
         name: 'FitTrack',
         short_name: 'FitTrack',
