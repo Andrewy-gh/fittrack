@@ -144,6 +144,13 @@ function WorkoutTracker({
       navigate({ search: {} });
     };
 
+    const handleDiscardNewExercise = () => {
+      if (newExercise) {
+        form.removeFieldValue('exercises', exerciseIndex);
+      }
+      navigate({ search: {} });
+    };
+
     return (
       <ErrorBoundary
         fallback={
@@ -170,7 +177,14 @@ function WorkoutTracker({
               />
             }
             recentSets={<RecentSets exerciseId={exerciseId} user={user} />}
-            sets={<ExerciseSets form={form} exerciseIndex={exerciseIndex} />}
+            sets={
+              <ExerciseSets
+                form={form}
+                exerciseIndex={exerciseIndex}
+                isNewExercise={newExercise}
+                onDiscardNewExercise={handleDiscardNewExercise}
+              />
+            }
           />
         </Suspense>
       </ErrorBoundary>

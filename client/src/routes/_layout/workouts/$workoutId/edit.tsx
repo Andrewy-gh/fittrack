@@ -140,6 +140,13 @@ function EditWorkoutForm({
       navigate({ search: {} });
     };
 
+    const handleDiscardNewExercise = () => {
+      if (newExercise) {
+        form.removeFieldValue('exercises', exerciseIndex);
+      }
+      navigate({ search: {} });
+    };
+
     return (
       <ErrorBoundary
         fallback={
@@ -165,7 +172,14 @@ function EditWorkoutForm({
                 onBack={handleExerciseBack}
               />
             }
-            sets={<ExerciseSets form={form} exerciseIndex={exerciseIndex} />}
+            sets={
+              <ExerciseSets
+                form={form}
+                exerciseIndex={exerciseIndex}
+                isNewExercise={newExercise}
+                onDiscardNewExercise={handleDiscardNewExercise}
+              />
+            }
           />
         </Suspense>
       </ErrorBoundary>
