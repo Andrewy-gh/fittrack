@@ -51,6 +51,13 @@ export const AddSetDialog = withForm({
       onClose();
     };
 
+    const getSetValues = (values: typeof form.state.values) => {
+      const set = values.exercises?.[exerciseIndex]?.sets?.[setIndex];
+      return {
+        reps: Number(set?.reps ?? 0),
+      };
+    };
+
     return (
       <Dialog
         open={true}
@@ -112,13 +119,15 @@ export const AddSetDialog = withForm({
             </ErrorBoundary>
             <form.Subscribe
               selector={(state) => {
+                const { reps } = getSetValues(state.values);
                 return {
                   canSubmit: state.canSubmit,
                   isValid: state.isValid,
+                  hasValidReps: reps > 0,
                 };
               }}
-              children={({ canSubmit, isValid }) => {
-                const isDisabled = !canSubmit || !isValid;
+              children={({ canSubmit, isValid, hasValidReps }) => {
+                const isDisabled = !canSubmit || !isValid || !hasValidReps;
                 return (
                   <Button
                     className="w-full mt-6 text-base font-semibold rounded-lg"

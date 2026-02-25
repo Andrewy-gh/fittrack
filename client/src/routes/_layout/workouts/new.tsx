@@ -43,7 +43,7 @@ function WorkoutTracker({
   exercises: DbExercise[];
   workoutsFocus: WorkoutFocus[];
 }) {
-  const { addExercise, exerciseIndex } = Route.useSearch();
+  const { addExercise, exerciseIndex, newExercise } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
   const saveWorkoutApi = useSaveWorkoutMutation();
@@ -136,6 +136,14 @@ function WorkoutTracker({
     const exerciseName = exercises[exerciseIndex]?.name;
     const exerciseId = getExerciseId(exerciseName);
 
+    const handleExerciseBack = () => {
+      const currentExercise = form.state.values.exercises[exerciseIndex];
+      if (newExercise && currentExercise && currentExercise.sets.length === 0) {
+        form.removeFieldValue('exercises', exerciseIndex);
+      }
+      navigate({ search: {} });
+    };
+
     return (
       <ErrorBoundary
         fallback={
@@ -158,7 +166,7 @@ function WorkoutTracker({
               <ExerciseHeader
                 form={form}
                 exerciseIndex={exerciseIndex}
-                onBack={() => navigate({ search: {} })}
+                onBack={handleExerciseBack}
               />
             }
             recentSets={<RecentSets exerciseId={exerciseId} user={user} />}
@@ -351,6 +359,7 @@ function WorkoutTracker({
 const workoutSearchSchema = z.object({
   addExercise: z.boolean().optional(),
   exerciseIndex: z.coerce.number().int().optional(),
+  newExercise: z.boolean().optional(),
 });
 
 export const Route = createFileRoute('/_layout/workouts/new')({
