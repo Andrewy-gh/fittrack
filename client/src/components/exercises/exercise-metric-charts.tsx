@@ -120,21 +120,25 @@ function MetricChartsBody({
   }> = [
     {
       title: 'Session Best 1RM',
+      description: 'Highest estimated 1RM from any working set in the session.',
       data: best1rm,
       unit: 'lb',
     },
     {
       title: 'Session Average 1RM',
+      description: 'Average estimated 1RM across all working sets in the session.',
       data: avg1rm,
       unit: 'lb',
     },
     {
       title: 'Session Average Intensity',
+      description: 'Average intensity of working sets versus your historical 1RM.',
       data: avgIntensity,
       unit: '%',
     },
     {
       title: 'Session Best Intensity',
+      description: 'Highest single-set intensity versus your historical 1RM.',
       data: bestIntensity,
       unit: '%',
     },

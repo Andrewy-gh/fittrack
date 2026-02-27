@@ -220,6 +220,35 @@ function AnalyticsLayout({
 }) {
   const safeSets = Array.isArray(exerciseSets) ? exerciseSets : [];
   const summary = getWorkoutSummary(workoutContributionData?.days);
+  const summaryMetrics: Array<{
+    label: string;
+    value: number;
+    suffix?: string;
+    description: string;
+  }> = [
+    {
+      label: 'Workouts (30d)',
+      value: summary.totalWorkouts30d,
+      description: 'Completed workouts in the last 30 days.',
+    },
+    {
+      label: 'Avg / week',
+      value: summary.avgWorkoutsPerWeek,
+      description: 'Average workout pace over the last 30 days.',
+    },
+    {
+      label: 'Current streak',
+      value: summary.currentStreak,
+      suffix: 'd',
+      description: 'Consecutive days with at least one workout.',
+    },
+    {
+      label: 'Longest streak',
+      value: summary.longestStreak,
+      suffix: 'd',
+      description: 'Best consecutive-day training streak so far.',
+    },
+  ];
 
   if (isLoadingExercises) {
     return (
@@ -250,30 +279,18 @@ function AnalyticsLayout({
       </section>
 
       <section className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Workouts (30d)</p>
-            <p className="text-2xl font-semibold">{summary.totalWorkouts30d}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Avg / week</p>
-            <p className="text-2xl font-semibold">{summary.avgWorkoutsPerWeek}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Current streak</p>
-            <p className="text-2xl font-semibold">{summary.currentStreak}d</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground">Longest streak</p>
-            <p className="text-2xl font-semibold">{summary.longestStreak}d</p>
-          </CardContent>
-        </Card>
+        {summaryMetrics.map((metric) => (
+          <Card key={metric.label}>
+            <CardContent className="space-y-1 pt-5">
+              <p className="text-xs text-muted-foreground">{metric.label}</p>
+              <p className="text-2xl font-semibold">
+                {metric.value}
+                {metric.suffix ?? ''}
+              </p>
+              <p className="text-xs text-muted-foreground">{metric.description}</p>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
       <Card>
