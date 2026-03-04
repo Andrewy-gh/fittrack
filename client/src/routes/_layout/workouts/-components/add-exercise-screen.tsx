@@ -15,7 +15,7 @@ import { Route } from '../new';
 type AddExerciseScreenProps = {
   exercises: DbExercise[]; // Database exercises with guaranteed IDs
   onBack: () => void;
-  onAddExercise?: (index: number) => void; // Optional callback for when exercise is added (used by edit.tsx)
+  onAddExercise?: (index: number, isNewExercise?: boolean) => void; // Optional callback for when exercise is added (used by edit.tsx)
 };
 
 export const AddExerciseScreen = withForm({
@@ -65,9 +65,9 @@ export const AddExerciseScreen = withForm({
                         });
                         const exerciseIndex = field.state.value.length - 1;
                         if (onAddExercise) {
-                          onAddExercise(exerciseIndex);
+                          onAddExercise(exerciseIndex, true);
                         } else {
-                          navigate({ search: { exerciseIndex } });
+                          navigate({ search: { exerciseIndex, newExercise: true } });
                         }
                       }}
                     >
@@ -121,9 +121,9 @@ export const AddExerciseScreen = withForm({
                             });
                             const exerciseIndex = field.state.value.length - 1;
                             if (onAddExercise) {
-                              onAddExercise(exerciseIndex);
+                              onAddExercise(exerciseIndex, true);
                             } else {
-                              navigate({ search: { exerciseIndex } });
+                              navigate({ search: { exerciseIndex, newExercise: true } });
                             }
                           }}
                         >

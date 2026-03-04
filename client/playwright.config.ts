@@ -3,33 +3,40 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
+const isCI = Boolean(process.env.CI);
+const e2ePort = Number(process.env.E2E_PORT ?? '5173');
+const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${e2ePort}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
 
   globalSetup: './tests/e2e/global-setup.ts',
 
+  /* Avoid jobs running forever in CI when setup gets stuck. */
+  globalTimeout: isCI ? 20 * 60 * 1000 : undefined,
+
   /* Run tests in files in parallel */
   fullyParallel: true,
 
   /* Increase timeout for CI */
-  timeout: process.env.CI ? 60000 : 30000,
+  timeout: isCI ? 60000 : 30000,
 
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
 
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: isCI ? 2 : 0,
 
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : undefined,
+  /* Prefer stability over throughput in shared CI runners. */
+  workers: isCI ? 1 : undefined,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: isCI ? [['line'], ['html', { open: 'never' }]] : 'html',
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:5173',
+    baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -49,9 +56,11 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: process.env.CI ? 'bun run build && bun run serve:test' : 'bun run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    command: isCI ? 'bun run serve:test' : 'bun run dev',
+    url: baseURL,
+    reuseExistingServer: !isCI,
     timeout: 120000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

@@ -13,8 +13,8 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
     VitePWA({
-      registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'favicon.ico', 'logo192.png', 'logo512.png'],
       manifest: {
         name: 'FitTrack',
         short_name: 'FitTrack',
@@ -34,6 +34,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        navigateFallbackDenylist: [/^\/handler\//, /^\/api\//],
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {

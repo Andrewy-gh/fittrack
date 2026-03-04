@@ -116,10 +116,9 @@ test.describe('Demo Mode - Workout Edit', () => {
       page.getByTestId('edit-workout-exercise-card').first()
     ).toBeVisible();
 
-    const updatedExerciseCount = await page
-      .getByTestId('edit-workout-exercise-card')
-      .count();
-    expect(updatedExerciseCount).toBe(initialExerciseCount + 1);
+    await expect(page.getByTestId('edit-workout-exercise-card')).toHaveCount(
+      initialExerciseCount + 1
+    );
   });
 
   test('should remove exercise from workout', async ({ page }) => {
@@ -158,10 +157,9 @@ test.describe('Demo Mode - Workout Edit', () => {
       page.getByTestId('edit-workout-exercise-card').first()
     ).toBeVisible();
 
-    const updatedExerciseCount = await page
-      .getByTestId('edit-workout-exercise-card')
-      .count();
-    expect(updatedExerciseCount).toBe(initialExerciseCount - 1);
+    await expect(page.getByTestId('edit-workout-exercise-card')).toHaveCount(
+      initialExerciseCount - 1
+    );
   });
 
   // URL Navigation Tests

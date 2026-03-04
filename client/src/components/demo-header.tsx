@@ -25,6 +25,9 @@ export function DemoHeader() {
         <div className="px-2 font-bold">
           <Link to="/exercises">Exercises</Link>
         </div>
+        <div className="px-2 font-bold">
+          <Link to="/analytics">Analytics</Link>
+        </div>
       </nav>
       <div className="flex items-center gap-2">
         <Button

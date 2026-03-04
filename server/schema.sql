@@ -20,6 +20,9 @@ CREATE TABLE workout (
 CREATE TABLE exercise (
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
+    historical_1rm NUMERIC(8,2),
+    historical_1rm_updated_at TIMESTAMPTZ,
+    historical_1rm_source_workout_id INTEGER REFERENCES workout(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -46,6 +49,7 @@ CREATE TABLE "set" (
 CREATE INDEX idx_set_exercise_id ON "set"(exercise_id);
 CREATE INDEX idx_set_workout_id ON "set"(workout_id);
 CREATE INDEX idx_set_user_id ON "set"(user_id);
+CREATE INDEX idx_set_user_exercise_id ON "set"(user_id, exercise_id);
 
 -- Additional indexes for performance
 CREATE INDEX idx_workout_user_id ON workout(user_id);

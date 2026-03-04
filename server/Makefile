@@ -7,8 +7,9 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=api
 
-# Use bash for all shell operations and run entire recipes in one shell
-SHELL := /usr/bin/env bash
+# Use bash for all shell operations and run entire recipes in one shell.
+# Note: GNU Make's SHELL must be a single executable path (no args).
+SHELL := bash
 .ONESHELL:
 .SHELLFLAGS := -eo pipefail -c
 

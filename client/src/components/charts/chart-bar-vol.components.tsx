@@ -40,6 +40,7 @@ export function RangeSelector({
       {ranges.map(({ value, label }) => (
         <button
           key={value}
+          type="button"
           onClick={() => onRangeChange(value)}
           className={`
             ${buttonPadding} rounded-[var(--radius-sm)] border-0 font-medium
@@ -201,6 +202,7 @@ export function ScrollableChart({
 
       {!isTouchDevice && canScrollLeft && (
         <button
+          type="button"
           onClick={() => scroll('left')}
           className={`absolute ${breakpoint === 'mobile' ? 'left-1' : 'left-2'} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
           aria-label="Scroll left"
@@ -222,6 +224,7 @@ export function ScrollableChart({
 
       {!isTouchDevice && canScrollRight && (
         <button
+          type="button"
           onClick={() => scroll('right')}
           className={`absolute ${breakpoint === 'mobile' ? 'right-1' : 'right-2'} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
           aria-label="Scroll right"

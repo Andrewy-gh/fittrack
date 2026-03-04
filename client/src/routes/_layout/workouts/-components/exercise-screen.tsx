@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MOCK_VALUES } from '../-components/form-options';
 import { formatWeight } from '@/lib/utils';
+import { shouldDiscardNewExerciseAfterSetRemoval } from './workout-form-helpers';
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
@@ -39,8 +40,16 @@ export const ExerciseHeader = withForm({
 
 export const ExerciseSets = withForm({
   defaultValues: MOCK_VALUES,
-  props: {} as Pick<ExerciseScreenProps, 'exerciseIndex'>,
-  render: function Render({ form, exerciseIndex }) {
+  props: {} as Pick<ExerciseScreenProps, 'exerciseIndex'> & {
+    isNewExercise?: boolean;
+    onDiscardNewExercise?: () => void;
+  },
+  render: function Render({
+    form,
+    exerciseIndex,
+    isNewExercise,
+    onDiscardNewExercise,
+  }) {
     const [dialogOpenIndex, setDialogOpenIndex] = useState<number | null>(null);
 
     return (
@@ -74,8 +83,16 @@ export const ExerciseSets = withForm({
                             setDialogOpenIndex(null);
                           }}
                           onRemoveSet={() => {
+                            const shouldDiscardExercise =
+                              shouldDiscardNewExerciseAfterSetRemoval(
+                                isNewExercise,
+                                setsField.state.value?.length ?? 0
+                              );
                             setsField.removeValue(setIndex);
                             setDialogOpenIndex(null);
+                            if (shouldDiscardExercise) {
+                              onDiscardNewExercise?.();
+                            }
                           }}
                         />
                       );

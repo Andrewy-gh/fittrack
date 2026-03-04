@@ -17,6 +17,12 @@ import type {
   PatchExercisesByIdData,
   PatchExercisesByIdResponses,
   PatchExercisesByIdErrors,
+  PatchExercisesByIdHistorical1RmData,
+  PatchExercisesByIdHistorical1RmResponses,
+  PatchExercisesByIdHistorical1RmErrors,
+  GetExercisesByIdMetricsHistoryData,
+  GetExercisesByIdMetricsHistoryResponses,
+  GetExercisesByIdMetricsHistoryErrors,
   GetExercisesByIdRecentSetsData,
   GetExercisesByIdRecentSetsResponses,
   GetExercisesByIdRecentSetsErrors,
@@ -141,7 +147,7 @@ export const deleteExercisesById = <ThrowOnError extends boolean = false>(
 
 /**
  * Get exercise with sets
- * Get a specific exercise with all its sets from workouts. Returns empty array when exercise exists but has no sets.
+ * Get a specific exercise (metadata) plus all its sets from workouts. Sets is empty when exercise exists but has no sets.
  */
 export const getExercisesById = <ThrowOnError extends boolean = false>(
   options: Options<GetExercisesByIdData, ThrowOnError>,
@@ -186,6 +192,60 @@ export const patchExercisesById = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Update exercise historical 1RM
+ * Set a manual historical 1RM (clears source workout) or recompute from best working-set e1RM across history.
+ */
+export const patchExercisesByIdHistorical1Rm = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<PatchExercisesByIdHistorical1RmData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    PatchExercisesByIdHistorical1RmResponses,
+    PatchExercisesByIdHistorical1RmErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}/historical-1rm",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Get exercise metrics history
+ * Get time-series session metrics for an exercise. Range controls bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.
+ */
+export const getExercisesByIdMetricsHistory = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetExercisesByIdMetricsHistoryData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetExercisesByIdMetricsHistoryResponses,
+    GetExercisesByIdMetricsHistoryErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/exercises/{id}/metrics-history",
+    ...options,
   });
 };
 

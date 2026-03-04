@@ -9,11 +9,14 @@ import (
 )
 
 type Exercise struct {
-	ID        int32              `json:"id"`
-	Name      string             `json:"name"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	UserID    string             `json:"user_id"`
+	ID                           int32              `json:"id"`
+	Name                         string             `json:"name"`
+	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
+	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
+	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
+	CreatedAt                    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                    pgtype.Timestamptz `json:"updated_at"`
+	UserID                       string             `json:"user_id"`
 }
 
 type Set struct {

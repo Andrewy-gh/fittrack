@@ -232,11 +232,11 @@ async function globalSetup(config: FullConfig) {
   const clientEnv = await loadEnvFile(clientEnvPath);
 
   const projectId =
-    process.env.STACK_PROJECT_ID ||
     process.env.VITE_PROJECT_ID ||
-    serverEnv.PROJECT_ID ||
+    clientEnv.VITE_PROJECT_ID ||
+    process.env.STACK_PROJECT_ID ||
     serverEnv.VITE_PROJECT_ID ||
-    clientEnv.VITE_PROJECT_ID;
+    serverEnv.PROJECT_ID;
   const secretServerKey =
     process.env.SECRET_SERVER_KEY || serverEnv.SECRET_SERVER_KEY;
   const publishableClientKey =

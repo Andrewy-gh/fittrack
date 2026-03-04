@@ -12,7 +12,10 @@ import {
   ErrorBoundary,
   InlineErrorFallback,
 } from '@/components/error-boundary';
-import { compose, minValue, maxValue } from '@/lib/validation';
+import {
+  isSetEmptyForDismiss,
+  validateSetReps,
+} from './workout-form-helpers';
 
 type AddSetDialogProps = {
   exerciseIndex: number;
@@ -33,14 +36,9 @@ export const AddSetDialog = withForm({
     onClose,
     onRemoveSet,
   }) {
-    const defaultSetType = 'working';
-
     const isSetEmpty = (values: typeof form.state.values) => {
       const set = values.exercises?.[exerciseIndex]?.sets?.[setIndex];
-      const weight = Number(set?.weight ?? 0);
-      const reps = Number(set?.reps ?? 0);
-      const setType = set?.setType ?? defaultSetType;
-      return weight <= 0 && reps <= 0 && setType === defaultSetType;
+      return isSetEmptyForDismiss(set);
     };
 
     const handleDismiss = () => {
@@ -80,13 +78,11 @@ export const AddSetDialog = withForm({
             <form.AppField
               name={`exercises[${exerciseIndex}].sets[${setIndex}].reps`}
               validators={{
+                onMount: ({ value }) => validateSetReps(value),
                 onChange: ({ value }) => {
-                  const error = compose(
-                    minValue(1),
-                    maxValue(1000)
-                  )(value, 'Reps');
-                  return error;
+                  return validateSetReps(value);
                 },
+                onSubmit: ({ value }) => validateSetReps(value),
               }}
               children={(field) => {
                 return (
