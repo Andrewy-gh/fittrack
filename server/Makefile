@@ -101,7 +101,6 @@ test-short: ## Start local DB and run short test suite
 		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
 		exit 1; \
 	fi
-	docker compose up -d $(DB_SERVICE)
 	. ./setenv.sh; \
 	for req_var in DB_USER DB_PASSWORD DB_NAME DATABASE_URL; do \
 		if [ -z "$${!req_var}" ]; then \
@@ -109,12 +108,33 @@ test-short: ## Start local DB and run short test suite
 			exit 1; \
 		fi; \
 	done; \
-	db_url="$${DATABASE_URL:-postgresql://user:password@localhost:5432/postgres}"; \
+	db_port="$${DB_PORT:-55432}"; \
+	db_url="postgresql://$${DB_USER}:$${DB_PASSWORD}@127.0.0.1:$${db_port}/$${DB_NAME}"; \
 	case "$$db_url" in \
 		*sslmode=*) ;; \
 		*\?*) db_url="$$db_url&sslmode=disable" ;; \
 		*) db_url="$$db_url?sslmode=disable" ;; \
 	esac; \
+	if ! command -v goose >/dev/null 2>&1; then \
+		echo "ERROR: goose is not installed or not on PATH."; \
+		exit 1; \
+	fi; \
+	DB_PORT="$$db_port" docker compose up -d $(DB_SERVICE); \
+	start_ts=$$(date +%s); \
+	while true; do \
+		if docker compose exec -T $(DB_SERVICE) sh -c 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}" >/dev/null 2>&1'; then \
+			break; \
+		fi; \
+		now=$$(date +%s); \
+		elapsed=$$(( now - start_ts )); \
+		if [ "$$elapsed" -ge 30 ]; then \
+			echo "ERROR: Timed out waiting for PostgreSQL readiness"; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo "==> Applying migrations"; \
+	goose -dir migrations postgres "$$db_url" up; \
 	echo "==> Running go test -short ./..."; \
 	DATABASE_URL="$$db_url" $(GOTEST) -short ./...
 
