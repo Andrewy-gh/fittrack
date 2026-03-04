@@ -76,6 +76,25 @@ go install github.com/air-verse/air@latest
 brew install air
 ```
 
+### Available Commands
+
+```bash
+make help              # Show all available commands
+make dev               # Complete dev setup: env → docker up → wait DB → air
+make build             # Compile the project
+make run               # Run the compiled binary
+make swagger           # Generate OpenAPI documentation
+make sqlc              # Generate SQL code from query.sql
+make test              # Run all tests
+make vet               # Run go vet
+make migrate-up        # Apply all pending migrations
+make migrate-down      # Rollback last migration
+make migrate-create    # Create a new migration file (NAME=<name>)
+make docker-up         # Start PostgreSQL container
+make docker-down       # Stop PostgreSQL container
+make clean             # Clean build files and cache
+```
+
 ## Documentation
 
 - [Row Level Security (RLS)](docs/rls.md) - Multi-tenant data isolation and security

@@ -6,6 +6,7 @@ A full-stack fitness tracking application with Go backend and React frontend.
 
 - **Backend**: Go API with PostgreSQL database
 - **Frontend**: React with TypeScript, TanStack Router, and TailwindCSS
+- **Auth**: Stack authentication with JWT verification and Row Level Security
 - **API**: OpenAPI/Swagger specification with auto-generated client code
 
 ## Developer Workflow
@@ -41,7 +42,7 @@ This generates TypeScript client code and types from the updated swagger specifi
 **Important**: Always commit the generated code to prevent drift:
 
 ```bash
-git add server/docs/ client/src/generated/
+git add server/docs/ client/src/client/
 git commit -m "feat: update API types for [your change]"
 ```
 
@@ -81,28 +82,41 @@ git commit -m "feat: update API types for [your change]"
 ```bash
 cd client
 bun install
-bun run start
+bun run dev        # starts on http://localhost:5173 (proxies API to :8080)
+# or: bun run start  # starts on http://localhost:3000
 ```
 
 ### Available Commands
 
 #### Backend (server/)
 ```bash
-make help          # Show all available commands
-make build         # Compile the project
-make swagger       # Generate OpenAPI documentation
-make sqlc          # Generate SQL code from queries
-make test          # Run tests
-make migrate-up    # Run database migrations
-make docker-up     # Start PostgreSQL container
+make help             # Show all available commands
+make dev              # Complete dev setup (docker + hot reload via air)
+make build            # Compile the project
+make run              # Run the compiled binary
+make swagger          # Generate OpenAPI documentation
+make sqlc             # Generate SQL code from queries
+make test             # Run tests
+make vet              # Run go vet
+make migrate-up       # Run database migrations
+make migrate-down     # Rollback last migration
+make migrate-create   # Create a new migration
+make docker-up        # Start PostgreSQL container
+make docker-down      # Stop PostgreSQL container
+make clean            # Clean build files and cache
 ```
 
 #### Frontend (client/)
 ```bash
-bun run dev           # Development server
+bun run dev           # Development server (http://localhost:5173)
+bun run start         # Development server on port 3000
 bun run build         # Production build
+bun run serve         # Preview production build
 bun run openapi-ts    # Generate API client from OpenAPI spec
-bun run test          # Run tests
+bun run test          # Run unit tests (Vitest)
+bun run test:e2e      # Run end-to-end tests (Playwright)
+bun run lint          # Lint with oxlint
+bun run tsc           # Type-check without emitting
 ```
 
 ## Project Structure
@@ -116,7 +130,7 @@ bun run test          # Run tests
 |   +-- migrations/   # Database migrations
 +-- client/           # React frontend
 |   +-- src/
-|   |   +-- generated/  # Generated API client
+|   |   +-- client/     # Generated API client (from OpenAPI spec)
 |   +-- package.json
 +-- docs/             # Design and API notes
 ```

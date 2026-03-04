@@ -14,7 +14,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon.ico', 'logo192.png', 'logo512.png'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'logo192.png', 'logo512.png', 'apple-touch-icon.png', 'apple-touch-icon-167.png', 'apple-touch-icon-152.png'],
       manifest: {
         name: 'FitTrack',
         short_name: 'FitTrack',

@@ -222,6 +222,11 @@ Before deploying to production, verify all of the following:
 
 #### Platform-Specific Secret Management
 
+**Fly.io:**
+```bash
+fly secrets set DATABASE_URL="postgresql://fittrack_app:your_secure_password_here@your-db-host:5432/fittrack?sslmode=require"
+```
+
 **Kubernetes:**
 ```yaml
 apiVersion: v1
@@ -266,4 +271,4 @@ A comprehensive troubleshooting guide will be added if issues arise during devel
 
 ## Migration Information
 
-RLS policies are applied via migration `00005_add_rls_policies.sql`. See [`migrations/README.md`](../migrations/README.md) for detailed migration information.
+RLS policies are applied via migration `00006_add_rls_policies.sql`. See [`migrations/README.md`](../migrations/README.md) for detailed migration information.
