@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+
+set -e
+
+zero_sha="0000000000000000000000000000000000000000"
+has_server_code_changes=0
+
+while read -r local_ref local_sha remote_ref remote_sha
+do
+  [ -z "$local_sha" ] && continue
+  [ "$local_sha" = "$zero_sha" ] && continue
+
+  if [ "$remote_sha" = "$zero_sha" ]; then
+    commit_list="$(git rev-list "$local_sha" --not --remotes)"
+  else
+    commit_list="$(git rev-list "$remote_sha..$local_sha")"
+  fi
+
+  for commit in $commit_list
+  do
+    commit_files="$(git diff-tree --no-commit-id --name-only -r "$commit" || true)"
+    server_non_docs_files="$(echo "$commit_files" | grep '^server/' | grep -Ev '^server/(README\.md|docs/|.*\.md$)' || true)"
+    if [ -n "$server_non_docs_files" ]; then
+      has_server_code_changes=1
+      break
+    fi
+  done
+
+  if [ "$has_server_code_changes" -eq 1 ]; then
+    break
+  fi
+done
+
+if [ "$has_server_code_changes" -eq 1 ]; then
+  echo "pre-push: server code changes detected; running make test-short"
+  (cd server && make test-short)
+else
+  echo "pre-push: no server code changes; skipping make test-short"
+fi

@@ -15,5 +15,12 @@ if echo "$changed_files" | grep -q '^client/'; then
 fi
 
 if echo "$changed_files" | grep -q '^server/'; then
-  (cd server && go test -short ./...)
+  server_changed_files="$(echo "$changed_files" | grep '^server/' || true)"
+  server_non_docs_files="$(echo "$server_changed_files" | grep -Ev '^server/(README\.md|docs/|.*\.md$)' || true)"
+
+  if [ -n "$server_non_docs_files" ]; then
+    (cd server && make test-fast)
+  else
+    echo "server changes are docs-only; skipping fast server tests"
+  fi
 fi

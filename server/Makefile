@@ -1,4 +1,4 @@
-.PHONY: help build clean docker-down migrate-create migrate-up migrate-down sqlc swagger run test vet dev
+.PHONY: help build clean docker-down migrate-create migrate-up migrate-down sqlc swagger run test test-fast test-short vet dev
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -24,7 +24,9 @@ help:
 	@echo "  clean        - Clean build files"
 	@echo "  docker-down  - Stop Docker containers"
 	@echo "  run          - Run the application"
-	@echo "  test         - Run tests"
+	@echo "  test-fast    - Quick local check for server code changes (no DB package)"
+	@echo "  test-short   - Use before push for DB/integration-impacting server changes"
+	@echo "  test         - Full verbose suite (deep local check / CI parity)"
 	@echo "  vet          - Run go vet"
 	@echo "  migrate-up   - Run database migrations up"
 	@echo "  migrate-down - Rollback database migrations"
@@ -79,6 +81,42 @@ swagger:
 
 test:
 	$(GOTEST) -v ./...
+
+test-fast: ## Run fast test suite without DB integration package
+	@pkgs="$$( $(GOCMD) list ./... | grep -Ev '/internal/database$$' || true )"; \
+	if [ -z "$$pkgs" ]; then \
+		echo "No packages selected for fast tests."; \
+		exit 0; \
+	fi; \
+	$(GOTEST) -short $$pkgs
+
+test-short: ## Start local DB and run short test suite
+	@echo "==> Starting database container: $(DB_SERVICE)"
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "ERROR: docker is not installed or not on PATH."; \
+		exit 1; \
+	fi
+	@if [ ! -f setenv.sh ]; then \
+		echo "ERROR: setenv.sh not found at $$(pwd)/setenv.sh"; \
+		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
+		exit 1; \
+	fi
+	docker compose up -d $(DB_SERVICE)
+	. ./setenv.sh; \
+	for req_var in DB_USER DB_PASSWORD DB_NAME DATABASE_URL; do \
+		if [ -z "$${!req_var}" ]; then \
+			echo "ERROR: $$req_var is not set in setenv.sh"; \
+			exit 1; \
+		fi; \
+	done; \
+	db_url="$${DATABASE_URL:-postgresql://user:password@localhost:5432/postgres}"; \
+	case "$$db_url" in \
+		*sslmode=*) ;; \
+		*\?*) db_url="$$db_url&sslmode=disable" ;; \
+		*) db_url="$$db_url?sslmode=disable" ;; \
+	esac; \
+	echo "==> Running go test -short ./..."; \
+	DATABASE_URL="$$db_url" $(GOTEST) -short ./...
 
 vet:
 	$(GOCMD) vet -v ./...
