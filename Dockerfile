@@ -8,7 +8,7 @@ RUN bun install --frozen-lockfile --ignore-scripts
 COPY --link client .
 RUN bun run build
 
-FROM golang:1.24.2-alpine AS server-build
+FROM golang:1.25.0-alpine AS server-build
 WORKDIR /app
 COPY --link server .
 RUN CGO_ENABLED=0 go build -o api ./cmd/api
