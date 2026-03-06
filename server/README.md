@@ -2,9 +2,22 @@
 
 ### Quick Start
 
-1. Copy `setenv.example.sh` to `setenv.sh` and modify it to your liking.
+1. Create `setenv.sh` in this folder with:
+```bash
+export DB_USER=postgres
+export DB_PASSWORD=postgres
+export DB_NAME=fittrack
+export DB_PORT=55432
+export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack
+```
 
-2. Run the complete development environment:
+2. Install migration CLI:
+```bash
+go install github.com/pressly/goose/v3/cmd/goose@latest
+export PATH="$HOME/go/bin:$PATH"
+```
+
+3. Run the complete development environment:
 ```bash
 make dev
 ```
@@ -65,6 +78,21 @@ docker compose logs db
 
 # Check database health
 docker compose ps
+```
+
+**Missing goose:**
+```bash
+go install github.com/pressly/goose/v3/cmd/goose@latest
+export PATH="$HOME/go/bin:$PATH"
+```
+
+**Postgres auth failures after changing DB_USER/DB_PASSWORD:**
+```bash
+# reset local persisted postgres data
+cd server
+docker compose down
+sudo rm -rf _db-data
+mkdir -p _db-data
 ```
 
 **Missing air:**

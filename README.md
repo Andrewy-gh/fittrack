@@ -57,22 +57,34 @@ git commit -m "feat: update API types for [your change]"
 
 #### Backend Setup
 
-1. Copy `server/setenv.example.sh` to `server/setenv.sh` and configure
-2. Start services:
+1. Create `server/setenv.sh` and configure DB vars (example):
+   ```bash
+   export DB_USER=postgres
+   export DB_PASSWORD=postgres
+   export DB_NAME=fittrack
+   export DB_PORT=55432
+   export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack
+   ```
+2. Install goose and ensure PATH includes `$HOME/go/bin`:
+   ```bash
+   go install github.com/pressly/goose/v3/cmd/goose@latest
+   export PATH="$HOME/go/bin:$PATH"
+   ```
+3. Start services:
    ```bash
    cd server
    . setenv.sh
    make docker-up
    ```
-3. Initialize database:
+4. Initialize database:
    ```bash
    cat schema.sql | docker exec -i db psql -U ${DB_USER} -d ${DB_NAME}
    ```
-4. Run migrations:
+5. Run migrations:
    ```bash
    make migrate-up
    ```
-5. Start API server:
+6. Start API server:
    ```bash
    go run ./cmd/api
    ```
