@@ -86,7 +86,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /close/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /close/i }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(0);
 
@@ -118,7 +118,7 @@ test.describe('Demo Mode - Workout Create', () => {
       page.getByRole('button', { name: /remove set/i })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: /close/i }).click();
+    await page.getByRole('dialog').getByRole('button', { name: /close/i }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(1);
   });
