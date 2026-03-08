@@ -90,6 +90,11 @@ test.describe('Demo Mode - Workout Create', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(0);
 
+    const addSetButton = page.getByRole('button', { name: /add set/i });
+    if ((await addSetButton.count()) === 0) {
+      await page.getByText('Bench Press', { exact: true }).click();
+    }
+
     await page.getByRole('button', { name: /add set/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
