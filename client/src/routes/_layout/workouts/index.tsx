@@ -143,73 +143,69 @@ function RouteComponent() {
           />
         )}
 
-        <Card>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="focus-area-compact"
-                  className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
-                >
-                  Focus Area
-                </Label>
-                <Select
-                  value={normalizedFocusArea}
-                  onValueChange={(value) =>
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        focusArea: value,
-                        page: 1,
-                      }),
-                    })
-                  }
-                >
-                  <SelectTrigger id="focus-area-compact" className="h-9">
-                    <SelectValue placeholder="Select focus area" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Focus Areas</SelectItem>
-                    {focusAreas.map((focus) => (
-                      <SelectItem key={focus} value={focus}>
-                        {focus}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="grid grid-cols-2 gap-3 px-1">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="focus-area-compact"
+              className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+            >
+              Focus Area
+            </Label>
+            <Select
+              value={normalizedFocusArea}
+              onValueChange={(value) =>
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    focusArea: value,
+                    page: 1,
+                  }),
+                })
+              }
+            >
+              <SelectTrigger id="focus-area-compact" className="h-9">
+                <SelectValue placeholder="Select focus area" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Focus Areas</SelectItem>
+                {focusAreas.map((focus) => (
+                  <SelectItem key={focus} value={focus}>
+                    {focus}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                  Sort Order
-                </Label>
-                <Toggle
-                  pressed={normalizedSortOrder === "asc"}
-                  onPressedChange={(pressed) =>
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        sortOrder: pressed ? "asc" : "desc",
-                        page: 1,
-                      }),
-                    })
-                  }
-                  aria-label="Toggle sort order"
-                  className="px-3 py-1.5 inline-flex items-center justify-start gap-2"
-                >
-                  <span className="text-sm">
-                    {normalizedSortOrder === "asc" ? "Ascending" : "Descending"}
-                  </span>
-                  {normalizedSortOrder === "asc" ? (
-                    <ArrowUpAz className="w-4 h-4 opacity-70" />
-                  ) : (
-                    <ArrowDownAz className="w-4 h-4 opacity-70" />
-                  )}
-                </Toggle>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="space-y-1.5">
+            <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              Sort Order
+            </Label>
+            <Toggle
+              pressed={normalizedSortOrder === "asc"}
+              onPressedChange={(pressed) =>
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    sortOrder: pressed ? "asc" : "desc",
+                    page: 1,
+                  }),
+                })
+              }
+              aria-label="Toggle sort order"
+              className="w-full px-3 py-1.5 inline-flex items-center justify-start gap-2"
+            >
+              <span className="text-sm">
+                {normalizedSortOrder === "asc" ? "Ascending" : "Descending"}
+              </span>
+              {normalizedSortOrder === "asc" ? (
+                <ArrowUpAz className="w-4 h-4 opacity-70" />
+              ) : (
+                <ArrowDownAz className="w-4 h-4 opacity-70" />
+              )}
+            </Toggle>
+          </div>
+        </div>
 
         <div className="flex items-center gap-2 justify-center px-1">
           <Label htmlFor="items-per-page" className="text-xs whitespace-nowrap">
