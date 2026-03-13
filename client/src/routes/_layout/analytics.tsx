@@ -4,16 +4,9 @@ import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import { z } from 'zod';
 
 import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
+import { GenericCombobox } from '@/components/generic-combobox';
 import { WorkoutContributionGraph } from '@/components/workouts/workout-contribution-graph';
 import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
@@ -293,26 +286,23 @@ function AnalyticsLayout({
         ))}
       </section>
 
-      <Card>
-        <CardContent className="pt-6 space-y-2">
-          <Label htmlFor="exercise-select">Exercise</Label>
-          <Select
-            value={String(selectedExerciseId)}
-            onValueChange={(value) => onSelectExercise(Number(value))}
-          >
-            <SelectTrigger id="exercise-select">
-              <SelectValue placeholder="Select an exercise" />
-            </SelectTrigger>
-            <SelectContent>
-              {exercises.map((exercise) => (
-                <SelectItem key={exercise.id} value={String(exercise.id)}>
-                  {exercise.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <h2 className="text-2xl font-semibold">Exercise</h2>
+        <p className="text-sm text-muted-foreground">
+          Pick an exercise to inspect its progress over time.
+        </p>
+        <GenericCombobox
+          options={exercises}
+          selected={
+            exercises.find((exercise) => exercise.id === selectedExerciseId)?.name ??
+            ''
+          }
+          ariaLabel="Exercise options"
+          inputAriaLabel="Search exercises"
+          placeholder="Select an exercise"
+          onChange={(exercise) => onSelectExercise(exercise.id)}
+        />
+      </section>
 
       {isLoadingDetails || !selectedExerciseId ? (
         <p className="text-sm text-muted-foreground">Loading graph data…</p>

@@ -1,33 +1,47 @@
-import { Calendar, Dumbbell } from 'lucide-react';
+import { Calendar, BarChart3, Dumbbell, Scale } from 'lucide-react';
 import { StatsGrid } from '@/components/stats-grid';
 import type { WorkoutWorkoutResponse } from '@/client';
+import {
+  formatWeekComparison,
+  getWorkoutConsistencySummary,
+} from '@/lib/workout-insights';
 
 export interface WorkoutSummaryCardsProps {
   workouts: Array<WorkoutWorkoutResponse>;
 }
 
 export function WorkoutSummaryCards({ workouts }: WorkoutSummaryCardsProps) {
-  const totalWorkouts = workouts.length;
-  const thisWeekWorkouts = workouts.filter((workout) => {
-    const workoutDate = new Date(workout.date);
-    const sixDaysAgo = new Date();
-    sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
-    sixDaysAgo.setHours(0, 0, 0, 0);
-    return workoutDate >= sixDaysAgo;
-  }).length;
+  const summary = getWorkoutConsistencySummary(workouts);
 
   return (
     <StatsGrid
+      columns={4}
       items={[
         {
           label: 'Total Workouts',
-          value: totalWorkouts,
+          value: summary.totalWorkouts,
           icon: Dumbbell,
         },
         {
           label: 'This Week',
-          value: thisWeekWorkouts,
+          value: summary.workoutsThisWeek,
           icon: Calendar,
+          helperText: formatWeekComparison(
+            summary.workoutsThisWeek,
+            summary.workoutsLastWeek
+          ),
+        },
+        {
+          label: 'Active Days',
+          value: summary.activeDaysThisMonth,
+          icon: BarChart3,
+          helperText: 'This month',
+        },
+        {
+          label: 'Avg / Week',
+          value: summary.averageWorkoutsPerWeek,
+          icon: Scale,
+          helperText: 'Rolling 8 weeks',
         },
       ]}
     />

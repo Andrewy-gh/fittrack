@@ -74,6 +74,7 @@ function GenericList<T extends { name: string }>({
   query,
   setQuery,
   canCreate,
+  allowCreate,
   setOpen,
   onChange,
   onCreate,
@@ -84,6 +85,7 @@ function GenericList<T extends { name: string }>({
   query: string;
   setQuery: (query: string) => void;
   canCreate: boolean;
+  allowCreate: boolean;
   setOpen: (open: boolean) => void;
   onChange: (option: T) => void;
   onCreate?: (label: string) => void;
@@ -138,11 +140,15 @@ function GenericList<T extends { name: string }>({
           {options.length === 0 && !query && (
             <div className="py-1.5 pl-8 space-y-1">
               <p>No items</p>
-              <p>Enter a value to create a new one</p>
+              {allowCreate ? (
+                <p>Enter a value to create a new one</p>
+              ) : (
+                <p>No matching options available</p>
+              )}
             </div>
           )}
           {/* Create option - shown when there are existing options but query doesn't match */}
-          {options.length > 0 && canCreate && (
+          {options.length > 0 && allowCreate && canCreate && (
             <CommandAddItem query={query} onCreate={handleCreate} />
           )}
           {/* Select options */}
@@ -190,12 +196,13 @@ export function GenericCombobox<T extends { name: string }>({
   const [query, setQuery] = useState('');
   const [canCreate, setCanCreate] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const allowCreate = Boolean(onCreate);
 
   useEffect(() => {
     // Cannot create a new query if it is empty or has already been created
     const queryExists = options.some((option) => option.name === query);
-    setCanCreate(!!(query && !queryExists));
-  }, [query, options]);
+    setCanCreate(Boolean(onCreate) && !!(query && !queryExists));
+  }, [onCreate, query, options]);
 
   const triggerButton = (
     <Button
@@ -224,15 +231,16 @@ export function GenericCombobox<T extends { name: string }>({
         <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
           <GenericList
-            options={options}
-            selected={selected}
-            query={query}
-            setQuery={setQuery}
-            canCreate={canCreate}
-            setOpen={setOpen}
-            onChange={onChange}
-            onCreate={onCreate}
-            inputAriaLabel={inputAriaLabel}
+          options={options}
+          selected={selected}
+          query={query}
+          setQuery={setQuery}
+          canCreate={canCreate}
+          allowCreate={allowCreate}
+          setOpen={setOpen}
+          onChange={onChange}
+          onCreate={onCreate}
+          inputAriaLabel={inputAriaLabel}
           />
         </PopoverContent>
       </Popover>
@@ -245,15 +253,16 @@ export function GenericCombobox<T extends { name: string }>({
       <DrawerContent>
         <div className="mt-4">
           <GenericList
-            options={options}
-            selected={selected}
-            query={query}
-            setQuery={setQuery}
-            canCreate={canCreate}
-            setOpen={setOpen}
-            onChange={onChange}
-            onCreate={onCreate}
-            inputAriaLabel={inputAriaLabel}
+          options={options}
+          selected={selected}
+          query={query}
+          setQuery={setQuery}
+          canCreate={canCreate}
+          allowCreate={allowCreate}
+          setOpen={setOpen}
+          onChange={onChange}
+          onCreate={onCreate}
+          inputAriaLabel={inputAriaLabel}
           />
         </div>
       </DrawerContent>
