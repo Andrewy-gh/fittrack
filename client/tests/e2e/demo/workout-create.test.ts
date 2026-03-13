@@ -285,9 +285,8 @@ test.describe('Demo Mode - Workout Create', () => {
       .filter({ hasText: /sets/ });
     await expect(exerciseCards).toHaveCount(1);
 
-    page.on('dialog', (dialog) => dialog.accept());
-
     await page.getByRole('button', { name: /clear/i }).click();
+    await page.getByRole('button', { name: /clear draft/i }).click();
 
     // Wait for form to reset
     await page.waitForTimeout(200);

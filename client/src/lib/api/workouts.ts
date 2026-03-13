@@ -87,6 +87,9 @@ export function useDeleteWorkoutMutation() {
     ...deleteWorkoutsByIdMutation(),
     meta: { skipGlobalErrorHandler: true },
     onSuccess: (_, { path: { id } }) => {
+      queryClient.removeQueries({
+        queryKey: getWorkoutsQueryKey(),
+      });
       queryClient.invalidateQueries({
         queryKey: getWorkoutsQueryKey(),
       });

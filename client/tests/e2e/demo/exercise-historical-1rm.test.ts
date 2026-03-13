@@ -10,7 +10,7 @@ test.describe('Demo Mode - Historical 1RM', () => {
   test('should allow setting and persisting manual historical 1RM', async ({ page }) => {
     await page.getByText('Bench Press').click();
 
-    await page.getByRole('button', { name: 'Set' }).click();
+    await page.getByTitle('Set historical 1RM').click();
 
     const input = page.locator('#historical-1rm-input');
     await expect(input).toBeVisible();
