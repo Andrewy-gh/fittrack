@@ -8,223 +8,161 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as HandlerSplatRouteImport } from './routes/handler.$'
-import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
-import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
-import { Route as LayoutExercisesIndexRouteImport } from './routes/_layout/exercises/index'
-import { Route as LayoutWorkoutsNewRouteImport } from './routes/_layout/workouts/new'
-import { Route as LayoutExercisesExerciseIdRouteImport } from './routes/_layout/exercises/$exerciseId'
-import { Route as LayoutWorkoutsWorkoutIdIndexRouteImport } from './routes/_layout/workouts/$workoutId/index'
-import { Route as LayoutWorkoutsWorkoutIdEditRouteImport } from './routes/_layout/workouts/$workoutId/edit'
+// Import Routes
 
-const LayoutRoute = LayoutRouteImport.update({
+import { Route as rootRoute } from './routes/__root'
+import { Route as LayoutImport } from './routes/_layout'
+import { Route as IndexImport } from './routes/index'
+import { Route as HandlerSplatImport } from './routes/handler.$'
+import { Route as LayoutAnalyticsImport } from './routes/_layout/analytics'
+import { Route as LayoutWorkoutsIndexImport } from './routes/_layout/workouts/index'
+import { Route as LayoutExercisesIndexImport } from './routes/_layout/exercises/index'
+import { Route as LayoutWorkoutsNewImport } from './routes/_layout/workouts/new'
+import { Route as LayoutExercisesExerciseIdImport } from './routes/_layout/exercises/$exerciseId'
+import { Route as LayoutWorkoutsWorkoutIdIndexImport } from './routes/_layout/workouts/$workoutId/index'
+import { Route as LayoutWorkoutsWorkoutIdEditImport } from './routes/_layout/workouts/$workoutId/edit'
+
+// Create/Update Routes
+
+const LayoutRoute = LayoutImport.update({
   id: '/_layout',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+
+const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const HandlerSplatRoute = HandlerSplatRouteImport.update({
+
+const HandlerSplatRoute = HandlerSplatImport.update({
   id: '/handler/$',
   path: '/handler/$',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const LayoutAnalyticsRoute = LayoutAnalyticsRouteImport.update({
+
+const LayoutAnalyticsRoute = LayoutAnalyticsImport.update({
   id: '/analytics',
   path: '/analytics',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexRouteImport.update({
+
+const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexImport.update({
   id: '/workouts/',
   path: '/workouts/',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutExercisesIndexRoute = LayoutExercisesIndexRouteImport.update({
+
+const LayoutExercisesIndexRoute = LayoutExercisesIndexImport.update({
   id: '/exercises/',
   path: '/exercises/',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWorkoutsNewRoute = LayoutWorkoutsNewRouteImport.update({
+
+const LayoutWorkoutsNewRoute = LayoutWorkoutsNewImport.update({
   id: '/workouts/new',
   path: '/workouts/new',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutExercisesExerciseIdRoute =
-  LayoutExercisesExerciseIdRouteImport.update({
-    id: '/exercises/$exerciseId',
-    path: '/exercises/$exerciseId',
-    getParentRoute: () => LayoutRoute,
-  } as any)
+
+const LayoutExercisesExerciseIdRoute = LayoutExercisesExerciseIdImport.update({
+  id: '/exercises/$exerciseId',
+  path: '/exercises/$exerciseId',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
 const LayoutWorkoutsWorkoutIdIndexRoute =
-  LayoutWorkoutsWorkoutIdIndexRouteImport.update({
+  LayoutWorkoutsWorkoutIdIndexImport.update({
     id: '/workouts/$workoutId/',
     path: '/workouts/$workoutId/',
     getParentRoute: () => LayoutRoute,
   } as any)
+
 const LayoutWorkoutsWorkoutIdEditRoute =
-  LayoutWorkoutsWorkoutIdEditRouteImport.update({
+  LayoutWorkoutsWorkoutIdEditImport.update({
     id: '/workouts/$workoutId/edit',
     path: '/workouts/$workoutId/edit',
     getParentRoute: () => LayoutRoute,
   } as any)
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/analytics': typeof LayoutAnalyticsRoute
-  '/handler/$': typeof HandlerSplatRoute
-  '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
-  '/workouts/new': typeof LayoutWorkoutsNewRoute
-  '/exercises/': typeof LayoutExercisesIndexRoute
-  '/workouts/': typeof LayoutWorkoutsIndexRoute
-  '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
-  '/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
-}
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/analytics': typeof LayoutAnalyticsRoute
-  '/handler/$': typeof HandlerSplatRoute
-  '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
-  '/workouts/new': typeof LayoutWorkoutsNewRoute
-  '/exercises': typeof LayoutExercisesIndexRoute
-  '/workouts': typeof LayoutWorkoutsIndexRoute
-  '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
-  '/workouts/$workoutId': typeof LayoutWorkoutsWorkoutIdIndexRoute
-}
-export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/_layout': typeof LayoutRouteWithChildren
-  '/_layout/analytics': typeof LayoutAnalyticsRoute
-  '/handler/$': typeof HandlerSplatRoute
-  '/_layout/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
-  '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
-  '/_layout/exercises/': typeof LayoutExercisesIndexRoute
-  '/_layout/workouts/': typeof LayoutWorkoutsIndexRoute
-  '/_layout/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
-  '/_layout/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
-}
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/analytics'
-    | '/handler/$'
-    | '/exercises/$exerciseId'
-    | '/workouts/new'
-    | '/exercises/'
-    | '/workouts/'
-    | '/workouts/$workoutId/edit'
-    | '/workouts/$workoutId/'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/analytics'
-    | '/handler/$'
-    | '/exercises/$exerciseId'
-    | '/workouts/new'
-    | '/exercises'
-    | '/workouts'
-    | '/workouts/$workoutId/edit'
-    | '/workouts/$workoutId'
-  id:
-    | '__root__'
-    | '/'
-    | '/_layout'
-    | '/_layout/analytics'
-    | '/handler/$'
-    | '/_layout/exercises/$exerciseId'
-    | '/_layout/workouts/new'
-    | '/_layout/exercises/'
-    | '/_layout/workouts/'
-    | '/_layout/workouts/$workoutId/edit'
-    | '/_layout/workouts/$workoutId/'
-  fileRoutesById: FileRoutesById
-}
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRouteWithChildren
-  HandlerSplatRoute: typeof HandlerSplatRoute
-}
+// Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
     }
-    '/handler/$': {
-      id: '/handler/$'
-      path: '/handler/$'
-      fullPath: '/handler/$'
-      preLoaderRoute: typeof HandlerSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutImport
+      parentRoute: typeof rootRoute
     }
     '/_layout/analytics': {
       id: '/_layout/analytics'
       path: '/analytics'
       fullPath: '/analytics'
-      preLoaderRoute: typeof LayoutAnalyticsRouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof LayoutAnalyticsImport
+      parentRoute: typeof LayoutImport
     }
-    '/_layout/workouts/': {
-      id: '/_layout/workouts/'
-      path: '/workouts'
-      fullPath: '/workouts/'
-      preLoaderRoute: typeof LayoutWorkoutsIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/exercises/': {
-      id: '/_layout/exercises/'
-      path: '/exercises'
-      fullPath: '/exercises/'
-      preLoaderRoute: typeof LayoutExercisesIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/workouts/new': {
-      id: '/_layout/workouts/new'
-      path: '/workouts/new'
-      fullPath: '/workouts/new'
-      preLoaderRoute: typeof LayoutWorkoutsNewRouteImport
-      parentRoute: typeof LayoutRoute
+    '/handler/$': {
+      id: '/handler/$'
+      path: '/handler/$'
+      fullPath: '/handler/$'
+      preLoaderRoute: typeof HandlerSplatImport
+      parentRoute: typeof rootRoute
     }
     '/_layout/exercises/$exerciseId': {
       id: '/_layout/exercises/$exerciseId'
       path: '/exercises/$exerciseId'
       fullPath: '/exercises/$exerciseId'
-      preLoaderRoute: typeof LayoutExercisesExerciseIdRouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof LayoutExercisesExerciseIdImport
+      parentRoute: typeof LayoutImport
     }
-    '/_layout/workouts/$workoutId/': {
-      id: '/_layout/workouts/$workoutId/'
-      path: '/workouts/$workoutId'
-      fullPath: '/workouts/$workoutId/'
-      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdIndexRouteImport
-      parentRoute: typeof LayoutRoute
+    '/_layout/workouts/new': {
+      id: '/_layout/workouts/new'
+      path: '/workouts/new'
+      fullPath: '/workouts/new'
+      preLoaderRoute: typeof LayoutWorkoutsNewImport
+      parentRoute: typeof LayoutImport
+    }
+    '/_layout/exercises/': {
+      id: '/_layout/exercises/'
+      path: '/exercises'
+      fullPath: '/exercises'
+      preLoaderRoute: typeof LayoutExercisesIndexImport
+      parentRoute: typeof LayoutImport
+    }
+    '/_layout/workouts/': {
+      id: '/_layout/workouts/'
+      path: '/workouts'
+      fullPath: '/workouts'
+      preLoaderRoute: typeof LayoutWorkoutsIndexImport
+      parentRoute: typeof LayoutImport
     }
     '/_layout/workouts/$workoutId/edit': {
       id: '/_layout/workouts/$workoutId/edit'
       path: '/workouts/$workoutId/edit'
       fullPath: '/workouts/$workoutId/edit'
-      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdEditRouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdEditImport
+      parentRoute: typeof LayoutImport
+    }
+    '/_layout/workouts/$workoutId/': {
+      id: '/_layout/workouts/$workoutId/'
+      path: '/workouts/$workoutId'
+      fullPath: '/workouts/$workoutId'
+      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdIndexImport
+      parentRoute: typeof LayoutImport
     }
   }
 }
+
+// Create and export the route tree
 
 interface LayoutRouteChildren {
   LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute
@@ -249,11 +187,159 @@ const LayoutRouteChildren: LayoutRouteChildren = {
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '': typeof LayoutRouteWithChildren
+  '/analytics': typeof LayoutAnalyticsRoute
+  '/handler/$': typeof HandlerSplatRoute
+  '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
+  '/workouts/new': typeof LayoutWorkoutsNewRoute
+  '/exercises': typeof LayoutExercisesIndexRoute
+  '/workouts': typeof LayoutWorkoutsIndexRoute
+  '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
+  '/workouts/$workoutId': typeof LayoutWorkoutsWorkoutIdIndexRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '': typeof LayoutRouteWithChildren
+  '/analytics': typeof LayoutAnalyticsRoute
+  '/handler/$': typeof HandlerSplatRoute
+  '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
+  '/workouts/new': typeof LayoutWorkoutsNewRoute
+  '/exercises': typeof LayoutExercisesIndexRoute
+  '/workouts': typeof LayoutWorkoutsIndexRoute
+  '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
+  '/workouts/$workoutId': typeof LayoutWorkoutsWorkoutIdIndexRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexRoute
+  '/_layout': typeof LayoutRouteWithChildren
+  '/_layout/analytics': typeof LayoutAnalyticsRoute
+  '/handler/$': typeof HandlerSplatRoute
+  '/_layout/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
+  '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
+  '/_layout/exercises/': typeof LayoutExercisesIndexRoute
+  '/_layout/workouts/': typeof LayoutWorkoutsIndexRoute
+  '/_layout/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
+  '/_layout/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/analytics'
+    | '/handler/$'
+    | '/exercises/$exerciseId'
+    | '/workouts/new'
+    | '/exercises'
+    | '/workouts'
+    | '/workouts/$workoutId/edit'
+    | '/workouts/$workoutId'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/analytics'
+    | '/handler/$'
+    | '/exercises/$exerciseId'
+    | '/workouts/new'
+    | '/exercises'
+    | '/workouts'
+    | '/workouts/$workoutId/edit'
+    | '/workouts/$workoutId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_layout'
+    | '/_layout/analytics'
+    | '/handler/$'
+    | '/_layout/exercises/$exerciseId'
+    | '/_layout/workouts/new'
+    | '/_layout/exercises/'
+    | '/_layout/workouts/'
+    | '/_layout/workouts/$workoutId/edit'
+    | '/_layout/workouts/$workoutId/'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  LayoutRoute: typeof LayoutRouteWithChildren
+  HandlerSplatRoute: typeof HandlerSplatRoute
+}
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   HandlerSplatRoute: HandlerSplatRoute,
 }
-export const routeTree = rootRouteImport
+
+export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/_layout",
+        "/handler/$"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/_layout": {
+      "filePath": "_layout.tsx",
+      "children": [
+        "/_layout/analytics",
+        "/_layout/exercises/$exerciseId",
+        "/_layout/workouts/new",
+        "/_layout/exercises/",
+        "/_layout/workouts/",
+        "/_layout/workouts/$workoutId/edit",
+        "/_layout/workouts/$workoutId/"
+      ]
+    },
+    "/_layout/analytics": {
+      "filePath": "_layout/analytics.tsx",
+      "parent": "/_layout"
+    },
+    "/handler/$": {
+      "filePath": "handler.$.tsx"
+    },
+    "/_layout/exercises/$exerciseId": {
+      "filePath": "_layout/exercises/$exerciseId.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/workouts/new": {
+      "filePath": "_layout/workouts/new.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/exercises/": {
+      "filePath": "_layout/exercises/index.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/workouts/": {
+      "filePath": "_layout/workouts/index.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/workouts/$workoutId/edit": {
+      "filePath": "_layout/workouts/$workoutId/edit.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/workouts/$workoutId/": {
+      "filePath": "_layout/workouts/$workoutId/index.tsx",
+      "parent": "/_layout"
+    }
+  }
+}
+ROUTE_MANIFEST_END */
