@@ -61,6 +61,11 @@ export function ExerciseWorkoutCards({ workouts }: ExerciseWorkoutCardsProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
+              {workout.notes && (
+                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-3 text-sm leading-6 text-muted-foreground">
+                  {workout.notes}
+                </div>
+              )}
               {workout.sets.map((set, index) => (
                 <div
                   key={set.set_id}

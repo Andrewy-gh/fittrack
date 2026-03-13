@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { ArrowDownAz, ArrowUpAz } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Toggle } from '@/components/ui/toggle';
 import {
@@ -23,6 +22,7 @@ import {
   type ExerciseWorkoutEntry,
 } from '@/components/exercises/exercise-workout-cards';
 import { ExerciseHistorical1RmCard } from '@/routes/_layout/exercises/-components/exercise-historical-1rm';
+import { ExerciseGoalsCard } from '@/components/exercises/exercise-goals-card';
 
 export interface ExerciseDetailProps {
   exercise: ExerciseExerciseDetailExerciseResponse;
@@ -142,6 +142,8 @@ export function ExerciseDetail({
           isDemoMode={isDemoMode}
         />
 
+        <ExerciseGoalsCard exerciseId={exerciseId} exerciseName={exerciseName} />
+
         <ExerciseSummaryCards
           totalSets={totalSets}
           uniqueWorkouts={uniqueWorkouts}
@@ -159,53 +161,53 @@ export function ExerciseDetail({
 
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Workouts</h2>
-          <Card>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                    Sort Order
-                  </Label>
-                  <Toggle
-                    pressed={sortOrder === 'asc'}
-                    onPressedChange={(pressed) =>
-                      onSortOrderChange(pressed ? 'asc' : 'desc')
-                    }
-                    aria-label="Toggle sort order"
-                    className="px-3 py-1.5 inline-flex items-center justify-start gap-2"
-                  >
-                    <span className="text-sm">
-                      {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-                    </span>
-                    {sortOrder === 'asc' ? (
-                      <ArrowUpAz className="w-4 h-4 opacity-70" />
-                    ) : (
-                      <ArrowDownAz className="w-4 h-4 opacity-70" />
-                    )}
-                  </Toggle>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex items-end justify-between gap-4 px-1">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Sort Order
+              </Label>
+              <Toggle
+                pressed={sortOrder === 'asc'}
+                onPressedChange={(pressed) =>
+                  onSortOrderChange(pressed ? 'asc' : 'desc')
+                }
+                aria-label="Toggle sort order"
+                className="inline-flex items-center justify-center gap-2 px-3 py-1.5"
+              >
+                <span className="text-sm">
+                  {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                </span>
+                {sortOrder === 'asc' ? (
+                  <ArrowUpAz className="w-4 h-4 opacity-70" />
+                ) : (
+                  <ArrowDownAz className="w-4 h-4 opacity-70" />
+                )}
+              </Toggle>
+            </div>
 
-          <div className="flex items-center gap-2 justify-center px-1">
-            <Label htmlFor="items-per-page" className="text-xs whitespace-nowrap">
-              Show
-            </Label>
-            <Select
-              value={String(itemsPerPage)}
-              onValueChange={(value) => onItemsPerPageChange(Number(value))}
-            >
-              <SelectTrigger id="items-per-page" className="h-8 w-[70px]">
-                <SelectValue placeholder="10" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-xs text-muted-foreground">per page</span>
+            <div className="space-y-1.5">
+              <Label htmlFor="items-per-page" className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Show
+              </Label>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={String(itemsPerPage)}
+                  onValueChange={(value) => onItemsPerPageChange(Number(value))}
+                >
+                  <SelectTrigger id="items-per-page" className="h-8 w-[70px]">
+                    <SelectValue placeholder="10" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs whitespace-nowrap text-muted-foreground">
+                  per page
+                </span>
+              </div>
+            </div>
           </div>
 
           <ExerciseWorkoutCards workouts={pagedWorkouts} />
