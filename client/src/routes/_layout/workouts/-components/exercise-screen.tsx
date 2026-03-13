@@ -170,10 +170,12 @@ export const ExerciseSets = withForm({
 // MARK: Exercise Screen
 export function ExerciseScreen({
   header,
+  contextPanel,
   recentSets,
   sets,
 }: {
   header: React.ReactNode;
+  contextPanel?: React.ReactNode;
   recentSets?: React.ReactNode;
   sets: React.ReactNode;
 }) {
@@ -182,6 +184,7 @@ export function ExerciseScreen({
       <div className="px-4 pb-8">
         <div className="max-w-md mx-auto space-y-6">
           {header}
+          {contextPanel}
           {recentSets}
           {sets}
         </div>

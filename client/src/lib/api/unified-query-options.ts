@@ -1,5 +1,6 @@
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import {
+  exerciseByIdQueryOptions,
   exercisesQueryOptions,
   recentExerciseSetsQueryOptions
 } from './exercises';
@@ -10,6 +11,7 @@ import {
 } from './workouts';
 import {
   getDemoExercisesQueryOptions,
+  getDemoExercisesByIdQueryOptions,
   getDemoExercisesByIdRecentSetsQueryOptions,
   getDemoWorkoutsQueryOptions,
   getDemoWorkoutsByIdQueryOptions,
@@ -24,6 +26,12 @@ export function getRecentSetsQueryOptions(user: CurrentUser | CurrentInternalUse
   return (user
     ? recentExerciseSetsQueryOptions(exerciseId)
     : getDemoExercisesByIdRecentSetsQueryOptions(exerciseId)) as ReturnType<typeof recentExerciseSetsQueryOptions>;
+}
+
+export function getExerciseByIdQueryOptions(user: CurrentUser | CurrentInternalUser | null, exerciseId: number) {
+  return (user
+    ? exerciseByIdQueryOptions(exerciseId)
+    : getDemoExercisesByIdQueryOptions(exerciseId)) as ReturnType<typeof exerciseByIdQueryOptions>;
 }
 
 export function getWorkoutsQueryOptions(user: CurrentUser | CurrentInternalUser | null) {

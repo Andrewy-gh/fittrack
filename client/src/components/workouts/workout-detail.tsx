@@ -1,13 +1,20 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useRouteContext } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, Trash } from 'lucide-react';
+import { Copy, Edit, Trash } from 'lucide-react';
 import { DeleteDialog } from '@/routes/_layout/workouts/-components/delete-dialog';
 import type { WorkoutWorkoutWithSetsResponse } from '@/client';
 import { WorkoutDetailExercises } from '@/components/workouts/workout-detail-exercises';
 import { WorkoutDetailHeader } from '@/components/workouts/workout-detail-header';
 import { WorkoutDetailSummaryCards } from '@/components/workouts/workout-detail-summary-cards';
+import { WorkoutNotesCard } from '@/components/workouts/workout-notes-card';
+import { buildWorkoutDraftFromHistory } from '@/lib/workout-insights';
+import {
+  loadFromLocalStorage,
+  saveToLocalStorage,
+} from '@/lib/local-storage';
+import { toast } from 'sonner';
 
 export interface WorkoutDetailProps {
   workout: WorkoutWorkoutWithSetsResponse[];
@@ -44,6 +51,7 @@ function WorkoutDetailBase({
 
   const workoutDate = workout[0]?.workout_date;
   const workoutFocus = workout[0]?.workout_focus;
+  const workoutNotes = workout[0]?.workout_notes;
 
   return (
     <main>
@@ -52,6 +60,11 @@ function WorkoutDetailBase({
           workoutDate={workoutDate}
           workoutFocus={workoutFocus}
           actions={headerActions}
+        />
+        <WorkoutNotesCard
+          title="Workout Notes"
+          note={workoutNotes}
+          dateLabel={workoutDate}
         />
         <WorkoutDetailSummaryCards
           uniqueExercises={uniqueExercises}
@@ -72,6 +85,9 @@ export function WorkoutDetail({ workout }: WorkoutDetailProps) {
 
 export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
+
   if (workout.length === 0) {
     return <WorkoutDetailBase workout={workout} />;
   }
@@ -81,11 +97,30 @@ export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleRepeatAsNew = () => {
+    const hasDraft = loadFromLocalStorage(user?.id) !== null;
+    if (
+      hasDraft &&
+      !confirm('Replace your current workout draft with this workout?')
+    ) {
+      return;
+    }
+
+    const nextDraft = buildWorkoutDraftFromHistory(workout);
+    saveToLocalStorage(nextDraft, user?.id);
+    toast.success('Workout copied into a new draft');
+    navigate({ to: '/workouts/new' });
+  };
+
   return (
     <WorkoutDetailBase
       workout={workout}
       headerActions={
         <>
+          <Button size="sm" variant="outline" onClick={handleRepeatAsNew}>
+            <Copy className="mr-2 hidden h-4 w-4 md:block" />
+            Repeat
+          </Button>
           <Button size="sm" variant="outline" asChild>
             <Link
               to="/workouts/$workoutId/edit"

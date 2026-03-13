@@ -1,4 +1,5 @@
 import { compose, maxValue, minValue } from '@/lib/validation';
+import type { WorkoutCreateWorkoutRequest } from '@/client';
 
 type WorkoutSetLike = {
   weight?: number | null;
@@ -23,3 +24,13 @@ export const shouldDiscardNewExerciseAfterSetRemoval = (
   isNewExercise: boolean | undefined,
   setCount: number
 ): boolean => Boolean(isNewExercise) && setCount <= 1;
+
+export const hasWorkoutDraftContent = (
+  value: Pick<WorkoutCreateWorkoutRequest, 'notes' | 'workoutFocus' | 'exercises'>
+): boolean => {
+  const hasNotes = Boolean(value.notes?.trim());
+  const hasWorkoutFocus = Boolean(value.workoutFocus?.trim());
+  const hasExercises = value.exercises.length > 0;
+
+  return hasNotes || hasWorkoutFocus || hasExercises;
+};

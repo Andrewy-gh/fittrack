@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
-import { Suspense } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useAppForm } from '@/hooks/form';
 import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
@@ -10,7 +10,11 @@ import { MiniChart } from './-components/mini-chart';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
-import { clearLocalStorage, saveToLocalStorage } from '@/lib/local-storage';
+import {
+  clearLocalStorage,
+  loadFromLocalStorage,
+  saveToLocalStorage,
+} from '@/lib/local-storage';
 import { type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues, MOCK_VALUES } from './-components/form-options';
 import { postDemoWorkoutsMutation } from '@/lib/demo-data/query-options';
@@ -18,6 +22,8 @@ import { initializeDemoData } from '@/lib/demo-data/storage';
 import { toast } from 'sonner';
 import {
   getExercisesQueryOptions,
+  getWorkoutByIdQueryOptions,
+  getWorkoutsQueryOptions,
   getWorkoutsFocusQueryOptions,
 } from '@/lib/api/unified-query-options';
 import { formatWeight } from '@/lib/utils';
@@ -25,6 +31,32 @@ import {
   ErrorBoundary,
   FullScreenErrorFallback,
 } from '@/components/error-boundary';
+import { queryClient } from '@/lib/api/api';
+import { ExerciseContextPanel } from './-components/exercise-context-panel';
+import { WorkoutNotesCard } from '@/components/workouts/workout-notes-card';
+import {
+  buildWorkoutDraftFromHistory,
+  getLatestWorkoutNote,
+} from '@/lib/workout-insights';
+import { formatExerciseGoalSummary, getExerciseGoal } from '@/lib/exercise-goals';
+import type { WorkoutWorkoutResponse } from '@/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { AddExerciseScreen } from './-components/add-exercise-screen';
 import {
@@ -33,18 +65,25 @@ import {
   ExerciseSets,
 } from './-components/exercise-screen';
 import { RecentSets } from './-components/recent-sets-display';
+import { hasWorkoutDraftContent } from './-components/workout-form-helpers';
 
 function WorkoutTracker({
   user,
   exercises,
+  workouts,
   workoutsFocus,
 }: {
   user: CurrentUser | CurrentInternalUser | null; // need user for localStorage
   exercises: DbExercise[];
+  workouts: WorkoutWorkoutResponse[];
   workoutsFocus: WorkoutFocus[];
 }) {
   const { addExercise, exerciseIndex, newExercise } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [pendingTemplateWorkoutId, setPendingTemplateWorkoutId] = useState<
+    number | null
+  >(null);
 
   const saveWorkoutApi = useSaveWorkoutMutation();
   const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
@@ -86,12 +125,57 @@ function WorkoutTracker({
     return exercise?.id || null;
   };
 
-  const handleClearForm = () => {
-    if (confirm('Are you sure you want to clear all form data?')) {
-      clearLocalStorage(user?.id);
-      form.reset(MOCK_VALUES);
-      navigate({ search: {} });
+  const latestWorkoutNote = getLatestWorkoutNote(workouts);
+  const focusAreaTemplates = useMemo(() => {
+    const focusMap = new Map<
+      string,
+      { focus: string; workoutId: number }
+    >();
+
+    for (const workout of workouts) {
+      const focus = workout.workout_focus?.trim();
+      if (!focus || focusMap.has(focus.toLowerCase())) {
+        continue;
+      }
+
+      focusMap.set(focus.toLowerCase(), {
+        focus,
+        workoutId: workout.id,
+      });
     }
+
+    return Array.from(focusMap.values());
+  }, [workouts]);
+
+  const loadWorkoutTemplate = async (workoutId: number) => {
+    const workoutToRepeat = await queryClient.fetchQuery(
+      getWorkoutByIdQueryOptions(user, workoutId)
+    );
+    const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat);
+
+    form.reset(nextDraft);
+    saveToLocalStorage(nextDraft, user?.id);
+    navigate({ search: {} });
+    toast.success('Loaded workout structure');
+  };
+
+  const handleRepeatWorkout = async (workoutId: number) => {
+    const hasDraft =
+      hasWorkoutDraftContent(form.state.values) ||
+      loadFromLocalStorage(user?.id) !== null;
+    if (hasDraft) {
+      setPendingTemplateWorkoutId(workoutId);
+      return;
+    }
+
+    await loadWorkoutTemplate(workoutId);
+  };
+
+  const handleClearForm = () => {
+    clearLocalStorage(user?.id);
+    form.reset(MOCK_VALUES);
+    navigate({ search: {} });
+    setIsClearDialogOpen(false);
   };
 
   // MARK: Screens
@@ -176,6 +260,12 @@ function WorkoutTracker({
                 onBack={handleExerciseBack}
               />
             }
+            contextPanel={
+              <ExerciseContextPanel
+                exerciseId={exerciseId}
+                exerciseName={exerciseName}
+              />
+            }
             recentSets={<RecentSets exerciseId={exerciseId} user={user} />}
             sets={
               <ExerciseSets
@@ -216,7 +306,7 @@ function WorkoutTracker({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={handleClearForm}
+                onClick={() => setIsClearDialogOpen(true)}
                 size="sm"
               >
                 <X className="w-3.5 h-3.5 mr-1.5" />
@@ -231,6 +321,49 @@ function WorkoutTracker({
               form.handleSubmit();
             }}
           >
+            {focusAreaTemplates.length > 0 && (
+              <Card className="mb-4 p-4">
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-card-foreground">
+                      Start from a recent focus area
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Load the most recent workout for the focus area you want
+                      to train today.
+                    </p>
+                  </div>
+                  <Select
+                    onValueChange={(value) => handleRepeatWorkout(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a focus area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {focusAreaTemplates.map((template) => (
+                        <SelectItem
+                          key={template.focus}
+                          value={String(template.workoutId)}
+                        >
+                          {template.focus}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </Card>
+            )}
+
+            {latestWorkoutNote && (
+              <div className="mb-4">
+                <WorkoutNotesCard
+                  title="Last Workout Note"
+                  note={latestWorkoutNote.note}
+                  dateLabel={latestWorkoutNote.date}
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4 mb-4">
               {/* MARK: Date/Notes/Focus */}
               <form.AppField
@@ -271,12 +404,30 @@ function WorkoutTracker({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                <div>
                                   <span className="text-primary font-medium text-sm">
                                     {exercise.name}
                                   </span>
+                                  {formatExerciseGoalSummary(
+                                    getExerciseGoal({
+                                      exerciseId: getExerciseId(exercise.name),
+                                      exerciseName: exercise.name,
+                                    })
+                                  ) && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Goal:{' '}
+                                      {formatExerciseGoalSummary(
+                                        getExerciseGoal({
+                                          exerciseId: getExerciseId(exercise.name),
+                                          exerciseName: exercise.name,
+                                        })
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
                                 </div>
                                 <Button
                                   type="button"
@@ -365,6 +516,57 @@ function WorkoutTracker({
             </div>
           </form>
         </div>
+        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear workout draft?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the current workout draft from the form and local
+                storage.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleClearForm}>
+                Clear draft
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog
+          open={pendingTemplateWorkoutId !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingTemplateWorkoutId(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Replace current draft?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Loading this focus-area template will replace the workout draft
+                already in progress.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep current draft</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (pendingTemplateWorkoutId == null) {
+                    return;
+                  }
+
+                  const workoutId = pendingTemplateWorkoutId;
+                  setPendingTemplateWorkoutId(null);
+                  await loadWorkoutTemplate(workoutId);
+                }}
+              >
+                Replace draft
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Suspense>
     </ErrorBoundary>
   );
@@ -381,6 +583,7 @@ export const Route = createFileRoute('/_layout/workouts/new')({
   loader: ({ context }) => {
     if (!context.user) initializeDemoData();
     context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
+    context.queryClient.ensureQueryData(getWorkoutsQueryOptions(context.user));
     context.queryClient.ensureQueryData(
       getWorkoutsFocusQueryOptions(context.user)
     );
@@ -394,6 +597,7 @@ function RouteComponent() {
   const { data: exercisesResponse } = useSuspenseQuery(
     getExercisesQueryOptions(user)
   );
+  const { data: workouts } = useSuspenseQuery(getWorkoutsQueryOptions(user));
   const { data: workoutsFocusValues } = useSuspenseQuery(
     getWorkoutsFocusQueryOptions(user)
   );
@@ -412,6 +616,7 @@ function RouteComponent() {
     <WorkoutTracker
       user={user}
       exercises={exercises}
+      workouts={workouts}
       workoutsFocus={workoutsFocus}
     />
   );

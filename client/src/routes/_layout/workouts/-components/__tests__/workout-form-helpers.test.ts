@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  hasWorkoutDraftContent,
   isSetEmptyForDismiss,
   shouldDiscardNewExerciseAfterSetRemoval,
   validateSetReps,
@@ -45,6 +46,43 @@ describe('workout-form-helpers', () => {
 
     it('does not discard existing exercise', () => {
       expect(shouldDiscardNewExerciseAfterSetRemoval(false, 1)).toBe(false);
+    });
+  });
+
+  describe('hasWorkoutDraftContent', () => {
+    it('returns false for an untouched draft', () => {
+      expect(
+        hasWorkoutDraftContent({
+          notes: '',
+          workoutFocus: '',
+          exercises: [],
+        })
+      ).toBe(false);
+    });
+
+    it('returns true when notes have been typed but not persisted yet', () => {
+      expect(
+        hasWorkoutDraftContent({
+          notes: 'Felt strong today',
+          workoutFocus: '',
+          exercises: [],
+        })
+      ).toBe(true);
+    });
+
+    it('returns true when exercises are present', () => {
+      expect(
+        hasWorkoutDraftContent({
+          notes: '',
+          workoutFocus: '',
+          exercises: [
+            {
+              name: 'Bench Press',
+              sets: [{ reps: 5, weight: 185, setType: 'working' }],
+            },
+          ],
+        })
+      ).toBe(true);
     });
   });
 });
