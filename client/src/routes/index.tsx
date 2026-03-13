@@ -3,21 +3,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Shield,
+  ArrowRight,
+  BarChart3,
+  Calendar,
+  CheckCircle,
+  Clock3,
+  Copy,
+  Dumbbell,
+  Eye,
+  NotebookText,
   Target,
   Zap,
-  Eye,
-  Wifi,
-  Download,
-  Star,
-  Play,
-  ArrowRight,
-  CheckCircle,
-  Activity,
-  BarChart3,
-  Dumbbell,
 } from 'lucide-react';
-import { type CurrentUser, type CurrentInternalUser } from '@stackframe/react';
+import { type CurrentInternalUser, type CurrentUser } from '@stackframe/react';
 import { CustomUserButton } from '@/components/custom-user-button';
 import { GuestUserButton } from '@/components/guest-user-button';
 
@@ -26,81 +24,50 @@ function HomePage({
 }: {
   user: CurrentUser | CurrentInternalUser | null;
 }) {
-  // MARK: Features
   const features = [
     {
       icon: Zap,
-      title: 'Never Miss a Rep',
+      title: 'Fast workout logging',
       description:
-        'Log workouts in seconds, not minutes. Our streamlined interface captures every set while you focus on crushing your goals.',
-      highlight: 'LIGHTNING FAST',
+        'Add exercises, sets, reps, weight, and workout notes without fighting the form.',
+      highlight: 'QUICK ENTRY',
     },
     {
-      icon: Target,
-      title: 'Smart Progress Tracking',
+      icon: Copy,
+      title: 'Repeat what you already did',
       description:
-        'See exactly how each workout builds toward your bigger goals. Visual progress that keeps you motivated to push harder.',
-      highlight: 'RESULTS FOCUSED',
+        'Start from your last workout or reuse an existing session structure when that is faster than starting blank.',
+      highlight: 'REPEAT LAST',
     },
     {
       icon: Eye,
-      title: 'Your Wins Made Visible',
+      title: 'Progress you can see',
       description:
-        'Transform scattered workouts into clear victories. Beautiful charts show your strength gains and consistency streaks.',
-      highlight: 'SEE YOUR SUCCESS',
+        'Review exercise history, recent sets, volume, charts, and past notes in the same place.',
+      highlight: 'CLEAR HISTORY',
     },
     {
-      icon: Wifi,
-      title: 'Works Everywhere',
+      icon: Calendar,
+      title: 'Consistency without pressure',
       description:
-        'Gym, home, or outdoors - your progress syncs seamlessly. Never lose a workout, even when offline.',
-      highlight: 'ALWAYS READY',
+        'See workouts this week, active days this month, and weekly averages without guilt-heavy streak mechanics.',
+      highlight: 'PLAIN SUMMARY',
     },
   ];
 
-  // MARK: Testimonials
-  const testimonials = [
-    {
-      id: 1,
-      name: 'Alex Strong',
-      role: 'Fitness Enthusiast',
-      rating: 5,
-      text: "Finally, a fitness app that doesn't get in my way. FitTrack makes logging workouts so fast I actually stick with it. My consistency has never been better.",
-      date: 'July 2025',
-    },
-    {
-      id: 2,
-      name: 'Jordan Peak',
-      role: 'Personal Trainer',
-      rating: 5,
-      text: "I recommend FitTrack to all my clients. It's the only app that makes tracking feel effortless while showing real progress. Game changer for habit building.",
-      date: 'June 2025',
-    },
-    {
-      id: 3,
-      name: 'Taylor Lift',
-      role: 'Powerlifter',
-      rating: 5,
-      text: 'The progress visualization is incredible. Seeing my strength gains mapped out keeps me motivated through tough training blocks. Worth every download.',
-      date: 'May 2025',
-    },
-    {
-      id: 4,
-      name: 'Chris Endurance',
-      role: 'Runner',
-      rating: 5,
-      text: "Love how FitTrack is expanding beyond weightlifting. The foundation is rock solid, and I'm excited to track my runs here soon!",
-      date: 'April 2025',
-    },
+  const groundedProof = [
+    'Track exercises, sets, reps, weight, and workout notes.',
+    'Set simple per-exercise targets for weight, reps, or weekly frequency.',
+    'Bring the last workout note back into view when you start logging again.',
+    'Review workout history and exercise progress without digging through old sessions.',
   ];
 
   return (
     <div className="min-h-screen">
-      {/* MARK: Navigation */}
-      <nav className="bg-background/90 backdrop-blur-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <nav className="border-b border-border bg-background/90 backdrop-blur-sm">
+        <div className="flex items-center justify-between px-2 py-4">
           <div className="flex items-center gap-2">
-            <Shield className="w-6 h-6 text-primary" />
+            <Dumbbell className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold tracking-wide text-foreground">
               FITTRACK
             </span>
@@ -109,129 +76,151 @@ function HomePage({
         </div>
       </nav>
 
-      {/* MARK: Hero Section */}
-      <section className="pt-24 pb-16 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12 space-y-6">
-            <Badge className="bg-primary/20 text-primary mb-6 px-4 py-2">
-              <Shield className="w-4 h-4 mr-2 fill-primary" />
-              Turn Fitness Into Your Daily Win
+      <section className="px-6 pb-16 pt-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 space-y-6 text-center">
+            <Badge className="mb-6 bg-primary/15 px-4 py-2 text-primary">
+              <Clock3 className="mr-2 h-4 w-4" />
+              Built for fast logging and useful history
             </Badge>
-            <h1 className="mb-6 text-5xl leading-snug font-bold tracking-wide text-foreground md:text-7xl">
-              Build Your Strongest
+            <h1 className="text-5xl font-bold leading-snug tracking-wide text-foreground md:text-7xl">
+              Log workouts fast.
               <br />
-              <span className="text-primary">Habit</span> Yet
-              <br />
-              With FitTrack.
+              See progress clearly.
             </h1>
-            <p className="text-muted-foreground leading-relaxed">
-              Stop starting over. FitTrack transforms scattered workouts into
-              lasting habits through smart tracking, visual progress, and a
-              community that keeps you accountable. Finally see the results
-              you're working for.
+            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-muted-foreground">
+              Track exercises, sets, reps, weight, and workout notes, then
+              review your history, exercise progress, and consistency summaries
+              in one place.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+            <div className="mb-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
                 size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
+                className="bg-primary px-8 py-4 text-primary-foreground hover:bg-primary/90"
                 asChild
               >
                 <Link to="/workouts" preload={false}>
-                  <Dumbbell className="w-5 h-5 mr-1" />
-                  {user ? 'New Workout' : 'Try It For Free'}
+                  <Dumbbell className="mr-1 h-5 w-5" />
+                  {user ? 'Open Workouts' : 'Try the App'}
                 </Link>
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
+                className="border-border bg-transparent px-8 py-4 text-muted-foreground hover:bg-background/50"
                 asChild
               >
-                <Link to="/workouts" preload={false}>
-                  See How It Works
+                <Link to="/exercises" preload={false}>
+                  Browse Exercise History
                 </Link>
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+            <div className="mx-auto w-full max-w-md space-y-8">
               <div className="space-y-4">
-                <h3 className="text-xl font-medium text-muted-foreground">
-                  Your Progress, Simplified
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  FitTrack makes every workout count by showing you exactly how
-                  each session builds toward your bigger goals. No more guessing
-                  if you're making progress.
+                <h2 className="text-xl font-medium text-muted-foreground">
+                  A workout log that stays useful after you hit save
+                </h2>
+                <p className="leading-relaxed text-muted-foreground">
+                  FitTrack is built around repeatable training: log the session,
+                  reuse the structure next time, check the last cue, and keep
+                  your history readable.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-card border border-border rounded space-y-3">
-                  <div className="text-2xl font-bold text-primary">250K+</div>
-                  <div className="text-xs text-muted-foreground">
-                    ACTIVE USERS
-                  </div>
-                </div>
-                <div className="text-center p-4 bg-card border border-border rounded space-y-3">
-                  <div className="text-2xl font-bold text-foreground">85%</div>
-                  <div className="text-xs text-muted-foreground">
-                    STILL ACTIVE AFTER 6 MONTHS
-                  </div>
-                </div>
+                <Card className="p-4">
+                  <CardContent className="space-y-3 p-0">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Track
+                    </div>
+                    <div className="text-2xl font-bold text-primary">
+                      Sets, reps, weight
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Plus workout focus and notes.
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="p-4">
+                  <CardContent className="space-y-3 p-0">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Review
+                    </div>
+                    <div className="text-2xl font-bold text-foreground">
+                      History, charts, notes
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Exercise detail and workout history stay connected.
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
 
             <div className="flex justify-center">
-              <div className="relative">
-                <div className="w-80 h-96 bg-card border border-border rounded-3xl p-6 shadow-2xl">
-                  <div className="text-center mb-6">
-                    <div className="text-xs text-muted-foreground mb-2">
-                      CURRENT WORKOUT
+              <div className="relative w-full max-w-sm overflow-hidden rounded-[2rem] border border-border bg-card p-6 shadow-2xl">
+                <div className="mb-6 text-center">
+                  <div className="mb-2 text-xs text-muted-foreground">
+                    TODAY&apos;S WORKOUT
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">
+                    Upper Body
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-border bg-background/60 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">
+                        Repeat Last Workout
+                      </span>
+                      <Badge className="bg-primary/15 text-primary">
+                        1 tap
+                      </Badge>
                     </div>
-                    <div className="text-2xl font-bold text-foreground">
-                      30:15
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Load the last structure instead of rebuilding it.
+                    </p>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="bg-card border border-border rounded p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-foreground">
-                          Bench Press
-                        </span>
-                        <Badge className="bg-primary/20 text-primary text-xs">
-                          CRUSHING IT
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        200 lbs • 8 reps • +5 lbs from last week
-                      </div>
+                  <div className="rounded-xl border border-border bg-background/60 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">
+                        Bench Press
+                      </span>
+                      <Badge variant="outline">Goal 205 lb • 5 reps</Badge>
                     </div>
-
-                    <div className="bg-card border border-border rounded p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-foreground">Squats</span>
-                        <Badge className="bg-secondary/20 text-secondary-foreground text-xs">
-                          COMPLETE
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        300 lbs • 10 reps • New PR! 🎉
-                      </div>
-                    </div>
-
-                    <Button
-                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
-                      asChild
-                    >
-                      <Link to="/workouts" preload={false}>
-                        <ArrowRight className="w-5 h-5 mr-1" />
-                        Log Next Set
-                      </Link>
-                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Recent sets and exercise history stay one tap away.
+                    </p>
                   </div>
+
+                  <div className="rounded-xl border border-border bg-background/60 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">
+                        This Week
+                      </span>
+                      <span className="text-sm font-semibold text-primary">
+                        3 workouts
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      8 active days this month • 2.5 avg / week
+                    </p>
+                  </div>
+
+                  <Button
+                    className="mt-4 w-full bg-primary px-8 py-4 text-primary-foreground hover:bg-primary/90"
+                    asChild
+                  >
+                    <Link to="/workouts" preload={false}>
+                      <ArrowRight className="mr-1 h-5 w-5" />
+                      Start Logging
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -239,34 +228,34 @@ function HomePage({
         </div>
       </section>
 
-      {/* MARK: Features Section */}
-      <section className="py-16 px-6 bg-background">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="mb-4 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
-              Simple
+      <section className="bg-background px-6 py-16">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-4xl font-bold leading-snug tracking-wide text-foreground md:text-6xl">
+              Grounded features,
               <br />
-              <span className="text-muted-foreground">by design.</span>
+              <span className="text-muted-foreground">not product theater.</span>
             </h2>
             <p className="text-xl text-muted-foreground">
-              Built for people who want results, not complexity.
+              FitTrack stays focused on the parts of training people actually
+              return to.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="bg-card border border-border p-6">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            {features.map((feature) => (
+              <Card key={feature.title} className="border border-border p-6">
                 <CardContent className="p-0">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary/20 rounded">
-                      <feature.icon className="w-6 h-6 text-primary" />
+                    <div className="rounded bg-primary/20 p-3">
+                      <feature.icon className="h-6 w-6 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="mb-2 flex items-center gap-2">
                         <h3 className="text-lg font-bold text-foreground">
                           {feature.title}
                         </h3>
-                        <Badge className="bg-primary/20 text-primary text-xs">
+                        <Badge className="bg-primary/20 text-xs text-primary">
                           {feature.highlight}
                         </Badge>
                       </div>
@@ -282,234 +271,110 @@ function HomePage({
         </div>
       </section>
 
-      {/* MARK: Advanced Features */}
-      <section className="py-16 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="mb-6 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
-                More than
-                <br />
-                <span className="text-muted-foreground">just logging.</span>
-              </h2>
-              <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-                Smart goal setting that evolves with you. Community challenges
-                that turn solo workouts into shared victories. Nutrition
-                insights that fuel your performance. Everything you need to
-                build the fitness habit that actually sticks.
-              </p>
-
-              <div className="space-y-4 text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary" />
-                  <span>AI-powered goal recommendations</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary" />
-                  <span>Weekly community challenges</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary" />
-                  <span>Integrated nutrition tracking</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary" />
-                  <span>Habit streak visualization</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-center">
-              <div className="w-80 h-96 bg-card border border-border rounded-3xl p-6 shadow-2xl">
-                <div className="text-center mb-6">
-                  <div className="text-xs text-muted-foreground mb-2">
-                    THIS WEEK'S CHALLENGE
-                  </div>
-                  <div className="text-4xl font-bold text-foreground">7/10</div>
-                  <div className="text-xs text-muted-foreground">
-                    Workouts completed
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-primary" />
-                      <span className="text-sm text-foreground">
-                        Upper Body
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      45 min • Complete ✓
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-foreground" />
-                      <span className="text-sm text-foreground">
-                        Lower Body
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      50 min • Complete ✓
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-foreground" />
-                      <span className="text-sm text-foreground">Cardio</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      30 min • Complete ✓
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 bg-card border border-border rounded">
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-primary" />
-                      <span className="text-sm text-foreground">Rest Day</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      Recovery earned
-                    </span>
-                  </div>
-
-                  <Button
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-4"
-                    asChild
-                  >
-                    <Link to="/workouts" preload={false}>
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                      Join Challenge
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* MARK: Testimonials */}
-      <section className="py-16 px-6 bg-background">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="mb-4 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
-              Real people,
+      <section className="px-6 py-16">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 lg:grid-cols-2">
+          <div>
+            <h2 className="mb-6 text-4xl font-bold leading-snug tracking-wide text-foreground md:text-6xl">
+              Useful history for
               <br />
-              <span className="text-muted-foreground">real results.</span>
+              <span className="text-muted-foreground">real training.</span>
             </h2>
-            <p className="text-xl text-muted-foreground">
-              Join 250,000+ people building their strongest habits yet.
+            <p className="mb-8 text-xl leading-relaxed text-muted-foreground">
+              The app keeps enough context around each session that your next
+              workout can start from something concrete.
             </p>
+
+            <div className="space-y-4 text-muted-foreground">
+              {groundedProof.map((item) => (
+                <div key={item} className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-            {testimonials.slice(0, 4).map((testimonial) => (
-              <Card
-                key={testimonial.id}
-                className="bg-card border border-border p-6"
-              >
-                <CardContent className="p-0">
-                  <div className="flex items-center gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="w-4 h-4 fill-primary text-primary"
-                      />
-                    ))}
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground mb-2">
-                    {testimonial.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {testimonial.role}
-                  </p>
-                  <p className="text-muted-foreground leading-relaxed mb-4">
-                    "{testimonial.text}"
-                  </p>
-                  <div className="text-xs text-muted-foreground">
-                    {testimonial.date}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <div className="grid gap-4">
+            <Card className="border border-border p-6">
+              <CardContent className="p-0">
+                <div className="mb-4 flex items-center gap-3">
+                  <NotebookText className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Workout notes resurface</h3>
+                </div>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Last workout notes come back into view when you start a new
+                  session, so important context is not trapped in old entries.
+                </p>
+              </CardContent>
+            </Card>
 
-          {/* MARK: Video Testimonial */}
-          <Card className="bg-card border border-border overflow-hidden">
-            <CardContent className="p-0">
-              <div className="grid grid-cols-1 lg:grid-cols-2">
-                <div className="p-8">
-                  <h3 className="text-2xl font-bold text-foreground mb-2">
-                    "FitTrack changed
-                    <br />
-                    how I see progress."
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    Watch Alex share how FitTrack helped her build a 6-month
-                    workout streak and hit her strength goals.
-                  </p>
+            <Card className="border border-border p-6">
+              <CardContent className="p-0">
+                <div className="mb-4 flex items-center gap-3">
+                  <Target className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Simple exercise goals</h3>
                 </div>
-                <div className="relative bg-card aspect-video flex items-center justify-center">
-                  <div className="w-64 h-64 bg-card rounded-full flex items-center justify-center">
-                    <Button
-                      size="lg"
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full w-16 h-16"
-                    >
-                      <Play className="w-6 h-6 ml-1" />
-                    </Button>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent" />
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Set a target weight, reps, or weekly frequency for an
+                  exercise. No coaching layer, no recommendations, just a clear
+                  target beside the lift.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border p-6">
+              <CardContent className="p-0">
+                <div className="mb-4 flex items-center gap-3">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Consistency summaries</h3>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Review this week, active days this month, and average workouts
+                  per week with simple comparisons to the prior week.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
-      {/* MARK: CTA Section */}
-      <section className="py-16 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="mb-6 text-4xl leading-snug font-bold tracking-wide text-foreground md:text-6xl">
-            Ready to build your
+      <section className="px-6 py-16">
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="mb-6 text-4xl font-bold leading-snug tracking-wide text-foreground md:text-6xl">
+            Keep training data
             <br />
-            <span className="text-muted-foreground">strongest habit yet?</span>
+            <span className="text-muted-foreground">clear and reusable.</span>
           </h2>
-          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            Download FitTrack free and join thousands who've transformed
-            scattered workouts into consistent progress. Your future self will
-            thank you.
+          <p className="mb-8 text-xl leading-relaxed text-muted-foreground">
+            FitTrack focuses on quick logging, visible progress, useful workout
+            history, and practical consistency tracking.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+          <div className="mb-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button
               size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4"
+              className="bg-primary px-8 py-4 text-primary-foreground hover:bg-primary/90"
               asChild
             >
               <Link to="/workouts" preload={false}>
-                <Download className="w-5 h-5 mr-2" />
-                Download Free
+                <ArrowRight className="mr-2 h-5 w-5" />
+                {user ? 'Open FitTrack' : 'Try FitTrack'}
               </Link>
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="border-border text-muted-foreground hover:bg-background/50 px-8 py-4 bg-transparent"
+              className="border-border bg-transparent px-8 py-4 text-muted-foreground hover:bg-background/50"
               asChild
             >
               <Link to="/workouts" preload={false}>
-                See Features
+                See Workouts
               </Link>
             </Button>
           </div>
 
           <div className="text-sm text-muted-foreground">
-            ✓ Free download • ✓ No credit card required • ✓ Works on iPhone &
-            Android
+            Track what happened. Reuse what worked. See where training is going.
           </div>
         </div>
       </section>
@@ -522,6 +387,6 @@ export const Route = createFileRoute('/')({
 });
 
 function App() {
-  const {user} = Route.useRouteContext();
+  const { user } = Route.useRouteContext();
   return <HomePage user={user} />;
 }
