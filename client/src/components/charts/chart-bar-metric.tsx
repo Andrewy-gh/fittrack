@@ -53,6 +53,7 @@ export function ChartBarMetric({
   onWorkoutClick?: (workoutId: number) => void;
 }) {
   const breakpoint = useBreakpoint();
+  const isWorkoutNavigationEnabled = breakpoint !== 'mobile';
 
   const barWidth = getResponsiveValue(responsiveConfig.barWidth, breakpoint);
   const yAxisWidth = getResponsiveValue(responsiveConfig.yAxisWidth, breakpoint);
@@ -163,10 +164,14 @@ export function ChartBarMetric({
                   fill={barColorVar}
                   radius={4}
                   isAnimationActive={false}
-                  onClick={(p) => {
-                    const workoutId = (p?.payload as MetricPoint | undefined)?.workout_id;
-                    if (workoutId && onWorkoutClick) onWorkoutClick(workoutId);
-                  }}
+                  onClick={
+                    isWorkoutNavigationEnabled
+                      ? (p) => {
+                          const workoutId = (p?.payload as MetricPoint | undefined)?.workout_id;
+                          if (workoutId && onWorkoutClick) onWorkoutClick(workoutId);
+                        }
+                      : undefined
+                  }
                 />
               </BarChart>
             </ResponsiveContainer>
