@@ -30,7 +30,6 @@ export const saveToLocalStorage = (
 export const loadFromLocalStorage = (
   userId?: string
 ): WorkoutCreateWorkoutRequest | null => {
-  console.log('Loading form data from localStorage');
   try {
     const saved = localStorage.getItem(getStorageKey(userId));
     if (saved) {

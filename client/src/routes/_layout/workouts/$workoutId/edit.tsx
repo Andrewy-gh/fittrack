@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -18,9 +18,8 @@ import {
 import { Suspense } from 'react';
 import { useAppForm } from '@/hooks/form';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { MiniChart } from '../-components/mini-chart';
-import { Plus, Save, Trash2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import {
   ExerciseHeader,
@@ -36,6 +35,12 @@ import {
   ErrorBoundary,
   FullScreenErrorFallback,
 } from '@/components/error-boundary';
+import { formatWeight } from '@/lib/utils';
+import {
+  WorkoutExerciseCards,
+  WorkoutFormActions,
+  WorkoutMetadataFields,
+} from '../-components/workout-form-sections';
 
 function EditWorkoutForm({
   user,
@@ -226,25 +231,7 @@ function EditWorkoutForm({
               form.handleSubmit();
             }}
           >
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              {/* MARK: Date/Notes/Focus */}
-              <form.AppField
-                name="date"
-                children={(field) => <field.DatePicker />}
-              />
-              <form.AppField
-                name="workoutFocus"
-                children={(field) => (
-                  <field.WorkoutFocusCombobox workoutsFocus={workoutsFocus} />
-                )}
-              />
-              <div className="col-span-2">
-                <form.AppField
-                  name="notes"
-                  children={(field) => <field.NotesTextarea />}
-                />
-              </div>
-            </div>
+            <WorkoutMetadataFields form={form} workoutsFocus={workoutsFocus} />
 
             {/* MARK: Exercise Cards */}
             <form.AppField
@@ -252,111 +239,24 @@ function EditWorkoutForm({
               mode="array"
               children={(field) => {
                 return (
-                  <div className="space-y-3">
-                    {field.state.value.map((exercise, exerciseIndex) => (
-                      <Link
-                        key={`exercise-${exerciseIndex}`}
-                        to="."
-                        search={{ exerciseIndex }}
-                        className="block"
-                      >
-                        <Card
-                          className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
-                          data-testid="edit-workout-exercise-card"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                  <span className="text-primary font-medium text-sm">
-                                    {exercise.name}
-                                  </span>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
-                                  aria-label="Delete exercise"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    field.removeValue(exerciseIndex);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-
-                              <div className="flex items-end justify-between">
-                                <div>
-                                  <div className="font-bold text-lg text-card-foreground">
-                                    {exercise.sets.length}
-                                  </div>
-                                  <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                                    sets
-                                  </div>
-                                </div>
-
-                                <div className="flex items-end gap-4">
-                                  <div className="text-right">
-                                    <div className="text-card-foreground font-bold text-lg">
-                                      {exercise.sets.reduce(
-                                        (acc, set) =>
-                                          acc +
-                                          (set.reps || 0) * (set.weight || 0),
-                                        0
-                                      )}
-                                    </div>
-                                    <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                                      volume
-                                    </div>
-                                  </div>
-                                  <MiniChart
-                                    data={[3, 5, 2, 4, 6, 3, 4]}
-                                    activeIndex={6}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+                  <WorkoutExerciseCards
+                    exercises={field.state.value}
+                    dataTestId="edit-workout-exercise-card"
+                    onRemoveExercise={field.removeValue}
+                    formatVolume={formatWeight}
+                    renderMetrics={() => (
+                      <MiniChart
+                        data={[3, 5, 2, 4, 6, 3, 4]}
+                        activeIndex={6}
+                      />
+                    )}
+                  />
                 );
               }}
             />
 
             {/* MARK: Buttons */}
-            <div className="py-6">
-              <Link to="." search={{ addExercise: true }}>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full text-base font-semibold rounded-lg"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Add Exercise
-                </Button>
-              </Link>
-            </div>
-            <div className="mt-8">
-              <form.Subscribe
-                selector={(state) => [state.canSubmit, state.isSubmitting]}
-                children={([canSubmit, isSubmitting]) => (
-                  <Button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="w-full text-base font-semibold rounded-lg"
-                  >
-                    <Save className="w-3.5 h-3.5 mr-1.5" />
-                    {isSubmitting ? 'Saving...' : 'Save'}
-                  </Button>
-                )}
-              />
-            </div>
+            <WorkoutFormActions form={form} />
           </form>
         </div>
       </Suspense>
