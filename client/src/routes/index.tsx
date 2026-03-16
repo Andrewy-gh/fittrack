@@ -63,7 +63,12 @@ export function HomePage({
       <nav className="border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="flex items-center justify-between px-2 py-4">
           <div className="flex items-center gap-2">
-            <Dumbbell className="h-6 w-6 text-primary" />
+            <img
+              src="/favicon.svg"
+              alt=""
+              aria-hidden="true"
+              className="h-6 w-6 rounded-sm"
+            />
             <span className="text-xl font-bold tracking-wide text-foreground">
               FITTRACK
             </span>

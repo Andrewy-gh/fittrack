@@ -18,6 +18,19 @@ vi.mock('@tanstack/react-router', () => ({
 import { HomePage } from './index';
 
 describe('HomePage feature cards', () => {
+  it('uses the favicon for the navbar brand mark', () => {
+    render(<HomePage user={null} />);
+
+    const brandText = screen.getByText('FITTRACK');
+    const nav = brandText.closest('nav');
+
+    expect(nav).not.toBeNull();
+    expect((nav as HTMLElement).querySelector('img')).toHaveAttribute(
+      'src',
+      '/favicon.svg'
+    );
+  });
+
   it('removes highlight badges from the grounded features cards', () => {
     render(<HomePage user={null} />);
 
