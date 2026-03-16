@@ -19,7 +19,7 @@ import { type CurrentInternalUser, type CurrentUser } from '@stackframe/react';
 import { CustomUserButton } from '@/components/custom-user-button';
 import { GuestUserButton } from '@/components/guest-user-button';
 
-function HomePage({
+export function HomePage({
   user,
 }: {
   user: CurrentUser | CurrentInternalUser | null;
@@ -30,28 +30,24 @@ function HomePage({
       title: 'Fast workout logging',
       description:
         'Add exercises, sets, reps, weight, and workout notes without fighting the form.',
-      highlight: 'QUICK ENTRY',
     },
     {
       icon: Copy,
       title: 'Repeat what you already did',
       description:
         'Start from your last workout or reuse an existing session structure when that is faster than starting blank.',
-      highlight: 'REPEAT LAST',
     },
     {
       icon: Eye,
       title: 'Progress you can see',
       description:
         'Review exercise history, recent sets, volume, charts, and past notes in the same place.',
-      highlight: 'CLEAR HISTORY',
     },
     {
       icon: Calendar,
       title: 'Consistency without pressure',
       description:
         'See workouts this week, active days this month, and weekly averages without guilt-heavy streak mechanics.',
-      highlight: 'PLAIN SUMMARY',
     },
   ];
 
@@ -244,26 +240,22 @@ function HomePage({
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             {features.map((feature) => (
-              <Card key={feature.title} className="border border-border p-6">
-                <CardContent className="p-0">
-                  <div className="flex items-start gap-4">
+              <Card
+                key={feature.title}
+                className="h-full border border-border px-6 py-7"
+              >
+                <CardContent className="flex h-full min-h-[10.5rem] flex-col justify-between p-0">
+                  <div className="flex items-center gap-4">
                     <div className="rounded bg-primary/20 p-3">
                       <feature.icon className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="flex-1">
-                      <div className="mb-2 flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-foreground">
-                          {feature.title}
-                        </h3>
-                        <Badge className="bg-primary/20 text-xs text-primary">
-                          {feature.highlight}
-                        </Badge>
-                      </div>
-                      <p className="text-muted-foreground">
-                        {feature.description}
-                      </p>
-                    </div>
+                    <h3 className="text-lg font-bold leading-snug text-foreground">
+                      {feature.title}
+                    </h3>
                   </div>
+                  <p className="pt-6 leading-7 text-muted-foreground">
+                    {feature.description}
+                  </p>
                 </CardContent>
               </Card>
             ))}
