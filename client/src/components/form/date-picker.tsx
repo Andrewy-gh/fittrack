@@ -24,10 +24,10 @@ export default function DatePicker() {
   const hasErrors = field.state.meta.errors.length > 0;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 h-full">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Card className="p-4">
+          <Card className="p-4 h-full flex flex-col justify-between min-h-32">
             <div className="flex items-center gap-2 mb-2">
               <CalendarIcon className="w-5 h-5 text-primary" />
               <span className="font-semibold text-sm tracking-tight">Date</span>

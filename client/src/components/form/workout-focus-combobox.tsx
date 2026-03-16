@@ -55,7 +55,7 @@ export default function WorkoutFocusCombobox({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Card className="p-4" aria-label="Workout Focus">
+        <Card className="p-4 h-full flex flex-col justify-between min-h-32" aria-label="Workout Focus">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-5 h-5 text-primary" />
             <span className="font-semibold text-sm tracking-tight">Workout Focus</span>
