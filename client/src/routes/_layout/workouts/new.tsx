@@ -33,7 +33,7 @@ import {
 } from '@/components/error-boundary';
 import { queryClient } from '@/lib/api/api';
 import { ExerciseContextPanel } from './-components/exercise-context-panel';
-import { WorkoutNotesCard } from '@/components/workouts/workout-notes-card';
+import { LastWorkoutNoteSection } from '@/components/workouts/last-workout-note-section';
 import {
   buildWorkoutDraftFromHistory,
   getLatestWorkoutNote,
@@ -378,7 +378,7 @@ function WorkoutTracker({
 
             {latestWorkoutNote && (
               <div className="mb-4">
-                <WorkoutNotesCard
+                <LastWorkoutNoteSection
                   title="Last Workout Note"
                   note={latestWorkoutNote.note}
                   dateLabel={latestWorkoutNote.date}
