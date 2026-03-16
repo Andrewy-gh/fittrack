@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hasWorkoutDraftContent,
   isSetEmptyForDismiss,
+  shouldShowRecentFocusAreaCard,
   shouldDiscardNewExerciseAfterSetRemoval,
   validateSetReps,
 } from '../workout-form-helpers';
@@ -81,6 +82,64 @@ describe('workout-form-helpers', () => {
               sets: [{ reps: 5, weight: 185, setType: 'working' }],
             },
           ],
+        })
+      ).toBe(true);
+    });
+  });
+
+  describe('shouldShowRecentFocusAreaCard', () => {
+    it('shows the card for an untouched empty draft when templates exist', () => {
+      expect(
+        shouldShowRecentFocusAreaCard({
+          focusAreaTemplateCount: 2,
+          isDirty: false,
+          value: {
+            notes: '',
+            workoutFocus: '',
+            exercises: [],
+          },
+        })
+      ).toBe(true);
+    });
+
+    it('hides the card after the user starts typing', () => {
+      expect(
+        shouldShowRecentFocusAreaCard({
+          focusAreaTemplateCount: 2,
+          isDirty: true,
+          value: {
+            notes: 'Leg day',
+            workoutFocus: '',
+            exercises: [],
+          },
+        })
+      ).toBe(false);
+    });
+
+    it('keeps the card hidden for restored draft content even if the form is not dirty', () => {
+      expect(
+        shouldShowRecentFocusAreaCard({
+          focusAreaTemplateCount: 2,
+          isDirty: false,
+          value: {
+            notes: '',
+            workoutFocus: 'Upper body',
+            exercises: [],
+          },
+        })
+      ).toBe(false);
+    });
+
+    it('shows the card again after the draft is cleared', () => {
+      expect(
+        shouldShowRecentFocusAreaCard({
+          focusAreaTemplateCount: 2,
+          isDirty: false,
+          value: {
+            notes: '',
+            workoutFocus: '',
+            exercises: [],
+          },
         })
       ).toBe(true);
     });

@@ -34,3 +34,23 @@ export const hasWorkoutDraftContent = (
 
   return hasNotes || hasWorkoutFocus || hasExercises;
 };
+
+export const shouldShowRecentFocusAreaCard = ({
+  focusAreaTemplateCount,
+  isDirty,
+  value,
+}: {
+  focusAreaTemplateCount: number;
+  isDirty: boolean;
+  value: Pick<WorkoutCreateWorkoutRequest, 'notes' | 'workoutFocus' | 'exercises'>;
+}): boolean => {
+  if (focusAreaTemplateCount === 0) {
+    return false;
+  }
+
+  if (isDirty) {
+    return false;
+  }
+
+  return !hasWorkoutDraftContent(value);
+};

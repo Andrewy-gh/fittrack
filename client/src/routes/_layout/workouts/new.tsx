@@ -65,7 +65,10 @@ import {
   ExerciseSets,
 } from './-components/exercise-screen';
 import { RecentSets } from './-components/recent-sets-display';
-import { hasWorkoutDraftContent } from './-components/workout-form-helpers';
+import {
+  hasWorkoutDraftContent,
+  shouldShowRecentFocusAreaCard,
+} from './-components/workout-form-helpers';
 import {
   WorkoutExerciseCards,
   WorkoutFormActions,
@@ -343,38 +346,52 @@ function WorkoutTracker({
               form.handleSubmit();
             }}
           >
-            {focusAreaTemplates.length > 0 && (
-              <Card className="mb-4 p-4">
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-card-foreground">
-                      Start from a recent focus area
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Load the most recent workout for the focus area you want
-                      to train today.
-                    </p>
-                  </div>
-                  <Select
-                    onValueChange={(value) => handleRepeatWorkout(Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a focus area" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {focusAreaTemplates.map((template) => (
-                        <SelectItem
-                          key={template.focus}
-                          value={String(template.workoutId)}
-                        >
-                          {template.focus}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </Card>
-            )}
+            <form.Subscribe
+              selector={(state) =>
+                shouldShowRecentFocusAreaCard({
+                  focusAreaTemplateCount: focusAreaTemplates.length,
+                  isDirty: state.isDirty,
+                  value: state.values,
+                })
+              }
+            >
+              {(showRecentFocusAreaCard) =>
+                showRecentFocusAreaCard ? (
+                  <Card className="mb-4 p-4">
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-card-foreground">
+                          Start from a recent focus area
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Load the most recent workout for the focus area you
+                          want to train today.
+                        </p>
+                      </div>
+                      <Select
+                        onValueChange={(value) =>
+                          handleRepeatWorkout(Number(value))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a focus area" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {focusAreaTemplates.map((template) => (
+                            <SelectItem
+                              key={template.focus}
+                              value={String(template.workoutId)}
+                            >
+                              {template.focus}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </Card>
+                ) : null
+              }
+            </form.Subscribe>
 
             {latestWorkoutNote && (
               <div className="mb-4">
