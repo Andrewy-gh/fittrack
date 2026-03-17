@@ -3,22 +3,24 @@ on:
   push:
     branches:
       - main
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group # optional: ensure only one action runs at a time
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: actions/checkout@v6
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.26.0'
+          go-version: "1.26.0"
           cache: true
           cache-dependency-path: server/go.sum
       - name: Cache Go tools
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tools-goose-v3.24.3
