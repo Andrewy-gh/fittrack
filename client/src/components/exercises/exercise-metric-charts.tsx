@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 
 import type {
@@ -15,6 +15,7 @@ import { computeDemoMetricsHistory } from '@/lib/metrics-history';
 import { RangeSelector } from '@/components/charts/chart-bar-vol.components';
 import type { RangeType } from '@/components/charts/chart-bar-vol.utils';
 import { ChartBarMetric, type MetricPoint } from '@/components/charts/chart-bar-metric';
+import { Card, CardContent } from '@/components/ui/card';
 
 function toMetricPoints(
   points: ExerciseExerciseMetricsHistoryPoint[],
@@ -84,10 +85,12 @@ function MetricChartsBody({
   points,
   range,
   onWorkoutClick,
+  isRefreshing = false,
 }: {
   points: ExerciseExerciseMetricsHistoryPoint[];
   range: RangeType;
   onWorkoutClick: (workoutId: number) => void;
+  isRefreshing?: boolean;
 }) {
   const [activeChartIndex, setActiveChartIndex] = useState(0);
 
@@ -157,6 +160,16 @@ function MetricChartsBody({
 
   return (
     <div className="space-y-4">
+      {isRefreshing ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm text-muted-foreground"
+        >
+          Updating chart...
+        </p>
+      ) : null}
+
       <ChartBarMetric
         title={activeChart.title}
         description={activeChart.description}
@@ -204,9 +217,30 @@ function AuthedCharts({
   range: MetricsHistoryRange;
   onWorkoutClick: (workoutId: number) => void;
 }) {
-  const { data } = useSuspenseQuery(exerciseMetricsHistoryQueryOptions(exerciseId, range));
-  const points = (data.points ?? []) as ExerciseExerciseMetricsHistoryPoint[];
-  return <MetricChartsBody points={points} range={range} onWorkoutClick={onWorkoutClick} />;
+  const { data, isFetching, isPending } = useQuery({
+    ...exerciseMetricsHistoryQueryOptions(exerciseId, range),
+    placeholderData: keepPreviousData,
+  });
+
+  if (isPending && !data) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-sm text-muted-foreground">
+          Loading session metrics...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const points = (data?.points ?? []) as ExerciseExerciseMetricsHistoryPoint[];
+  return (
+    <MetricChartsBody
+      points={points}
+      range={range}
+      onWorkoutClick={onWorkoutClick}
+      isRefreshing={isFetching}
+    />
+  );
 }
 
 function DemoCharts({
