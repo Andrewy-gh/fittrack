@@ -212,6 +212,27 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
+@keyframes workout-card-wiggle {
+  0% {
+    transform: rotate(-0.85deg) translateY(0);
+  }
+  100% {
+    transform: rotate(0.85deg) translateY(-1px);
+  }
+}
+
+.workout-card-wiggle {
+  animation: workout-card-wiggle 180ms ease-in-out infinite alternate;
+  animation-delay: calc(var(--wiggle-index, 0) * 36ms);
+  transform-origin: 50% 55%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workout-card-wiggle {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

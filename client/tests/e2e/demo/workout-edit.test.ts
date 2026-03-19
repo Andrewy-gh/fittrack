@@ -37,7 +37,7 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     await page.getByTestId('notes-close').click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
@@ -60,7 +60,7 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     await page.getByTestId('notes-close').click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
@@ -106,7 +106,7 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
     await page.getByRole('link', { name: /edit/i }).click();
@@ -140,6 +140,7 @@ test.describe('Demo Mode - Workout Edit', () => {
     const deleteButton = firstExerciseCard.getByRole('button', {
       name: /delete|remove/i,
     });
+    await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
     // Wait for the exercise to be removed from the DOM
@@ -147,7 +148,7 @@ test.describe('Demo Mode - Workout Edit', () => {
       initialExerciseCount - 1
     );
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
     await page.getByRole('link', { name: /edit/i }).click();

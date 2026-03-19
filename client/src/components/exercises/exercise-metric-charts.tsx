@@ -225,7 +225,6 @@ function AuthedCharts({
   if (error && !data) {
     throw error;
   }
-
   if (isPending && !data) {
     return (
       <Card>
@@ -242,7 +241,6 @@ function AuthedCharts({
     : isFetching
       ? 'Updating chart...'
       : undefined;
-
   return (
     <MetricChartsBody
       points={points}

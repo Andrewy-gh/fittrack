@@ -29,7 +29,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await expect(
       page.getByRole('link', { name: /add exercise/i })
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: /save/i })).toBeVisible();
+    await expect(page.getByTestId('save-workout')).toBeVisible();
     await expect(page.getByRole('button', { name: /clear/i })).toBeVisible();
 
     const exerciseCards = page
@@ -62,7 +62,7 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     await page.waitForTimeout(500);
 
@@ -157,7 +157,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     // Wait for save to complete
     await page.waitForTimeout(500);
@@ -201,7 +201,7 @@ test.describe('Demo Mode - Workout Create', () => {
       .filter({ hasText: /sets/ });
     await expect(exerciseCards).toHaveCount(2);
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
@@ -251,7 +251,7 @@ test.describe('Demo Mode - Workout Create', () => {
     const exerciseCard = page.getByTestId('new-workout-exercise-card');
     await expect(exerciseCard.getByText('3')).toBeVisible();
     await expect(exerciseCard.getByText('sets', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
@@ -318,7 +318,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByTestId('save-workout').click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);

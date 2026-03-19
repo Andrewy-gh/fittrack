@@ -38,9 +38,55 @@ import {
 import { formatWeight } from '@/lib/utils';
 import {
   WorkoutExerciseCards,
+  type WorkoutExerciseCard,
   WorkoutFormActions,
   WorkoutMetadataFields,
 } from '../-components/workout-form-sections';
+import { useExerciseReorder } from '../-components/use-exercise-reorder';
+
+function WorkoutExerciseSection({
+  field,
+  form,
+}: {
+  field: any;
+  form: any;
+}) {
+  const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(
+    field.state.value as WorkoutExerciseCard[]
+  );
+
+  return (
+    <>
+      <WorkoutExerciseCards
+        exercises={exerciseReorder.displayEntries}
+        dataTestId="edit-workout-exercise-card"
+        canEditOrder={exerciseReorder.canReorder}
+        hasPendingOrderChanges={exerciseReorder.hasPendingOrderChanges}
+        isReorderMode={exerciseReorder.isReorderMode}
+        onCancelOrder={exerciseReorder.cancelReorder}
+        onEditOrder={exerciseReorder.startReorder}
+        onRemoveExercise={field.removeValue}
+        onReorderExercises={exerciseReorder.moveExercise}
+        onSaveOrder={() => {
+          field.handleChange(exerciseReorder.commitReorder());
+          toast.success('Exercise order saved');
+        }}
+        formatVolume={formatWeight}
+        renderMetrics={() => (
+          <MiniChart
+            data={[3, 5, 2, 4, 6, 3, 4]}
+            activeIndex={6}
+          />
+        )}
+      />
+
+      <WorkoutFormActions
+        form={form}
+        isReorderMode={exerciseReorder.isReorderMode}
+      />
+    </>
+  );
+}
 
 function EditWorkoutForm({
   user,
@@ -239,24 +285,15 @@ function EditWorkoutForm({
               mode="array"
               children={(field) => {
                 return (
-                  <WorkoutExerciseCards
-                    exercises={field.state.value}
-                    dataTestId="edit-workout-exercise-card"
-                    onRemoveExercise={field.removeValue}
-                    formatVolume={formatWeight}
-                    renderMetrics={() => (
-                      <MiniChart
-                        data={[3, 5, 2, 4, 6, 3, 4]}
-                        activeIndex={6}
-                      />
-                    )}
+                  <WorkoutExerciseSection
+                    field={field}
+                    form={form}
                   />
                 );
               }}
             />
 
             {/* MARK: Buttons */}
-            <WorkoutFormActions form={form} />
           </form>
         </div>
       </Suspense>
