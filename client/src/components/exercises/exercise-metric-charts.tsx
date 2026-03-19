@@ -85,12 +85,12 @@ function MetricChartsBody({
   points,
   range,
   onWorkoutClick,
-  isRefreshing = false,
+  statusMessage,
 }: {
   points: ExerciseExerciseMetricsHistoryPoint[];
   range: RangeType;
   onWorkoutClick: (workoutId: number) => void;
-  isRefreshing?: boolean;
+  statusMessage?: string;
 }) {
   const [activeChartIndex, setActiveChartIndex] = useState(0);
 
@@ -160,13 +160,13 @@ function MetricChartsBody({
 
   return (
     <div className="space-y-4">
-      {isRefreshing ? (
+      {statusMessage ? (
         <p
           role="status"
           aria-live="polite"
           className="text-sm text-muted-foreground"
         >
-          Updating chart...
+          {statusMessage}
         </p>
       ) : null}
 
@@ -217,11 +217,14 @@ function AuthedCharts({
   range: MetricsHistoryRange;
   onWorkoutClick: (workoutId: number) => void;
 }) {
-  const { data, isFetching, isPending } = useQuery({
+  const { data, error, isFetching, isPending } = useQuery({
     ...exerciseMetricsHistoryQueryOptions(exerciseId, range),
     placeholderData: keepPreviousData,
   });
 
+  if (error && !data) {
+    throw error;
+  }
   if (isPending && !data) {
     return (
       <Card>
@@ -233,12 +236,17 @@ function AuthedCharts({
   }
 
   const points = (data?.points ?? []) as ExerciseExerciseMetricsHistoryPoint[];
+  const statusMessage = error && data
+    ? "Couldn't update chart. Showing previous data."
+    : isFetching
+      ? 'Updating chart...'
+      : undefined;
   return (
     <MetricChartsBody
       points={points}
       range={range}
       onWorkoutClick={onWorkoutClick}
-      isRefreshing={isFetching}
+      statusMessage={statusMessage}
     />
   );
 }
