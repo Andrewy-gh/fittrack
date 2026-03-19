@@ -58,7 +58,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
       response.url().includes('/api/workouts') &&
       response.request().method() === 'POST'
     );
-    await page.getByRole('button', { name: /^save$/i }).click();
+    await page.getByTestId('save-workout').click();
     const createResponse = await createResponsePromise;
     expect(createResponse.ok()).toBeTruthy();
 
@@ -97,7 +97,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
       response.url().includes('/api/workouts/') &&
       response.request().method() === 'PUT'
     );
-    await page.getByRole('button', { name: /^save$/i }).click();
+    await page.getByTestId('save-workout').click();
     const updateResponse = await updateResponsePromise;
     expect(updateResponse.ok()).toBeTruthy();
 

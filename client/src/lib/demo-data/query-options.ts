@@ -228,9 +228,7 @@ export const putDemoWorkoutsByIdMutation = (): UseMutationOptions<
     queryClient.invalidateQueries({
       queryKey: getDemoWorkoutsQueryKey(),
     });
-    queryClient.invalidateQueries({
-      queryKey: getDemoWorkoutsByIdQueryKey(id),
-    });
+    queryClient.setQueryData(getDemoWorkoutsByIdQueryKey(id), getWorkoutById(id));
   },
 });
 

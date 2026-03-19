@@ -1,5 +1,5 @@
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useRouter } from '@tanstack/react-router';
 import {
   DndContext,
   KeyboardSensor,
@@ -11,7 +11,12 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { PencilLine, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -104,6 +109,7 @@ export function WorkoutExerciseCards({
   renderNameSupplement,
   renderMetrics,
 }: WorkoutExerciseCardsProps) {
+  const router = useRouter();
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: { distance: 4 },
@@ -111,7 +117,9 @@ export function WorkoutExerciseCards({
     useSensor(TouchSensor, {
       activationConstraint: { delay: 120, tolerance: 8 },
     }),
-    useSensor(KeyboardSensor)
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -143,11 +151,22 @@ export function WorkoutExerciseCards({
         }
 
         return (
-          <Link
+          <div
             key={id}
-            to="."
-            search={{ exerciseIndex }}
             className="block"
+            role="link"
+            tabIndex={0}
+            onClick={() => {
+              router.navigate({ to: '.', search: { exerciseIndex } });
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+              }
+
+              event.preventDefault();
+              router.navigate({ to: '.', search: { exerciseIndex } });
+            }}
           >
             <WorkoutExerciseCardContent
               dataTestId={dataTestId}
@@ -158,7 +177,7 @@ export function WorkoutExerciseCards({
               renderMetrics={renderMetrics}
               renderNameSupplement={renderNameSupplement}
             />
-          </Link>
+          </div>
         );
       })}
     </div>
@@ -430,6 +449,7 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
               type="submit"
               disabled={!canSubmit || isReorderMode}
               className="w-full rounded-lg text-base font-semibold"
+              data-testid="save-workout"
             >
               <Save className="mr-1.5 h-3.5 w-3.5" />
               {isSubmitting ? 'Saving...' : 'Save'}

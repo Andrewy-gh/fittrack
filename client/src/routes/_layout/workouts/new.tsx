@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState, type ReactNode } from 'react';
 import { z } from 'zod';
 import { useAppForm } from '@/hooks/form';
 import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
@@ -71,10 +71,60 @@ import {
 } from './-components/workout-form-helpers';
 import {
   WorkoutExerciseCards,
+  type WorkoutExerciseCard,
   WorkoutFormActions,
   WorkoutMetadataFields,
 } from './-components/workout-form-sections';
 import { useExerciseReorder } from './-components/use-exercise-reorder';
+
+function WorkoutExerciseSection({
+  field,
+  form,
+  formatVolume,
+  renderExerciseGoalSummary,
+}: {
+  field: any;
+  form: any;
+  formatVolume: (value: number) => string;
+  renderExerciseGoalSummary: (exercise: { name: string }) => ReactNode;
+}) {
+  const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(
+    field.state.value as WorkoutExerciseCard[]
+  );
+
+  return (
+    <>
+      <WorkoutExerciseCards
+        exercises={exerciseReorder.displayEntries}
+        dataTestId="new-workout-exercise-card"
+        canEditOrder={exerciseReorder.canReorder}
+        hasPendingOrderChanges={exerciseReorder.hasPendingOrderChanges}
+        isReorderMode={exerciseReorder.isReorderMode}
+        onCancelOrder={exerciseReorder.cancelReorder}
+        onEditOrder={exerciseReorder.startReorder}
+        onRemoveExercise={field.removeValue}
+        onReorderExercises={exerciseReorder.moveExercise}
+        onSaveOrder={() => {
+          field.handleChange(exerciseReorder.commitReorder());
+          toast.success('Exercise order saved');
+        }}
+        formatVolume={formatVolume}
+        renderNameSupplement={renderExerciseGoalSummary}
+        renderMetrics={() => (
+          <MiniChart
+            data={[3, 5, 2, 4, 6, 3, 4]}
+            activeIndex={6}
+          />
+        )}
+      />
+
+      <WorkoutFormActions
+        form={form}
+        isReorderMode={exerciseReorder.isReorderMode}
+      />
+    </>
+  );
+}
 
 function WorkoutTracker({
   user,
@@ -125,7 +175,6 @@ function WorkoutTracker({
       );
     },
   });
-  const exerciseReorder = useExerciseReorder(form.state.values.exercises);
 
   // Helper to get exercise ID from exercises list
   const getExerciseId = (exerciseName: string): number | null => {
@@ -413,38 +462,17 @@ function WorkoutTracker({
               mode="array"
               children={(field) => {
                 return (
-                  <WorkoutExerciseCards
-                    exercises={exerciseReorder.displayEntries}
-                    dataTestId="new-workout-exercise-card"
-                    canEditOrder={exerciseReorder.canReorder}
-                    hasPendingOrderChanges={exerciseReorder.hasPendingOrderChanges}
-                    isReorderMode={exerciseReorder.isReorderMode}
-                    onCancelOrder={exerciseReorder.cancelReorder}
-                    onEditOrder={exerciseReorder.startReorder}
-                    onRemoveExercise={field.removeValue}
-                    onReorderExercises={exerciseReorder.moveExercise}
-                    onSaveOrder={() => {
-                      field.handleChange(exerciseReorder.commitReorder());
-                      toast.success('Exercise order saved');
-                    }}
+                  <WorkoutExerciseSection
+                    field={field}
+                    form={form}
                     formatVolume={formatWeight}
-                    renderNameSupplement={renderExerciseGoalSummary}
-                    renderMetrics={() => (
-                      <MiniChart
-                        data={[3, 5, 2, 4, 6, 3, 4]}
-                        activeIndex={6}
-                      />
-                    )}
+                    renderExerciseGoalSummary={renderExerciseGoalSummary}
                   />
                 );
               }}
             />
 
             {/* MARK: Buttons */}
-            <WorkoutFormActions
-              form={form}
-              isReorderMode={exerciseReorder.isReorderMode}
-            />
           </form>
         </div>
         <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>

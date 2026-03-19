@@ -6,6 +6,18 @@ export type ReorderableExercise<T> = {
   exercise: T;
 };
 
+function haveSameExerciseCollection<T extends object>(
+  entries: ReorderableExercise<T>[],
+  exercises: T[]
+) {
+  if (entries.length !== exercises.length) {
+    return false;
+  }
+
+  const exerciseSet = new Set(exercises);
+  return entries.every((entry) => exerciseSet.has(entry.exercise));
+}
+
 function areExercisesInSameOrder<T extends object>(
   entries: ReorderableExercise<T>[],
   exercises: T[]
@@ -43,6 +55,19 @@ export function useExerciseReorder<T extends object>(exercises: T[]) {
 
     setDraftEntries(createEntries(exercises));
   }, [exercises, isReorderMode]);
+
+  useEffect(() => {
+    if (!isReorderMode) {
+      return;
+    }
+
+    if (haveSameExerciseCollection(draftEntries, exercises)) {
+      return;
+    }
+
+    setIsReorderMode(false);
+    setDraftEntries(createEntries(exercises));
+  }, [draftEntries, exercises, isReorderMode]);
 
   useEffect(() => {
     if (canReorder) {
