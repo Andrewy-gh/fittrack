@@ -74,6 +74,7 @@ import {
   WorkoutFormActions,
   WorkoutMetadataFields,
 } from './-components/workout-form-sections';
+import { useExerciseReorder } from './-components/use-exercise-reorder';
 
 function WorkoutTracker({
   user,
@@ -124,6 +125,7 @@ function WorkoutTracker({
       );
     },
   });
+  const exerciseReorder = useExerciseReorder(form.state.values.exercises);
 
   // Helper to get exercise ID from exercises list
   const getExerciseId = (exerciseName: string): number | null => {
@@ -412,9 +414,19 @@ function WorkoutTracker({
               children={(field) => {
                 return (
                   <WorkoutExerciseCards
-                    exercises={field.state.value}
+                    exercises={exerciseReorder.displayEntries}
                     dataTestId="new-workout-exercise-card"
+                    canEditOrder={exerciseReorder.canReorder}
+                    hasPendingOrderChanges={exerciseReorder.hasPendingOrderChanges}
+                    isReorderMode={exerciseReorder.isReorderMode}
+                    onCancelOrder={exerciseReorder.cancelReorder}
+                    onEditOrder={exerciseReorder.startReorder}
                     onRemoveExercise={field.removeValue}
+                    onReorderExercises={exerciseReorder.moveExercise}
+                    onSaveOrder={() => {
+                      field.handleChange(exerciseReorder.commitReorder());
+                      toast.success('Exercise order saved');
+                    }}
                     formatVolume={formatWeight}
                     renderNameSupplement={renderExerciseGoalSummary}
                     renderMetrics={() => (
@@ -429,7 +441,10 @@ function WorkoutTracker({
             />
 
             {/* MARK: Buttons */}
-            <WorkoutFormActions form={form} />
+            <WorkoutFormActions
+              form={form}
+              isReorderMode={exerciseReorder.isReorderMode}
+            />
           </form>
         </div>
         <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>

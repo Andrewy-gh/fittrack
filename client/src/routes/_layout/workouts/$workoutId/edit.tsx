@@ -41,6 +41,7 @@ import {
   WorkoutFormActions,
   WorkoutMetadataFields,
 } from '../-components/workout-form-sections';
+import { useExerciseReorder } from '../-components/use-exercise-reorder';
 
 function EditWorkoutForm({
   user,
@@ -87,6 +88,7 @@ function EditWorkoutForm({
       );
     },
   });
+  const exerciseReorder = useExerciseReorder(form.state.values.exercises);
 
   const handleClearForm = () => {
     if (confirm('Are you sure you want to clear all form data?')) {
@@ -240,9 +242,19 @@ function EditWorkoutForm({
               children={(field) => {
                 return (
                   <WorkoutExerciseCards
-                    exercises={field.state.value}
+                    exercises={exerciseReorder.displayEntries}
                     dataTestId="edit-workout-exercise-card"
+                    canEditOrder={exerciseReorder.canReorder}
+                    hasPendingOrderChanges={exerciseReorder.hasPendingOrderChanges}
+                    isReorderMode={exerciseReorder.isReorderMode}
+                    onCancelOrder={exerciseReorder.cancelReorder}
+                    onEditOrder={exerciseReorder.startReorder}
                     onRemoveExercise={field.removeValue}
+                    onReorderExercises={exerciseReorder.moveExercise}
+                    onSaveOrder={() => {
+                      field.handleChange(exerciseReorder.commitReorder());
+                      toast.success('Exercise order saved');
+                    }}
                     formatVolume={formatWeight}
                     renderMetrics={() => (
                       <MiniChart
@@ -256,7 +268,10 @@ function EditWorkoutForm({
             />
 
             {/* MARK: Buttons */}
-            <WorkoutFormActions form={form} />
+            <WorkoutFormActions
+              form={form}
+              isReorderMode={exerciseReorder.isReorderMode}
+            />
           </form>
         </div>
       </Suspense>
