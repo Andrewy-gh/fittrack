@@ -3,7 +3,7 @@ import type {
   HTMLAttributes,
   ReactNode,
 } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
@@ -48,6 +48,12 @@ vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: ReactNode }) => (
     <div data-testid="sortable-context">{children}</div>
   ),
+  arrayMove: <T,>(items: T[], oldIndex: number, newIndex: number) => {
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(oldIndex, 1);
+    nextItems.splice(newIndex, 0, movedItem);
+    return nextItems;
+  },
   sortableKeyboardCoordinates: mockSortableKeyboardCoordinates,
   useSortable: mockUseSortable,
   verticalListSortingStrategy: {},
@@ -83,6 +89,76 @@ vi.mock('@/components/ui/card', () => ({
 }));
 
 import { WorkoutExerciseCards, type WorkoutExerciseCard } from '../workout-form-sections';
+import { useExerciseReorder } from '../use-exercise-reorder';
+import { useAppForm } from '@/hooks/form';
+
+function createExercise(name: string): WorkoutExerciseCard {
+  return {
+    name,
+    sets: [],
+  };
+}
+
+function WorkoutExerciseCardsHarness() {
+  const form = useAppForm({
+    defaultValues: {
+      date: '',
+      notes: '',
+      exercises: [createExercise('Bench Press'), createExercise('Barbell Squat')],
+    },
+    onSubmit: async () => undefined,
+  });
+
+  return (
+    <form.AppField
+      name="exercises"
+      mode="array"
+      children={(field) => <WorkoutExerciseCardsField field={field} />}
+    />
+  );
+}
+
+function WorkoutExerciseCardsField({ field }: { field: any }) {
+  const exerciseReorder = useExerciseReorder(
+    field.state.value as WorkoutExerciseCard[]
+  );
+
+  return (
+    <>
+      <button
+        type="button"
+        data-testid="force-reorder"
+        onClick={() => {
+          const [firstEntry, secondEntry] = exerciseReorder.displayEntries;
+
+          if (!firstEntry || !secondEntry) {
+            return;
+          }
+
+          exerciseReorder.moveExercise(secondEntry.id, firstEntry.id);
+        }}
+      >
+        Force reorder
+      </button>
+
+      <WorkoutExerciseCards
+        exercises={exerciseReorder.displayEntries}
+        dataTestId="exercise-card"
+        canEditOrder={exerciseReorder.canReorder}
+        hasPendingOrderChanges={exerciseReorder.hasPendingOrderChanges}
+        isReorderMode={exerciseReorder.isReorderMode}
+        onCancelOrder={exerciseReorder.cancelReorder}
+        onEditOrder={exerciseReorder.startReorder}
+        onRemoveExercise={field.removeValue}
+        onReorderExercises={exerciseReorder.moveExercise}
+        onSaveOrder={() => {
+          field.handleChange(exerciseReorder.commitReorder());
+        }}
+        formatVolume={() => '0 lb'}
+      />
+    </>
+  );
+}
 
 describe('WorkoutExerciseCards', () => {
   beforeEach(() => {
@@ -130,5 +206,19 @@ describe('WorkoutExerciseCards', () => {
       { coordinateGetter: mockSortableKeyboardCoordinates },
     ]);
     expect(screen.getAllByLabelText(/reorder /i)).toHaveLength(2);
+  });
+
+  it('exits reorder mode after saving a reordered list', () => {
+    render(<WorkoutExerciseCardsHarness />);
+
+    fireEvent.click(screen.getByTestId('edit-exercise-order'));
+    fireEvent.click(screen.getByTestId('force-reorder'));
+    fireEvent.click(screen.getByTestId('save-exercise-order'));
+
+    expect(screen.queryAllByLabelText(/reorder /i)).toHaveLength(0);
+    expect(screen.getByTestId('edit-exercise-order')).toBeInTheDocument();
+    expect(screen.getAllByTestId('exercise-card')[0]).toHaveTextContent(
+      'Barbell Squat'
+    );
   });
 });

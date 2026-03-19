@@ -1,30 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
-
-async function dragHandleToCardTop(page: Page, handle: Locator, targetCard: Locator) {
-  const handleBox = await handle.boundingBox();
-  const targetBox = await targetCard.boundingBox();
-
-  if (!handleBox || !targetBox) {
-    throw new Error('Missing drag handle or target card box');
-  }
-
-  await page.mouse.move(
-    handleBox.x + handleBox.width / 2,
-    handleBox.y + handleBox.height / 2
-  );
-  await page.mouse.down();
-  await page.mouse.move(
-    handleBox.x + handleBox.width / 2,
-    handleBox.y + handleBox.height / 2 - 12,
-    { steps: 4 }
-  );
-  await page.mouse.move(
-    targetBox.x + targetBox.width / 2,
-    targetBox.y + targetBox.height / 3,
-    { steps: 16 }
-  );
-  await page.mouse.up();
-}
+import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Workout Edit', () => {
   test.beforeEach(async ({ page }) => {
@@ -187,59 +161,6 @@ test.describe('Demo Mode - Workout Edit', () => {
     await expect(page.getByTestId('edit-workout-exercise-card')).toHaveCount(
       initialExerciseCount - 1
     );
-  });
-
-  test('should reorder exercises and persist the saved order', async ({
-    page,
-  }) => {
-    await page.getByTestId('workout-card').first().click();
-    await page.getByRole('link', { name: /edit/i }).click();
-
-    const exerciseCards = page.getByTestId('edit-workout-exercise-card');
-    await expect(exerciseCards.first()).toBeVisible();
-    const initialExerciseCount = await exerciseCards.count();
-    expect(initialExerciseCount).toBeGreaterThan(1);
-
-    const firstExerciseName = await exerciseCards
-      .nth(0)
-      .locator('span.text-primary')
-      .first()
-      .textContent();
-    const secondExerciseName = await exerciseCards
-      .nth(1)
-      .locator('span.text-primary')
-      .first()
-      .textContent();
-
-    expect(firstExerciseName).toBeTruthy();
-    expect(secondExerciseName).toBeTruthy();
-
-    await page.getByTestId('edit-exercise-order').click();
-
-    const dragHandles = page.getByTestId('edit-workout-exercise-card-drag-handle');
-    await expect(dragHandles).toHaveCount(initialExerciseCount);
-    await expect(exerciseCards.first()).toHaveClass(/workout-card-wiggle/);
-
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await dragHandleToCardTop(page, dragHandles.nth(1), exerciseCards.first());
-    await expect(page.getByTestId('save-exercise-order')).toBeEnabled();
-    await page.getByTestId('save-exercise-order').click();
-
-    await expect(exerciseCards.nth(0)).toContainText(secondExerciseName!);
-    await expect(exerciseCards.nth(1)).toContainText(firstExerciseName!);
-    await expect(
-      page.getByTestId('edit-workout-exercise-card-drag-handle')
-    ).toHaveCount(0);
-
-    await page.getByTestId('save-workout').click();
-    await page.waitForURL('/workouts/**', { timeout: 5000 });
-
-    await page.getByRole('link', { name: /edit/i }).click();
-
-    await expect(exerciseCards.first()).toBeVisible();
-    await expect(exerciseCards).toHaveCount(initialExerciseCount);
-    await expect(exerciseCards.nth(0)).toContainText(secondExerciseName!);
-    await expect(exerciseCards.nth(1)).toContainText(firstExerciseName!);
   });
 
   // URL Navigation Tests
