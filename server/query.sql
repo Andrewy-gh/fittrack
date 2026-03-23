@@ -513,17 +513,36 @@ ORDER BY workout_focus;
 -- The WHERE clause filters by user_id (parameter $1), ensuring only the authenticated user's
 -- workouts are retrieved. RLS policies on the workout table provide defense-in-depth.
 -- The GROUP BY on date and JSON_AGG of workout metadata ensures no cross-user data leakage.
+WITH workout_totals AS (
+    SELECT
+        w.id,
+        w.date,
+        w.workout_focus,
+        COUNT(s.id) FILTER (WHERE s.set_type = 'working')::INTEGER AS working_set_count,
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN s.set_type = 'working' THEN COALESCE(s.weight, 0)::NUMERIC * s.reps::NUMERIC
+                    ELSE 0
+                END
+            ),
+            0
+        )::FLOAT8 AS volume
+    FROM workout w
+    LEFT JOIN "set" s ON s.workout_id = w.id
+    WHERE w.user_id = $1
+      AND w.date >= CURRENT_DATE - INTERVAL '52 weeks'
+    GROUP BY w.id, w.date, w.workout_focus
+)
 SELECT
-    DATE_TRUNC('day', w.date)::DATE as date,
-    COUNT(s.id)::INTEGER as count,
-    JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', w.id,
-        'time', w.date,
-        'focus', w.workout_focus
-    )) as workouts
-FROM workout w
-LEFT JOIN "set" s ON s.workout_id = w.id AND s.set_type = 'working'
-WHERE w.user_id = $1
-  AND w.date >= CURRENT_DATE - INTERVAL '52 weeks'
-GROUP BY DATE_TRUNC('day', w.date)
+    DATE_TRUNC('day', wt.date)::DATE as date,
+    SUM(wt.working_set_count)::INTEGER as count,
+    JSON_AGG(JSONB_BUILD_OBJECT(
+        'id', wt.id,
+        'time', wt.date,
+        'focus', wt.workout_focus,
+        'volume', wt.volume
+    ) ORDER BY wt.date, wt.id) as workouts
+FROM workout_totals wt
+GROUP BY DATE_TRUNC('day', wt.date)
 ORDER BY date;

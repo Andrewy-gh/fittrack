@@ -194,6 +194,7 @@ export type WorkoutWorkoutSummary = {
   focus?: string;
   id?: number;
   time?: string;
+  volume?: number;
 };
 
 export type WorkoutWorkoutWithSetsResponse = {

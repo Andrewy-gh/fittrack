@@ -27,6 +27,7 @@ import {
   handleDemoWorkoutUpdated,
   resetDemoHistorical1Rm,
 } from './historical-1rm';
+import type { DemoContributionWorkout } from '@/lib/analytics';
 
 // ===========================
 // localStorage Utilities
@@ -287,6 +288,28 @@ export function getAllWorkouts(): WorkoutWorkoutResponse[] {
       created_at: workout.created_at,
       updated_at: workout.updated_at,
     }));
+}
+
+export function getAllWorkoutsForContribution(): DemoContributionWorkout[] {
+  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
+  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
+
+  return workouts.map((workout) => {
+    const workingSets = sets.filter(
+      (set) => set.workout_id === workout.id && set.set_type === 'working'
+    );
+
+    return {
+      id: workout.id,
+      date: workout.date,
+      workout_focus: workout.workout_focus,
+      volume: workingSets.reduce(
+        (sum, set) => sum + (set.weight || 0) * set.reps,
+        0
+      ),
+      workingSetCount: workingSets.length,
+    };
+  });
 }
 
 export function getWorkoutById(id: number): WorkoutWorkoutWithSetsResponse[] {

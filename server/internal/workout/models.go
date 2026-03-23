@@ -220,9 +220,10 @@ var (
 
 // Contribution Graph types for GET /api/workouts/contribution-data
 type WorkoutSummary struct {
-	ID    int32   `json:"id"`
-	Time  string  `json:"time"`
-	Focus *string `json:"focus"`
+	ID     int32   `json:"id"`
+	Time   string  `json:"time"`
+	Focus  *string `json:"focus"`
+	Volume float64 `json:"volume"`
 }
 
 type ContributionDay struct {
