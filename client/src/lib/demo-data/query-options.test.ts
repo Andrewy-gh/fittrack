@@ -45,6 +45,8 @@ import {
   putDemoWorkoutsByIdMutation,
 } from './query-options';
 
+const mutationContext = {} as never;
+
 describe('demo workout mutation cache invalidation', () => {
   beforeEach(() => {
     invalidateQueries.mockClear();
@@ -55,7 +57,12 @@ describe('demo workout mutation cache invalidation', () => {
   it('invalidates analytics queries after creating a demo workout', () => {
     const mutation = postDemoWorkoutsMutation();
 
-    mutation.onSuccess?.({ success: true }, { body: {} as never }, undefined);
+    mutation.onSuccess?.(
+      { success: true },
+      { body: {} as never },
+      undefined,
+      mutationContext
+    );
 
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: [{ _id: 'demo_getWorkouts' }],
@@ -74,7 +81,12 @@ describe('demo workout mutation cache invalidation', () => {
   it('invalidates analytics queries after updating a demo workout', () => {
     const mutation = putDemoWorkoutsByIdMutation();
 
-    mutation.onSuccess?.(undefined, { path: { id: 42 }, body: {} as never }, undefined);
+    mutation.onSuccess?.(
+      undefined,
+      { path: { id: 42 }, body: {} as never },
+      undefined,
+      mutationContext
+    );
 
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: [{ _id: 'demo_getWorkouts' }],
@@ -94,7 +106,12 @@ describe('demo workout mutation cache invalidation', () => {
   it('invalidates analytics queries after deleting a demo workout', () => {
     const mutation = deleteDemoWorkoutsByIdMutation();
 
-    mutation.onSuccess?.(undefined, { path: { id: 42 } }, undefined);
+    mutation.onSuccess?.(
+      undefined,
+      { path: { id: 42 } },
+      undefined,
+      mutationContext
+    );
 
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: [{ _id: 'demo_getWorkouts' }],
