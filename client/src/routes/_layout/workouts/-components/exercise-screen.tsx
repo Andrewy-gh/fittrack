@@ -100,40 +100,47 @@ export const ExerciseSets = withForm({
                     return (
                       // MARK: Set Cards
                       <Card
+                        asChild
                         key={`exercises[${exerciseIndex}].sets[${setIndex}]`}
-                        data-testid="exercise-card"
-                        className="bg-card border border-border shadow-sm p-4"
-                        onClick={() => {
-                          setDialogOpenIndex(setIndex);
-                        }}
+                        className="border border-border bg-card p-4 shadow-sm"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="font-bold text-lg">
-                              #{setIndex + 1}
+                        <button
+                          type="button"
+                          aria-label={`Edit set ${setIndex + 1}`}
+                          data-testid="exercise-card"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          onClick={() => {
+                            setDialogOpenIndex(setIndex);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="font-bold text-lg">
+                                #{setIndex + 1}
+                              </div>
+                              <div>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    set.setType === 'working'
+                                      ? 'bg-primary/20 text-primary'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}
+                                >
+                                  {set.setType}
+                                </span>
+                              </div>
                             </div>
-                            <div>
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  set.setType === 'working'
-                                    ? 'bg-primary/20 text-primary'
-                                    : 'bg-muted text-muted-foreground'
-                                }`}
-                              >
-                                {set.setType}
-                              </span>
+                            <div className="text-right">
+                              <div className="text-card-foreground font-bold text-lg">
+                                {formatWeight(set.weight)}lb &#215; {set.reps}
+                              </div>
+                              <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
+                                {set.weight && set.reps && formatWeight(set.weight * set.reps)}{' '}
+                                volume
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-card-foreground font-bold text-lg">
-                              {formatWeight(set.weight)}lb &#215; {set.reps}
-                            </div>
-                            <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                              {set.weight && set.reps && formatWeight(set.weight * set.reps)}{' '}
-                              volume
-                            </div>
-                          </div>
-                        </div>
+                        </button>
                       </Card>
                     );
                   })}

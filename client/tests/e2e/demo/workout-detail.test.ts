@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Workout Detail', () => {
+  const lowerBodyWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('link', { name: /lower body/i }).first();
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/workouts');
     await page.evaluate(() => localStorage.clear());
@@ -8,7 +11,7 @@ test.describe('Demo Mode - Workout Detail', () => {
   });
 
   test('should display workout details', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
 
     await expect(page.getByText('LOWER BODY').first()).toBeVisible();
     await expect(page.getByRole('link', { name: /edit/i })).toBeVisible();
@@ -19,7 +22,7 @@ test.describe('Demo Mode - Workout Detail', () => {
   });
 
   test('should show edit and delete buttons in demo mode', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
 
     await expect(page.getByRole('link', { name: /edit/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /delete/i })).toBeVisible();
@@ -31,7 +34,7 @@ test.describe('Demo Mode - Workout Detail', () => {
       return data ? JSON.parse(data).length : 0;
     });
 
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('button', { name: /delete/i }).click();
 
     const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });

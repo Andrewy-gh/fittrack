@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Workout Edit', () => {
+  const lowerBodyWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('link', { name: /lower body/i }).first();
+  const exerciseCards = (page: import('@playwright/test').Page) =>
+    page.getByTestId('edit-workout-exercise-card');
+
   test.beforeEach(async ({ page }) => {
     // Navigate first, then clear localStorage and reload to reinitialize demo data
     await page.goto('/workouts');
@@ -8,11 +13,11 @@ test.describe('Demo Mode - Workout Edit', () => {
     await page.reload();
 
     // Wait for demo data to be initialized and workouts to be visible
-    await page.waitForSelector('[data-testid="workout-card"]', { timeout: 5000 });
+    await expect(lowerBodyWorkout(page)).toBeVisible({ timeout: 5000 });
   });
 
   test('should load edit form with existing workout data', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
 
     await page.getByRole('link', { name: /edit/i }).click();
 
@@ -22,15 +27,14 @@ test.describe('Demo Mode - Workout Edit', () => {
       page.getByRole('heading', { name: /edit training/i })
     ).toBeVisible();
 
-    const exerciseCard = page.getByTestId('edit-workout-exercise-card');
-    await expect(exerciseCard.first()).toBeVisible();
+    await expect(exerciseCards(page).first()).toBeVisible();
   });
 
   test('should modify and save workout in demo mode', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
-    await page.getByTestId('notes-card').click();
+    await page.getByRole('button', { name: /^notes$/i }).click();
 
     const notesField = page.getByTestId('notes-textarea');
     await notesField.fill('Updated notes in demo mode');
@@ -50,10 +54,10 @@ test.describe('Demo Mode - Workout Edit', () => {
   });
 
   test('should persist edited workout to localStorage', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
-    await page.getByTestId('notes-card').click();
+    await page.getByRole('button', { name: /^notes$/i }).click();
     
     const notesField = page.getByTestId('notes-textarea');
     await notesField.fill('Test notes for persistence');
@@ -74,19 +78,15 @@ test.describe('Demo Mode - Workout Edit', () => {
   });
 
   test('should add exercise to workout', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
     // Wait for exercises to load
-    await expect(
-      page.getByTestId('edit-workout-exercise-card').first()
-    ).toBeVisible();
+    await expect(exerciseCards(page).first()).toBeVisible();
 
-    const initialExerciseCount = await page
-      .getByTestId('edit-workout-exercise-card')
-      .count();
+    const initialExerciseCount = await exerciseCards(page).count();
 
-    await page.getByRole('button', { name: /add exercise/i }).click();
+    await page.getByRole('link', { name: /add exercise/i }).click();
 
     // Add an exercise that doesn't exist in workout 3 (which has Barbell Squat, Deadlift, Pull-ups)
     await page.getByText('Bench Press').click();
@@ -113,38 +113,31 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     // Wait for exercises to load after navigation
     await expect(
-      page.getByTestId('edit-workout-exercise-card').first()
+      exerciseCards(page).first()
     ).toBeVisible();
 
-    await expect(page.getByTestId('edit-workout-exercise-card')).toHaveCount(
+    await expect(exerciseCards(page)).toHaveCount(
       initialExerciseCount + 1
     );
   });
 
   test('should remove exercise from workout', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
     // Wait for exercises to load
-    await expect(
-      page.getByTestId('edit-workout-exercise-card').first()
-    ).toBeVisible();
+    await expect(exerciseCards(page).first()).toBeVisible();
 
-    const initialExerciseCount = await page
-      .getByTestId('edit-workout-exercise-card')
-      .count();
+    const initialExerciseCount = await exerciseCards(page).count();
 
-    const firstExerciseCard = page
-      .getByTestId('edit-workout-exercise-card')
-      .first();
-    const deleteButton = firstExerciseCard.getByRole('button', {
+    const deleteButton = page.getByRole('button', {
       name: /delete|remove/i,
-    });
+    }).first();
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
     // Wait for the exercise to be removed from the DOM
-    await expect(page.getByTestId('edit-workout-exercise-card')).toHaveCount(
+    await expect(exerciseCards(page)).toHaveCount(
       initialExerciseCount - 1
     );
 
@@ -155,17 +148,17 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     // Wait for exercises to load after navigation
     await expect(
-      page.getByTestId('edit-workout-exercise-card').first()
+      exerciseCards(page).first()
     ).toBeVisible();
 
-    await expect(page.getByTestId('edit-workout-exercise-card')).toHaveCount(
+    await expect(exerciseCards(page)).toHaveCount(
       initialExerciseCount - 1
     );
   });
 
   // URL Navigation Tests
   test('should update URL when navigating to add exercise', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
     await page.getByRole('link', { name: /add exercise/i }).click();
@@ -175,7 +168,7 @@ test.describe('Demo Mode - Workout Edit', () => {
   test('should support browser back button from add exercise', async ({
     page,
   }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
     await page.getByRole('link', { name: /add exercise/i }).click();
@@ -190,20 +183,20 @@ test.describe('Demo Mode - Workout Edit', () => {
   test('should update URL when navigating to exercise detail', async ({
     page,
   }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
-    await page.getByTestId('edit-workout-exercise-card').first().click();
+    await exerciseCards(page).first().click();
     expect(page.url()).toContain('exerciseIndex=0');
   });
 
   test('should support browser back button from exercise detail', async ({
     page,
   }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
-    await page.getByTestId('edit-workout-exercise-card').first().click();
+    await exerciseCards(page).first().click();
     await page.goBack();
 
     expect(page.url()).not.toContain('exerciseIndex');
@@ -213,7 +206,7 @@ test.describe('Demo Mode - Workout Edit', () => {
   });
 
   test('should handle invalid exercise index gracefully', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     const editUrl = page.url().replace('/workouts/', '/workouts/') + '/edit';
 
     await page.goto(editUrl + '?exerciseIndex=999');
@@ -226,7 +219,7 @@ test.describe('Demo Mode - Workout Edit', () => {
   });
 
   test('should handle negative exercise index gracefully', async ({ page }) => {
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     const editUrl = page.url().replace('/workouts/', '/workouts/') + '/edit';
 
     await page.goto(editUrl + '?exerciseIndex=-1');

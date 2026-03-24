@@ -2,6 +2,9 @@ import { test, expect } from '@playwright/test';
 import { getDemoWorkouts, getDemoExercises, clearAllStorage } from '../helpers/storage-helpers';
 
 test.describe('localStorage Persistence', () => {
+  const lowerBodyWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('link', { name: /lower body/i }).first();
+
   test.beforeEach(async ({ page }) => {
     await clearAllStorage(page);
   });
@@ -32,10 +35,10 @@ test.describe('localStorage Persistence', () => {
   test('should persist workout edits to localStorage', async ({ page }) => {
     await page.goto('/workouts');
 
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('link', { name: /edit/i }).click();
 
-    await page.getByTestId('notes-card').click();
+    await page.getByRole('button', { name: /^notes$/i }).click();
 
     const notesField = page.getByTestId('notes-textarea');
     await notesField.fill('Test notes for persistence');
@@ -61,7 +64,7 @@ test.describe('localStorage Persistence', () => {
     const initialWorkouts = await getDemoWorkouts(page);
     const initialCount = initialWorkouts.length;
 
-    await page.getByTestId('workout-card').first().click();
+    await lowerBodyWorkout(page).click();
     await page.getByRole('button', { name: /delete/i }).click();
 
     const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });

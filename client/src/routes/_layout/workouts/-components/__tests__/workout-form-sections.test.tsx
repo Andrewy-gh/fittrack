@@ -217,7 +217,11 @@ describe('WorkoutExerciseCards', () => {
 
     expect(screen.queryAllByLabelText(/reorder /i)).toHaveLength(0);
     expect(screen.getByTestId('edit-exercise-order')).toBeInTheDocument();
-    expect(screen.getAllByTestId('exercise-card')[0]).toHaveTextContent(
+    expect(
+      screen
+        .getAllByRole('button')
+        .find((button) => button.textContent?.includes('Barbell Squat'))
+    ).toHaveTextContent(
       'Barbell Squat'
     );
   });

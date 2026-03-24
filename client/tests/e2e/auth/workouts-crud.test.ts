@@ -65,7 +65,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
     await page.goto('/workouts');
 
     const workoutCard = page
-      .getByTestId('workout-card')
+      .getByRole('link')
       .filter({ hasText: focus.toUpperCase() })
       .first();
     await expect(workoutCard).toBeVisible();
@@ -119,7 +119,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
 
     await expect(page).toHaveURL(/\/workouts\/?$/);
     await expect(
-      page.getByTestId('workout-card').filter({
+      page.getByRole('link').filter({
         hasText: updatedFocus.toUpperCase(),
       })
     ).toHaveCount(0);

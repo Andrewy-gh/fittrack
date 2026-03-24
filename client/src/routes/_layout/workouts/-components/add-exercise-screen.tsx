@@ -110,10 +110,10 @@ export const AddExerciseScreen = withForm({
                     ) : (
                       filteredExercises.map((exercise) => (
                         // MARK: List items
-                        <div
+                        <button
+                          type="button"
                           key={exercise.id}
-                          data-testid="exercise-card"
-                          className="flex items-center justify-between p-4 hover:bg-gray-100/50 transition-colors cursor-pointer border-b border-border last:border-b-0"
+                          className="flex w-full items-center justify-between border-b border-border p-4 text-left transition-colors hover:bg-gray-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset last:border-b-0"
                           onClick={() => {
                             field.pushValue({
                               name: exercise.name,
@@ -131,7 +131,7 @@ export const AddExerciseScreen = withForm({
                             {exercise.name}
                           </h3>
                           <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                        </div>
+                        </button>
                       ))
                     )}
                   </>

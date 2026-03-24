@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useFieldContext } from '@/hooks/form';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogClose,
@@ -22,15 +23,22 @@ export default function NotesTextarea() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Card className="p-4" data-testid="notes-card">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-sm tracking-tight">Notes</span>
-          </div>
-          <div className="text-xs font-semibold text-card-foreground">
-            {field.state.value ||
-              'Enter any notes, focus areas, or observations for this workout.'}
-          </div>
+        <Card asChild className="p-4">
+          <button
+            type="button"
+            aria-label="Notes"
+            data-testid="notes-card"
+            className="w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-sm tracking-tight">Notes</span>
+            </div>
+            <div className="text-xs font-semibold text-card-foreground">
+              {field.state.value ||
+                'Enter any notes, focus areas, or observations for this workout.'}
+            </div>
+          </button>
         </Card>
       </DialogTrigger>
       <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
@@ -41,6 +49,9 @@ export default function NotesTextarea() {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
+          <Label htmlFor={field.name} className="sr-only">
+            Notes
+          </Label>
           <Textarea
             id={field.name}
             name={field.name}
