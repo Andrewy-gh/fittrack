@@ -151,33 +151,19 @@ export function WorkoutExerciseCards({
         }
 
         return (
-          <div
+          <WorkoutExerciseCardContent
             key={id}
-            className="block"
-            role="link"
-            tabIndex={0}
-            onClick={() => {
+            dataTestId={dataTestId}
+            exercise={exercise}
+            exerciseIndex={exerciseIndex}
+            formatVolume={formatVolume}
+            onOpenExercise={() => {
               router.navigate({ to: '.', search: { exerciseIndex } });
             }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' && event.key !== ' ') {
-                return;
-              }
-
-              event.preventDefault();
-              router.navigate({ to: '.', search: { exerciseIndex } });
-            }}
-          >
-            <WorkoutExerciseCardContent
-              dataTestId={dataTestId}
-              exercise={exercise}
-              exerciseIndex={exerciseIndex}
-              formatVolume={formatVolume}
-              onRemoveExercise={onRemoveExercise}
-              renderMetrics={renderMetrics}
-              renderNameSupplement={renderNameSupplement}
-            />
-          </div>
+            onRemoveExercise={onRemoveExercise}
+            renderMetrics={renderMetrics}
+            renderNameSupplement={renderNameSupplement}
+          />
         );
       })}
     </div>
@@ -252,6 +238,7 @@ function WorkoutExerciseCardContent({
   formatVolume,
   isDragging = false,
   isReorderMode = false,
+  onOpenExercise,
   onRemoveExercise,
   renderMetrics,
   renderNameSupplement,
@@ -265,6 +252,7 @@ function WorkoutExerciseCardContent({
   formatVolume: (volume: number) => string;
   isDragging?: boolean;
   isReorderMode?: boolean;
+  onOpenExercise?: () => void;
   onRemoveExercise?: (index: number) => void;
   renderNameSupplement?: (exercise: WorkoutExerciseCard) => ReactNode;
   renderMetrics?: (exercise: WorkoutExerciseCard) => ReactNode;
@@ -280,10 +268,9 @@ function WorkoutExerciseCardContent({
         'p-4 transition-all duration-200',
         isReorderMode
           ? 'border-primary/30 bg-primary/5 shadow-sm workout-card-wiggle'
-          : 'cursor-pointer hover:shadow-md',
+          : 'hover:shadow-md',
         isDragging && 'opacity-80 shadow-lg ring-1 ring-primary/30'
       )}
-      data-testid={dataTestId}
       style={
         isReorderMode
           ? ({
@@ -295,20 +282,35 @@ function WorkoutExerciseCardContent({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
-            <div className="mb-2 flex min-w-0 items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-primary"></div>
-              <div className="min-w-0">
-                <span className="text-sm font-medium text-primary">{exercise.name}</span>
-                {renderNameSupplement?.(exercise)}
+            {isReorderMode ? (
+              <div className="mb-2 flex min-w-0 items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary"></div>
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-primary">{exercise.name}</span>
+                  {renderNameSupplement?.(exercise)}
+                </div>
               </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                aria-label={`Edit ${exercise.name}`}
+                data-testid={dataTestId}
+                className="mb-2 flex min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onClick={onOpenExercise}
+              >
+                <div className="h-2 w-2 rounded-full bg-primary"></div>
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-primary">{exercise.name}</span>
+                  {renderNameSupplement?.(exercise)}
+                </div>
+              </button>
+            )}
             {isReorderMode ? (
               <button
                 type="button"
                 ref={sortableHandleRef}
                 className="flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-full border border-border/70 bg-background/90 text-muted-foreground transition hover:border-primary/40 hover:text-primary active:cursor-grabbing"
                 aria-label={`Reorder ${exercise.name}`}
-                data-testid={`${dataTestId}-drag-handle`}
                 {...sortableAttributes}
                 {...sortableListeners}
               >
@@ -337,24 +339,54 @@ function WorkoutExerciseCardContent({
           </div>
 
           <div className="flex items-end justify-between gap-3">
-            <div>
-              <div className="text-lg font-bold text-card-foreground">{exercise.sets.length}</div>
-              <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
-                sets
-              </div>
-            </div>
+            {isReorderMode ? (
+              <>
+                <div>
+                  <div className="text-lg font-bold text-card-foreground">{exercise.sets.length}</div>
+                  <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
+                    sets
+                  </div>
+                </div>
 
-            <div className="flex items-end gap-4">
-              <div className="text-right">
-                <div className="text-lg font-bold text-card-foreground">
-                  {formatVolume(volume)}
+                <div className="flex items-end gap-4">
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-card-foreground">
+                      {formatVolume(volume)}
+                    </div>
+                    <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
+                      volume
+                    </div>
+                  </div>
+                  {renderMetrics?.(exercise)}
                 </div>
-                <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
-                  volume
+              </>
+            ) : (
+              <button
+                type="button"
+                aria-label={`${exercise.name}: ${exercise.sets.length} sets, ${formatVolume(volume)} volume`}
+                className="flex w-full items-end justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onClick={onOpenExercise}
+              >
+                <div>
+                  <div className="text-lg font-bold text-card-foreground">{exercise.sets.length}</div>
+                  <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
+                    sets
+                  </div>
                 </div>
-              </div>
-              {renderMetrics?.(exercise)}
-            </div>
+
+                <div className="flex items-end gap-4">
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-card-foreground">
+                      {formatVolume(volume)}
+                    </div>
+                    <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
+                      volume
+                    </div>
+                  </div>
+                  {renderMetrics?.(exercise)}
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -422,23 +454,26 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
           <Button
             type="button"
             variant="outline"
-            className="w-full rounded-lg text-base font-semibold"
+            size="action"
+            className="w-full"
             disabled
           >
             <Plus className="mr-2 h-5 w-5" />
             Save order before adding exercises
           </Button>
         ) : (
-          <Link to="." search={{ addExercise: true }}>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full rounded-lg text-base font-semibold"
-            >
+          <Button
+            type="button"
+            variant="outline"
+            size="action"
+            className="w-full"
+            asChild
+          >
+            <Link to="." search={{ addExercise: true }}>
               <Plus className="mr-2 h-5 w-5" />
               Add Exercise
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
       </div>
       <div className="mt-8">
@@ -448,8 +483,8 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
             <Button
               type="submit"
               disabled={!canSubmit || isReorderMode}
-              className="w-full rounded-lg text-base font-semibold"
-              data-testid="save-workout"
+              size="action"
+              className="w-full"
             >
               <Save className="mr-1.5 h-3.5 w-3.5" />
               {isSubmitting ? 'Saving...' : 'Save'}

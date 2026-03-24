@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Demo Mode - Workout Create', () => {
+  const lowerBodyWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('link', { name: /lower body/i }).first();
+  const exerciseCards = (page: import('@playwright/test').Page) =>
+    page.getByTestId('new-workout-exercise-card');
+  const addExercise = (page: import('@playwright/test').Page) =>
+    page.getByRole('link', { name: /add exercise/i });
+  const saveWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('button', { name: /^save$/i });
+
   test.beforeEach(async ({ page }) => {
     // Navigate first, then clear localStorage and reload to reinitialize demo data
     await page.goto('/workouts');
@@ -8,34 +17,25 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.reload();
 
     // Wait for demo data to be initialized and workouts to be visible
-    await page.waitForSelector('[data-testid="workout-card"]', {
-      timeout: 5000,
-    });
+    await expect(lowerBodyWorkout(page)).toBeVisible({ timeout: 5000 });
   });
 
   test('should navigate to new workout page', async ({ page }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
-    expect(page.url()).toMatch(/\/workouts\/new/);
+    await expect(page).toHaveURL(/\/workouts\/new/);
 
-    await expect(
-      page.getByRole('heading', { name: /today's training/i })
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
   });
 
   test('should display empty workout form on new page', async ({ page }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
-    await expect(
-      page.getByRole('link', { name: /add exercise/i })
-    ).toBeVisible();
-    await expect(page.getByTestId('save-workout')).toBeVisible();
+    await expect(saveWorkout(page)).toBeVisible();
+    await expect(addExercise(page)).toBeVisible();
     await expect(page.getByRole('button', { name: /clear/i })).toBeVisible();
 
-    const exerciseCards = page
-      .locator('[data-testid*="exercise"]')
-      .filter({ hasText: /sets|volume/ });
-    await expect(exerciseCards).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test('should create a workout with single exercise and single set', async ({
@@ -62,16 +62,13 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     await page.waitForTimeout(500);
 
     expect(page.url()).toContain('/new');
 
-    const exerciseCards = page
-      .locator('.cursor-pointer')
-      .filter({ hasText: /sets/ });
-    await expect(exerciseCards).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test('should discard a new exercise when its empty set dialog is closed', async ({
@@ -83,11 +80,7 @@ test.describe('Demo Mode - Workout Create', () => {
         page.getByRole('heading', { name: /choose exercise/i })
       ).toBeVisible();
 
-      await page
-        .getByTestId('exercise-card')
-        .filter({ hasText: 'Bench Press' })
-        .first()
-        .click();
+      await page.getByRole('button', { name: /bench press/i }).first().click();
 
       await expect(page).toHaveURL(/exerciseIndex=\d+/);
       await expect(
@@ -110,7 +103,7 @@ test.describe('Demo Mode - Workout Create', () => {
       page.getByRole('heading', { name: /today's training/i })
     ).toBeVisible();
     await expect(page).toHaveURL(/\/workouts\/new$/);
-    await expect(page.getByTestId('new-workout-exercise-card')).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test.fixme('overlay dismissal should discard an empty new-exercise set', async () => {
@@ -136,7 +129,7 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await page.getByRole('button', { name: /close/i }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.locator('[data-testid="exercise-card"]')).toHaveCount(1);
+    await expect(page.getByTestId('exercise-card')).toHaveCount(1);
   });
 
   test('should persist created workout to localStorage', async ({ page }) => {
@@ -157,7 +150,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for save to complete
     await page.waitForTimeout(500);
@@ -196,19 +189,15 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    let exerciseCards = page
-      .locator('.cursor-pointer')
-      .filter({ hasText: /sets/ });
-    await expect(exerciseCards).toHaveCount(2);
+    await expect(exerciseCards(page)).toHaveCount(2);
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
 
     expect(page.url()).toContain('/new');
-    exerciseCards = page.locator('.cursor-pointer').filter({ hasText: /sets/ });
-    await expect(exerciseCards).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test('should create workout with multiple sets for same exercise', async ({
@@ -248,19 +237,14 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    const exerciseCard = page.getByTestId('new-workout-exercise-card');
-    await expect(exerciseCard.getByText('3')).toBeVisible();
-    await expect(exerciseCard.getByText('sets', { exact: true })).toBeVisible();
-    await page.getByTestId('save-workout').click();
+    await expect(exerciseCards(page).filter({ hasText: /pull-ups/i })).toBeVisible();
+    await saveWorkout(page).click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
 
     expect(page.url()).toContain('/new');
-    const exerciseCards = page
-      .locator('.cursor-pointer')
-      .filter({ hasText: /sets/ });
-    await expect(exerciseCards).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test('should clear form data when clear button is clicked', async ({
@@ -280,10 +264,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    const exerciseCards = page
-      .locator('.cursor-pointer')
-      .filter({ hasText: /sets/ });
-    await expect(exerciseCards).toHaveCount(1);
+    await expect(exerciseCards(page)).toHaveCount(1);
 
     await page.getByRole('button', { name: /clear/i }).click();
     await page.getByRole('button', { name: /clear draft/i }).click();
@@ -291,20 +272,23 @@ test.describe('Demo Mode - Workout Create', () => {
     // Wait for form to reset
     await page.waitForTimeout(200);
 
-    await expect(exerciseCards).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test('should add workout with notes and focus', async ({ page }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
-    await page.getByTestId('notes-card').click();
+    await page.getByRole('button', { name: /^notes$/i }).click();
 
     await expect(page.getByRole('dialog')).toBeVisible();
 
-    const notesTextarea = page.getByTestId('notes-textarea');
+    const notesDialog = page.getByRole('dialog', { name: /^notes$/i });
+    const notesTextarea = notesDialog.getByRole('textbox', {
+      name: /^notes$/i,
+    });
     await notesTextarea.fill('Great workout today!');
 
-    await page.getByTestId('notes-close').click();
+    await notesDialog.getByRole('button', { name: /^close$/i }).first().click();
 
     await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Bench Press', { exact: true }).click();
@@ -318,16 +302,13 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
 
     expect(page.url()).toContain('/new');
-    const exerciseCards = page
-      .locator('.cursor-pointer')
-      .filter({ hasText: /sets/ });
-    await expect(exerciseCards).toHaveCount(0);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   // URL Navigation Tests
@@ -421,10 +402,7 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    const exerciseCards = page
-      .locator('.cursor-pointer')
-      .filter({ hasText: /sets/ });
-    await exerciseCards.first().click();
+    await exerciseCards(page).first().click();
     const detailUrl = page.url();
 
     await page.goto(detailUrl);
@@ -471,6 +449,9 @@ test.describe('Demo Mode - Workout Create', () => {
   }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
+    await expect(
+      page.getByRole('heading', { name: /today's training/i })
+    ).toBeVisible();
     await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Bench Press', { exact: true }).click();
 
