@@ -23,6 +23,7 @@ bun run test          # Run unit tests (Vitest)
 bun run test:e2e      # Run end-to-end tests (Playwright)
 bun run test:e2e:ci   # Build then run E2E tests (CI mode)
 bun run lint          # Lint with oxlint
+bun run knip          # Check for unused files and dependency drift
 bun run tsc           # Type-check without emitting
 ```
 
@@ -57,8 +58,9 @@ File-based routing via TanStack Router. Routes live in `src/routes/`. The router
 
 ## Testing
 
-- **Unit tests**: Vitest with jsdom — `bun run test`
-- **E2E tests**: Playwright (Chrome) — `bun run test:e2e`
+- **Unit tests**: Vitest with jsdom - `bun run test`
+- **E2E tests**: Playwright (Chrome) - `bun run test:e2e`
+- **Project hygiene**: oxlint and knip - `bun run lint` and `bun run knip`
 - E2E tests live in `tests/e2e/`
 
 ## PWA

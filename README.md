@@ -128,6 +128,7 @@ bun run openapi-ts    # Generate API client from OpenAPI spec
 bun run test          # Run unit tests (Vitest)
 bun run test:e2e      # Run end-to-end tests (Playwright)
 bun run lint          # Lint with oxlint
+bun run knip          # Check for unused files and dependency drift
 bun run tsc           # Type-check without emitting
 ```
 
@@ -151,7 +152,7 @@ bun run tsc           # Type-check without emitting
 
 1. Create a feature branch
 2. Make your changes following the type-safe workflow above
-3. Ensure tests pass: `make test` (backend) and `bun run test` (frontend)
+3. Ensure checks pass: `make test` (backend) and `bun run lint && bun run knip && bun run test` (frontend)
 4. Submit a pull request
 
 ## Documentation

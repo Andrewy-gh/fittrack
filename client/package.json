@@ -14,6 +14,7 @@
     "test:e2e": "bunx playwright test",
     "test:e2e:ci": "bun run build && CI=true bunx playwright test",
     "test:e2e:ui": "bunx playwright test --ui",
+    "knip": "knip",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "prepare": "node scripts/install-husky.mjs"
@@ -56,7 +57,8 @@
     "tailwind-merge": "3.5.0",
     "tailwindcss": "4.2.1",
     "tailwindcss-animate": "^1.0.7",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.81.1",
@@ -64,6 +66,7 @@
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.7.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
@@ -71,6 +74,7 @@
     "@vitest/browser": "^3.2.4",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
+    "knip": "^6.0.4",
     "oxlint": "1.51.0",
     "playwright": "1.58.2",
     "typescript": "5.9.3",

@@ -7,9 +7,11 @@ changed_files="$(git diff --cached --name-only --diff-filter=ACMR)"
 if echo "$changed_files" | grep -q '^client/'; then
   if command -v bun >/dev/null 2>&1; then
     bun run --cwd client lint
+    bun run --cwd client knip
     bun run --cwd client test
   else
     pnpm -C client lint
+    pnpm -C client knip
     pnpm -C client test
   fi
 fi

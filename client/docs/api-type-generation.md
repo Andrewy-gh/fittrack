@@ -297,7 +297,7 @@ project/
 
 ## Next Steps
 
-- Set up Husky pre-commit hooks to ensure types stay in sync
+- Keep Husky pre-commit checks green so client changes pass lint, knip, and tests
 - Add API generation to CI/CD pipelines
 - Consider using generated types in testing
 - Explore advanced OpenAPI features like response examples
