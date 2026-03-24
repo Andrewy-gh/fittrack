@@ -27,7 +27,6 @@ export default function NotesTextarea() {
           <button
             type="button"
             aria-label="Notes"
-            data-testid="notes-card"
             className="w-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <div className="flex items-center gap-2">
@@ -60,7 +59,6 @@ export default function NotesTextarea() {
             onChange={(e) => field.handleChange(e.target.value)}
             autoFocus
             className="min-h-[80px]"
-            data-testid="notes-textarea"
             aria-invalid={field.state.meta.errors.length > 0}
           />
           {field.state.meta.errors.length > 0 && (
@@ -70,7 +68,7 @@ export default function NotesTextarea() {
           )}
         </div>
         <DialogFooter className="sm:justify-start">
-          <DialogClose asChild data-testid="notes-close">
+          <DialogClose asChild>
             <Button type="button" variant="outline">
               Close
             </Button>

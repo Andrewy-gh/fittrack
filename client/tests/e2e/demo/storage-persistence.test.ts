@@ -40,12 +40,13 @@ test.describe('localStorage Persistence', () => {
 
     await page.getByRole('button', { name: /^notes$/i }).click();
 
-    const notesField = page.getByTestId('notes-textarea');
+    const notesDialog = page.getByRole('dialog', { name: /^notes$/i });
+    const notesField = notesDialog.getByRole('textbox', { name: /^notes$/i });
     await notesField.fill('Test notes for persistence');
 
-    await page.getByTestId('notes-close').click();
+    await notesDialog.getByRole('button', { name: /^close$/i }).first().click();
 
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByRole('button', { name: /^save$/i }).click();
 
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 

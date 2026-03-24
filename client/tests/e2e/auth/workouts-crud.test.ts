@@ -23,6 +23,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
     const focus = `E2E Focus ${suffix}`;
     const updatedFocus = `E2E Focus Updated ${suffix}`;
     const exerciseName = `E2E Exercise ${suffix}`;
+    const saveWorkout = page.getByRole('button', { name: /^save$/i });
 
     await page.goto('/workouts');
     await expect(page.getByRole('heading', { name: /workouts/i })).toBeVisible();
@@ -58,7 +59,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
       response.url().includes('/api/workouts') &&
       response.request().method() === 'POST'
     );
-    await page.getByTestId('save-workout').click();
+    await saveWorkout.click();
     const createResponse = await createResponsePromise;
     expect(createResponse.ok()).toBeTruthy();
 
@@ -97,7 +98,7 @@ test.describe('Authenticated - Workouts CRUD', () => {
       response.url().includes('/api/workouts/') &&
       response.request().method() === 'PUT'
     );
-    await page.getByTestId('save-workout').click();
+    await saveWorkout.click();
     const updateResponse = await updateResponsePromise;
     expect(updateResponse.ok()).toBeTruthy();
 

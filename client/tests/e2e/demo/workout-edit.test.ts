@@ -5,6 +5,8 @@ test.describe('Demo Mode - Workout Edit', () => {
     page.getByRole('link', { name: /lower body/i }).first();
   const exerciseCards = (page: import('@playwright/test').Page) =>
     page.getByTestId('edit-workout-exercise-card');
+  const saveWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('button', { name: /^save$/i });
 
   test.beforeEach(async ({ page }) => {
     // Navigate first, then clear localStorage and reload to reinitialize demo data
@@ -36,12 +38,13 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     await page.getByRole('button', { name: /^notes$/i }).click();
 
-    const notesField = page.getByTestId('notes-textarea');
+    const notesDialog = page.getByRole('dialog', { name: /^notes$/i });
+    const notesField = notesDialog.getByRole('textbox', { name: /^notes$/i });
     await notesField.fill('Updated notes in demo mode');
 
-    await page.getByTestId('notes-close').click();
+    await notesDialog.getByRole('button', { name: /^close$/i }).first().click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
@@ -58,13 +61,14 @@ test.describe('Demo Mode - Workout Edit', () => {
     await page.getByRole('link', { name: /edit/i }).click();
 
     await page.getByRole('button', { name: /^notes$/i }).click();
-    
-    const notesField = page.getByTestId('notes-textarea');
+
+    const notesDialog = page.getByRole('dialog', { name: /^notes$/i });
+    const notesField = notesDialog.getByRole('textbox', { name: /^notes$/i });
     await notesField.fill('Test notes for persistence');
 
-    await page.getByTestId('notes-close').click();
+    await notesDialog.getByRole('button', { name: /^close$/i }).first().click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
@@ -106,7 +110,7 @@ test.describe('Demo Mode - Workout Edit', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
     await page.getByRole('link', { name: /edit/i }).click();
@@ -141,7 +145,7 @@ test.describe('Demo Mode - Workout Edit', () => {
       initialExerciseCount - 1
     );
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
     await page.waitForURL('/workouts/**', { timeout: 5000 });
 
     await page.getByRole('link', { name: /edit/i }).click();

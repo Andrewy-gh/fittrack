@@ -454,7 +454,8 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
           <Button
             type="button"
             variant="outline"
-            className="w-full rounded-lg text-base font-semibold"
+            size="action"
+            className="w-full"
             disabled
           >
             <Plus className="mr-2 h-5 w-5" />
@@ -464,14 +465,11 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
           <Button
             type="button"
             variant="outline"
-            className="w-full rounded-lg text-base font-semibold"
+            size="action"
+            className="w-full"
             asChild
           >
-            <Link
-              to="."
-              search={{ addExercise: true }}
-              data-testid="add-exercise"
-            >
+            <Link to="." search={{ addExercise: true }}>
               <Plus className="mr-2 h-5 w-5" />
               Add Exercise
             </Link>
@@ -485,8 +483,8 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
             <Button
               type="submit"
               disabled={!canSubmit || isReorderMode}
-              className="w-full rounded-lg text-base font-semibold"
-              data-testid="save-workout"
+              size="action"
+              className="w-full"
             >
               <Save className="mr-1.5 h-3.5 w-3.5" />
               {isSubmitting ? 'Saving...' : 'Save'}

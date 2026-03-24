@@ -6,7 +6,9 @@ test.describe('Demo Mode - Workout Create', () => {
   const exerciseCards = (page: import('@playwright/test').Page) =>
     page.getByTestId('new-workout-exercise-card');
   const addExercise = (page: import('@playwright/test').Page) =>
-    page.getByTestId('add-exercise');
+    page.getByRole('link', { name: /add exercise/i });
+  const saveWorkout = (page: import('@playwright/test').Page) =>
+    page.getByRole('button', { name: /^save$/i });
 
   test.beforeEach(async ({ page }) => {
     // Navigate first, then clear localStorage and reload to reinitialize demo data
@@ -29,7 +31,7 @@ test.describe('Demo Mode - Workout Create', () => {
   test('should display empty workout form on new page', async ({ page }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
-    await expect(page.getByTestId('save-workout')).toBeVisible();
+    await expect(saveWorkout(page)).toBeVisible();
     await expect(addExercise(page)).toBeVisible();
     await expect(page.getByRole('button', { name: /clear/i })).toBeVisible();
 
@@ -60,7 +62,7 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     await page.waitForTimeout(500);
 
@@ -148,7 +150,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for save to complete
     await page.waitForTimeout(500);
@@ -189,7 +191,7 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await expect(exerciseCards(page)).toHaveCount(2);
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
@@ -236,7 +238,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /back/i }).click();
 
     await expect(exerciseCards(page).filter({ hasText: /pull-ups/i })).toBeVisible();
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
@@ -280,10 +282,13 @@ test.describe('Demo Mode - Workout Create', () => {
 
     await expect(page.getByRole('dialog')).toBeVisible();
 
-    const notesTextarea = page.getByTestId('notes-textarea');
+    const notesDialog = page.getByRole('dialog', { name: /^notes$/i });
+    const notesTextarea = notesDialog.getByRole('textbox', {
+      name: /^notes$/i,
+    });
     await notesTextarea.fill('Great workout today!');
 
-    await page.getByTestId('notes-close').click();
+    await notesDialog.getByRole('button', { name: /^close$/i }).first().click();
 
     await page.getByRole('link', { name: /add exercise/i }).click();
     await page.getByText('Bench Press', { exact: true }).click();
@@ -297,7 +302,7 @@ test.describe('Demo Mode - Workout Create', () => {
     await page.getByRole('button', { name: /save set/i }).click();
     await page.getByRole('button', { name: /back/i }).click();
 
-    await page.getByTestId('save-workout').click();
+    await saveWorkout(page).click();
 
     // Wait for form to reset
     await page.waitForTimeout(500);
