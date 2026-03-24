@@ -5,6 +5,8 @@ test.describe('Demo Mode - Workout Create', () => {
     page.getByRole('link', { name: /lower body/i }).first();
   const exerciseCards = (page: import('@playwright/test').Page) =>
     page.getByTestId('new-workout-exercise-card');
+  const addExercise = (page: import('@playwright/test').Page) =>
+    page.getByTestId('add-exercise');
 
   test.beforeEach(async ({ page }) => {
     // Navigate first, then clear localStorage and reload to reinitialize demo data
@@ -27,10 +29,8 @@ test.describe('Demo Mode - Workout Create', () => {
   test('should display empty workout form on new page', async ({ page }) => {
     await page.getByRole('link', { name: /new workout/i }).click();
 
-    await expect(
-      page.getByRole('link', { name: /add exercise/i })
-    ).toBeVisible();
     await expect(page.getByTestId('save-workout')).toBeVisible();
+    await expect(addExercise(page)).toBeVisible();
     await expect(page.getByRole('button', { name: /clear/i })).toBeVisible();
 
     await expect(exerciseCards(page)).toHaveCount(0);

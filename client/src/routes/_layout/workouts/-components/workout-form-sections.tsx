@@ -467,7 +467,11 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
             className="w-full rounded-lg text-base font-semibold"
             asChild
           >
-            <Link to="." search={{ addExercise: true }}>
+            <Link
+              to="."
+              search={{ addExercise: true }}
+              data-testid="add-exercise"
+            >
               <Plus className="mr-2 h-5 w-5" />
               Add Exercise
             </Link>
