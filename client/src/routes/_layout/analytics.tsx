@@ -6,12 +6,15 @@ import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
 } from '@/lib/api/exercises';
-import { contributionDataQueryOptions } from '@/lib/api/workouts';
-import { buildDemoContributionData } from '@/lib/analytics';
 import {
+  contributionDataQueryOptions,
+  workoutsFocusValuesQueryOptions,
+} from '@/lib/api/workouts';
+import {
+  getDemoContributionDataQueryOptions,
   getDemoExercisesByIdQueryOptions,
   getDemoExercisesQueryOptions,
-  getDemoWorkoutsQueryOptions,
+  getDemoWorkoutsFocusValuesQueryOptions,
 } from '@/lib/demo-data/query-options';
 import { clearDemoData, initializeDemoData } from '@/lib/demo-data/storage';
 
@@ -29,12 +32,14 @@ export const Route = createFileRoute('/_layout/analytics')({
       await Promise.all([
         context.queryClient.ensureQueryData(exercisesQueryOptions()),
         context.queryClient.ensureQueryData(contributionDataQueryOptions()),
+        context.queryClient.ensureQueryData(workoutsFocusValuesQueryOptions()),
       ]);
     } else {
       initializeDemoData();
       await Promise.all([
         context.queryClient.ensureQueryData(getDemoExercisesQueryOptions()),
-        context.queryClient.ensureQueryData(getDemoWorkoutsQueryOptions()),
+        context.queryClient.ensureQueryData(getDemoContributionDataQueryOptions()),
+        context.queryClient.ensureQueryData(getDemoWorkoutsFocusValuesQueryOptions()),
       ]);
     }
   },
@@ -69,14 +74,25 @@ function RouteComponent() {
     ...contributionDataQueryOptions(),
     enabled: Boolean(user),
   });
-  const demoWorkoutsQuery = useQuery({
-    ...getDemoWorkoutsQueryOptions(),
+  const demoContributionQuery = useQuery({
+    ...getDemoContributionDataQueryOptions(),
+    enabled: !user,
+  });
+  const authedFocusValuesQuery = useQuery({
+    ...workoutsFocusValuesQueryOptions(),
+    enabled: Boolean(user),
+  });
+  const demoFocusValuesQuery = useQuery({
+    ...getDemoWorkoutsFocusValuesQueryOptions(),
     enabled: !user,
   });
 
   const workoutContributionData = user
     ? authedContributionQuery.data
-    : buildDemoContributionData(demoWorkoutsQuery.data ?? []);
+    : demoContributionQuery.data;
+  const workoutFocusValues = user
+    ? (authedFocusValuesQuery.data ?? [])
+    : (demoFocusValuesQuery.data ?? []);
 
   return (
     <AnalyticsPage
@@ -90,6 +106,7 @@ function RouteComponent() {
       exerciseSets={exerciseDetailQuery.data?.sets}
       isDemoMode={!user}
       workoutContributionData={workoutContributionData}
+      workoutFocusValues={workoutFocusValues}
     />
   );
 }

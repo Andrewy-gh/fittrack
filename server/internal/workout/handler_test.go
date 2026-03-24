@@ -960,17 +960,17 @@ func TestWorkoutService_ParseWorkouts(t *testing.T) {
 		},
 		{
 			name:  "single workout with focus",
-			input: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}]`),
+			input: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength", "volume": 2250}]`),
 			expected: []WorkoutSummary{
-				{ID: 1, Time: "2025-01-15T10:00:00Z", Focus: stringPtr("Strength")},
+				{ID: 1, Time: "2025-01-15T10:00:00Z", Focus: stringPtr("Strength"), Volume: 2250},
 			},
 		},
 		{
 			name:  "multiple workouts",
-			input: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}, {"id": 2, "time": "2025-01-15T14:00:00Z", "focus": null}]`),
+			input: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength", "volume": 2250}, {"id": 2, "time": "2025-01-15T14:00:00Z", "focus": null, "volume": 1800}]`),
 			expected: []WorkoutSummary{
-				{ID: 1, Time: "2025-01-15T10:00:00Z", Focus: stringPtr("Strength")},
-				{ID: 2, Time: "2025-01-15T14:00:00Z", Focus: nil},
+				{ID: 1, Time: "2025-01-15T10:00:00Z", Focus: stringPtr("Strength"), Volume: 2250},
+				{ID: 2, Time: "2025-01-15T14:00:00Z", Focus: nil, Volume: 1800},
 			},
 		},
 		{
@@ -1004,7 +1004,7 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 			{
 				Date:     pgtype.Date{Time: testDate, Valid: true},
 				Count:    5,
-				Workouts: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}]`),
+				Workouts: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength", "volume": 2250}]`),
 			},
 		}
 
@@ -1016,6 +1016,7 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 		assert.Equal(t, 1, result[0].Level) // Static threshold: 5 < 6, so level 1
 		assert.Len(t, result[0].Workouts, 1)
 		assert.Equal(t, int32(1), result[0].Workouts[0].ID)
+		assert.Equal(t, 2250.0, result[0].Workouts[0].Volume)
 	})
 
 	t.Run("handles multiple workouts", func(t *testing.T) {
@@ -1024,7 +1025,7 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 			{
 				Date:     pgtype.Date{Time: testDate, Valid: true},
 				Count:    20,
-				Workouts: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength"}, {"id": 2, "time": "2025-01-15T14:00:00Z", "focus": null}, {"id": 3, "time": "2025-01-15T18:00:00Z", "focus": "Cardio"}]`),
+				Workouts: []byte(`[{"id": 1, "time": "2025-01-15T10:00:00Z", "focus": "Strength", "volume": 2250}, {"id": 2, "time": "2025-01-15T14:00:00Z", "focus": null, "volume": 1800}, {"id": 3, "time": "2025-01-15T18:00:00Z", "focus": "Cardio", "volume": 950}]`),
 			},
 		}
 
@@ -1036,6 +1037,7 @@ func TestWorkoutService_ConvertContributionRows(t *testing.T) {
 		assert.Equal(t, int32(1), result[0].Workouts[0].ID)
 		assert.Equal(t, int32(2), result[0].Workouts[1].ID)
 		assert.Equal(t, int32(3), result[0].Workouts[2].ID)
+		assert.Equal(t, 950.0, result[0].Workouts[2].Volume)
 	})
 }
 
@@ -1465,6 +1467,7 @@ func TestContributionData_Integration(t *testing.T) {
 		for _, workout := range todayData.Workouts {
 			foundIDs[workout.ID] = true
 			assert.NotEmpty(t, workout.Time, "Workout should have a time")
+			assert.Greater(t, workout.Volume, 0.0, "Workout should include volume")
 		}
 
 		// Verify all workout IDs are present

@@ -576,6 +576,9 @@ export const workout_WorkoutSummarySchema = {
     time: {
       type: "string",
     },
+    volume: {
+      type: "number",
+    },
   },
 } as const;
 

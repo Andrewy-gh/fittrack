@@ -15,6 +15,7 @@ import {
 import { WorkoutContributionGraph } from '@/components/workouts/workout-contribution-graph';
 import { getWorkoutSummary } from '@/lib/analytics';
 import { AnalyticsSummaryCards } from './analytics-summary-cards';
+import { WorkoutVolumeChart } from './workout-volume-chart';
 
 export interface AnalyticsPageProps {
   isLoadingExercises: boolean;
@@ -25,6 +26,7 @@ export interface AnalyticsPageProps {
   exerciseSets?: ExerciseExerciseWithSetsResponse[];
   isDemoMode: boolean;
   workoutContributionData?: WorkoutContributionDataResponse;
+  workoutFocusValues?: string[];
 }
 
 export function AnalyticsPage({
@@ -36,6 +38,7 @@ export function AnalyticsPage({
   exerciseSets = [],
   isDemoMode,
   workoutContributionData,
+  workoutFocusValues = [],
 }: AnalyticsPageProps) {
   const summary = getWorkoutSummary(workoutContributionData?.days);
 
@@ -125,6 +128,19 @@ export function AnalyticsPage({
             exerciseSets={exerciseSets}
             isDemoMode={isDemoMode}
           />
+        )}
+
+        {workoutContributionData ? (
+          <WorkoutVolumeChart
+            data={workoutContributionData}
+            focusValues={workoutFocusValues}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Loading workout volume...
+            </CardContent>
+          </Card>
         )}
 
         {workoutContributionData ? (

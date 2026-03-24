@@ -1535,6 +1535,9 @@ const docTemplate = `{
                 },
                 "time": {
                     "type": "string"
+                },
+                "volume": {
+                    "type": "number"
                 }
             }
         },

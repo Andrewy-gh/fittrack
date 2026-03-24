@@ -3,6 +3,7 @@ import { queryClient } from '../api/api';
 import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
+  WorkoutContributionDataResponse,
   ExerciseExerciseResponse,
   ExerciseExerciseDetailResponse,
   ExerciseRecentSetsResponse,
@@ -10,8 +11,10 @@ import type {
   WorkoutUpdateWorkoutRequest,
   ResponseSuccessResponse,
 } from './types';
+import { buildDemoContributionData } from '@/lib/analytics';
 import {
   getAllExercises,
+  getAllWorkoutsForContribution,
   createExercise,
   updateExercise,
   deleteExercise,
@@ -50,6 +53,18 @@ export const getDemoWorkoutsByIdQueryKey = (id: number) =>
 
 export const getDemoWorkoutsFocusValuesQueryKey = () =>
   [{ _id: 'demo_getWorkoutsFocusValues' }] as const;
+
+export const getDemoContributionDataQueryKey = () =>
+  [{ _id: 'demo_getWorkoutsContributionData' }] as const;
+
+function invalidateDemoWorkoutAnalyticsQueries() {
+  queryClient.invalidateQueries({
+    queryKey: getDemoContributionDataQueryKey(),
+  });
+  queryClient.invalidateQueries({
+    queryKey: getDemoWorkoutsFocusValuesQueryKey(),
+  });
+}
 
 // ===========================
 // Exercise Query Options
@@ -116,6 +131,16 @@ export const getDemoWorkoutsFocusValuesQueryOptions = () => {
     queryFn: async (): Promise<string[]> => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       return getWorkoutFocusValues();
+    },
+  });
+};
+
+export const getDemoContributionDataQueryOptions = () => {
+  return queryOptions({
+    queryKey: getDemoContributionDataQueryKey(),
+    queryFn: async (): Promise<WorkoutContributionDataResponse> => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return buildDemoContributionData(getAllWorkoutsForContribution());
     },
   });
 };
@@ -209,6 +234,7 @@ export const postDemoWorkoutsMutation = (): UseMutationOptions<
     queryClient.invalidateQueries({
       queryKey: getDemoExercisesQueryKey(),
     });
+    invalidateDemoWorkoutAnalyticsQueries();
   },
 });
 
@@ -229,6 +255,7 @@ export const putDemoWorkoutsByIdMutation = (): UseMutationOptions<
       queryKey: getDemoWorkoutsQueryKey(),
     });
     queryClient.setQueryData(getDemoWorkoutsByIdQueryKey(id), getWorkoutById(id));
+    invalidateDemoWorkoutAnalyticsQueries();
   },
 });
 
@@ -251,6 +278,7 @@ export const deleteDemoWorkoutsByIdMutation = (): UseMutationOptions<
     queryClient.removeQueries({
       queryKey: getDemoWorkoutsByIdQueryKey(id),
     });
+    invalidateDemoWorkoutAnalyticsQueries();
   },
 });
 

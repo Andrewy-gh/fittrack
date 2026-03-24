@@ -442,6 +442,8 @@ definitions:
         type: integer
       time:
         type: string
+      volume:
+        type: number
     type: object
   workout.WorkoutWithSetsResponse:
     properties:
