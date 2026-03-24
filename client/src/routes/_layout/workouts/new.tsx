@@ -11,9 +11,8 @@ import { X } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
 import {
-  clearLocalStorage,
-  loadFromLocalStorage,
-  saveToLocalStorage,
+  type WorkoutDraftStorage,
+  workoutDraftStorage,
 } from '@/lib/local-storage';
 import { type DbExercise } from '@/lib/api/exercises';
 import { getInitialValues, MOCK_VALUES } from './-components/form-options';
@@ -126,16 +125,18 @@ function WorkoutExerciseSection({
   );
 }
 
-function WorkoutTracker({
+export function WorkoutTracker({
   user,
   exercises,
   workouts,
   workoutsFocus,
+  draftStorage = workoutDraftStorage,
 }: {
   user: CurrentUser | CurrentInternalUser | null; // need user for localStorage
   exercises: DbExercise[];
   workouts: WorkoutWorkoutResponse[];
   workoutsFocus: WorkoutFocus[];
+  draftStorage?: WorkoutDraftStorage;
 }) {
   const { addExercise, exerciseIndex, newExercise } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -148,10 +149,10 @@ function WorkoutTracker({
   const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
   const saveWorkout = user ? saveWorkoutApi : saveWorkoutDemo;
   const form = useAppForm({
-    defaultValues: getInitialValues(user?.id),
+    defaultValues: getInitialValues(user?.id, draftStorage),
     listeners: {
       onChange: ({ formApi }) => {
-        saveToLocalStorage(formApi.state.values, user?.id);
+        draftStorage.save(formApi.state.values, user?.id);
       },
       onChangeDebounceMs: 500,
     },
@@ -167,7 +168,7 @@ function WorkoutTracker({
         {
           onSuccess: () => {
             toast.success('Workout saved successfully');
-            clearLocalStorage(user?.id);
+            draftStorage.clear(user?.id);
             form.reset(MOCK_VALUES);
             navigate({ search: {} });
           },
@@ -211,7 +212,7 @@ function WorkoutTracker({
     const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat);
 
     form.reset(nextDraft);
-    saveToLocalStorage(nextDraft, user?.id);
+    draftStorage.save(nextDraft, user?.id);
     navigate({ search: {} });
     toast.success('Loaded workout structure');
   };
@@ -219,7 +220,7 @@ function WorkoutTracker({
   const handleRepeatWorkout = async (workoutId: number) => {
     const hasDraft =
       hasWorkoutDraftContent(form.state.values) ||
-      loadFromLocalStorage(user?.id) !== null;
+      draftStorage.load(user?.id) !== null;
     if (hasDraft) {
       setPendingTemplateWorkoutId(workoutId);
       return;
@@ -229,7 +230,7 @@ function WorkoutTracker({
   };
 
   const handleClearForm = () => {
-    clearLocalStorage(user?.id);
+    draftStorage.clear(user?.id);
     form.reset(MOCK_VALUES);
     navigate({ search: {} });
     setIsClearDialogOpen(false);

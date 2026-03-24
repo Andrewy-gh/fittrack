@@ -11,8 +11,8 @@ import { WorkoutDetailSummaryCards } from '@/components/workouts/workout-detail-
 import { WorkoutNotesCard } from '@/components/workouts/workout-notes-card';
 import { buildWorkoutDraftFromHistory } from '@/lib/workout-insights';
 import {
-  loadFromLocalStorage,
-  saveToLocalStorage,
+  type WorkoutDraftStorage,
+  workoutDraftStorage,
 } from '@/lib/local-storage';
 import { toast } from 'sonner';
 
@@ -83,7 +83,10 @@ export function WorkoutDetail({ workout }: WorkoutDetailProps) {
   return <WorkoutDetailBase workout={workout} />;
 }
 
-export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
+export function WorkoutDetailEditable({
+  workout,
+  draftStorage = workoutDraftStorage,
+}: WorkoutDetailProps & { draftStorage?: WorkoutDraftStorage }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
@@ -98,7 +101,7 @@ export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
   };
 
   const handleRepeatAsNew = () => {
-    const hasDraft = loadFromLocalStorage(user?.id) !== null;
+    const hasDraft = draftStorage.load(user?.id) !== null;
     if (
       hasDraft &&
       !confirm('Replace your current workout draft with this workout?')
@@ -107,7 +110,7 @@ export function WorkoutDetailEditable({ workout }: WorkoutDetailProps) {
     }
 
     const nextDraft = buildWorkoutDraftFromHistory(workout);
-    saveToLocalStorage(nextDraft, user?.id);
+    draftStorage.save(nextDraft, user?.id);
     toast.success('Workout copied into a new draft');
     navigate({ to: '/workouts/new' });
   };

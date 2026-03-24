@@ -22,7 +22,7 @@ import {
 } from "@/lib/api/workouts";
 import { getDemoWorkoutsQueryOptions } from "@/lib/demo-data/query-options";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
-import { loadFromLocalStorage } from "@/lib/local-storage";
+import { workoutDraftStorage } from "@/lib/local-storage";
 import { WorkoutSummaryCards } from "@/components/workouts/workout-summary-cards";
 import { WorkoutContributionGraph } from "@/components/workouts/workout-contribution-graph";
 import { ContributionGraphError } from "@/components/workouts/contribution-graph-error";
@@ -76,7 +76,7 @@ function RouteComponent() {
   });
 
   // Check for workout in progress (pass user.id if authenticated, undefined for demo)
-  const hasWorkoutInProgress = loadFromLocalStorage(user?.id) !== null;
+  const hasWorkoutInProgress = workoutDraftStorage.load(user?.id) !== null;
 
   // Determine default open state for contribution graph (desktop vs mobile)
   const defaultContributionGraphOpen =
