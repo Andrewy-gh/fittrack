@@ -145,4 +145,39 @@ describe('ExerciseMetricCharts', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Session Best 1RM')).toBeInTheDocument();
   });
+
+  it('labels the metrics section as working-set based', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        points: [
+          {
+            x: '1',
+            date: '2026-03-01',
+            workout_id: 42,
+            session_best_e1rm: 225,
+            session_avg_e1rm: 220,
+            session_avg_intensity: 84.5,
+            session_best_intensity: 91.2,
+            total_volume_working: 5400,
+          },
+        ],
+      },
+      isFetching: false,
+      isPending: false,
+    });
+
+    render(
+      <ExerciseMetricCharts
+        exerciseId={1}
+        exerciseSets={[]}
+        isDemoMode={false}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.'
+      )
+    ).toBeInTheDocument();
+  });
 });

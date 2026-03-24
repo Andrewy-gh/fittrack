@@ -52,7 +52,8 @@ export function ExerciseMetricCharts({
         <div>
           <h2 className="text-xl font-semibold">Session Metrics</h2>
           <p className="text-sm text-muted-foreground">
-            e1RM and intensity are computed from working sets. Intensity can exceed 100%.
+            e1RM, intensity, and volume are computed from working sets. Intensity can exceed
+            100%.
           </p>
         </div>
 
