@@ -4,6 +4,7 @@ import {
   getExercisesQueryKey,
   getWorkoutsByIdQueryKey,
   getWorkoutsByIdQueryOptions,
+  getWorkoutsFocusValuesQueryKey,
   getWorkoutsQueryKey,
   getWorkoutsQueryOptions,
   getWorkoutsFocusValuesQueryOptions,
@@ -45,6 +46,15 @@ export function contributionDataQueryOptions() {
   return getWorkoutsContributionDataQueryOptions();
 }
 
+function invalidateWorkoutAnalyticsQueries() {
+  queryClient.invalidateQueries({
+    queryKey: getWorkoutsContributionDataQueryKey(),
+  });
+  queryClient.invalidateQueries({
+    queryKey: getWorkoutsFocusValuesQueryKey(),
+  });
+}
+
 // MARK: Create
 // ! TODO: Return data from server to invalidate recent sets for exercise
 // ! TODO: if I want to be granular, but stale time is so low not a priority
@@ -58,9 +68,7 @@ export function useSaveWorkoutMutation() {
       queryClient.invalidateQueries({
         queryKey: getExercisesQueryKey(),
       });
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsContributionDataQueryKey(),
-      });
+      invalidateWorkoutAnalyticsQueries();
     },
   });
 }
@@ -76,6 +84,7 @@ export function useUpdateWorkoutMutation() {
       queryClient.invalidateQueries({
         queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
       });
+      invalidateWorkoutAnalyticsQueries();
     },
   });
 }
@@ -96,9 +105,7 @@ export function useDeleteWorkoutMutation() {
       queryClient.removeQueries({
         queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
       });
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsContributionDataQueryKey(),
-      });
+      invalidateWorkoutAnalyticsQueries();
     },
   });
 }
