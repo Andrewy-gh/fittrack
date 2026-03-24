@@ -167,11 +167,10 @@ SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg
 FROM workout_metrics
 ORDER BY workout_day ASC;
 
--- name: GetExerciseMetricsHistoryWeekly6M :many
+-- name: GetExerciseMetricsHistoryRaw6M :many
 WITH working_sets AS (
     SELECT
         w.id AS workout_id,
-        w.date AS workout_date,
         w.date::date AS workout_day,
         COALESCE(s.weight, 0)::numeric AS weight,
         s.reps AS reps,
@@ -186,80 +185,19 @@ WITH working_sets AS (
       AND s.user_id = $2
       AND s.set_type = 'working'
 ),
-workout_metrics AS (
-    SELECT
-        workout_id,
-        MIN(workout_day) AS workout_day,
-        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
-        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
-        COALESCE(AVG(
-            CASE
-                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
-                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
-            END
-        ), 0)::float8 AS session_avg_intensity,
-        COALESCE(MAX(
-            CASE
-                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
-                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
-            END
-        ), 0)::float8 AS session_best_intensity,
-        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
-    FROM working_sets
-    GROUP BY workout_id
-),
 end_day AS (
     SELECT MAX(workout_day) AS end_day
-    FROM workout_metrics
+    FROM working_sets
 ),
-filtered_workouts AS (
+filtered AS (
     SELECT *
-    FROM workout_metrics, end_day
+    FROM working_sets, end_day
     WHERE workout_day >= end_day - interval '6 months'
 ),
-bucketed AS (
-    SELECT
-        date_trunc('week', workout_day)::date AS bucket_day,
-        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
-        COALESCE(AVG(session_avg_e1rm), 0)::float8 AS session_avg_e1rm,
-        COALESCE(AVG(session_avg_intensity), 0)::float8 AS session_avg_intensity,
-        COALESCE(MAX(session_best_intensity), 0)::float8 AS session_best_intensity,
-        COALESCE(AVG(total_volume_working), 0)::float8 AS total_volume_working
-    FROM filtered_workouts
-    GROUP BY bucket_day
-)
-SELECT *
-FROM (
-    SELECT *
-    FROM bucketed
-    ORDER BY bucket_day DESC
-    LIMIT 26
-) t
-ORDER BY bucket_day ASC;
-
--- name: GetExerciseMetricsHistoryMonthlyYear :many
-WITH working_sets AS (
-    SELECT
-        w.id AS workout_id,
-        w.date AS workout_date,
-        w.date::date AS workout_day,
-        COALESCE(s.weight, 0)::numeric AS weight,
-        s.reps AS reps,
-        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
-        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
-        e.historical_1rm AS historical_1rm,
-        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
-    FROM "set" s
-    JOIN workout w ON w.id = s.workout_id
-    JOIN exercise e ON e.id = s.exercise_id
-    WHERE s.exercise_id = $1
-      AND s.user_id = $2
-      AND s.set_type = 'working'
-),
 workout_metrics AS (
     SELECT
         workout_id,
-        MIN(workout_day) AS workout_day,
+        MIN(workout_day)::date AS workout_day,
         COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
         COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
         COALESCE(AVG(
@@ -275,37 +213,65 @@ workout_metrics AS (
             END
         ), 0)::float8 AS session_best_intensity,
         COALESCE(SUM(volume), 0)::float8 AS total_volume_working
-    FROM working_sets
+    FROM filtered
     GROUP BY workout_id
+)
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC;
+
+-- name: GetExerciseMetricsHistoryRawYear :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
 ),
 end_day AS (
     SELECT MAX(workout_day) AS end_day
-    FROM workout_metrics
+    FROM working_sets
 ),
-filtered_workouts AS (
+filtered AS (
     SELECT *
-    FROM workout_metrics, end_day
+    FROM working_sets, end_day
     WHERE workout_day >= end_day - interval '1 year'
 ),
-bucketed AS (
+workout_metrics AS (
     SELECT
-        date_trunc('month', workout_day)::date AS bucket_day,
+        workout_id,
+        MIN(workout_day)::date AS workout_day,
         COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
-        COALESCE(AVG(session_avg_e1rm), 0)::float8 AS session_avg_e1rm,
-        COALESCE(AVG(session_avg_intensity), 0)::float8 AS session_avg_intensity,
-        COALESCE(MAX(session_best_intensity), 0)::float8 AS session_best_intensity,
-        COALESCE(AVG(total_volume_working), 0)::float8 AS total_volume_working
-    FROM filtered_workouts
-    GROUP BY bucket_day
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM filtered
+    GROUP BY workout_id
 )
-SELECT *
-FROM (
-    SELECT *
-    FROM bucketed
-    ORDER BY bucket_day DESC
-    LIMIT 12
-) t
-ORDER BY bucket_day ASC;
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one

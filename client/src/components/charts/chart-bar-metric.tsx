@@ -12,7 +12,6 @@ import {
 import { format, parseISO } from 'date-fns';
 
 import {
-  getDateFormat,
   getResponsiveValue,
   responsiveConfig,
   useBreakpoint,
@@ -28,6 +27,7 @@ export type MetricPoint = {
 };
 
 type Unit = 'lb' | '%' | 'vol';
+type MetricsChartBucket = 'workout' | 'day' | 'week' | 'month';
 
 function formatValue(unit: Unit, value: number) {
   if (unit === '%') return `${value.toFixed(1)}%`;
@@ -39,6 +39,7 @@ export function ChartBarMetric({
   title,
   description,
   range,
+  bucket,
   data,
   unit,
   barColorVar = 'var(--color-primary)',
@@ -47,6 +48,7 @@ export function ChartBarMetric({
   title: string;
   description?: string;
   range: RangeType;
+  bucket?: MetricsChartBucket;
   data: MetricPoint[];
   unit: Unit;
   barColorVar?: string;
@@ -54,6 +56,8 @@ export function ChartBarMetric({
 }) {
   const breakpoint = useBreakpoint();
   const isWorkoutNavigationEnabled = breakpoint !== 'mobile';
+  const resolvedBucket =
+    bucket ?? (range === 'Y' ? 'month' : range === '6M' ? 'week' : 'workout');
 
   const barWidth = getResponsiveValue(responsiveConfig.barWidth, breakpoint);
   const yAxisWidth = getResponsiveValue(responsiveConfig.yAxisWidth, breakpoint);
@@ -71,7 +75,7 @@ export function ChartBarMetric({
   const tooltipLabelFormatter: TooltipProps<number, string>['labelFormatter'] = (x) => {
     const date = dateByX.get(String(x));
     if (!date) return '';
-    const dateFormat = range === 'Y' ? 'MMM yyyy' : 'PPP';
+    const dateFormat = resolvedBucket === 'month' ? 'MMM yyyy' : 'PPP';
     return format(parseISO(date), dateFormat);
   };
 
@@ -129,7 +133,7 @@ export function ChartBarMetric({
                   tickFormatter={(x) => {
                     const date = dateByX.get(String(x));
                     if (!date) return '';
-                    return format(parseISO(date), getDateFormat(range));
+                    return format(parseISO(date), getAxisDateFormat(resolvedBucket));
                   }}
                   tick={{ fill: 'var(--color-foreground)' }}
                 />
@@ -180,4 +184,8 @@ export function ChartBarMetric({
       </div>
     </section>
   );
+}
+
+function getAxisDateFormat(bucket: MetricsChartBucket): string {
+  return bucket === 'month' ? 'MMM yyyy' : 'MMM d';
 }

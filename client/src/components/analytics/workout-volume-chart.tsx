@@ -88,6 +88,13 @@ export function WorkoutVolumeChart({
           title={title}
           description={description}
           range={selectedRange}
+          bucket={
+            selectedRange === 'Y'
+              ? 'month'
+              : selectedRange === '6M'
+                ? 'week'
+                : 'day'
+          }
           data={chartData}
           unit="vol"
         />

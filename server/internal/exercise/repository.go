@@ -348,23 +348,24 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 		}
 	case "6M":
 		{
-			rows, err := er.queries.GetExerciseMetricsHistoryWeekly6M(ctx, db.GetExerciseMetricsHistoryWeekly6MParams{
+			rows, err := er.queries.GetExerciseMetricsHistoryRaw6M(ctx, db.GetExerciseMetricsHistoryRaw6MParams{
 				ExerciseID: req.ExerciseID,
 				UserID:     userID,
 			})
 			if err != nil {
-				return nil, "", fmt.Errorf("get exercise metrics history weekly 6M query failed: %w", err)
+				return nil, "", fmt.Errorf("get exercise metrics history raw 6M query failed: %w", err)
 			}
 
 			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
 			for _, row := range rows {
-				if !row.BucketDay.Valid {
+				workoutID := row.WorkoutID
+				if !row.WorkoutDay.Valid {
 					continue
 				}
-				day := row.BucketDay.Time
 				points = append(points, ExerciseMetricsHistoryPoint{
-					X:                    day.Format("2006-01-02"),
-					Date:                 day,
+					X:                    fmt.Sprintf("%d", workoutID),
+					Date:                 row.WorkoutDay.Time,
+					WorkoutID:            &workoutID,
 					SessionBestE1RM:      row.SessionBestE1rm,
 					SessionAvgE1RM:       row.SessionAvgE1rm,
 					SessionAvgIntensity:  row.SessionAvgIntensity,
@@ -372,27 +373,28 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 					TotalVolumeWorking:   row.TotalVolumeWorking,
 				})
 			}
-			return points, MetricsHistoryBucketWeek, nil
+			return points, MetricsHistoryBucketWorkout, nil
 		}
 	case "Y":
 		{
-			rows, err := er.queries.GetExerciseMetricsHistoryMonthlyYear(ctx, db.GetExerciseMetricsHistoryMonthlyYearParams{
+			rows, err := er.queries.GetExerciseMetricsHistoryRawYear(ctx, db.GetExerciseMetricsHistoryRawYearParams{
 				ExerciseID: req.ExerciseID,
 				UserID:     userID,
 			})
 			if err != nil {
-				return nil, "", fmt.Errorf("get exercise metrics history monthly year query failed: %w", err)
+				return nil, "", fmt.Errorf("get exercise metrics history raw year query failed: %w", err)
 			}
 
 			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
 			for _, row := range rows {
-				if !row.BucketDay.Valid {
+				workoutID := row.WorkoutID
+				if !row.WorkoutDay.Valid {
 					continue
 				}
-				day := row.BucketDay.Time
 				points = append(points, ExerciseMetricsHistoryPoint{
-					X:                    day.Format("2006-01-02"),
-					Date:                 day,
+					X:                    fmt.Sprintf("%d", workoutID),
+					Date:                 row.WorkoutDay.Time,
+					WorkoutID:            &workoutID,
 					SessionBestE1RM:      row.SessionBestE1rm,
 					SessionAvgE1RM:       row.SessionAvgE1rm,
 					SessionAvgIntensity:  row.SessionAvgIntensity,
@@ -400,7 +402,7 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 					TotalVolumeWorking:   row.TotalVolumeWorking,
 				})
 			}
-			return points, MetricsHistoryBucketMonth, nil
+			return points, MetricsHistoryBucketWorkout, nil
 		}
 	default:
 		return nil, "", fmt.Errorf("invalid range: %q", req.Range)

@@ -381,11 +381,10 @@ func (q *Queries) GetExerciseDetail(ctx context.Context, arg GetExerciseDetailPa
 	return i, err
 }
 
-const getExerciseMetricsHistoryMonthlyYear = `-- name: GetExerciseMetricsHistoryMonthlyYear :many
+const getExerciseMetricsHistoryRaw6M = `-- name: GetExerciseMetricsHistoryRaw6M :many
 WITH working_sets AS (
     SELECT
         w.id AS workout_id,
-        w.date AS workout_date,
         w.date::date AS workout_day,
         COALESCE(s.weight, 0)::numeric AS weight,
         s.reps AS reps,
@@ -400,10 +399,19 @@ WITH working_sets AS (
       AND s.user_id = $2
       AND s.set_type = 'working'
 ),
+end_day AS (
+    SELECT MAX(workout_day) AS end_day
+    FROM working_sets
+),
+filtered AS (
+    SELECT workout_id, workout_day, weight, reps, volume, e1rm, historical_1rm, session_best_e1rm, end_day
+    FROM working_sets, end_day
+    WHERE workout_day >= end_day - interval '6 months'
+),
 workout_metrics AS (
     SELECT
         workout_id,
-        MIN(workout_day) AS workout_day,
+        MIN(workout_day)::date AS workout_day,
         COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
         COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
         COALESCE(AVG(
@@ -419,46 +427,22 @@ workout_metrics AS (
             END
         ), 0)::float8 AS session_best_intensity,
         COALESCE(SUM(volume), 0)::float8 AS total_volume_working
-    FROM working_sets
+    FROM filtered
     GROUP BY workout_id
-),
-end_day AS (
-    SELECT MAX(workout_day) AS end_day
-    FROM workout_metrics
-),
-filtered_workouts AS (
-    SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working, end_day
-    FROM workout_metrics, end_day
-    WHERE workout_day >= end_day - interval '1 year'
-),
-bucketed AS (
-    SELECT
-        date_trunc('month', workout_day)::date AS bucket_day,
-        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
-        COALESCE(AVG(session_avg_e1rm), 0)::float8 AS session_avg_e1rm,
-        COALESCE(AVG(session_avg_intensity), 0)::float8 AS session_avg_intensity,
-        COALESCE(MAX(session_best_intensity), 0)::float8 AS session_best_intensity,
-        COALESCE(AVG(total_volume_working), 0)::float8 AS total_volume_working
-    FROM filtered_workouts
-    GROUP BY bucket_day
 )
-SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
-FROM (
-    SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
-    FROM bucketed
-    ORDER BY bucket_day DESC
-    LIMIT 12
-) t
-ORDER BY bucket_day ASC
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC
 `
 
-type GetExerciseMetricsHistoryMonthlyYearParams struct {
+type GetExerciseMetricsHistoryRaw6MParams struct {
 	ExerciseID int32  `json:"exercise_id"`
 	UserID     string `json:"user_id"`
 }
 
-type GetExerciseMetricsHistoryMonthlyYearRow struct {
-	BucketDay            pgtype.Date `json:"bucket_day"`
+type GetExerciseMetricsHistoryRaw6MRow struct {
+	WorkoutID            int32       `json:"workout_id"`
+	WorkoutDay           pgtype.Date `json:"workout_day"`
 	SessionBestE1rm      float64     `json:"session_best_e1rm"`
 	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
 	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
@@ -466,17 +450,18 @@ type GetExerciseMetricsHistoryMonthlyYearRow struct {
 	TotalVolumeWorking   float64     `json:"total_volume_working"`
 }
 
-func (q *Queries) GetExerciseMetricsHistoryMonthlyYear(ctx context.Context, arg GetExerciseMetricsHistoryMonthlyYearParams) ([]GetExerciseMetricsHistoryMonthlyYearRow, error) {
-	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryMonthlyYear, arg.ExerciseID, arg.UserID)
+func (q *Queries) GetExerciseMetricsHistoryRaw6M(ctx context.Context, arg GetExerciseMetricsHistoryRaw6MParams) ([]GetExerciseMetricsHistoryRaw6MRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryRaw6M, arg.ExerciseID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetExerciseMetricsHistoryMonthlyYearRow
+	var items []GetExerciseMetricsHistoryRaw6MRow
 	for rows.Next() {
-		var i GetExerciseMetricsHistoryMonthlyYearRow
+		var i GetExerciseMetricsHistoryRaw6MRow
 		if err := rows.Scan(
-			&i.BucketDay,
+			&i.WorkoutID,
+			&i.WorkoutDay,
 			&i.SessionBestE1rm,
 			&i.SessionAvgE1rm,
 			&i.SessionAvgIntensity,
@@ -687,11 +672,10 @@ func (q *Queries) GetExerciseMetricsHistoryRawWeek(ctx context.Context, arg GetE
 	return items, nil
 }
 
-const getExerciseMetricsHistoryWeekly6M = `-- name: GetExerciseMetricsHistoryWeekly6M :many
+const getExerciseMetricsHistoryRawYear = `-- name: GetExerciseMetricsHistoryRawYear :many
 WITH working_sets AS (
     SELECT
         w.id AS workout_id,
-        w.date AS workout_date,
         w.date::date AS workout_day,
         COALESCE(s.weight, 0)::numeric AS weight,
         s.reps AS reps,
@@ -706,10 +690,19 @@ WITH working_sets AS (
       AND s.user_id = $2
       AND s.set_type = 'working'
 ),
+end_day AS (
+    SELECT MAX(workout_day) AS end_day
+    FROM working_sets
+),
+filtered AS (
+    SELECT workout_id, workout_day, weight, reps, volume, e1rm, historical_1rm, session_best_e1rm, end_day
+    FROM working_sets, end_day
+    WHERE workout_day >= end_day - interval '1 year'
+),
 workout_metrics AS (
     SELECT
         workout_id,
-        MIN(workout_day) AS workout_day,
+        MIN(workout_day)::date AS workout_day,
         COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
         COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
         COALESCE(AVG(
@@ -725,46 +718,22 @@ workout_metrics AS (
             END
         ), 0)::float8 AS session_best_intensity,
         COALESCE(SUM(volume), 0)::float8 AS total_volume_working
-    FROM working_sets
+    FROM filtered
     GROUP BY workout_id
-),
-end_day AS (
-    SELECT MAX(workout_day) AS end_day
-    FROM workout_metrics
-),
-filtered_workouts AS (
-    SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working, end_day
-    FROM workout_metrics, end_day
-    WHERE workout_day >= end_day - interval '6 months'
-),
-bucketed AS (
-    SELECT
-        date_trunc('week', workout_day)::date AS bucket_day,
-        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
-        COALESCE(AVG(session_avg_e1rm), 0)::float8 AS session_avg_e1rm,
-        COALESCE(AVG(session_avg_intensity), 0)::float8 AS session_avg_intensity,
-        COALESCE(MAX(session_best_intensity), 0)::float8 AS session_best_intensity,
-        COALESCE(AVG(total_volume_working), 0)::float8 AS total_volume_working
-    FROM filtered_workouts
-    GROUP BY bucket_day
 )
-SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
-FROM (
-    SELECT bucket_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
-    FROM bucketed
-    ORDER BY bucket_day DESC
-    LIMIT 26
-) t
-ORDER BY bucket_day ASC
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC
 `
 
-type GetExerciseMetricsHistoryWeekly6MParams struct {
+type GetExerciseMetricsHistoryRawYearParams struct {
 	ExerciseID int32  `json:"exercise_id"`
 	UserID     string `json:"user_id"`
 }
 
-type GetExerciseMetricsHistoryWeekly6MRow struct {
-	BucketDay            pgtype.Date `json:"bucket_day"`
+type GetExerciseMetricsHistoryRawYearRow struct {
+	WorkoutID            int32       `json:"workout_id"`
+	WorkoutDay           pgtype.Date `json:"workout_day"`
 	SessionBestE1rm      float64     `json:"session_best_e1rm"`
 	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
 	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
@@ -772,17 +741,18 @@ type GetExerciseMetricsHistoryWeekly6MRow struct {
 	TotalVolumeWorking   float64     `json:"total_volume_working"`
 }
 
-func (q *Queries) GetExerciseMetricsHistoryWeekly6M(ctx context.Context, arg GetExerciseMetricsHistoryWeekly6MParams) ([]GetExerciseMetricsHistoryWeekly6MRow, error) {
-	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryWeekly6M, arg.ExerciseID, arg.UserID)
+func (q *Queries) GetExerciseMetricsHistoryRawYear(ctx context.Context, arg GetExerciseMetricsHistoryRawYearParams) ([]GetExerciseMetricsHistoryRawYearRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryRawYear, arg.ExerciseID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetExerciseMetricsHistoryWeekly6MRow
+	var items []GetExerciseMetricsHistoryRawYearRow
 	for rows.Next() {
-		var i GetExerciseMetricsHistoryWeekly6MRow
+		var i GetExerciseMetricsHistoryRawYearRow
 		if err := rows.Scan(
-			&i.BucketDay,
+			&i.WorkoutID,
+			&i.WorkoutDay,
 			&i.SessionBestE1rm,
 			&i.SessionAvgE1rm,
 			&i.SessionAvgIntensity,

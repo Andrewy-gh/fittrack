@@ -13,8 +13,6 @@ type MetricsHistoryBucket string
 
 const (
 	MetricsHistoryBucketWorkout MetricsHistoryBucket = "workout"
-	MetricsHistoryBucketWeek    MetricsHistoryBucket = "week"
-	MetricsHistoryBucketMonth   MetricsHistoryBucket = "month"
 )
 
 type ExerciseMetricsHistoryPoint struct {

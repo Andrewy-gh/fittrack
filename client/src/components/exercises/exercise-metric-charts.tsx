@@ -52,8 +52,8 @@ export function ExerciseMetricCharts({
         <div>
           <h2 className="text-xl font-semibold">Session Metrics</h2>
           <p className="text-sm text-muted-foreground">
-            e1RM, intensity, and volume are computed from working sets. Intensity can exceed
-            100%.
+            Each bar represents one workout session. e1RM, intensity, and volume are computed
+            from working sets. Intensity can exceed 100%.
           </p>
         </div>
 
@@ -85,11 +85,13 @@ export function ExerciseMetricCharts({
 function MetricChartsBody({
   points,
   range,
+  bucket,
   onWorkoutClick,
   statusMessage,
 }: {
   points: ExerciseExerciseMetricsHistoryPoint[];
   range: RangeType;
+  bucket: 'workout';
   onWorkoutClick: (workoutId: number) => void;
   statusMessage?: string;
 }) {
@@ -175,6 +177,7 @@ function MetricChartsBody({
         title={activeChart.title}
         description={activeChart.description}
         range={range}
+        bucket={bucket}
         data={activeChart.data}
         unit={activeChart.unit}
         onWorkoutClick={onWorkoutClick}
@@ -237,18 +240,20 @@ function AuthedCharts({
   }
 
   const points = (data?.points ?? []) as ExerciseExerciseMetricsHistoryPoint[];
+  const bucket = data?.bucket ?? 'workout';
   const statusMessage = error && data
     ? "Couldn't update chart. Showing previous data."
     : isFetching
       ? 'Updating chart...'
       : undefined;
   return (
-    <MetricChartsBody
-      points={points}
-      range={range}
-      onWorkoutClick={onWorkoutClick}
-      statusMessage={statusMessage}
-    />
+      <MetricChartsBody
+        points={points}
+        range={range}
+        bucket={bucket}
+        onWorkoutClick={onWorkoutClick}
+        statusMessage={statusMessage}
+      />
   );
 }
 
@@ -263,5 +268,12 @@ function DemoCharts({
 }) {
   const demo = useMemo(() => computeDemoMetricsHistory(exerciseSets, range), [exerciseSets, range]);
   const points = (demo.points ?? []) as any as ExerciseExerciseMetricsHistoryPoint[];
-  return <MetricChartsBody points={points} range={range} onWorkoutClick={onWorkoutClick} />;
+  return (
+    <MetricChartsBody
+      points={points}
+      range={range}
+      bucket={demo.bucket}
+      onWorkoutClick={onWorkoutClick}
+    />
+  );
 }

@@ -384,7 +384,7 @@ const docTemplate = `{
                         "StackAuth": []
                     }
                 ],
-                "description": "Get time-series session metrics for an exercise. Range controls bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.",
+                "description": "Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1170,14 +1170,10 @@ const docTemplate = `{
         "exercise.MetricsHistoryBucket": {
             "type": "string",
             "enum": [
-                "workout",
-                "week",
-                "month"
+                "workout"
             ],
             "x-enum-varnames": [
-                "MetricsHistoryBucketWorkout",
-                "MetricsHistoryBucketWeek",
-                "MetricsHistoryBucketMonth"
+                "MetricsHistoryBucketWorkout"
             ]
         },
         "exercise.RecentSetsResponse": {

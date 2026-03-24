@@ -74,14 +74,6 @@ export const ExerciseMetricsHistoryBucket = {
    * MetricsHistoryBucketWorkout
    */
   METRICS_HISTORY_BUCKET_WORKOUT: "workout",
-  /**
-   * MetricsHistoryBucketWeek
-   */
-  METRICS_HISTORY_BUCKET_WEEK: "week",
-  /**
-   * MetricsHistoryBucketMonth
-   */
-  METRICS_HISTORY_BUCKET_MONTH: "month",
 } as const;
 
 export type ExerciseMetricsHistoryBucket =

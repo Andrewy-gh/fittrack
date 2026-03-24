@@ -237,12 +237,8 @@ export const exercise_ExerciseWithSetsResponseSchema = {
 
 export const exercise_MetricsHistoryBucketSchema = {
   type: "string",
-  enum: ["workout", "week", "month"],
-  "x-enum-varnames": [
-    "MetricsHistoryBucketWorkout",
-    "MetricsHistoryBucketWeek",
-    "MetricsHistoryBucketMonth",
-  ],
+  enum: ["workout"],
+  "x-enum-varnames": ["MetricsHistoryBucketWorkout"],
 } as const;
 
 export const exercise_RecentSetsResponseSchema = {

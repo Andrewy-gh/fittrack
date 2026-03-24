@@ -286,7 +286,7 @@ export const getExercisesByIdMetricsHistoryQueryKey = (
 
 /**
  * Get exercise metrics history
- * Get time-series session metrics for an exercise. Range controls bucketing: W/M return per-workout points; 6M weekly buckets; Y monthly buckets.
+ * Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.
  */
 export const getExercisesByIdMetricsHistoryQueryOptions = (
   options: Options<GetExercisesByIdMetricsHistoryData>,

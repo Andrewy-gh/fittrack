@@ -176,7 +176,7 @@ describe('ExerciseMetricCharts', () => {
 
     expect(
       screen.getByText(
-        'e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.'
+        'Each bar represents one workout session. e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.'
       )
     ).toBeInTheDocument();
   });

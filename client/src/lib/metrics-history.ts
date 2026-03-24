@@ -1,9 +1,9 @@
-import { parseISO, subDays, startOfISOWeek, startOfMonth } from 'date-fns';
+import { parseISO, subDays, subMonths, subYears } from 'date-fns';
 
 import type { ExerciseExerciseWithSetsResponse } from '@/client';
 import type { MetricsHistoryRange } from '@/lib/api/exercises';
 
-type Bucket = 'workout' | 'week' | 'month';
+type Bucket = 'workout';
 
 export type MetricsHistoryPoint = {
   x: string;
@@ -75,64 +75,21 @@ export function computeDemoMetricsHistory(
   }
 
   const endDate = parseISO(workoutPoints[workoutPoints.length - 1].date);
-
-  const cutoffDays =
-    range === 'W' ? 7 : range === 'M' ? 30 : range === '6M' ? 180 : 365;
-  const startDate = subDays(endDate, cutoffDays);
+  const startDate = getRangeStartDate(endDate, range);
 
   const filtered = workoutPoints.filter((p) => parseISO(p.date) >= startDate);
-
-  if (range === 'W' || range === 'M') {
-    return { range, bucket: 'workout', points: filtered };
-  }
-
-  if (range === '6M') {
-    const buckets = new Map<string, MetricsHistoryPoint[]>();
-    for (const p of filtered) {
-      const key = startOfISOWeek(parseISO(p.date)).toISOString().split('T')[0];
-      const arr = buckets.get(key) ?? [];
-      arr.push(p);
-      buckets.set(key, arr);
-    }
-
-    const points = Array.from(buckets.entries())
-      .map(([date, pts]) => reduceBucket(date, pts))
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-26);
-
-    return { range, bucket: 'week', points };
-  }
-
-  // range === 'Y'
-  const buckets = new Map<string, MetricsHistoryPoint[]>();
-  for (const p of filtered) {
-    const key = startOfMonth(parseISO(p.date)).toISOString().split('T')[0];
-    const arr = buckets.get(key) ?? [];
-    arr.push(p);
-    buckets.set(key, arr);
-  }
-
-  const points = Array.from(buckets.entries())
-    .map(([date, pts]) => reduceBucket(date, pts))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-12);
-
-  return { range, bucket: 'month', points };
+  return { range, bucket: 'workout', points: filtered };
 }
 
-function reduceBucket(date: string, pts: MetricsHistoryPoint[]): MetricsHistoryPoint {
-  const max = (xs: number[]) => (xs.length ? Math.max(...xs) : 0);
-  const avg = (xs: number[]) =>
-    xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
-
-  return {
-    x: date,
-    date,
-    session_best_e1rm: max(pts.map((p) => p.session_best_e1rm)),
-    session_avg_e1rm: avg(pts.map((p) => p.session_avg_e1rm)),
-    session_avg_intensity: avg(pts.map((p) => p.session_avg_intensity)),
-    session_best_intensity: max(pts.map((p) => p.session_best_intensity)),
-    total_volume_working: avg(pts.map((p) => p.total_volume_working)),
-  };
+function getRangeStartDate(endDate: Date, range: MetricsHistoryRange): Date {
+  switch (range) {
+    case 'W':
+      return subDays(endDate, 7);
+    case 'M':
+      return subDays(endDate, 30);
+    case '6M':
+      return subMonths(endDate, 6);
+    case 'Y':
+      return subYears(endDate, 1);
+  }
 }
-
