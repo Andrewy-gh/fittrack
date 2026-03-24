@@ -85,8 +85,21 @@ export function createWorkoutDraftStorage(
   };
 }
 
+function getBrowserStorage(): StorageLike | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.warn('Failed to access localStorage:', error);
+    return undefined;
+  }
+}
+
 export const workoutDraftStorage = createWorkoutDraftStorage(
-  typeof window === 'undefined' ? undefined : window.localStorage
+  getBrowserStorage()
 );
 
 export const saveToLocalStorage = (
