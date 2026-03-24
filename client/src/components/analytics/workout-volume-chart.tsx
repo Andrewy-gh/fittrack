@@ -4,13 +4,6 @@ import { ChartBarMetric } from '@/components/charts/chart-bar-metric';
 import { RangeSelector } from '@/components/charts/chart-bar-vol.components';
 import type { RangeType } from '@/components/charts/chart-bar-vol.utils';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -49,17 +42,17 @@ export function WorkoutVolumeChart({
     : `${bucketLabel}. Working-set volume across all workouts.`;
 
   return (
-    <Card>
-      <CardHeader className="space-y-4">
+    <section className="space-y-6">
+      <div className="space-y-3">
         <div>
-          <CardTitle>Workout Volume</CardTitle>
-          <CardDescription>
+          <h2 className="text-xl font-semibold">Workout Volume</h2>
+          <p className="text-sm text-muted-foreground">
             Separate from exercise metrics: this tracks total working-set volume
             by time range and focus.
-          </CardDescription>
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <RangeSelector
             selectedRange={selectedRange}
             onRangeChange={setSelectedRange}
@@ -84,23 +77,21 @@ export function WorkoutVolumeChart({
         </div>
 
         <p className="text-xs text-muted-foreground">{bucketLabel}</p>
-      </CardHeader>
+      </div>
 
-      <CardContent className="pt-0">
-        {chartData.every((point) => point.value === 0) ? (
-          <p className="py-6 text-sm text-muted-foreground">
-            No workout volume for the selected focus in this range yet.
-          </p>
-        ) : (
-          <ChartBarMetric
-            title={title}
-            description={description}
-            range={selectedRange}
-            data={chartData}
-            unit="vol"
-          />
-        )}
-      </CardContent>
-    </Card>
+      {chartData.every((point) => point.value === 0) ? (
+        <p className="py-6 text-sm text-muted-foreground">
+          No workout volume for the selected focus in this range yet.
+        </p>
+      ) : (
+        <ChartBarMetric
+          title={title}
+          description={description}
+          range={selectedRange}
+          data={chartData}
+          unit="vol"
+        />
+      )}
+    </section>
   );
 }
