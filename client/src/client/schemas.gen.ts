@@ -306,6 +306,45 @@ export const exercise_UpdateExerciseNameRequestSchema = {
   },
 } as const;
 
+export const featureaccess_FeatureAccessResponseSchema = {
+  type: "object",
+  required: ["created_at", "feature_key", "source", "starts_at"],
+  properties: {
+    created_at: {
+      type: "string",
+      example: "2026-03-25T12:00:00Z",
+    },
+    expires_at: {
+      type: "string",
+      example: "2026-04-25T12:00:00Z",
+    },
+    feature_key: {
+      type: "string",
+      example: "ai_chatbot",
+    },
+    granted_by: {
+      type: "string",
+      example: "andy",
+    },
+    note: {
+      type: "string",
+      example: "dev demo access",
+    },
+    source: {
+      type: "string",
+      example: "manual",
+    },
+    source_reference: {
+      type: "string",
+      example: "sub_123",
+    },
+    starts_at: {
+      type: "string",
+      example: "2026-03-25T12:00:00Z",
+    },
+  },
+} as const;
+
 export const health_HealthResponseSchema = {
   type: "object",
   properties: {

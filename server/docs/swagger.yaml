@@ -240,6 +240,38 @@ definitions:
     required:
     - name
     type: object
+  featureaccess.FeatureAccessResponse:
+    properties:
+      created_at:
+        example: "2026-03-25T12:00:00Z"
+        type: string
+      expires_at:
+        example: "2026-04-25T12:00:00Z"
+        type: string
+      feature_key:
+        example: ai_chatbot
+        type: string
+      granted_by:
+        example: andy
+        type: string
+      note:
+        example: dev demo access
+        type: string
+      source:
+        example: manual
+        type: string
+      source_reference:
+        example: sub_123
+        type: string
+      starts_at:
+        example: "2026-03-25T12:00:00Z"
+        type: string
+    required:
+    - created_at
+    - feature_key
+    - source
+    - starts_at
+    type: object
   health.HealthResponse:
     properties:
       status:
@@ -824,6 +856,33 @@ paths:
       summary: Get recent sets for exercise
       tags:
       - exercises
+  /features/access:
+    get:
+      consumes:
+      - application/json
+      description: Get all active feature access grants for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/featureaccess.FeatureAccessResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: List active feature access grants
+      tags:
+      - feature-access
   /health:
     get:
       description: Returns the health status of the API

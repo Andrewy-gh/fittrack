@@ -26,6 +26,9 @@ import type {
   GetExercisesByIdRecentSetsData,
   GetExercisesByIdRecentSetsResponses,
   GetExercisesByIdRecentSetsErrors,
+  GetFeaturesAccessData,
+  GetFeaturesAccessResponses,
+  GetFeaturesAccessErrors,
   GetHealthData,
   GetHealthResponses,
   GetReadyData,
@@ -270,6 +273,29 @@ export const getExercisesByIdRecentSets = <
       },
     ],
     url: "/exercises/{id}/recent-sets",
+    ...options,
+  });
+};
+
+/**
+ * List active feature access grants
+ * Get all active feature access grants for the authenticated user
+ */
+export const getFeaturesAccess = <ThrowOnError extends boolean = false>(
+  options?: Options<GetFeaturesAccessData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetFeaturesAccessResponses,
+    GetFeaturesAccessErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/features/access",
     ...options,
   });
 };
