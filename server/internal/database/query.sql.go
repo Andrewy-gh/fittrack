@@ -1146,6 +1146,84 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 	return items, nil
 }
 
+const hasActiveFeatureAccess = `-- name: HasActiveFeatureAccess :one
+SELECT EXISTS (
+    SELECT 1
+    FROM user_feature_access
+    WHERE user_id = $1
+      AND feature_key = $2
+      AND revoked_at IS NULL
+      AND starts_at <= NOW()
+      AND (expires_at IS NULL OR expires_at > NOW())
+)
+`
+
+type HasActiveFeatureAccessParams struct {
+	UserID     string `json:"user_id"`
+	FeatureKey string `json:"feature_key"`
+}
+
+func (q *Queries) HasActiveFeatureAccess(ctx context.Context, arg HasActiveFeatureAccessParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasActiveFeatureAccess, arg.UserID, arg.FeatureKey)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const listActiveFeatureAccess = `-- name: ListActiveFeatureAccess :many
+SELECT
+    id,
+    user_id,
+    feature_key,
+    source,
+    source_reference,
+    granted_by,
+    note,
+    starts_at,
+    expires_at,
+    revoked_at,
+    created_at
+FROM user_feature_access
+WHERE user_id = $1
+  AND revoked_at IS NULL
+  AND starts_at <= NOW()
+  AND (expires_at IS NULL OR expires_at > NOW())
+ORDER BY feature_key, starts_at DESC, id DESC
+`
+
+// Feature access queries
+func (q *Queries) ListActiveFeatureAccess(ctx context.Context, userID string) ([]UserFeatureAccess, error) {
+	rows, err := q.db.Query(ctx, listActiveFeatureAccess, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserFeatureAccess
+	for rows.Next() {
+		var i UserFeatureAccess
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FeatureKey,
+			&i.Source,
+			&i.SourceReference,
+			&i.GrantedBy,
+			&i.Note,
+			&i.StartsAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExercises = `-- name: ListExercises :many
 SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name
 `

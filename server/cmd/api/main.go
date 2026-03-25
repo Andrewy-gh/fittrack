@@ -34,6 +34,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
 	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
@@ -134,17 +135,20 @@ func main() {
 
 	// Initialize repositories
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	featureAccessRepo := featureaccess.NewRepository(logger, queries)
 	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
 	userRepo := user.NewRepository(logger, queries, pool)
 
 	// Initialize services
 	workoutService := workout.NewService(logger, workoutRepo)
 	exerciseService := exercise.NewService(logger, exerciseRepo)
+	featureAccessService := featureaccess.NewService(logger, featureAccessRepo)
 	userService := user.NewService(logger, userRepo)
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
 	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
+	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
 	healthHandler := health.NewHandler(logger, pool)
 
 	api := &api{
@@ -161,7 +165,7 @@ func main() {
 	}
 
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
-	router := api.routes(workoutHandler, exerciseHandler, healthHandler)
+	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler)
 
 	// Apply middleware in order: SecurityHeaders → CORS → RequestID → Metrics → RateLimit → Authentication
 	var handler http.Handler = router

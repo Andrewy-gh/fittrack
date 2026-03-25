@@ -99,6 +99,17 @@ export type ExerciseUpdateExerciseNameRequest = {
   name: string;
 };
 
+export type FeatureaccessFeatureAccessResponse = {
+  created_at: string;
+  expires_at?: string;
+  feature_key: string;
+  granted_by?: string;
+  note?: string;
+  source: string;
+  source_reference?: string;
+  starts_at: string;
+};
+
 export type HealthHealthResponse = {
   status?: string;
   timestamp?: string;
@@ -537,6 +548,37 @@ export type GetExercisesByIdRecentSetsResponses = {
 
 export type GetExercisesByIdRecentSetsResponse =
   GetExercisesByIdRecentSetsResponses[keyof GetExercisesByIdRecentSetsResponses];
+
+export type GetFeaturesAccessData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/features/access";
+};
+
+export type GetFeaturesAccessErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetFeaturesAccessError =
+  GetFeaturesAccessErrors[keyof GetFeaturesAccessErrors];
+
+export type GetFeaturesAccessResponses = {
+  /**
+   * OK
+   */
+  200: Array<FeatureaccessFeatureAccessResponse>;
+};
+
+export type GetFeaturesAccessResponse =
+  GetFeaturesAccessResponses[keyof GetFeaturesAccessResponses];
 
 export type GetHealthData = {
   body?: never;

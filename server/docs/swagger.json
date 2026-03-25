@@ -506,6 +506,49 @@
                 }
             }
         },
+        "/features/access": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Get all active feature access grants for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feature-access"
+                ],
+                "summary": "List active feature access grants",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/featureaccess.FeatureAccessResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns the health status of the API",
@@ -1243,6 +1286,49 @@
                 "name": {
                     "type": "string",
                     "maxLength": 256
+                }
+            }
+        },
+        "featureaccess.FeatureAccessResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "feature_key",
+                "source",
+                "starts_at"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-03-25T12:00:00Z"
+                },
+                "expires_at": {
+                    "type": "string",
+                    "example": "2026-04-25T12:00:00Z"
+                },
+                "feature_key": {
+                    "type": "string",
+                    "example": "ai_chatbot"
+                },
+                "granted_by": {
+                    "type": "string",
+                    "example": "andy"
+                },
+                "note": {
+                    "type": "string",
+                    "example": "dev demo access"
+                },
+                "source": {
+                    "type": "string",
+                    "example": "manual"
+                },
+                "source_reference": {
+                    "type": "string",
+                    "example": "sub_123"
+                },
+                "starts_at": {
+                    "type": "string",
+                    "example": "2026-03-25T12:00:00Z"
                 }
             }
         },

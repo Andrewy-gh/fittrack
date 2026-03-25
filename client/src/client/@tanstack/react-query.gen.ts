@@ -10,6 +10,7 @@ import {
   patchExercisesByIdHistorical1Rm,
   getExercisesByIdMetricsHistory,
   getExercisesByIdRecentSets,
+  getFeaturesAccess,
   getHealth,
   getReady,
   getWorkouts,
@@ -35,6 +36,7 @@ import type {
   PatchExercisesByIdHistorical1RmError,
   GetExercisesByIdMetricsHistoryData,
   GetExercisesByIdRecentSetsData,
+  GetFeaturesAccessData,
   GetHealthData,
   GetReadyData,
   GetWorkoutsData,
@@ -328,6 +330,31 @@ export const getExercisesByIdRecentSetsQueryOptions = (
       return data;
     },
     queryKey: getExercisesByIdRecentSetsQueryKey(options),
+  });
+};
+
+export const getFeaturesAccessQueryKey = (
+  options?: Options<GetFeaturesAccessData>,
+) => createQueryKey("getFeaturesAccess", options, false, ["feature-access"]);
+
+/**
+ * List active feature access grants
+ * Get all active feature access grants for the authenticated user
+ */
+export const getFeaturesAccessQueryOptions = (
+  options?: Options<GetFeaturesAccessData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getFeaturesAccess({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getFeaturesAccessQueryKey(options),
   });
 };
 

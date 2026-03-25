@@ -33,6 +33,20 @@ type Set struct {
 	SetOrder      int32              `json:"set_order"`
 }
 
+type UserFeatureAccess struct {
+	ID              int32              `json:"id"`
+	UserID          string             `json:"user_id"`
+	FeatureKey      string             `json:"feature_key"`
+	Source          string             `json:"source"`
+	SourceReference pgtype.Text        `json:"source_reference"`
+	GrantedBy       pgtype.Text        `json:"granted_by"`
+	Note            pgtype.Text        `json:"note"`
+	StartsAt        pgtype.Timestamptz `json:"starts_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt       pgtype.Timestamptz `json:"revoked_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type Users struct {
 	ID        int32              `json:"id"`
 	UserID    string             `json:"user_id"`

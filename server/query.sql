@@ -414,6 +414,38 @@ INSERT INTO users (user_id)
 VALUES ($1)
 RETURNING id;
 
+-- Feature access queries
+-- name: ListActiveFeatureAccess :many
+SELECT
+    id,
+    user_id,
+    feature_key,
+    source,
+    source_reference,
+    granted_by,
+    note,
+    starts_at,
+    expires_at,
+    revoked_at,
+    created_at
+FROM user_feature_access
+WHERE user_id = $1
+  AND revoked_at IS NULL
+  AND starts_at <= NOW()
+  AND (expires_at IS NULL OR expires_at > NOW())
+ORDER BY feature_key, starts_at DESC, id DESC;
+
+-- name: HasActiveFeatureAccess :one
+SELECT EXISTS (
+    SELECT 1
+    FROM user_feature_access
+    WHERE user_id = $1
+      AND feature_key = $2
+      AND revoked_at IS NULL
+      AND starts_at <= NOW()
+      AND (expires_at IS NULL OR expires_at > NOW())
+);
+
 -- UPDATE queries for PUT endpoint
 -- name: UpdateWorkout :one
 UPDATE workout

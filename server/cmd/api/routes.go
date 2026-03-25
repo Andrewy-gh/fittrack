@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
 	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -13,7 +14,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, hh *health.Handler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health endpoints (no authentication required)
@@ -40,6 +41,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/workouts/focus-values", wh.ListWorkoutFocusValues)
 	mux.HandleFunc("GET /api/workouts/contribution-data", wh.GetContributionData)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
+	mux.HandleFunc("GET /api/features/access", fh.ListActiveFeatureAccess)
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExerciseWithSets)
 	mux.HandleFunc("GET /api/exercises/{id}/recent-sets", eh.GetRecentSetsForExercise)
