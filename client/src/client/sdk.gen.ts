@@ -2,6 +2,21 @@
 
 import type { Options as ClientOptions, TDataShape, Client } from "./client";
 import type {
+  PostAiChatValidateData,
+  PostAiChatValidateResponses,
+  PostAiChatValidateErrors,
+  PostAiChatValidateStreamData,
+  PostAiChatValidateStreamResponses,
+  PostAiChatValidateStreamErrors,
+  PostAiConversationsData,
+  PostAiConversationsResponses,
+  PostAiConversationsErrors,
+  GetAiConversationsByIdData,
+  GetAiConversationsByIdResponses,
+  GetAiConversationsByIdErrors,
+  PostAiConversationsByIdMessagesStreamData,
+  PostAiConversationsByIdMessagesStreamResponses,
+  PostAiConversationsByIdMessagesStreamErrors,
   GetExercisesData,
   GetExercisesResponses,
   GetExercisesErrors,
@@ -73,6 +88,135 @@ export type Options<
    * used to access values that aren't defined as part of the SDK function.
    */
   meta?: Record<string, unknown>;
+};
+
+/**
+ * Validate AI chat architecture
+ * Phase-0 validation endpoint for FitTrack AI chat architecture.
+ */
+export const postAiChatValidate = <ThrowOnError extends boolean = false>(
+  options: Options<PostAiChatValidateData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    PostAiChatValidateResponses,
+    PostAiChatValidateErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/chat/validate",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Stream AI chat architecture validation
+ * Phase-0 validation stream endpoint. Preflight failures return JSON; successful requests upgrade to SSE.
+ */
+export const postAiChatValidateStream = <ThrowOnError extends boolean = false>(
+  options: Options<PostAiChatValidateStreamData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).sse.post<
+    PostAiChatValidateStreamResponses,
+    PostAiChatValidateStreamErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/chat/validate/stream",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Create AI chat conversation
+ * Creates an empty persisted AI chat conversation for the authenticated user.
+ */
+export const postAiConversations = <ThrowOnError extends boolean = false>(
+  options?: Options<PostAiConversationsData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).post<
+    PostAiConversationsResponses,
+    PostAiConversationsErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/conversations",
+    ...options,
+  });
+};
+
+/**
+ * Get AI chat conversation
+ * Returns a persisted AI chat conversation with its messages.
+ */
+export const getAiConversationsById = <ThrowOnError extends boolean = false>(
+  options: Options<GetAiConversationsByIdData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetAiConversationsByIdResponses,
+    GetAiConversationsByIdErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/conversations/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Stream AI chat message
+ * Persists a user message and run, then streams normalized assistant events over SSE. Preflight failures stay JSON.
+ */
+export const postAiConversationsByIdMessagesStream = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<PostAiConversationsByIdMessagesStreamData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).sse.post<
+    PostAiConversationsByIdMessagesStreamResponses,
+    PostAiConversationsByIdMessagesStreamErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/conversations/{id}/messages/stream",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
 };
 
 /**

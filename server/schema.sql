@@ -28,6 +28,71 @@ CREATE TABLE user_feature_access (
     )
 );
 
+-- AI chat conversations table
+CREATE TABLE ai_chat_conversation (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    title VARCHAR(256),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_message_at TIMESTAMPTZ,
+    CONSTRAINT ai_chat_conversation_title_not_empty CHECK (
+        title IS NULL OR btrim(title) <> ''
+    )
+);
+
+-- AI chat messages table
+CREATE TABLE ai_chat_message (
+    id SERIAL PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES ai_chat_conversation(id) ON DELETE CASCADE,
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    role VARCHAR(32) NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    status VARCHAR(32) NOT NULL,
+    error_message VARCHAR(512),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT ai_chat_message_role_valid CHECK (
+        role IN ('user', 'assistant')
+    ),
+    CONSTRAINT ai_chat_message_status_valid CHECK (
+        status IN ('streaming', 'completed', 'failed')
+    ),
+    CONSTRAINT ai_chat_message_error_not_empty CHECK (
+        error_message IS NULL OR btrim(error_message) <> ''
+    )
+);
+
+-- AI chat runs table
+CREATE TABLE ai_chat_run (
+    id SERIAL PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES ai_chat_conversation(id) ON DELETE CASCADE,
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    user_message_id INTEGER NOT NULL REFERENCES ai_chat_message(id) ON DELETE CASCADE,
+    assistant_message_id INTEGER NOT NULL REFERENCES ai_chat_message(id) ON DELETE CASCADE,
+    model VARCHAR(128) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    request_id VARCHAR(128),
+    error_message VARCHAR(512),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT ai_chat_run_status_valid CHECK (
+        status IN ('streaming', 'completed', 'failed')
+    ),
+    CONSTRAINT ai_chat_run_model_not_empty CHECK (btrim(model) <> ''),
+    CONSTRAINT ai_chat_run_request_id_not_empty CHECK (
+        request_id IS NULL OR btrim(request_id) <> ''
+    ),
+    CONSTRAINT ai_chat_run_error_not_empty CHECK (
+        error_message IS NULL OR btrim(error_message) <> ''
+    ),
+    CONSTRAINT ai_chat_run_user_message_unique UNIQUE (user_message_id),
+    CONSTRAINT ai_chat_run_assistant_message_unique UNIQUE (assistant_message_id)
+);
+
 -- Workouts table
 CREATE TABLE workout (
     id SERIAL PRIMARY KEY,
@@ -80,3 +145,8 @@ CREATE INDEX idx_exercise_user_id ON exercise(user_id);
 CREATE INDEX idx_workout_user_date ON workout(user_id, date);
 CREATE INDEX idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_key, starts_at DESC);
 CREATE INDEX idx_user_feature_access_active_lookup ON user_feature_access(user_id, starts_at DESC) WHERE revoked_at IS NULL;
+CREATE INDEX idx_ai_chat_conversation_user_updated ON ai_chat_conversation(user_id, updated_at DESC, id DESC);
+CREATE INDEX idx_ai_chat_message_conversation ON ai_chat_message(conversation_id, id ASC);
+CREATE INDEX idx_ai_chat_message_user_conversation ON ai_chat_message(user_id, conversation_id, id ASC);
+CREATE INDEX idx_ai_chat_run_conversation_created ON ai_chat_run(conversation_id, created_at DESC, id DESC);
+CREATE UNIQUE INDEX idx_ai_chat_run_active_conversation ON ai_chat_run(conversation_id) WHERE status = 'streaming';

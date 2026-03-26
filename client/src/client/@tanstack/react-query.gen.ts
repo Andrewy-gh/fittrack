@@ -2,6 +2,11 @@
 
 import {
   type Options,
+  postAiChatValidate,
+  postAiChatValidateStream,
+  postAiConversations,
+  getAiConversationsById,
+  postAiConversationsByIdMessagesStream,
   getExercises,
   postExercises,
   deleteExercisesById,
@@ -23,6 +28,19 @@ import {
 } from "../sdk.gen";
 import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import type {
+  PostAiChatValidateData,
+  PostAiChatValidateError,
+  PostAiChatValidateResponse,
+  PostAiChatValidateStreamData,
+  PostAiChatValidateStreamError,
+  PostAiChatValidateStreamResponse,
+  PostAiConversationsData,
+  PostAiConversationsError,
+  PostAiConversationsResponse,
+  GetAiConversationsByIdData,
+  PostAiConversationsByIdMessagesStreamData,
+  PostAiConversationsByIdMessagesStreamError,
+  PostAiConversationsByIdMessagesStreamResponse,
   GetExercisesData,
   PostExercisesData,
   PostExercisesError,
@@ -92,6 +110,242 @@ const createQueryKey = <TOptions extends Options>(
     params.query = options.query;
   }
   return [params];
+};
+
+export const postAiChatValidateQueryKey = (
+  options: Options<PostAiChatValidateData>,
+) => createQueryKey("postAiChatValidate", options, false, ["ai-chat"]);
+
+/**
+ * Validate AI chat architecture
+ * Phase-0 validation endpoint for FitTrack AI chat architecture.
+ */
+export const postAiChatValidateQueryOptions = (
+  options: Options<PostAiChatValidateData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await postAiChatValidate({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: postAiChatValidateQueryKey(options),
+  });
+};
+
+/**
+ * Validate AI chat architecture
+ * Phase-0 validation endpoint for FitTrack AI chat architecture.
+ */
+export const postAiChatValidateMutation = (
+  options?: Partial<Options<PostAiChatValidateData>>,
+): UseMutationOptions<
+  PostAiChatValidateResponse,
+  PostAiChatValidateError,
+  Options<PostAiChatValidateData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiChatValidateResponse,
+    PostAiChatValidateError,
+    Options<PostAiChatValidateData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await postAiChatValidate({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const postAiChatValidateStreamQueryKey = (
+  options: Options<PostAiChatValidateStreamData>,
+) => createQueryKey("postAiChatValidateStream", options, false, ["ai-chat"]);
+
+/**
+ * Stream AI chat architecture validation
+ * Phase-0 validation stream endpoint. Preflight failures return JSON; successful requests upgrade to SSE.
+ */
+export const postAiChatValidateStreamQueryOptions = (
+  options: Options<PostAiChatValidateStreamData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      return postAiChatValidateStream({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+    },
+    queryKey: postAiChatValidateStreamQueryKey(options),
+  });
+};
+
+/**
+ * Stream AI chat architecture validation
+ * Phase-0 validation stream endpoint. Preflight failures return JSON; successful requests upgrade to SSE.
+ */
+export const postAiChatValidateStreamMutation = (
+  options?: Partial<Options<PostAiChatValidateStreamData>>,
+): UseMutationOptions<
+  PostAiChatValidateStreamResponse,
+  PostAiChatValidateStreamError,
+  Options<PostAiChatValidateStreamData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiChatValidateStreamResponse,
+    PostAiChatValidateStreamError,
+    Options<PostAiChatValidateStreamData>
+  > = {
+    mutationFn: async (localOptions) => {
+      return (await postAiChatValidateStream({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      })) as unknown as PostAiChatValidateStreamResponse;
+    },
+  };
+  return mutationOptions;
+};
+
+export const postAiConversationsQueryKey = (
+  options?: Options<PostAiConversationsData>,
+) => createQueryKey("postAiConversations", options, false, ["ai-chat"]);
+
+/**
+ * Create AI chat conversation
+ * Creates an empty persisted AI chat conversation for the authenticated user.
+ */
+export const postAiConversationsQueryOptions = (
+  options?: Options<PostAiConversationsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await postAiConversations({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: postAiConversationsQueryKey(options),
+  });
+};
+
+/**
+ * Create AI chat conversation
+ * Creates an empty persisted AI chat conversation for the authenticated user.
+ */
+export const postAiConversationsMutation = (
+  options?: Partial<Options<PostAiConversationsData>>,
+): UseMutationOptions<
+  PostAiConversationsResponse,
+  PostAiConversationsError,
+  Options<PostAiConversationsData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiConversationsResponse,
+    PostAiConversationsError,
+    Options<PostAiConversationsData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await postAiConversations({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getAiConversationsByIdQueryKey = (
+  options: Options<GetAiConversationsByIdData>,
+) => createQueryKey("getAiConversationsById", options, false, ["ai-chat"]);
+
+/**
+ * Get AI chat conversation
+ * Returns a persisted AI chat conversation with its messages.
+ */
+export const getAiConversationsByIdQueryOptions = (
+  options: Options<GetAiConversationsByIdData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAiConversationsById({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAiConversationsByIdQueryKey(options),
+  });
+};
+
+export const postAiConversationsByIdMessagesStreamQueryKey = (
+  options: Options<PostAiConversationsByIdMessagesStreamData>,
+) =>
+  createQueryKey("postAiConversationsByIdMessagesStream", options, false, [
+    "ai-chat",
+  ]);
+
+/**
+ * Stream AI chat message
+ * Persists a user message and run, then streams normalized assistant events over SSE. Preflight failures stay JSON.
+ */
+export const postAiConversationsByIdMessagesStreamQueryOptions = (
+  options: Options<PostAiConversationsByIdMessagesStreamData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      return postAiConversationsByIdMessagesStream({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+    },
+    queryKey: postAiConversationsByIdMessagesStreamQueryKey(options),
+  });
+};
+
+/**
+ * Stream AI chat message
+ * Persists a user message and run, then streams normalized assistant events over SSE. Preflight failures stay JSON.
+ */
+export const postAiConversationsByIdMessagesStreamMutation = (
+  options?: Partial<Options<PostAiConversationsByIdMessagesStreamData>>,
+): UseMutationOptions<
+  PostAiConversationsByIdMessagesStreamResponse,
+  PostAiConversationsByIdMessagesStreamError,
+  Options<PostAiConversationsByIdMessagesStreamData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiConversationsByIdMessagesStreamResponse,
+    PostAiConversationsByIdMessagesStreamError,
+    Options<PostAiConversationsByIdMessagesStreamData>
+  > = {
+    mutationFn: async (localOptions) => {
+      return (await postAiConversationsByIdMessagesStream({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      })) as unknown as PostAiConversationsByIdMessagesStreamResponse;
+    },
+  };
+  return mutationOptions;
 };
 
 export const getExercisesQueryKey = (options?: Options<GetExercisesData>) =>

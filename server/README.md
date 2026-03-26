@@ -71,6 +71,41 @@ Optional env var: `GEMINI_MODEL` (defaults to `googleai/gemini-2.5-flash`)
 
 The command respects existing shell env first, then loads `server/.env.local`, `server/.env`, and `server/setenv.sh` (or `server/.setenv.sh`) if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
 
+### AI Chat Runtime
+
+The live API chat runtime uses the same model default as the smoke test:
+
+- default model: `googleai/gemini-2.5-flash`
+- supported API key env vars: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
+- optional model override: `GEMINI_MODEL`
+
+For local development, keep using the existing server env workflow:
+
+1. Put values in your shell, `server/setenv.sh`, `server/.setenv.sh`, `server/.env.local`, or `server/.env`
+2. Source `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
+
+The API server itself reads process env. It does not introduce a chat-only env file loader.
+
+### AI Chat API
+
+Phase 1 adds persisted chat endpoints under `/api/ai/*`:
+
+- `POST /api/ai/conversations`
+- `GET /api/ai/conversations/{id}`
+- `POST /api/ai/conversations/{id}/messages/stream`
+
+The stream endpoint is authenticated fetch-based SSE:
+
+- preflight failures return normal JSON errors with non-2xx status
+- successful requests switch to `text/event-stream`
+- post-start failures emit SSE `error` events
+
+Proxy note:
+
+- reverse proxies must not buffer the SSE response path
+- the handler already sends `X-Accel-Buffering: no`
+- keep `text/event-stream` passthrough enabled if you add nginx or another proxy in front
+
 ### Configuration
 
 The `make dev` command supports these environment variables:

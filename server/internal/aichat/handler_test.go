@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,34 @@ func (m *mockChatService) StreamValidate(ctx context.Context, prompt string, onC
 	if args.Error(1) == nil {
 		_ = onChunk("Phase 0 ")
 		_ = onChunk("stream works.")
+	}
+	done, _ := args.Get(0).(*StreamDone)
+	return done, args.Error(1)
+}
+
+func (m *mockChatService) CreateConversation(ctx context.Context) (*Conversation, error) {
+	args := m.Called(ctx)
+	conversation, _ := args.Get(0).(*Conversation)
+	return conversation, args.Error(1)
+}
+
+func (m *mockChatService) GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error) {
+	args := m.Called(ctx, conversationID)
+	detail, _ := args.Get(0).(*ConversationDetail)
+	return detail, args.Error(1)
+}
+
+func (m *mockChatService) PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error) {
+	args := m.Called(ctx, conversationID, prompt, requestID)
+	prepared, _ := args.Get(0).(*PreparedMessageStream)
+	return prepared, args.Error(1)
+}
+
+func (m *mockChatService) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error) {
+	args := m.Called(ctx, prepared, onChunk)
+	if args.Error(1) == nil {
+		_ = onChunk("hello ")
+		_ = onChunk("world")
 	}
 	done, _ := args.Get(0).(*StreamDone)
 	return done, args.Error(1)
@@ -208,4 +237,207 @@ func TestHandlerWriteServiceError_DefaultsToBadGateway(t *testing.T) {
 	require.Equal(t, http.StatusBadGateway, rr.Code)
 	assert.Contains(t, rr.Body.String(), "failed to generate ai chat validation")
 	service.AssertExpectations(t)
+}
+
+func TestHandlerCreateConversation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := new(mockChatService)
+	handler := NewHandler(logger, service)
+	now := time.Date(2026, 3, 26, 17, 0, 0, 0, time.UTC)
+	service.On("CreateConversation", mock.Anything).Return(&Conversation{
+		ID:        41,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil).Once()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations", nil)
+	rr := httptest.NewRecorder()
+
+	handler.CreateConversation(rr, req)
+
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var conversation Conversation
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&conversation))
+	assert.Equal(t, int32(41), conversation.ID)
+	service.AssertExpectations(t)
+}
+
+func TestHandlerGetConversation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("returns conversation detail", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		now := time.Date(2026, 3, 26, 17, 5, 0, 0, time.UTC)
+		service.On("GetConversation", mock.Anything, int32(41)).Return(&ConversationDetail{
+			Conversation: &Conversation{
+				ID:        41,
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
+			Messages: []ChatMessage{
+				{
+					ID:             1,
+					ConversationID: 41,
+					Role:           roleUser,
+					Content:        "hello",
+					Status:         statusCompleted,
+					CreatedAt:      now,
+					UpdatedAt:      now,
+				},
+			},
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.GetConversation(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"conversation"`)
+		assert.Contains(t, rr.Body.String(), `"messages"`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("maps not found", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("GetConversation", mock.Anything, int32(41)).Return((*ConversationDetail)(nil), apperrors.NewNotFound("ai conversation", "41")).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.GetConversation(rr, req)
+
+		require.Equal(t, http.StatusNotFound, rr.Code)
+		assert.Contains(t, rr.Body.String(), "ai conversation with id 41 not found")
+		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerStreamMessage(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("returns json error before opening stream when preflight fails", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return((*PreparedMessageStream)(nil), ErrRuntimeUnavailable).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
+		req.SetPathValue("id", "41")
+		rr := newStreamResponseRecorder()
+
+		handler.StreamMessage(rr, req)
+
+		require.Equal(t, http.StatusServiceUnavailable, rr.Code)
+		assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+		assert.NotContains(t, rr.Body.String(), "event: start")
+		service.AssertNotCalled(t, "StreamMessage", mock.Anything, mock.Anything, mock.Anything)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("writes SSE frames with start delta done sequence", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		prepared := preparedStreamFixture()
+		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
+		service.On("StreamMessage", mock.Anything, prepared, mock.Anything).Return(&StreamDone{
+			ConversationID: 41,
+			RunID:          51,
+			MessageID:      61,
+			Model:          defaultModelName,
+			Text:           "hello world",
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
+		req.SetPathValue("id", "41")
+		rr := newStreamResponseRecorder()
+
+		handler.StreamMessage(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, "text/event-stream", rr.Header().Get("Content-Type"))
+		body := rr.Body.String()
+		assert.Contains(t, body, "event: start")
+		assert.Contains(t, body, `"request_id":"req-123"`)
+		assert.Contains(t, body, `"conversation_id":41`)
+		assert.Contains(t, body, `"run_id":51`)
+		assert.Contains(t, body, `"message_id":61`)
+		assert.Contains(t, body, "event: delta")
+		assert.Contains(t, body, `"delta":"hello "`)
+		assert.Contains(t, body, "event: done")
+		assert.Contains(t, body, `"text":"hello world"`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("writes SSE error event after stream starts", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		prepared := preparedStreamFixture()
+		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
+		service.On("StreamMessage", mock.Anything, prepared, mock.Anything).Return((*StreamDone)(nil), errors.New("provider failed")).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
+		req.SetPathValue("id", "41")
+		rr := newStreamResponseRecorder()
+
+		handler.StreamMessage(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		assert.Contains(t, rr.Body.String(), "event: start")
+		assert.Contains(t, rr.Body.String(), `event: error`)
+		assert.Contains(t, rr.Body.String(), `"message":"failed to generate ai chat response"`)
+		service.AssertExpectations(t)
+	})
+}
+
+func preparedStreamFixture() *PreparedMessageStream {
+	now := time.Date(2026, 3, 26, 17, 10, 0, 0, time.UTC)
+	return &PreparedMessageStream{
+		Conversation: &Conversation{
+			ID:        41,
+			UserID:    "user-123",
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+		UserMessage: &ChatMessage{
+			ID:             60,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Role:           roleUser,
+			Content:        "prove streaming",
+			Status:         statusCompleted,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+			CompletedAt:    &now,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Role:           roleAssistant,
+			Content:        "",
+			Status:         statusStreaming,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			UserMessageID:      60,
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+			CreatedAt:          now,
+			UpdatedAt:          now,
+			StartedAt:          now,
+		},
+		Prompt: "prove streaming",
+	}
 }

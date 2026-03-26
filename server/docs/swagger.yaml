@@ -1,5 +1,93 @@
 basePath: /api
 definitions:
+  aichat.ChatMessage:
+    properties:
+      completed_at:
+        type: string
+      content:
+        type: string
+      conversation_id:
+        type: integer
+      created_at:
+        type: string
+      error_message:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  aichat.Conversation:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      last_message_at:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  aichat.ConversationDetail:
+    properties:
+      conversation:
+        $ref: '#/definitions/aichat.Conversation'
+      messages:
+        items:
+          $ref: '#/definitions/aichat.ChatMessage'
+        type: array
+    type: object
+  aichat.SendMessageRequest:
+    properties:
+      prompt:
+        type: string
+    type: object
+  aichat.StreamEvent:
+    properties:
+      conversation_id:
+        type: integer
+      delta:
+        type: string
+      message:
+        type: string
+      message_id:
+        type: integer
+      model:
+        type: string
+      request_id:
+        type: string
+      run_id:
+        type: integer
+      text:
+        type: string
+      type:
+        type: string
+    type: object
+  aichat.ValidateRequest:
+    properties:
+      prompt:
+        type: string
+    type: object
+  aichat.ValidateResponse:
+    properties:
+      model:
+        type: string
+      output:
+        $ref: '#/definitions/aichat.ValidationOutput'
+    type: object
+  aichat.ValidationOutput:
+    properties:
+      next_step:
+        type: string
+      summary:
+        type: string
+    type: object
   exercise.CreateExerciseRequest:
     properties:
       name:
@@ -292,6 +380,13 @@ definitions:
       timestamp:
         type: string
     type: object
+  response.Error:
+    properties:
+      message:
+        type: string
+      request_id:
+        type: string
+    type: object
   response.ErrorResponse:
     properties:
       message:
@@ -538,6 +633,222 @@ info:
   title: FitTrack API
   version: "1.0"
 paths:
+  /ai/chat/validate:
+    post:
+      consumes:
+      - application/json
+      description: Phase-0 validation endpoint for FitTrack AI chat architecture.
+      parameters:
+      - description: Validation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/aichat.ValidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.ValidateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/response.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Validate AI chat architecture
+      tags:
+      - ai-chat
+  /ai/chat/validate/stream:
+    post:
+      consumes:
+      - application/json
+      description: Phase-0 validation stream endpoint. Preflight failures return JSON;
+        successful requests upgrade to SSE.
+      parameters:
+      - description: Validation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/aichat.ValidateRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.StreamEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/response.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Stream AI chat architecture validation
+      tags:
+      - ai-chat
+  /ai/conversations:
+    post:
+      description: Creates an empty persisted AI chat conversation for the authenticated
+        user.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/aichat.Conversation'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Create AI chat conversation
+      tags:
+      - ai-chat
+  /ai/conversations/{id}:
+    get:
+      description: Returns a persisted AI chat conversation with its messages.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.ConversationDetail'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Get AI chat conversation
+      tags:
+      - ai-chat
+  /ai/conversations/{id}/messages/stream:
+    post:
+      consumes:
+      - application/json
+      description: Persists a user message and run, then streams normalized assistant
+        events over SSE. Preflight failures stay JSON.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Send message request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/aichat.SendMessageRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.StreamEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Stream AI chat message
+      tags:
+      - ai-chat
   /exercises:
     get:
       consumes:

@@ -155,8 +155,9 @@ func main() {
 	exerciseService := exercise.NewService(logger, exerciseRepo)
 	featureAccessService := featureaccess.NewService(logger, featureAccessRepo)
 	userService := user.NewService(logger, userRepo)
+	aiChatRepo := aichat.NewRepository(logger, queries, pool)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
-	aiChatService := aichat.NewService(featureAccessService, aiChatRuntime)
+	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo)
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)

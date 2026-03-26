@@ -8,6 +8,7 @@ A full-stack fitness tracking application with Go backend and React frontend.
 - **Frontend**: React with TypeScript, TanStack Router, and TailwindCSS
 - **Auth**: Stack authentication with JWT verification and Row Level Security
 - **API**: OpenAPI/Swagger specification with auto-generated client code
+- **AI chat**: In-process Go API slice under `/api/ai/*` with Postgres-owned conversation state and fetch-based SSE
 
 ## Developer Workflow
 
@@ -97,6 +98,8 @@ bun install
 bun run dev        # starts on http://localhost:5173 (proxies API to :8080)
 # or: bun run start  # starts on http://localhost:3000
 ```
+
+After signing in, the minimal phase-1 chat proof is available at `/chat`.
 
 ### Available Commands
 
