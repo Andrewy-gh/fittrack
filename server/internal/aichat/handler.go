@@ -22,6 +22,7 @@ type chatService interface {
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
 	StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error)
+	AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error
 }
 
 type Handler struct {
@@ -94,8 +95,9 @@ func (h *Handler) StreamValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sse, ok := h.startSSE(w, r)
-	if !ok {
+	sse, err := h.startSSE(w)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat validation stream", err)
 		return
 	}
 
@@ -218,8 +220,12 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sse, ok := h.startSSE(w, r)
-	if !ok {
+	sse, err := h.startSSE(w)
+	if err != nil {
+		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
+			h.logger.Error("failed to abort ai chat run after stream preflight error", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
+		}
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat stream", err)
 		return
 	}
 
@@ -231,6 +237,9 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		MessageID:      prepared.AssistantMessage.ID,
 		Model:          prepared.Run.Model,
 	}); err != nil {
+		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
+			h.logger.Error("failed to abort ai chat run after start event write failure", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
+		}
 		h.logStreamWriteFailure("failed to start ai chat stream", r, err)
 		return
 	}
@@ -314,14 +323,13 @@ func (h *Handler) decodeConversationID(w http.ResponseWriter, r *http.Request) (
 	return int32(parsed), true
 }
 
-func (h *Handler) startSSE(w http.ResponseWriter, r *http.Request) (*sseWriter, bool) {
+func (h *Handler) startSSE(w http.ResponseWriter) (*sseWriter, error) {
 	sse := newSSEWriter(w)
 	sse.prepareHeaders()
 	if err := sse.disableWriteTimeout(); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat stream", err)
-		return nil, false
+		return nil, err
 	}
-	return sse, true
+	return sse, nil
 }
 
 func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err error, unexpectedStatus int, unexpectedMessage string) {

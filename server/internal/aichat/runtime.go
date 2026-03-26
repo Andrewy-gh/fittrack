@@ -79,18 +79,11 @@ func activateGenkitRuntime(ctx context.Context, modelName string, featureAccess 
 	tool := genkit.DefineTool(g, "fittrack/listActiveFeatures",
 		"Lists the active FitTrack feature keys for the authenticated viewer.",
 		func(ctx *ai.ToolContext, _ struct{}) (*featureSnapshot, error) {
-			grants, err := featureAccess.ListCurrentUserAccess(ctx)
-			if err != nil {
-				return nil, err
+			guard := toolGuardFromContext(ctx)
+			if guard == nil {
+				return listActiveFeaturesSnapshot(ctx, featureAccess)
 			}
-
-			keys := make([]string, 0, len(grants))
-			for _, grant := range grants {
-				keys = append(keys, grant.FeatureKey)
-			}
-			sort.Strings(keys)
-
-			return &featureSnapshot{FeatureKeys: keys}, nil
+			return guard.listActiveFeatures(ctx, featureAccess)
 		},
 	)
 
@@ -110,7 +103,7 @@ func (r *GenkitRuntime) GenerateValidation(ctx context.Context, prompt string) (
 		return nil, ErrRuntimeUnavailable
 	}
 
-	output, _, err := genkit.GenerateData[ValidationOutput](ctx, r.g,
+	output, _, err := genkit.GenerateData[ValidationOutput](withToolGuard(ctx), r.g,
 		ai.WithModelName(r.modelName),
 		ai.WithOutputType(ValidationOutput{}),
 		ai.WithTools(r.tool),
@@ -129,7 +122,7 @@ func (r *GenkitRuntime) StreamValidation(ctx context.Context, prompt string, onC
 	}
 
 	var builder strings.Builder
-	resp, err := genkit.Generate(ctx, r.g,
+	resp, err := genkit.Generate(withToolGuard(ctx), r.g,
 		ai.WithModelName(r.modelName),
 		ai.WithPrompt(buildStreamingPrompt(prompt)),
 		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
@@ -163,6 +156,7 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 
 	streamCtx, cancel := context.WithTimeout(ctx, chatStreamTimeout)
 	defer cancel()
+	streamCtx = withToolGuard(streamCtx)
 
 	var builder strings.Builder
 	opts := []ai.GenerateOption{
@@ -197,6 +191,21 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 		Model: r.modelName,
 		Text:  text,
 	}, nil
+}
+
+func listActiveFeaturesSnapshot(ctx context.Context, featureAccess featureAccessReader) (*featureSnapshot, error) {
+	grants, err := featureAccess.ListCurrentUserAccess(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]string, 0, len(grants))
+	for _, grant := range grants {
+		keys = append(keys, grant.FeatureKey)
+	}
+	sort.Strings(keys)
+
+	return &featureSnapshot{FeatureKeys: keys}, nil
 }
 
 type featureSnapshot struct {

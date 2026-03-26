@@ -45,6 +45,11 @@ export type AIChatStreamResult = {
   endedWithError: boolean;
 };
 
+type ParsedSSEChunk = {
+  event: AIChatStreamEvent;
+  id?: string;
+};
+
 type StreamHandlers = {
   onStart?: (event: AIChatStreamEvent) => void;
   onDelta?: (event: AIChatStreamEvent) => void;
@@ -52,6 +57,15 @@ type StreamHandlers = {
   onErrorEvent?: (event: AIChatStreamEvent) => void;
   signal?: AbortSignal;
 };
+
+type ConversationPollOptions = {
+  signal?: AbortSignal;
+  intervalMs?: number;
+  timeoutMs?: number;
+};
+
+const defaultConversationPollIntervalMs = 1000;
+const defaultConversationPollTimeoutMs = 55000;
 
 async function getAuthHeaders(contentType = false): Promise<Headers> {
   const headers = new Headers();
@@ -139,6 +153,8 @@ export async function streamAIChatMessage(
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = '';
+  let lastEventId = '';
+  let sawTerminalEvent = false;
 
   try {
     while (true) {
@@ -152,10 +168,16 @@ export async function streamAIChatMessage(
       buffer = chunks.pop() ?? '';
 
       for (const chunk of chunks) {
-        const event = parseSSEChunk(chunk);
-        if (!event) {
+        const parsed = parseSSEChunk(chunk);
+        if (!parsed) {
           continue;
         }
+        if (parsed.id && parsed.id === lastEventId) {
+          continue;
+        }
+        lastEventId = parsed.id ?? lastEventId;
+
+        const event = parsed.event;
 
         switch (event.type) {
           case 'start':
@@ -165,9 +187,11 @@ export async function streamAIChatMessage(
             handlers.onDelta?.(event);
             break;
           case 'done':
+            sawTerminalEvent = true;
             handlers.onDone?.(event);
             return { doneEvent: event, endedWithError: false };
           case 'error':
+            sawTerminalEvent = true;
             handlers.onErrorEvent?.(event);
             return { doneEvent: event, endedWithError: true };
           default:
@@ -179,14 +203,43 @@ export async function streamAIChatMessage(
     reader.releaseLock();
   }
 
+  if (!sawTerminalEvent) {
+    throw new Error('AI chat stream ended before a terminal event');
+  }
+
   return { endedWithError: false };
 }
 
-function parseSSEChunk(chunk: string): AIChatStreamEvent | null {
+export async function pollAIChatConversationUntilSettled(
+  conversationId: number,
+  options: ConversationPollOptions = {}
+): Promise<AIChatConversationDetail> {
+  const intervalMs = options.intervalMs ?? defaultConversationPollIntervalMs;
+  const timeoutMs = options.timeoutMs ?? defaultConversationPollTimeoutMs;
+  const deadline = Date.now() + timeoutMs;
+
+  while (true) {
+    throwIfAborted(options.signal);
+    const detail = await getAIChatConversation(conversationId);
+    if (!detail.messages.some((message) => message.status === 'streaming')) {
+      return detail;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error('AI chat recovery timed out while waiting for persisted conversation state');
+    }
+    await delay(intervalMs, options.signal);
+  }
+}
+
+function parseSSEChunk(chunk: string): ParsedSSEChunk | null {
   const lines = chunk.split('\n');
   const dataLines: string[] = [];
+  let id = '';
 
   for (const line of lines) {
+    if (line.startsWith('id:')) {
+      id = line.replace(/^id:\s*/, '').trim();
+    }
     if (line.startsWith('data:')) {
       dataLines.push(line.replace(/^data:\s*/, ''));
     }
@@ -196,5 +249,41 @@ function parseSSEChunk(chunk: string): AIChatStreamEvent | null {
     return null;
   }
 
-  return JSON.parse(dataLines.join('\n')) as AIChatStreamEvent;
+  return {
+    event: JSON.parse(dataLines.join('\n')) as AIChatStreamEvent,
+    id,
+  };
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new DOMException('Aborted', 'AbortError');
+  }
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      cleanup();
+      reject(
+        signal?.reason instanceof Error
+          ? signal.reason
+          : new DOMException('Aborted', 'AbortError')
+      );
+    };
+
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
 }

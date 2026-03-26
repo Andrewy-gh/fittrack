@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   createAIChatConversation,
   getAIChatConversation,
+  pollAIChatConversationUntilSettled,
   streamAIChatMessage,
   type AIChatConversation,
   type AIChatMessage,
@@ -41,6 +42,7 @@ function ChatRouteComponent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const pendingAssistantIdRef = useRef<number | null>(null);
+  const recoveryAbortRef = useRef<AbortController | null>(null);
 
   const loadConversation = useCallback(
     async (id: number, opts?: { silent?: boolean }) => {
@@ -53,9 +55,11 @@ function ChatRouteComponent() {
         setConversation(detail.conversation);
         setMessages(detail.messages);
         setLoadError(null);
+        return detail;
       } catch (error) {
         const message = getErrorMessage(error);
         setLoadError(message);
+        return null;
       } finally {
         if (!opts?.silent) {
           setIsLoadingConversation(false);
@@ -65,16 +69,57 @@ function ChatRouteComponent() {
     []
   );
 
+  const recoverConversation = useCallback(
+    async (id: number, opts?: { silent?: boolean }) => {
+      recoveryAbortRef.current?.abort();
+      const controller = new AbortController();
+      recoveryAbortRef.current = controller;
+
+      try {
+        const detail = await pollAIChatConversationUntilSettled(id, {
+          signal: controller.signal,
+        });
+        setConversation(detail.conversation);
+        setMessages(detail.messages);
+        setLoadError(null);
+        return detail;
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const message = getErrorMessage(error);
+          if (!opts?.silent) {
+            setLoadError(message);
+          }
+        }
+        return null;
+      } finally {
+        if (recoveryAbortRef.current === controller) {
+          recoveryAbortRef.current = null;
+        }
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (!conversationId) {
+      recoveryAbortRef.current?.abort();
       setConversation(null);
       setMessages([]);
       setLoadError(null);
       return;
     }
 
-    void loadConversation(conversationId);
-  }, [conversationId, loadConversation]);
+    void (async () => {
+      const detail = await loadConversation(conversationId);
+      if (detail?.messages.some((message) => message.status === 'streaming')) {
+        await recoverConversation(conversationId, { silent: true });
+      }
+    })();
+
+    return () => {
+      recoveryAbortRef.current?.abort();
+    };
+  }, [conversationId, loadConversation, recoverConversation]);
 
   if (!user) {
     return (
@@ -258,6 +303,7 @@ function ChatRouteComponent() {
               : message
           )
         );
+        await recoverConversation(activeConversationId, { silent: true });
       }
 
       showErrorToast(error, 'Failed to stream AI chat response');

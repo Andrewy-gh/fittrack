@@ -8,8 +8,9 @@ import (
 )
 
 type sseWriter struct {
-	w          http.ResponseWriter
-	controller *http.ResponseController
+	w           http.ResponseWriter
+	controller  *http.ResponseController
+	nextEventID int
 }
 
 func newSSEWriter(w http.ResponseWriter) *sseWriter {
@@ -37,6 +38,10 @@ func (s *sseWriter) write(event string, payload any) error {
 		return err
 	}
 
+	s.nextEventID++
+	if _, err := fmt.Fprintf(s.w, "id: %d\n", s.nextEventID); err != nil {
+		return err
+	}
 	if event != "" {
 		if _, err := fmt.Fprintf(s.w, "event: %s\n", event); err != nil {
 			return err

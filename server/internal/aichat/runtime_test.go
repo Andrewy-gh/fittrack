@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
@@ -108,4 +109,69 @@ func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 	if runtime.tool != (ai.Tool)(nil) {
 		t.Fatal("NewGenkitRuntime() should not retain a tool after init panic")
 	}
+}
+
+func TestToolCallGuardCachesFeatureSnapshot(t *testing.T) {
+	featureAccess := &countingFeatureAccessReader{
+		grants: []featureaccess.FeatureAccessGrant{
+			{FeatureKey: "beta"},
+			{FeatureKey: "alpha"},
+		},
+	}
+	guard := toolGuardFromContext(withToolGuard(context.Background()))
+
+	first, err := guard.listActiveFeatures(context.Background(), featureAccess)
+	if err != nil {
+		t.Fatalf("first listActiveFeatures() error = %v", err)
+	}
+	second, err := guard.listActiveFeatures(context.Background(), featureAccess)
+	if err != nil {
+		t.Fatalf("second listActiveFeatures() error = %v", err)
+	}
+
+	if featureAccess.calls != 1 {
+		t.Fatalf("feature access calls = %d, want 1", featureAccess.calls)
+	}
+	if got := first.FeatureKeys; len(got) != 2 || got[0] != "alpha" || got[1] != "beta" {
+		t.Fatalf("unexpected first snapshot: %#v", got)
+	}
+	if got := second.FeatureKeys; len(got) != 2 || got[0] != "alpha" || got[1] != "beta" {
+		t.Fatalf("unexpected second snapshot: %#v", got)
+	}
+	first.FeatureKeys[0] = "mutated"
+	if second.FeatureKeys[0] != "alpha" {
+		t.Fatal("tool guard should return cloned cached snapshots")
+	}
+}
+
+func TestToolCallGuardCachesErrors(t *testing.T) {
+	expectedErr := errors.New("boom")
+	featureAccess := &countingFeatureAccessReader{err: expectedErr}
+	guard := toolGuardFromContext(withToolGuard(context.Background()))
+
+	_, err := guard.listActiveFeatures(context.Background(), featureAccess)
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("first listActiveFeatures() error = %v, want %v", err, expectedErr)
+	}
+	_, err = guard.listActiveFeatures(context.Background(), featureAccess)
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("second listActiveFeatures() error = %v, want %v", err, expectedErr)
+	}
+	if featureAccess.calls != 1 {
+		t.Fatalf("feature access calls = %d, want 1", featureAccess.calls)
+	}
+}
+
+type countingFeatureAccessReader struct {
+	grants []featureaccess.FeatureAccessGrant
+	err    error
+	calls  int
+}
+
+func (r *countingFeatureAccessReader) ListCurrentUserAccess(context.Context) ([]featureaccess.FeatureAccessGrant, error) {
+	r.calls++
+	if r.err != nil {
+		return nil, r.err
+	}
+	return r.grants, nil
 }

@@ -331,6 +331,94 @@ func (q *Queries) GetAIChatConversation(ctx context.Context, arg GetAIChatConver
 	return i, err
 }
 
+const getAIChatMessage = `-- name: GetAIChatMessage :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at
+FROM ai_chat_message
+WHERE id = $1 AND user_id = $2
+`
+
+type GetAIChatMessageParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetAIChatMessage(ctx context.Context, arg GetAIChatMessageParams) (AiChatMessage, error) {
+	row := q.db.QueryRow(ctx, getAIChatMessage, arg.ID, arg.UserID)
+	var i AiChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.Role,
+		&i.Content,
+		&i.Status,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const getActiveAIChatRunForConversation = `-- name: GetActiveAIChatRunForConversation :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+FROM ai_chat_run
+WHERE conversation_id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+ORDER BY id DESC
+LIMIT 1
+`
+
+type GetActiveAIChatRunForConversationParams struct {
+	ConversationID int32  `json:"conversation_id"`
+	UserID         string `json:"user_id"`
+}
+
+func (q *Queries) GetActiveAIChatRunForConversation(ctx context.Context, arg GetActiveAIChatRunForConversationParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, getActiveAIChatRunForConversation, arg.ConversationID, arg.UserID)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const getContributionData = `-- name: GetContributionData :many
 WITH workout_totals AS (
     SELECT
@@ -1331,28 +1419,6 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 	return items, nil
 }
 
-const hasActiveAIChatRunForConversation = `-- name: HasActiveAIChatRunForConversation :one
-SELECT EXISTS (
-    SELECT 1
-    FROM ai_chat_run
-    WHERE conversation_id = $1
-      AND user_id = $2
-      AND status = 'streaming'
-)
-`
-
-type HasActiveAIChatRunForConversationParams struct {
-	ConversationID int32  `json:"conversation_id"`
-	UserID         string `json:"user_id"`
-}
-
-func (q *Queries) HasActiveAIChatRunForConversation(ctx context.Context, arg HasActiveAIChatRunForConversationParams) (bool, error) {
-	row := q.db.QueryRow(ctx, hasActiveAIChatRunForConversation, arg.ConversationID, arg.UserID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const hasActiveFeatureAccess = `-- name: HasActiveFeatureAccess :one
 SELECT EXISTS (
     SELECT 1
@@ -1732,6 +1798,24 @@ func (q *Queries) TouchAIChatConversation(ctx context.Context, arg TouchAIChatCo
 	return err
 }
 
+const touchAIChatRun = `-- name: TouchAIChatRun :exec
+UPDATE ai_chat_run
+SET updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+`
+
+type TouchAIChatRunParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) TouchAIChatRun(ctx context.Context, arg TouchAIChatRunParams) error {
+	_, err := q.db.Exec(ctx, touchAIChatRun, arg.ID, arg.UserID)
+	return err
+}
+
 const updateAIChatMessageCompleted = `-- name: UpdateAIChatMessageCompleted :one
 UPDATE ai_chat_message
 SET content = $3,
@@ -1820,6 +1904,50 @@ func (q *Queries) UpdateAIChatMessageFailed(ctx context.Context, arg UpdateAICha
 		arg.ErrorMessage,
 		arg.CompletedAt,
 	)
+	var i AiChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.Role,
+		&i.Content,
+		&i.Status,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const updateAIChatMessageStreaming = `-- name: UpdateAIChatMessageStreaming :one
+UPDATE ai_chat_message
+SET content = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at
+`
+
+type UpdateAIChatMessageStreamingParams struct {
+	ID      int32  `json:"id"`
+	UserID  string `json:"user_id"`
+	Content string `json:"content"`
+}
+
+func (q *Queries) UpdateAIChatMessageStreaming(ctx context.Context, arg UpdateAIChatMessageStreamingParams) (AiChatMessage, error) {
+	row := q.db.QueryRow(ctx, updateAIChatMessageStreaming, arg.ID, arg.UserID, arg.Content)
 	var i AiChatMessage
 	err := row.Scan(
 		&i.ID,

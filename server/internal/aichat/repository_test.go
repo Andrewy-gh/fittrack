@@ -3,6 +3,7 @@ package aichat
 import (
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 )
 
@@ -35,5 +36,16 @@ func TestTruncateForStorage_TruncatesWithoutBreakingUTF8(t *testing.T) {
 	}
 	if !strings.HasSuffix(truncated, "...") {
 		t.Fatalf("truncateForStorage should end with ellipsis, got %q", truncated)
+	}
+}
+
+func TestIsStreamingRunStale(t *testing.T) {
+	now := time.Date(2026, 3, 26, 18, 30, 0, 0, time.UTC)
+
+	if isStreamingRunStale(now.Add(-streamingRunStaleAfter+time.Second), now) {
+		t.Fatal("run newer than stale threshold should not be stale")
+	}
+	if !isStreamingRunStale(now.Add(-streamingRunStaleAfter-time.Second), now) {
+		t.Fatal("run older than stale threshold should be stale")
 	}
 }
