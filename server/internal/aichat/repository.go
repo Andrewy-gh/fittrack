@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/jackc/pgx/v5"
@@ -365,20 +366,29 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 func buildConversationTitle(prompt string) string {
 	title := strings.Join(strings.Fields(prompt), " ")
 	title = strings.TrimSpace(title)
-	if title == "" {
-		return ""
-	}
-	if len(title) <= 80 {
-		return title
-	}
-	return strings.TrimSpace(title[:77]) + "..."
+	return truncateWithEllipsis(title, 80)
 }
 
 func truncateForStorage(value string, maxLen int) string {
-	if len(value) <= maxLen {
+	return truncateWithEllipsis(value, maxLen)
+}
+
+func truncateWithEllipsis(value string, maxLen int) string {
+	value = strings.TrimSpace(value)
+	if value == "" || maxLen <= 0 {
+		return ""
+	}
+
+	if utf8.RuneCountInString(value) <= maxLen {
 		return value
 	}
-	return strings.TrimSpace(value[:maxLen-3]) + "..."
+
+	if maxLen <= 3 {
+		return string([]rune(value)[:maxLen])
+	}
+
+	runes := []rune(value)
+	return strings.TrimSpace(string(runes[:maxLen-3])) + "..."
 }
 
 func textToPg(value string) pgtype.Text {

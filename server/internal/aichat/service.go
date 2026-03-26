@@ -135,13 +135,14 @@ func (s *Service) PrepareMessageStream(ctx context.Context, conversationID int32
 func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error) {
 	history := toRuntimeHistory(prepared.History)
 	var partial strings.Builder
+	persistCtx := context.WithoutCancel(ctx)
 
 	done, err := s.runtime.StreamChat(ctx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
 		return onChunk(delta)
 	})
 	if err != nil {
-		if failErr := s.failPreparedRun(ctx, prepared, partial.String(), err); failErr != nil {
+		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
 			s.logger.Error("failed to persist ai chat run failure", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
 		return nil, err
@@ -152,10 +153,10 @@ func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageSt
 		text = strings.TrimSpace(partial.String())
 	}
 
-	message, run, err := s.repo.CompleteRun(ctx, prepared, text, time.Now().UTC())
+	message, run, err := s.repo.CompleteRun(persistCtx, prepared, text, time.Now().UTC())
 	if err != nil {
 		persistErr := err
-		if failErr := s.failPreparedRun(ctx, prepared, text, err); failErr != nil {
+		if failErr := s.failPreparedRun(persistCtx, prepared, text, err); failErr != nil {
 			s.logger.Error("failed to mark ai chat run failed after completion error", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
 		return nil, persistErr

@@ -402,3 +402,126 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }
+
+func TestServiceStreamMessage_PersistsCompletionWhenRequestContextCanceled(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	now := time.Date(2026, 3, 26, 17, 40, 0, 0, time.UTC)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+		Prompt: "new prompt",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{}, mock.Anything).
+		Return(&StreamDone{
+			Model: defaultModelName,
+			Text:  "hello world",
+		}, nil).Once()
+	repo.On(
+		"CompleteRun",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
+		prepared,
+		"hello world",
+		mock.AnythingOfType("time.Time"),
+	).Return(&ChatMessage{
+		ID:             61,
+		ConversationID: 41,
+		UserID:         "user-123",
+		Status:         statusCompleted,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		CompletedAt:    &now,
+	}, &ChatRun{
+		ID:                 51,
+		ConversationID:     41,
+		UserID:             "user-123",
+		AssistantMessageID: 61,
+		Model:              defaultModelName,
+		Status:             statusCompleted,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		StartedAt:          now,
+		CompletedAt:        &now,
+	}, nil).Once()
+
+	done, err := service.StreamMessage(ctx, prepared, func(string) error { return nil })
+
+	require.NoError(t, err)
+	require.NotNil(t, done)
+	assert.Equal(t, "hello world", done.Text)
+	repo.AssertNotCalled(t, "FailRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+		Prompt: "new prompt",
+	}
+	expectedErr := errors.New("provider failed")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{}, mock.Anything).Run(func(args mock.Arguments) {
+		onChunk := args.Get(3).(func(string) error)
+		_ = onChunk("partial ")
+	}).Return((*StreamDone)(nil), expectedErr).Once()
+	repo.On(
+		"FailRun",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
+		prepared,
+		"partial",
+		expectedErr,
+		mock.AnythingOfType("time.Time"),
+	).Return(nil).Once()
+
+	done, err := service.StreamMessage(ctx, prepared, func(string) error { return nil })
+
+	require.Error(t, err)
+	assert.Nil(t, done)
+	assert.ErrorIs(t, err, expectedErr)
+	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
