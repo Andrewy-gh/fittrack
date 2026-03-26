@@ -97,15 +97,17 @@ export function AnalyticsPage({
 
         <AnalyticsSummaryCards summary={summary} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Exercise Progress</CardTitle>
-            <CardDescription>
+        <section className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold tracking-tight">Exercise Progress</h2>
+            <p className="text-sm text-muted-foreground">
               Pick an exercise to inspect how session metrics move over time.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
+            </p>
+          </div>
+
+          <div className="flex justify-center">
             <GenericCombobox
+              className="max-w-md"
               options={exercises}
               selected={selectedExerciseName}
               ariaLabel="Exercise options"
@@ -113,8 +115,8 @@ export function AnalyticsPage({
               placeholder="Select an exercise"
               onChange={(exercise) => onSelectExercise(exercise.id)}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
         {isLoadingDetails || !selectedExerciseId ? (
           <Card>

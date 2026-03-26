@@ -52,16 +52,18 @@ export function WorkoutVolumeChart({
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <RangeSelector
-            selectedRange={selectedRange}
-            onRangeChange={setSelectedRange}
-          />
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-start">
+            <RangeSelector
+              selectedRange={selectedRange}
+              onRangeChange={setSelectedRange}
+            />
+          </div>
 
           <Select value={selectedFocus} onValueChange={setSelectedFocus}>
             <SelectTrigger
               aria-label="Workout focus filter"
-              className="w-full sm:w-[200px]"
+              className="w-full"
             >
               <SelectValue placeholder="All focus types" />
             </SelectTrigger>
