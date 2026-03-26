@@ -8,6 +8,44 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AiChatConversation struct {
+	ID            int32              `json:"id"`
+	UserID        string             `json:"user_id"`
+	Title         pgtype.Text        `json:"title"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	LastMessageAt pgtype.Timestamptz `json:"last_message_at"`
+}
+
+type AiChatMessage struct {
+	ID             int32              `json:"id"`
+	ConversationID int32              `json:"conversation_id"`
+	UserID         string             `json:"user_id"`
+	Role           string             `json:"role"`
+	Content        string             `json:"content"`
+	Status         string             `json:"status"`
+	ErrorMessage   pgtype.Text        `json:"error_message"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	CompletedAt    pgtype.Timestamptz `json:"completed_at"`
+}
+
+type AiChatRun struct {
+	ID                 int32              `json:"id"`
+	ConversationID     int32              `json:"conversation_id"`
+	UserID             string             `json:"user_id"`
+	UserMessageID      int32              `json:"user_message_id"`
+	AssistantMessageID int32              `json:"assistant_message_id"`
+	Model              string             `json:"model"`
+	Status             string             `json:"status"`
+	RequestID          pgtype.Text        `json:"request_id"`
+	ErrorMessage       pgtype.Text        `json:"error_message"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	StartedAt          pgtype.Timestamptz `json:"started_at"`
+	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
+}
+
 type Exercise struct {
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`

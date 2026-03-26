@@ -15,6 +15,42 @@ func (stubFeatureAccessReader) ListCurrentUserAccess(context.Context) ([]feature
 	return nil, nil
 }
 
+func TestConfiguredAPIKeyEnvVar(t *testing.T) {
+	tests := []struct {
+		name      string
+		geminiKey string
+		googleKey string
+		want      string
+	}{
+		{
+			name:      "prefers gemini key to match googlegenai plugin precedence",
+			geminiKey: "gemini-key",
+			googleKey: "google-key",
+			want:      geminiAPIKeyEnvVar,
+		},
+		{
+			name:      "accepts google api key",
+			googleKey: "google-key",
+			want:      googleAPIKeyEnvVar,
+		},
+		{
+			name: "reports no configured key",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(geminiAPIKeyEnvVar, tt.geminiKey)
+			t.Setenv(googleAPIKeyEnvVar, tt.googleKey)
+
+			if got := configuredAPIKeyEnvVar(); got != tt.want {
+				t.Fatalf("configuredAPIKeyEnvVar() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResolveModelNameDefaultsToGemini25Flash(t *testing.T) {
 	t.Setenv("GEMINI_MODEL", "")
 
@@ -34,6 +70,7 @@ func TestResolveModelNameUsesOverride(t *testing.T) {
 
 func TestNewGenkitRuntimeReturnsUnavailableWithoutGoogleAPIKey(t *testing.T) {
 	t.Setenv(googleAPIKeyEnvVar, "")
+	t.Setenv(geminiAPIKeyEnvVar, "")
 
 	runtime := NewGenkitRuntime(context.Background(), stubFeatureAccessReader{})
 
@@ -46,7 +83,8 @@ func TestNewGenkitRuntimeReturnsUnavailableWithoutGoogleAPIKey(t *testing.T) {
 }
 
 func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
-	t.Setenv(googleAPIKeyEnvVar, "configured")
+	t.Setenv(geminiAPIKeyEnvVar, "configured")
+	t.Setenv(googleAPIKeyEnvVar, "")
 
 	original := genkitInit
 	genkitInit = func(context.Context, ...genkit.GenkitOption) *genkit.Genkit {

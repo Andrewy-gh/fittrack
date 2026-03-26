@@ -2,11 +2,13 @@ package aichat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -15,7 +17,11 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 )
 
-const googleAPIKeyEnvVar = "GOOGLE_API_KEY"
+const (
+	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
+	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
+	chatStreamTimeout  = 45 * time.Second
+)
 
 var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
 	return genkit.Init(ctx, opts...)
@@ -38,7 +44,7 @@ func NewGenkitRuntime(ctx context.Context, featureAccess featureAccessReader) *G
 		modelName: modelName,
 	}
 
-	if strings.TrimSpace(os.Getenv(googleAPIKeyEnvVar)) == "" {
+	if configuredAPIKeyEnvVar() == "" {
 		return runtime
 	}
 
@@ -150,8 +156,61 @@ func (r *GenkitRuntime) StreamValidation(ctx context.Context, prompt string, onC
 	}, nil
 }
 
+func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error) {
+	if !r.Available() {
+		return nil, ErrRuntimeUnavailable
+	}
+
+	streamCtx, cancel := context.WithTimeout(ctx, chatStreamTimeout)
+	defer cancel()
+
+	var builder strings.Builder
+	opts := []ai.GenerateOption{
+		ai.WithModelName(r.modelName),
+		ai.WithTools(r.tool),
+		ai.WithMessages(buildChatMessages(history)...),
+		ai.WithPrompt(prompt),
+		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+			delta := collectChunkText(chunk)
+			if delta == "" {
+				return nil
+			}
+			builder.WriteString(delta)
+			return onChunk(delta)
+		}),
+	}
+
+	resp, err := genkit.Generate(streamCtx, r.g, opts...)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(streamCtx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%w: %v", ErrGenerationTimeout, err)
+		}
+		return nil, fmt.Errorf("stream ai chat response: %w", err)
+	}
+
+	text := strings.TrimSpace(resp.Text())
+	if text == "" {
+		text = strings.TrimSpace(builder.String())
+	}
+
+	return &StreamDone{
+		Model: r.modelName,
+		Text:  text,
+	}, nil
+}
+
 type featureSnapshot struct {
 	FeatureKeys []string `json:"feature_keys"`
+}
+
+func configuredAPIKeyEnvVar() string {
+	if strings.TrimSpace(os.Getenv(geminiAPIKeyEnvVar)) != "" {
+		return geminiAPIKeyEnvVar
+	}
+	if strings.TrimSpace(os.Getenv(googleAPIKeyEnvVar)) != "" {
+		return googleAPIKeyEnvVar
+	}
+	return ""
 }
 
 func resolveModelName() string {
@@ -183,6 +242,37 @@ Respond in 2 short sentences.
 
 User validation prompt:
 %s`, prompt)
+}
+
+func buildChatMessages(history []RuntimeChatMessage) []*ai.Message {
+	messages := []*ai.Message{
+		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt())),
+	}
+
+	for _, message := range history {
+		text := strings.TrimSpace(message.Text)
+		if text == "" {
+			continue
+		}
+		switch message.Role {
+		case roleAssistant:
+			messages = append(messages, ai.NewModelMessage(ai.NewTextPart(text)))
+		default:
+			messages = append(messages, ai.NewUserMessage(ai.NewTextPart(text)))
+		}
+	}
+
+	return messages
+}
+
+func buildChatSystemPrompt() string {
+	return `You are FitTrack's in-app training assistant.
+
+Rules:
+- Stay focused on fitness, training, recovery, exercise selection, and how to use FitTrack.
+- Keep answers concise, practical, and safe.
+- Base your response on the visible conversation only. Do not invent personal history or workout data.
+- If feature access is relevant, you may use the fittrack/listActiveFeatures tool.`
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

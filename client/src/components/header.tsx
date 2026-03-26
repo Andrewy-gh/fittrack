@@ -20,6 +20,9 @@ export function Header() {
         <div className="px-2 font-bold">
           <Link to="/analytics">Analytics</Link>
         </div>
+        <div className="px-2 font-bold">
+          <Link to="/chat">AI Chat</Link>
+        </div>
       </nav>
       <CustomUserButton />
     </header>

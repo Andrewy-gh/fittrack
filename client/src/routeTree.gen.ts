@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HandlerSplatRouteImport } from './routes/handler.$'
+import { Route as LayoutChatRouteImport } from './routes/_layout/chat'
 import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
 import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
 import { Route as LayoutExercisesIndexRouteImport } from './routes/_layout/exercises/index'
@@ -33,6 +34,11 @@ const HandlerSplatRoute = HandlerSplatRouteImport.update({
   id: '/handler/$',
   path: '/handler/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LayoutChatRoute = LayoutChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAnalyticsRoute = LayoutAnalyticsRouteImport.update({
   id: '/analytics',
@@ -76,6 +82,7 @@ const LayoutWorkoutsWorkoutIdEditRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof LayoutAnalyticsRoute
+  '/chat': typeof LayoutChatRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof LayoutAnalyticsRoute
+  '/chat': typeof LayoutChatRoute
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/_layout/analytics': typeof LayoutAnalyticsRoute
+  '/_layout/chat': typeof LayoutChatRoute
   '/handler/$': typeof HandlerSplatRoute
   '/_layout/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
+    | '/chat'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/analytics'
+    | '/chat'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/workouts/new'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/_layout/analytics'
+    | '/_layout/chat'
     | '/handler/$'
     | '/_layout/exercises/$exerciseId'
     | '/_layout/workouts/new'
@@ -173,6 +185,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/handler/$'
       preLoaderRoute: typeof HandlerSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_layout/chat': {
+      id: '/_layout/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof LayoutChatRouteImport
+      parentRoute: typeof LayoutRoute
     }
     '/_layout/analytics': {
       id: '/_layout/analytics'
@@ -228,6 +247,7 @@ declare module '@tanstack/react-router' {
 
 interface LayoutRouteChildren {
   LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute
+  LayoutChatRoute: typeof LayoutChatRoute
   LayoutExercisesExerciseIdRoute: typeof LayoutExercisesExerciseIdRoute
   LayoutWorkoutsNewRoute: typeof LayoutWorkoutsNewRoute
   LayoutExercisesIndexRoute: typeof LayoutExercisesIndexRoute
@@ -238,6 +258,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAnalyticsRoute: LayoutAnalyticsRoute,
+  LayoutChatRoute: LayoutChatRoute,
   LayoutExercisesExerciseIdRoute: LayoutExercisesExerciseIdRoute,
   LayoutWorkoutsNewRoute: LayoutWorkoutsNewRoute,
   LayoutExercisesIndexRoute: LayoutExercisesIndexRoute,

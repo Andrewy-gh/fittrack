@@ -544,3 +544,192 @@ SELECT
 FROM workout_totals wt
 GROUP BY DATE_TRUNC('day', wt.date)
 ORDER BY date;
+
+-- name: CreateAIChatConversation :one
+INSERT INTO ai_chat_conversation (
+    user_id,
+    title
+)
+VALUES ($1, $2)
+RETURNING id, user_id, title, created_at, updated_at, last_message_at;
+
+-- name: GetAIChatConversation :one
+SELECT id, user_id, title, created_at, updated_at, last_message_at
+FROM ai_chat_conversation
+WHERE id = $1 AND user_id = $2;
+
+-- name: ListAIChatMessagesByConversation :many
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at
+FROM ai_chat_message
+WHERE conversation_id = $1 AND user_id = $2
+ORDER BY id ASC;
+
+-- name: HasActiveAIChatRunForConversation :one
+SELECT EXISTS (
+    SELECT 1
+    FROM ai_chat_run
+    WHERE conversation_id = $1
+      AND user_id = $2
+      AND status = 'streaming'
+);
+
+-- name: CreateAIChatMessage :one
+INSERT INTO ai_chat_message (
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    completed_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at;
+
+-- name: CreateAIChatRun :one
+INSERT INTO ai_chat_run (
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    completed_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
+
+-- name: TouchAIChatConversation :exec
+UPDATE ai_chat_conversation
+SET updated_at = CURRENT_TIMESTAMP,
+    last_message_at = $3
+WHERE id = $1 AND user_id = $2;
+
+-- name: SetAIChatConversationTitleIfEmpty :execrows
+UPDATE ai_chat_conversation
+SET title = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND title IS NULL
+  AND $3 IS NOT NULL
+  AND btrim($3) <> '';
+
+-- name: UpdateAIChatMessageCompleted :one
+UPDATE ai_chat_message
+SET content = $3,
+    status = 'completed',
+    error_message = NULL,
+    completed_at = $4,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at;
+
+-- name: UpdateAIChatMessageFailed :one
+UPDATE ai_chat_message
+SET content = $3,
+    status = 'failed',
+    error_message = $4,
+    completed_at = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at;
+
+-- name: UpdateAIChatRunCompleted :one
+UPDATE ai_chat_run
+SET status = 'completed',
+    error_message = NULL,
+    completed_at = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
+
+-- name: UpdateAIChatRunFailed :one
+UPDATE ai_chat_run
+SET status = 'failed',
+    error_message = $3,
+    completed_at = $4,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
