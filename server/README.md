@@ -57,6 +57,20 @@ air
 go run ./cmd/api
 ```
 
+### Gemini Smoke Test
+
+From `server/`, run:
+
+```bash
+go run ./cmd/gemini-smoke
+```
+
+Expected env var: `GOOGLE_API_KEY`
+
+Optional env var: `GEMINI_MODEL` (defaults to `googleai/gemini-2.5-flash`)
+
+The command loads `server/.env.local` first and then `server/.env` if present, sends one real Genkit request to Gemini, and prints a short model response to stdout.
+
 ### Configuration
 
 The `make dev` command supports these environment variables:
