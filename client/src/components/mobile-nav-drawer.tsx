@@ -36,7 +36,7 @@ export function MobileNavDrawer({ includeChat = false }: MobileNavDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={setOpen} direction="left">
       <DrawerTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation menu">
+        <Button variant="ghost" size="icon" aria-label="Open navigation menu">
           <Menu className="h-5 w-5" />
         </Button>
       </DrawerTrigger>

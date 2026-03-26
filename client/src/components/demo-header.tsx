@@ -3,6 +3,7 @@ import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
 import { MobileBottomNav } from './mobile-bottom-nav';
+import { MobileNavDrawer } from './mobile-nav-drawer';
 
 export function DemoHeader() {
   const { theme, setTheme } = useTheme();
@@ -18,21 +19,23 @@ export function DemoHeader() {
         data-app-header
       >
         <div className="flex items-center gap-2">
+          <MobileNavDrawer />
+
           <nav className="hidden md:flex md:flex-row">
-          <div className="px-2 font-bold">
-            <Link to="/">Home</Link>
-          </div>
-          <div className="px-2 font-bold">
-            <Link to="/workouts">Workouts</Link>
-          </div>
-          <div className="px-2 font-bold">
-            <Link to="/exercises">Exercises</Link>
-          </div>
-          <div className="px-2 font-bold">
-            <Link to="/analytics">Analytics</Link>
-          </div>
-        </nav>
-      </div>
+            <div className="px-2 font-bold">
+              <Link to="/">Home</Link>
+            </div>
+            <div className="px-2 font-bold">
+              <Link to="/workouts">Workouts</Link>
+            </div>
+            <div className="px-2 font-bold">
+              <Link to="/exercises">Exercises</Link>
+            </div>
+            <div className="px-2 font-bold">
+              <Link to="/analytics">Analytics</Link>
+            </div>
+          </nav>
+        </div>
 
         <div className="flex items-center gap-2">
           <Button
@@ -46,7 +49,7 @@ export function DemoHeader() {
         </div>
       </header>
 
-      <MobileBottomNav />
+      <MobileBottomNav includeChat />
     </>
   );
 }
