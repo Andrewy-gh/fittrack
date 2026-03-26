@@ -65,11 +65,11 @@ From `server/`, run:
 go run ./cmd/gemini-smoke
 ```
 
-Expected env var: `GOOGLE_API_KEY`
+Expected env var: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 
 Optional env var: `GEMINI_MODEL` (defaults to `googleai/gemini-2.5-flash`)
 
-The command loads `server/.env.local` first and then `server/.env` if present, sends one real Genkit request to Gemini, and prints a short model response to stdout.
+The command respects existing shell env first, then loads `server/.env.local`, `server/.env`, and `server/setenv.sh` (or `server/.setenv.sh`) if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
 
 ### Configuration
 

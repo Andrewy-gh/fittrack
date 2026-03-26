@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -13,9 +15,11 @@ import (
 )
 
 const (
+	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
 	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
 	defaultGeminiModel = "googleai/gemini-2.5-flash"
 	smokePrompt        = "Reply with one short sentence confirming the FitTrack Genkit smoke test is working."
+	smokeTimeout       = 20 * time.Second
 )
 
 func main() {
@@ -24,14 +28,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	if strings.TrimSpace(os.Getenv(googleAPIKeyEnvVar)) == "" {
-		fmt.Fprintf(os.Stderr, "%s environment variable is not set. Set it in your shell or in server/.env or server/.env.local.\n", googleAPIKeyEnvVar)
+	if configuredAPIKeyEnvVar() == "" {
+		fmt.Fprintf(os.Stderr, "%s or %s must be set. Put one in your shell or in server/.env, server/.env.local, or server/setenv.sh.\n", geminiAPIKeyEnvVar, googleAPIKeyEnvVar)
 		os.Exit(1)
 	}
 
 	modelName := getModelName()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), smokeTimeout)
+	defer cancel()
 	g := genkit.Init(ctx,
 		genkit.WithPlugins(&googlegenai.GoogleAI{}),
 		genkit.WithDefaultModel(modelName),
@@ -56,7 +61,7 @@ func main() {
 }
 
 func loadLocalEnv() error {
-	files := existingEnvFiles(".env.local", ".env")
+	files := existingEnvFiles(localEnvFiles()...)
 	if len(files) == 0 {
 		return nil
 	}
@@ -66,6 +71,10 @@ func loadLocalEnv() error {
 	}
 
 	return nil
+}
+
+func localEnvFiles() []string {
+	return []string{".env.local", ".env", ".setenv.sh", "setenv.sh"}
 }
 
 func existingEnvFiles(paths ...string) []string {
@@ -89,6 +98,16 @@ func formatResponse(text string) string {
 	return strings.TrimSpace(cleaned[:maxLen-3]) + "..."
 }
 
+func configuredAPIKeyEnvVar() string {
+	if strings.TrimSpace(os.Getenv(geminiAPIKeyEnvVar)) != "" {
+		return geminiAPIKeyEnvVar
+	}
+	if strings.TrimSpace(os.Getenv(googleAPIKeyEnvVar)) != "" {
+		return googleAPIKeyEnvVar
+	}
+	return ""
+}
+
 func getModelName() string {
 	if model := strings.TrimSpace(os.Getenv("GEMINI_MODEL")); model != "" {
 		return model
@@ -97,6 +116,10 @@ func getModelName() string {
 }
 
 func formatRunError(err error, modelName string) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Sprintf("genkit gemini smoke test timed out after %s for model %s. Check network access to Gemini and try again.", smokeTimeout, modelName)
+	}
+
 	raw := strings.TrimSpace(err.Error())
 	if isQuotaOr429Error(raw) {
 		return quotaOr429ErrorMessage(raw, modelName)
