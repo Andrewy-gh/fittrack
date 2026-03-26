@@ -3,6 +3,7 @@ package aichat
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -15,6 +16,10 @@ import (
 )
 
 const googleAPIKeyEnvVar = "GOOGLE_API_KEY"
+
+var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
+	return genkit.Init(ctx, opts...)
+}
 
 type featureAccessReader interface {
 	ListCurrentUserAccess(ctx context.Context) ([]featureaccess.FeatureAccessGrant, error)
@@ -37,13 +42,35 @@ func NewGenkitRuntime(ctx context.Context, featureAccess featureAccessReader) *G
 		return runtime
 	}
 
-	g := genkit.Init(ctx,
+	g, tool, ok := activateGenkitRuntime(ctx, modelName, featureAccess)
+	if !ok {
+		return runtime
+	}
+
+	runtime.g = g
+	runtime.tool = tool
+	runtime.available = true
+
+	return runtime
+}
+
+func activateGenkitRuntime(ctx context.Context, modelName string, featureAccess featureAccessReader) (_ *genkit.Genkit, _ ai.Tool, ok bool) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			slog.Warn("ai chat runtime initialization skipped after genkit panic",
+				"configured_api_key_env", googleAPIKeyEnvVar,
+				"panic", recovered,
+			)
+			ok = false
+		}
+	}()
+
+	g := genkitInit(ctx,
 		genkit.WithPlugins(&googlegenai.GoogleAI{}),
 		genkit.WithDefaultModel(modelName),
 	)
 
-	runtime.g = g
-	runtime.tool = genkit.DefineTool(g, "fittrack/listActiveFeatures",
+	tool := genkit.DefineTool(g, "fittrack/listActiveFeatures",
 		"Lists the active FitTrack feature keys for the authenticated viewer.",
 		func(ctx *ai.ToolContext, _ struct{}) (*featureSnapshot, error) {
 			grants, err := featureAccess.ListCurrentUserAccess(ctx)
@@ -60,9 +87,8 @@ func NewGenkitRuntime(ctx context.Context, featureAccess featureAccessReader) *G
 			return &featureSnapshot{FeatureKeys: keys}, nil
 		},
 	)
-	runtime.available = true
 
-	return runtime
+	return g, tool, true
 }
 
 func (r *GenkitRuntime) ModelName() string {
