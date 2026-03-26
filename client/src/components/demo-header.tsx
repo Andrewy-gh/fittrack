@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
-import { MobileNavDrawer } from './mobile-nav-drawer';
+import { MobileBottomNav } from './mobile-bottom-nav';
 
 export function DemoHeader() {
   const { theme, setTheme } = useTheme();
@@ -12,14 +12,13 @@ export function DemoHeader() {
   };
 
   return (
-    <header
-      className="flex items-center justify-between gap-2 border-b p-2"
-      data-app-header
-    >
-      <div className="flex items-center gap-2">
-        <MobileNavDrawer />
-
-        <nav className="hidden md:flex md:flex-row">
+    <>
+      <header
+        className="flex items-center justify-between gap-2 border-b p-2"
+        data-app-header
+      >
+        <div className="flex items-center gap-2">
+          <nav className="hidden md:flex md:flex-row">
           <div className="px-2 font-bold">
             <Link to="/">Home</Link>
           </div>
@@ -35,16 +34,19 @@ export function DemoHeader() {
         </nav>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          className="h-8 w-8"
-        >
-          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-        </Button>
-      </div>
-    </header>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-8 w-8"
+          >
+            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          </Button>
+        </div>
+      </header>
+
+      <MobileBottomNav />
+    </>
   );
 }
