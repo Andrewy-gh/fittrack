@@ -15,6 +15,7 @@ import (
 
 type chatService interface {
 	Validate(ctx context.Context, prompt string) (*ValidateResponse, error)
+	EnsureAllowed(ctx context.Context) error
 	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 }
 
@@ -53,8 +54,17 @@ func (h *Handler) StreamValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.service.EnsureAllowed(r.Context()); err != nil {
+		h.writeServiceError(w, r, err)
+		return
+	}
+
 	sse := newSSEWriter(w)
 	sse.prepareHeaders()
+	if err := sse.disableWriteTimeout(); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat stream", err)
+		return
+	}
 
 	if err := sse.write("start", StreamEvent{
 		Type:      "start",

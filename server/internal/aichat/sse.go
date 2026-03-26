@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type sseWriter struct {
@@ -24,6 +25,10 @@ func (s *sseWriter) prepareHeaders() {
 	headers.Set("Cache-Control", "no-cache")
 	headers.Set("Connection", "keep-alive")
 	headers.Set("X-Accel-Buffering", "no")
+}
+
+func (s *sseWriter) disableWriteTimeout() error {
+	return s.controller.SetWriteDeadline(time.Time{})
 }
 
 func (s *sseWriter) write(event string, payload any) error {

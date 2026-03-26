@@ -62,6 +62,16 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+}
+
 func main() {
 	// Load and validate configuration
 	cfg, err := config.Load()
@@ -181,14 +191,7 @@ func main() {
 	handler = middleware.SecurityHeaders()(handler)
 
 	// Configure HTTP server with timeouts
-	srv := &http.Server{
-		Addr:        fmt.Sprintf(":%d", cfg.Port),
-		Handler:     handler,
-		ReadTimeout: 10 * time.Second,
-		// SSE responses can legitimately stay open well beyond a fixed 10s limit.
-		WriteTimeout: 0,
-		IdleTimeout:  120 * time.Second,
-	}
+	srv := newHTTPServer(cfg, handler)
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)

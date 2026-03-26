@@ -10,8 +10,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
-	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,10 +22,27 @@ type mockChatService struct {
 	mock.Mock
 }
 
+type streamResponseRecorder struct {
+	*httptest.ResponseRecorder
+}
+
+func newStreamResponseRecorder() *streamResponseRecorder {
+	return &streamResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
+}
+
+func (r *streamResponseRecorder) SetWriteDeadline(time.Time) error {
+	return nil
+}
+
 func (m *mockChatService) Validate(ctx context.Context, prompt string) (*ValidateResponse, error) {
 	args := m.Called(ctx, prompt)
 	resp, _ := args.Get(0).(*ValidateResponse)
 	return resp, args.Error(1)
+}
+
+func (m *mockChatService) EnsureAllowed(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *mockChatService) StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
@@ -103,6 +120,7 @@ func TestHandlerStreamValidate(t *testing.T) {
 	t.Run("writes SSE frames with deltas and done event", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
+		service.On("EnsureAllowed", mock.Anything).Return(nil).Once()
 		service.On("StreamValidate", mock.Anything, "prove streaming", mock.Anything).Return(&StreamDone{
 			Model: defaultModelName,
 			Text:  "Phase 0 stream works.",
@@ -110,7 +128,7 @@ func TestHandlerStreamValidate(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/validate/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
 		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
-		rr := httptest.NewRecorder()
+		rr := newStreamResponseRecorder()
 
 		handler.StreamValidate(rr, req)
 
@@ -127,19 +145,37 @@ func TestHandlerStreamValidate(t *testing.T) {
 		service.AssertExpectations(t)
 	})
 
+	t.Run("returns json error before opening stream when preflight fails", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("EnsureAllowed", mock.Anything).Return(ErrRuntimeUnavailable).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/validate/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
+		rr := newStreamResponseRecorder()
+
+		handler.StreamValidate(rr, req)
+
+		require.Equal(t, http.StatusServiceUnavailable, rr.Code)
+		assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+		assert.NotContains(t, rr.Body.String(), "event: start")
+		service.AssertNotCalled(t, "StreamValidate", mock.Anything, mock.Anything, mock.Anything)
+		service.AssertExpectations(t)
+	})
+
 	t.Run("writes safe error event after stream starts", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
-		service.On("StreamValidate", mock.Anything, "prove streaming", mock.Anything).Return((*StreamDone)(nil), apperrors.NewUnauthorized("feature access", "")).Once()
+		service.On("EnsureAllowed", mock.Anything).Return(nil).Once()
+		service.On("StreamValidate", mock.Anything, "prove streaming", mock.Anything).Return((*StreamDone)(nil), errors.New("provider failed")).Once()
 
 		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/validate/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
-		rr := httptest.NewRecorder()
+		rr := newStreamResponseRecorder()
 
 		handler.StreamValidate(rr, req)
 
 		require.Equal(t, http.StatusOK, rr.Code)
 		assert.Contains(t, rr.Body.String(), `event: error`)
-		assert.Contains(t, rr.Body.String(), `"message":"not authorized to access feature access"`)
+		assert.Contains(t, rr.Body.String(), `"message":"failed to generate ai chat validation"`)
 		service.AssertExpectations(t)
 	})
 
