@@ -11,7 +11,6 @@ import {
   DrawerTrigger,
 } from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
-import { CustomUserButton } from './custom-user-button';
 
 interface MobileNavDrawerProps {
   includeChat?: boolean;
@@ -56,13 +55,6 @@ export function MobileNavDrawer({ includeChat = false, children }: MobileNavDraw
             </DrawerClose>
           </div>
         </DrawerHeader>
-
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Profile</span>
-            <CustomUserButton />
-          </div>
-        </div>
 
         <nav className="flex flex-col p-3">
           {links.map(({ to, label, icon: Icon }) => {
