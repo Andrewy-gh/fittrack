@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
+import { MobileNavDrawer } from './mobile-nav-drawer';
 
 export function DemoHeader() {
   const { theme, setTheme } = useTheme();
@@ -12,23 +13,28 @@ export function DemoHeader() {
 
   return (
     <header
-      className="flex flex-wrap justify-between gap-2 border-b p-2"
+      className="flex items-center justify-between gap-2 border-b p-2"
       data-app-header
     >
-      <nav className="flex flex-wrap flex-row">
-        <div className="px-2 font-bold">
-          <Link to="/">Home</Link>
-        </div>
-        <div className="px-2 font-bold">
-          <Link to="/workouts">Workouts</Link>
-        </div>
-        <div className="px-2 font-bold">
-          <Link to="/exercises">Exercises</Link>
-        </div>
-        <div className="px-2 font-bold">
-          <Link to="/analytics">Analytics</Link>
-        </div>
-      </nav>
+      <div className="flex items-center gap-2">
+        <MobileNavDrawer />
+
+        <nav className="hidden md:flex md:flex-row">
+          <div className="px-2 font-bold">
+            <Link to="/">Home</Link>
+          </div>
+          <div className="px-2 font-bold">
+            <Link to="/workouts">Workouts</Link>
+          </div>
+          <div className="px-2 font-bold">
+            <Link to="/exercises">Exercises</Link>
+          </div>
+          <div className="px-2 font-bold">
+            <Link to="/analytics">Analytics</Link>
+          </div>
+        </nav>
+      </div>
+
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
