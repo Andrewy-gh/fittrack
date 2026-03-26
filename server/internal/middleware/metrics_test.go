@@ -353,3 +353,27 @@ func TestResponseWriter_MultipleWriteHeaderCalls(t *testing.T) {
 		t.Errorf("Expected status code 200, got %d", rr.Code)
 	}
 }
+
+func TestMetrics_PreservesFlusher(t *testing.T) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := w.(http.Flusher); !ok {
+			t.Fatal("expected wrapped response writer to preserve http.Flusher")
+		}
+
+		_, _ = w.Write([]byte("data: hello\n\n"))
+		w.(http.Flusher).Flush()
+	})
+
+	handler := Metrics()(nextHandler)
+	req := httptest.NewRequest(http.MethodGet, "/api/ai/chat/validate/stream", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+	if !rr.Flushed {
+		t.Fatal("expected response recorder to be flushed")
+	}
+}
