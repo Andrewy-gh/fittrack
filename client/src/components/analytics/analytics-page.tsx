@@ -5,13 +5,7 @@ import type {
 } from '@/client';
 import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
 import { GenericCombobox } from '@/components/generic-combobox';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { WorkoutContributionGraph } from '@/components/workouts/workout-contribution-graph';
 import { getWorkoutSummary } from '@/lib/analytics';
 import { AnalyticsSummaryCards } from './analytics-summary-cards';

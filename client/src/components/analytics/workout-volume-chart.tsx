@@ -53,7 +53,7 @@ export function WorkoutVolumeChart({
         </div>
 
         <div className="flex flex-col gap-3">
-          <div className="flex justify-start">
+          <div className="flex justify-center">
             <RangeSelector
               selectedRange={selectedRange}
               onRangeChange={setSelectedRange}
