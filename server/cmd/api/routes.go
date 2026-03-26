@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
@@ -14,7 +15,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health endpoints (no authentication required)
@@ -49,6 +50,8 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("PATCH /api/exercises/{id}", eh.UpdateExerciseName)
 	mux.HandleFunc("PATCH /api/exercises/{id}/historical-1rm", eh.UpdateExerciseHistorical1RM)
 	mux.HandleFunc("DELETE /api/exercises/{id}", eh.DeleteExercise)
+	mux.HandleFunc("POST /api/ai/chat/validate", ah.Validate)
+	mux.HandleFunc("POST /api/ai/chat/validate/stream", ah.StreamValidate)
 	// Swagger documentation
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 	mux.HandleFunc("GET /", api.handleStaticFiles())

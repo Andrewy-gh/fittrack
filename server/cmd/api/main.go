@@ -30,6 +30,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -144,12 +145,15 @@ func main() {
 	exerciseService := exercise.NewService(logger, exerciseRepo)
 	featureAccessService := featureaccess.NewService(logger, featureAccessRepo)
 	userService := user.NewService(logger, userRepo)
+	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
+	aiChatService := aichat.NewService(featureAccessService, aiChatRuntime)
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
 	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
 	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
 	healthHandler := health.NewHandler(logger, pool)
+	aiChatHandler := aichat.NewHandler(logger, aiChatService)
 
 	api := &api{
 		logger:  logger,
@@ -165,7 +169,7 @@ func main() {
 	}
 
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
-	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler)
+	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler)
 
 	// Apply middleware in order: SecurityHeaders → CORS → RequestID → Metrics → RateLimit → Authentication
 	var handler http.Handler = router
@@ -178,10 +182,11 @@ func main() {
 
 	// Configure HTTP server with timeouts
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        fmt.Sprintf(":%d", cfg.Port),
+		Handler:     handler,
+		ReadTimeout: 10 * time.Second,
+		// SSE responses can legitimately stay open well beyond a fixed 10s limit.
+		WriteTimeout: 0,
 		IdleTimeout:  120 * time.Second,
 	}
 

@@ -72,6 +72,18 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return rw.ResponseWriter.Write(b)
 }
 
+// Flush preserves streaming support for wrapped writers such as SSE handlers.
+func (rw *responseWriter) Flush() {
+	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+// Unwrap lets http.ResponseController reach the original writer through this wrapper.
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
+}
+
 // Metrics creates a middleware that tracks HTTP request metrics for Prometheus.
 // It records request count, duration, method, path, and status code.
 func Metrics() func(http.Handler) http.Handler {
