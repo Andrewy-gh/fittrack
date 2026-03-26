@@ -20,6 +20,7 @@ type Repository interface {
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
+	UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error)
 	FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error
 }
@@ -29,6 +30,8 @@ type repository struct {
 	queries *db.Queries
 	pool    *pgxpool.Pool
 }
+
+const streamingRunStaleAfter = chatStreamTimeout + 15*time.Second
 
 func NewRepository(logger *slog.Logger, queries *db.Queries, pool *pgxpool.Pool) Repository {
 	return &repository{
@@ -133,15 +136,25 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 		return nil, err
 	}
 
-	active, err := qtx.HasActiveAIChatRunForConversation(ctx, db.HasActiveAIChatRunForConversationParams{
+	activeRunRow, err := qtx.GetActiveAIChatRunForConversation(ctx, db.GetActiveAIChatRunForConversationParams{
 		ConversationID: conversationID,
 		UserID:         userID,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("check active ai chat run: %w", err)
-	}
-	if active {
-		return nil, ErrConversationBusy
+	switch {
+	case err == nil:
+		activeRun, err := mapRun(activeRunRow)
+		if err != nil {
+			return nil, err
+		}
+		if !isStreamingRunStale(activeRun.UpdatedAt, time.Now().UTC()) {
+			return nil, ErrConversationBusy
+		}
+		if err := r.failStaleRun(ctx, qtx, conversation, activeRun); err != nil {
+			return nil, err
+		}
+	case errors.Is(err, pgx.ErrNoRows):
+	default:
+		return nil, fmt.Errorf("get active ai chat run: %w", err)
 	}
 
 	historyRows, err := qtx.ListAIChatMessagesByConversation(ctx, db.ListAIChatMessagesByConversationParams{
@@ -258,6 +271,43 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 	}, nil
 }
 
+func (r *repository) UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin ai chat streaming update transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+	if _, err := qtx.UpdateAIChatMessageStreaming(ctx, db.UpdateAIChatMessageStreamingParams{
+		ID:      prepared.AssistantMessage.ID,
+		UserID:  prepared.AssistantMessage.UserID,
+		Content: partialText,
+	}); err != nil {
+		return fmt.Errorf("update ai chat assistant streaming message: %w", err)
+	}
+
+	if err := qtx.TouchAIChatRun(ctx, db.TouchAIChatRunParams{
+		ID:     prepared.Run.ID,
+		UserID: prepared.Run.UserID,
+	}); err != nil {
+		return fmt.Errorf("touch ai chat streaming run: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit ai chat streaming update transaction: %w", err)
+	}
+
+	prepared.AssistantMessage.Content = partialText
+	prepared.AssistantMessage.UpdatedAt = updatedAt.UTC()
+	prepared.Run.UpdatedAt = updatedAt.UTC()
+
+	return nil
+}
+
 func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -363,6 +413,53 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 	return nil
 }
 
+func (r *repository) failStaleRun(ctx context.Context, qtx *db.Queries, conversation *Conversation, activeRun *ChatRun) error {
+	assistantRow, err := qtx.GetAIChatMessage(ctx, db.GetAIChatMessageParams{
+		ID:     activeRun.AssistantMessageID,
+		UserID: activeRun.UserID,
+	})
+	if err != nil {
+		return fmt.Errorf("get stale ai chat assistant message: %w", err)
+	}
+
+	completedTS := pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}
+	errorText := truncateForStorage(streamInterruptedFailureMessage, 512)
+	if _, err := qtx.UpdateAIChatMessageFailed(ctx, db.UpdateAIChatMessageFailedParams{
+		ID:           assistantRow.ID,
+		UserID:       assistantRow.UserID,
+		Content:      assistantRow.Content,
+		ErrorMessage: textToPg(errorText),
+		CompletedAt:  completedTS,
+	}); err != nil {
+		return fmt.Errorf("fail stale ai chat assistant message: %w", err)
+	}
+
+	if _, err := qtx.UpdateAIChatRunFailed(ctx, db.UpdateAIChatRunFailedParams{
+		ID:           activeRun.ID,
+		UserID:       activeRun.UserID,
+		ErrorMessage: textToPg(errorText),
+		CompletedAt:  completedTS,
+	}); err != nil {
+		return fmt.Errorf("fail stale ai chat run: %w", err)
+	}
+
+	if err := qtx.TouchAIChatConversation(ctx, db.TouchAIChatConversationParams{
+		ID:            conversation.ID,
+		UserID:        conversation.UserID,
+		LastMessageAt: completedTS,
+	}); err != nil {
+		return fmt.Errorf("touch ai chat conversation after stale run recovery: %w", err)
+	}
+
+	r.logger.Warn("recovered stale ai chat run before starting a new stream",
+		"conversation_id", conversation.ID,
+		"run_id", activeRun.ID,
+		"updated_at", activeRun.UpdatedAt,
+	)
+
+	return nil
+}
+
 func buildConversationTitle(prompt string) string {
 	title := strings.Join(strings.Fields(prompt), " ")
 	title = strings.TrimSpace(title)
@@ -389,6 +486,10 @@ func truncateWithEllipsis(value string, maxLen int) string {
 
 	runes := []rune(value)
 	return strings.TrimSpace(string(runes[:maxLen-3])) + "..."
+}
+
+func isStreamingRunStale(updatedAt time.Time, now time.Time) bool {
+	return !updatedAt.IsZero() && now.UTC().Sub(updatedAt.UTC()) > streamingRunStaleAfter
 }
 
 func textToPg(value string) pgtype.Text {

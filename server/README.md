@@ -99,6 +99,9 @@ The stream endpoint is authenticated fetch-based SSE:
 - preflight failures return normal JSON errors with non-2xx status
 - successful requests switch to `text/event-stream`
 - post-start failures emit SSE `error` events
+- streaming assistant text is snapshotted into app-owned storage during long runs so a dropped client can reload persisted partial progress
+- the client recovery path is still storage-backed inspection, not live SSE replay; interrupted sessions poll the persisted conversation until the run reaches a terminal state
+- stale `streaming` runs older than the stream timeout grace window are auto-failed before a new send starts, which prevents a permanently blocked conversation after an interrupted server-side run
 
 Proxy note:
 

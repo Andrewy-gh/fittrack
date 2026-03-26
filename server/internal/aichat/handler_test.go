@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -27,12 +27,28 @@ type streamResponseRecorder struct {
 	*httptest.ResponseRecorder
 }
 
+type failingStreamResponseRecorder struct {
+	*streamResponseRecorder
+	failWrites bool
+}
+
 func newStreamResponseRecorder() *streamResponseRecorder {
 	return &streamResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
 }
 
+func newFailingStreamResponseRecorder() *failingStreamResponseRecorder {
+	return &failingStreamResponseRecorder{streamResponseRecorder: newStreamResponseRecorder(), failWrites: true}
+}
+
 func (r *streamResponseRecorder) SetWriteDeadline(time.Time) error {
 	return nil
+}
+
+func (r *failingStreamResponseRecorder) Write(p []byte) (int, error) {
+	if r.failWrites {
+		return 0, errors.New("broken pipe")
+	}
+	return r.streamResponseRecorder.Write(p)
 }
 
 func (m *mockChatService) Validate(ctx context.Context, prompt string) (*ValidateResponse, error) {
@@ -82,6 +98,11 @@ func (m *mockChatService) StreamMessage(ctx context.Context, prepared *PreparedM
 	}
 	done, _ := args.Get(0).(*StreamDone)
 	return done, args.Error(1)
+}
+
+func (m *mockChatService) AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error {
+	args := m.Called(ctx, prepared, failure)
+	return args.Error(0)
 }
 
 func TestHandlerValidate(t *testing.T) {
@@ -392,6 +413,24 @@ func TestHandlerStreamMessage(t *testing.T) {
 		assert.Contains(t, rr.Body.String(), "event: start")
 		assert.Contains(t, rr.Body.String(), `event: error`)
 		assert.Contains(t, rr.Body.String(), `"message":"failed to generate ai chat response"`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("fails prepared run when start event cannot be written", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		prepared := preparedStreamFixture()
+		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
+		service.On("AbortPreparedMessageStream", mock.Anything, prepared, ErrStreamNotStarted).Return(nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
+		req.SetPathValue("id", "41")
+		rr := newFailingStreamResponseRecorder()
+
+		handler.StreamMessage(rr, req)
+
+		service.AssertNotCalled(t, "StreamMessage", mock.Anything, mock.Anything, mock.Anything)
 		service.AssertExpectations(t)
 	})
 }

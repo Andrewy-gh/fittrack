@@ -32,6 +32,11 @@ type Service struct {
 	repo          Repository
 }
 
+const (
+	streamProgressPersistInterval = 1 * time.Second
+	streamProgressPersistTimeout  = 5 * time.Second
+)
+
 func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository) *Service {
 	return &Service{
 		logger:        logger,
@@ -136,10 +141,21 @@ func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageSt
 	history := toRuntimeHistory(prepared.History)
 	var partial strings.Builder
 	persistCtx := context.WithoutCancel(ctx)
+	progressSink := newStreamProgressSink(persistCtx, s.repo, prepared)
 
 	done, err := s.runtime.StreamChat(ctx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
-		return onChunk(delta)
+		partialText := strings.TrimSpace(partial.String())
+		if err := progressSink.maybePersist(partialText); err != nil {
+			s.logger.Warn("failed to persist ai chat streaming progress", "error", err, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
+		}
+		if err := onChunk(delta); err != nil {
+			if persistErr := progressSink.forcePersist(partialText); persistErr != nil {
+				s.logger.Warn("failed to persist ai chat streaming progress after stream write error", "error", persistErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
+			}
+			return normalizeStreamChunkError(ctx, err)
+		}
+		return nil
 	})
 	if err != nil {
 		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
@@ -171,6 +187,13 @@ func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageSt
 	}, nil
 }
 
+func (s *Service) AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error {
+	if prepared == nil {
+		return nil
+	}
+	return s.failPreparedRun(context.WithoutCancel(ctx), prepared, prepared.AssistantMessage.Content, failure)
+}
+
 func (s *Service) ensureAllowed(ctx context.Context) error {
 	if s.runtime == nil || !s.runtime.Available() {
 		return ErrRuntimeUnavailable
@@ -192,7 +215,91 @@ func (s *Service) ensureFeatureAccess(ctx context.Context) error {
 }
 
 func (s *Service) failPreparedRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error) error {
-	return s.repo.FailRun(ctx, prepared, strings.TrimSpace(partialText), failure, time.Now().UTC())
+	return s.repo.FailRun(ctx, prepared, strings.TrimSpace(partialText), normalizeStreamFailure(failure), time.Now().UTC())
+}
+
+type streamProgressSink struct {
+	ctx               context.Context
+	repo              Repository
+	prepared          *PreparedMessageStream
+	now               func() time.Time
+	lastPersistedAt   time.Time
+	lastPersistedText string
+}
+
+func newStreamProgressSink(ctx context.Context, repo Repository, prepared *PreparedMessageStream) *streamProgressSink {
+	return &streamProgressSink{
+		ctx:      ctx,
+		repo:     repo,
+		prepared: prepared,
+		now: func() time.Time {
+			return time.Now().UTC()
+		},
+	}
+}
+
+func (s *streamProgressSink) maybePersist(partialText string) error {
+	return s.persist(partialText, false)
+}
+
+func (s *streamProgressSink) forcePersist(partialText string) error {
+	return s.persist(partialText, true)
+}
+
+func (s *streamProgressSink) persist(partialText string, force bool) error {
+	partialText = strings.TrimSpace(partialText)
+	if partialText == "" || partialText == s.lastPersistedText {
+		return nil
+	}
+
+	now := s.now().UTC()
+	if !force && !s.lastPersistedAt.IsZero() && now.Sub(s.lastPersistedAt) < streamProgressPersistInterval {
+		return nil
+	}
+
+	persistCtx, cancel := context.WithTimeout(s.ctx, streamProgressPersistTimeout)
+	defer cancel()
+
+	if err := s.repo.UpdateStreamingRun(persistCtx, s.prepared, partialText, now); err != nil {
+		return err
+	}
+
+	s.lastPersistedAt = now
+	s.lastPersistedText = partialText
+
+	return nil
+}
+
+func normalizeStreamChunkError(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return ErrStreamDisconnected
+	}
+
+	lower := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(lower, "broken pipe"),
+		strings.Contains(lower, "connection reset"),
+		strings.Contains(lower, "context canceled"),
+		strings.Contains(lower, "client disconnected"),
+		strings.Contains(lower, "transport is closing"),
+		strings.Contains(lower, "eof"):
+		return ErrStreamDisconnected
+	default:
+		return err
+	}
+}
+
+func normalizeStreamFailure(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrStreamDisconnected) || errors.Is(err, ErrStreamNotStarted) {
+		return err
+	}
+	return err
 }
 
 func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {

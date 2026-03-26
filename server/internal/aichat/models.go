@@ -22,6 +22,12 @@ var (
 	ErrRuntimeUnavailable = errors.New("ai chat runtime is unavailable")
 	ErrConversationBusy   = errors.New("ai chat conversation already has an active run")
 	ErrGenerationTimeout  = errors.New("ai chat generation timed out")
+	ErrStreamDisconnected = errors.New("ai chat stream disconnected before completion")
+	ErrStreamNotStarted   = errors.New("ai chat stream failed before delivery started")
+)
+
+const (
+	streamInterruptedFailureMessage = "ai chat stream was interrupted before completion"
 )
 
 type ValidateRequest struct {

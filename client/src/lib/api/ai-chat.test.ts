@@ -12,6 +12,7 @@ vi.mock('@/stack', () => ({
 
 import {
   createAIChatConversation,
+  pollAIChatConversationUntilSettled,
   streamAIChatMessage,
 } from './ai-chat';
 
@@ -81,6 +82,113 @@ describe('ai chat api wrapper', () => {
     expect(seen).toEqual(['start', 'hello ', 'done']);
     expect(result.endedWithError).toBe(false);
     expect(result.doneEvent?.text).toBe('hello world');
+  });
+
+  it('suppresses duplicate SSE chunks by event id', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            [
+              'id: 1',
+              'event: start',
+              'data: {"type":"start","conversation_id":41,"run_id":51,"message_id":61}',
+              '',
+              'id: 1',
+              'event: start',
+              'data: {"type":"start","conversation_id":41,"run_id":51,"message_id":61}',
+              '',
+              'id: 2',
+              'event: done',
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"text":"hello world"}',
+              '',
+              '',
+            ].join('\n')
+          )
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+        },
+      })
+    );
+
+    const seen: string[] = [];
+    await streamAIChatMessage(41, 'hello', {
+      onStart: () => seen.push('start'),
+      onDone: () => seen.push('done'),
+    });
+
+    expect(seen).toEqual(['start', 'done']);
+  });
+
+  it('fails when the SSE stream ends before a terminal event', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            [
+              'id: 1',
+              'event: start',
+              'data: {"type":"start","conversation_id":41,"run_id":51,"message_id":61}',
+              '',
+              '',
+            ].join('\n')
+          )
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+        },
+      })
+    );
+
+    await expect(streamAIChatMessage(41, 'hello')).rejects.toThrow(
+      'AI chat stream ended before a terminal event'
+    );
+  });
+
+  it('polls persisted conversation state until streaming settles', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversation: { id: 41, created_at: '2026-03-26T17:00:00Z', updated_at: '2026-03-26T17:00:00Z' },
+            messages: [{ id: 61, conversation_id: 41, role: 'assistant', content: 'partial', status: 'streaming', created_at: '2026-03-26T17:00:00Z', updated_at: '2026-03-26T17:00:01Z' }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversation: { id: 41, created_at: '2026-03-26T17:00:00Z', updated_at: '2026-03-26T17:00:02Z' },
+            messages: [{ id: 61, conversation_id: 41, role: 'assistant', content: 'complete', status: 'completed', created_at: '2026-03-26T17:00:00Z', updated_at: '2026-03-26T17:00:02Z', completed_at: '2026-03-26T17:00:02Z' }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+    const detail = await pollAIChatConversationUntilSettled(41, {
+      intervalMs: 0,
+      timeoutMs: 10,
+    });
+
+    expect(detail.messages[0]?.status).toBe('completed');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('returns created conversation JSON', async () => {

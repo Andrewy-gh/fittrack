@@ -574,14 +574,42 @@ FROM ai_chat_message
 WHERE conversation_id = $1 AND user_id = $2
 ORDER BY id ASC;
 
--- name: HasActiveAIChatRunForConversation :one
-SELECT EXISTS (
-    SELECT 1
-    FROM ai_chat_run
-    WHERE conversation_id = $1
-      AND user_id = $2
-      AND status = 'streaming'
-);
+-- name: GetAIChatMessage :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at
+FROM ai_chat_message
+WHERE id = $1 AND user_id = $2;
+
+-- name: GetActiveAIChatRunForConversation :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+FROM ai_chat_run
+WHERE conversation_id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+ORDER BY id DESC
+LIMIT 1;
 
 -- name: CreateAIChatMessage :one
 INSERT INTO ai_chat_message (
@@ -670,6 +698,25 @@ RETURNING
     updated_at,
     completed_at;
 
+-- name: UpdateAIChatMessageStreaming :one
+UPDATE ai_chat_message
+SET content = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    role,
+    content,
+    status,
+    error_message,
+    created_at,
+    updated_at,
+    completed_at;
+
 -- name: UpdateAIChatMessageFailed :one
 UPDATE ai_chat_message
 SET content = $3,
@@ -711,6 +758,13 @@ RETURNING
     updated_at,
     started_at,
     completed_at;
+
+-- name: TouchAIChatRun :exec
+UPDATE ai_chat_run
+SET updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming';
 
 -- name: UpdateAIChatRunFailed :one
 UPDATE ai_chat_run

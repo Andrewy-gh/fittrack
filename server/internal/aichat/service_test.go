@@ -84,6 +84,11 @@ func (m *mockRepository) PrepareMessageStream(ctx context.Context, conversationI
 	return prepared, args.Error(1)
 }
 
+func (m *mockRepository) UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
+	args := m.Called(ctx, prepared, partialText, updatedAt)
+	return args.Error(0)
+}
+
 func (m *mockRepository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
 	args := m.Called(ctx, prepared, assistantText, completedAt)
 	message, _ := args.Get(0).(*ChatMessage)
@@ -329,6 +334,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		Model: defaultModelName,
 		Text:  "hello world",
 	}, nil).Once()
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", mock.AnythingOfType("time.Time")).Return(nil).Once()
 	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
@@ -391,6 +397,7 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 		onChunk := args.Get(3).(func(string) error)
 		_ = onChunk("partial ")
 	}).Return((*StreamDone)(nil), expectedErr).Once()
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
 	repo.On("FailRun", mock.Anything, prepared, "partial", expectedErr, mock.AnythingOfType("time.Time")).Return(nil).Once()
 
 	done, err := service.StreamMessage(context.Background(), prepared, func(string) error { return nil })
@@ -400,6 +407,42 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 	assert.ErrorIs(t, err, expectedErr)
 	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceAbortPreparedMessageStream_PersistsFailure(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:             51,
+			ConversationID: 41,
+			UserID:         "user-123",
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+	}
+
+	repo.On(
+		"FailRun",
+		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
+		prepared,
+		"",
+		ErrStreamNotStarted,
+		mock.AnythingOfType("time.Time"),
+	).Return(nil).Once()
+
+	err := service.AbortPreparedMessageStream(context.Background(), prepared, ErrStreamNotStarted)
+
+	require.NoError(t, err)
 	repo.AssertExpectations(t)
 }
 
@@ -507,6 +550,7 @@ func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testi
 		onChunk := args.Get(3).(func(string) error)
 		_ = onChunk("partial ")
 	}).Return((*StreamDone)(nil), expectedErr).Once()
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
 	repo.On(
 		"FailRun",
 		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
@@ -524,4 +568,42 @@ func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testi
 	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
+}
+
+func TestStreamProgressSink_ThrottlesPersistence(t *testing.T) {
+	repo := new(mockRepository)
+	prepared := &PreparedMessageStream{
+		Conversation:     &Conversation{ID: 41, UserID: "user-123"},
+		Run:              &ChatRun{ID: 51, UserID: "user-123"},
+		AssistantMessage: &ChatMessage{ID: 61, UserID: "user-123"},
+	}
+	base := time.Date(2026, 3, 26, 18, 0, 0, 0, time.UTC)
+	sink := newStreamProgressSink(context.Background(), repo, prepared)
+	times := []time.Time{
+		base,
+		base.Add(500 * time.Millisecond),
+		base.Add(1500 * time.Millisecond),
+	}
+	sink.now = func() time.Time {
+		next := times[0]
+		times = times[1:]
+		return next
+	}
+
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", base).Return(nil).Once()
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello world", base.Add(1500*time.Millisecond)).Return(nil).Once()
+
+	require.NoError(t, sink.maybePersist("hello"))
+	require.NoError(t, sink.maybePersist("hello again"))
+	require.NoError(t, sink.maybePersist("hello world"))
+	repo.AssertExpectations(t)
+}
+
+func TestNormalizeStreamChunkError_MapsDisconnects(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := normalizeStreamChunkError(ctx, errors.New("write tcp: broken pipe"))
+
+	require.ErrorIs(t, err, ErrStreamDisconnected)
 }
