@@ -3,7 +3,6 @@ import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { Button } from '@/components/ui/button';
 import { MobileBottomNav } from './mobile-bottom-nav';
-import { MobileNavDrawer } from './mobile-nav-drawer';
 
 export function DemoHeader() {
   const { theme, setTheme } = useTheme();
@@ -15,13 +14,10 @@ export function DemoHeader() {
   return (
     <>
       <header
-        className="flex items-center justify-between gap-2 border-b p-2"
+        className="flex items-center justify-end gap-2 border-b p-2"
         data-app-header
       >
-        <div className="flex items-center gap-2">
-          <MobileNavDrawer />
-
-          <nav className="hidden md:flex md:flex-row">
+        <nav className="hidden md:flex md:flex-row md:mr-auto">
             <div className="px-2 font-bold">
               <Link to="/">Home</Link>
             </div>
@@ -34,8 +30,7 @@ export function DemoHeader() {
             <div className="px-2 font-bold">
               <Link to="/analytics">Analytics</Link>
             </div>
-          </nav>
-        </div>
+        </nav>
 
         <div className="flex items-center gap-2">
           <Button

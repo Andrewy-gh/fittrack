@@ -1,6 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Menu, X, Home, Dumbbell, Activity, ChartColumn, Bot } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Drawer,
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 
 interface MobileNavDrawerProps {
   includeChat?: boolean;
+  children?: ReactNode;
 }
 
 const baseLinks = [
@@ -23,7 +24,7 @@ const baseLinks = [
   { to: '/analytics', label: 'Analytics', icon: ChartColumn },
 ] as const;
 
-export function MobileNavDrawer({ includeChat = false }: MobileNavDrawerProps) {
+export function MobileNavDrawer({ includeChat = false, children }: MobileNavDrawerProps) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -36,9 +37,11 @@ export function MobileNavDrawer({ includeChat = false }: MobileNavDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={setOpen} direction="left">
       <DrawerTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Open navigation menu">
-          <Menu className="h-5 w-5" />
-        </Button>
+        {children ?? (
+          <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
       </DrawerTrigger>
 
       <DrawerContent className="h-full max-w-[280px] p-0">

@@ -1,19 +1,15 @@
 import { Link } from '@tanstack/react-router';
 import { CustomUserButton } from './custom-user-button';
 import { MobileBottomNav } from './mobile-bottom-nav';
-import { MobileNavDrawer } from './mobile-nav-drawer';
 
 export function Header() {
   return (
     <>
       <header
-        className="flex items-center justify-between gap-2 border-b p-2"
+        className="flex items-center justify-end gap-2 border-b p-2"
         data-app-header
       >
-        <div className="flex items-center gap-2">
-          <MobileNavDrawer includeChat />
-
-          <nav className="hidden md:flex md:flex-row">
+        <nav className="hidden md:flex md:flex-row md:mr-auto">
             <div className="px-2 font-bold">
               <Link to="/">Home</Link>
             </div>
@@ -29,8 +25,7 @@ export function Header() {
             <div className="px-2 font-bold">
               <Link to="/chat">AI Chat</Link>
             </div>
-          </nav>
-        </div>
+        </nav>
 
         <CustomUserButton />
       </header>
