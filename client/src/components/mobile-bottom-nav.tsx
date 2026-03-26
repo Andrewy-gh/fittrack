@@ -1,8 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { Home, Dumbbell, Activity, ChartColumn, Bot, Menu } from 'lucide-react';
+import { Home, Dumbbell, Activity, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MobileNavDrawer } from './mobile-nav-drawer';
+import { CustomUserButton } from './custom-user-button';
 
 interface MobileBottomNavProps {
   includeChat?: boolean;
@@ -12,10 +13,8 @@ const baseLinks = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/workouts', label: 'Workouts', icon: Dumbbell },
   { to: '/exercises', label: 'Exercises', icon: Activity },
-  { to: '/analytics', label: 'Analytics', icon: ChartColumn },
 ] as const;
 
-const drawerOnlyItem = { label: 'Menu', icon: Menu } as const;
 
 function shouldUseBottomNav() {
   if (typeof window === 'undefined') return false;
@@ -93,15 +92,12 @@ export function MobileBottomNav({ includeChat = false }: MobileBottomNavProps) {
 
         <div className="flex items-center justify-center">
           <MobileNavDrawer includeChat={includeChat}>
-            {(() => {
-              const Icon = drawerOnlyItem.icon;
-              return (
-                <div className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
-                  <Icon className="h-4 w-4" />
-                  <span className="truncate">{drawerOnlyItem.label}</span>
-                </div>
-              );
-            })()}
+            <div className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+              <div className="flex h-4 w-4 items-center justify-center overflow-hidden rounded-full">
+                <CustomUserButton />
+              </div>
+              <span className="truncate">Profile</span>
+            </div>
           </MobileNavDrawer>
         </div>
       </div>

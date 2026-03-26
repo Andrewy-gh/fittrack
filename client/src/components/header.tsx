@@ -6,7 +6,7 @@ export function Header() {
   return (
     <>
       <header
-        className="flex items-center justify-end gap-2 border-b p-2"
+        className="hidden items-center justify-end gap-2 border-b p-2 md:flex"
         data-app-header
       >
         <nav className="hidden md:flex md:flex-row md:mr-auto">
