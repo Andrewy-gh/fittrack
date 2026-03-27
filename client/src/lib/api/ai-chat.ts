@@ -64,6 +64,10 @@ type ConversationPollOptions = {
   timeoutMs?: number;
 };
 
+type ConversationRequestOptions = {
+  signal?: AbortSignal;
+};
+
 const defaultConversationPollIntervalMs = 1000;
 const defaultConversationPollTimeoutMs = 55000;
 
@@ -114,11 +118,13 @@ export async function createAIChatConversation(): Promise<AIChatConversation> {
 }
 
 export async function getAIChatConversation(
-  conversationId: number
+  conversationId: number,
+  options: ConversationRequestOptions = {}
 ): Promise<AIChatConversationDetail> {
   const response = await fetch(`${BASE_URL}/ai/conversations/${conversationId}`, {
     method: 'GET',
     headers: await getAuthHeaders(),
+    signal: options.signal,
   });
 
   if (!response.ok) {
@@ -220,7 +226,10 @@ export async function pollAIChatConversationUntilSettled(
 
   while (true) {
     throwIfAborted(options.signal);
-    const detail = await getAIChatConversation(conversationId);
+    const detail = await getAIChatConversation(conversationId, {
+      signal: options.signal,
+    });
+    throwIfAborted(options.signal);
     if (!detail.messages.some((message) => message.status === 'streaming')) {
       return detail;
     }

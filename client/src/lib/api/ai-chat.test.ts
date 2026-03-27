@@ -191,6 +191,31 @@ describe('ai chat api wrapper', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('passes abort signals through persisted conversation polling fetches', async () => {
+    const controller = new AbortController();
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (_input, init) => {
+        expect(init?.signal).toBe(controller.signal);
+
+        return new Response(
+          JSON.stringify({
+            conversation: { id: 41, created_at: '2026-03-26T17:00:00Z', updated_at: '2026-03-26T17:00:02Z' },
+            messages: [{ id: 61, conversation_id: 41, role: 'assistant', content: 'complete', status: 'completed', created_at: '2026-03-26T17:00:00Z', updated_at: '2026-03-26T17:00:02Z', completed_at: '2026-03-26T17:00:02Z' }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      });
+
+    await pollAIChatConversationUntilSettled(41, {
+      signal: controller.signal,
+      intervalMs: 0,
+      timeoutMs: 10,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('returns created conversation JSON', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(

@@ -29,6 +29,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	exerciseTestUserA = "exercise-test-user-a"
+	exerciseTestUserB = "exercise-test-user-b"
+)
+
+var exerciseTestUsers = []string{exerciseTestUserA, exerciseTestUserB}
+
 // MockExerciseRepository implements the ExerciseRepository interface for testing
 type MockExerciseRepository struct {
 	mock.Mock
@@ -858,8 +865,8 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 	handler := NewHandler(logger, validator, exerciseService)
 
 	// Test data
-	userAID := "test-user-a"
-	userBID := "test-user-b"
+	userAID := exerciseTestUserA
+	userBID := exerciseTestUserB
 
 	// Create test data with proper RLS context
 	exerciseAID := setupTestExercise(t, pool, userAID, "User A's Bench Press")
@@ -1239,6 +1246,9 @@ func setupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 	// Setup RLS policies
 	setupRLS(t, pool)
 
+	// Start each exercise test from a known-clean slate.
+	cleanupTestData(t, pool)
+
 	// Setup users table entries
 	setupTestUsers(t, pool)
 
@@ -1286,8 +1296,7 @@ func setupTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	require.NoError(t, err, "Failed to disable RLS for setup")
 
 	// Create test users
-	userIDs := []string{"test-user-a", "test-user-b"}
-	for _, userID := range userIDs {
+	for _, userID := range exerciseTestUsers {
 		_, err = pool.Exec(ctx, "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID)
 		require.NoError(t, err, "Failed to create test user: %s", userID)
 	}
@@ -1347,26 +1356,43 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 	ctx := context.Background()
 
 	// Disable RLS temporarily for cleanup
-	_, err := pool.Exec(ctx, "ALTER TABLE users DISABLE ROW LEVEL SECURITY; ALTER TABLE exercise DISABLE ROW LEVEL SECURITY;")
-	if err != nil {
-		t.Logf("Warning: Failed to disable RLS for cleanup: %v", err)
+	tables := []string{"users", "workout", "exercise", `"set"`}
+	for _, table := range tables {
+		_, err := pool.Exec(ctx, fmt.Sprintf("ALTER TABLE %s DISABLE ROW LEVEL SECURITY", table))
+		if err != nil {
+			t.Logf("Warning: Failed to disable RLS on %s for cleanup: %v", table, err)
+		}
 	}
 
-	// Clean up test data
-	_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id IN ('test-user-a', 'test-user-b')")
-	if err != nil {
-		t.Logf("Warning: Failed to clean up exercise data: %v", err)
-	}
+	// Clean up dependent data first for the known exercise test users.
+	for _, userID := range exerciseTestUsers {
+		_, err := pool.Exec(ctx, `DELETE FROM "set" WHERE user_id = $1`, userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up set data for user %s: %v", userID, err)
+		}
 
-	_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id IN ('test-user-a', 'test-user-b')")
-	if err != nil {
-		t.Logf("Warning: Failed to clean up user data: %v", err)
+		_, err = pool.Exec(ctx, "DELETE FROM exercise WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up exercise data for user %s: %v", userID, err)
+		}
+
+		_, err = pool.Exec(ctx, "DELETE FROM workout WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up workout data for user %s: %v", userID, err)
+		}
+
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", userID)
+		if err != nil {
+			t.Logf("Warning: Failed to clean up user data for user %s: %v", userID, err)
+		}
 	}
 
 	// Re-enable RLS
-	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE exercise ENABLE ROW LEVEL SECURITY;")
-	if err != nil {
-		t.Logf("Warning: Failed to re-enable RLS after cleanup: %v", err)
+	for _, table := range tables {
+		_, err := pool.Exec(ctx, fmt.Sprintf("ALTER TABLE %s ENABLE ROW LEVEL SECURITY", table))
+		if err != nil {
+			t.Logf("Warning: Failed to re-enable RLS on %s after cleanup: %v", table, err)
+		}
 	}
 }
 
@@ -1376,9 +1402,7 @@ func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {
 
 	// Backfill order columns for all test users
 	// This ensures tests work whether or not the migration has been applied
-	testUsers := []string{"test-user-a", "test-user-b"}
-
-	for _, userID := range testUsers {
+	for _, userID := range exerciseTestUsers {
 		// Set user context for RLS
 		ctxUser := testutils.SetTestUserContext(ctx, t, pool, userID)
 
