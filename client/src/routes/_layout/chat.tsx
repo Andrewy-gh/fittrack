@@ -9,12 +9,18 @@ import {
   pollAIChatConversationUntilSettled,
   streamAIChatMessage,
   type AIChatConversation,
+  type AIChatConversationDetail,
   type AIChatMessage,
 } from '@/lib/api/ai-chat';
 import { getErrorMessage, showErrorToast } from '@/lib/errors';
 
 type ChatSearch = {
   conversationId?: string;
+};
+
+type ConversationRequestResult = {
+  detail: AIChatConversationDetail | null;
+  aborted: boolean;
 };
 
 export const Route = createFileRoute('/_layout/chat')({
@@ -42,27 +48,46 @@ export function ChatRouteComponent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const pendingAssistantIdRef = useRef<number | null>(null);
+  const loadAbortRef = useRef<AbortController | null>(null);
   const recoveryAbortRef = useRef<AbortController | null>(null);
 
   const loadConversation = useCallback(
-    async (id: number, opts?: { silent?: boolean }) => {
+    async (
+      id: number,
+      opts?: { silent?: boolean }
+    ): Promise<ConversationRequestResult> => {
+      loadAbortRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
+
       if (!opts?.silent) {
         setIsLoadingConversation(true);
       }
 
       try {
-        const detail = await getAIChatConversation(id);
+        const detail = await getAIChatConversation(id, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) {
+          return { detail: null, aborted: true };
+        }
         setConversation(detail.conversation);
         setMessages(detail.messages);
         setLoadError(null);
-        return detail;
+        return { detail, aborted: false };
       } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return { detail: null, aborted: true };
+        }
         const message = getErrorMessage(error);
         setLoadError(message);
-        return null;
+        return { detail: null, aborted: false };
       } finally {
-        if (!opts?.silent) {
-          setIsLoadingConversation(false);
+        if (loadAbortRef.current === controller) {
+          loadAbortRef.current = null;
+          if (!opts?.silent) {
+            setIsLoadingConversation(false);
+          }
         }
       }
     },
@@ -70,7 +95,10 @@ export function ChatRouteComponent() {
   );
 
   const recoverConversation = useCallback(
-    async (id: number, opts?: { silent?: boolean }) => {
+    async (
+      id: number,
+      opts?: { silent?: boolean }
+    ): Promise<ConversationRequestResult> => {
       recoveryAbortRef.current?.abort();
       const controller = new AbortController();
       recoveryAbortRef.current = controller;
@@ -80,20 +108,23 @@ export function ChatRouteComponent() {
           signal: controller.signal,
         });
         if (controller.signal.aborted) {
-          return null;
+          return { detail: null, aborted: true };
         }
         setConversation(detail.conversation);
         setMessages(detail.messages);
         setLoadError(null);
-        return detail;
+        return { detail, aborted: false };
       } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return { detail: null, aborted: true };
+        }
         if (!controller.signal.aborted) {
           const message = getErrorMessage(error);
           if (!opts?.silent) {
             setLoadError(message);
           }
         }
-        return null;
+        return { detail: null, aborted: false };
       } finally {
         if (recoveryAbortRef.current === controller) {
           recoveryAbortRef.current = null;
@@ -105,21 +136,24 @@ export function ChatRouteComponent() {
 
   useEffect(() => {
     if (!conversationId) {
+      loadAbortRef.current?.abort();
       recoveryAbortRef.current?.abort();
       setConversation(null);
       setMessages([]);
       setLoadError(null);
+      setIsLoadingConversation(false);
       return;
     }
 
     void (async () => {
-      const detail = await loadConversation(conversationId);
+      const { detail } = await loadConversation(conversationId);
       if (detail?.messages.some((message) => message.status === 'streaming')) {
         await recoverConversation(conversationId, { silent: true });
       }
     })();
 
     return () => {
+      loadAbortRef.current?.abort();
       recoveryAbortRef.current?.abort();
     };
   }, [conversationId, loadConversation, recoverConversation]);
@@ -287,9 +321,13 @@ export function ChatRouteComponent() {
 
       await loadConversation(activeConversationId, { silent: true });
     } catch (error) {
-      const recoveredDetail = await recoverConversation(activeConversationId, {
-        silent: true,
-      });
+      const { detail: recoveredDetail, aborted: recoveryAborted } =
+        await recoverConversation(activeConversationId, {
+          silent: true,
+        });
+      if (recoveryAborted) {
+        return;
+      }
       const recoveredPromptStatus = findRecoveredPromptStatus(
         recoveredDetail?.messages ?? [],
         nextPrompt
@@ -456,4 +494,11 @@ function findRecoveredPromptStatus(
   }
 
   return null;
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  );
 }

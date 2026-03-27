@@ -132,6 +132,45 @@ describe('ChatRouteComponent', () => {
     expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
 
+  it('ignores late initial load results after the conversation is cleared', async () => {
+    const initialLoad = deferredPromise<ReturnType<typeof conversationDetail>>();
+    mockGetConversation.mockReturnValue(initialLoad.promise);
+
+    const view = render(<ChatRouteComponent />);
+
+    await waitFor(() => {
+      expect(mockGetConversation).toHaveBeenCalledTimes(1);
+    });
+
+    mockSearch.conversationId = undefined;
+    view.rerender(<ChatRouteComponent />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('No messages yet. Start a new chat or send the first prompt.')
+      ).toBeInTheDocument();
+    });
+
+    initialLoad.resolve(
+      conversationDetail([
+        {
+          id: 61,
+          conversation_id: 41,
+          role: 'assistant',
+          content: 'stale reply',
+          status: 'streaming',
+          created_at: '2026-03-26T17:00:00Z',
+          updated_at: '2026-03-26T17:00:01Z',
+        },
+      ])
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('stale reply')).not.toBeInTheDocument();
+    });
+    expect(mockPollConversation).not.toHaveBeenCalled();
+  });
+
   it('ignores late recovery results after the conversation is cleared', async () => {
     const recovery = deferredPromise<ReturnType<typeof conversationDetail>>();
     mockGetConversation.mockResolvedValue(
@@ -182,5 +221,52 @@ describe('ChatRouteComponent', () => {
     await waitFor(() => {
       expect(screen.queryByText('Recovered answer')).not.toBeInTheDocument();
     });
+  });
+
+  it('does not toast when submit recovery is aborted by clearing the conversation', async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockStreamMessage.mockRejectedValue(
+      new Error('AI chat stream ended before a terminal event')
+    );
+    mockPollConversation.mockImplementation(
+      (_conversationId: number, options?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+
+    const view = render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        'Ask about training, recovery, exercise choices, or FitTrack usage...'
+      ),
+      'hello'
+    );
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(mockPollConversation).toHaveBeenCalledTimes(1);
+    });
+
+    mockSearch.conversationId = undefined;
+    view.rerender(<ChatRouteComponent />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(
+          'Ask about training, recovery, exercise choices, or FitTrack usage...'
+        )
+      ).toBeEnabled();
+    });
+    expect(
+      screen.getByText('No messages yet. Start a new chat or send the first prompt.')
+    ).toBeInTheDocument();
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
 });
