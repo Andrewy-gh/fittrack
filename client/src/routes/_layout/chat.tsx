@@ -27,7 +27,7 @@ export const Route = createFileRoute('/_layout/chat')({
   component: ChatRouteComponent,
 });
 
-function ChatRouteComponent() {
+export function ChatRouteComponent() {
   const { user } = Route.useRouteContext();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -79,6 +79,9 @@ function ChatRouteComponent() {
         const detail = await pollAIChatConversationUntilSettled(id, {
           signal: controller.signal,
         });
+        if (controller.signal.aborted) {
+          return null;
+        }
         setConversation(detail.conversation);
         setMessages(detail.messages);
         setLoadError(null);
@@ -284,13 +287,21 @@ function ChatRouteComponent() {
 
       await loadConversation(activeConversationId, { silent: true });
     } catch (error) {
-      if (!streamStarted) {
+      const recoveredDetail = await recoverConversation(activeConversationId, {
+        silent: true,
+      });
+      const recoveredPromptStatus = findRecoveredPromptStatus(
+        recoveredDetail?.messages ?? [],
+        nextPrompt
+      );
+
+      if (!recoveredDetail && !streamStarted) {
         setMessages((current) =>
           current.filter(
             (message) => message.id !== tempUserId && message.id !== tempAssistantId
           )
         );
-      } else {
+      } else if (!recoveredDetail) {
         const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
         setMessages((current) =>
           current.map((message) =>
@@ -303,10 +314,11 @@ function ChatRouteComponent() {
               : message
           )
         );
-        await recoverConversation(activeConversationId, { silent: true });
       }
 
-      showErrorToast(error, 'Failed to stream AI chat response');
+      if (recoveredPromptStatus !== 'completed') {
+        showErrorToast(error, 'Failed to stream AI chat response');
+      }
     } finally {
       pendingAssistantIdRef.current = null;
       setIsSubmitting(false);
@@ -418,4 +430,30 @@ function parseConversationId(value?: string): number | null {
   }
 
   return parsed;
+}
+
+function findRecoveredPromptStatus(
+  messages: AIChatMessage[],
+  prompt: string
+): AIChatMessage['status'] | null {
+  const normalizedPrompt = prompt.trim();
+  if (!normalizedPrompt) {
+    return null;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role !== 'user' || message.content.trim() !== normalizedPrompt) {
+      continue;
+    }
+
+    const assistant = messages[index + 1];
+    if (assistant?.role === 'assistant') {
+      return assistant.status;
+    }
+
+    return null;
+  }
+
+  return null;
 }
