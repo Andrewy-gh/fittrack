@@ -25,7 +25,7 @@ func TestExerciseRepository_GetExerciseMetricsHistory_PreservesSameDaySessions(t
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := NewRepository(logger, db.New(pool), pool)
 
-	userID := "test-user-a"
+	userID := exerciseTestUserA
 	exerciseID := setupTestExercise(t, pool, userID, "Bench Press")
 	ctx := testutils.SetTestUserContext(context.Background(), t, pool, userID)
 
