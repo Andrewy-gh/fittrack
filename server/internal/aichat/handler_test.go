@@ -14,6 +14,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -60,6 +61,11 @@ func (m *mockChatService) Validate(ctx context.Context, prompt string) (*Validat
 func (m *mockChatService) EnsureAllowed(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
+}
+
+func (m *mockChatService) CurrentUserHasFeatureAccess(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *mockChatService) StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
@@ -335,6 +341,72 @@ func TestHandlerGetConversation(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, rr.Code)
 		assert.Contains(t, rr.Body.String(), "ai conversation with id 41 not found")
 		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerRecordTelemetry(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("accepts a valid stream telemetry event", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		aiChatClientOutcomesTotal.Reset()
+		service.On("CurrentUserHasFeatureAccess", mock.Anything).Return(true, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(`{"category":"stream","outcome":"transport_ended_pre_terminal","stage":"pre_start"}`))
+		rr := httptest.NewRecorder()
+
+		handler.RecordTelemetry(rr, req)
+
+		require.Equal(t, http.StatusAccepted, rr.Code)
+		assert.Equal(t, float64(1), testutil.ToFloat64(aiChatClientOutcomesTotal.WithLabelValues(
+			telemetryCategoryStream,
+			telemetryOutcomeTransportEndedPreTerminal,
+			telemetryStreamStagePreStart,
+			telemetryCohortBeta,
+		)))
+		service.AssertExpectations(t)
+	})
+
+	t.Run("normalizes padded telemetry labels before recording", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		aiChatClientOutcomesTotal.Reset()
+		service.On("CurrentUserHasFeatureAccess", mock.Anything).Return(true, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(`{"category":" stream ","outcome":" transport_ended_pre_terminal ","stage":" pre_start "}`))
+		rr := httptest.NewRecorder()
+
+		handler.RecordTelemetry(rr, req)
+
+		require.Equal(t, http.StatusAccepted, rr.Code)
+		assert.Equal(t, float64(1), testutil.ToFloat64(aiChatClientOutcomesTotal.WithLabelValues(
+			telemetryCategoryStream,
+			telemetryOutcomeTransportEndedPreTerminal,
+			telemetryStreamStagePreStart,
+			telemetryCohortBeta,
+		)))
+		assert.Equal(t, float64(0), testutil.ToFloat64(aiChatClientOutcomesTotal.WithLabelValues(
+			" stream ",
+			" transport_ended_pre_terminal ",
+			" pre_start ",
+			telemetryCohortBeta,
+		)))
+		service.AssertExpectations(t)
+	})
+
+	t.Run("rejects invalid telemetry outcomes", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(`{"category":"stream","outcome":"nope","stage":"pre_start"}`))
+		rr := httptest.NewRecorder()
+
+		handler.RecordTelemetry(rr, req)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Contains(t, rr.Body.String(), "invalid ai chat telemetry event")
+		service.AssertNotCalled(t, "CurrentUserHasFeatureAccess", mock.Anything)
 	})
 }
 
