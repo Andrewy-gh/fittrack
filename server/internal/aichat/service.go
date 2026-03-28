@@ -25,16 +25,24 @@ type runtime interface {
 	StreamChat(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error)
 }
 
+type recoveryDispatcher interface {
+	EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error
+}
+
 type Service struct {
 	logger        *slog.Logger
 	featureAccess featureAccessService
 	runtime       runtime
 	repo          Repository
+	recovery      recoveryDispatcher
 }
 
 const (
 	streamProgressPersistInterval = 1 * time.Second
 	streamProgressPersistTimeout  = 5 * time.Second
+	recoverStatusQueued           = "queued"
+	recoverStatusNotNeeded        = "not_needed"
+	recoverReasonStreamReconnect  = "stream_reconnect"
 )
 
 func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository) *Service {
@@ -44,6 +52,10 @@ func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime
 		runtime:       runtime,
 		repo:          repo,
 	}
+}
+
+func (s *Service) SetRecoveryDispatcher(dispatcher recoveryDispatcher) {
+	s.recovery = dispatcher
 }
 
 func (s *Service) Validate(ctx context.Context, prompt string) (*ValidateResponse, error) {
@@ -116,6 +128,58 @@ func (s *Service) GetConversation(ctx context.Context, conversationID int32) (*C
 	}, nil
 }
 
+func (s *Service) RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error) {
+	if err := s.ensureFeatureAccess(ctx); err != nil {
+		return nil, err
+	}
+	if s.recovery == nil {
+		return nil, ErrRecoveryUnavailable
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.repo.GetConversation(ctx, conversationID, userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, newConversationNotFound(conversationID)
+		}
+		return nil, err
+	}
+
+	run, err := s.repo.GetActiveRunForConversation(ctx, conversationID, userID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return &RecoverMessageResponse{
+			ConversationID: conversationID,
+			Status:         recoverStatusNotNeeded,
+		}, nil
+	case err != nil:
+		return nil, err
+	}
+
+	request := RunRecoveryRequest{
+		ConversationID: conversationID,
+		RunID:          run.ID,
+		UserID:         userID,
+		Reason:         strings.TrimSpace(reason),
+	}
+	if request.Reason == "" {
+		request.Reason = recoverReasonStreamReconnect
+	}
+
+	if err := s.recovery.EnqueueRunRecovery(ctx, request); err != nil {
+		return nil, err
+	}
+
+	return &RecoverMessageResponse{
+		ConversationID: conversationID,
+		RunID:          run.ID,
+		Status:         recoverStatusQueued,
+	}, nil
+}
+
 func (s *Service) PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error) {
 	if err := s.ensureAllowed(ctx); err != nil {
 		return nil, err
@@ -138,6 +202,37 @@ func (s *Service) PrepareMessageStream(ctx context.Context, conversationID int32
 }
 
 func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error) {
+	return s.executePreparedRun(ctx, prepared, onChunk, true)
+}
+
+func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRequest) error {
+	if s.runtime == nil || !s.runtime.Available() {
+		return ErrRuntimeUnavailable
+	}
+
+	userID := strings.TrimSpace(request.UserID)
+	if userID == "" {
+		return apperrors.NewUnauthorized("ai chat", "")
+	}
+
+	ctx = user.WithContext(ctx, userID)
+	prepared, err := s.repo.LoadPreparedRunForRecovery(ctx, request.RunID, userID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	case err != nil:
+		return err
+	}
+
+	if prepared.Run == nil || prepared.Run.Status != statusStreaming {
+		return nil
+	}
+
+	_, err = s.executePreparedRun(ctx, prepared, nil, false)
+	return err
+}
+
+func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error, allowRecovery bool) (*StreamDone, error) {
 	history := toRuntimeHistory(prepared.History)
 	var partial strings.Builder
 	persistCtx := context.WithoutCancel(ctx)
@@ -149,6 +244,9 @@ func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageSt
 		if err := progressSink.maybePersist(partialText); err != nil {
 			s.logger.Warn("failed to persist ai chat streaming progress", "error", err, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
+		if onChunk == nil {
+			return nil
+		}
 		if err := onChunk(delta); err != nil {
 			if persistErr := progressSink.forcePersist(partialText); persistErr != nil {
 				s.logger.Warn("failed to persist ai chat streaming progress after stream write error", "error", persistErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
@@ -158,6 +256,9 @@ func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageSt
 		return nil
 	})
 	if err != nil {
+		if allowRecovery && errors.Is(err, ErrStreamDisconnected) {
+			return nil, ErrStreamAwaitingRecovery
+		}
 		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
 			s.logger.Error("failed to persist ai chat run failure", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
@@ -327,6 +428,7 @@ func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {
 func isClientSafeError(err error) bool {
 	return errors.Is(err, ErrFeatureDisabled) ||
 		errors.Is(err, ErrRuntimeUnavailable) ||
+		errors.Is(err, ErrRecoveryUnavailable) ||
 		errors.Is(err, ErrConversationBusy) ||
 		errors.Is(err, ErrGenerationTimeout)
 }
