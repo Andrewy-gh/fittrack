@@ -45,6 +45,29 @@ export type AIChatStreamResult = {
   endedWithError: boolean;
 };
 
+export type AIChatTelemetryCategory = 'stream' | 'recovery' | 'load' | 'ux';
+
+export type AIChatTelemetryStage = 'pre_start' | 'post_start' | 'terminal';
+
+export type AIChatTelemetryEvent = {
+  category: AIChatTelemetryCategory;
+  outcome:
+    | 'completed'
+    | 'server_error'
+    | 'transport_ended_pre_terminal'
+    | 'client_aborted'
+    | 'recovered_completed'
+    | 'recovered_failed'
+    | 'recovery_timeout'
+    | 'recovery_aborted'
+    | 'load_completed'
+    | 'load_failed'
+    | 'load_aborted_stale'
+    | 'failure_toast_shown'
+    | 'failure_toast_suppressed_due_to_successful_recovery';
+  stage?: AIChatTelemetryStage;
+};
+
 type ParsedSSEChunk = {
   event: AIChatStreamEvent;
   id?: string;
@@ -115,6 +138,21 @@ export async function createAIChatConversation(): Promise<AIChatConversation> {
   }
 
   return (await response.json()) as AIChatConversation;
+}
+
+export async function reportAIChatTelemetry(
+  event: AIChatTelemetryEvent
+): Promise<void> {
+  const response = await fetch(`${BASE_URL}/ai/chat/telemetry`, {
+    method: 'POST',
+    headers: await getAuthHeaders(true),
+    body: JSON.stringify(event),
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response);
+  }
 }
 
 export async function getAIChatConversation(
