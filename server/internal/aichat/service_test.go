@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,18 @@ func (m *mockRepository) ListMessages(ctx context.Context, conversationID int32,
 	return messages, args.Error(1)
 }
 
+func (m *mockRepository) GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error) {
+	args := m.Called(ctx, conversationID, userID)
+	run, _ := args.Get(0).(*ChatRun)
+	return run, args.Error(1)
+}
+
+func (m *mockRepository) LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error) {
+	args := m.Called(ctx, runID, userID)
+	prepared, _ := args.Get(0).(*PreparedMessageStream)
+	return prepared, args.Error(1)
+}
+
 func (m *mockRepository) PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error) {
 	args := m.Called(ctx, conversationID, userID, prompt, model, requestID)
 	prepared, _ := args.Get(0).(*PreparedMessageStream)
@@ -98,6 +111,15 @@ func (m *mockRepository) CompleteRun(ctx context.Context, prepared *PreparedMess
 
 func (m *mockRepository) FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error {
 	args := m.Called(ctx, prepared, partialText, failure, completedAt)
+	return args.Error(0)
+}
+
+type mockRecoveryDispatcher struct {
+	mock.Mock
+}
+
+func (m *mockRecoveryDispatcher) EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error {
+	args := m.Called(ctx, request)
 	return args.Error(0)
 }
 
@@ -293,6 +315,67 @@ func TestServicePrepareMessageStream_RequiresRuntime(t *testing.T) {
 	runtime.AssertExpectations(t)
 }
 
+func TestServiceRequestMessageRecovery_QueuesActiveRun(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	recovery := new(mockRecoveryDispatcher)
+	service := NewService(logger, featureAccess, runtime, repo)
+	service.SetRecoveryDispatcher(recovery)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	repo.On("GetConversation", mock.Anything, int32(41), "user-123").Return(&Conversation{ID: 41, UserID: "user-123"}, nil).Once()
+	repo.On("GetActiveRunForConversation", mock.Anything, int32(41), "user-123").Return(&ChatRun{
+		ID:             51,
+		ConversationID: 41,
+		UserID:         "user-123",
+		Status:         statusStreaming,
+	}, nil).Once()
+	recovery.On("EnqueueRunRecovery", mock.Anything, RunRecoveryRequest{
+		ConversationID: 41,
+		RunID:          51,
+		UserID:         "user-123",
+		Reason:         recoverReasonStreamReconnect,
+	}).Return(nil).Once()
+
+	resp, err := service.RequestMessageRecovery(ctx, 41, "")
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, recoverStatusQueued, resp.Status)
+	assert.Equal(t, int32(51), resp.RunID)
+	featureAccess.AssertExpectations(t)
+	repo.AssertExpectations(t)
+	recovery.AssertExpectations(t)
+}
+
+func TestServiceRequestMessageRecovery_NoopsWithoutActiveRun(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	recovery := new(mockRecoveryDispatcher)
+	service := NewService(logger, featureAccess, runtime, repo)
+	service.SetRecoveryDispatcher(recovery)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	repo.On("GetConversation", mock.Anything, int32(41), "user-123").Return(&Conversation{ID: 41, UserID: "user-123"}, nil).Once()
+	repo.On("GetActiveRunForConversation", mock.Anything, int32(41), "user-123").Return((*ChatRun)(nil), pgx.ErrNoRows).Once()
+
+	resp, err := service.RequestMessageRecovery(ctx, 41, "")
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, recoverStatusNotNeeded, resp.Status)
+	assert.Zero(t, resp.RunID)
+	recovery.AssertNotCalled(t, "EnqueueRunRecovery", mock.Anything, mock.Anything)
+	featureAccess.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)
@@ -367,6 +450,51 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceStreamMessage_LeavesRunStreamingOnDisconnect(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+		Prompt: "new prompt",
+	}
+
+	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{}, mock.Anything).Run(func(args mock.Arguments) {
+		onChunk := args.Get(3).(func(string) error)
+		err := onChunk("partial ")
+		require.ErrorIs(t, err, ErrStreamDisconnected)
+	}).Return((*StreamDone)(nil), ErrStreamDisconnected).Once()
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
+
+	done, err := service.StreamMessage(context.Background(), prepared, func(string) error {
+		return errors.New("broken pipe")
+	})
+
+	require.Error(t, err)
+	assert.Nil(t, done)
+	assert.ErrorIs(t, err, ErrStreamAwaitingRecovery)
+	repo.AssertNotCalled(t, "FailRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)
@@ -406,6 +534,81 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 	assert.Nil(t, done)
 	assert.ErrorIs(t, err, expectedErr)
 	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceRecoverStreamingRun_CompletesActiveRun(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+		History: []ChatMessage{
+			{Role: roleUser, Content: "previous user", Status: statusCompleted},
+		},
+		Prompt: "new prompt",
+	}
+
+	runtime.On("Available").Return(true).Once()
+	repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
+	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{
+		{Role: roleUser, Text: "previous user"},
+	}, mock.Anything).Run(func(args mock.Arguments) {
+		onChunk := args.Get(3).(func(string) error)
+		require.NoError(t, onChunk("hello "))
+		require.NoError(t, onChunk("world"))
+	}).Return(&StreamDone{
+		Model: defaultModelName,
+		Text:  "hello world",
+	}, nil).Once()
+	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
+		ID:             61,
+		ConversationID: 41,
+		UserID:         "user-123",
+		Status:         statusCompleted,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		CompletedAt:    &now,
+	}, &ChatRun{
+		ID:                 51,
+		ConversationID:     41,
+		UserID:             "user-123",
+		AssistantMessageID: 61,
+		Model:              defaultModelName,
+		Status:             statusCompleted,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		StartedAt:          now,
+		CompletedAt:        &now,
+	}, nil).Once()
+
+	err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
+		ConversationID: 41,
+		RunID:          51,
+		UserID:         "user-123",
+		Reason:         recoverReasonStreamReconnect,
+	})
+
+	require.NoError(t, err)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }

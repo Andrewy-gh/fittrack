@@ -19,6 +19,8 @@ type Repository interface {
 	CreateConversation(ctx context.Context, userID string) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)
+	GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error)
+	LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
 	UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error)
@@ -106,6 +108,110 @@ func (r *repository) ListMessages(ctx context.Context, conversationID int32, use
 	}
 
 	return messages, nil
+}
+
+func (r *repository) GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	row, err := r.queries.GetActiveAIChatRunForConversation(ctx, db.GetActiveAIChatRunForConversationParams{
+		ConversationID: conversationID,
+		UserID:         userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("get active ai chat run: %w", err)
+	}
+
+	run, err := mapRun(row)
+	if err != nil {
+		return nil, err
+	}
+
+	return run, nil
+}
+
+func (r *repository) LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	runRow, err := r.queries.GetAIChatRun(ctx, db.GetAIChatRunParams{
+		ID:     runID,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("get ai chat run for recovery: %w", err)
+	}
+
+	run, err := mapRun(runRow)
+	if err != nil {
+		return nil, err
+	}
+
+	conversation, err := r.GetConversation(ctx, run.ConversationID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	userMessageRow, err := r.queries.GetAIChatMessage(ctx, db.GetAIChatMessageParams{
+		ID:     run.UserMessageID,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get ai chat user message for recovery: %w", err)
+	}
+
+	assistantMessageRow, err := r.queries.GetAIChatMessage(ctx, db.GetAIChatMessageParams{
+		ID:     run.AssistantMessageID,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get ai chat assistant message for recovery: %w", err)
+	}
+
+	historyRows, err := r.queries.ListAIChatMessagesByConversation(ctx, db.ListAIChatMessagesByConversationParams{
+		ConversationID: run.ConversationID,
+		UserID:         userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list ai chat history for recovery: %w", err)
+	}
+
+	history := make([]ChatMessage, 0, len(historyRows))
+	for _, row := range historyRows {
+		if row.ID >= run.UserMessageID {
+			break
+		}
+		message, err := mapMessage(row)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, *message)
+	}
+
+	userMessage, err := mapMessage(userMessageRow)
+	if err != nil {
+		return nil, err
+	}
+
+	assistantMessage, err := mapMessage(assistantMessageRow)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PreparedMessageStream{
+		Conversation:     conversation,
+		History:          history,
+		UserMessage:      userMessage,
+		AssistantMessage: assistantMessage,
+		Run:              run,
+		Prompt:           userMessage.Content,
+	}, nil
 }
 
 func (r *repository) PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error) {

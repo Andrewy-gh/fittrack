@@ -84,6 +84,12 @@ func (m *mockChatService) GetConversation(ctx context.Context, conversationID in
 	return detail, args.Error(1)
 }
 
+func (m *mockChatService) RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error) {
+	args := m.Called(ctx, conversationID, reason)
+	resp, _ := args.Get(0).(*RecoverMessageResponse)
+	return resp, args.Error(1)
+}
+
 func (m *mockChatService) PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error) {
 	args := m.Called(ctx, conversationID, prompt, requestID)
 	prepared, _ := args.Get(0).(*PreparedMessageStream)
@@ -416,12 +422,11 @@ func TestHandlerStreamMessage(t *testing.T) {
 		service.AssertExpectations(t)
 	})
 
-	t.Run("fails prepared run when start event cannot be written", func(t *testing.T) {
+	t.Run("leaves prepared run streaming when start event write disconnects", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
 		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
-		service.On("AbortPreparedMessageStream", mock.Anything, prepared, ErrStreamNotStarted).Return(nil).Once()
 
 		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
 		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
@@ -431,6 +436,33 @@ func TestHandlerStreamMessage(t *testing.T) {
 		handler.StreamMessage(rr, req)
 
 		service.AssertNotCalled(t, "StreamMessage", mock.Anything, mock.Anything, mock.Anything)
+		service.AssertNotCalled(t, "AbortPreparedMessageStream", mock.Anything, mock.Anything, mock.Anything)
+		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerRecoverMessage(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("queues recovery for an active run", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("RequestMessageRecovery", mock.Anything, int32(41), recoverReasonStreamReconnect).Return(&RecoverMessageResponse{
+			ConversationID: 41,
+			RunID:          51,
+			Status:         recoverStatusQueued,
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/recover", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.RecoverMessage(rr, req)
+
+		require.Equal(t, http.StatusAccepted, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"conversation_id":41`)
+		assert.Contains(t, rr.Body.String(), `"run_id":51`)
+		assert.Contains(t, rr.Body.String(), `"status":"queued"`)
 		service.AssertExpectations(t)
 	})
 }

@@ -370,6 +370,52 @@ func (q *Queries) GetAIChatMessage(ctx context.Context, arg GetAIChatMessagePara
 	return i, err
 }
 
+const getAIChatRun = `-- name: GetAIChatRun :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+FROM ai_chat_run
+WHERE id = $1
+  AND user_id = $2
+`
+
+type GetAIChatRunParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetAIChatRun(ctx context.Context, arg GetAIChatRunParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, getAIChatRun, arg.ID, arg.UserID)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const getActiveAIChatRunForConversation = `-- name: GetActiveAIChatRunForConversation :one
 SELECT
     id,

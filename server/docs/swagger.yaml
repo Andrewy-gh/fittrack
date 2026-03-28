@@ -43,6 +43,15 @@ definitions:
           $ref: '#/definitions/aichat.ChatMessage'
         type: array
     type: object
+  aichat.RecoverMessageResponse:
+    properties:
+      conversation_id:
+        type: integer
+      run_id:
+        type: integer
+      status:
+        type: string
+    type: object
   aichat.SendMessageRequest:
     properties:
       prompt:
@@ -789,6 +798,52 @@ paths:
       security:
       - StackAuth: []
       summary: Get AI chat conversation
+      tags:
+      - ai-chat
+  /ai/conversations/{id}/messages/recover:
+    post:
+      description: Queues recovery for an active streaming AI chat run so persisted
+        updates can continue after a disconnect.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/aichat.RecoverMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Recover AI chat message stream
       tags:
       - ai-chat
   /ai/conversations/{id}/messages/stream:

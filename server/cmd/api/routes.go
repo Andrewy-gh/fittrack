@@ -53,8 +53,12 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("POST /api/ai/conversations", ah.CreateConversation)
 	mux.HandleFunc("GET /api/ai/conversations/{id}", ah.GetConversation)
 	mux.HandleFunc("POST /api/ai/conversations/{id}/messages/stream", ah.StreamMessage)
+	mux.HandleFunc("POST /api/ai/conversations/{id}/messages/recover", ah.RecoverMessage)
 	mux.HandleFunc("POST /api/ai/chat/validate", ah.Validate)
 	mux.HandleFunc("POST /api/ai/chat/validate/stream", ah.StreamValidate)
+	if api.inngestHandler != nil {
+		mux.Handle("/inngest", api.inngestHandler)
+	}
 	// Swagger documentation
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 	mux.HandleFunc("GET /", api.handleStaticFiles())

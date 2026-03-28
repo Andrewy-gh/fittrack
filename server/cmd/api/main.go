@@ -48,10 +48,11 @@ import (
 )
 
 type api struct {
-	logger  *slog.Logger
-	queries *db.Queries
-	pool    *pgxpool.Pool
-	cfg     *config.Config
+	logger         *slog.Logger
+	queries        *db.Queries
+	pool           *pgxpool.Pool
+	cfg            *config.Config
+	inngestHandler http.Handler
 }
 
 func mustParseDuration(s string) time.Duration {
@@ -158,6 +159,12 @@ func main() {
 	aiChatRepo := aichat.NewRepository(logger, queries, pool)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo)
+	inngestRecovery, err := aichat.NewInngestRecovery(logger, aiChatService)
+	if err != nil {
+		logger.Error("failed to initialize inngest recovery", "error", err)
+		os.Exit(1)
+	}
+	aiChatService.SetRecoveryDispatcher(inngestRecovery)
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
@@ -167,10 +174,11 @@ func main() {
 	aiChatHandler := aichat.NewHandler(logger, aiChatService)
 
 	api := &api{
-		logger:  logger,
-		queries: queries,
-		pool:    pool,
-		cfg:     cfg,
+		logger:         logger,
+		queries:        queries,
+		pool:           pool,
+		cfg:            cfg,
+		inngestHandler: inngestRecovery.Handler(),
 	}
 
 	jwks, err := auth.NewJWKSCache(ctx, cfg.ProjectID)

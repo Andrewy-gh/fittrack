@@ -20,6 +20,7 @@ type chatService interface {
 	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	CreateConversation(ctx context.Context) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
+	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
 	StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error)
 	AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error
@@ -185,6 +186,38 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// RecoverMessage godoc
+// @Summary Recover AI chat message stream
+// @Description Queues recovery for an active streaming AI chat run so persisted updates can continue after a disconnect.
+// @Tags ai-chat
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Conversation ID"
+// @Success 202 {object} aichat.RecoverMessageResponse
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 404 {object} response.Error
+// @Failure 503 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations/{id}/messages/recover [post]
+func (h *Handler) RecoverMessage(w http.ResponseWriter, r *http.Request) {
+	conversationID, ok := h.decodeConversationID(w, r)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.RequestMessageRecovery(r.Context(), conversationID, recoverReasonStreamReconnect)
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to queue ai chat recovery")
+		return
+	}
+
+	if err := response.JSON(w, http.StatusAccepted, resp); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
+}
+
 // StreamMessage godoc
 // @Summary Stream AI chat message
 // @Description Persists a user message and run, then streams normalized assistant events over SSE. Preflight failures stay JSON.
@@ -237,6 +270,10 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		MessageID:      prepared.AssistantMessage.ID,
 		Model:          prepared.Run.Model,
 	}); err != nil {
+		if errors.Is(normalizeStreamChunkError(r.Context(), err), ErrStreamDisconnected) {
+			h.logStreamWriteFailure("failed to start ai chat stream", r, err)
+			return
+		}
 		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
 			h.logger.Error("failed to abort ai chat run after start event write failure", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
@@ -251,6 +288,9 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		})
 	})
 	if err != nil {
+		if errors.Is(err, ErrStreamAwaitingRecovery) {
+			return
+		}
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to generate ai chat response", err) {
 			h.logger.Error("failed to stream ai chat response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
 		}
@@ -345,6 +385,8 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat feature is not enabled for this user", nil)
 	case errors.Is(err, ErrRuntimeUnavailable):
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat runtime is not configured", nil)
+	case errors.Is(err, ErrRecoveryUnavailable):
+		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat recovery is not configured", nil)
 	case errors.Is(err, ErrConversationBusy):
 		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat conversation already has an active run", nil)
 	case errors.Is(err, ErrGenerationTimeout):
