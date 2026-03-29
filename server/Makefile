@@ -32,7 +32,7 @@ help:
 	@echo "  migrate-down - Rollback database migrations"
 	@echo "  sqlc         - Generate SQL code"
 	@echo "  swagger      - Generate OpenAPI documentation"
-	@echo "  dev          - Complete dev setup: load env, start DB, wait for ready, run air"
+	@echo "  dev          - Complete dev setup: load env, start DB, apply migrations, run air"
 
 build:
 	$(GOBUILD) -o bin/$(BINARY_NAME) ./cmd/$(BINARY_NAME)
@@ -141,7 +141,7 @@ test-short: ## Start local DB and run short test suite
 vet:
 	$(GOCMD) vet -v ./...
 
-dev: ## Complete development setup: load env, start database, wait for ready, run air
+dev: ## Complete development setup: load env, start database, wait for ready, apply migrations, run air
 	@echo "==> Loading environment from setenv.sh"
 	@if [ ! -f setenv.sh ]; then \
 		echo "ERROR: setenv.sh not found at $$(pwd)/setenv.sh"; \
@@ -150,13 +150,18 @@ dev: ## Complete development setup: load env, start database, wait for ready, ru
 	fi
 	. ./setenv.sh
 
-	@echo "==> Checking prerequisites: docker, docker compose, and $(AIR_CMD)"
+	@echo "==> Checking prerequisites: docker, docker compose, goose, and $(AIR_CMD)"
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "ERROR: docker is not installed or not on PATH."; \
 		exit 1; \
 	fi
 	@if ! docker compose version >/dev/null 2>&1; then \
 		echo "ERROR: docker compose plugin not available. Install Docker Desktop or the compose plugin."; \
+		exit 1; \
+	fi
+	@if ! command -v goose >/dev/null 2>&1; then \
+		echo "ERROR: 'goose' not found."; \
+		echo "Install: 'go install github.com/pressly/goose/v3/cmd/goose@latest'"; \
 		exit 1; \
 	fi
 	@if ! command -v $(AIR_CMD) >/dev/null 2>&1; then \
@@ -189,6 +194,13 @@ dev: ## Complete development setup: load env, start database, wait for ready, ru
 		echo "Waiting for database... ($${elapsed}s elapsed)"; \
 		sleep 2; \
 	done
+
+	@echo "==> Applying database migrations"
+	@if [ -z "$$DATABASE_URL" ]; then \
+		echo "ERROR: DATABASE_URL is not set after loading setenv.sh"; \
+		exit 1; \
+	fi
+	goose -dir migrations postgres "$$DATABASE_URL" up
 
 	@echo "==> Starting $(AIR_CMD) for hot-reload development"
 	@echo "==> Press Ctrl+C to stop the development server"
