@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:16.2
     ports:
-      - ${DB_PORT}:5432
+      - 127.0.0.1:${DB_PORT}:5432
     environment:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_USER=${DB_USER}
