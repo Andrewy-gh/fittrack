@@ -2,31 +2,35 @@
 
 ### Quick Start
 
-1. Create `setenv.sh` in this folder with:
+1. Create the local env files in this folder:
 ```bash
-export DB_USER=postgres
-export DB_PASSWORD=postgres
-export DB_NAME=fittrack
-export DB_PORT=55432
-export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack
+cp setenv.example.sh setenv.sh
+cp .env.example .env
 ```
 
-2. Install migration CLI:
+2. Update `setenv.sh` and `.env` with your local values.
+
+- `setenv.sh` powers `make dev`, `make migrate-up`, `make migrate-down`, and `make test-short`
+- `.env` is handy for local integration tests, Playwright setup helpers, and AI smoke testing
+
+3. Install goose and air:
 ```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
+go install github.com/air-verse/air@latest
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-3. Run the complete development environment:
+4. Run the complete development environment:
 ```bash
 make dev
 ```
 
 That's it! This single command will:
 - ✅ Load environment variables from `setenv.sh`
-- ✅ Check prerequisites (docker, docker compose, air)
+- ✅ Check prerequisites (docker, docker compose, goose, air)
 - ✅ Start the PostgreSQL database container
 - ✅ Wait for the database to be ready
+- ✅ Apply pending database migrations
 - ✅ Start the hot-reload development server with air
 
 ### Manual Setup (Advanced)
@@ -40,13 +44,11 @@ source ./setenv.sh
 
 2. Start database:
 ```bash
-make docker-up
+docker compose up -d postgres
 ```
 
 3. Initialize the database (first time only):
 ```bash
-cat schema.sql | docker exec -i db psql -U ${DB_USER} -d ${DB_NAME}
-# OR run migrations:
 make migrate-up
 ```
 
@@ -85,6 +87,26 @@ For local development, keep using the existing server env workflow:
 2. Source `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
 
 The API server itself reads process env. It does not introduce a chat-only env file loader.
+
+### Required vs Optional Variables
+
+Required to boot the API:
+
+- `DATABASE_URL`
+- `PROJECT_ID`
+
+Common optional variables:
+
+- `PORT` (default `8080`)
+- `LOG_LEVEL` (default `info`)
+- `ENVIRONMENT` (default `development`)
+- `RATE_LIMIT_RPM` (default `100`)
+- `ALLOWED_ORIGINS`
+- `DB_MAX_CONNS`, `DB_MIN_CONNS`, `DB_MAX_CONN_IDLE`, `DB_MAX_CONN_LIFE`, `DB_HEALTHCHECK`
+- `METRICS_USERNAME`, `METRICS_PASSWORD`
+- `GEMINI_API_KEY` or `GOOGLE_API_KEY`
+- `GEMINI_MODEL`
+- `SECRET_SERVER_KEY` for Playwright's server-side auth bootstrap
 
 ### AI Chat API
 
@@ -160,7 +182,7 @@ brew install air
 
 ```bash
 make help              # Show all available commands
-make dev               # Complete dev setup: env → docker up → wait DB → air
+make dev               # Complete dev setup: env → docker up → wait DB → migrate → air
 make build             # Compile the project
 make run               # Run the compiled binary
 make swagger           # Generate OpenAPI documentation
@@ -170,7 +192,6 @@ make vet               # Run go vet
 make migrate-up        # Apply all pending migrations
 make migrate-down      # Rollback last migration
 make migrate-create    # Create a new migration file (NAME=<name>)
-make docker-up         # Start PostgreSQL container
 make docker-down       # Stop PostgreSQL container
 make clean             # Clean build files and cache
 ```

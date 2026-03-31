@@ -58,42 +58,44 @@ git commit -m "feat: update API types for [your change]"
 
 #### Backend Setup
 
-1. Create `server/setenv.sh` and configure DB vars (example):
-   ```bash
-   export DB_USER=postgres
-   export DB_PASSWORD=postgres
-   export DB_NAME=fittrack
-   export DB_PORT=55432
-   export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack
-   ```
-2. Install goose and ensure PATH includes `$HOME/go/bin`:
-   ```bash
-   go install github.com/pressly/goose/v3/cmd/goose@latest
-   export PATH="$HOME/go/bin:$PATH"
-   ```
-3. Start services:
+1. Create your local server env files from the examples:
    ```bash
    cd server
-   . setenv.sh
-   make docker-up
+   cp setenv.example.sh setenv.sh
+   cp .env.example .env
    ```
-4. Initialize database:
+2. Update the copied values:
    ```bash
-   cat schema.sql | docker exec -i db psql -U ${DB_USER} -d ${DB_NAME}
+   # server/setenv.sh powers make dev, make migrate-*, and make test-short
+   export PROJECT_ID=your-stack-project-id
+   export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack?sslmode=disable
+
+   # server/.env is useful for local integration tests, Playwright setup, and AI smoke tests
+   PROJECT_ID=your-stack-project-id
+   DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack?sslmode=disable
    ```
-5. Run migrations:
+3. Install goose and air, and ensure PATH includes `$HOME/go/bin`:
+   ```bash
+   go install github.com/pressly/goose/v3/cmd/goose@latest
+   go install github.com/air-verse/air@latest
+   export PATH="$HOME/go/bin:$PATH"
+   ```
+4. Start services:
+   ```bash
+   cd server
+   make dev
+   ```
+5. If you prefer to run the database step separately, you can still apply migrations manually:
    ```bash
    make migrate-up
-   ```
-6. Start API server:
-   ```bash
-   go run ./cmd/api
    ```
 
 #### Frontend Setup
 
 ```bash
 cd client
+cp .env.example .env
+# then set VITE_PROJECT_ID and VITE_PUBLISHABLE_CLIENT_KEY
 bun install
 bun run dev        # starts on http://localhost:5173 (proxies API to :8080)
 # or: bun run start  # starts on http://localhost:3000
@@ -101,12 +103,69 @@ bun run dev        # starts on http://localhost:5173 (proxies API to :8080)
 
 After signing in, the minimal phase-1 chat proof is available at `/chat`.
 
+## Environment Cheat Sheet
+
+### Local app runtime
+
+Minimum server vars:
+
+- `DATABASE_URL`: Postgres connection string for the API
+- `PROJECT_ID`: Stack Auth project ID used by the backend to verify tokens
+
+Minimum client vars:
+
+- `VITE_PROJECT_ID`: same Stack Auth project ID, but exposed to the browser
+- `VITE_PUBLISHABLE_CLIENT_KEY`: Stack Auth publishable browser key
+
+Useful optional local vars:
+
+- `ALLOWED_ORIGINS`: needed when the frontend is not using the default Vite proxy or same-origin `/api`
+- `GEMINI_API_KEY` or `GOOGLE_API_KEY`: enables AI chat and `go run ./cmd/gemini-smoke`
+- `GEMINI_MODEL`: overrides the default Gemini model
+- `VITE_API_BASE_URL`: points the client at a non-default API base URL
+
+### Local testing
+
+- `server/setenv.sh`: used by `make dev`, `make migrate-up`, `make migrate-down`, and `make test-short`
+- `server/.env`: read by several Go integration tests, the Gemini smoke test, and Playwright setup helpers
+- `client/.env`: read by the frontend and Playwright setup helpers
+- `SECRET_SERVER_KEY`: optional for Playwright; lets tests create Stack Auth sessions directly instead of logging in through the UI
+- `E2E_STACK_EMAIL` and `E2E_STACK_PASSWORD`: optional fallback for Playwright UI login
+
+### Production deploy
+
+GitHub Actions currently expect these secrets:
+
+- `DATABASE_URL`
+- `VITE_PROJECT_ID`
+- `VITE_PUBLISHABLE_CLIENT_KEY`
+- `FLY_API_TOKEN`
+
+Preview deploys also use:
+
+- `PREVIEW_DATABASE_URL`
+- `PREVIEW_METRICS_USERNAME`
+- `PREVIEW_METRICS_PASSWORD`
+
+Fly preview apps set these runtime vars on the server:
+
+- `DATABASE_URL`
+- `PROJECT_ID`
+- `ENVIRONMENT=staging`
+- `METRICS_USERNAME`
+- `METRICS_PASSWORD`
+
+Production note:
+
+- `PROJECT_ID` should match the Stack project behind `VITE_PROJECT_ID`
+- `DATABASE_URL` should use a non-superuser app role in production so Postgres row-level security keeps working
+
 ### Available Commands
 
 #### Backend (server/)
 ```bash
 make help             # Show all available commands
-make dev              # Complete dev setup (docker + hot reload via air)
+make dev              # Complete dev setup (docker + migrations + hot reload via air)
 make build            # Compile the project
 make run              # Run the compiled binary
 make swagger          # Generate OpenAPI documentation

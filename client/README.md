@@ -5,6 +5,8 @@ React frontend for FitTrack, built with Vite, TypeScript, TanStack Router, and T
 ## Getting Started
 
 ```bash
+cp .env.example .env
+# set VITE_PROJECT_ID and VITE_PUBLISHABLE_CLIENT_KEY first
 bun install
 bun run dev       # http://localhost:5173 (proxies API calls to :8080)
 # or
@@ -35,6 +37,14 @@ This project uses [Stack Auth](https://stack-auth.com/) for authentication. Conf
 VITE_PROJECT_ID=<your-stack-project-id>
 VITE_PUBLISHABLE_CLIENT_KEY=<your-stack-publishable-key>
 ```
+
+Optional:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+You usually do not need `VITE_API_BASE_URL` during local dev because Vite proxies `/api` to the backend by default.
 
 ## API Client Generation
 
