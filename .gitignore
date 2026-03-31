@@ -1,9 +1,3 @@
-/config/
-
-.claude
-ai-dev-tasks
-**/CLAUDE.local.md
-
 # opensrc - source code for packages
 opensrc/
 
@@ -15,6 +9,23 @@ client/tests/e2e/.auth/
 
 # Local env
 .env
+server/.env
+server/.env.local
+server/.setenv.sh
+server/setenv.sh
+client/.env
+client/.env.local
+client/*.local
+
+# Client build and test output
+client/node_modules/
+client/dist/
+client/dist-ssr/
+client/playwright-report/
+client/test-results/
+
+# Misc local OS files
+.DS_Store
 
 # Local dev postgres volume (docker-compose in server/)
 server/db-data/
@@ -23,4 +34,8 @@ server/db-data.bak-*/
 server/_db-data.bak-*/
 
 # Local go build output
+server/bin/
+server/dist/
+server/tmp/
+server/api.exe
 server/api

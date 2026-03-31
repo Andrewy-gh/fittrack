@@ -1,8 +1,0 @@
-/dist
-/setenv.sh
-/db-data
-/bin
-/tmp
-
-.env
-api.exe
