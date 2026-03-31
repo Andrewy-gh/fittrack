@@ -7,11 +7,20 @@ import {
   createAIChatConversation,
   getAIChatConversation,
   pollAIChatConversationUntilSettled,
+  reportAIChatTelemetry,
   streamAIChatMessage,
   type AIChatConversation,
   type AIChatConversationDetail,
   type AIChatMessage,
+  type AIChatTelemetryEvent,
 } from '@/lib/api/ai-chat';
+import {
+  classifyLoadOutcome,
+  classifyRecoveryOutcome,
+  classifyStreamInterruption,
+  isAbortError,
+  terminalStreamStage,
+} from '@/lib/ai-chat-observability';
 import { getErrorMessage, showErrorToast } from '@/lib/errors';
 
 type ChatSearch = {
@@ -21,6 +30,7 @@ type ChatSearch = {
 type ConversationRequestResult = {
   detail: AIChatConversationDetail | null;
   aborted: boolean;
+  error?: unknown;
 };
 
 export const Route = createFileRoute('/_layout/chat')({
@@ -50,6 +60,15 @@ export function ChatRouteComponent() {
   const pendingAssistantIdRef = useRef<number | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const recoveryAbortRef = useRef<AbortController | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+
+  const recordTelemetry = useCallback((event: AIChatTelemetryEvent) => {
+    void Promise.resolve(reportAIChatTelemetry(event)).catch((error) => {
+      if (import.meta.env.DEV) {
+        console.warn('Failed to record AI chat telemetry', error, event);
+      }
+    });
+  }, []);
 
   const loadConversation = useCallback(
     async (
@@ -74,14 +93,14 @@ export function ChatRouteComponent() {
         setConversation(detail.conversation);
         setMessages(detail.messages);
         setLoadError(null);
-        return { detail, aborted: false };
+        return { detail, aborted: false, error: undefined };
       } catch (error) {
         if (controller.signal.aborted || isAbortError(error)) {
-          return { detail: null, aborted: true };
+          return { detail: null, aborted: true, error };
         }
         const message = getErrorMessage(error);
         setLoadError(message);
-        return { detail: null, aborted: false };
+        return { detail: null, aborted: false, error };
       } finally {
         if (loadAbortRef.current === controller) {
           loadAbortRef.current = null;
@@ -113,10 +132,10 @@ export function ChatRouteComponent() {
         setConversation(detail.conversation);
         setMessages(detail.messages);
         setLoadError(null);
-        return { detail, aborted: false };
+        return { detail, aborted: false, error: undefined };
       } catch (error) {
         if (controller.signal.aborted || isAbortError(error)) {
-          return { detail: null, aborted: true };
+          return { detail: null, aborted: true, error };
         }
         if (!controller.signal.aborted) {
           const message = getErrorMessage(error);
@@ -124,7 +143,7 @@ export function ChatRouteComponent() {
             setLoadError(message);
           }
         }
-        return { detail: null, aborted: false };
+        return { detail: null, aborted: false, error };
       } finally {
         if (recoveryAbortRef.current === controller) {
           recoveryAbortRef.current = null;
@@ -138,6 +157,7 @@ export function ChatRouteComponent() {
     if (!conversationId) {
       loadAbortRef.current?.abort();
       recoveryAbortRef.current?.abort();
+      streamAbortRef.current?.abort();
       setConversation(null);
       setMessages([]);
       setLoadError(null);
@@ -146,17 +166,64 @@ export function ChatRouteComponent() {
     }
 
     void (async () => {
-      const { detail } = await loadConversation(conversationId);
-      if (detail?.messages.some((message) => message.status === 'streaming')) {
-        await recoverConversation(conversationId, { silent: true });
+      const loadResult = await loadConversation(conversationId);
+      if (loadResult.detail) {
+        recordTelemetry({
+          category: 'load',
+          outcome: 'load_completed',
+        });
+      } else {
+        recordTelemetry({
+          category: 'load',
+          outcome: classifyLoadOutcome(loadResult.aborted),
+        });
+      }
+
+      if (
+        loadResult.detail?.messages.some((message) => message.status === 'streaming')
+      ) {
+        const recoveryResult = await recoverConversation(conversationId, {
+          silent: true,
+        });
+        const recoveryOutcome = classifyRecoveryOutcome({
+          messages: recoveryResult.detail?.messages,
+          aborted: recoveryResult.aborted,
+          error: recoveryResult.error,
+        });
+        recordTelemetry({
+          category: 'recovery',
+          outcome: recoveryOutcome,
+        });
+
+        if (
+          recoveryOutcome !== 'recovered_completed' &&
+          recoveryOutcome !== 'recovery_aborted'
+        ) {
+          const recoveryError =
+            recoveryResult.error ?? new Error('Failed to recover AI chat conversation');
+          recordTelemetry({
+            category: 'ux',
+            outcome: 'failure_toast_shown',
+          });
+          if (!recoveryResult.detail) {
+            setLoadError(
+              getErrorMessage(
+                recoveryError,
+                'Failed to recover AI chat conversation'
+              )
+            );
+          }
+          showErrorToast(recoveryError, 'Failed to recover AI chat conversation');
+        }
       }
     })();
 
     return () => {
       loadAbortRef.current?.abort();
       recoveryAbortRef.current?.abort();
+      streamAbortRef.current?.abort();
     };
-  }, [conversationId, loadConversation, recoverConversation]);
+  }, [conversationId, loadConversation, recordTelemetry, recoverConversation]);
 
   if (!user) {
     return (
@@ -176,6 +243,9 @@ export function ChatRouteComponent() {
   async function handleNewChat() {
     try {
       const created = await createAIChatConversation();
+      streamAbortRef.current?.abort();
+      recoveryAbortRef.current?.abort();
+      loadAbortRef.current?.abort();
       setConversation(created);
       setMessages([]);
       setLoadError(null);
@@ -228,7 +298,10 @@ export function ChatRouteComponent() {
     const tempUserId = -Date.now();
     const tempAssistantId = tempUserId - 1;
     let streamStarted = false;
+    let shouldRefreshConversation = false;
+    const streamController = new AbortController();
     pendingAssistantIdRef.current = tempAssistantId;
+    streamAbortRef.current = streamController;
 
     setMessages((current) => [
       ...current,
@@ -254,7 +327,7 @@ export function ChatRouteComponent() {
     ]);
 
     try {
-      await streamAIChatMessage(activeConversationId, nextPrompt, {
+      const streamResult = await streamAIChatMessage(activeConversationId, nextPrompt, {
         onStart: (event) => {
           streamStarted = true;
           pendingAssistantIdRef.current = event.message_id ?? tempAssistantId;
@@ -317,14 +390,51 @@ export function ChatRouteComponent() {
             'AI chat streaming failed'
           );
         },
+        signal: streamController.signal,
       });
 
-      await loadConversation(activeConversationId, { silent: true });
+      recordTelemetry({
+        category: 'stream',
+        outcome: streamResult.endedWithError ? 'server_error' : 'completed',
+        stage: terminalStreamStage(),
+      });
+      if (streamResult.endedWithError) {
+        recordTelemetry({
+          category: 'ux',
+          outcome: 'failure_toast_shown',
+        });
+      }
+      shouldRefreshConversation = true;
     } catch (error) {
-      const { detail: recoveredDetail, aborted: recoveryAborted } =
+      const streamTelemetry = classifyStreamInterruption(error, streamStarted);
+      recordTelemetry({
+        category: 'stream',
+        outcome: streamTelemetry.outcome,
+        stage: streamTelemetry.stage,
+      });
+
+      if (streamTelemetry.outcome === 'client_aborted') {
+        return;
+      }
+
+      const {
+        detail: recoveredDetail,
+        aborted: recoveryAborted,
+        error: recoveryError,
+      } =
         await recoverConversation(activeConversationId, {
           silent: true,
         });
+      const recoveryOutcome = classifyRecoveryOutcome({
+        messages: recoveredDetail?.messages,
+        prompt: nextPrompt,
+        aborted: recoveryAborted,
+        error: recoveryError,
+      });
+      recordTelemetry({
+        category: 'recovery',
+        outcome: recoveryOutcome,
+      });
       if (recoveryAborted) {
         return;
       }
@@ -355,11 +465,27 @@ export function ChatRouteComponent() {
       }
 
       if (recoveredPromptStatus !== 'completed') {
+        recordTelemetry({
+          category: 'ux',
+          outcome: 'failure_toast_shown',
+        });
         showErrorToast(error, 'Failed to stream AI chat response');
+      } else {
+        recordTelemetry({
+          category: 'ux',
+          outcome: 'failure_toast_suppressed_due_to_successful_recovery',
+        });
       }
     } finally {
+      if (streamAbortRef.current === streamController) {
+        streamAbortRef.current = null;
+      }
       pendingAssistantIdRef.current = null;
       setIsSubmitting(false);
+    }
+
+    if (shouldRefreshConversation) {
+      await loadConversation(activeConversationId, { silent: true });
     }
   }
 
@@ -494,11 +620,4 @@ function findRecoveredPromptStatus(
   }
 
   return null;
-}
-
-function isAbortError(error: unknown): boolean {
-  return (
-    (error instanceof DOMException && error.name === 'AbortError') ||
-    (error instanceof Error && error.name === 'AbortError')
-  );
 }

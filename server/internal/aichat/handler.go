@@ -17,6 +17,7 @@ import (
 type chatService interface {
 	Validate(ctx context.Context, prompt string) (*ValidateResponse, error)
 	EnsureAllowed(ctx context.Context) error
+	CurrentUserHasFeatureAccess(ctx context.Context) (bool, error)
 	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	CreateConversation(ctx context.Context) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
@@ -183,6 +184,45 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	if err := response.JSON(w, http.StatusOK, detail); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 	}
+}
+
+// RecordTelemetry godoc
+// @Summary Record AI chat telemetry
+// @Description Records authenticated client-observed AI chat outcomes for observability and rollout gating.
+// @Tags ai-chat
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param request body aichat.ClientTelemetryEvent true "Telemetry event"
+// @Success 202
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/chat/telemetry [post]
+func (h *Handler) RecordTelemetry(w http.ResponseWriter, r *http.Request) {
+	var event ClientTelemetryEvent
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
+		return
+	}
+
+	event = normalizeClientTelemetryEvent(event)
+	if err := validateClientTelemetryEvent(event); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "invalid ai chat telemetry event", err)
+		return
+	}
+
+	hasFeatureAccess, err := h.service.CurrentUserHasFeatureAccess(r.Context())
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to record ai chat telemetry")
+		return
+	}
+
+	recordClientTelemetry(hasFeatureAccess, event)
+	w.WriteHeader(http.StatusAccepted)
 }
 
 // StreamMessage godoc

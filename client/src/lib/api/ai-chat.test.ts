@@ -13,6 +13,7 @@ vi.mock('@/stack', () => ({
 import {
   createAIChatConversation,
   pollAIChatConversationUntilSettled,
+  reportAIChatTelemetry,
   streamAIChatMessage,
 } from './ai-chat';
 
@@ -240,6 +241,33 @@ describe('ai chat api wrapper', () => {
       '/api/ai/conversations',
       expect.objectContaining({
         method: 'POST',
+      })
+    );
+  });
+
+  it('posts ai chat telemetry events to the Go API', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, {
+        status: 202,
+      })
+    );
+
+    await reportAIChatTelemetry({
+      category: 'stream',
+      outcome: 'transport_ended_pre_terminal',
+      stage: 'pre_start',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/ai/chat/telemetry',
+      expect.objectContaining({
+        method: 'POST',
+        keepalive: true,
+        body: JSON.stringify({
+          category: 'stream',
+          outcome: 'transport_ended_pre_terminal',
+          stage: 'pre_start',
+        }),
       })
     );
   });
