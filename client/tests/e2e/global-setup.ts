@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { signInWithStack } from './helpers/stack-auth';
+import { resolveStackAuthBootstrapConfig } from '../stack-auth-config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -224,24 +225,21 @@ function buildAuthCookies(options: {
 }
 
 async function globalSetup(config: FullConfig) {
-  const email = process.env.E2E_STACK_EMAIL;
-  const password = process.env.E2E_STACK_PASSWORD;
-
   const baseURL = config.projects[0]?.use?.baseURL ?? 'http://localhost:5173';
   const serverEnv = await loadEnvFile(serverEnvPath);
   const clientEnv = await loadEnvFile(clientEnvPath);
-
-  const projectId =
-    process.env.VITE_PROJECT_ID ||
-    clientEnv.VITE_PROJECT_ID ||
-    process.env.STACK_PROJECT_ID ||
-    serverEnv.VITE_PROJECT_ID ||
-    serverEnv.PROJECT_ID;
-  const secretServerKey =
-    process.env.SECRET_SERVER_KEY || serverEnv.SECRET_SERVER_KEY;
-  const publishableClientKey =
-    process.env.VITE_PUBLISHABLE_CLIENT_KEY || clientEnv.VITE_PUBLISHABLE_CLIENT_KEY;
-  const apiBaseUrl = process.env.STACK_API_BASE_URL || 'https://api.stack-auth.com';
+  const {
+    email,
+    password,
+    projectId,
+    secretServerKey,
+    publishableClientKey,
+    apiBaseUrl,
+  } = resolveStackAuthBootstrapConfig({
+    processEnv: process.env,
+    clientEnv,
+    serverEnv,
+  });
 
   const browser = await chromium.launch();
   const context = await browser.newContext({ baseURL });
@@ -249,6 +247,11 @@ async function globalSetup(config: FullConfig) {
   const canUseUiAuth = Boolean(email && password);
 
   if (canUseServerAuth) {
+    if (!projectId || !secretServerKey) {
+      await browser.close();
+      return;
+    }
+
     const generatedEmail = `e2e-${randomUUID()}@example.test`;
     const resolvedEmail = email ?? generatedEmail;
     const baseUrl = `${apiBaseUrl}/api/v1`;
