@@ -29,6 +29,22 @@ describe('resolveStackAuthBootstrapConfig', () => {
     expect(config.projectId).toBe('vite-project-id');
   });
 
+  it('keeps the client env project id ahead of generic process PROJECT_ID', () => {
+    const config = resolveStackAuthBootstrapConfig({
+      processEnv: {
+        PROJECT_ID: 'doppler-project-id',
+        SECRET_SERVER_KEY: 'doppler-secret',
+      },
+      clientEnv: {
+        VITE_PROJECT_ID: 'client-env-project-id',
+      },
+      serverEnv: {},
+    });
+
+    expect(config.projectId).toBe('client-env-project-id');
+    expect(config.secretServerKey).toBe('doppler-secret');
+  });
+
   it('falls back to env files when process env is missing', () => {
     const config = resolveStackAuthBootstrapConfig({
       processEnv: {},

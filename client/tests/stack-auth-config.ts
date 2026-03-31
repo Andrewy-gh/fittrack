@@ -25,9 +25,9 @@ export function resolveStackAuthBootstrapConfig(options: {
     password: pickFirst(processEnv.E2E_STACK_PASSWORD),
     projectId: pickFirst(
       processEnv.VITE_PROJECT_ID,
+      clientEnv.VITE_PROJECT_ID,
       processEnv.STACK_PROJECT_ID,
       processEnv.PROJECT_ID,
-      clientEnv.VITE_PROJECT_ID,
       serverEnv.VITE_PROJECT_ID,
       serverEnv.PROJECT_ID
     ),
