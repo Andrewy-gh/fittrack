@@ -30,6 +30,6 @@ export DB_HEALTHCHECK=30s
 # export METRICS_PASSWORD="metrics-password"
 
 # Optional AI chat / Gemini smoke test
-# export GEMINI_API_KEY="your-gemini-api-key"
+export GEMINI_API_KEY="your-gemini-api-key"
 # export GOOGLE_API_KEY="your-google-api-key"
 # export GEMINI_MODEL="googleai/gemini-2.5-flash"
