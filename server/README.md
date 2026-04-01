@@ -72,7 +72,7 @@ Expected env var: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 
 Optional env var: `GEMINI_MODEL` (defaults to `googleai/gemini-2.5-flash`)
 
-The command respects existing shell env first, then loads `server/.env.local`, `server/.env`, and `server/setenv.sh` (or `server/.setenv.sh`) if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
+The command respects existing shell env first, then loads `server/.env` and `server/setenv.sh` (or `server/.setenv.sh`) if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
 
 ### AI Chat Runtime
 
@@ -84,7 +84,7 @@ The live API chat runtime uses the same model default as the smoke test:
 
 For local development, keep using the existing server env workflow:
 
-1. Put values in your shell, `server/setenv.sh`, `server/.setenv.sh`, `server/.env.local`, or `server/.env`
+1. Put values in your shell, `server/.env`, `server/.setenv.sh`, or `server/setenv.sh`
 2. Source `.setenv.sh` or `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
 
 The API server itself reads process env. It does not introduce a chat-only env file loader.

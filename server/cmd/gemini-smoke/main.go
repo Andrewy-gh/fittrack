@@ -29,7 +29,7 @@ func main() {
 	}
 
 	if configuredAPIKeyEnvVar() == "" {
-		fmt.Fprintf(os.Stderr, "%s or %s must be set. Put one in your shell or in server/.env, server/.env.local, or server/setenv.sh.\n", geminiAPIKeyEnvVar, googleAPIKeyEnvVar)
+		fmt.Fprintf(os.Stderr, "%s or %s must be set. Put one in your shell or in server/.env, server/.setenv.sh, or server/setenv.sh.\n", geminiAPIKeyEnvVar, googleAPIKeyEnvVar)
 		os.Exit(1)
 	}
 
@@ -74,7 +74,7 @@ func loadLocalEnv() error {
 }
 
 func localEnvFiles() []string {
-	return []string{".env.local", ".env", ".setenv.sh", "setenv.sh"}
+	return []string{".env", ".setenv.sh", "setenv.sh"}
 }
 
 func existingEnvFiles(paths ...string) []string {
