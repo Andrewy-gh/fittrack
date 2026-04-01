@@ -11,6 +11,57 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimAIChatRunRecovery = `-- name: ClaimAIChatRunRecovery :one
+UPDATE ai_chat_run
+SET error_message = NULL,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND error_message = $3
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+`
+
+type ClaimAIChatRunRecoveryParams struct {
+	ID           int32       `json:"id"`
+	UserID       string      `json:"user_id"`
+	ErrorMessage pgtype.Text `json:"error_message"`
+}
+
+func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRunRecoveryParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, claimAIChatRunRecovery, arg.ID, arg.UserID, arg.ErrorMessage)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const createAIChatConversation = `-- name: CreateAIChatConversation :one
 INSERT INTO ai_chat_conversation (
     user_id,
@@ -1772,6 +1823,56 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 		return nil, err
 	}
 	return items, nil
+}
+
+const markAIChatRunAwaitingRecovery = `-- name: MarkAIChatRunAwaitingRecovery :one
+UPDATE ai_chat_run
+SET error_message = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+`
+
+type MarkAIChatRunAwaitingRecoveryParams struct {
+	ID           int32       `json:"id"`
+	UserID       string      `json:"user_id"`
+	ErrorMessage pgtype.Text `json:"error_message"`
+}
+
+func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIChatRunAwaitingRecoveryParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, markAIChatRunAwaitingRecovery, arg.ID, arg.UserID, arg.ErrorMessage)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
 }
 
 const setAIChatConversationTitleIfEmpty = `-- name: SetAIChatConversationTitleIfEmpty :execrows

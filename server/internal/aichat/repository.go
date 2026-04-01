@@ -23,6 +23,8 @@ type Repository interface {
 	LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
 	UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
+	MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
+	ClaimRunRecovery(ctx context.Context, runID int32, userID string) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error)
 	FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error
 }
@@ -412,6 +414,75 @@ func (r *repository) UpdateStreamingRun(ctx context.Context, prepared *PreparedM
 	prepared.Run.UpdatedAt = updatedAt.UTC()
 
 	return nil
+}
+
+func (r *repository) MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin ai chat recovery handoff transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+	partialText = strings.TrimSpace(partialText)
+	if partialText != "" {
+		if _, err := qtx.UpdateAIChatMessageStreaming(ctx, db.UpdateAIChatMessageStreamingParams{
+			ID:      prepared.AssistantMessage.ID,
+			UserID:  prepared.AssistantMessage.UserID,
+			Content: partialText,
+		}); err != nil {
+			return fmt.Errorf("update ai chat assistant message for recovery handoff: %w", err)
+		}
+	}
+
+	runRow, err := qtx.MarkAIChatRunAwaitingRecovery(ctx, db.MarkAIChatRunAwaitingRecoveryParams{
+		ID:           prepared.Run.ID,
+		UserID:       prepared.Run.UserID,
+		ErrorMessage: textToPg(runAwaitingRecoveryMarker),
+	})
+	if err != nil {
+		return fmt.Errorf("mark ai chat run awaiting recovery: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit ai chat recovery handoff transaction: %w", err)
+	}
+
+	if partialText != "" {
+		prepared.AssistantMessage.Content = partialText
+		prepared.AssistantMessage.UpdatedAt = updatedAt.UTC()
+	}
+
+	run, err := mapRun(runRow)
+	if err != nil {
+		return err
+	}
+	prepared.Run = run
+
+	return nil
+}
+
+func (r *repository) ClaimRunRecovery(ctx context.Context, runID int32, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	runRow, err := r.queries.ClaimAIChatRunRecovery(ctx, db.ClaimAIChatRunRecoveryParams{
+		ID:           runID,
+		UserID:       userID,
+		ErrorMessage: textToPg(runAwaitingRecoveryMarker),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		return fmt.Errorf("claim ai chat recovery run: %w", err)
+	}
+
+	_, err = mapRun(runRow)
+	return err
 }
 
 func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error) {

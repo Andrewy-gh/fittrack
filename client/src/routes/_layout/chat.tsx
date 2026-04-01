@@ -439,6 +439,27 @@ export function ChatRouteComponent() {
       }
       shouldRefreshConversation = true;
     } catch (error) {
+      if (!streamStarted && isPreflightAPIError(error)) {
+        setMessages((current) =>
+          current.filter(
+            (message) =>
+              message.id !== tempUserId && message.id !== tempAssistantId,
+          ),
+        );
+        setPrompt(nextPrompt);
+        recordTelemetry({
+          category: "stream",
+          outcome: "server_error",
+          stage: "pre_start",
+        });
+        recordTelemetry({
+          category: "ux",
+          outcome: "failure_toast_shown",
+        });
+        showErrorToast(error, "Failed to stream AI chat response");
+        return;
+      }
+
       const streamTelemetry = classifyStreamInterruption(error, streamStarted);
       recordTelemetry({
         category: "stream",
@@ -633,6 +654,16 @@ function parseConversationId(value?: string): number | null {
   }
 
   return parsed;
+}
+
+function isPreflightAPIError(error: unknown): error is { message: string } {
+  return (
+    !(error instanceof Error) &&
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  );
 }
 
 function findRecoveredPromptStatus(

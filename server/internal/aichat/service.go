@@ -43,6 +43,7 @@ const (
 	recoverStatusQueued           = "queued"
 	recoverStatusNotNeeded        = "not_needed"
 	recoverReasonStreamReconnect  = "stream_reconnect"
+	runAwaitingRecoveryMarker     = "ai chat stream interrupted and awaiting recovery handoff"
 )
 
 func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository) *Service {
@@ -162,6 +163,12 @@ func (s *Service) RequestMessageRecovery(ctx context.Context, conversationID int
 	case err != nil:
 		return nil, err
 	}
+	if !isRunAwaitingRecovery(run) {
+		return &RecoverMessageResponse{
+			ConversationID: conversationID,
+			Status:         recoverStatusNotNeeded,
+		}, nil
+	}
 
 	request := RunRecoveryRequest{
 		ConversationID: conversationID,
@@ -231,6 +238,16 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 	if prepared.Run == nil || prepared.Run.Status != statusStreaming {
 		return nil
 	}
+	if !isRunAwaitingRecovery(prepared.Run) {
+		return nil
+	}
+	if err := s.repo.ClaimRunRecovery(ctx, request.RunID, userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	prepared.Run.ErrorMessage = nil
 
 	_, err = s.executePreparedRun(ctx, prepared, nil, false)
 	return err
@@ -261,6 +278,9 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 	})
 	if err != nil {
 		if allowRecovery && errors.Is(err, ErrStreamDisconnected) {
+			if markErr := s.repo.MarkRunAwaitingRecovery(persistCtx, prepared, strings.TrimSpace(partial.String()), time.Now().UTC()); markErr != nil {
+				return nil, markErr
+			}
 			return nil, ErrStreamAwaitingRecovery
 		}
 		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
@@ -435,6 +455,13 @@ func isClientSafeError(err error) bool {
 		errors.Is(err, ErrRecoveryUnavailable) ||
 		errors.Is(err, ErrConversationBusy) ||
 		errors.Is(err, ErrGenerationTimeout)
+}
+
+func isRunAwaitingRecovery(run *ChatRun) bool {
+	if run == nil || run.ErrorMessage == nil {
+		return false
+	}
+	return strings.TrimSpace(*run.ErrorMessage) == runAwaitingRecoveryMarker
 }
 
 func currentUserID(ctx context.Context) (string, error) {

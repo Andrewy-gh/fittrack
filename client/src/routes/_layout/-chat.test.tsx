@@ -161,6 +161,47 @@ describe("ChatRouteComponent", () => {
     expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
 
+  it("does not treat preflight api failures as transport interruptions", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockStreamMessage.mockRejectedValue({
+      message: "ai chat runtime is not configured",
+      request_id: "req-123",
+    });
+
+    render(<ChatRouteComponent />);
+
+    const promptBox = await screen.findByPlaceholderText(
+      "Ask about training, recovery, exercise choices, or FitTrack usage...",
+    );
+    await user.type(promptBox, "hello");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "ai chat runtime is not configured",
+        }),
+        "Failed to stream AI chat response",
+      );
+    });
+    expect(mockRequestRecovery).not.toHaveBeenCalled();
+    expect(mockPollConversation).not.toHaveBeenCalled();
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "stream",
+      outcome: "server_error",
+      stage: "pre_start",
+    });
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "ux",
+      outcome: "failure_toast_shown",
+    });
+    expect(
+      screen.getByText("No messages yet. Start a new chat or send the first prompt."),
+    ).toBeInTheDocument();
+    expect(promptBox).toHaveValue("hello");
+  });
+
   it("ignores late initial load results after the conversation is cleared", async () => {
     const initialLoad =
       deferredPromise<ReturnType<typeof conversationDetail>>();
