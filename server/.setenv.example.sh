@@ -1,7 +1,7 @@
 export DB_USER=postgres
 export DB_NAME=fittrack
 export DB_PORT=5432
-# Set your local database password in the shell before sourcing this file.
+: "${DB_PASSWORD:?Set DB_PASSWORD before sourcing this file}"
 export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/${DB_NAME}?sslmode=disable"
 export PROJECT_ID=your-stack-project-id
 export SECRET_SERVER_KEY=your-stack-secret-server-key
