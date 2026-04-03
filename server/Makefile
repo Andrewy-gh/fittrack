@@ -17,6 +17,7 @@ SHELL := bash
 DB_SERVICE ?= postgres
 DB_READY_TIMEOUT ?= 90
 AIR_CMD ?= air
+ENV_FILE ?= $(if $(wildcard .setenv.sh),.setenv.sh,$(if $(wildcard setenv.sh),setenv.sh,setenv.sh))
 
 help:
 	@echo "Available commands:"
@@ -54,7 +55,7 @@ else
 endif
 
 migrate-up:
-	@if . ./setenv.sh && [ -n "$$DATABASE_URL" ]; then \
+	@if [ -f "$(ENV_FILE)" ] && . ./$(ENV_FILE) && [ -n "$$DATABASE_URL" ]; then \
 		echo "DATABASE_URL: $$DATABASE_URL"; \
 		goose -dir migrations postgres "$$DATABASE_URL" up; \
 	else \
@@ -63,7 +64,7 @@ migrate-up:
 	fi
 
 migrate-down:
-	@if . ./setenv.sh && [ -n "$$DATABASE_URL" ]; then \
+	@if [ -f "$(ENV_FILE)" ] && . ./$(ENV_FILE) && [ -n "$$DATABASE_URL" ]; then \
 		goose -dir migrations postgres "$$DATABASE_URL" down; \
 	else \
 		echo "DATABASE_URL does not exist"; \
@@ -96,19 +97,19 @@ test-short: ## Start local DB and run short test suite
 		echo "ERROR: docker is not installed or not on PATH."; \
 		exit 1; \
 	fi
-	@if [ ! -f setenv.sh ]; then \
-		echo "ERROR: setenv.sh not found at $$(pwd)/setenv.sh"; \
-		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "ERROR: expected env file at $$(pwd)/$(ENV_FILE)"; \
+		echo "Create .setenv.sh or setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
 		exit 1; \
 	fi
-	. ./setenv.sh; \
+	. ./$(ENV_FILE); \
 	for req_var in DB_USER DB_PASSWORD DB_NAME DATABASE_URL; do \
 		if [ -z "$${!req_var}" ]; then \
-			echo "ERROR: $$req_var is not set in setenv.sh"; \
+			echo "ERROR: $$req_var is not set in $(ENV_FILE)"; \
 			exit 1; \
 		fi; \
 	done; \
-	db_port="$${DB_PORT:-55432}"; \
+	db_port="$${DB_PORT:-5432}"; \
 	db_url="postgresql://$${DB_USER}:$${DB_PASSWORD}@127.0.0.1:$${db_port}/$${DB_NAME}"; \
 	case "$$db_url" in \
 		*sslmode=*) ;; \
@@ -142,13 +143,13 @@ vet:
 	$(GOCMD) vet -v ./...
 
 dev: ## Complete development setup: load env, start database, wait for ready, apply migrations, run air
-	@echo "==> Loading environment from setenv.sh"
-	@if [ ! -f setenv.sh ]; then \
-		echo "ERROR: setenv.sh not found at $$(pwd)/setenv.sh"; \
+	@echo "==> Loading environment from $(ENV_FILE)"
+	@if [ ! -f "$(ENV_FILE)" ]; then \
+		echo "ERROR: expected env file at $$(pwd)/$(ENV_FILE)"; \
 		echo "Create it and export the required variables (e.g., POSTGRES_USER, POSTGRES_DB, POSTGRES_PASSWORD)."; \
 		exit 1; \
 	fi
-	. ./setenv.sh
+	. ./$(ENV_FILE)
 
 	@echo "==> Checking prerequisites: docker, docker compose, goose, and $(AIR_CMD)"
 	@if ! command -v docker >/dev/null 2>&1; then \

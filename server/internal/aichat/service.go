@@ -78,6 +78,10 @@ func (s *Service) EnsureAllowed(ctx context.Context) error {
 	return s.ensureAllowed(ctx)
 }
 
+func (s *Service) CurrentUserHasFeatureAccess(ctx context.Context) (bool, error) {
+	return s.featureAccess.HasCurrentUserFeatureAccess(ctx, featureKeyAIChatbot)
+}
+
 func (s *Service) StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
 	if err := s.ensureAllowed(ctx); err != nil {
 		return nil, err

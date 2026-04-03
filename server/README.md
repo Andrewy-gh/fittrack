@@ -39,7 +39,8 @@ If you prefer to run steps individually:
 
 1. Load environment variables:
 ```bash
-source ./setenv.sh
+source ./.setenv.sh
+# or: source ./setenv.sh
 ```
 
 2. Start database:
@@ -84,7 +85,7 @@ The live API chat runtime uses the same model default as the smoke test:
 For local development, keep using the existing server env workflow:
 
 1. Put values in your shell, `server/setenv.sh`, `server/.setenv.sh`, `server/.env.local`, or `server/.env`
-2. Source `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
+2. Source `.setenv.sh` or `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
 
 The API server itself reads process env. It does not introduce a chat-only env file loader.
 
@@ -115,6 +116,8 @@ Phase 1 adds persisted chat endpoints under `/api/ai/*`:
 - `POST /api/ai/conversations`
 - `GET /api/ai/conversations/{id}`
 - `POST /api/ai/conversations/{id}/messages/stream`
+- `POST /api/ai/conversations/{id}/messages/recover`
+- `POST /api/ai/chat/telemetry`
 
 The stream endpoint is authenticated fetch-based SSE:
 
@@ -124,6 +127,7 @@ The stream endpoint is authenticated fetch-based SSE:
 - streaming assistant text is snapshotted into app-owned storage during long runs so a dropped client can reload persisted partial progress
 - the client recovery path is still storage-backed inspection, not live SSE replay; interrupted sessions poll the persisted conversation until the run reaches a terminal state
 - stale `streaming` runs older than the stream timeout grace window are auto-failed before a new send starts, which prevents a permanently blocked conversation after an interrupted server-side run
+- interrupted runs can enqueue background recovery through Inngest when `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are configured
 
 Proxy note:
 

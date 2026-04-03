@@ -8,6 +8,7 @@ const {
   mockCreateConversation,
   mockGetConversation,
   mockPollConversation,
+  mockReportTelemetry,
   mockRequestRecovery,
   mockStreamMessage,
   mockShowErrorToast,
@@ -17,6 +18,7 @@ const {
   mockCreateConversation: vi.fn(),
   mockGetConversation: vi.fn(),
   mockPollConversation: vi.fn(),
+  mockReportTelemetry: vi.fn(),
   mockRequestRecovery: vi.fn(),
   mockStreamMessage: vi.fn(),
   mockShowErrorToast: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("@/lib/api/ai-chat", () => ({
   createAIChatConversation: mockCreateConversation,
   getAIChatConversation: mockGetConversation,
   pollAIChatConversationUntilSettled: mockPollConversation,
+  reportAIChatTelemetry: mockReportTelemetry,
   requestAIChatMessageRecovery: mockRequestRecovery,
   streamAIChatMessage: mockStreamMessage,
 }));
@@ -79,9 +82,11 @@ describe("ChatRouteComponent", () => {
     mockCreateConversation.mockReset();
     mockGetConversation.mockReset();
     mockPollConversation.mockReset();
+    mockReportTelemetry.mockReset();
     mockRequestRecovery.mockReset();
     mockStreamMessage.mockReset();
     mockShowErrorToast.mockReset();
+    mockReportTelemetry.mockResolvedValue(undefined);
     mockRequestRecovery.mockResolvedValue(undefined);
   });
 
@@ -140,6 +145,19 @@ describe("ChatRouteComponent", () => {
         signal: expect.any(AbortSignal),
       }),
     );
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "stream",
+      outcome: "transport_ended_pre_terminal",
+      stage: "pre_start",
+    });
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovered_completed",
+    });
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "ux",
+      outcome: "failure_toast_suppressed_due_to_successful_recovery",
+    });
     expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
 
@@ -286,5 +304,166 @@ describe("ChatRouteComponent", () => {
       ),
     ).toBeInTheDocument();
     expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovery_aborted",
+    });
+  });
+
+  it("shows a user-visible failure when load-triggered recovery times out", async () => {
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "assistant",
+          content: "partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:01Z",
+        },
+      ]),
+    );
+    mockPollConversation.mockRejectedValue(
+      new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    ).toBeInTheDocument();
+    expect(mockRequestRecovery).toHaveBeenCalledWith(
+      41,
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovery_timeout",
+    });
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "ux",
+      outcome: "failure_toast_shown",
+    });
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "AI chat recovery timed out while waiting for persisted conversation state",
+      }),
+      "Failed to recover AI chat conversation",
+    );
+  });
+
+  it("does not reclassify a completed stream when the follow-up refresh fails", async () => {
+    const user = userEvent.setup();
+    mockGetConversation
+      .mockResolvedValueOnce(conversationDetail([]))
+      .mockRejectedValueOnce(new Error("refresh failed"));
+    mockStreamMessage.mockImplementation(
+      async (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+          onDone?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          message_id: 72,
+        });
+        options?.onDone?.({
+          type: "done",
+          message_id: 72,
+          text: "Completed answer",
+        });
+
+        return {
+          doneEvent: {
+            type: "done",
+            message_id: 72,
+            text: "Completed answer",
+          },
+          endedWithError: false,
+        };
+      },
+    );
+
+    render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("refresh failed")).toBeInTheDocument();
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "stream",
+      outcome: "completed",
+      stage: "terminal",
+    });
+    expect(mockReportTelemetry).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "stream",
+        outcome: "transport_ended_pre_terminal",
+      }),
+    );
+    expect(mockPollConversation).not.toHaveBeenCalled();
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+  });
+
+  it("keeps the active stream running when new chat creation fails", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    let streamSignal: AbortSignal | undefined;
+    mockStreamMessage.mockImplementation(
+      (
+        _conversationId: number,
+        _prompt: string,
+        options?: { signal?: AbortSignal },
+      ) => {
+        streamSignal = options?.signal;
+        return new Promise(() => {});
+      },
+    );
+    mockCreateConversation.mockRejectedValue(new Error("create failed"));
+
+    const view = render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(mockStreamMessage).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(screen.getByRole("button", { name: "New Chat" }));
+
+    await waitFor(() => {
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "create failed" }),
+        "Failed to create chat conversation",
+      );
+    });
+    expect(streamSignal?.aborted).toBe(false);
+    expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(screen.getByText("...")).toBeInTheDocument();
+
+    view.unmount();
   });
 });

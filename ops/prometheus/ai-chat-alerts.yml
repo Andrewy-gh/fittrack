@@ -1,0 +1,62 @@
+groups:
+  - name: ai-chat-rollout
+    rules:
+      - alert: AIChatTrueStreamFailuresHigh
+        expr: |
+          (
+            sum(rate(ai_chat_client_outcomes_total{category="stream",outcome="server_error",cohort="beta"}[15m]))
+            /
+            clamp_min(sum(rate(ai_chat_client_outcomes_total{category="stream",outcome=~"completed|server_error|transport_ended_pre_terminal|client_aborted",cohort="beta"}[15m])), 0.001)
+          ) > 0.03
+          and sum(rate(ai_chat_client_outcomes_total{category="stream",outcome="server_error",cohort="beta"}[15m])) > 0.02
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: AI chat true stream failures are rising
+          description: Pages only on server-side stream failures and excludes client aborts and stale-load cancels.
+
+      - alert: AIChatRecoveryTimeoutsHigh
+        expr: |
+          (
+            sum(rate(ai_chat_client_outcomes_total{category="recovery",outcome="recovery_timeout",cohort="beta"}[30m]))
+            /
+            clamp_min(sum(rate(ai_chat_client_outcomes_total{category="recovery",outcome=~"recovered_completed|recovered_failed|recovery_timeout",cohort="beta"}[30m])), 0.001)
+          ) > 0.10
+          and sum(rate(ai_chat_client_outcomes_total{category="recovery",outcome=~"recovered_completed|recovered_failed|recovery_timeout",cohort="beta"}[30m])) > 0.01
+        for: 30m
+        labels:
+          severity: page
+        annotations:
+          summary: AI chat recovery timeouts are rising
+          description: Recovery timeout paging excludes recovery_aborted so navigation and clear-chat actions do not page.
+
+      - alert: AIChatConversationLoadFailuresHigh
+        expr: |
+          (
+            sum(rate(ai_chat_client_outcomes_total{category="load",outcome="load_failed",cohort="beta"}[15m]))
+            /
+            clamp_min(sum(rate(ai_chat_client_outcomes_total{category="load",outcome=~"load_completed|load_failed",cohort="beta"}[15m])), 0.001)
+          ) > 0.05
+          and sum(rate(ai_chat_client_outcomes_total{category="load",outcome="load_failed",cohort="beta"}[15m])) > 0.02
+        for: 15m
+        labels:
+          severity: page
+        annotations:
+          summary: Persisted conversation fetch failures are rising
+          description: Pages on real conversation-load failures and excludes load_aborted_stale.
+
+      - alert: AIChatRecoverySuccessRateRegression
+        expr: |
+          (
+            sum(rate(ai_chat_client_outcomes_total{category="recovery",outcome="recovered_completed",cohort="beta"}[30m]))
+            /
+            clamp_min(sum(rate(ai_chat_client_outcomes_total{category="recovery",outcome=~"recovered_completed|recovered_failed|recovery_timeout",cohort="beta"}[30m])), 0.001)
+          ) < 0.80
+          and sum(rate(ai_chat_client_outcomes_total{category="recovery",outcome=~"recovered_completed|recovered_failed|recovery_timeout",cohort="beta"}[30m])) > 0.01
+        for: 30m
+        labels:
+          severity: page
+        annotations:
+          summary: AI chat recovery success rate regressed after interrupted streams
+          description: Uses only completed, failed, and timeout recovery outcomes and ignores recovery_aborted.
