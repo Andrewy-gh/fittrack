@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,14 +19,29 @@ import (
 )
 
 const (
-	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
-	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
-	chatStreamTimeout  = 45 * time.Second
+	geminiAPIKeyEnvVar       = "GEMINI_API_KEY"
+	googleAPIKeyEnvVar       = "GOOGLE_API_KEY"
+	debugStreamDelayEnvVar   = "AI_CHAT_DEBUG_STREAM_DELAY_MS"
+	debugForceRecoveryEnvVar = "AI_CHAT_DEBUG_FORCE_RECOVERY_AFTER_CHUNKS"
+	chatStreamTimeout        = 45 * time.Second
+	debugStreamChunkRuneSize = 12
 	activeFeaturesToolName = "fittrack.list_active_features"
 )
 
 var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
 	return genkit.Init(ctx, opts...)
+}
+
+var sleepWithContext = func(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 type featureAccessReader interface {
@@ -38,6 +54,14 @@ type GenkitRuntime struct {
 	g         *genkit.Genkit
 	tool      ai.Tool
 }
+
+type streamDebugState struct {
+	delay                    time.Duration
+	forceRecoveryAfterChunks int
+	emittedChunks            int
+}
+
+type foregroundStreamDebugContextKey struct{}
 
 func NewGenkitRuntime(ctx context.Context, featureAccess featureAccessReader) *GenkitRuntime {
 	modelName := resolveModelName()
@@ -123,6 +147,7 @@ func (r *GenkitRuntime) StreamValidation(ctx context.Context, prompt string, onC
 	}
 
 	var builder strings.Builder
+	debugState := newStreamDebugState(false)
 	resp, err := genkit.Generate(withToolGuard(ctx), r.g,
 		ai.WithModelName(r.modelName),
 		ai.WithPrompt(buildStreamingPrompt(prompt)),
@@ -132,7 +157,7 @@ func (r *GenkitRuntime) StreamValidation(ctx context.Context, prompt string, onC
 				return nil
 			}
 			builder.WriteString(delta)
-			return onChunk(delta)
+			return emitStreamText(ctx, delta, onChunk, debugState)
 		}),
 	)
 	if err != nil {
@@ -160,6 +185,7 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 	streamCtx = withToolGuard(streamCtx)
 
 	var builder strings.Builder
+	debugState := newStreamDebugState(foregroundStreamDebugEnabled(streamCtx))
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
 		ai.WithTools(r.tool),
@@ -171,7 +197,7 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 				return nil
 			}
 			builder.WriteString(delta)
-			return onChunk(delta)
+			return emitStreamText(ctx, delta, onChunk, debugState)
 		}),
 	}
 
@@ -228,6 +254,53 @@ func resolveModelName() string {
 		return modelName
 	}
 	return defaultModelName
+}
+
+func debugStreamDelay() time.Duration {
+	raw := strings.TrimSpace(os.Getenv(debugStreamDelayEnvVar))
+	if raw == "" {
+		return 0
+	}
+
+	delayMs, err := strconv.Atoi(raw)
+	if err != nil || delayMs <= 0 {
+		return 0
+	}
+
+	return time.Duration(delayMs) * time.Millisecond
+}
+
+func debugForceRecoveryAfterChunks() int {
+	raw := strings.TrimSpace(os.Getenv(debugForceRecoveryEnvVar))
+	if raw == "" {
+		return 0
+	}
+
+	chunkCount, err := strconv.Atoi(raw)
+	if err != nil || chunkCount <= 0 {
+		return 0
+	}
+
+	return chunkCount
+}
+
+func newStreamDebugState(enableForcedRecovery bool) *streamDebugState {
+	state := &streamDebugState{
+		delay: debugStreamDelay(),
+	}
+	if enableForcedRecovery {
+		state.forceRecoveryAfterChunks = debugForceRecoveryAfterChunks()
+	}
+	return state
+}
+
+func withForegroundStreamDebug(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, foregroundStreamDebugContextKey{}, enabled)
+}
+
+func foregroundStreamDebugEnabled(ctx context.Context) bool {
+	enabled, _ := ctx.Value(foregroundStreamDebugContextKey{}).(bool)
+	return enabled
 }
 
 func buildStructuredPrompt(prompt string) string {
@@ -291,4 +364,71 @@ func collectChunkText(chunk *ai.ModelResponseChunk) string {
 		builder.WriteString(part.Text)
 	}
 	return builder.String()
+}
+
+func emitStreamText(ctx context.Context, text string, onChunk func(string) error, debugState *streamDebugState) error {
+	if onChunk == nil || text == "" {
+		return nil
+	}
+
+	delay := time.Duration(0)
+	if debugState != nil {
+		delay = debugState.delay
+	}
+	if delay <= 0 {
+		if err := onChunk(text); err != nil {
+			return err
+		}
+		return maybeForceDebugRecovery(debugState)
+	}
+
+	for index, part := range splitStreamText(text, debugStreamChunkRuneSize) {
+		if index > 0 {
+			if err := sleepWithContext(ctx, delay); err != nil {
+				return err
+			}
+		}
+		if err := onChunk(part); err != nil {
+			return err
+		}
+		if err := maybeForceDebugRecovery(debugState); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func maybeForceDebugRecovery(debugState *streamDebugState) error {
+	if debugState == nil {
+		return nil
+	}
+
+	debugState.emittedChunks++
+	if debugState.forceRecoveryAfterChunks > 0 && debugState.emittedChunks >= debugState.forceRecoveryAfterChunks {
+		return ErrStreamDisconnected
+	}
+
+	return nil
+}
+
+func splitStreamText(text string, chunkSize int) []string {
+	if text == "" {
+		return nil
+	}
+	if chunkSize <= 0 {
+		return []string{text}
+	}
+
+	runes := []rune(text)
+	chunks := make([]string, 0, (len(runes)+chunkSize-1)/chunkSize)
+	for start := 0; start < len(runes); start += chunkSize {
+		end := start + chunkSize
+		if end > len(runes) {
+			end = len(runes)
+		}
+		chunks = append(chunks, string(runes[start:end]))
+	}
+
+	return chunks
 }

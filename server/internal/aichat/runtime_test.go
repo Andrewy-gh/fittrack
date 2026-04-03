@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/firebase/genkit/go/ai"
@@ -68,6 +70,64 @@ func TestResolveModelNameUsesOverride(t *testing.T) {
 
 	if got := resolveModelName(); got != override {
 		t.Fatalf("resolveModelName() = %q, want %q", got, override)
+	}
+}
+
+func TestDebugStreamDelayUsesPositiveMilliseconds(t *testing.T) {
+	t.Setenv(debugStreamDelayEnvVar, "250")
+
+	if got := debugStreamDelay(); got != 250*time.Millisecond {
+		t.Fatalf("debugStreamDelay() = %v, want %v", got, 250*time.Millisecond)
+	}
+}
+
+func TestDebugStreamDelayIgnoresInvalidValues(t *testing.T) {
+	testCases := []string{"", "abc", "0", "-10"}
+
+	for _, value := range testCases {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv(debugStreamDelayEnvVar, value)
+
+			if got := debugStreamDelay(); got != 0 {
+				t.Fatalf("debugStreamDelay() = %v, want 0", got)
+			}
+		})
+	}
+}
+
+func TestDebugForceRecoveryAfterChunksUsesPositiveCount(t *testing.T) {
+	t.Setenv(debugForceRecoveryEnvVar, "3")
+
+	if got := debugForceRecoveryAfterChunks(); got != 3 {
+		t.Fatalf("debugForceRecoveryAfterChunks() = %d, want 3", got)
+	}
+}
+
+func TestDebugForceRecoveryAfterChunksIgnoresInvalidValues(t *testing.T) {
+	testCases := []string{"", "abc", "0", "-2"}
+
+	for _, value := range testCases {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv(debugForceRecoveryEnvVar, value)
+
+			if got := debugForceRecoveryAfterChunks(); got != 0 {
+				t.Fatalf("debugForceRecoveryAfterChunks() = %d, want 0", got)
+			}
+		})
+	}
+}
+
+func TestForegroundStreamDebugEnabledUsesContextFlag(t *testing.T) {
+	if foregroundStreamDebugEnabled(context.Background()) {
+		t.Fatal("foregroundStreamDebugEnabled() should default to false")
+	}
+
+	if !foregroundStreamDebugEnabled(withForegroundStreamDebug(context.Background(), true)) {
+		t.Fatal("foregroundStreamDebugEnabled() should return true when enabled in context")
+	}
+
+	if foregroundStreamDebugEnabled(withForegroundStreamDebug(context.Background(), false)) {
+		t.Fatal("foregroundStreamDebugEnabled() should return false when disabled in context")
 	}
 }
 
@@ -184,6 +244,80 @@ func TestPromptsReferenceActiveFeaturesToolName(t *testing.T) {
 	}
 	if !strings.Contains(chatPrompt, activeFeaturesToolName) {
 		t.Fatalf("buildChatSystemPrompt() = %q, want tool name %q", chatPrompt, activeFeaturesToolName)
+	}
+}
+
+func TestSplitStreamTextUsesRuneChunks(t *testing.T) {
+	got := splitStreamText("abcdefg", 3)
+	want := []string{"abc", "def", "g"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("splitStreamText() = %#v, want %#v", got, want)
+	}
+
+	got = splitStreamText("go🏋️chat", 2)
+	want = []string{"go", "🏋️", "ch", "at"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("splitStreamText() with emoji = %#v, want %#v", got, want)
+	}
+}
+
+func TestEmitStreamTextSplitsWhenDebugDelayEnabled(t *testing.T) {
+	t.Setenv(debugStreamDelayEnvVar, "5")
+
+	originalSleep := sleepWithContext
+	sleepCalls := 0
+	sleepWithContext = func(context.Context, time.Duration) error {
+		sleepCalls++
+		return nil
+	}
+	t.Cleanup(func() {
+		sleepWithContext = originalSleep
+	})
+
+	var chunks []string
+	err := emitStreamText(context.Background(), "abcdefghijklmnop", func(chunk string) error {
+		chunks = append(chunks, chunk)
+		return nil
+	}, newStreamDebugState(false))
+	if err != nil {
+		t.Fatalf("emitStreamText() error = %v", err)
+	}
+
+	want := []string{"abcdefghijkl", "mnop"}
+	if !slices.Equal(chunks, want) {
+		t.Fatalf("emitStreamText() chunks = %#v, want %#v", chunks, want)
+	}
+	if sleepCalls != 1 {
+		t.Fatalf("sleep calls = %d, want 1", sleepCalls)
+	}
+}
+
+func TestEmitStreamTextForcesRecoveryAfterConfiguredChunkCount(t *testing.T) {
+	originalSleep := sleepWithContext
+	sleepWithContext = func(context.Context, time.Duration) error {
+		return nil
+	}
+	t.Cleanup(func() {
+		sleepWithContext = originalSleep
+	})
+
+	debugState := &streamDebugState{
+		delay:                    time.Millisecond,
+		forceRecoveryAfterChunks: 2,
+	}
+
+	var chunks []string
+	err := emitStreamText(context.Background(), "abcdefghijklmnop", func(chunk string) error {
+		chunks = append(chunks, chunk)
+		return nil
+	}, debugState)
+	if !errors.Is(err, ErrStreamDisconnected) {
+		t.Fatalf("emitStreamText() error = %v, want %v", err, ErrStreamDisconnected)
+	}
+
+	want := []string{"abcdefghijkl", "mnop"}
+	if !slices.Equal(chunks, want) {
+		t.Fatalf("emitStreamText() chunks = %#v, want %#v", chunks, want)
 	}
 }
 

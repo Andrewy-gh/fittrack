@@ -68,7 +68,7 @@ func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 90 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 }
