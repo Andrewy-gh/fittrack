@@ -59,6 +59,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("POST /api/ai/chat/validate/stream", ah.StreamValidate)
 	if api.inngestHandler != nil {
 		mux.Handle("GET /inngest", api.inngestHandler)
+		mux.Handle("PUT /inngest", api.inngestHandler)
 		mux.Handle("POST /inngest", api.inngestHandler)
 	}
 	// Swagger documentation
