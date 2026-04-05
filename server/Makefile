@@ -17,6 +17,7 @@ SHELL := bash
 DB_SERVICE ?= postgres
 DB_READY_TIMEOUT ?= 90
 AIR_CMD ?= air
+DB_DATA_DIR ?= _db-data
 ENV_FILE ?= $(if $(wildcard .setenv.sh),.setenv.sh,$(if $(wildcard setenv.sh),setenv.sh,setenv.sh))
 
 help:
@@ -121,19 +122,52 @@ test-short: ## Start local DB and run short test suite
 		exit 1; \
 	fi; \
 	DB_PORT="$$db_port" docker compose up -d $(DB_SERVICE); \
+	container_id="$$(docker compose ps -q $(DB_SERVICE))"; \
+	if [ -z "$$container_id" ]; then \
+		echo "ERROR: Could not determine container id for $(DB_SERVICE)."; \
+		exit 1; \
+	fi; \
 	start_ts=$$(date +%s); \
 	while true; do \
-		if docker compose exec -T $(DB_SERVICE) sh -c 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}" >/dev/null 2>&1'; then \
+		health_status="$$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$$container_id" 2>/dev/null || true)"; \
+		if [ "$$health_status" = "healthy" ] || [ "$$health_status" = "no-healthcheck" ]; then \
 			break; \
 		fi; \
 		now=$$(date +%s); \
 		elapsed=$$(( now - start_ts )); \
 		if [ "$$elapsed" -ge 30 ]; then \
 			echo "ERROR: Timed out waiting for PostgreSQL readiness"; \
+			echo "Tip: Check logs with: docker compose logs $(DB_SERVICE)"; \
 			exit 1; \
 		fi; \
 		sleep 1; \
 	done; \
+	echo "==> Verifying PostgreSQL credentials"; \
+	verify_output=""; \
+	start_ts=$$(date +%s); \
+	while true; do \
+		if verify_output="$$(docker compose exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
+			break; \
+		fi; \
+		now=$$(date +%s); \
+		elapsed=$$(( now - start_ts )); \
+		if [ "$$elapsed" -ge 15 ]; then \
+			echo "ERROR: PostgreSQL came up, but verification failed."; \
+			echo "$$verify_output"; \
+			case "$$verify_output" in \
+				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
+					echo "This can happen when $(DB_DATA_DIR) was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
+					echo "If you do not need the local data, reset it and try again:"; \
+					echo "  docker compose down"; \
+					echo "  Remove-Item -Recurse -Force $(DB_DATA_DIR)"; \
+					echo "  New-Item -ItemType Directory $(DB_DATA_DIR) | Out-Null"; \
+					;; \
+			esac; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo "==> PostgreSQL credentials verified"; \
 	echo "==> Applying migrations"; \
 	goose -dir migrations postgres "$$db_url" up; \
 	echo "==> Running go test -short ./..."; \
@@ -175,13 +209,15 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	docker compose up -d $(DB_SERVICE)
 
 	@echo "==> Waiting for PostgreSQL to accept connections (timeout: $(DB_READY_TIMEOUT)s)"
-	if ! docker compose exec -T $(DB_SERVICE) sh -c "command -v pg_isready >/dev/null 2>&1"; then \
-		echo "WARNING: 'pg_isready' not found in $(DB_SERVICE) container."; \
-		echo "Ensure the Postgres image provides pg_isready (official postgres:16.2 does)."; \
-	fi
+	container_id="$$(docker compose ps -q $(DB_SERVICE))"; \
+	if [ -z "$$container_id" ]; then \
+		echo "ERROR: Could not determine container id for $(DB_SERVICE)."; \
+		exit 1; \
+	fi; \
 	start_ts=$$(date +%s); \
 	while true; do \
-		if docker compose exec -T $(DB_SERVICE) sh -c 'pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}" >/dev/null 2>&1'; then \
+		health_status="$$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$$container_id" 2>/dev/null || true)"; \
+		if [ "$$health_status" = "healthy" ] || [ "$$health_status" = "no-healthcheck" ]; then \
 			echo "==> PostgreSQL is ready!"; \
 			break; \
 		fi; \
@@ -195,6 +231,33 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 		echo "Waiting for database... ($${elapsed}s elapsed)"; \
 		sleep 2; \
 	done
+
+	@echo "==> Verifying PostgreSQL credentials"
+	verify_output=""; \
+	start_ts=$$(date +%s); \
+	while true; do \
+		if verify_output="$$(docker compose exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
+			break; \
+		fi; \
+		now=$$(date +%s); \
+		elapsed=$$(( now - start_ts )); \
+		if [ "$$elapsed" -ge 15 ]; then \
+			echo "ERROR: PostgreSQL came up, but verification failed."; \
+			echo "$$verify_output"; \
+			case "$$verify_output" in \
+				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
+					echo "This can happen when $(DB_DATA_DIR) was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
+					echo "If you do not need the local data, reset it and try again:"; \
+					echo "  docker compose down"; \
+					echo "  Remove-Item -Recurse -Force $(DB_DATA_DIR)"; \
+					echo "  New-Item -ItemType Directory $(DB_DATA_DIR) | Out-Null"; \
+					;; \
+			esac; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done
+	@echo "==> PostgreSQL credentials verified"
 
 	@echo "==> Applying database migrations"
 	@if [ -z "$$DATABASE_URL" ]; then \
