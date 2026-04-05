@@ -258,7 +258,6 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 	var partial strings.Builder
 	persistCtx := context.WithoutCancel(ctx)
 	progressSink := newStreamProgressSink(persistCtx, s.repo, prepared)
-	ctx = withForegroundStreamDebug(ctx, onChunk != nil)
 
 	done, err := s.runtime.StreamChat(ctx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
