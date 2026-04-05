@@ -152,7 +152,7 @@ make DB_READY_TIMEOUT=60 dev
 **Database connection issues:**
 ```bash
 # Check database logs
-docker compose logs db
+docker compose logs postgres
 
 # Check database health
 docker compose ps
@@ -164,14 +164,27 @@ go install github.com/pressly/goose/v3/cmd/goose@latest
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-**Postgres auth failures after changing DB_USER/DB_PASSWORD:**
-```bash
-# reset local persisted postgres data
+**Postgres auth failures after changing DB_USER/DB_PASSWORD or switching branches:**
+
+This repo bind-mounts PostgreSQL data into `server/_db-data`. If that folder was initialized with different `DB_USER`, `DB_PASSWORD`, or `DB_NAME` values, Postgres may still start but `make dev` and `goose` will fail authentication.
+
+PowerShell:
+```powershell
 cd server
 docker compose down
-sudo rm -rf _db-data
+Remove-Item -Recurse -Force _db-data
+New-Item -ItemType Directory _db-data | Out-Null
+```
+
+Bash:
+```bash
+cd server
+docker compose down
+rm -rf _db-data
 mkdir -p _db-data
 ```
+
+After that, rerun `make dev` so Postgres initializes with the values from `setenv.sh` or `.setenv.sh`.
 
 **Missing air:**
 ```bash
