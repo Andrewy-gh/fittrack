@@ -129,21 +129,29 @@ export function ChatRouteComponent() {
       const controller = new AbortController();
       recoveryAbortRef.current = controller;
       let recoveryRequestError: unknown = null;
+      let shouldRetryRecovery = false;
 
-      try {
+      const requestRecovery = async () => {
         try {
-          await requestAIChatMessageRecovery(id, {
+          const response = await requestAIChatMessageRecovery(id, {
             signal: controller.signal,
           });
+          shouldRetryRecovery = response.status === "not_needed";
         } catch (error) {
           if (controller.signal.aborted || isAbortError(error)) {
-            return { detail: null, aborted: true, error };
+            throw error;
           }
-          recoveryRequestError = error;
+          recoveryRequestError = recoveryRequestError ?? error;
+          shouldRetryRecovery = false;
         }
+      };
+
+      try {
+        await requestRecovery();
 
         const detail = await pollAIChatConversationUntilSettled(id, {
           signal: controller.signal,
+          onStreaming: shouldRetryRecovery ? requestRecovery : undefined,
         });
         if (controller.signal.aborted) {
           return { detail: null, aborted: true };

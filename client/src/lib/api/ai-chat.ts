@@ -28,6 +28,12 @@ export type AIChatConversationDetail = {
   messages: AIChatMessage[];
 };
 
+export type AIChatRecoveryResponse = {
+  conversation_id: number;
+  run_id?: number;
+  status: "queued" | "not_needed";
+};
+
 export type AIChatStreamEvent = {
   type: "start" | "delta" | "done" | "error";
   request_id?: string;
@@ -85,6 +91,9 @@ type ConversationPollOptions = {
   signal?: AbortSignal;
   intervalMs?: number;
   timeoutMs?: number;
+  onStreaming?: (
+    detail: AIChatConversationDetail,
+  ) => Promise<void> | void;
 };
 
 type ConversationRequestOptions = {
@@ -182,7 +191,7 @@ export async function getAIChatConversation(
 export async function requestAIChatMessageRecovery(
   conversationId: number,
   options: ConversationRecoveryOptions = {},
-): Promise<void> {
+): Promise<AIChatRecoveryResponse> {
   const response = await fetch(
     `${BASE_URL}/ai/conversations/${conversationId}/messages/recover`,
     {
@@ -195,6 +204,8 @@ export async function requestAIChatMessageRecovery(
   if (!response.ok) {
     throw await readApiError(response);
   }
+
+  return (await response.json()) as AIChatRecoveryResponse;
 }
 
 export async function streamAIChatMessage(
@@ -293,9 +304,14 @@ export async function pollAIChatConversationUntilSettled(
       signal: options.signal,
     });
     throwIfAborted(options.signal);
-    if (!detail.messages.some((message) => message.status === "streaming")) {
+    const hasStreamingMessage = detail.messages.some(
+      (message) => message.status === "streaming",
+    );
+    if (!hasStreamingMessage) {
       return detail;
     }
+    await options.onStreaming?.(detail);
+    throwIfAborted(options.signal);
     if (Date.now() >= deadline) {
       throw new Error(
         "AI chat recovery timed out while waiting for persisted conversation state",
