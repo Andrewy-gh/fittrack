@@ -222,6 +222,75 @@ describe("ai chat api wrapper", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it("runs the streaming callback before retrying persisted conversation polling", async () => {
+    const onStreaming = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversation: {
+              id: 41,
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:00Z",
+            },
+            messages: [
+              {
+                id: 61,
+                conversation_id: 41,
+                role: "assistant",
+                content: "partial",
+                status: "streaming",
+                created_at: "2026-03-26T17:00:00Z",
+                updated_at: "2026-03-26T17:00:01Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            conversation: {
+              id: 41,
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:02Z",
+            },
+            messages: [
+              {
+                id: 61,
+                conversation_id: 41,
+                role: "assistant",
+                content: "complete",
+                status: "completed",
+                created_at: "2026-03-26T17:00:00Z",
+                updated_at: "2026-03-26T17:00:02Z",
+                completed_at: "2026-03-26T17:00:02Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    await pollAIChatConversationUntilSettled(41, {
+      intervalMs: 0,
+      timeoutMs: 10,
+      onStreaming,
+    });
+
+    expect(onStreaming).toHaveBeenCalledTimes(1);
+    expect(onStreaming).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({
+            status: "streaming",
+          }),
+        ],
+      }),
+    );
+  });
+
   it("passes abort signals through persisted conversation polling fetches", async () => {
     const controller = new AbortController();
     const fetchSpy = vi
@@ -275,7 +344,7 @@ describe("ai chat api wrapper", () => {
       ),
     );
 
-    await requestAIChatMessageRecovery(41);
+    const response = await requestAIChatMessageRecovery(41);
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/ai/conversations/41/messages/recover",
@@ -283,6 +352,11 @@ describe("ai chat api wrapper", () => {
         method: "POST",
       }),
     );
+    expect(response).toEqual({
+      conversation_id: 41,
+      run_id: 61,
+      status: "queued",
+    });
   });
 
   it("posts ai chat telemetry events to the Go API", async () => {

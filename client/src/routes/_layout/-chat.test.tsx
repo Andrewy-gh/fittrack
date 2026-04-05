@@ -87,7 +87,11 @@ describe("ChatRouteComponent", () => {
     mockStreamMessage.mockReset();
     mockShowErrorToast.mockReset();
     mockReportTelemetry.mockResolvedValue(undefined);
-    mockRequestRecovery.mockResolvedValue(undefined);
+    mockRequestRecovery.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 61,
+      status: "queued",
+    });
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
@@ -348,6 +352,93 @@ describe("ChatRouteComponent", () => {
     expect(mockReportTelemetry).toHaveBeenCalledWith({
       category: "recovery",
       outcome: "recovery_aborted",
+    });
+  });
+
+  it("retries load-triggered recovery when the first reconnect handoff is too early", async () => {
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "assistant",
+          content: "partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:01Z",
+        },
+      ]),
+    );
+    mockRequestRecovery
+      .mockResolvedValueOnce({
+        conversation_id: 41,
+        status: "not_needed",
+      })
+      .mockResolvedValueOnce({
+        conversation_id: 41,
+        run_id: 61,
+        status: "queued",
+      });
+    mockPollConversation.mockImplementation(
+      async (
+        _conversationId: number,
+        options?: {
+          onStreaming?: (
+            detail: ReturnType<typeof conversationDetail>,
+          ) => Promise<void> | void;
+        },
+      ) => {
+        await options?.onStreaming?.(
+          conversationDetail([
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: "partial",
+              status: "streaming",
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:01Z",
+            },
+          ]),
+        );
+
+        return conversationDetail([
+          {
+            id: 61,
+            conversation_id: 41,
+            role: "assistant",
+            content: "Recovered answer",
+            status: "completed",
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-03-26T17:00:02Z",
+            completed_at: "2026-03-26T17:00:02Z",
+          },
+        ]);
+      },
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Recovered answer")).toBeInTheDocument();
+    expect(mockRequestRecovery).toHaveBeenCalledTimes(2);
+    expect(mockRequestRecovery).toHaveBeenNthCalledWith(
+      1,
+      41,
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(mockRequestRecovery).toHaveBeenNthCalledWith(
+      2,
+      41,
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovered_completed",
     });
   });
 
