@@ -146,12 +146,19 @@ export function ChatRouteComponent() {
         }
       };
 
+      const retryRecoveryIfNeeded = async () => {
+        if (!shouldRetryRecovery) {
+          return;
+        }
+        await requestRecovery();
+      };
+
       try {
         await requestRecovery();
 
         const detail = await pollAIChatConversationUntilSettled(id, {
           signal: controller.signal,
-          onStreaming: shouldRetryRecovery ? requestRecovery : undefined,
+          onStreaming: retryRecoveryIfNeeded,
         });
         if (controller.signal.aborted) {
           return { detail: null, aborted: true };

@@ -494,11 +494,12 @@ func TestHandlerStreamMessage(t *testing.T) {
 		service.AssertExpectations(t)
 	})
 
-	t.Run("leaves prepared run streaming when start event write disconnects", func(t *testing.T) {
+	t.Run("aborts prepared run when start event write disconnects", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
 		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
+		service.On("AbortPreparedMessageStream", mock.Anything, prepared, ErrStreamNotStarted).Return(nil).Once()
 
 		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
 		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
@@ -508,7 +509,6 @@ func TestHandlerStreamMessage(t *testing.T) {
 		handler.StreamMessage(rr, req)
 
 		service.AssertNotCalled(t, "StreamMessage", mock.Anything, mock.Anything, mock.Anything)
-		service.AssertNotCalled(t, "AbortPreparedMessageStream", mock.Anything, mock.Anything, mock.Anything)
 		service.AssertExpectations(t)
 	})
 }

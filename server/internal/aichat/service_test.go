@@ -362,6 +362,25 @@ func TestServiceRequestMessageRecovery_QueuesActiveRun(t *testing.T) {
 	recovery.AssertExpectations(t)
 }
 
+func TestServiceRequestMessageRecovery_ReturnsUnavailableWithoutDispatcher(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+
+	resp, err := service.RequestMessageRecovery(ctx, 41, "")
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.ErrorIs(t, err, ErrRecoveryUnavailable)
+	repo.AssertNotCalled(t, "GetConversation", mock.Anything, mock.Anything, mock.Anything)
+	featureAccess.AssertExpectations(t)
+}
+
 func TestServiceRequestMessageRecovery_NoopsWithoutRecoveryMarker(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)

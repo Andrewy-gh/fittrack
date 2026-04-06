@@ -310,10 +310,8 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		MessageID:      prepared.AssistantMessage.ID,
 		Model:          prepared.Run.Model,
 	}); err != nil {
-		if errors.Is(normalizeStreamChunkError(r.Context(), err), ErrStreamDisconnected) {
-			h.logStreamWriteFailure("failed to start ai chat stream", r, err)
-			return
-		}
+		// If the initial SSE start event never reaches the client, treat the run
+		// as never started. Recovery only applies after streaming has begun.
 		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
 			h.logger.Error("failed to abort ai chat run after start event write failure", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}

@@ -89,6 +89,29 @@ For local development, keep using the existing server env workflow:
 
 The API server itself reads process env. It does not introduce a chat-only env file loader.
 
+### AI Chat Recovery In Dev
+
+Background AI chat recovery uses Inngest. In local development, recovery stays disabled until both `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are set.
+
+To run recovery locally:
+
+1. Export the Inngest env vars in `setenv.sh` or your shell.
+2. Set `INNGEST_DEV=1` to use Inngest's default local dev server address (`http://127.0.0.1:8288`).
+   You can also set `INNGEST_DEV` to an explicit URL if your dev server is running elsewhere.
+3. Start the Inngest dev server in another terminal:
+```bash
+inngest dev
+```
+4. Start the API:
+```bash
+make dev
+```
+
+Notes:
+
+- If `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are not both set, `POST /api/ai/conversations/{id}/messages/recover` returns `503`.
+- `GET /inngest` should respond once recovery is configured and the handler is mounted.
+
 ### Required vs Optional Variables
 
 Required to boot the API:
@@ -127,7 +150,8 @@ The stream endpoint is authenticated fetch-based SSE:
 - streaming assistant text is snapshotted into app-owned storage during long runs so a dropped client can reload persisted partial progress
 - the client recovery path is still storage-backed inspection, not live SSE replay; interrupted sessions poll the persisted conversation until the run reaches a terminal state
 - stale `streaming` runs older than the stream timeout grace window are auto-failed before a new send starts, which prevents a permanently blocked conversation after an interrupted server-side run
-- interrupted runs can enqueue background recovery through Inngest when `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are configured
+- `POST /api/ai/conversations/{id}/messages/recover` returns `503` until background recovery is configured
+- interrupted runs can enqueue background recovery through Inngest when both `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are configured
 
 Proxy note:
 
