@@ -355,7 +355,7 @@ describe("ChatRouteComponent", () => {
     });
   });
 
-  it("retries load-triggered recovery when the first reconnect handoff is too early", async () => {
+  it("stops retrying load-triggered recovery after the handoff is queued", async () => {
     mockGetConversation.mockResolvedValue(
       conversationDetail([
         {
@@ -388,6 +388,19 @@ describe("ChatRouteComponent", () => {
           ) => Promise<void> | void;
         },
       ) => {
+        await options?.onStreaming?.(
+          conversationDetail([
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: "partial",
+              status: "streaming",
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:01Z",
+            },
+          ]),
+        );
         await options?.onStreaming?.(
           conversationDetail([
             {

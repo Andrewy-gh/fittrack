@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -159,12 +160,20 @@ func main() {
 	aiChatRepo := aichat.NewRepository(logger, queries, pool)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo)
-	inngestRecovery, err := aichat.NewInngestRecovery(logger, aiChatService)
-	if err != nil {
-		logger.Error("failed to initialize inngest recovery", "error", err)
-		os.Exit(1)
+	var inngestRecovery *aichat.InngestRecovery
+	switch {
+	case cfg.AIChatRecoveryConfigured():
+		inngestRecovery, err = aichat.NewInngestRecovery(logger, aiChatService)
+		if err != nil {
+			logger.Error("failed to initialize inngest recovery", "error", err)
+			os.Exit(1)
+		}
+		aiChatService.SetRecoveryDispatcher(inngestRecovery)
+	case strings.TrimSpace(cfg.InngestEventKey) != "" || strings.TrimSpace(cfg.InngestSigningKey) != "":
+		logger.Warn("ai chat recovery disabled because both INNGEST_EVENT_KEY and INNGEST_SIGNING_KEY are required")
+	default:
+		logger.Info("ai chat recovery disabled because Inngest is not configured")
 	}
-	aiChatService.SetRecoveryDispatcher(inngestRecovery)
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
@@ -178,7 +187,10 @@ func main() {
 		queries:        queries,
 		pool:           pool,
 		cfg:            cfg,
-		inngestHandler: inngestRecovery.Handler(),
+		inngestHandler: nil,
+	}
+	if inngestRecovery != nil {
+		api.inngestHandler = inngestRecovery.Handler()
 	}
 
 	jwks, err := auth.NewJWKSCache(ctx, cfg.ProjectID)
