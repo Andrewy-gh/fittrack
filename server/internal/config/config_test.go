@@ -154,6 +154,29 @@ func TestLoad_CustomValues(t *testing.T) {
 	}
 }
 
+func TestConfigAIChatRecoveryConfigured(t *testing.T) {
+	t.Run("requires both inngest keys", func(t *testing.T) {
+		cfg := &Config{
+			InngestEventKey: "evt-key",
+		}
+
+		if cfg.AIChatRecoveryConfigured() {
+			t.Fatal("expected recovery config to be unavailable when signing key is missing")
+		}
+	})
+
+	t.Run("returns true when both inngest keys are set", func(t *testing.T) {
+		cfg := &Config{
+			InngestEventKey:   "evt-key",
+			InngestSigningKey: "signing-key",
+		}
+
+		if !cfg.AIChatRecoveryConfigured() {
+			t.Fatal("expected recovery config to be available when both keys are set")
+		}
+	})
+}
+
 func TestGetAllowedOrigins_EmptyString(t *testing.T) {
 	cfg := &Config{AllowedOrigins: ""}
 	origins := cfg.GetAllowedOrigins()
@@ -423,4 +446,6 @@ func cleanupEnv() {
 	os.Unsetenv("DB_MAX_CONN_IDLE")
 	os.Unsetenv("DB_MAX_CONN_LIFE")
 	os.Unsetenv("DB_HEALTHCHECK")
+	os.Unsetenv("INNGEST_EVENT_KEY")
+	os.Unsetenv("INNGEST_SIGNING_KEY")
 }

@@ -18,7 +18,7 @@ make migrate-up
 make migrate-down
 ```
 
-`make migrate-up` and `make migrate-down` load `DATABASE_URL` from `server/setenv.sh`.
+`make migrate-up` and `make migrate-down` load `DATABASE_URL` from the configured server env file, typically `server/.setenv.sh` or `server/setenv.sh`.
 
 ## Current Migration Set
 
