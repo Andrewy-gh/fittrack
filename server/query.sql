@@ -611,6 +611,25 @@ WHERE conversation_id = $1
 ORDER BY id DESC
 LIMIT 1;
 
+-- name: GetAIChatRun :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+FROM ai_chat_run
+WHERE id = $1
+  AND user_id = $2;
+
 -- name: CreateAIChatMessage :one
 INSERT INTO ai_chat_message (
     conversation_id,
@@ -765,6 +784,51 @@ SET updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming';
+
+-- name: MarkAIChatRunAwaitingRecovery :one
+UPDATE ai_chat_run
+SET error_message = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
+
+-- name: ClaimAIChatRunRecovery :one
+UPDATE ai_chat_run
+SET error_message = NULL,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND error_message = $3
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
 
 -- name: UpdateAIChatRunFailed :one
 UPDATE ai_chat_run

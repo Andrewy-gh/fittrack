@@ -1,7 +1,7 @@
-import type { ApiError } from '@/lib/errors';
-import { stackClientApp } from '@/stack';
+import type { ApiError } from "@/lib/errors";
+import { stackClientApp } from "@/stack";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export type AIChatConversation = {
   id: number;
@@ -14,9 +14,9 @@ export type AIChatConversation = {
 export type AIChatMessage = {
   id: number;
   conversation_id: number;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
-  status: 'streaming' | 'completed' | 'failed';
+  status: "streaming" | "completed" | "failed";
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -28,8 +28,14 @@ export type AIChatConversationDetail = {
   messages: AIChatMessage[];
 };
 
+export type AIChatRecoveryResponse = {
+  conversation_id: number;
+  run_id?: number;
+  status: "queued" | "not_needed";
+};
+
 export type AIChatStreamEvent = {
-  type: 'start' | 'delta' | 'done' | 'error';
+  type: "start" | "delta" | "done" | "error";
   request_id?: string;
   conversation_id?: number;
   run_id?: number;
@@ -43,6 +49,29 @@ export type AIChatStreamEvent = {
 export type AIChatStreamResult = {
   doneEvent?: AIChatStreamEvent;
   endedWithError: boolean;
+};
+
+export type AIChatTelemetryCategory = "stream" | "recovery" | "load" | "ux";
+
+export type AIChatTelemetryStage = "pre_start" | "post_start" | "terminal";
+
+export type AIChatTelemetryEvent = {
+  category: AIChatTelemetryCategory;
+  outcome:
+    | "completed"
+    | "server_error"
+    | "transport_ended_pre_terminal"
+    | "client_aborted"
+    | "recovered_completed"
+    | "recovered_failed"
+    | "recovery_timeout"
+    | "recovery_aborted"
+    | "load_completed"
+    | "load_failed"
+    | "load_aborted_stale"
+    | "failure_toast_shown"
+    | "failure_toast_suppressed_due_to_successful_recovery";
+  stage?: AIChatTelemetryStage;
 };
 
 type ParsedSSEChunk = {
@@ -62,9 +91,16 @@ type ConversationPollOptions = {
   signal?: AbortSignal;
   intervalMs?: number;
   timeoutMs?: number;
+  onStreaming?: (
+    detail: AIChatConversationDetail,
+  ) => Promise<void> | void;
 };
 
 type ConversationRequestOptions = {
+  signal?: AbortSignal;
+};
+
+type ConversationRecoveryOptions = {
   signal?: AbortSignal;
 };
 
@@ -74,7 +110,7 @@ const defaultConversationPollTimeoutMs = 55000;
 async function getAuthHeaders(contentType = false): Promise<Headers> {
   const headers = new Headers();
   if (contentType) {
-    headers.set('Content-Type', 'application/json');
+    headers.set("Content-Type", "application/json");
   }
 
   if (!stackClientApp) {
@@ -88,7 +124,7 @@ async function getAuthHeaders(contentType = false): Promise<Headers> {
 
   const { accessToken } = await user.getAuthJson();
   if (accessToken) {
-    headers.set('x-stack-access-token', accessToken);
+    headers.set("x-stack-access-token", accessToken);
   }
 
   return headers;
@@ -106,7 +142,7 @@ async function readApiError(response: Response): Promise<ApiError> {
 
 export async function createAIChatConversation(): Promise<AIChatConversation> {
   const response = await fetch(`${BASE_URL}/ai/conversations`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
   });
 
@@ -117,15 +153,33 @@ export async function createAIChatConversation(): Promise<AIChatConversation> {
   return (await response.json()) as AIChatConversation;
 }
 
+export async function reportAIChatTelemetry(
+  event: AIChatTelemetryEvent,
+): Promise<void> {
+  const response = await fetch(`${BASE_URL}/ai/chat/telemetry`, {
+    method: "POST",
+    headers: await getAuthHeaders(true),
+    body: JSON.stringify(event),
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response);
+  }
+}
+
 export async function getAIChatConversation(
   conversationId: number,
-  options: ConversationRequestOptions = {}
+  options: ConversationRequestOptions = {},
 ): Promise<AIChatConversationDetail> {
-  const response = await fetch(`${BASE_URL}/ai/conversations/${conversationId}`, {
-    method: 'GET',
-    headers: await getAuthHeaders(),
-    signal: options.signal,
-  });
+  const response = await fetch(
+    `${BASE_URL}/ai/conversations/${conversationId}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+      signal: options.signal,
+    },
+  );
 
   if (!response.ok) {
     throw await readApiError(response);
@@ -134,19 +188,39 @@ export async function getAIChatConversation(
   return (await response.json()) as AIChatConversationDetail;
 }
 
+export async function requestAIChatMessageRecovery(
+  conversationId: number,
+  options: ConversationRecoveryOptions = {},
+): Promise<AIChatRecoveryResponse> {
+  const response = await fetch(
+    `${BASE_URL}/ai/conversations/${conversationId}/messages/recover`,
+    {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      signal: options.signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw await readApiError(response);
+  }
+
+  return (await response.json()) as AIChatRecoveryResponse;
+}
+
 export async function streamAIChatMessage(
   conversationId: number,
   prompt: string,
-  handlers: StreamHandlers = {}
+  handlers: StreamHandlers = {},
 ): Promise<AIChatStreamResult> {
   const response = await fetch(
     `${BASE_URL}/ai/conversations/${conversationId}/messages/stream`,
     {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(true),
       body: JSON.stringify({ prompt }),
       signal: handlers.signal,
-    }
+    },
   );
 
   if (!response.ok) {
@@ -154,12 +228,12 @@ export async function streamAIChatMessage(
   }
 
   if (!response.body) {
-    throw new Error('No body in SSE response');
+    throw new Error("No body in SSE response");
   }
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-  let buffer = '';
-  let lastEventId = '';
+  let buffer = "";
+  let lastEventId = "";
   let sawTerminalEvent = false;
 
   try {
@@ -170,8 +244,8 @@ export async function streamAIChatMessage(
       }
 
       buffer += value;
-      const chunks = buffer.split('\n\n');
-      buffer = chunks.pop() ?? '';
+      const chunks = buffer.split("\n\n");
+      buffer = chunks.pop() ?? "";
 
       for (const chunk of chunks) {
         const parsed = parseSSEChunk(chunk);
@@ -186,17 +260,17 @@ export async function streamAIChatMessage(
         const event = parsed.event;
 
         switch (event.type) {
-          case 'start':
+          case "start":
             handlers.onStart?.(event);
             break;
-          case 'delta':
+          case "delta":
             handlers.onDelta?.(event);
             break;
-          case 'done':
+          case "done":
             sawTerminalEvent = true;
             handlers.onDone?.(event);
             return { doneEvent: event, endedWithError: false };
-          case 'error':
+          case "error":
             sawTerminalEvent = true;
             handlers.onErrorEvent?.(event);
             return { doneEvent: event, endedWithError: true };
@@ -210,7 +284,7 @@ export async function streamAIChatMessage(
   }
 
   if (!sawTerminalEvent) {
-    throw new Error('AI chat stream ended before a terminal event');
+    throw new Error("AI chat stream ended before a terminal event");
   }
 
   return { endedWithError: false };
@@ -218,7 +292,7 @@ export async function streamAIChatMessage(
 
 export async function pollAIChatConversationUntilSettled(
   conversationId: number,
-  options: ConversationPollOptions = {}
+  options: ConversationPollOptions = {},
 ): Promise<AIChatConversationDetail> {
   const intervalMs = options.intervalMs ?? defaultConversationPollIntervalMs;
   const timeoutMs = options.timeoutMs ?? defaultConversationPollTimeoutMs;
@@ -230,27 +304,34 @@ export async function pollAIChatConversationUntilSettled(
       signal: options.signal,
     });
     throwIfAborted(options.signal);
-    if (!detail.messages.some((message) => message.status === 'streaming')) {
+    const hasStreamingMessage = detail.messages.some(
+      (message) => message.status === "streaming",
+    );
+    if (!hasStreamingMessage) {
       return detail;
     }
+    await options.onStreaming?.(detail);
+    throwIfAborted(options.signal);
     if (Date.now() >= deadline) {
-      throw new Error('AI chat recovery timed out while waiting for persisted conversation state');
+      throw new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      );
     }
     await delay(intervalMs, options.signal);
   }
 }
 
 function parseSSEChunk(chunk: string): ParsedSSEChunk | null {
-  const lines = chunk.split('\n');
+  const lines = chunk.split("\n");
   const dataLines: string[] = [];
-  let id = '';
+  let id = "";
 
   for (const line of lines) {
-    if (line.startsWith('id:')) {
-      id = line.replace(/^id:\s*/, '').trim();
+    if (line.startsWith("id:")) {
+      id = line.replace(/^id:\s*/, "").trim();
     }
-    if (line.startsWith('data:')) {
-      dataLines.push(line.replace(/^data:\s*/, ''));
+    if (line.startsWith("data:")) {
+      dataLines.push(line.replace(/^data:\s*/, ""));
     }
   }
 
@@ -259,7 +340,7 @@ function parseSSEChunk(chunk: string): ParsedSSEChunk | null {
   }
 
   return {
-    event: JSON.parse(dataLines.join('\n')) as AIChatStreamEvent,
+    event: JSON.parse(dataLines.join("\n")) as AIChatStreamEvent,
     id,
   };
 }
@@ -268,7 +349,7 @@ function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw signal.reason instanceof Error
       ? signal.reason
-      : new DOMException('Aborted', 'AbortError');
+      : new DOMException("Aborted", "AbortError");
   }
 }
 
@@ -284,15 +365,15 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
       reject(
         signal?.reason instanceof Error
           ? signal.reason
-          : new DOMException('Aborted', 'AbortError')
+          : new DOMException("Aborted", "AbortError"),
       );
     };
 
     const cleanup = () => {
       window.clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
+      signal?.removeEventListener("abort", onAbort);
     };
 
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }

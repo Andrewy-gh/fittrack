@@ -18,12 +18,14 @@ const (
 )
 
 var (
-	ErrFeatureDisabled    = errors.New("ai chat feature is disabled")
-	ErrRuntimeUnavailable = errors.New("ai chat runtime is unavailable")
-	ErrConversationBusy   = errors.New("ai chat conversation already has an active run")
-	ErrGenerationTimeout  = errors.New("ai chat generation timed out")
-	ErrStreamDisconnected = errors.New("ai chat stream disconnected before completion")
-	ErrStreamNotStarted   = errors.New("ai chat stream failed before delivery started")
+	ErrFeatureDisabled        = errors.New("ai chat feature is disabled")
+	ErrRuntimeUnavailable     = errors.New("ai chat runtime is unavailable")
+	ErrRecoveryUnavailable    = errors.New("ai chat recovery is unavailable")
+	ErrConversationBusy       = errors.New("ai chat conversation already has an active run")
+	ErrGenerationTimeout      = errors.New("ai chat generation timed out")
+	ErrStreamDisconnected     = errors.New("ai chat stream disconnected before completion")
+	ErrStreamNotStarted       = errors.New("ai chat stream failed before delivery started")
+	ErrStreamAwaitingRecovery = errors.New("ai chat stream interrupted and awaiting recovery")
 )
 
 const (
@@ -36,6 +38,12 @@ type ValidateRequest struct {
 
 type SendMessageRequest struct {
 	Prompt string `json:"prompt"`
+}
+
+type RecoverMessageResponse struct {
+	ConversationID int32  `json:"conversation_id"`
+	RunID          int32  `json:"run_id,omitempty"`
+	Status         string `json:"status"`
 }
 
 type ValidationOutput struct {
@@ -98,6 +106,13 @@ type PreparedMessageStream struct {
 	AssistantMessage *ChatMessage
 	Run              *ChatRun
 	Prompt           string
+}
+
+type RunRecoveryRequest struct {
+	ConversationID int32
+	RunID          int32
+	UserID         string
+	Reason         string
 }
 
 type RuntimeChatMessage struct {

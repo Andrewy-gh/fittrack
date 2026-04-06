@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -48,10 +49,11 @@ import (
 )
 
 type api struct {
-	logger  *slog.Logger
-	queries *db.Queries
-	pool    *pgxpool.Pool
-	cfg     *config.Config
+	logger         *slog.Logger
+	queries        *db.Queries
+	pool           *pgxpool.Pool
+	cfg            *config.Config
+	inngestHandler http.Handler
 }
 
 func mustParseDuration(s string) time.Duration {
@@ -67,7 +69,7 @@ func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 90 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 }
@@ -158,6 +160,20 @@ func main() {
 	aiChatRepo := aichat.NewRepository(logger, queries, pool)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo)
+	var inngestRecovery *aichat.InngestRecovery
+	switch {
+	case cfg.AIChatRecoveryConfigured():
+		inngestRecovery, err = aichat.NewInngestRecovery(logger, aiChatService)
+		if err != nil {
+			logger.Error("failed to initialize inngest recovery", "error", err)
+			os.Exit(1)
+		}
+		aiChatService.SetRecoveryDispatcher(inngestRecovery)
+	case strings.TrimSpace(cfg.InngestEventKey) != "" || strings.TrimSpace(cfg.InngestSigningKey) != "":
+		logger.Warn("ai chat recovery disabled because both INNGEST_EVENT_KEY and INNGEST_SIGNING_KEY are required")
+	default:
+		logger.Info("ai chat recovery disabled because Inngest is not configured")
+	}
 
 	// Initialize handlers
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
@@ -167,10 +183,14 @@ func main() {
 	aiChatHandler := aichat.NewHandler(logger, aiChatService)
 
 	api := &api{
-		logger:  logger,
-		queries: queries,
-		pool:    pool,
-		cfg:     cfg,
+		logger:         logger,
+		queries:        queries,
+		pool:           pool,
+		cfg:            cfg,
+		inngestHandler: nil,
+	}
+	if inngestRecovery != nil {
+		api.inngestHandler = inngestRecovery.Handler()
 	}
 
 	jwks, err := auth.NewJWKSCache(ctx, cfg.ProjectID)
