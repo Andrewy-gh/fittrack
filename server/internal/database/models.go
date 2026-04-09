@@ -49,12 +49,31 @@ type AiChatRun struct {
 type Exercise struct {
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`
+	Kind                         string             `json:"kind"`
+	TemplateID                   pgtype.Int4        `json:"template_id"`
+	Instructions                 pgtype.Text        `json:"instructions"`
+	Equipment                    pgtype.Text        `json:"equipment"`
+	PrimaryMuscleGroup           pgtype.Text        `json:"primary_muscle_group"`
+	SecondaryMuscleGroups        []string           `json:"secondary_muscle_groups"`
 	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
 	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
 	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
 	CreatedAt                    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt                    pgtype.Timestamptz `json:"updated_at"`
 	UserID                       string             `json:"user_id"`
+}
+
+type ExerciseTemplate struct {
+	ID                    int32       `json:"id"`
+	Slug                  string      `json:"slug"`
+	Name                  string      `json:"name"`
+	Instructions          pgtype.Text `json:"instructions"`
+	Category              pgtype.Text `json:"category"`
+	Equipment             pgtype.Text `json:"equipment"`
+	PrimaryMuscleGroup    pgtype.Text `json:"primary_muscle_group"`
+	SecondaryMuscleGroups []string    `json:"secondary_muscle_groups"`
+	Source                string      `json:"source"`
+	SourceID              string      `json:"source_id"`
 }
 
 type Set struct {

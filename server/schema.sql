@@ -104,17 +104,46 @@ CREATE TABLE workout (
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
 );
 
+CREATE TABLE exercise_template (
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(256) NOT NULL UNIQUE,
+    name VARCHAR(256) NOT NULL,
+    instructions TEXT,
+    category VARCHAR(128),
+    equipment VARCHAR(128),
+    primary_muscle_group VARCHAR(128),
+    secondary_muscle_groups TEXT[] NOT NULL DEFAULT '{}',
+    source VARCHAR(64) NOT NULL,
+    source_id VARCHAR(256) NOT NULL,
+    CONSTRAINT exercise_template_slug_not_empty CHECK (btrim(slug) <> ''),
+    CONSTRAINT exercise_template_name_not_empty CHECK (btrim(name) <> ''),
+    CONSTRAINT exercise_template_source_not_empty CHECK (btrim(source) <> ''),
+    CONSTRAINT exercise_template_source_id_not_empty CHECK (btrim(source_id) <> ''),
+    CONSTRAINT exercise_template_source_source_id_key UNIQUE (source, source_id)
+);
+
 -- Exercises table  
 CREATE TABLE exercise (
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
+    kind VARCHAR(32) NOT NULL DEFAULT 'custom',
+    template_id INTEGER REFERENCES exercise_template(id),
+    instructions TEXT,
+    equipment VARCHAR(128),
+    primary_muscle_group VARCHAR(128),
+    secondary_muscle_groups TEXT[] NOT NULL DEFAULT '{}',
     historical_1rm NUMERIC(8,2),
     historical_1rm_updated_at TIMESTAMPTZ,
     historical_1rm_source_workout_id INTEGER REFERENCES workout(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name)
+    CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name),
+    CONSTRAINT exercise_kind_valid CHECK (kind IN ('custom', 'template_based')),
+    CONSTRAINT exercise_kind_template_state CHECK (
+        (kind = 'custom' AND template_id IS NULL)
+        OR (kind = 'template_based' AND template_id IS NOT NULL)
+    )
 );
 
 -- Sets table
@@ -142,6 +171,7 @@ CREATE INDEX idx_set_user_exercise_id ON "set"(user_id, exercise_id);
 -- Additional indexes for performance
 CREATE INDEX idx_workout_user_id ON workout(user_id);
 CREATE INDEX idx_exercise_user_id ON exercise(user_id);
+CREATE INDEX idx_exercise_template_id ON exercise(template_id);
 CREATE INDEX idx_workout_user_date ON workout(user_id, date);
 CREATE INDEX idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_key, starts_at DESC);
 CREATE INDEX idx_user_feature_access_active_lookup ON user_feature_access(user_id, starts_at DESC) WHERE revoked_at IS NULL;

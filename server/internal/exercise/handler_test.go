@@ -125,7 +125,7 @@ func TestExerciseHandler_ListExercises(t *testing.T) {
 			name: "successful fetch",
 			setupMock: func(m *MockExerciseRepository) {
 				m.On("ListExercises", mock.Anything, userID).Return([]db.Exercise{
-					{ID: 1, Name: "Bench Press"},
+					{ID: 1, Name: "Bench Press", Kind: "custom", UserID: userID},
 				}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
@@ -208,6 +208,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{
 					ID:        id,
 					Name:      "Bench Press",
+					Kind:      "custom",
 					CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), Valid: true},
 					UpdatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC), Valid: true},
 					UserID:    userID,
@@ -259,6 +260,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{
 					ID:        id,
 					Name:      "New Exercise",
+					Kind:      "custom",
 					CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), Valid: true},
 					UpdatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC), Valid: true},
 					UserID:    userID,
@@ -453,7 +455,7 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 			name:        "successful creation",
 			requestBody: CreateExerciseRequest{Name: "Bench Press"},
 			setupMock: func(m *MockExerciseRepository) {
-				m.On("GetOrCreateExercise", mock.Anything, "Bench Press", userID).Return(db.Exercise{ID: 1, Name: "Bench Press"}, nil)
+				m.On("GetOrCreateExercise", mock.Anything, "Bench Press", userID).Return(db.Exercise{ID: 1, Name: "Bench Press", Kind: "custom", UserID: userID}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,
@@ -883,7 +885,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.ListExercises(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var exercises []db.Exercise
+		var exercises []ExerciseResponse
 		err := json.Unmarshal(w.Body.Bytes(), &exercises)
 		assert.NoError(t, err)
 
@@ -892,6 +894,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		assert.Equal(t, exerciseAID, exercises[0].ID)
 		assert.Equal(t, userAID, exercises[0].UserID)
 		assert.Equal(t, "User A's Bench Press", exercises[0].Name)
+		assert.Equal(t, ExerciseKindCustom, exercises[0].Kind)
 	})
 
 	t.Run("Scenario2_UserB_CannotRetrieveUserAExercises", func(t *testing.T) {
@@ -905,7 +908,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.ListExercises(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var exercises []db.Exercise
+		var exercises []ExerciseResponse
 		err := json.Unmarshal(w.Body.Bytes(), &exercises)
 		assert.NoError(t, err)
 
@@ -914,6 +917,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		assert.Equal(t, exerciseBID, exercises[0].ID)
 		assert.Equal(t, userBID, exercises[0].UserID)
 		assert.Equal(t, "User B's Squat", exercises[0].Name)
+		assert.Equal(t, ExerciseKindCustom, exercises[0].Kind)
 		assert.NotEqual(t, exerciseAID, exercises[0].ID, "User B should not see User A's exercise")
 	})
 
@@ -968,11 +972,12 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.GetOrCreateExercise(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var createdExercise db.Exercise
+		var createdExercise CreateExerciseResponse
 		err := json.Unmarshal(w.Body.Bytes(), &createdExercise)
 		assert.NoError(t, err)
 		assert.Equal(t, "User A's Deadlift", createdExercise.Name)
 		assert.Equal(t, userAID, createdExercise.UserID)
+		assert.Equal(t, ExerciseKindCustom, createdExercise.Kind)
 
 		// User B should not see User A's newly created exercise
 		ctxB := setTestUserContext(context.Background(), t, pool, userBID)
@@ -984,7 +989,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.ListExercises(listW, listReq)
 
 		assert.Equal(t, http.StatusOK, listW.Code)
-		var exercises []db.Exercise
+		var exercises []ExerciseResponse
 		err = json.Unmarshal(listW.Body.Bytes(), &exercises)
 		assert.NoError(t, err)
 
@@ -997,7 +1002,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 	t.Run("Scenario6_ConcurrentRequests_ProperIsolation", func(t *testing.T) {
 		// Test concurrent requests from different users
 		var wg sync.WaitGroup
-		results := make(map[string][]db.Exercise)
+		results := make(map[string][]ExerciseResponse)
 		mu := sync.Mutex{}
 
 		// User A request
@@ -1012,7 +1017,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 			handler.ListExercises(w, req)
 
 			if w.Code == http.StatusOK {
-				var exercises []db.Exercise
+				var exercises []ExerciseResponse
 				json.Unmarshal(w.Body.Bytes(), &exercises)
 				mu.Lock()
 				results[userAID] = exercises
@@ -1032,7 +1037,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 			handler.ListExercises(w, req)
 
 			if w.Code == http.StatusOK {
-				var exercises []db.Exercise
+				var exercises []ExerciseResponse
 				json.Unmarshal(w.Body.Bytes(), &exercises)
 				mu.Lock()
 				results[userBID] = exercises
@@ -1084,7 +1089,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.GetOrCreateExercise(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var createdExercise db.Exercise
+		var createdExercise CreateExerciseResponse
 		err := json.Unmarshal(w.Body.Bytes(), &createdExercise)
 		assert.NoError(t, err)
 
@@ -1103,7 +1108,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.ListExercises(listW, listReq)
 		assert.Equal(t, http.StatusOK, listW.Code)
 
-		var exercises []db.Exercise
+		var exercises []ExerciseResponse
 		err = json.Unmarshal(listW.Body.Bytes(), &exercises)
 		assert.NoError(t, err)
 
@@ -1147,7 +1152,7 @@ func TestExerciseHandlerRLSIntegration(t *testing.T) {
 		handler.GetOrCreateExercise(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		var createdExercise db.Exercise
+		var createdExercise CreateExerciseResponse
 		err := json.Unmarshal(w.Body.Bytes(), &createdExercise)
 		assert.NoError(t, err)
 

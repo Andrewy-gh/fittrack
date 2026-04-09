@@ -156,19 +156,59 @@ export const exercise_CreateExerciseRequestSchema = {
 
 export const exercise_CreateExerciseResponseSchema = {
   type: "object",
-  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  required: [
+    "created_at",
+    "id",
+    "kind",
+    "name",
+    "secondary_muscle_groups",
+    "updated_at",
+    "user_id",
+  ],
   properties: {
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
     },
+    equipment: {
+      type: "string",
+      example: "barbell",
+    },
     id: {
       type: "integer",
       example: 1,
     },
+    instructions: {
+      type: "string",
+      example: "Lower the bar to your chest and press back up.",
+    },
+    kind: {
+      enum: ["custom", "template_based"],
+      allOf: [
+        {
+          $ref: "#/definitions/exercise.ExerciseKind",
+        },
+      ],
+      example: "custom",
+    },
     name: {
       type: "string",
       example: "Bench Press",
+    },
+    primary_muscle_group: {
+      type: "string",
+      example: "chest",
+    },
+    secondary_muscle_groups: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+      example: ["triceps", "shoulders"],
+    },
+    template_id: {
+      type: "integer",
+      example: 12,
     },
     updated_at: {
       type: "string",
@@ -183,7 +223,15 @@ export const exercise_CreateExerciseResponseSchema = {
 
 export const exercise_ExerciseDetailExerciseResponseSchema = {
   type: "object",
-  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  required: [
+    "created_at",
+    "id",
+    "kind",
+    "name",
+    "secondary_muscle_groups",
+    "updated_at",
+    "user_id",
+  ],
   properties: {
     best_e1rm: {
       type: "number",
@@ -192,6 +240,10 @@ export const exercise_ExerciseDetailExerciseResponseSchema = {
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
+    },
+    equipment: {
+      type: "string",
+      example: "barbell",
     },
     historical_1rm: {
       type: "number",
@@ -209,9 +261,37 @@ export const exercise_ExerciseDetailExerciseResponseSchema = {
       type: "integer",
       example: 1,
     },
+    instructions: {
+      type: "string",
+      example: "Lower the bar to your chest and press back up.",
+    },
+    kind: {
+      enum: ["custom", "template_based"],
+      allOf: [
+        {
+          $ref: "#/definitions/exercise.ExerciseKind",
+        },
+      ],
+      example: "custom",
+    },
     name: {
       type: "string",
       example: "Bench Press",
+    },
+    primary_muscle_group: {
+      type: "string",
+      example: "chest",
+    },
+    secondary_muscle_groups: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+      example: ["triceps", "shoulders"],
+    },
+    template_id: {
+      type: "integer",
+      example: 12,
     },
     updated_at: {
       type: "string",
@@ -238,6 +318,12 @@ export const exercise_ExerciseDetailResponseSchema = {
       },
     },
   },
+} as const;
+
+export const exercise_ExerciseKindSchema = {
+  type: "string",
+  enum: ["custom", "template_based"],
+  "x-enum-varnames": ["ExerciseKindCustom", "ExerciseKindTemplateBased"],
 } as const;
 
 export const exercise_ExerciseMetricsHistoryPointSchema = {
@@ -290,19 +376,59 @@ export const exercise_ExerciseMetricsHistoryResponseSchema = {
 
 export const exercise_ExerciseResponseSchema = {
   type: "object",
-  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  required: [
+    "created_at",
+    "id",
+    "kind",
+    "name",
+    "secondary_muscle_groups",
+    "updated_at",
+    "user_id",
+  ],
   properties: {
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
     },
+    equipment: {
+      type: "string",
+      example: "barbell",
+    },
     id: {
       type: "integer",
       example: 1,
     },
+    instructions: {
+      type: "string",
+      example: "Lower the bar to your chest and press back up.",
+    },
+    kind: {
+      enum: ["custom", "template_based"],
+      allOf: [
+        {
+          $ref: "#/definitions/exercise.ExerciseKind",
+        },
+      ],
+      example: "custom",
+    },
     name: {
       type: "string",
       example: "Bench Press",
+    },
+    primary_muscle_group: {
+      type: "string",
+      example: "chest",
+    },
+    secondary_muscle_groups: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+      example: ["triceps", "shoulders"],
+    },
+    template_id: {
+      type: "integer",
+      example: 12,
     },
     updated_at: {
       type: "string",

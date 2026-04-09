@@ -89,13 +89,7 @@ export function clearDemoData(): void {
 
 export function getAllExercises(): ExerciseExerciseResponse[] {
   const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
-  return exercises.map((ex) => ({
-    id: ex.id,
-    name: ex.name,
-    user_id: ex.user_id,
-    created_at: ex.created_at,
-    updated_at: ex.updated_at,
-  }));
+  return exercises.map(toExerciseResponse);
 }
 
 export function getExerciseById(id: number): ExerciseExerciseResponse | null {
@@ -104,13 +98,7 @@ export function getExerciseById(id: number): ExerciseExerciseResponse | null {
 
   if (!exercise) return null;
 
-  return {
-    id: exercise.id,
-    name: exercise.name,
-    user_id: exercise.user_id,
-    created_at: exercise.created_at,
-    updated_at: exercise.updated_at,
-  };
+  return toExerciseResponse(exercise);
 }
 
 export function createExercise(name: string): ExerciseExerciseResponse {
@@ -119,6 +107,8 @@ export function createExercise(name: string): ExerciseExerciseResponse {
   const newExercise: StoredExercise = {
     id: getNextId(exercises),
     name,
+    kind: 'custom',
+    secondary_muscle_groups: [],
     user_id: DEMO_USER_ID,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -127,13 +117,7 @@ export function createExercise(name: string): ExerciseExerciseResponse {
   exercises.push(newExercise);
   setInStorage(STORAGE_KEYS.EXERCISES, exercises);
 
-  return {
-    id: newExercise.id,
-    name: newExercise.name,
-    user_id: newExercise.user_id,
-    created_at: newExercise.created_at,
-    updated_at: newExercise.updated_at,
-  };
+  return toExerciseResponse(newExercise);
 }
 
 export function updateExercise(id: number, name: string): boolean {
@@ -229,6 +213,12 @@ export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailRes
   const exerciseResp: ExerciseExerciseDetailExerciseResponse = {
     id: exercise.id,
     name: exercise.name,
+    kind: exercise.kind,
+    template_id: exercise.template_id,
+    instructions: exercise.instructions,
+    equipment: exercise.equipment,
+    primary_muscle_group: exercise.primary_muscle_group,
+    secondary_muscle_groups: exercise.secondary_muscle_groups,
     created_at: exercise.created_at,
     updated_at: exercise.updated_at,
     user_id: exercise.user_id,
@@ -241,6 +231,22 @@ export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailRes
   return {
     exercise: exerciseResp,
     sets,
+  };
+}
+
+function toExerciseResponse(exercise: StoredExercise): ExerciseExerciseResponse {
+  return {
+    id: exercise.id,
+    name: exercise.name,
+    kind: exercise.kind,
+    template_id: exercise.template_id,
+    instructions: exercise.instructions,
+    equipment: exercise.equipment,
+    primary_muscle_group: exercise.primary_muscle_group,
+    secondary_muscle_groups: exercise.secondary_muscle_groups,
+    user_id: exercise.user_id,
+    created_at: exercise.created_at,
+    updated_at: exercise.updated_at,
   };
 }
 
@@ -392,6 +398,8 @@ export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
       exercise = {
         id: getNextId(exercises),
         name: exerciseInput.name,
+        kind: 'custom',
+        secondary_muscle_groups: [],
         user_id: DEMO_USER_ID,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -399,11 +407,13 @@ export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
       exercises.push(exercise);
     }
 
+    const concreteExercise = exercise;
+
     // Create sets for this exercise
     exerciseInput.sets.forEach((setInput, setIndex) => {
       const newSet: StoredSet = {
         id: getNextId(sets),
-        exercise_id: exercise.id,
+        exercise_id: concreteExercise.id,
         workout_id: newWorkout.id,
         reps: setInput.reps,
         weight: setInput.weight,
@@ -456,6 +466,8 @@ export function updateWorkout(
       exercise = {
         id: getNextId([...exercises, ...newSets.map((s) => ({ id: s.exercise_id }))]),
         name: exerciseInput.name,
+        kind: 'custom',
+        secondary_muscle_groups: [],
         user_id: DEMO_USER_ID,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -463,10 +475,12 @@ export function updateWorkout(
       exercises.push(exercise);
     }
 
+    const concreteExercise = exercise;
+
     exerciseInput.sets.forEach((setInput, setIndex) => {
       const newSet: StoredSet = {
         id: getNextId([...filteredSets, ...newSets]),
-        exercise_id: exercise.id,
+        exercise_id: concreteExercise.id,
         workout_id: id,
         reps: setInput.reps,
         weight: setInput.weight,

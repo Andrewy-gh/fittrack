@@ -30,6 +30,7 @@ func TestExerciseHandler_GetExerciseWithSets_ZeroSetsResponseShapeRegression(t *
 		mockRepo.On("GetExerciseDetail", mock.Anything, exerciseID, userID).Return(db.GetExerciseDetailRow{
 			ID:        exerciseID,
 			Name:      "Zero Set Exercise",
+			Kind:      "custom",
 			UserID:    userID,
 			CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 11, 0, 0, 0, 0, time.UTC), Valid: true},
 			UpdatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 11, 0, 0, 0, 0, time.UTC), Valid: true},
@@ -71,6 +72,7 @@ func TestExerciseHandler_GetExerciseWithSets_ZeroSetsResponseShapeRegression(t *
 		mockRepo.On("GetExerciseDetail", mock.Anything, exerciseID, userID).Return(db.GetExerciseDetailRow{
 			ID:        exerciseID,
 			Name:      "Zero Set Exercise",
+			Kind:      "custom",
 			UserID:    userID,
 			CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 11, 0, 0, 0, 0, time.UTC), Valid: true},
 			UpdatedAt: pgtype.Timestamptz{Time: time.Date(2026, 2, 11, 0, 0, 0, 0, time.UTC), Valid: true},

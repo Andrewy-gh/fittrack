@@ -1442,7 +1442,9 @@
             "required": [
                 "created_at",
                 "id",
+                "kind",
                 "name",
+                "secondary_muscle_groups",
                 "updated_at",
                 "user_id"
             ],
@@ -1451,13 +1453,51 @@
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
                 },
+                "equipment": {
+                    "type": "string",
+                    "example": "barbell"
+                },
                 "id": {
                     "type": "integer",
                     "example": 1
                 },
+                "instructions": {
+                    "type": "string",
+                    "example": "Lower the bar to your chest and press back up."
+                },
+                "kind": {
+                    "enum": [
+                        "custom",
+                        "template_based"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/exercise.ExerciseKind"
+                        }
+                    ],
+                    "example": "custom"
+                },
                 "name": {
                     "type": "string",
                     "example": "Bench Press"
+                },
+                "primary_muscle_group": {
+                    "type": "string",
+                    "example": "chest"
+                },
+                "secondary_muscle_groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "triceps",
+                        "shoulders"
+                    ]
+                },
+                "template_id": {
+                    "type": "integer",
+                    "example": 12
                 },
                 "updated_at": {
                     "type": "string",
@@ -1474,7 +1514,9 @@
             "required": [
                 "created_at",
                 "id",
+                "kind",
                 "name",
+                "secondary_muscle_groups",
                 "updated_at",
                 "user_id"
             ],
@@ -1486,6 +1528,10 @@
                 "created_at": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
+                },
+                "equipment": {
+                    "type": "string",
+                    "example": "barbell"
                 },
                 "historical_1rm": {
                     "type": "number",
@@ -1503,9 +1549,43 @@
                     "type": "integer",
                     "example": 1
                 },
+                "instructions": {
+                    "type": "string",
+                    "example": "Lower the bar to your chest and press back up."
+                },
+                "kind": {
+                    "enum": [
+                        "custom",
+                        "template_based"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/exercise.ExerciseKind"
+                        }
+                    ],
+                    "example": "custom"
+                },
                 "name": {
                     "type": "string",
                     "example": "Bench Press"
+                },
+                "primary_muscle_group": {
+                    "type": "string",
+                    "example": "chest"
+                },
+                "secondary_muscle_groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "triceps",
+                        "shoulders"
+                    ]
+                },
+                "template_id": {
+                    "type": "integer",
+                    "example": 12
                 },
                 "updated_at": {
                     "type": "string",
@@ -1534,6 +1614,17 @@
                     }
                 }
             }
+        },
+        "exercise.ExerciseKind": {
+            "type": "string",
+            "enum": [
+                "custom",
+                "template_based"
+            ],
+            "x-enum-varnames": [
+                "ExerciseKindCustom",
+                "ExerciseKindTemplateBased"
+            ]
         },
         "exercise.ExerciseMetricsHistoryPoint": {
             "type": "object",
@@ -1586,7 +1677,9 @@
             "required": [
                 "created_at",
                 "id",
+                "kind",
                 "name",
+                "secondary_muscle_groups",
                 "updated_at",
                 "user_id"
             ],
@@ -1595,13 +1688,51 @@
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
                 },
+                "equipment": {
+                    "type": "string",
+                    "example": "barbell"
+                },
                 "id": {
                     "type": "integer",
                     "example": 1
                 },
+                "instructions": {
+                    "type": "string",
+                    "example": "Lower the bar to your chest and press back up."
+                },
+                "kind": {
+                    "enum": [
+                        "custom",
+                        "template_based"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/exercise.ExerciseKind"
+                        }
+                    ],
+                    "example": "custom"
+                },
                 "name": {
                     "type": "string",
                     "example": "Bench Press"
+                },
+                "primary_muscle_group": {
+                    "type": "string",
+                    "example": "chest"
+                },
+                "secondary_muscle_groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "triceps",
+                        "shoulders"
+                    ]
+                },
+                "template_id": {
+                    "type": "integer",
+                    "example": 12
                 },
                 "updated_at": {
                     "type": "string",

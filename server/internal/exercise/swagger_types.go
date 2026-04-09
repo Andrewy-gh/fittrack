@@ -2,13 +2,26 @@ package exercise
 
 import "time"
 
+type ExerciseKind string
+
+const (
+	ExerciseKindCustom        ExerciseKind = "custom"
+	ExerciseKindTemplateBased ExerciseKind = "template_based"
+)
+
 // ExerciseResponse represents an exercise response for swagger documentation
 type ExerciseResponse struct {
-	ID        int32     `json:"id" validate:"required" example:"1"`
-	Name      string    `json:"name" validate:"required" example:"Bench Press"`
-	CreatedAt time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UpdatedAt time.Time `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UserID    string    `json:"user_id" validate:"required" example:"user-123"`
+	ID                    int32        `json:"id" validate:"required" example:"1"`
+	Name                  string       `json:"name" validate:"required" example:"Bench Press"`
+	Kind                  ExerciseKind `json:"kind" validate:"required,oneof=custom template_based" example:"custom"`
+	TemplateID            *int32       `json:"template_id,omitempty" example:"12"`
+	Instructions          *string      `json:"instructions,omitempty" example:"Lower the bar to your chest and press back up."`
+	Equipment             *string      `json:"equipment,omitempty" example:"barbell"`
+	PrimaryMuscleGroup    *string      `json:"primary_muscle_group,omitempty" example:"chest"`
+	SecondaryMuscleGroups []string     `json:"secondary_muscle_groups" validate:"required" example:"triceps,shoulders"`
+	CreatedAt             time.Time    `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt             time.Time    `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UserID                string       `json:"user_id" validate:"required" example:"user-123"`
 }
 
 // ExerciseWithSetsResponse represents an exercise with sets response for swagger documentation
@@ -29,11 +42,17 @@ type ExerciseWithSetsResponse struct {
 
 // ExerciseDetailExerciseResponse represents exercise metadata for the exercise detail page.
 type ExerciseDetailExerciseResponse struct {
-	ID        int32     `json:"id" validate:"required" example:"1"`
-	Name      string    `json:"name" validate:"required" example:"Bench Press"`
-	CreatedAt time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UpdatedAt time.Time `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UserID    string    `json:"user_id" validate:"required" example:"user-123"`
+	ID                    int32        `json:"id" validate:"required" example:"1"`
+	Name                  string       `json:"name" validate:"required" example:"Bench Press"`
+	Kind                  ExerciseKind `json:"kind" validate:"required,oneof=custom template_based" example:"custom"`
+	TemplateID            *int32       `json:"template_id,omitempty" example:"12"`
+	Instructions          *string      `json:"instructions,omitempty" example:"Lower the bar to your chest and press back up."`
+	Equipment             *string      `json:"equipment,omitempty" example:"barbell"`
+	PrimaryMuscleGroup    *string      `json:"primary_muscle_group,omitempty" example:"chest"`
+	SecondaryMuscleGroups []string     `json:"secondary_muscle_groups" validate:"required" example:"triceps,shoulders"`
+	CreatedAt             time.Time    `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt             time.Time    `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UserID                string       `json:"user_id" validate:"required" example:"user-123"`
 
 	Historical1RM                *float64   `json:"historical_1rm,omitempty" example:"315.0"`
 	Historical1RMUpdatedAt       *time.Time `json:"historical_1rm_updated_at,omitempty" example:"2023-01-01T15:04:05Z"`
@@ -49,11 +68,17 @@ type ExerciseDetailResponse struct {
 
 // CreateExerciseResponse represents the response when creating/getting an exercise
 type CreateExerciseResponse struct {
-	ID        int32     `json:"id" validate:"required" example:"1"`
-	Name      string    `json:"name" validate:"required" example:"Bench Press"`
-	CreatedAt time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UpdatedAt time.Time `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UserID    string    `json:"user_id" validate:"required" example:"user-123"`
+	ID                    int32        `json:"id" validate:"required" example:"1"`
+	Name                  string       `json:"name" validate:"required" example:"Bench Press"`
+	Kind                  ExerciseKind `json:"kind" validate:"required,oneof=custom template_based" example:"custom"`
+	TemplateID            *int32       `json:"template_id,omitempty" example:"12"`
+	Instructions          *string      `json:"instructions,omitempty" example:"Lower the bar to your chest and press back up."`
+	Equipment             *string      `json:"equipment,omitempty" example:"barbell"`
+	PrimaryMuscleGroup    *string      `json:"primary_muscle_group,omitempty" example:"chest"`
+	SecondaryMuscleGroups []string     `json:"secondary_muscle_groups" validate:"required" example:"triceps,shoulders"`
+	CreatedAt             time.Time    `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt             time.Time    `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UserID                string       `json:"user_id" validate:"required" example:"user-123"`
 }
 
 // RecentSetsResponse represents recent sets response for swagger documentation

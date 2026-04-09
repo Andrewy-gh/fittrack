@@ -64,6 +64,12 @@ export type StoredWorkout = {
 export type StoredExercise = {
   id: number;
   name: string;
+  kind: 'custom';
+  template_id?: number;
+  instructions?: string;
+  equipment?: string;
+  primary_muscle_group?: string;
+  secondary_muscle_groups: string[];
   user_id: string;
   created_at: string;
   updated_at: string;

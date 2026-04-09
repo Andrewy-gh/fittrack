@@ -486,7 +486,23 @@ func (q *Queries) GetContributionData(ctx context.Context, userID string) ([]Get
 }
 
 const getExercise = `-- name: GetExercise :one
-SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2
+SELECT
+    id,
+    name,
+    kind,
+    template_id,
+    instructions,
+    equipment,
+    primary_muscle_group,
+    secondary_muscle_groups,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id,
+    created_at,
+    updated_at,
+    user_id
+FROM exercise
+WHERE id = $1 AND user_id = $2
 `
 
 type GetExerciseParams struct {
@@ -494,15 +510,25 @@ type GetExerciseParams struct {
 	UserID string `json:"user_id"`
 }
 
-type GetExerciseRow struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
-}
-
-func (q *Queries) GetExercise(ctx context.Context, arg GetExerciseParams) (GetExerciseRow, error) {
+func (q *Queries) GetExercise(ctx context.Context, arg GetExerciseParams) (Exercise, error) {
 	row := q.db.QueryRow(ctx, getExercise, arg.ID, arg.UserID)
-	var i GetExerciseRow
-	err := row.Scan(&i.ID, &i.Name)
+	var i Exercise
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Kind,
+		&i.TemplateID,
+		&i.Instructions,
+		&i.Equipment,
+		&i.PrimaryMuscleGroup,
+		&i.SecondaryMuscleGroups,
+		&i.Historical1rm,
+		&i.Historical1rmUpdatedAt,
+		&i.Historical1rmSourceWorkoutID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+	)
 	return i, err
 }
 
@@ -603,6 +629,12 @@ const getExerciseDetail = `-- name: GetExerciseDetail :one
 SELECT
     e.id,
     e.name,
+    e.kind,
+    e.template_id,
+    e.instructions,
+    e.equipment,
+    e.primary_muscle_group,
+    e.secondary_muscle_groups,
     e.created_at,
     e.updated_at,
     e.user_id,
@@ -628,6 +660,12 @@ type GetExerciseDetailParams struct {
 type GetExerciseDetailRow struct {
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`
+	Kind                         string             `json:"kind"`
+	TemplateID                   pgtype.Int4        `json:"template_id"`
+	Instructions                 pgtype.Text        `json:"instructions"`
+	Equipment                    pgtype.Text        `json:"equipment"`
+	PrimaryMuscleGroup           pgtype.Text        `json:"primary_muscle_group"`
+	SecondaryMuscleGroups        []string           `json:"secondary_muscle_groups"`
 	CreatedAt                    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt                    pgtype.Timestamptz `json:"updated_at"`
 	UserID                       string             `json:"user_id"`
@@ -643,6 +681,12 @@ func (q *Queries) GetExerciseDetail(ctx context.Context, arg GetExerciseDetailPa
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.Kind,
+		&i.TemplateID,
+		&i.Instructions,
+		&i.Equipment,
+		&i.PrimaryMuscleGroup,
+		&i.SecondaryMuscleGroups,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
@@ -1120,10 +1164,24 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 }
 
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
-INSERT INTO exercise (name, user_id)
-VALUES ($1, $2)
+INSERT INTO exercise (name, kind, user_id)
+VALUES ($1, 'custom', $2)
 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
-RETURNING id
+RETURNING
+    id,
+    name,
+    kind,
+    template_id,
+    instructions,
+    equipment,
+    primary_muscle_group,
+    secondary_muscle_groups,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id,
+    created_at,
+    updated_at,
+    user_id
 `
 
 type GetOrCreateExerciseParams struct {
@@ -1131,11 +1189,26 @@ type GetOrCreateExerciseParams struct {
 	UserID string `json:"user_id"`
 }
 
-func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerciseParams) (int32, error) {
+func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerciseParams) (Exercise, error) {
 	row := q.db.QueryRow(ctx, getOrCreateExercise, arg.Name, arg.UserID)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
+	var i Exercise
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Kind,
+		&i.TemplateID,
+		&i.Instructions,
+		&i.Equipment,
+		&i.PrimaryMuscleGroup,
+		&i.SecondaryMuscleGroups,
+		&i.Historical1rm,
+		&i.Historical1rmUpdatedAt,
+		&i.Historical1rmSourceWorkoutID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const getRecentSetsForExercise = `-- name: GetRecentSetsForExercise :many
@@ -1551,24 +1624,51 @@ func (q *Queries) ListActiveFeatureAccess(ctx context.Context, userID string) ([
 }
 
 const listExercises = `-- name: ListExercises :many
-SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name
+SELECT
+    id,
+    name,
+    kind,
+    template_id,
+    instructions,
+    equipment,
+    primary_muscle_group,
+    secondary_muscle_groups,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id,
+    created_at,
+    updated_at,
+    user_id
+FROM exercise
+WHERE user_id = $1
+ORDER BY name
 `
 
-type ListExercisesRow struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
-}
-
-func (q *Queries) ListExercises(ctx context.Context, userID string) ([]ListExercisesRow, error) {
+func (q *Queries) ListExercises(ctx context.Context, userID string) ([]Exercise, error) {
 	rows, err := q.db.Query(ctx, listExercises, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListExercisesRow
+	var items []Exercise
 	for rows.Next() {
-		var i ListExercisesRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		var i Exercise
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.TemplateID,
+			&i.Instructions,
+			&i.Equipment,
+			&i.PrimaryMuscleGroup,
+			&i.SecondaryMuscleGroups,
+			&i.Historical1rm,
+			&i.Historical1rmUpdatedAt,
+			&i.Historical1rmSourceWorkoutID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

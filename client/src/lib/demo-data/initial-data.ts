@@ -20,6 +20,8 @@ export const INITIAL_EXERCISES: StoredExercise[] = [
   {
     id: 1,
     name: "Barbell Squat",
+    kind: 'custom',
+    secondary_muscle_groups: [],
     user_id: DEMO_USER_ID,
     created_at: daysAgo(30),
     updated_at: daysAgo(30),
@@ -27,6 +29,8 @@ export const INITIAL_EXERCISES: StoredExercise[] = [
   {
     id: 2,
     name: "Bench Press",
+    kind: 'custom',
+    secondary_muscle_groups: [],
     user_id: DEMO_USER_ID,
     created_at: daysAgo(30),
     updated_at: daysAgo(30),
@@ -34,6 +38,8 @@ export const INITIAL_EXERCISES: StoredExercise[] = [
   {
     id: 3,
     name: "Deadlift",
+    kind: 'custom',
+    secondary_muscle_groups: [],
     user_id: DEMO_USER_ID,
     created_at: daysAgo(30),
     updated_at: daysAgo(30),
@@ -41,6 +47,8 @@ export const INITIAL_EXERCISES: StoredExercise[] = [
   {
     id: 4,
     name: "Overhead Press",
+    kind: 'custom',
+    secondary_muscle_groups: [],
     user_id: DEMO_USER_ID,
     created_at: daysAgo(30),
     updated_at: daysAgo(30),
@@ -48,6 +56,8 @@ export const INITIAL_EXERCISES: StoredExercise[] = [
   {
     id: 5,
     name: "Pull-ups",
+    kind: 'custom',
+    secondary_muscle_groups: [],
     user_id: DEMO_USER_ID,
     created_at: daysAgo(25),
     updated_at: daysAgo(25),
