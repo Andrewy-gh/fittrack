@@ -61,8 +61,14 @@ export type ExerciseCreateExerciseRequest = {
 
 export type ExerciseCreateExerciseResponse = {
   created_at: string;
+  equipment?: string;
   id: number;
+  instructions?: string;
+  kind: "custom" | "template_based";
   name: string;
+  primary_muscle_group?: string;
+  secondary_muscle_groups: Array<string>;
+  template_id?: number;
   updated_at: string;
   user_id: string;
 };
@@ -70,11 +76,17 @@ export type ExerciseCreateExerciseResponse = {
 export type ExerciseExerciseDetailExerciseResponse = {
   best_e1rm?: number;
   created_at: string;
+  equipment?: string;
   historical_1rm?: number;
   historical_1rm_source_workout_id?: number;
   historical_1rm_updated_at?: string;
   id: number;
+  instructions?: string;
+  kind: "custom" | "template_based";
   name: string;
+  primary_muscle_group?: string;
+  secondary_muscle_groups: Array<string>;
+  template_id?: number;
   updated_at: string;
   user_id: string;
 };
@@ -83,6 +95,20 @@ export type ExerciseExerciseDetailResponse = {
   exercise: ExerciseExerciseDetailExerciseResponse;
   sets: Array<ExerciseExerciseWithSetsResponse>;
 };
+
+export const ExerciseExerciseKind = {
+  /**
+   * ExerciseKindCustom
+   */
+  EXERCISE_KIND_CUSTOM: "custom",
+  /**
+   * ExerciseKindTemplateBased
+   */
+  EXERCISE_KIND_TEMPLATE_BASED: "template_based",
+} as const;
+
+export type ExerciseExerciseKind =
+  (typeof ExerciseExerciseKind)[keyof typeof ExerciseExerciseKind];
 
 export type ExerciseExerciseMetricsHistoryPoint = {
   date?: string;
@@ -103,8 +129,14 @@ export type ExerciseExerciseMetricsHistoryResponse = {
 
 export type ExerciseExerciseResponse = {
   created_at: string;
+  equipment?: string;
   id: number;
+  instructions?: string;
+  kind: "custom" | "template_based";
   name: string;
+  primary_muscle_group?: string;
+  secondary_muscle_groups: Array<string>;
+  template_id?: number;
   updated_at: string;
   user_id: string;
 };

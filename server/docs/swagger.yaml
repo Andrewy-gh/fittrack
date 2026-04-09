@@ -118,12 +118,38 @@ definitions:
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string
+      equipment:
+        example: barbell
+        type: string
       id:
         example: 1
         type: integer
+      instructions:
+        example: Lower the bar to your chest and press back up.
+        type: string
+      kind:
+        allOf:
+        - $ref: '#/definitions/exercise.ExerciseKind'
+        enum:
+        - custom
+        - template_based
+        example: custom
       name:
         example: Bench Press
         type: string
+      primary_muscle_group:
+        example: chest
+        type: string
+      secondary_muscle_groups:
+        example:
+        - triceps
+        - shoulders
+        items:
+          type: string
+        type: array
+      template_id:
+        example: 12
+        type: integer
       updated_at:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -133,7 +159,9 @@ definitions:
     required:
     - created_at
     - id
+    - kind
     - name
+    - secondary_muscle_groups
     - updated_at
     - user_id
     type: object
@@ -144,6 +172,9 @@ definitions:
         type: number
       created_at:
         example: "2023-01-01T15:04:05Z"
+        type: string
+      equipment:
+        example: barbell
         type: string
       historical_1rm:
         example: 315
@@ -157,9 +188,32 @@ definitions:
       id:
         example: 1
         type: integer
+      instructions:
+        example: Lower the bar to your chest and press back up.
+        type: string
+      kind:
+        allOf:
+        - $ref: '#/definitions/exercise.ExerciseKind'
+        enum:
+        - custom
+        - template_based
+        example: custom
       name:
         example: Bench Press
         type: string
+      primary_muscle_group:
+        example: chest
+        type: string
+      secondary_muscle_groups:
+        example:
+        - triceps
+        - shoulders
+        items:
+          type: string
+        type: array
+      template_id:
+        example: 12
+        type: integer
       updated_at:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -169,7 +223,9 @@ definitions:
     required:
     - created_at
     - id
+    - kind
     - name
+    - secondary_muscle_groups
     - updated_at
     - user_id
     type: object
@@ -185,6 +241,14 @@ definitions:
     - exercise
     - sets
     type: object
+  exercise.ExerciseKind:
+    enum:
+    - custom
+    - template_based
+    type: string
+    x-enum-varnames:
+    - ExerciseKindCustom
+    - ExerciseKindTemplateBased
   exercise.ExerciseMetricsHistoryPoint:
     properties:
       date:
@@ -220,12 +284,38 @@ definitions:
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string
+      equipment:
+        example: barbell
+        type: string
       id:
         example: 1
         type: integer
+      instructions:
+        example: Lower the bar to your chest and press back up.
+        type: string
+      kind:
+        allOf:
+        - $ref: '#/definitions/exercise.ExerciseKind'
+        enum:
+        - custom
+        - template_based
+        example: custom
       name:
         example: Bench Press
         type: string
+      primary_muscle_group:
+        example: chest
+        type: string
+      secondary_muscle_groups:
+        example:
+        - triceps
+        - shoulders
+        items:
+          type: string
+        type: array
+      template_id:
+        example: 12
+        type: integer
       updated_at:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -235,7 +325,9 @@ definitions:
     required:
     - created_at
     - id
+    - kind
     - name
+    - secondary_muscle_groups
     - updated_at
     - user_id
     type: object

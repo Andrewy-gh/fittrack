@@ -175,10 +175,10 @@ export const postAiChatValidateStreamQueryKey = (
  */
 export const postAiChatValidateStreamQueryOptions = (
   options: Options<PostAiChatValidateStreamData>,
-) => {
+  ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return postAiChatValidateStream({
+      return await postAiChatValidateStream({
         ...options,
         ...queryKey[0],
         signal,
@@ -206,11 +206,12 @@ export const postAiChatValidateStreamMutation = (
     Options<PostAiChatValidateStreamData>
   > = {
     mutationFn: async (localOptions) => {
-      return (await postAiChatValidateStream({
+      const stream = await postAiChatValidateStream({
         ...options,
         ...localOptions,
         throwOnError: true,
-      })) as unknown as PostAiChatValidateStreamResponse;
+      });
+      return stream as unknown as PostAiChatValidateStreamResponse;
     },
   };
   return mutationOptions;
@@ -307,10 +308,10 @@ export const postAiConversationsByIdMessagesStreamQueryKey = (
  */
 export const postAiConversationsByIdMessagesStreamQueryOptions = (
   options: Options<PostAiConversationsByIdMessagesStreamData>,
-) => {
+  ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return postAiConversationsByIdMessagesStream({
+      return await postAiConversationsByIdMessagesStream({
         ...options,
         ...queryKey[0],
         signal,
@@ -338,11 +339,12 @@ export const postAiConversationsByIdMessagesStreamMutation = (
     Options<PostAiConversationsByIdMessagesStreamData>
   > = {
     mutationFn: async (localOptions) => {
-      return (await postAiConversationsByIdMessagesStream({
+      const stream = await postAiConversationsByIdMessagesStream({
         ...options,
         ...localOptions,
         throwOnError: true,
-      })) as unknown as PostAiConversationsByIdMessagesStreamResponse;
+      });
+      return stream as unknown as PostAiConversationsByIdMessagesStreamResponse;
     },
   };
   return mutationOptions;

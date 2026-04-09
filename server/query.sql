@@ -6,12 +6,34 @@ SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE
 SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE user_id = $1 ORDER BY date DESC;
 
 -- name: GetExercise :one
-SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2;
+SELECT
+    id,
+    name,
+    kind,
+    template_id,
+    instructions,
+    equipment,
+    primary_muscle_group,
+    secondary_muscle_groups,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id,
+    created_at,
+    updated_at,
+    user_id
+FROM exercise
+WHERE id = $1 AND user_id = $2;
 
 -- name: GetExerciseDetail :one
 SELECT
     e.id,
     e.name,
+    e.kind,
+    e.template_id,
+    e.instructions,
+    e.equipment,
+    e.primary_muscle_group,
+    e.secondary_muscle_groups,
     e.created_at,
     e.updated_at,
     e.user_id,
@@ -29,7 +51,24 @@ FROM exercise e
 WHERE e.id = $1 AND e.user_id = $2;
 
 -- name: ListExercises :many
-SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name;
+SELECT
+    id,
+    name,
+    kind,
+    template_id,
+    instructions,
+    equipment,
+    primary_muscle_group,
+    secondary_muscle_groups,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id,
+    created_at,
+    updated_at,
+    user_id
+FROM exercise
+WHERE user_id = $1
+ORDER BY name;
 
 -- name: GetSet :one
 SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
@@ -280,10 +319,24 @@ VALUES ($1, $2, $3, $4)
 RETURNING id;
 
 -- name: GetOrCreateExercise :one
-INSERT INTO exercise (name, user_id)
-VALUES ($1, $2)
+INSERT INTO exercise (name, kind, user_id)
+VALUES ($1, 'custom', $2)
 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
-RETURNING id;
+RETURNING
+    id,
+    name,
+    kind,
+    template_id,
+    instructions,
+    equipment,
+    primary_muscle_group,
+    secondary_muscle_groups,
+    historical_1rm,
+    historical_1rm_updated_at,
+    historical_1rm_source_workout_id,
+    created_at,
+    updated_at,
+    user_id;
 
 -- name: DeleteExercise :exec
 DELETE FROM exercise WHERE id = $1 AND user_id = $2;

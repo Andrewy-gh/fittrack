@@ -9,6 +9,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ExerciseRepository interface {
@@ -39,7 +40,7 @@ func NewService(logger *slog.Logger, repo ExerciseRepository) *ExerciseService {
 	}
 }
 
-func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, error) {
+func (es *ExerciseService) ListExercises(ctx context.Context) ([]ExerciseResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
@@ -49,7 +50,13 @@ func (es *ExerciseService) ListExercises(ctx context.Context) ([]db.Exercise, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to list exercises: %w", err)
 	}
-	return exercises, nil
+
+	response := make([]ExerciseResponse, len(exercises))
+	for i, exercise := range exercises {
+		response[i] = buildExerciseResponse(exercise)
+	}
+
+	return response, nil
 }
 
 func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*ExerciseDetailResponse, error) {
@@ -95,10 +102,20 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*
 		historical1rmSourceWorkoutID = &id
 	}
 
+	kind := mustExerciseKind(exercise.Kind)
+	templateID := int32PtrFromPG(exercise.TemplateID)
+	assertValidExerciseState(kind, templateID)
+
 	return &ExerciseDetailResponse{
 		Exercise: ExerciseDetailExerciseResponse{
 			ID:                           exercise.ID,
 			Name:                         exercise.Name,
+			Kind:                         kind,
+			TemplateID:                   templateID,
+			Instructions:                 textPtr(exercise.Instructions),
+			Equipment:                    textPtr(exercise.Equipment),
+			PrimaryMuscleGroup:           textPtr(exercise.PrimaryMuscleGroup),
+			SecondaryMuscleGroups:        stringSlice(exercise.SecondaryMuscleGroups),
 			CreatedAt:                    exercise.CreatedAt.Time,
 			UpdatedAt:                    exercise.UpdatedAt.Time,
 			UserID:                       exercise.UserID,
@@ -111,7 +128,7 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*
 	}, nil
 }
 
-func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (*db.Exercise, error) {
+func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string) (*CreateExerciseResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
@@ -121,7 +138,8 @@ func (es *ExerciseService) GetOrCreateExercise(ctx context.Context, name string)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
-	return &exercise, nil
+	response := buildCreateExerciseResponse(exercise)
+	return &response, nil
 }
 
 func (es *ExerciseService) GetRecentSetsForExercise(ctx context.Context, id int32) ([]db.GetRecentSetsForExerciseRow, error) {
@@ -234,4 +252,95 @@ func (es *ExerciseService) convertExerciseWithSetsRows(rows []db.GetExerciseWith
 	}
 
 	return response, nil
+}
+
+func buildExerciseResponse(exercise db.Exercise) ExerciseResponse {
+	kind := mustExerciseKind(exercise.Kind)
+	templateID := int32PtrFromPG(exercise.TemplateID)
+	assertValidExerciseState(kind, templateID)
+
+	return ExerciseResponse{
+		ID:                    exercise.ID,
+		Name:                  exercise.Name,
+		Kind:                  kind,
+		TemplateID:            templateID,
+		Instructions:          textPtr(exercise.Instructions),
+		Equipment:             textPtr(exercise.Equipment),
+		PrimaryMuscleGroup:    textPtr(exercise.PrimaryMuscleGroup),
+		SecondaryMuscleGroups: stringSlice(exercise.SecondaryMuscleGroups),
+		CreatedAt:             exercise.CreatedAt.Time,
+		UpdatedAt:             exercise.UpdatedAt.Time,
+		UserID:                exercise.UserID,
+	}
+}
+
+func buildCreateExerciseResponse(exercise db.Exercise) CreateExerciseResponse {
+	kind := mustExerciseKind(exercise.Kind)
+	templateID := int32PtrFromPG(exercise.TemplateID)
+	assertValidExerciseState(kind, templateID)
+
+	return CreateExerciseResponse{
+		ID:                    exercise.ID,
+		Name:                  exercise.Name,
+		Kind:                  kind,
+		TemplateID:            templateID,
+		Instructions:          textPtr(exercise.Instructions),
+		Equipment:             textPtr(exercise.Equipment),
+		PrimaryMuscleGroup:    textPtr(exercise.PrimaryMuscleGroup),
+		SecondaryMuscleGroups: stringSlice(exercise.SecondaryMuscleGroups),
+		CreatedAt:             exercise.CreatedAt.Time,
+		UpdatedAt:             exercise.UpdatedAt.Time,
+		UserID:                exercise.UserID,
+	}
+}
+
+func textPtr(value pgtype.Text) *string {
+	if !value.Valid {
+		return nil
+	}
+
+	return &value.String
+}
+
+func int32PtrFromPG(value pgtype.Int4) *int32 {
+	if !value.Valid {
+		return nil
+	}
+
+	id := value.Int32
+	return &id
+}
+
+func stringSlice(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+
+	return values
+}
+
+func mustExerciseKind(kind string) ExerciseKind {
+	switch ExerciseKind(kind) {
+	case ExerciseKindCustom:
+		return ExerciseKindCustom
+	case ExerciseKindTemplateBased:
+		return ExerciseKindTemplateBased
+	default:
+		panic(fmt.Sprintf("unknown exercise kind: %q", kind))
+	}
+}
+
+func assertValidExerciseState(kind ExerciseKind, templateID *int32) {
+	switch kind {
+	case ExerciseKindCustom:
+		if templateID != nil {
+			panic("custom exercise cannot have template_id")
+		}
+	case ExerciseKindTemplateBased:
+		if templateID == nil {
+			panic("template_based exercise requires template_id")
+		}
+	default:
+		panic(fmt.Sprintf("unknown exercise kind: %q", kind))
+	}
 }
