@@ -539,6 +539,9 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 		return nil, nil, err
 	}
 
+	prepared.AssistantMessage = message
+	prepared.Run = run
+
 	return message, run, nil
 }
 
@@ -586,6 +589,18 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit ai chat failure transaction: %w", err)
 	}
+
+	errorMessage := errorText
+	completedAtUTC := completedAt.UTC()
+	prepared.AssistantMessage.Content = partialText
+	prepared.AssistantMessage.Status = statusFailed
+	prepared.AssistantMessage.ErrorMessage = &errorMessage
+	prepared.AssistantMessage.UpdatedAt = completedAtUTC
+	prepared.AssistantMessage.CompletedAt = &completedAtUTC
+	prepared.Run.Status = statusFailed
+	prepared.Run.ErrorMessage = &errorMessage
+	prepared.Run.UpdatedAt = completedAtUTC
+	prepared.Run.CompletedAt = &completedAtUTC
 
 	return nil
 }

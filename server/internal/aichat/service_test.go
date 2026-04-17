@@ -718,6 +718,63 @@ func TestServiceRecoverStreamingRun_IgnoresRunsWithoutRecoveryMarker(t *testing.
 	repo.AssertExpectations(t)
 }
 
+func TestServiceRecoverStreamingRun_RestoresRecoveryMarkerWhenFailureCannotPersist(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+			ErrorMessage:       stringPtr(runAwaitingRecoveryMarker),
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+		Prompt: "new prompt",
+	}
+	expectedErr := errors.New("provider failed")
+	persistErr := errors.New("could not persist failure")
+
+	runtime.On("Available").Return(true).Once()
+	repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
+	repo.On("ClaimRunRecovery", mock.Anything, int32(51), "user-123").Return(nil).Once()
+	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{}, mock.Anything).
+		Return((*StreamDone)(nil), expectedErr).Once()
+	repo.On("FailRun", mock.Anything, prepared, "", expectedErr, mock.AnythingOfType("time.Time")).Return(persistErr).Once()
+	repo.On("MarkRunAwaitingRecovery", mock.Anything, prepared, "", mock.AnythingOfType("time.Time")).
+		Run(func(args mock.Arguments) {
+			prepared.Run.ErrorMessage = stringPtr(runAwaitingRecoveryMarker)
+		}).
+		Return(nil).
+		Once()
+
+	err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
+		ConversationID: 41,
+		RunID:          51,
+		UserID:         "user-123",
+		Reason:         recoverReasonStreamReconnect,
+	})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, expectedErr)
+	assert.Equal(t, statusStreaming, prepared.Run.Status)
+	assert.NotNil(t, prepared.Run.ErrorMessage)
+	assert.Equal(t, runAwaitingRecoveryMarker, *prepared.Run.ErrorMessage)
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceAbortPreparedMessageStream_PersistsFailure(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)

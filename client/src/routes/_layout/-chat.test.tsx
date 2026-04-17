@@ -505,6 +505,46 @@ describe("ChatRouteComponent", () => {
     );
   });
 
+  it("fails fast when load-triggered recovery cannot be queued", async () => {
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "assistant",
+          content: "partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:01Z",
+        },
+      ]),
+    );
+    mockRequestRecovery.mockRejectedValue(
+      new Error("ai chat recovery is not configured"),
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("ai chat recovery is not configured"),
+    ).toBeInTheDocument();
+    expect(mockPollConversation).not.toHaveBeenCalled();
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovered_failed",
+    });
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "ux",
+      outcome: "failure_toast_shown",
+    });
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "ai chat recovery is not configured",
+      }),
+      "Failed to recover AI chat conversation",
+    );
+  });
+
   it("does not reclassify a completed stream when the follow-up refresh fails", async () => {
     const user = userEvent.setup();
     mockGetConversation

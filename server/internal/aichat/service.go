@@ -250,6 +250,13 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 	prepared.Run.ErrorMessage = nil
 
 	_, err = s.executePreparedRun(ctx, prepared, nil, false)
+	if err != nil && prepared.Run != nil && prepared.Run.Status == statusStreaming {
+		// If recovery claimed the run but never reached a persisted terminal
+		// state, put it back into the retryable recovery state.
+		if markErr := s.repo.MarkRunAwaitingRecovery(context.WithoutCancel(ctx), prepared, prepared.AssistantMessage.Content, time.Now().UTC()); markErr != nil {
+			return errors.Join(err, markErr)
+		}
+	}
 	return err
 }
 
