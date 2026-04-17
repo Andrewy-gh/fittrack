@@ -18,12 +18,14 @@ const (
 )
 
 var (
-	ErrFeatureDisabled    = errors.New("ai chat feature is disabled")
-	ErrRuntimeUnavailable = errors.New("ai chat runtime is unavailable")
-	ErrConversationBusy   = errors.New("ai chat conversation already has an active run")
-	ErrGenerationTimeout  = errors.New("ai chat generation timed out")
-	ErrStreamDisconnected = errors.New("ai chat stream disconnected before completion")
-	ErrStreamNotStarted   = errors.New("ai chat stream failed before delivery started")
+	ErrFeatureDisabled        = errors.New("ai chat feature is disabled")
+	ErrRuntimeUnavailable     = errors.New("ai chat runtime is unavailable")
+	ErrRecoveryUnavailable    = errors.New("ai chat recovery is unavailable")
+	ErrConversationBusy       = errors.New("ai chat conversation already has an active run")
+	ErrGenerationTimeout      = errors.New("ai chat generation timed out")
+	ErrStreamDisconnected     = errors.New("ai chat stream disconnected before completion")
+	ErrStreamNotStarted       = errors.New("ai chat stream failed before delivery started")
+	ErrStreamAwaitingRecovery = errors.New("ai chat stream interrupted and awaiting recovery")
 )
 
 const (
@@ -36,6 +38,12 @@ type ValidateRequest struct {
 
 type SendMessageRequest struct {
 	Prompt string `json:"prompt"`
+}
+
+type RecoverMessageResponse struct {
+	ConversationID int32  `json:"conversation_id"`
+	RunID          int32  `json:"run_id,omitempty"`
+	Status         string `json:"status"`
 }
 
 type ValidationOutput struct {
@@ -87,8 +95,9 @@ type ChatRun struct {
 }
 
 type ConversationDetail struct {
-	Conversation *Conversation `json:"conversation"`
-	Messages     []ChatMessage `json:"messages"`
+	Conversation *Conversation        `json:"conversation"`
+	Messages     []ChatMessage        `json:"messages"`
+	ActiveRun    *ConversationRunView `json:"active_run,omitempty"`
 }
 
 type PreparedMessageStream struct {
@@ -98,6 +107,22 @@ type PreparedMessageStream struct {
 	AssistantMessage *ChatMessage
 	Run              *ChatRun
 	Prompt           string
+	LastSequence     int32
+}
+
+type PreparedResumeStream struct {
+	Conversation     *Conversation
+	AssistantMessage *ChatMessage
+	Run              *ChatRun
+	AfterSequence    int32
+	LastSequence     int32
+}
+
+type RunRecoveryRequest struct {
+	ConversationID int32
+	RunID          int32
+	UserID         string
+	Reason         string
 }
 
 type RuntimeChatMessage struct {
@@ -111,6 +136,19 @@ type StreamDone struct {
 	MessageID      int32  `json:"message_id,omitempty"`
 	Model          string `json:"model"`
 	Text           string `json:"text"`
+	Sequence       int32  `json:"sequence,omitempty"`
+}
+
+type StreamChunk struct {
+	Delta    string
+	Sequence int32
+}
+
+type ConversationRunView struct {
+	ID                 int32  `json:"id"`
+	AssistantMessageID int32  `json:"assistant_message_id"`
+	Status             string `json:"status"`
+	LatestSequence     int32  `json:"latest_sequence"`
 }
 
 type StreamEvent struct {
@@ -123,4 +161,5 @@ type StreamEvent struct {
 	Delta          string `json:"delta,omitempty"`
 	Text           string `json:"text,omitempty"`
 	Message        string `json:"message,omitempty"`
+	Sequence       int32  `json:"sequence,omitempty"`
 }

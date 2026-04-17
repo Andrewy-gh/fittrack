@@ -202,6 +202,34 @@ func TestMetrics_Labels(t *testing.T) {
 	}
 }
 
+func TestMetrics_UsesNormalizedRouteLabels(t *testing.T) {
+	httpRequestsTotal.Reset()
+	httpRequestDuration.Reset()
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := Metrics()(nextHandler)
+	req := httptest.NewRequest(http.MethodGet, "/api/workouts/123", nil)
+	req.Pattern = "GET /api/workouts/{id}"
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if got := testutil.ToFloat64(
+		httpRequestsTotal.WithLabelValues(http.MethodGet, "/api/workouts/{id}", "200"),
+	); got != 1 {
+		t.Fatalf("expected normalized route label counter to be 1, got %v", got)
+	}
+
+	if got := testutil.ToFloat64(
+		httpRequestsTotal.WithLabelValues(http.MethodGet, "/api/workouts/123", "200"),
+	); got != 0 {
+		t.Fatalf("expected raw path label counter to remain 0, got %v", got)
+	}
+}
+
 func TestUpdateDatabaseMetrics(t *testing.T) {
 	// Reset gauges before test
 	dbConnectionsActive.Set(0)

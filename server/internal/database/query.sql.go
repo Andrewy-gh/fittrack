@@ -11,6 +11,68 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimAIChatRunRecovery = `-- name: ClaimAIChatRunRecovery :one
+UPDATE ai_chat_run
+SET error_message = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND error_message = $3
+  AND updated_at = $4
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+`
+
+type ClaimAIChatRunRecoveryParams struct {
+	ID                   int32              `json:"id"`
+	UserID               string             `json:"user_id"`
+	ExpectedErrorMessage pgtype.Text        `json:"expected_error_message"`
+	ExpectedUpdatedAt    pgtype.Timestamptz `json:"expected_updated_at"`
+	ClaimedErrorMessage  pgtype.Text        `json:"claimed_error_message"`
+}
+
+func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRunRecoveryParams) (AiChatRun, error) {
+	row := q.db.QueryRow(
+		ctx,
+		claimAIChatRunRecovery,
+		arg.ID,
+		arg.UserID,
+		arg.ExpectedErrorMessage,
+		arg.ExpectedUpdatedAt,
+		arg.ClaimedErrorMessage,
+	)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const createAIChatConversation = `-- name: CreateAIChatConversation :one
 INSERT INTO ai_chat_conversation (
     user_id,
@@ -167,6 +229,47 @@ func (q *Queries) CreateAIChatRun(ctx context.Context, arg CreateAIChatRunParams
 		&i.UpdatedAt,
 		&i.StartedAt,
 		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const createAIChatStreamChunk = `-- name: CreateAIChatStreamChunk :one
+INSERT INTO ai_chat_stream_chunk (
+    run_id,
+    user_id,
+    sequence,
+    delta_text
+)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at
+`
+
+type CreateAIChatStreamChunkParams struct {
+	RunID     int32  `json:"run_id"`
+	UserID    string `json:"user_id"`
+	Sequence  int32  `json:"sequence"`
+	DeltaText string `json:"delta_text"`
+}
+
+func (q *Queries) CreateAIChatStreamChunk(ctx context.Context, arg CreateAIChatStreamChunkParams) (AiChatStreamChunk, error) {
+	row := q.db.QueryRow(ctx, createAIChatStreamChunk,
+		arg.RunID,
+		arg.UserID,
+		arg.Sequence,
+		arg.DeltaText,
+	)
+	var i AiChatStreamChunk
+	err := row.Scan(
+		&i.RunID,
+		&i.UserID,
+		&i.Sequence,
+		&i.DeltaText,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -365,6 +468,52 @@ func (q *Queries) GetAIChatMessage(ctx context.Context, arg GetAIChatMessagePara
 		&i.ErrorMessage,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const getAIChatRun = `-- name: GetAIChatRun :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+FROM ai_chat_run
+WHERE id = $1
+  AND user_id = $2
+`
+
+type GetAIChatRunParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetAIChatRun(ctx context.Context, arg GetAIChatRunParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, getAIChatRun, arg.ID, arg.UserID)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
 		&i.CompletedAt,
 	)
 	return i, err
@@ -1119,6 +1268,25 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 	return items, nil
 }
 
+const getLatestAIChatStreamChunkSequence = `-- name: GetLatestAIChatStreamChunkSequence :one
+SELECT COALESCE(MAX(sequence), 0)::INTEGER
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2
+`
+
+type GetLatestAIChatStreamChunkSequenceParams struct {
+	RunID  int32  `json:"run_id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetLatestAIChatStreamChunkSequence(ctx context.Context, arg GetLatestAIChatStreamChunkSequenceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getLatestAIChatStreamChunkSequence, arg.RunID, arg.UserID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
 INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
@@ -1496,6 +1664,52 @@ func (q *Queries) ListAIChatMessagesByConversation(ctx context.Context, arg List
 	return items, nil
 }
 
+const listAIChatStreamChunksAfter = `-- name: ListAIChatStreamChunksAfter :many
+SELECT
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2
+  AND sequence > $3
+ORDER BY sequence ASC
+`
+
+type ListAIChatStreamChunksAfterParams struct {
+	RunID    int32  `json:"run_id"`
+	UserID   string `json:"user_id"`
+	Sequence int32  `json:"sequence"`
+}
+
+func (q *Queries) ListAIChatStreamChunksAfter(ctx context.Context, arg ListAIChatStreamChunksAfterParams) ([]AiChatStreamChunk, error) {
+	rows, err := q.db.Query(ctx, listAIChatStreamChunksAfter, arg.RunID, arg.UserID, arg.Sequence)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AiChatStreamChunk
+	for rows.Next() {
+		var i AiChatStreamChunk
+		if err := rows.Scan(
+			&i.RunID,
+			&i.UserID,
+			&i.Sequence,
+			&i.DeltaText,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveFeatureAccess = `-- name: ListActiveFeatureAccess :many
 SELECT
     id,
@@ -1726,6 +1940,56 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 		return nil, err
 	}
 	return items, nil
+}
+
+const markAIChatRunAwaitingRecovery = `-- name: MarkAIChatRunAwaitingRecovery :one
+UPDATE ai_chat_run
+SET error_message = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+`
+
+type MarkAIChatRunAwaitingRecoveryParams struct {
+	ID           int32       `json:"id"`
+	UserID       string      `json:"user_id"`
+	ErrorMessage pgtype.Text `json:"error_message"`
+}
+
+func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIChatRunAwaitingRecoveryParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, markAIChatRunAwaitingRecovery, arg.ID, arg.UserID, arg.ErrorMessage)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
 }
 
 const setAIChatConversationTitleIfEmpty = `-- name: SetAIChatConversationTitleIfEmpty :execrows

@@ -21,6 +21,7 @@ const (
 	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
 	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
 	chatStreamTimeout  = 45 * time.Second
+	activeFeaturesToolName = "fittrack.list_active_features"
 )
 
 var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
@@ -76,7 +77,7 @@ func activateGenkitRuntime(ctx context.Context, modelName string, featureAccess 
 		genkit.WithDefaultModel(modelName),
 	)
 
-	tool := genkit.DefineTool(g, "fittrack/listActiveFeatures",
+	tool := genkit.DefineTool(g, activeFeaturesToolName,
 		"Lists the active FitTrack feature keys for the authenticated viewer.",
 		func(ctx *ai.ToolContext, _ struct{}) (*featureSnapshot, error) {
 			guard := toolGuardFromContext(ctx)
@@ -232,14 +233,14 @@ func resolveModelName() string {
 func buildStructuredPrompt(prompt string) string {
 	return fmt.Sprintf(`You are validating the phase-0 FitTrack AI chat architecture.
 
-You must call the "fittrack/listActiveFeatures" tool exactly once before answering.
+You must call the "%s" tool exactly once before answering.
 
 Return JSON with:
 - "summary": one short sentence describing whether the architecture is viable for the authenticated viewer.
 - "next_step": one short sentence naming the highest-value phase-1 implementation step.
 
 Keep the response concise and grounded in the tool result plus this user validation prompt:
-%s`, prompt)
+%s`, activeFeaturesToolName, prompt)
 }
 
 func buildStreamingPrompt(prompt string) string {
@@ -275,13 +276,13 @@ func buildChatMessages(history []RuntimeChatMessage) []*ai.Message {
 }
 
 func buildChatSystemPrompt() string {
-	return `You are FitTrack's in-app training assistant.
+	return fmt.Sprintf(`You are FitTrack's in-app training assistant.
 
 Rules:
 - Stay focused on fitness, training, recovery, exercise selection, and how to use FitTrack.
 - Keep answers concise, practical, and safe.
 - Base your response on the visible conversation only. Do not invent personal history or workout data.
-- If feature access is relevant, you may use the fittrack/listActiveFeatures tool.`
+- If feature access is relevant, you may use the %s tool.`, activeFeaturesToolName)
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

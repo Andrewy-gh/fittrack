@@ -611,6 +611,59 @@ WHERE conversation_id = $1
 ORDER BY id DESC
 LIMIT 1;
 
+-- name: GetAIChatRun :one
+SELECT
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+FROM ai_chat_run
+WHERE id = $1
+  AND user_id = $2;
+
+-- name: GetLatestAIChatStreamChunkSequence :one
+SELECT COALESCE(MAX(sequence), 0)::INTEGER
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2;
+
+-- name: ListAIChatStreamChunksAfter :many
+SELECT
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2
+  AND sequence > $3
+ORDER BY sequence ASC;
+
+-- name: CreateAIChatStreamChunk :one
+INSERT INTO ai_chat_stream_chunk (
+    run_id,
+    user_id,
+    sequence,
+    delta_text
+)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at;
+
 -- name: CreateAIChatMessage :one
 INSERT INTO ai_chat_message (
     conversation_id,
@@ -765,6 +818,52 @@ SET updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming';
+
+-- name: MarkAIChatRunAwaitingRecovery :one
+UPDATE ai_chat_run
+SET error_message = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
+
+-- name: ClaimAIChatRunRecovery :one
+UPDATE ai_chat_run
+SET error_message = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND error_message = $3
+  AND updated_at = $4
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
 
 -- name: UpdateAIChatRunFailed :one
 UPDATE ai_chat_run

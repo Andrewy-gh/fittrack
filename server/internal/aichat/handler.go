@@ -17,11 +17,15 @@ import (
 type chatService interface {
 	Validate(ctx context.Context, prompt string) (*ValidateResponse, error)
 	EnsureAllowed(ctx context.Context) error
+	CurrentUserHasFeatureAccess(ctx context.Context) (bool, error)
 	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	CreateConversation(ctx context.Context) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
+	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
-	StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error)
+	PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error)
+	StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error) (*StreamDone, error)
+	ResumeMessageStream(ctx context.Context, prepared *PreparedResumeStream, onChunk func(StreamChunk) error) (*StreamDone, error)
 	AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error
 }
 
@@ -185,6 +189,77 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// RecordTelemetry godoc
+// @Summary Record AI chat telemetry
+// @Description Records authenticated client-observed AI chat outcomes for observability and rollout gating.
+// @Tags ai-chat
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Param request body aichat.ClientTelemetryEvent true "Telemetry event"
+// @Success 202
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/chat/telemetry [post]
+func (h *Handler) RecordTelemetry(w http.ResponseWriter, r *http.Request) {
+	var event ClientTelemetryEvent
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&event); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
+		return
+	}
+
+	event = normalizeClientTelemetryEvent(event)
+	if err := validateClientTelemetryEvent(event); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "invalid ai chat telemetry event", err)
+		return
+	}
+
+	hasFeatureAccess, err := h.service.CurrentUserHasFeatureAccess(r.Context())
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to record ai chat telemetry")
+		return
+	}
+
+	recordClientTelemetry(hasFeatureAccess, event)
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// RecoverMessage godoc
+// @Summary Recover AI chat message stream
+// @Description Queues recovery for an active streaming AI chat run so persisted updates can continue after a disconnect.
+// @Tags ai-chat
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Conversation ID"
+// @Success 202 {object} aichat.RecoverMessageResponse
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 404 {object} response.Error
+// @Failure 503 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations/{id}/messages/recover [post]
+func (h *Handler) RecoverMessage(w http.ResponseWriter, r *http.Request) {
+	conversationID, ok := h.decodeConversationID(w, r)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.RequestMessageRecovery(r.Context(), conversationID, recoverReasonStreamReconnect)
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to queue ai chat recovery")
+		return
+	}
+
+	if err := response.JSON(w, http.StatusAccepted, resp); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
+}
+
 // StreamMessage godoc
 // @Summary Stream AI chat message
 // @Description Persists a user message and run, then streams normalized assistant events over SSE. Preflight failures stay JSON.
@@ -237,6 +312,8 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		MessageID:      prepared.AssistantMessage.ID,
 		Model:          prepared.Run.Model,
 	}); err != nil {
+		// If the initial SSE start event never reaches the client, treat the run
+		// as never started. Recovery only applies after streaming has begun.
 		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
 			h.logger.Error("failed to abort ai chat run after start event write failure", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
@@ -244,13 +321,17 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	done, err := h.service.StreamMessage(r.Context(), prepared, func(delta string) error {
+	done, err := h.service.StreamMessage(r.Context(), prepared, func(chunk StreamChunk) error {
 		return sse.write("delta", StreamEvent{
-			Type:  "delta",
-			Delta: delta,
+			Type:     "delta",
+			Delta:    chunk.Delta,
+			Sequence: chunk.Sequence,
 		})
 	})
 	if err != nil {
+		if errors.Is(err, ErrStreamAwaitingRecovery) {
+			return
+		}
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to generate ai chat response", err) {
 			h.logger.Error("failed to stream ai chat response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
 		}
@@ -264,8 +345,91 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		MessageID:      done.MessageID,
 		Model:          done.Model,
 		Text:           done.Text,
+		Sequence:       done.Sequence,
 	}); err != nil {
 		h.logStreamWriteFailure("failed to finish ai chat stream", r, err)
+	}
+}
+
+// ResumeMessageStream godoc
+// @Summary Resume AI chat message stream
+// @Description Replays persisted AI chat output after a sequence cursor and continues streaming while the run is still active.
+// @Tags ai-chat
+// @Produce text/event-stream
+// @Security StackAuth
+// @Param id path int true "Conversation ID"
+// @Param runId query int true "Run ID"
+// @Param afterSequence query int false "Replay everything after this sequence"
+// @Success 200 {object} aichat.StreamEvent
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 404 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations/{id}/messages/stream/resume [get]
+func (h *Handler) ResumeMessageStream(w http.ResponseWriter, r *http.Request) {
+	conversationID, ok := h.decodeConversationID(w, r)
+	if !ok {
+		return
+	}
+
+	runID, afterSequence, ok := h.decodeResumeStreamQuery(w, r)
+	if !ok {
+		return
+	}
+
+	prepared, err := h.service.PrepareResumeMessageStream(r.Context(), conversationID, runID, afterSequence)
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to prepare ai chat resume stream")
+		return
+	}
+
+	sse, err := h.startSSE(w)
+	if err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat resume stream", err)
+		return
+	}
+
+	if err := sse.write("start", StreamEvent{
+		Type:           "start",
+		RequestID:      request.GetRequestID(r.Context()),
+		ConversationID: prepared.Conversation.ID,
+		RunID:          prepared.Run.ID,
+		MessageID:      prepared.AssistantMessage.ID,
+		Model:          prepared.Run.Model,
+		Sequence:       prepared.AfterSequence,
+	}); err != nil {
+		h.logStreamWriteFailure("failed to start ai chat resume stream", r, err)
+		return
+	}
+
+	done, err := h.service.ResumeMessageStream(r.Context(), prepared, func(chunk StreamChunk) error {
+		return sse.write("delta", StreamEvent{
+			Type:     "delta",
+			Delta:    chunk.Delta,
+			Sequence: chunk.Sequence,
+		})
+	})
+	if err != nil {
+		if errors.Is(err, ErrStreamAwaitingRecovery) {
+			return
+		}
+		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to resume ai chat response", err) {
+			h.logger.Error("failed to resume ai chat response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+		}
+		return
+	}
+
+	if err := sse.write("done", StreamEvent{
+		Type:           "done",
+		ConversationID: done.ConversationID,
+		RunID:          done.RunID,
+		MessageID:      done.MessageID,
+		Model:          done.Model,
+		Text:           done.Text,
+		Sequence:       done.Sequence,
+	}); err != nil {
+		h.logStreamWriteFailure("failed to finish ai chat resume stream", r, err)
 	}
 }
 
@@ -323,6 +487,33 @@ func (h *Handler) decodeConversationID(w http.ResponseWriter, r *http.Request) (
 	return int32(parsed), true
 }
 
+func (h *Handler) decodeResumeStreamQuery(w http.ResponseWriter, r *http.Request) (int32, int32, bool) {
+	rawRunID := strings.TrimSpace(r.URL.Query().Get("runId"))
+	if rawRunID == "" {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "runId is required", nil)
+		return 0, 0, false
+	}
+
+	parsedRunID, err := strconv.ParseInt(rawRunID, 10, 32)
+	if err != nil || parsedRunID <= 0 {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "runId must be a positive integer", err)
+		return 0, 0, false
+	}
+
+	rawAfterSequence := strings.TrimSpace(r.URL.Query().Get("afterSequence"))
+	if rawAfterSequence == "" {
+		return int32(parsedRunID), 0, true
+	}
+
+	parsedAfterSequence, err := strconv.ParseInt(rawAfterSequence, 10, 32)
+	if err != nil || parsedAfterSequence < 0 {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "afterSequence must be a non-negative integer", err)
+		return 0, 0, false
+	}
+
+	return int32(parsedRunID), int32(parsedAfterSequence), true
+}
+
 func (h *Handler) startSSE(w http.ResponseWriter) (*sseWriter, error) {
 	sse := newSSEWriter(w)
 	sse.prepareHeaders()
@@ -345,6 +536,8 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat feature is not enabled for this user", nil)
 	case errors.Is(err, ErrRuntimeUnavailable):
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat runtime is not configured", nil)
+	case errors.Is(err, ErrRecoveryUnavailable):
+		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat recovery is not configured", nil)
 	case errors.Is(err, ErrConversationBusy):
 		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat conversation already has an active run", nil)
 	case errors.Is(err, ErrGenerationTimeout):

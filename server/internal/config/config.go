@@ -17,41 +17,47 @@ type Config struct {
 	ProjectID   string `validate:"required"`
 
 	// Optional fields with defaults
-	Port            int    `validate:"omitempty,min=1,max=65535"`
-	LogLevel        string `validate:"omitempty,oneof=debug info warn error"`
-	Environment     string `validate:"omitempty,oneof=development staging production"`
-	RateLimitRPM    int    `validate:"omitempty,min=1"`
-	AllowedOrigins  string `validate:"omitempty"`
+	Port           int    `validate:"omitempty,min=1,max=65535"`
+	LogLevel       string `validate:"omitempty,oneof=debug info warn error"`
+	Environment    string `validate:"omitempty,oneof=development staging production"`
+	RateLimitRPM   int    `validate:"omitempty,min=1"`
+	AllowedOrigins string `validate:"omitempty"`
 
 	// Database connection pool settings (optional)
-	DBMaxConns         int32  `validate:"omitempty,min=1"`
-	DBMinConns         int32  `validate:"omitempty,min=0"`
-	DBMaxConnIdle      string `validate:"omitempty"`
-	DBMaxConnLife      string `validate:"omitempty"`
-	DBHealthCheck      string `validate:"omitempty"`
+	DBMaxConns    int32  `validate:"omitempty,min=1"`
+	DBMinConns    int32  `validate:"omitempty,min=0"`
+	DBMaxConnIdle string `validate:"omitempty"`
+	DBMaxConnLife string `validate:"omitempty"`
+	DBHealthCheck string `validate:"omitempty"`
 
 	// Metrics basic auth (optional)
 	MetricsUsername string `validate:"omitempty"`
 	MetricsPassword string `validate:"omitempty"`
+
+	// Optional AI chat recovery wiring
+	InngestEventKey   string `validate:"omitempty"`
+	InngestSigningKey string `validate:"omitempty"`
 }
 
 // Load reads configuration from environment variables and validates it
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-		ProjectID:      os.Getenv("PROJECT_ID"),
-		Port:           getEnvInt("PORT", 8080),
-		LogLevel:       getEnvString("LOG_LEVEL", "info"),
-		Environment:    getEnvString("ENVIRONMENT", "development"),
-		RateLimitRPM:   getEnvInt("RATE_LIMIT_RPM", 100),
-		AllowedOrigins: os.Getenv("ALLOWED_ORIGINS"),
-		DBMaxConns:     int32(getEnvInt("DB_MAX_CONNS", 15)),
-		DBMinConns:     int32(getEnvInt("DB_MIN_CONNS", 2)),
-		DBMaxConnIdle:  getEnvString("DB_MAX_CONN_IDLE", "30s"),
-		DBMaxConnLife:  getEnvString("DB_MAX_CONN_LIFE", "30m"),
-		DBHealthCheck:  getEnvString("DB_HEALTHCHECK", "30s"),
-		MetricsUsername: os.Getenv("METRICS_USERNAME"),
-		MetricsPassword: os.Getenv("METRICS_PASSWORD"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		ProjectID:         os.Getenv("PROJECT_ID"),
+		Port:              getEnvInt("PORT", 8080),
+		LogLevel:          getEnvString("LOG_LEVEL", "info"),
+		Environment:       getEnvString("ENVIRONMENT", "development"),
+		RateLimitRPM:      getEnvInt("RATE_LIMIT_RPM", 100),
+		AllowedOrigins:    os.Getenv("ALLOWED_ORIGINS"),
+		DBMaxConns:        int32(getEnvInt("DB_MAX_CONNS", 15)),
+		DBMinConns:        int32(getEnvInt("DB_MIN_CONNS", 2)),
+		DBMaxConnIdle:     getEnvString("DB_MAX_CONN_IDLE", "30s"),
+		DBMaxConnLife:     getEnvString("DB_MAX_CONN_LIFE", "30m"),
+		DBHealthCheck:     getEnvString("DB_HEALTHCHECK", "30s"),
+		MetricsUsername:   os.Getenv("METRICS_USERNAME"),
+		MetricsPassword:   os.Getenv("METRICS_PASSWORD"),
+		InngestEventKey:   os.Getenv("INNGEST_EVENT_KEY"),
+		InngestSigningKey: os.Getenv("INNGEST_SIGNING_KEY"),
 	}
 
 	// Validate configuration
@@ -61,6 +67,11 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *Config) AIChatRecoveryConfigured() bool {
+	return strings.TrimSpace(c.InngestEventKey) != "" &&
+		strings.TrimSpace(c.InngestSigningKey) != ""
 }
 
 // GetAllowedOrigins parses the comma-separated ALLOWED_ORIGINS into a string slice

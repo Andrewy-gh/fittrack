@@ -14,6 +14,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -62,6 +63,11 @@ func (m *mockChatService) EnsureAllowed(ctx context.Context) error {
 	return args.Error(0)
 }
 
+func (m *mockChatService) CurrentUserHasFeatureAccess(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *mockChatService) StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
 	args := m.Called(ctx, prompt, onChunk)
 	if args.Error(1) == nil {
@@ -84,17 +90,39 @@ func (m *mockChatService) GetConversation(ctx context.Context, conversationID in
 	return detail, args.Error(1)
 }
 
+func (m *mockChatService) RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error) {
+	args := m.Called(ctx, conversationID, reason)
+	resp, _ := args.Get(0).(*RecoverMessageResponse)
+	return resp, args.Error(1)
+}
+
 func (m *mockChatService) PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error) {
 	args := m.Called(ctx, conversationID, prompt, requestID)
 	prepared, _ := args.Get(0).(*PreparedMessageStream)
 	return prepared, args.Error(1)
 }
 
-func (m *mockChatService) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error) {
+func (m *mockChatService) PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error) {
+	args := m.Called(ctx, conversationID, runID, afterSequence)
+	prepared, _ := args.Get(0).(*PreparedResumeStream)
+	return prepared, args.Error(1)
+}
+
+func (m *mockChatService) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error) (*StreamDone, error) {
 	args := m.Called(ctx, prepared, onChunk)
 	if args.Error(1) == nil {
-		_ = onChunk("hello ")
-		_ = onChunk("world")
+		_ = onChunk(StreamChunk{Delta: "hello ", Sequence: 1})
+		_ = onChunk(StreamChunk{Delta: "world", Sequence: 2})
+	}
+	done, _ := args.Get(0).(*StreamDone)
+	return done, args.Error(1)
+}
+
+func (m *mockChatService) ResumeMessageStream(ctx context.Context, prepared *PreparedResumeStream, onChunk func(StreamChunk) error) (*StreamDone, error) {
+	args := m.Called(ctx, prepared, onChunk)
+	if args.Error(1) == nil {
+		_ = onChunk(StreamChunk{Delta: "replayed ", Sequence: 3})
+		_ = onChunk(StreamChunk{Delta: "world", Sequence: 4})
 	}
 	done, _ := args.Get(0).(*StreamDone)
 	return done, args.Error(1)
@@ -338,6 +366,72 @@ func TestHandlerGetConversation(t *testing.T) {
 	})
 }
 
+func TestHandlerRecordTelemetry(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("accepts a valid stream telemetry event", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		aiChatClientOutcomesTotal.Reset()
+		service.On("CurrentUserHasFeatureAccess", mock.Anything).Return(true, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(`{"category":"stream","outcome":"transport_ended_pre_terminal","stage":"pre_start"}`))
+		rr := httptest.NewRecorder()
+
+		handler.RecordTelemetry(rr, req)
+
+		require.Equal(t, http.StatusAccepted, rr.Code)
+		assert.Equal(t, float64(1), testutil.ToFloat64(aiChatClientOutcomesTotal.WithLabelValues(
+			telemetryCategoryStream,
+			telemetryOutcomeTransportEndedPreTerminal,
+			telemetryStreamStagePreStart,
+			telemetryCohortBeta,
+		)))
+		service.AssertExpectations(t)
+	})
+
+	t.Run("normalizes padded telemetry labels before recording", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		aiChatClientOutcomesTotal.Reset()
+		service.On("CurrentUserHasFeatureAccess", mock.Anything).Return(true, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(`{"category":" stream ","outcome":" transport_ended_pre_terminal ","stage":" pre_start "}`))
+		rr := httptest.NewRecorder()
+
+		handler.RecordTelemetry(rr, req)
+
+		require.Equal(t, http.StatusAccepted, rr.Code)
+		assert.Equal(t, float64(1), testutil.ToFloat64(aiChatClientOutcomesTotal.WithLabelValues(
+			telemetryCategoryStream,
+			telemetryOutcomeTransportEndedPreTerminal,
+			telemetryStreamStagePreStart,
+			telemetryCohortBeta,
+		)))
+		assert.Equal(t, float64(0), testutil.ToFloat64(aiChatClientOutcomesTotal.WithLabelValues(
+			" stream ",
+			" transport_ended_pre_terminal ",
+			" pre_start ",
+			telemetryCohortBeta,
+		)))
+		service.AssertExpectations(t)
+	})
+
+	t.Run("rejects invalid telemetry outcomes", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(`{"category":"stream","outcome":"nope","stage":"pre_start"}`))
+		rr := httptest.NewRecorder()
+
+		handler.RecordTelemetry(rr, req)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Contains(t, rr.Body.String(), "invalid ai chat telemetry event")
+		service.AssertNotCalled(t, "CurrentUserHasFeatureAccess", mock.Anything)
+	})
+}
+
 func TestHandlerStreamMessage(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
@@ -416,7 +510,7 @@ func TestHandlerStreamMessage(t *testing.T) {
 		service.AssertExpectations(t)
 	})
 
-	t.Run("fails prepared run when start event cannot be written", func(t *testing.T) {
+	t.Run("aborts prepared run when start event write disconnects", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
@@ -432,6 +526,91 @@ func TestHandlerStreamMessage(t *testing.T) {
 
 		service.AssertNotCalled(t, "StreamMessage", mock.Anything, mock.Anything, mock.Anything)
 		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerRecoverMessage(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("queues recovery for an active run", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("RequestMessageRecovery", mock.Anything, int32(41), recoverReasonStreamReconnect).Return(&RecoverMessageResponse{
+			ConversationID: 41,
+			RunID:          51,
+			Status:         recoverStatusQueued,
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/recover", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.RecoverMessage(rr, req)
+
+		require.Equal(t, http.StatusAccepted, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"conversation_id":41`)
+		assert.Contains(t, rr.Body.String(), `"run_id":51`)
+		assert.Contains(t, rr.Body.String(), `"status":"queued"`)
+		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerResumeMessageStream(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("writes replay and done events", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		prepared := &PreparedResumeStream{
+			Conversation:     preparedStreamFixture().Conversation,
+			AssistantMessage: preparedStreamFixture().AssistantMessage,
+			Run:              preparedStreamFixture().Run,
+			AfterSequence:    2,
+			LastSequence:     2,
+		}
+		service.On("PrepareResumeMessageStream", mock.Anything, int32(41), int32(51), int32(2)).Return(prepared, nil).Once()
+		service.On("ResumeMessageStream", mock.Anything, prepared, mock.Anything).Return(&StreamDone{
+			ConversationID: 41,
+			RunID:          51,
+			MessageID:      61,
+			Model:          defaultModelName,
+			Text:           "replayed world",
+			Sequence:       4,
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?runId=51&afterSequence=2", nil)
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-456"))
+		req.SetPathValue("id", "41")
+		rr := newStreamResponseRecorder()
+
+		handler.ResumeMessageStream(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		body := rr.Body.String()
+		assert.Contains(t, body, "event: start")
+		assert.Contains(t, body, `"sequence":2`)
+		assert.Contains(t, body, "event: delta")
+		assert.Contains(t, body, `"delta":"replayed "`)
+		assert.Contains(t, body, `"sequence":3`)
+		assert.Contains(t, body, "event: done")
+		assert.Contains(t, body, `"text":"replayed world"`)
+		assert.Contains(t, body, `"sequence":4`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("returns validation errors before opening the stream", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?afterSequence=2", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.ResumeMessageStream(rr, req)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Contains(t, rr.Body.String(), "runId is required")
+		service.AssertNotCalled(t, "PrepareResumeMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 

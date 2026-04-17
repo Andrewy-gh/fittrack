@@ -91,7 +91,6 @@ func TestConfiguredAPIKeyEnvVar(t *testing.T) {
 
 func TestLoadLocalEnvRespectsPriorityAndSetenv(t *testing.T) {
 	dir := t.TempDir()
-	writeTestFile(t, filepath.Join(dir, ".env.local"), "GEMINI_MODEL=local-model\n")
 	writeTestFile(t, filepath.Join(dir, ".env"), "GOOGLE_API_KEY=from-dotenv\nGEMINI_MODEL=env-model\n")
 	writeTestFile(t, filepath.Join(dir, "setenv.sh"), "export GEMINI_API_KEY=from-setenv\nexport GEMINI_MODEL=setenv-model\n")
 
@@ -120,8 +119,8 @@ func TestLoadLocalEnvRespectsPriorityAndSetenv(t *testing.T) {
 	if got := os.Getenv(googleAPIKeyEnvVar); got != "from-dotenv" {
 		t.Fatalf("expected %s from .env, got %q", googleAPIKeyEnvVar, got)
 	}
-	if got := os.Getenv("GEMINI_MODEL"); got != "local-model" {
-		t.Fatalf("expected GEMINI_MODEL from .env.local, got %q", got)
+	if got := os.Getenv("GEMINI_MODEL"); got != "env-model" {
+		t.Fatalf("expected GEMINI_MODEL from .env, got %q", got)
 	}
 }
 

@@ -3,6 +3,8 @@ package aichat
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
@@ -111,6 +113,17 @@ func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 	}
 }
 
+func TestActiveFeaturesToolNameIsGeminiCompatible(t *testing.T) {
+	validToolNamePattern := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]{0,63}$`)
+
+	if !validToolNamePattern.MatchString(activeFeaturesToolName) {
+		t.Fatalf("activeFeaturesToolName = %q, want Gemini-compatible tool name", activeFeaturesToolName)
+	}
+	if strings.Contains(activeFeaturesToolName, "/") {
+		t.Fatalf("activeFeaturesToolName = %q, slash is not allowed in Gemini tool names", activeFeaturesToolName)
+	}
+}
+
 func TestToolCallGuardCachesFeatureSnapshot(t *testing.T) {
 	featureAccess := &countingFeatureAccessReader{
 		grants: []featureaccess.FeatureAccessGrant{
@@ -159,6 +172,18 @@ func TestToolCallGuardCachesErrors(t *testing.T) {
 	}
 	if featureAccess.calls != 1 {
 		t.Fatalf("feature access calls = %d, want 1", featureAccess.calls)
+	}
+}
+
+func TestPromptsReferenceActiveFeaturesToolName(t *testing.T) {
+	structuredPrompt := buildStructuredPrompt("test prompt")
+	chatPrompt := buildChatSystemPrompt()
+
+	if !strings.Contains(structuredPrompt, activeFeaturesToolName) {
+		t.Fatalf("buildStructuredPrompt() = %q, want tool name %q", structuredPrompt, activeFeaturesToolName)
+	}
+	if !strings.Contains(chatPrompt, activeFeaturesToolName) {
+		t.Fatalf("buildChatSystemPrompt() = %q, want tool name %q", chatPrompt, activeFeaturesToolName)
 	}
 }
 

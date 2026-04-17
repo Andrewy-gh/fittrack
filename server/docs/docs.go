@@ -24,6 +24,60 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/ai/chat/telemetry": {
+            "post": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Records authenticated client-observed AI chat outcomes for observability and rollout gating.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-chat"
+                ],
+                "summary": "Record AI chat telemetry",
+                "parameters": [
+                    {
+                        "description": "Telemetry event",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/aichat.ClientTelemetryEvent"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/ai/chat/validate": {
             "post": {
                 "security": [
@@ -262,6 +316,76 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/conversations/{id}/messages/recover": {
+            "post": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Queues recovery for an active streaming AI chat run so persisted updates can continue after a disconnect.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-chat"
+                ],
+                "summary": "Recover AI chat message stream",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/aichat.RecoverMessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/response.Error"
                         }
@@ -1325,6 +1449,20 @@ const docTemplate = `{
                 }
             }
         },
+        "aichat.ClientTelemetryEvent": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "outcome": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                }
+            }
+        },
         "aichat.Conversation": {
             "type": "object",
             "properties": {
@@ -1356,6 +1494,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/aichat.ChatMessage"
                     }
+                }
+            }
+        },
+        "aichat.RecoverMessageResponse": {
+            "type": "object",
+            "properties": {
+                "conversation_id": {
+                    "type": "integer"
+                },
+                "run_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },

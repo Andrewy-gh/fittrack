@@ -39,7 +39,8 @@ If you prefer to run steps individually:
 
 1. Load environment variables:
 ```bash
-source ./setenv.sh
+source ./.setenv.sh
+# or: source ./setenv.sh
 ```
 
 2. Start database:
@@ -71,7 +72,7 @@ Expected env var: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 
 Optional env var: `GEMINI_MODEL` (defaults to `googleai/gemini-2.5-flash`)
 
-The command respects existing shell env first, then loads `server/.env.local`, `server/.env`, and `server/setenv.sh` (or `server/.setenv.sh`) if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
+The command respects existing shell env first, then loads `server/.env` and `server/setenv.sh` (or `server/.setenv.sh`) if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
 
 ### AI Chat Runtime
 
@@ -83,10 +84,33 @@ The live API chat runtime uses the same model default as the smoke test:
 
 For local development, keep using the existing server env workflow:
 
-1. Put values in your shell, `server/setenv.sh`, `server/.setenv.sh`, `server/.env.local`, or `server/.env`
-2. Source `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
+1. Put values in your shell, `server/.env`, `server/.setenv.sh`, or `server/setenv.sh`
+2. Source `.setenv.sh` or `setenv.sh` (or otherwise export env) before `go run ./cmd/api` or `make dev`
 
 The API server itself reads process env. It does not introduce a chat-only env file loader.
+
+### AI Chat Recovery In Dev
+
+Background AI chat recovery uses Inngest. In local development, recovery stays disabled until both `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are set.
+
+To run recovery locally:
+
+1. Export the Inngest env vars in `setenv.sh` or your shell.
+2. Set `INNGEST_DEV=1` to use Inngest's default local dev server address (`http://127.0.0.1:8288`).
+   You can also set `INNGEST_DEV` to an explicit URL if your dev server is running elsewhere.
+3. Start the Inngest dev server in another terminal:
+```bash
+inngest dev
+```
+4. Start the API:
+```bash
+make dev
+```
+
+Notes:
+
+- If `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are not both set, `POST /api/ai/conversations/{id}/messages/recover` returns `503`.
+- `GET /inngest` should respond once recovery is configured and the handler is mounted.
 
 ### Required vs Optional Variables
 
@@ -115,6 +139,8 @@ Phase 1 adds persisted chat endpoints under `/api/ai/*`:
 - `POST /api/ai/conversations`
 - `GET /api/ai/conversations/{id}`
 - `POST /api/ai/conversations/{id}/messages/stream`
+- `POST /api/ai/conversations/{id}/messages/recover`
+- `POST /api/ai/chat/telemetry`
 
 The stream endpoint is authenticated fetch-based SSE:
 
@@ -124,6 +150,8 @@ The stream endpoint is authenticated fetch-based SSE:
 - streaming assistant text is snapshotted into app-owned storage during long runs so a dropped client can reload persisted partial progress
 - the client recovery path is still storage-backed inspection, not live SSE replay; interrupted sessions poll the persisted conversation until the run reaches a terminal state
 - stale `streaming` runs older than the stream timeout grace window are auto-failed before a new send starts, which prevents a permanently blocked conversation after an interrupted server-side run
+- `POST /api/ai/conversations/{id}/messages/recover` returns `503` until background recovery is configured
+- interrupted runs can enqueue background recovery through Inngest when both `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are configured
 
 Proxy note:
 
@@ -148,7 +176,7 @@ make DB_READY_TIMEOUT=60 dev
 **Database connection issues:**
 ```bash
 # Check database logs
-docker compose logs db
+docker compose logs postgres
 
 # Check database health
 docker compose ps
@@ -160,14 +188,27 @@ go install github.com/pressly/goose/v3/cmd/goose@latest
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-**Postgres auth failures after changing DB_USER/DB_PASSWORD:**
-```bash
-# reset local persisted postgres data
+**Postgres auth failures after changing DB_USER/DB_PASSWORD or switching branches:**
+
+This repo bind-mounts PostgreSQL data into `server/_db-data`. If that folder was initialized with different `DB_USER`, `DB_PASSWORD`, or `DB_NAME` values, Postgres may still start but `make dev` and `goose` will fail authentication.
+
+PowerShell:
+```powershell
 cd server
 docker compose down
-sudo rm -rf _db-data
+Remove-Item -Recurse -Force _db-data
+New-Item -ItemType Directory _db-data | Out-Null
+```
+
+Bash:
+```bash
+cd server
+docker compose down
+rm -rf _db-data
 mkdir -p _db-data
 ```
+
+After that, rerun `make dev` so Postgres initializes with the values from `setenv.sh` or `.setenv.sh`.
 
 **Missing air:**
 ```bash

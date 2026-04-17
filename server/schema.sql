@@ -93,6 +93,17 @@ CREATE TABLE ai_chat_run (
     CONSTRAINT ai_chat_run_assistant_message_unique UNIQUE (assistant_message_id)
 );
 
+CREATE TABLE ai_chat_stream_chunk (
+    run_id INTEGER NOT NULL REFERENCES ai_chat_run(id) ON DELETE CASCADE,
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    sequence INTEGER NOT NULL,
+    delta_text TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (run_id, sequence),
+    CONSTRAINT ai_chat_stream_chunk_sequence_positive CHECK (sequence > 0),
+    CONSTRAINT ai_chat_stream_chunk_delta_not_empty CHECK (btrim(delta_text) <> '')
+);
+
 -- Workouts table
 CREATE TABLE workout (
     id SERIAL PRIMARY KEY,
@@ -150,3 +161,4 @@ CREATE INDEX idx_ai_chat_message_conversation ON ai_chat_message(conversation_id
 CREATE INDEX idx_ai_chat_message_user_conversation ON ai_chat_message(user_id, conversation_id, id ASC);
 CREATE INDEX idx_ai_chat_run_conversation_created ON ai_chat_run(conversation_id, created_at DESC, id DESC);
 CREATE UNIQUE INDEX idx_ai_chat_run_active_conversation ON ai_chat_run(conversation_id) WHERE status = 'streaming';
+CREATE INDEX idx_ai_chat_stream_chunk_user_run_sequence ON ai_chat_stream_chunk(user_id, run_id, sequence ASC);
