@@ -233,6 +233,47 @@ func (q *Queries) CreateAIChatRun(ctx context.Context, arg CreateAIChatRunParams
 	return i, err
 }
 
+const createAIChatStreamChunk = `-- name: CreateAIChatStreamChunk :one
+INSERT INTO ai_chat_stream_chunk (
+    run_id,
+    user_id,
+    sequence,
+    delta_text
+)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at
+`
+
+type CreateAIChatStreamChunkParams struct {
+	RunID     int32  `json:"run_id"`
+	UserID    string `json:"user_id"`
+	Sequence  int32  `json:"sequence"`
+	DeltaText string `json:"delta_text"`
+}
+
+func (q *Queries) CreateAIChatStreamChunk(ctx context.Context, arg CreateAIChatStreamChunkParams) (AiChatStreamChunk, error) {
+	row := q.db.QueryRow(ctx, createAIChatStreamChunk,
+		arg.RunID,
+		arg.UserID,
+		arg.Sequence,
+		arg.DeltaText,
+	)
+	var i AiChatStreamChunk
+	err := row.Scan(
+		&i.RunID,
+		&i.UserID,
+		&i.Sequence,
+		&i.DeltaText,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createSet = `-- name: CreateSet :one
 INSERT INTO "set" (exercise_id, workout_id, weight, reps, set_type, user_id, exercise_order, set_order)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -1227,6 +1268,25 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 	return items, nil
 }
 
+const getLatestAIChatStreamChunkSequence = `-- name: GetLatestAIChatStreamChunkSequence :one
+SELECT COALESCE(MAX(sequence), 0)::INTEGER
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2
+`
+
+type GetLatestAIChatStreamChunkSequenceParams struct {
+	RunID  int32  `json:"run_id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetLatestAIChatStreamChunkSequence(ctx context.Context, arg GetLatestAIChatStreamChunkSequenceParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getLatestAIChatStreamChunkSequence, arg.RunID, arg.UserID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
 INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
@@ -1593,6 +1653,52 @@ func (q *Queries) ListAIChatMessagesByConversation(ctx context.Context, arg List
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAIChatStreamChunksAfter = `-- name: ListAIChatStreamChunksAfter :many
+SELECT
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2
+  AND sequence > $3
+ORDER BY sequence ASC
+`
+
+type ListAIChatStreamChunksAfterParams struct {
+	RunID    int32  `json:"run_id"`
+	UserID   string `json:"user_id"`
+	Sequence int32  `json:"sequence"`
+}
+
+func (q *Queries) ListAIChatStreamChunksAfter(ctx context.Context, arg ListAIChatStreamChunksAfterParams) ([]AiChatStreamChunk, error) {
+	rows, err := q.db.Query(ctx, listAIChatStreamChunksAfter, arg.RunID, arg.UserID, arg.Sequence)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AiChatStreamChunk
+	for rows.Next() {
+		var i AiChatStreamChunk
+		if err := rows.Scan(
+			&i.RunID,
+			&i.UserID,
+			&i.Sequence,
+			&i.DeltaText,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

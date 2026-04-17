@@ -14,6 +14,7 @@ import {
   createAIChatConversation,
   pollAIChatConversationUntilSettled,
   reportAIChatTelemetry,
+  resumeAIChatMessageStream,
   requestAIChatMessageRecovery,
   streamAIChatMessage,
 } from "./ai-chat";
@@ -84,6 +85,55 @@ describe("ai chat api wrapper", () => {
     expect(seen).toEqual(["start", "hello ", "done"]);
     expect(result.endedWithError).toBe(false);
     expect(result.doneEvent?.text).toBe("hello world");
+  });
+
+  it("resumes a chat stream after a sequence cursor", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            [
+              "event: start",
+              'data: {"type":"start","conversation_id":41,"run_id":51,"message_id":61,"sequence":3}',
+              "",
+              "event: delta",
+              'data: {"type":"delta","delta":"world","sequence":4}',
+              "",
+              "event: done",
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"text":"hello world","sequence":4}',
+              "",
+              "",
+            ].join("\n"),
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+        },
+      }),
+    );
+
+    const seen: Array<string | number> = [];
+    const result = await resumeAIChatMessageStream(41, 51, 3, {
+      onStart: (event) => seen.push(event.sequence ?? -1),
+      onDelta: (event) => seen.push(event.sequence ?? -1),
+      onDone: () => seen.push("done"),
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/ai/conversations/41/messages/stream/resume?runId=51&afterSequence=3",
+      expect.objectContaining({
+        method: "GET",
+      }),
+    );
+    expect(seen).toEqual([3, 4, "done"]);
+    expect(result.doneEvent?.sequence).toBe(4);
   });
 
   it("suppresses duplicate SSE chunks by event id", async () => {

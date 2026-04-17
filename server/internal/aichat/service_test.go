@@ -85,10 +85,27 @@ func (m *mockRepository) GetActiveRunForConversation(ctx context.Context, conver
 	return run, args.Error(1)
 }
 
+func (m *mockRepository) GetLatestStreamSequence(ctx context.Context, runID int32, userID string) (int32, error) {
+	args := m.Called(ctx, runID, userID)
+	return args.Get(0).(int32), args.Error(1)
+}
+
 func (m *mockRepository) LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error) {
 	args := m.Called(ctx, runID, userID)
 	prepared, _ := args.Get(0).(*PreparedMessageStream)
 	return prepared, args.Error(1)
+}
+
+func (m *mockRepository) LoadPreparedRunForResume(ctx context.Context, conversationID int32, runID int32, userID string, afterSequence int32) (*PreparedResumeStream, error) {
+	args := m.Called(ctx, conversationID, runID, userID, afterSequence)
+	prepared, _ := args.Get(0).(*PreparedResumeStream)
+	return prepared, args.Error(1)
+}
+
+func (m *mockRepository) ListStreamChunksAfter(ctx context.Context, runID int32, userID string, afterSequence int32) ([]StreamChunk, error) {
+	args := m.Called(ctx, runID, userID, afterSequence)
+	chunks, _ := args.Get(0).([]StreamChunk)
+	return chunks, args.Error(1)
 }
 
 func (m *mockRepository) PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error) {
@@ -97,9 +114,9 @@ func (m *mockRepository) PrepareMessageStream(ctx context.Context, conversationI
 	return prepared, args.Error(1)
 }
 
-func (m *mockRepository) UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
-	args := m.Called(ctx, prepared, partialText, updatedAt)
-	return args.Error(0)
+func (m *mockRepository) AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error) {
+	args := m.Called(ctx, prepared, delta, partialText, updatedAt)
+	return args.Get(0).(int32), args.Error(1)
 }
 
 func (m *mockRepository) MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
@@ -293,6 +310,7 @@ func TestServiceGetConversation_AllowsReadWithoutRuntime(t *testing.T) {
 			CompletedAt:    &now,
 		},
 	}, nil).Once()
+	repo.On("GetActiveRunForConversation", mock.Anything, int32(41), "user-123").Return((*ChatRun)(nil), pgx.ErrNoRows).Once()
 
 	detail, err := service.GetConversation(ctx, 41)
 
@@ -301,6 +319,55 @@ func TestServiceGetConversation_AllowsReadWithoutRuntime(t *testing.T) {
 	require.NotNil(t, detail.Conversation)
 	assert.Len(t, detail.Messages, 1)
 	runtime.AssertNotCalled(t, "Available")
+	featureAccess.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceGetConversation_IncludesActiveRunSequence(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	ctx := user.WithContext(context.Background(), "user-123")
+	now := time.Date(2026, 3, 26, 17, 26, 0, 0, time.UTC)
+
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	repo.On("GetConversation", mock.Anything, int32(41), "user-123").Return(&Conversation{
+		ID:        41,
+		UserID:    "user-123",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil).Once()
+	repo.On("ListMessages", mock.Anything, int32(41), "user-123").Return([]ChatMessage{
+		{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Role:           roleAssistant,
+			Content:        "partial",
+			Status:         statusStreaming,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		},
+	}, nil).Once()
+	repo.On("GetActiveRunForConversation", mock.Anything, int32(41), "user-123").Return(&ChatRun{
+		ID:                 51,
+		ConversationID:     41,
+		UserID:             "user-123",
+		AssistantMessageID: 61,
+		Status:             statusStreaming,
+	}, nil).Once()
+	repo.On("GetLatestStreamSequence", mock.Anything, int32(51), "user-123").Return(int32(4), nil).Once()
+
+	detail, err := service.GetConversation(ctx, 41)
+
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	require.NotNil(t, detail.ActiveRun)
+	assert.Equal(t, int32(51), detail.ActiveRun.ID)
+	assert.Equal(t, int32(61), detail.ActiveRun.AssistantMessageID)
+	assert.Equal(t, int32(4), detail.ActiveRun.LatestSequence)
 	featureAccess.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }
@@ -517,7 +584,8 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		Model: defaultModelName,
 		Text:  "hello world",
 	}, nil).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
 	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
@@ -539,7 +607,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		CompletedAt:        &now,
 	}, nil).Once()
 
-	done, err := service.StreamMessage(context.Background(), prepared, func(string) error { return nil })
+	done, err := service.StreamMessage(context.Background(), prepared, func(StreamChunk) error { return nil })
 
 	require.NoError(t, err)
 	require.NotNil(t, done)
@@ -581,10 +649,10 @@ func TestServiceStreamMessage_LeavesRunStreamingOnDisconnect(t *testing.T) {
 		err := onChunk("partial ")
 		require.ErrorIs(t, err, ErrStreamDisconnected)
 	}).Return((*StreamDone)(nil), ErrStreamDisconnected).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "partial ", "partial", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("MarkRunAwaitingRecovery", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
 
-	done, err := service.StreamMessage(context.Background(), prepared, func(string) error {
+	done, err := service.StreamMessage(context.Background(), prepared, func(StreamChunk) error {
 		return errors.New("broken pipe")
 	})
 
@@ -628,10 +696,10 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 		onChunk := args.Get(3).(func(string) error)
 		_ = onChunk("partial ")
 	}).Return((*StreamDone)(nil), expectedErr).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "partial ", "partial", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("FailRun", mock.Anything, prepared, "partial", expectedErr, mock.AnythingOfType("time.Time")).Return(nil).Once()
 
-	done, err := service.StreamMessage(context.Background(), prepared, func(string) error { return nil })
+	done, err := service.StreamMessage(context.Background(), prepared, func(StreamChunk) error { return nil })
 
 	require.Error(t, err)
 	assert.Nil(t, done)
@@ -688,7 +756,8 @@ func TestServiceRecoverStreamingRun_CompletesActiveRun(t *testing.T) {
 		Model: defaultModelName,
 		Text:  "hello world",
 	}, nil).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
 	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
@@ -770,7 +839,8 @@ func TestServiceRecoverStreamingRun_ReclaimsStaleClaimedRun(t *testing.T) {
 		Model: defaultModelName,
 		Text:  "hello world",
 	}, nil).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
 	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
@@ -843,7 +913,197 @@ func TestServiceRecoverStreamingRun_SkipsFreshClaimedRun(t *testing.T) {
 
 	require.NoError(t, err)
 	repo.AssertNotCalled(t, "ClaimRunRecovery", mock.Anything, mock.Anything)
+	repo.AssertExpectations(t)
 	runtime.AssertExpectations(t)
+}
+
+func TestServiceResumeMessageStream_ReplaysWhileRunActiveAndCompletes(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	now := time.Date(2026, 3, 26, 17, 31, 0, 0, time.UTC)
+	prepared := &PreparedResumeStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Content:        "hello",
+			Status:         statusStreaming,
+		},
+		AfterSequence: 1,
+		LastSequence:  1,
+	}
+	completed := &PreparedResumeStream{
+		Conversation: prepared.Conversation,
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusCompleted,
+			CompletedAt:        &now,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Content:        "hello world",
+			Status:         statusCompleted,
+			CompletedAt:    &now,
+		},
+		AfterSequence: 4,
+		LastSequence:  4,
+	}
+
+	repo.On("ListStreamChunksAfter", mock.Anything, int32(51), "user-123", int32(1)).Return([]StreamChunk{
+		{Delta: " ", Sequence: 2},
+		{Delta: "world", Sequence: 4},
+	}, nil).Once()
+	repo.On("LoadPreparedRunForResume", mock.Anything, int32(41), int32(51), "user-123", int32(4)).Return(completed, nil).Once()
+
+	var seen []StreamChunk
+	done, err := service.ResumeMessageStream(context.Background(), prepared, func(chunk StreamChunk) error {
+		seen = append(seen, chunk)
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, done)
+	assert.Equal(t, []StreamChunk{
+		{Delta: " ", Sequence: 2},
+		{Delta: "world", Sequence: 4},
+	}, seen)
+	assert.Equal(t, "hello world", done.Text)
+	assert.Equal(t, int32(4), done.Sequence)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceResumeMessageStream_EndsWhenRunAwaitsRecovery(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	prepared := &PreparedResumeStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Content:        "partial",
+			Status:         statusStreaming,
+		},
+		AfterSequence: 1,
+		LastSequence:  1,
+	}
+	awaitingRecovery := &PreparedResumeStream{
+		Conversation: prepared.Conversation,
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+			ErrorMessage:       stringPtr(runAwaitingRecoveryMarker),
+		},
+		AssistantMessage: prepared.AssistantMessage,
+		AfterSequence:    1,
+		LastSequence:     1,
+	}
+
+	repo.On("ListStreamChunksAfter", mock.Anything, int32(51), "user-123", int32(1)).Return([]StreamChunk{
+		{Delta: " more", Sequence: 2},
+	}, nil).Once()
+	repo.On("LoadPreparedRunForResume", mock.Anything, int32(41), int32(51), "user-123", int32(2)).Return(awaitingRecovery, nil).Once()
+
+	var seen []StreamChunk
+	done, err := service.ResumeMessageStream(context.Background(), prepared, func(chunk StreamChunk) error {
+		seen = append(seen, chunk)
+		return nil
+	})
+
+	require.ErrorIs(t, err, ErrStreamAwaitingRecovery)
+	assert.Nil(t, done)
+	assert.Equal(t, []StreamChunk{{Delta: " more", Sequence: 2}}, seen)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceResumeMessageStream_EndsWhenClaimedRunTurnsStale(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	now := time.Now().UTC()
+	prepared := &PreparedResumeStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+			ErrorMessage:       stringPtr(runRecoveryClaimedMarker),
+			UpdatedAt:          now,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Content:        "partial",
+			Status:         statusStreaming,
+		},
+		AfterSequence: 1,
+		LastSequence:  1,
+	}
+	staleClaimed := &PreparedResumeStream{
+		Conversation: prepared.Conversation,
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+			ErrorMessage:       stringPtr(runRecoveryClaimedMarker),
+			UpdatedAt:          now.Add(-streamingRunStaleAfter - time.Second),
+		},
+		AssistantMessage: prepared.AssistantMessage,
+		AfterSequence:    1,
+		LastSequence:     1,
+	}
+
+	repo.On("ListStreamChunksAfter", mock.Anything, int32(51), "user-123", int32(1)).Return([]StreamChunk{}, nil).Once()
+	repo.On("LoadPreparedRunForResume", mock.Anything, int32(41), int32(51), "user-123", int32(1)).Return(staleClaimed, nil).Once()
+
+	done, err := service.ResumeMessageStream(context.Background(), prepared, func(StreamChunk) error {
+		return nil
+	})
+
+	require.ErrorIs(t, err, ErrStreamAwaitingRecovery)
+	assert.Nil(t, done)
 	repo.AssertExpectations(t)
 }
 
@@ -882,66 +1142,6 @@ func TestServiceRecoverStreamingRun_IgnoresRunsWithoutRecoveryMarker(t *testing.
 
 	require.NoError(t, err)
 	repo.AssertNotCalled(t, "ClaimRunRecovery", mock.Anything, mock.Anything, mock.Anything)
-	runtime.AssertExpectations(t)
-	repo.AssertExpectations(t)
-}
-
-func TestServiceRecoverStreamingRun_RestoresRecoveryMarkerWhenFailureCannotPersist(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	featureAccess := new(mockFeatureAccessService)
-	runtime := new(mockRuntime)
-	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
-	prepared := &PreparedMessageStream{
-		Conversation: &Conversation{ID: 41, UserID: "user-123"},
-		Run: &ChatRun{
-			ID:                 51,
-			ConversationID:     41,
-			UserID:             "user-123",
-			AssistantMessageID: 61,
-			Model:              defaultModelName,
-			Status:             statusStreaming,
-			ErrorMessage:       stringPtr(runAwaitingRecoveryMarker),
-		},
-		AssistantMessage: &ChatMessage{
-			ID:             61,
-			ConversationID: 41,
-			UserID:         "user-123",
-			Status:         statusStreaming,
-		},
-		Prompt: "new prompt",
-	}
-	expectedErr := errors.New("provider failed")
-	persistErr := errors.New("could not persist failure")
-
-	runtime.On("Available").Return(true).Once()
-	repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
-	repo.On("ClaimRunRecovery", mock.Anything, prepared.Run).Run(func(args mock.Arguments) {
-		run := args.Get(1).(*ChatRun)
-		run.ErrorMessage = stringPtr(runRecoveryClaimedMarker)
-	}).Return(nil).Once()
-	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{}, mock.Anything).
-		Return((*StreamDone)(nil), expectedErr).Once()
-	repo.On("FailRun", mock.Anything, prepared, "", expectedErr, mock.AnythingOfType("time.Time")).Return(persistErr).Once()
-	repo.On("MarkRunAwaitingRecovery", mock.Anything, prepared, "", mock.AnythingOfType("time.Time")).
-		Run(func(args mock.Arguments) {
-			prepared.Run.ErrorMessage = stringPtr(runAwaitingRecoveryMarker)
-		}).
-		Return(nil).
-		Once()
-
-	err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
-		ConversationID: 41,
-		RunID:          51,
-		UserID:         "user-123",
-		Reason:         recoverReasonStreamReconnect,
-	})
-
-	require.Error(t, err)
-	assert.ErrorIs(t, err, expectedErr)
-	assert.Equal(t, statusStreaming, prepared.Run.Status)
-	assert.NotNil(t, prepared.Run.ErrorMessage)
-	assert.Equal(t, runAwaitingRecoveryMarker, *prepared.Run.ErrorMessage)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }
@@ -1043,7 +1243,7 @@ func TestServiceStreamMessage_PersistsCompletionWhenRequestContextCanceled(t *te
 		CompletedAt:        &now,
 	}, nil).Once()
 
-	done, err := service.StreamMessage(ctx, prepared, func(string) error { return nil })
+	done, err := service.StreamMessage(ctx, prepared, func(StreamChunk) error { return nil })
 
 	require.NoError(t, err)
 	require.NotNil(t, done)
@@ -1086,7 +1286,7 @@ func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testi
 		onChunk := args.Get(3).(func(string) error)
 		_ = onChunk("partial ")
 	}).Return((*StreamDone)(nil), expectedErr).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "partial", mock.AnythingOfType("time.Time")).Return(nil).Once()
+	repo.On("AppendStreamChunk", mock.Anything, prepared, "partial ", "partial", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On(
 		"FailRun",
 		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
@@ -1096,42 +1296,13 @@ func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testi
 		mock.AnythingOfType("time.Time"),
 	).Return(nil).Once()
 
-	done, err := service.StreamMessage(ctx, prepared, func(string) error { return nil })
+	done, err := service.StreamMessage(ctx, prepared, func(StreamChunk) error { return nil })
 
 	require.Error(t, err)
 	assert.Nil(t, done)
 	assert.ErrorIs(t, err, expectedErr)
 	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
-	repo.AssertExpectations(t)
-}
-
-func TestStreamProgressSink_ThrottlesPersistence(t *testing.T) {
-	repo := new(mockRepository)
-	prepared := &PreparedMessageStream{
-		Conversation:     &Conversation{ID: 41, UserID: "user-123"},
-		Run:              &ChatRun{ID: 51, UserID: "user-123"},
-		AssistantMessage: &ChatMessage{ID: 61, UserID: "user-123"},
-	}
-	base := time.Date(2026, 3, 26, 18, 0, 0, 0, time.UTC)
-	sink := newStreamProgressSink(context.Background(), repo, prepared)
-	times := []time.Time{
-		base,
-		base.Add(500 * time.Millisecond),
-		base.Add(1500 * time.Millisecond),
-	}
-	sink.now = func() time.Time {
-		next := times[0]
-		times = times[1:]
-		return next
-	}
-
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello", base).Return(nil).Once()
-	repo.On("UpdateStreamingRun", mock.Anything, prepared, "hello world", base.Add(1500*time.Millisecond)).Return(nil).Once()
-
-	require.NoError(t, sink.maybePersist("hello"))
-	require.NoError(t, sink.maybePersist("hello again"))
-	require.NoError(t, sink.maybePersist("hello world"))
 	repo.AssertExpectations(t)
 }
 

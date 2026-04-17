@@ -95,8 +95,9 @@ type ChatRun struct {
 }
 
 type ConversationDetail struct {
-	Conversation *Conversation `json:"conversation"`
-	Messages     []ChatMessage `json:"messages"`
+	Conversation *Conversation        `json:"conversation"`
+	Messages     []ChatMessage        `json:"messages"`
+	ActiveRun    *ConversationRunView `json:"active_run,omitempty"`
 }
 
 type PreparedMessageStream struct {
@@ -106,6 +107,15 @@ type PreparedMessageStream struct {
 	AssistantMessage *ChatMessage
 	Run              *ChatRun
 	Prompt           string
+	LastSequence     int32
+}
+
+type PreparedResumeStream struct {
+	Conversation     *Conversation
+	AssistantMessage *ChatMessage
+	Run              *ChatRun
+	AfterSequence    int32
+	LastSequence     int32
 }
 
 type RunRecoveryRequest struct {
@@ -126,6 +136,19 @@ type StreamDone struct {
 	MessageID      int32  `json:"message_id,omitempty"`
 	Model          string `json:"model"`
 	Text           string `json:"text"`
+	Sequence       int32  `json:"sequence,omitempty"`
+}
+
+type StreamChunk struct {
+	Delta    string
+	Sequence int32
+}
+
+type ConversationRunView struct {
+	ID                 int32  `json:"id"`
+	AssistantMessageID int32  `json:"assistant_message_id"`
+	Status             string `json:"status"`
+	LatestSequence     int32  `json:"latest_sequence"`
 }
 
 type StreamEvent struct {
@@ -138,4 +161,5 @@ type StreamEvent struct {
 	Delta          string `json:"delta,omitempty"`
 	Text           string `json:"text,omitempty"`
 	Message        string `json:"message,omitempty"`
+	Sequence       int32  `json:"sequence,omitempty"`
 }

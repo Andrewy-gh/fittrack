@@ -69,7 +69,7 @@ func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 90 * time.Second,
+		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 }
@@ -202,11 +202,12 @@ func main() {
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
 	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler)
 
-	// Apply middleware in order: SecurityHeaders → CORS → RequestID → Metrics → RateLimit → Authentication
+	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RequestLog → Metrics → Authentication → RateLimit
 	var handler http.Handler = router
 	handler = middleware.RateLimit(logger, int64(cfg.RateLimitRPM))(handler)
 	handler = authenticator.Middleware(handler)
 	handler = middleware.Metrics()(handler)
+	handler = middleware.RequestLog(logger)(handler)
 	handler = middleware.RequestID()(handler)
 	handler = middleware.CORS(cfg.GetAllowedOrigins(), logger)(handler)
 	handler = middleware.SecurityHeaders()(handler)

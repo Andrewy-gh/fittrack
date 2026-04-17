@@ -13,6 +13,7 @@ import {
   createAIChatConversation,
   getAIChatConversation,
   pollAIChatConversationUntilSettled,
+  resumeAIChatMessageStream,
   reportAIChatTelemetry,
   requestAIChatMessageRecovery,
   streamAIChatMessage,
@@ -29,6 +30,14 @@ import {
   terminalStreamStage,
 } from "@/lib/ai-chat-observability";
 import { getErrorMessage, showErrorToast } from "@/lib/errors";
+import {
+  clearResumeCursor,
+  getResumeAfterSequence,
+  saveResumeCursor,
+  updateStreamingMessageWithDelta,
+  updateStreamingMessageWithDone,
+  updateStreamingMessageWithError,
+} from "./-chat-resume";
 
 type ChatSearch = {
   conversationId?: string;
@@ -67,6 +76,7 @@ export function ChatRouteComponent() {
   const pendingAssistantIdRef = useRef<number | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const recoveryAbortRef = useRef<AbortController | null>(null);
+  const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
 
   const recordTelemetry = useCallback((event: AIChatTelemetryEvent) => {
@@ -99,6 +109,9 @@ export function ChatRouteComponent() {
         }
         setConversation(detail.conversation);
         setMessages(detail.messages);
+        if (!detail.active_run) {
+          clearResumeCursor(id);
+        }
         setLoadError(null);
         return { detail, aborted: false, error: undefined };
       } catch (error) {
@@ -128,13 +141,22 @@ export function ChatRouteComponent() {
       recoveryAbortRef.current?.abort();
       const controller = new AbortController();
       recoveryAbortRef.current = controller;
+      let recoveryRequestError: unknown = null;
       let shouldRetryRecovery = false;
 
       const requestRecovery = async () => {
-        const response = await requestAIChatMessageRecovery(id, {
-          signal: controller.signal,
-        });
-        shouldRetryRecovery = response.status === "not_needed";
+        try {
+          const response = await requestAIChatMessageRecovery(id, {
+            signal: controller.signal,
+          });
+          shouldRetryRecovery = response.status === "not_needed";
+        } catch (error) {
+          if (controller.signal.aborted || isAbortError(error)) {
+            throw error;
+          }
+          recoveryRequestError = recoveryRequestError ?? error;
+          shouldRetryRecovery = false;
+        }
       };
 
       const retryRecoveryIfNeeded = async () => {
@@ -163,7 +185,7 @@ export function ChatRouteComponent() {
           return { detail: null, aborted: true, error };
         }
         if (!controller.signal.aborted) {
-          const message = getErrorMessage(error);
+          const message = getErrorMessage(recoveryRequestError ?? error);
           if (!opts?.silent) {
             setLoadError(message);
           }
@@ -171,7 +193,7 @@ export function ChatRouteComponent() {
         return {
           detail: null,
           aborted: false,
-          error,
+          error: recoveryRequestError ?? error,
         };
       } finally {
         if (recoveryAbortRef.current === controller) {
@@ -182,10 +204,116 @@ export function ChatRouteComponent() {
     [],
   );
 
+  const resumeConversation = useCallback(
+    async (
+      detail: AIChatConversationDetail,
+    ): Promise<ConversationRequestResult> => {
+      const activeRun = detail.active_run;
+      if (!activeRun) {
+        return { detail, aborted: false };
+      }
+
+      resumeAbortRef.current?.abort();
+      const controller = new AbortController();
+      resumeAbortRef.current = controller;
+      pendingAssistantIdRef.current = activeRun.assistant_message_id;
+      const afterSequence = getResumeAfterSequence(detail);
+
+      try {
+        const streamResult = await resumeAIChatMessageStream(
+          detail.conversation.id,
+          activeRun.id,
+          afterSequence,
+          {
+            onStart: (event) => {
+              const assistantMessageId =
+                event.message_id ?? activeRun.assistant_message_id;
+              pendingAssistantIdRef.current = assistantMessageId;
+              if (event.sequence !== undefined) {
+                saveResumeCursor(detail.conversation.id, {
+                  runId: activeRun.id,
+                  sequence: event.sequence,
+                  assistantMessageId,
+                });
+              }
+            },
+            onDelta: (event) => {
+              const targetId =
+                pendingAssistantIdRef.current ?? activeRun.assistant_message_id;
+              setMessages((current) =>
+                updateStreamingMessageWithDelta(
+                  current,
+                  targetId,
+                  event.delta ?? "",
+                ),
+              );
+              if (event.sequence !== undefined) {
+                saveResumeCursor(detail.conversation.id, {
+                  runId: activeRun.id,
+                  sequence: event.sequence,
+                  assistantMessageId: targetId,
+                });
+              }
+            },
+            onDone: (event) => {
+              const targetId =
+                pendingAssistantIdRef.current ?? activeRun.assistant_message_id;
+              setMessages((current) =>
+                updateStreamingMessageWithDone(current, targetId, event),
+              );
+              clearResumeCursor(detail.conversation.id);
+            },
+            onErrorEvent: (event) => {
+              const targetId =
+                pendingAssistantIdRef.current ?? activeRun.assistant_message_id;
+              setMessages((current) =>
+                updateStreamingMessageWithError(current, targetId, event),
+              );
+              clearResumeCursor(detail.conversation.id);
+            },
+            signal: controller.signal,
+          },
+        );
+        if (controller.signal.aborted) {
+          return { detail: null, aborted: true };
+        }
+
+        const refreshed = await loadConversation(detail.conversation.id, {
+          silent: true,
+        });
+        if (!streamResult.endedWithError) {
+          return refreshed;
+        }
+
+        return {
+          detail: refreshed.detail,
+          aborted: refreshed.aborted,
+          error:
+            refreshed.error ??
+            new Error(
+              streamResult.doneEvent?.message ?? "AI chat resume failed",
+            ),
+        };
+      } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return { detail: null, aborted: true, error };
+        }
+        return { detail: null, aborted: false, error };
+      } finally {
+        if (resumeAbortRef.current === controller) {
+          resumeAbortRef.current = null;
+        }
+        pendingAssistantIdRef.current = null;
+      }
+    },
+    [loadConversation],
+  );
+
   useEffect(() => {
     if (!conversationId) {
       loadAbortRef.current?.abort();
       recoveryAbortRef.current?.abort();
+      resumeAbortRef.current?.abort();
       streamAbortRef.current?.abort();
       setConversation(null);
       setMessages([]);
@@ -206,6 +334,84 @@ export function ChatRouteComponent() {
           category: "load",
           outcome: classifyLoadOutcome(loadResult.aborted),
         });
+      }
+
+      if (loadResult.detail?.active_run) {
+        const resumeResult = await resumeConversation(loadResult.detail);
+        if (!resumeResult.aborted && resumeResult.detail) {
+          const resumeOutcome = classifyRecoveryOutcome({
+            messages: resumeResult.detail.messages,
+            aborted: false,
+            error: resumeResult.error,
+          });
+          recordTelemetry({
+            category: "recovery",
+            outcome: resumeOutcome,
+          });
+          if (
+            resumeOutcome !== "recovered_completed" &&
+            resumeOutcome !== "recovery_aborted"
+          ) {
+            const resumeError =
+              resumeResult.error ??
+              new Error("Failed to resume AI chat conversation");
+            recordTelemetry({
+              category: "ux",
+              outcome: "failure_toast_shown",
+            });
+            showErrorToast(
+              resumeError,
+              "Failed to recover AI chat conversation",
+            );
+          }
+          return;
+        }
+        if (resumeResult.aborted) {
+          recordTelemetry({
+            category: "recovery",
+            outcome: "recovery_aborted",
+          });
+          return;
+        }
+
+        const recoveryResult = await recoverConversation(conversationId, {
+          silent: true,
+        });
+        const recoveryOutcome = classifyRecoveryOutcome({
+          messages: recoveryResult.detail?.messages,
+          aborted: recoveryResult.aborted,
+          error: recoveryResult.error,
+        });
+        recordTelemetry({
+          category: "recovery",
+          outcome: recoveryOutcome,
+        });
+
+        if (
+          recoveryOutcome !== "recovered_completed" &&
+          recoveryOutcome !== "recovery_aborted"
+        ) {
+          const recoveryError =
+            recoveryResult.error ??
+            new Error("Failed to recover AI chat conversation");
+          recordTelemetry({
+            category: "ux",
+            outcome: "failure_toast_shown",
+          });
+          if (!recoveryResult.detail) {
+            setLoadError(
+              getErrorMessage(
+                recoveryError,
+                "Failed to recover AI chat conversation",
+              ),
+            );
+          }
+          showErrorToast(
+            recoveryError,
+            "Failed to recover AI chat conversation",
+          );
+        }
+        return;
       }
 
       if (
@@ -256,9 +462,16 @@ export function ChatRouteComponent() {
     return () => {
       loadAbortRef.current?.abort();
       recoveryAbortRef.current?.abort();
+      resumeAbortRef.current?.abort();
       streamAbortRef.current?.abort();
     };
-  }, [conversationId, loadConversation, recordTelemetry, recoverConversation]);
+  }, [
+    conversationId,
+    loadConversation,
+    recordTelemetry,
+    recoverConversation,
+    resumeConversation,
+  ]);
 
   if (!user) {
     return (
@@ -337,6 +550,7 @@ export function ChatRouteComponent() {
     const streamController = new AbortController();
     pendingAssistantIdRef.current = tempAssistantId;
     streamAbortRef.current = streamController;
+    clearResumeCursor(activeConversationId);
 
     setMessages((current) => [
       ...current,
@@ -368,61 +582,54 @@ export function ChatRouteComponent() {
         {
           onStart: (event) => {
             streamStarted = true;
-            pendingAssistantIdRef.current = event.message_id ?? tempAssistantId;
+            const assistantMessageId = event.message_id ?? tempAssistantId;
+            pendingAssistantIdRef.current = assistantMessageId;
             setMessages((current) =>
               current.map((message) =>
                 message.id === tempAssistantId
                   ? {
                       ...message,
-                      id: event.message_id ?? message.id,
+                      id: assistantMessageId,
                     }
                   : message,
               ),
             );
+            saveResumeCursor(activeConversationId, {
+              runId: event.run_id ?? 0,
+              sequence: event.sequence ?? 0,
+              assistantMessageId,
+            });
           },
           onDelta: (event) => {
             const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
             setMessages((current) =>
-              current.map((message) =>
-                message.id === targetId
-                  ? {
-                      ...message,
-                      content: `${message.content}${event.delta ?? ""}`,
-                    }
-                  : message,
+              updateStreamingMessageWithDelta(
+                current,
+                targetId,
+                event.delta ?? "",
               ),
             );
+            if (event.sequence !== undefined) {
+              saveResumeCursor(activeConversationId, {
+                runId: event.run_id ?? 0,
+                sequence: event.sequence,
+                assistantMessageId: targetId,
+              });
+            }
           },
           onDone: (event) => {
             const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
             setMessages((current) =>
-              current.map((message) =>
-                message.id === targetId
-                  ? {
-                      ...message,
-                      id: event.message_id ?? message.id,
-                      status: "completed",
-                      content: event.text ?? message.content,
-                      completed_at: new Date().toISOString(),
-                    }
-                  : message,
-              ),
+              updateStreamingMessageWithDone(current, targetId, event),
             );
+            clearResumeCursor(activeConversationId);
           },
           onErrorEvent: (event) => {
             const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
             setMessages((current) =>
-              current.map((message) =>
-                message.id === targetId
-                  ? {
-                      ...message,
-                      id: event.message_id ?? message.id,
-                      status: "failed",
-                      error_message: event.message,
-                    }
-                  : message,
-              ),
+              updateStreamingMessageWithError(current, targetId, event),
             );
+            clearResumeCursor(activeConversationId);
             showErrorToast(
               { message: event.message ?? "AI chat streaming failed" },
               "AI chat streaming failed",

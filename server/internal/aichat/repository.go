@@ -20,9 +20,12 @@ type Repository interface {
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)
 	GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error)
+	GetLatestStreamSequence(ctx context.Context, runID int32, userID string) (int32, error)
 	LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error)
+	LoadPreparedRunForResume(ctx context.Context, conversationID int32, runID int32, userID string, afterSequence int32) (*PreparedResumeStream, error)
+	ListStreamChunksAfter(ctx context.Context, runID int32, userID string, afterSequence int32) ([]StreamChunk, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
-	UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
+	AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error)
 	MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
 	ClaimRunRecovery(ctx context.Context, run *ChatRun) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error)
@@ -135,6 +138,21 @@ func (r *repository) GetActiveRunForConversation(ctx context.Context, conversati
 	return run, nil
 }
 
+func (r *repository) GetLatestStreamSequence(ctx context.Context, runID int32, userID string) (int32, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	sequence, err := r.queries.GetLatestAIChatStreamChunkSequence(ctx, db.GetLatestAIChatStreamChunkSequenceParams{
+		RunID:  runID,
+		UserID: userID,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("get latest ai chat stream sequence: %w", err)
+	}
+
+	return sequence, nil
+}
+
 func (r *repository) LoadPreparedRunForRecovery(ctx context.Context, runID int32, userID string) (*PreparedMessageStream, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -151,6 +169,11 @@ func (r *repository) LoadPreparedRunForRecovery(ctx context.Context, runID int32
 	}
 
 	run, err := mapRun(runRow)
+	if err != nil {
+		return nil, err
+	}
+
+	lastSequence, err := r.GetLatestStreamSequence(ctx, run.ID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +236,87 @@ func (r *repository) LoadPreparedRunForRecovery(ctx context.Context, runID int32
 		AssistantMessage: assistantMessage,
 		Run:              run,
 		Prompt:           userMessage.Content,
+		LastSequence:     lastSequence,
 	}, nil
+}
+
+func (r *repository) LoadPreparedRunForResume(ctx context.Context, conversationID int32, runID int32, userID string, afterSequence int32) (*PreparedResumeStream, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	conversation, err := r.GetConversation(ctx, conversationID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	runRow, err := r.queries.GetAIChatRun(ctx, db.GetAIChatRunParams{
+		ID:     runID,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("get ai chat run for resume: %w", err)
+	}
+
+	run, err := mapRun(runRow)
+	if err != nil {
+		return nil, err
+	}
+	if run.ConversationID != conversationID {
+		return nil, pgx.ErrNoRows
+	}
+
+	assistantMessageRow, err := r.queries.GetAIChatMessage(ctx, db.GetAIChatMessageParams{
+		ID:     run.AssistantMessageID,
+		UserID: userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get ai chat assistant message for resume: %w", err)
+	}
+
+	assistantMessage, err := mapMessage(assistantMessageRow)
+	if err != nil {
+		return nil, err
+	}
+
+	lastSequence, err := r.GetLatestStreamSequence(ctx, run.ID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PreparedResumeStream{
+		Conversation:     conversation,
+		AssistantMessage: assistantMessage,
+		Run:              run,
+		AfterSequence:    afterSequence,
+		LastSequence:     lastSequence,
+	}, nil
+}
+
+func (r *repository) ListStreamChunksAfter(ctx context.Context, runID int32, userID string, afterSequence int32) ([]StreamChunk, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := r.queries.ListAIChatStreamChunksAfter(ctx, db.ListAIChatStreamChunksAfterParams{
+		RunID:    runID,
+		UserID:   userID,
+		Sequence: afterSequence,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list ai chat stream chunks after sequence: %w", err)
+	}
+
+	chunks := make([]StreamChunk, 0, len(rows))
+	for _, row := range rows {
+		chunks = append(chunks, StreamChunk{
+			Delta:    row.DeltaText,
+			Sequence: row.Sequence,
+		})
+	}
+
+	return chunks, nil
 }
 
 func (r *repository) PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error) {
@@ -376,44 +479,56 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 		AssistantMessage: assistantMessage,
 		Run:              run,
 		Prompt:           prompt,
+		LastSequence:     0,
 	}, nil
 }
 
-func (r *repository) UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
+func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("begin ai chat streaming update transaction: %w", err)
+		return 0, fmt.Errorf("begin ai chat streaming update transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	qtx := r.queries.WithTx(tx)
+	nextSequence := prepared.LastSequence + 1
+	if _, err := qtx.CreateAIChatStreamChunk(ctx, db.CreateAIChatStreamChunkParams{
+		RunID:     prepared.Run.ID,
+		UserID:    prepared.Run.UserID,
+		Sequence:  nextSequence,
+		DeltaText: delta,
+	}); err != nil {
+		return 0, fmt.Errorf("create ai chat stream chunk: %w", err)
+	}
+
 	if _, err := qtx.UpdateAIChatMessageStreaming(ctx, db.UpdateAIChatMessageStreamingParams{
 		ID:      prepared.AssistantMessage.ID,
 		UserID:  prepared.AssistantMessage.UserID,
 		Content: partialText,
 	}); err != nil {
-		return fmt.Errorf("update ai chat assistant streaming message: %w", err)
+		return 0, fmt.Errorf("update ai chat assistant streaming message: %w", err)
 	}
 
 	if err := qtx.TouchAIChatRun(ctx, db.TouchAIChatRunParams{
 		ID:     prepared.Run.ID,
 		UserID: prepared.Run.UserID,
 	}); err != nil {
-		return fmt.Errorf("touch ai chat streaming run: %w", err)
+		return 0, fmt.Errorf("touch ai chat streaming run: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit ai chat streaming update transaction: %w", err)
+		return 0, fmt.Errorf("commit ai chat streaming update transaction: %w", err)
 	}
 
 	prepared.AssistantMessage.Content = partialText
 	prepared.AssistantMessage.UpdatedAt = updatedAt.UTC()
 	prepared.Run.UpdatedAt = updatedAt.UTC()
+	prepared.LastSequence = nextSequence
 
-	return nil
+	return nextSequence, nil
 }
 
 func (r *repository) MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
@@ -546,9 +661,6 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 		return nil, nil, err
 	}
 
-	prepared.AssistantMessage = message
-	prepared.Run = run
-
 	return message, run, nil
 }
 
@@ -596,18 +708,6 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit ai chat failure transaction: %w", err)
 	}
-
-	errorMessage := errorText
-	completedAtUTC := completedAt.UTC()
-	prepared.AssistantMessage.Content = partialText
-	prepared.AssistantMessage.Status = statusFailed
-	prepared.AssistantMessage.ErrorMessage = &errorMessage
-	prepared.AssistantMessage.UpdatedAt = completedAtUTC
-	prepared.AssistantMessage.CompletedAt = &completedAtUTC
-	prepared.Run.Status = statusFailed
-	prepared.Run.ErrorMessage = &errorMessage
-	prepared.Run.UpdatedAt = completedAtUTC
-	prepared.Run.CompletedAt = &completedAtUTC
 
 	return nil
 }

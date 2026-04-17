@@ -47,43 +47,6 @@ var (
 	)
 )
 
-// responseWriter wraps http.ResponseWriter to capture the status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-	written    bool
-}
-
-// WriteHeader captures the status code
-func (rw *responseWriter) WriteHeader(code int) {
-	if !rw.written {
-		rw.statusCode = code
-		rw.written = true
-		rw.ResponseWriter.WriteHeader(code)
-	}
-}
-
-// Write ensures status code is captured even if WriteHeader is not called explicitly
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	if !rw.written {
-		rw.statusCode = http.StatusOK
-		rw.written = true
-	}
-	return rw.ResponseWriter.Write(b)
-}
-
-// Flush preserves streaming support for wrapped writers such as SSE handlers.
-func (rw *responseWriter) Flush() {
-	if flusher, ok := rw.ResponseWriter.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
-// Unwrap lets http.ResponseController reach the original writer through this wrapper.
-func (rw *responseWriter) Unwrap() http.ResponseWriter {
-	return rw.ResponseWriter
-}
-
 // Metrics creates a middleware that tracks HTTP request metrics for Prometheus.
 // It records request count, duration, method, path, and status code.
 func Metrics() func(http.Handler) http.Handler {
@@ -92,11 +55,7 @@ func Metrics() func(http.Handler) http.Handler {
 			start := time.Now()
 
 			// Wrap the response writer to capture status code
-			rw := &responseWriter{
-				ResponseWriter: w,
-				statusCode:     http.StatusOK,
-				written:        false,
-			}
+			rw := newResponseWriter(w)
 
 			// Process the request
 			next.ServeHTTP(rw, r)
@@ -104,9 +63,10 @@ func Metrics() func(http.Handler) http.Handler {
 			// Record metrics after the request completes
 			duration := time.Since(start).Seconds()
 			status := strconv.Itoa(rw.statusCode)
+			route := routeLabel(r)
 
-			httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, status).Inc()
-			httpRequestDuration.WithLabelValues(r.Method, r.URL.Path, status).Observe(duration)
+			httpRequestsTotal.WithLabelValues(r.Method, route, status).Inc()
+			httpRequestDuration.WithLabelValues(r.Method, route, status).Observe(duration)
 		})
 	}
 }

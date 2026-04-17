@@ -102,11 +102,27 @@ func (m *mockChatService) PrepareMessageStream(ctx context.Context, conversation
 	return prepared, args.Error(1)
 }
 
-func (m *mockChatService) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(string) error) (*StreamDone, error) {
+func (m *mockChatService) PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error) {
+	args := m.Called(ctx, conversationID, runID, afterSequence)
+	prepared, _ := args.Get(0).(*PreparedResumeStream)
+	return prepared, args.Error(1)
+}
+
+func (m *mockChatService) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error) (*StreamDone, error) {
 	args := m.Called(ctx, prepared, onChunk)
 	if args.Error(1) == nil {
-		_ = onChunk("hello ")
-		_ = onChunk("world")
+		_ = onChunk(StreamChunk{Delta: "hello ", Sequence: 1})
+		_ = onChunk(StreamChunk{Delta: "world", Sequence: 2})
+	}
+	done, _ := args.Get(0).(*StreamDone)
+	return done, args.Error(1)
+}
+
+func (m *mockChatService) ResumeMessageStream(ctx context.Context, prepared *PreparedResumeStream, onChunk func(StreamChunk) error) (*StreamDone, error) {
+	args := m.Called(ctx, prepared, onChunk)
+	if args.Error(1) == nil {
+		_ = onChunk(StreamChunk{Delta: "replayed ", Sequence: 3})
+		_ = onChunk(StreamChunk{Delta: "world", Sequence: 4})
 	}
 	done, _ := args.Get(0).(*StreamDone)
 	return done, args.Error(1)
@@ -536,6 +552,65 @@ func TestHandlerRecoverMessage(t *testing.T) {
 		assert.Contains(t, rr.Body.String(), `"run_id":51`)
 		assert.Contains(t, rr.Body.String(), `"status":"queued"`)
 		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerResumeMessageStream(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("writes replay and done events", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		prepared := &PreparedResumeStream{
+			Conversation:     preparedStreamFixture().Conversation,
+			AssistantMessage: preparedStreamFixture().AssistantMessage,
+			Run:              preparedStreamFixture().Run,
+			AfterSequence:    2,
+			LastSequence:     2,
+		}
+		service.On("PrepareResumeMessageStream", mock.Anything, int32(41), int32(51), int32(2)).Return(prepared, nil).Once()
+		service.On("ResumeMessageStream", mock.Anything, prepared, mock.Anything).Return(&StreamDone{
+			ConversationID: 41,
+			RunID:          51,
+			MessageID:      61,
+			Model:          defaultModelName,
+			Text:           "replayed world",
+			Sequence:       4,
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?runId=51&afterSequence=2", nil)
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-456"))
+		req.SetPathValue("id", "41")
+		rr := newStreamResponseRecorder()
+
+		handler.ResumeMessageStream(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		body := rr.Body.String()
+		assert.Contains(t, body, "event: start")
+		assert.Contains(t, body, `"sequence":2`)
+		assert.Contains(t, body, "event: delta")
+		assert.Contains(t, body, `"delta":"replayed "`)
+		assert.Contains(t, body, `"sequence":3`)
+		assert.Contains(t, body, "event: done")
+		assert.Contains(t, body, `"text":"replayed world"`)
+		assert.Contains(t, body, `"sequence":4`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("returns validation errors before opening the stream", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?afterSequence=2", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.ResumeMessageStream(rr, req)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Contains(t, rr.Body.String(), "runId is required")
+		service.AssertNotCalled(t, "PrepareResumeMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 

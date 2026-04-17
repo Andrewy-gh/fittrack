@@ -23,9 +23,17 @@ export type AIChatMessage = {
   completed_at?: string;
 };
 
+export type AIChatActiveRun = {
+  id: number;
+  assistant_message_id: number;
+  status: "streaming" | "completed" | "failed";
+  latest_sequence: number;
+};
+
 export type AIChatConversationDetail = {
   conversation: AIChatConversation;
   messages: AIChatMessage[];
+  active_run?: AIChatActiveRun;
 };
 
 export type AIChatRecoveryResponse = {
@@ -44,6 +52,7 @@ export type AIChatStreamEvent = {
   delta?: string;
   text?: string;
   message?: string;
+  sequence?: number;
 };
 
 export type AIChatStreamResult = {
@@ -91,9 +100,7 @@ type ConversationPollOptions = {
   signal?: AbortSignal;
   intervalMs?: number;
   timeoutMs?: number;
-  onStreaming?: (
-    detail: AIChatConversationDetail,
-  ) => Promise<void> | void;
+  onStreaming?: (detail: AIChatConversationDetail) => Promise<void> | void;
 };
 
 type ConversationRequestOptions = {
@@ -227,6 +234,39 @@ export async function streamAIChatMessage(
     throw await readApiError(response);
   }
 
+  return readAIChatStreamResponse(response, handlers);
+}
+
+export async function resumeAIChatMessageStream(
+  conversationId: number,
+  runId: number,
+  afterSequence: number,
+  handlers: StreamHandlers = {},
+): Promise<AIChatStreamResult> {
+  const query = new URLSearchParams({
+    runId: String(runId),
+    afterSequence: String(afterSequence),
+  });
+  const response = await fetch(
+    `${BASE_URL}/ai/conversations/${conversationId}/messages/stream/resume?${query.toString()}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+      signal: handlers.signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw await readApiError(response);
+  }
+
+  return readAIChatStreamResponse(response, handlers);
+}
+
+async function readAIChatStreamResponse(
+  response: Response,
+  handlers: StreamHandlers,
+): Promise<AIChatStreamResult> {
   if (!response.body) {
     throw new Error("No body in SSE response");
   }

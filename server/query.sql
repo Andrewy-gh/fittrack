@@ -630,6 +630,40 @@ FROM ai_chat_run
 WHERE id = $1
   AND user_id = $2;
 
+-- name: GetLatestAIChatStreamChunkSequence :one
+SELECT COALESCE(MAX(sequence), 0)::INTEGER
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2;
+
+-- name: ListAIChatStreamChunksAfter :many
+SELECT
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at
+FROM ai_chat_stream_chunk
+WHERE run_id = $1
+  AND user_id = $2
+  AND sequence > $3
+ORDER BY sequence ASC;
+
+-- name: CreateAIChatStreamChunk :one
+INSERT INTO ai_chat_stream_chunk (
+    run_id,
+    user_id,
+    sequence,
+    delta_text
+)
+VALUES ($1, $2, $3, $4)
+RETURNING
+    run_id,
+    user_id,
+    sequence,
+    delta_text,
+    created_at;
+
 -- name: CreateAIChatMessage :one
 INSERT INTO ai_chat_message (
     conversation_id,

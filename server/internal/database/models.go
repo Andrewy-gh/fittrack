@@ -46,6 +46,14 @@ type AiChatRun struct {
 	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
 }
 
+type AiChatStreamChunk struct {
+	RunID     int32              `json:"run_id"`
+	UserID    string             `json:"user_id"`
+	Sequence  int32              `json:"sequence"`
+	DeltaText string             `json:"delta_text"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Exercise struct {
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`
