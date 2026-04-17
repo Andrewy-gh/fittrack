@@ -13,12 +13,13 @@ import (
 
 const claimAIChatRunRecovery = `-- name: ClaimAIChatRunRecovery :one
 UPDATE ai_chat_run
-SET error_message = NULL,
+SET error_message = $5,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming'
   AND error_message = $3
+  AND updated_at = $4
 RETURNING
     id,
     conversation_id,
@@ -36,13 +37,23 @@ RETURNING
 `
 
 type ClaimAIChatRunRecoveryParams struct {
-	ID           int32       `json:"id"`
-	UserID       string      `json:"user_id"`
-	ErrorMessage pgtype.Text `json:"error_message"`
+	ID                   int32              `json:"id"`
+	UserID               string             `json:"user_id"`
+	ExpectedErrorMessage pgtype.Text        `json:"expected_error_message"`
+	ExpectedUpdatedAt    pgtype.Timestamptz `json:"expected_updated_at"`
+	ClaimedErrorMessage  pgtype.Text        `json:"claimed_error_message"`
 }
 
 func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRunRecoveryParams) (AiChatRun, error) {
-	row := q.db.QueryRow(ctx, claimAIChatRunRecovery, arg.ID, arg.UserID, arg.ErrorMessage)
+	row := q.db.QueryRow(
+		ctx,
+		claimAIChatRunRecovery,
+		arg.ID,
+		arg.UserID,
+		arg.ExpectedErrorMessage,
+		arg.ExpectedUpdatedAt,
+		arg.ClaimedErrorMessage,
+	)
 	var i AiChatRun
 	err := row.Scan(
 		&i.ID,

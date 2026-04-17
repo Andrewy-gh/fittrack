@@ -484,6 +484,7 @@ export function ChatRouteComponent() {
       } = await recoverConversation(activeConversationId, {
         silent: true,
       });
+      const submitFailure = recoveryError ?? error;
       const recoveryOutcome = classifyRecoveryOutcome({
         messages: recoveredDetail?.messages,
         prompt: nextPrompt,
@@ -505,9 +506,14 @@ export function ChatRouteComponent() {
 
       if (!recoveredDetail && !streamStarted) {
         setMessages((current) =>
-          current.filter(
-            (message) =>
-              message.id !== tempUserId && message.id !== tempAssistantId,
+          current.map((message) =>
+            message.id === tempAssistantId
+              ? {
+                  ...message,
+                  status: "failed",
+                  error_message: getErrorMessage(submitFailure),
+                }
+              : message,
           ),
         );
       } else if (!recoveredDetail) {
@@ -518,7 +524,7 @@ export function ChatRouteComponent() {
               ? {
                   ...message,
                   status: "failed",
-                  error_message: getErrorMessage(error),
+                  error_message: getErrorMessage(submitFailure),
                 }
               : message,
           ),
@@ -530,7 +536,7 @@ export function ChatRouteComponent() {
           category: "ux",
           outcome: "failure_toast_shown",
         });
-        showErrorToast(error, "Failed to stream AI chat response");
+        showErrorToast(submitFailure, "Failed to stream AI chat response");
       } else {
         recordTelemetry({
           category: "ux",

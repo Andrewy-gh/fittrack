@@ -206,6 +206,42 @@ describe("ChatRouteComponent", () => {
     expect(promptBox).toHaveValue("hello");
   });
 
+  it("keeps the prompt visible and shows the recovery failure when submit recovery fails before stream start", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockStreamMessage.mockRejectedValue(
+      new Error("AI chat stream ended before a terminal event"),
+    );
+    mockRequestRecovery.mockRejectedValue(
+      new Error("ai chat recovery is not configured"),
+    );
+
+    render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("hello")).toBeInTheDocument();
+    expect(
+      await screen.findByText("ai chat recovery is not configured"),
+    ).toBeInTheDocument();
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "ai chat recovery is not configured",
+      }),
+      "Failed to stream AI chat response",
+    );
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovered_failed",
+    });
+  });
+
   it("ignores late initial load results after the conversation is cleared", async () => {
     const initialLoad =
       deferredPromise<ReturnType<typeof conversationDetail>>();

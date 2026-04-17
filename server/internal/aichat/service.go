@@ -44,6 +44,7 @@ const (
 	recoverStatusNotNeeded        = "not_needed"
 	recoverReasonStreamReconnect  = "stream_reconnect"
 	runAwaitingRecoveryMarker     = "ai chat stream interrupted and awaiting recovery handoff"
+	runRecoveryClaimedMarker      = "ai chat recovery claimed and in progress"
 )
 
 func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository) *Service {
@@ -163,7 +164,7 @@ func (s *Service) RequestMessageRecovery(ctx context.Context, conversationID int
 	case err != nil:
 		return nil, err
 	}
-	if !isRunAwaitingRecovery(run) {
+	if !shouldRecoverRun(run, time.Now().UTC()) {
 		return &RecoverMessageResponse{
 			ConversationID: conversationID,
 			Status:         recoverStatusNotNeeded,
@@ -238,16 +239,16 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 	if prepared.Run == nil || prepared.Run.Status != statusStreaming {
 		return nil
 	}
-	if !isRunAwaitingRecovery(prepared.Run) {
+	now := time.Now().UTC()
+	if !shouldRecoverRun(prepared.Run, now) {
 		return nil
 	}
-	if err := s.repo.ClaimRunRecovery(ctx, request.RunID, userID); err != nil {
+	if err := s.repo.ClaimRunRecovery(ctx, prepared.Run); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
 	}
-	prepared.Run.ErrorMessage = nil
 
 	_, err = s.executePreparedRun(ctx, prepared, nil, false)
 	if err != nil && prepared.Run != nil && prepared.Run.Status == statusStreaming {
@@ -309,6 +310,8 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		}
 		return nil, persistErr
 	}
+	prepared.AssistantMessage = message
+	prepared.Run = run
 
 	return &StreamDone{
 		ConversationID: prepared.Conversation.ID,
@@ -347,7 +350,23 @@ func (s *Service) ensureFeatureAccess(ctx context.Context) error {
 }
 
 func (s *Service) failPreparedRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error) error {
-	return s.repo.FailRun(ctx, prepared, strings.TrimSpace(partialText), normalizeStreamFailure(failure), time.Now().UTC())
+	partialText = strings.TrimSpace(partialText)
+	failure = normalizeStreamFailure(failure)
+	completedAt := time.Now().UTC()
+	if err := s.repo.FailRun(ctx, prepared, partialText, failure, completedAt); err != nil {
+		return err
+	}
+	failureMessage := failure.Error()
+	prepared.AssistantMessage.Content = partialText
+	prepared.AssistantMessage.Status = statusFailed
+	prepared.AssistantMessage.ErrorMessage = &failureMessage
+	prepared.AssistantMessage.CompletedAt = &completedAt
+	prepared.AssistantMessage.UpdatedAt = completedAt
+	prepared.Run.Status = statusFailed
+	prepared.Run.ErrorMessage = &failureMessage
+	prepared.Run.CompletedAt = &completedAt
+	prepared.Run.UpdatedAt = completedAt
+	return nil
 }
 
 type streamProgressSink struct {
@@ -469,6 +488,23 @@ func isRunAwaitingRecovery(run *ChatRun) bool {
 		return false
 	}
 	return strings.TrimSpace(*run.ErrorMessage) == runAwaitingRecoveryMarker
+}
+
+func isRunRecoveryClaimed(run *ChatRun) bool {
+	if run == nil || run.ErrorMessage == nil {
+		return false
+	}
+	return strings.TrimSpace(*run.ErrorMessage) == runRecoveryClaimedMarker
+}
+
+func shouldRecoverRun(run *ChatRun, now time.Time) bool {
+	if run == nil || run.Status != statusStreaming {
+		return false
+	}
+	if isRunAwaitingRecovery(run) {
+		return true
+	}
+	return isRunRecoveryClaimed(run) && isStreamingRunStale(run.UpdatedAt, now)
 }
 
 func currentUserID(ctx context.Context) (string, error) {

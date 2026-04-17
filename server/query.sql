@@ -809,12 +809,13 @@ RETURNING
 
 -- name: ClaimAIChatRunRecovery :one
 UPDATE ai_chat_run
-SET error_message = NULL,
+SET error_message = $5,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming'
   AND error_message = $3
+  AND updated_at = $4
 RETURNING
     id,
     conversation_id,

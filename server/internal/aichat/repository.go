@@ -24,7 +24,7 @@ type Repository interface {
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
 	UpdateStreamingRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
 	MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
-	ClaimRunRecovery(ctx context.Context, runID int32, userID string) error
+	ClaimRunRecovery(ctx context.Context, run *ChatRun) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error)
 	FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error
 }
@@ -465,14 +465,16 @@ func (r *repository) MarkRunAwaitingRecovery(ctx context.Context, prepared *Prep
 	return nil
 }
 
-func (r *repository) ClaimRunRecovery(ctx context.Context, runID int32, userID string) error {
+func (r *repository) ClaimRunRecovery(ctx context.Context, run *ChatRun) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	runRow, err := r.queries.ClaimAIChatRunRecovery(ctx, db.ClaimAIChatRunRecoveryParams{
-		ID:           runID,
-		UserID:       userID,
-		ErrorMessage: textToPg(runAwaitingRecoveryMarker),
+		ID:                   run.ID,
+		UserID:               run.UserID,
+		ExpectedErrorMessage: textToPg(strings.TrimSpace(textValue(run.ErrorMessage))),
+		ExpectedUpdatedAt:    pgtype.Timestamptz{Time: run.UpdatedAt.UTC(), Valid: true},
+		ClaimedErrorMessage:  textToPg(runRecoveryClaimedMarker),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -481,8 +483,13 @@ func (r *repository) ClaimRunRecovery(ctx context.Context, runID int32, userID s
 		return fmt.Errorf("claim ai chat recovery run: %w", err)
 	}
 
-	_, err = mapRun(runRow)
-	return err
+	claimedRun, err := mapRun(runRow)
+	if err != nil {
+		return err
+	}
+	*run = *claimedRun
+
+	return nil
 }
 
 func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
@@ -690,6 +697,13 @@ func textToPg(value string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: value, Valid: true}
+}
+
+func textValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func mapConversation(row db.AiChatConversation) (*Conversation, error) {
