@@ -3,6 +3,14 @@ import * as ReactDOM from "react-dom"
 import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "lucide-react"
 
+import {
+  beginTouchTapTracking,
+  cancelTouchTapTracking,
+  finishTouchTapTracking,
+  hasRecentTouchActivation,
+  markRecentTouchActivation,
+  updateTouchTapTracking,
+} from "@/lib/touch-activation"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
@@ -13,28 +21,17 @@ import {
 } from "@/components/ui/dialog"
 
 const COMMAND_ITEM_SELECT_EVENT = "cmdk-item-select"
-const COMMAND_TOUCH_SELECT_ATTR = "data-command-touch-select"
-const TOUCH_SELECT_SUPPRESSION_MS = 750
-
-function hasRecentTouchSelection(target: HTMLElement, timeStamp: number) {
-  const lastTouchSelection = Number(target.getAttribute(COMMAND_TOUCH_SELECT_ATTR))
-
-  return (
-    Number.isFinite(lastTouchSelection) &&
-    timeStamp - lastTouchSelection < TOUCH_SELECT_SUPPRESSION_MS
-  )
-}
 
 function dispatchCommandItemSelect(target: EventTarget | null, timeStamp: number) {
   if (!(target instanceof HTMLElement)) {
     return
   }
 
-  if (hasRecentTouchSelection(target, timeStamp)) {
+  if (hasRecentTouchActivation(target, timeStamp)) {
     return
   }
 
-  target.setAttribute(COMMAND_TOUCH_SELECT_ATTR, String(timeStamp))
+  markRecentTouchActivation(target, timeStamp)
 
   ReactDOM.flushSync(() => {
     target.dispatchEvent(new Event(COMMAND_ITEM_SELECT_EVENT))
@@ -172,7 +169,13 @@ function CommandSeparator({
 function CommandItem({
   className,
   onClickCapture,
+  onPointerCancel,
+  onPointerDown,
+  onPointerMove,
   onPointerUp,
+  onTouchCancel,
+  onTouchMove,
+  onTouchStart,
   onTouchEnd,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Item>) {
@@ -188,13 +191,40 @@ function CommandItem({
 
         if (
           event.defaultPrevented ||
-          !hasRecentTouchSelection(event.currentTarget, event.timeStamp)
+          !hasRecentTouchActivation(event.currentTarget, event.timeStamp)
         ) {
           return
         }
 
         event.preventDefault()
         event.stopPropagation()
+      }}
+      onPointerDown={(event) => {
+        onPointerDown?.(event)
+
+        if (event.defaultPrevented || event.pointerType !== "touch") {
+          return
+        }
+
+        beginTouchTapTracking(event.currentTarget, event)
+      }}
+      onPointerMove={(event) => {
+        onPointerMove?.(event)
+
+        if (event.defaultPrevented || event.pointerType !== "touch") {
+          return
+        }
+
+        updateTouchTapTracking(event.currentTarget, event)
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event)
+
+        if (event.defaultPrevented || event.pointerType !== "touch") {
+          return
+        }
+
+        cancelTouchTapTracking(event.currentTarget)
       }}
       onPointerUp={(event) => {
         onPointerUp?.(event)
@@ -203,12 +233,47 @@ function CommandItem({
           return
         }
 
+        if (!finishTouchTapTracking(event.currentTarget, event)) {
+          return
+        }
+
         dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
+      }}
+      onTouchStart={(event) => {
+        onTouchStart?.(event)
+
+        if (event.defaultPrevented) {
+          return
+        }
+
+        beginTouchTapTracking(event.currentTarget, event)
+      }}
+      onTouchMove={(event) => {
+        onTouchMove?.(event)
+
+        if (event.defaultPrevented) {
+          return
+        }
+
+        updateTouchTapTracking(event.currentTarget, event)
+      }}
+      onTouchCancel={(event) => {
+        onTouchCancel?.(event)
+
+        if (event.defaultPrevented) {
+          return
+        }
+
+        cancelTouchTapTracking(event.currentTarget)
       }}
       onTouchEnd={(event) => {
         onTouchEnd?.(event)
 
         if (event.defaultPrevented) {
+          return
+        }
+
+        if (!finishTouchTapTracking(event.currentTarget, event)) {
           return
         }
 

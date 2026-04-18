@@ -57,9 +57,48 @@ describe('CommandList', () => {
       </Command>
     );
 
-    fireEvent.touchEnd(getByRole('option', { name: 'Squat' }));
+    const option = getByRole('option', { name: 'Squat' });
+
+    fireEvent.touchStart(option, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+    fireEvent.touchEnd(option, {
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
 
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledWith('squat');
+  });
+
+  it('does not select an item after a drag gesture', () => {
+    const onSelect = vi.fn();
+    const { getByRole } = render(
+      <Command>
+        <CommandList>
+          <CommandGroup>
+            <CommandItem value="squat" onSelect={onSelect}>
+              Squat
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    );
+
+    const option = getByRole('option', { name: 'Squat' });
+
+    fireEvent.touchStart(option, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+    fireEvent.touchMove(option, {
+      touches: [{ clientX: 8, clientY: 40 }],
+      changedTouches: [{ clientX: 8, clientY: 40 }],
+    });
+    fireEvent.touchEnd(option, {
+      changedTouches: [{ clientX: 8, clientY: 40 }],
+    });
+
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });
