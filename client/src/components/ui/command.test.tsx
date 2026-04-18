@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { fireEvent, render } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 
 beforeAll(() => {
@@ -41,5 +41,25 @@ describe('CommandList', () => {
 
     expect(list).toHaveClass('overscroll-contain');
     expect(list).toHaveClass('touch-pan-y');
+  });
+
+  it('selects an item on touch release', () => {
+    const onSelect = vi.fn();
+    const { getByRole } = render(
+      <Command>
+        <CommandList>
+          <CommandGroup>
+            <CommandItem value="squat" onSelect={onSelect}>
+              Squat
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    );
+
+    fireEvent.touchEnd(getByRole('option', { name: 'Squat' }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith('squat');
   });
 });

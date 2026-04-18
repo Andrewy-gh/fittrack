@@ -1,4 +1,5 @@
 import * as React from "react"
+import * as ReactDOM from "react-dom"
 import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "lucide-react"
 
@@ -10,6 +11,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+
+const COMMAND_ITEM_SELECT_EVENT = "cmdk-item-select"
+const COMMAND_TOUCH_SELECT_ATTR = "data-command-touch-select"
+const TOUCH_SELECT_SUPPRESSION_MS = 750
+
+function hasRecentTouchSelection(target: HTMLElement, timeStamp: number) {
+  const lastTouchSelection = Number(target.getAttribute(COMMAND_TOUCH_SELECT_ATTR))
+
+  return (
+    Number.isFinite(lastTouchSelection) &&
+    timeStamp - lastTouchSelection < TOUCH_SELECT_SUPPRESSION_MS
+  )
+}
+
+function dispatchCommandItemSelect(target: EventTarget | null, timeStamp: number) {
+  if (!(target instanceof HTMLElement)) {
+    return
+  }
+
+  if (hasRecentTouchSelection(target, timeStamp)) {
+    return
+  }
+
+  target.setAttribute(COMMAND_TOUCH_SELECT_ATTR, String(timeStamp))
+
+  ReactDOM.flushSync(() => {
+    target.dispatchEvent(new Event(COMMAND_ITEM_SELECT_EVENT))
+  })
+}
 
 function Command({
   className,
@@ -141,15 +171,49 @@ function CommandSeparator({
 
 function CommandItem({
   className,
+  onClickCapture,
+  onPointerUp,
+  onTouchEnd,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Item>) {
   return (
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 outline-hidden select-none touch-manipulation data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
+      onClickCapture={(event) => {
+        onClickCapture?.(event)
+
+        if (
+          event.defaultPrevented ||
+          !hasRecentTouchSelection(event.currentTarget, event.timeStamp)
+        ) {
+          return
+        }
+
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+      onPointerUp={(event) => {
+        onPointerUp?.(event)
+
+        if (event.defaultPrevented || event.pointerType !== "touch") {
+          return
+        }
+
+        dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
+      }}
+      onTouchEnd={(event) => {
+        onTouchEnd?.(event)
+
+        if (event.defaultPrevented) {
+          return
+        }
+
+        dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
+      }}
       {...props}
     />
   )

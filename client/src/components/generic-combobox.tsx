@@ -55,12 +55,16 @@ function CommandAddItem({
       aria-label={`Create "${query}"`}
       tabIndex={0}
       onClick={onCreate}
+      onTouchEnd={(event) => {
+        event.preventDefault();
+        onCreate();
+      }}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key === 'Enter') {
           onCreate();
         }
       }}
-      className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 focus:outline-none"
+      className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 focus:outline-none touch-manipulation"
     >
       <CirclePlus className="mr-2 h-4 w-4" />
       Create "{query}"
