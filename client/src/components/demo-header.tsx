@@ -44,7 +44,7 @@ export function DemoHeader() {
         </div>
       </header>
 
-      <MobileBottomNav includeChat />
+      <MobileBottomNav includeChat isAuthenticated={false} />
     </>
   );
 }

@@ -3,9 +3,11 @@ import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MobileNavDrawer } from './mobile-nav-drawer';
 import { CustomUserButton } from './custom-user-button';
+import { GuestUserButton } from './guest-user-button';
 
 interface MobileBottomNavProps {
   includeChat?: boolean;
+  isAuthenticated?: boolean;
 }
 
 function shouldUseBottomNav() {
@@ -21,7 +23,10 @@ function shouldUseBottomNav() {
   return (coarsePointer || touchPoints) && (standalone || mobileViewport);
 }
 
-export function MobileBottomNav({ includeChat = false }: MobileBottomNavProps) {
+export function MobileBottomNav({
+  includeChat = false,
+  isAuthenticated = true,
+}: MobileBottomNavProps) {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
@@ -61,7 +66,7 @@ export function MobileBottomNav({ includeChat = false }: MobileBottomNavProps) {
           </Button>
         </MobileNavDrawer>
 
-        <CustomUserButton />
+        {isAuthenticated ? <CustomUserButton /> : <GuestUserButton />}
       </div>
     </nav>
   );
