@@ -9,11 +9,19 @@ vi.mock('@/components/mobile-nav-drawer', () => ({
 }));
 
 vi.mock('@/components/custom-user-button', () => ({
-  CustomUserButton: () => <div data-testid="custom-user-button">user</div>,
+  CustomUserButton: () => (
+    <button type="button" aria-label="Signed-in user menu">
+      user
+    </button>
+  ),
 }));
 
 vi.mock('@/components/guest-user-button', () => ({
-  GuestUserButton: () => <div data-testid="guest-user-button">guest</div>,
+  GuestUserButton: () => (
+    <button type="button" aria-label="Guest user menu">
+      guest
+    </button>
+  ),
 }));
 
 beforeAll(() => {
@@ -45,14 +53,22 @@ describe('MobileBottomNav', () => {
   it('renders the guest button in demo mode', async () => {
     render(<MobileBottomNav includeChat isAuthenticated={false} />);
 
-    expect(await screen.findByTestId('guest-user-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('custom-user-button')).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Guest user menu' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Signed-in user menu' })
+    ).not.toBeInTheDocument();
   });
 
   it('renders the signed-in button for authenticated sessions', async () => {
     render(<MobileBottomNav includeChat isAuthenticated />);
 
-    expect(await screen.findByTestId('custom-user-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('guest-user-button')).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Signed-in user menu' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Guest user menu' })
+    ).not.toBeInTheDocument();
   });
 });
