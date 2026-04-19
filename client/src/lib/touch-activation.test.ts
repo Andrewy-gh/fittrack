@@ -1,5 +1,6 @@
 import {
   beginTouchTapTracking,
+  cancelTouchTapTracking,
   finishTouchTapTracking,
   hasRecentTouchActivation,
   markRecentTouchActivation,
@@ -30,6 +31,15 @@ describe('touch activation helpers', () => {
     updateTouchTapTracking(element, createTouchEvent(10, 42));
 
     expect(finishTouchTapTracking(element, createTouchEvent(10, 42))).toBe(false);
+  });
+
+  it('does not treat a canceled touch as a tap', () => {
+    const element = document.createElement('div');
+
+    beginTouchTapTracking(element, createTouchEvent(10, 20));
+    cancelTouchTapTracking(element);
+
+    expect(finishTouchTapTracking(element, createTouchEvent(10, 20))).toBe(false);
   });
 
   it('tracks recent touch activation windows', () => {
