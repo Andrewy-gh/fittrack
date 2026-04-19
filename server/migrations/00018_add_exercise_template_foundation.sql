@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE exercise_template (
+CREATE TABLE IF NOT EXISTS exercise_template (
     id SERIAL PRIMARY KEY,
     slug VARCHAR(256) NOT NULL UNIQUE,
     name VARCHAR(256) NOT NULL,
@@ -19,27 +19,57 @@ CREATE TABLE exercise_template (
 );
 
 ALTER TABLE exercise
-ADD COLUMN kind VARCHAR(32) NOT NULL DEFAULT 'custom',
-ADD COLUMN template_id INTEGER REFERENCES exercise_template(id),
-ADD COLUMN instructions TEXT,
-ADD COLUMN equipment VARCHAR(128),
-ADD COLUMN primary_muscle_group VARCHAR(128),
-ADD COLUMN secondary_muscle_groups TEXT[] NOT NULL DEFAULT '{}';
+ADD COLUMN IF NOT EXISTS kind VARCHAR(32) NOT NULL DEFAULT 'custom',
+ADD COLUMN IF NOT EXISTS template_id INTEGER REFERENCES exercise_template(id),
+ADD COLUMN IF NOT EXISTS instructions TEXT,
+ADD COLUMN IF NOT EXISTS equipment VARCHAR(128),
+ADD COLUMN IF NOT EXISTS primary_muscle_group VARCHAR(128),
+ADD COLUMN IF NOT EXISTS secondary_muscle_groups TEXT[] NOT NULL DEFAULT '{}';
 
-ALTER TABLE exercise
-ADD CONSTRAINT exercise_kind_valid CHECK (kind IN ('custom', 'template_based')),
-ADD CONSTRAINT exercise_kind_template_state CHECK (
-    (kind = 'custom' AND template_id IS NULL)
-    OR (kind = 'template_based' AND template_id IS NOT NULL)
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'exercise_kind_valid'
+    ) THEN
+        ALTER TABLE exercise
+        ADD CONSTRAINT exercise_kind_valid CHECK (kind IN ('custom', 'template_based'));
+    END IF;
+END $$;
 
-CREATE INDEX idx_exercise_template_id ON exercise(template_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'exercise_kind_template_state'
+    ) THEN
+        ALTER TABLE exercise
+        ADD CONSTRAINT exercise_kind_template_state CHECK (
+            (kind = 'custom' AND template_id IS NULL)
+            OR (kind = 'template_based' AND template_id IS NOT NULL)
+        );
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_exercise_template_id ON exercise(template_id);
 
 ALTER TABLE exercise_template ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY exercise_template_select_policy ON exercise_template
-    FOR SELECT TO PUBLIC
-    USING (true);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_policies
+        WHERE tablename = 'exercise_template'
+          AND policyname = 'exercise_template_select_policy'
+    ) THEN
+        CREATE POLICY exercise_template_select_policy ON exercise_template
+            FOR SELECT TO PUBLIC
+            USING (true);
+    END IF;
+END $$;
 
 GRANT SELECT ON exercise_template TO PUBLIC;
 -- +goose StatementEnd
