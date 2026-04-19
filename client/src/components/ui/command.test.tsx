@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { createEvent, fireEvent, render } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 
@@ -100,5 +100,71 @@ describe('CommandList', () => {
     });
 
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not select an item after a pointer drag gesture', () => {
+    const onSelect = vi.fn();
+    const { getByRole } = render(
+      <Command>
+        <CommandList>
+          <CommandGroup>
+            <CommandItem value="squat" onSelect={onSelect}>
+              Squat
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    );
+
+    const option = getByRole('option', { name: 'Squat' });
+
+    fireEvent.pointerDown(option, {
+      pointerType: 'touch',
+      clientX: 8,
+      clientY: 12,
+    });
+    fireEvent.pointerMove(option, {
+      pointerType: 'touch',
+      clientX: 8,
+      clientY: 40,
+    });
+    fireEvent.pointerUp(option, {
+      pointerType: 'touch',
+      clientX: 8,
+      clientY: 40,
+    });
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('prevents the touchend default after a touch selection', () => {
+    const onSelect = vi.fn();
+    const { getByRole } = render(
+      <Command>
+        <CommandList>
+          <CommandGroup>
+            <CommandItem value="squat" onSelect={onSelect}>
+              Squat
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    );
+
+    const option = getByRole('option', { name: 'Squat' });
+
+    fireEvent.touchStart(option, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+
+    const touchEnd = createEvent.touchEnd(option, {
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+
+    fireEvent(option, touchEnd);
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(touchEnd.defaultPrevented).toBe(true);
   });
 });

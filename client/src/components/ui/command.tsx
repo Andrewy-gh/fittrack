@@ -169,6 +169,10 @@ function CommandSeparator({
 function CommandItem({
   className,
   onClickCapture,
+  onPointerCancelCapture,
+  onPointerDownCapture,
+  onPointerMoveCapture,
+  onPointerUpCapture,
   onPointerCancel,
   onPointerDown,
   onPointerMove,
@@ -199,7 +203,8 @@ function CommandItem({
         event.preventDefault()
         event.stopPropagation()
       }}
-      onPointerDown={(event) => {
+      onPointerDownCapture={(event) => {
+        onPointerDownCapture?.(event)
         onPointerDown?.(event)
 
         if (event.defaultPrevented || event.pointerType !== "touch") {
@@ -208,7 +213,8 @@ function CommandItem({
 
         beginTouchTapTracking(event.currentTarget, event)
       }}
-      onPointerMove={(event) => {
+      onPointerMoveCapture={(event) => {
+        onPointerMoveCapture?.(event)
         onPointerMove?.(event)
 
         if (event.defaultPrevented || event.pointerType !== "touch") {
@@ -217,7 +223,8 @@ function CommandItem({
 
         updateTouchTapTracking(event.currentTarget, event)
       }}
-      onPointerCancel={(event) => {
+      onPointerCancelCapture={(event) => {
+        onPointerCancelCapture?.(event)
         onPointerCancel?.(event)
 
         if (event.defaultPrevented || event.pointerType !== "touch") {
@@ -226,7 +233,8 @@ function CommandItem({
 
         cancelTouchTapTracking(event.currentTarget)
       }}
-      onPointerUp={(event) => {
+      onPointerUpCapture={(event) => {
+        onPointerUpCapture?.(event)
         onPointerUp?.(event)
 
         if (event.defaultPrevented || event.pointerType !== "touch") {
@@ -239,6 +247,10 @@ function CommandItem({
 
         dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
       }}
+      onPointerDown={undefined}
+      onPointerMove={undefined}
+      onPointerCancel={undefined}
+      onPointerUp={undefined}
       onTouchStart={(event) => {
         onTouchStart?.(event)
 
@@ -277,6 +289,7 @@ function CommandItem({
           return
         }
 
+        event.preventDefault()
         dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
       }}
       {...props}
