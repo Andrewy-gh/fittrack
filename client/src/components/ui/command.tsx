@@ -1,14 +1,12 @@
 import * as React from "react"
-import * as ReactDOM from "react-dom"
 import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "lucide-react"
 
 import {
+  activateTouchTap,
   beginTouchTapTracking,
   cancelTouchTapTracking,
-  finishTouchTapTracking,
   hasRecentTouchActivation,
-  markRecentTouchActivation,
   updateTouchTapTracking,
 } from "@/lib/touch-activation"
 import { cn } from "@/lib/utils"
@@ -19,24 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-
-const COMMAND_ITEM_SELECT_EVENT = "cmdk-item-select"
-
-function dispatchCommandItemSelect(target: EventTarget | null, timeStamp: number) {
-  if (!(target instanceof HTMLElement)) {
-    return
-  }
-
-  if (hasRecentTouchActivation(target, timeStamp)) {
-    return
-  }
-
-  markRecentTouchActivation(target, timeStamp)
-
-  ReactDOM.flushSync(() => {
-    target.dispatchEvent(new Event(COMMAND_ITEM_SELECT_EVENT))
-  })
-}
 
 function Command({
   className,
@@ -169,14 +149,6 @@ function CommandSeparator({
 function CommandItem({
   className,
   onClickCapture,
-  onPointerCancelCapture,
-  onPointerDownCapture,
-  onPointerMoveCapture,
-  onPointerUpCapture,
-  onPointerCancel,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
   onTouchCancel,
   onTouchMove,
   onTouchStart,
@@ -203,54 +175,6 @@ function CommandItem({
         event.preventDefault()
         event.stopPropagation()
       }}
-      onPointerDownCapture={(event) => {
-        onPointerDownCapture?.(event)
-        onPointerDown?.(event)
-
-        if (event.defaultPrevented || event.pointerType !== "touch") {
-          return
-        }
-
-        beginTouchTapTracking(event.currentTarget, event)
-      }}
-      onPointerMoveCapture={(event) => {
-        onPointerMoveCapture?.(event)
-        onPointerMove?.(event)
-
-        if (event.defaultPrevented || event.pointerType !== "touch") {
-          return
-        }
-
-        updateTouchTapTracking(event.currentTarget, event)
-      }}
-      onPointerCancelCapture={(event) => {
-        onPointerCancelCapture?.(event)
-        onPointerCancel?.(event)
-
-        if (event.defaultPrevented || event.pointerType !== "touch") {
-          return
-        }
-
-        cancelTouchTapTracking(event.currentTarget)
-      }}
-      onPointerUpCapture={(event) => {
-        onPointerUpCapture?.(event)
-        onPointerUp?.(event)
-
-        if (event.defaultPrevented || event.pointerType !== "touch") {
-          return
-        }
-
-        if (!finishTouchTapTracking(event.currentTarget, event)) {
-          return
-        }
-
-        dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
-      }}
-      onPointerDown={undefined}
-      onPointerMove={undefined}
-      onPointerCancel={undefined}
-      onPointerUp={undefined}
       onTouchStart={(event) => {
         onTouchStart?.(event)
 
@@ -285,12 +209,7 @@ function CommandItem({
           return
         }
 
-        if (!finishTouchTapTracking(event.currentTarget, event)) {
-          return
-        }
-
-        event.preventDefault()
-        dispatchCommandItemSelect(event.currentTarget, event.timeStamp)
+        activateTouchTap(event.currentTarget, event)
       }}
       {...props}
     />

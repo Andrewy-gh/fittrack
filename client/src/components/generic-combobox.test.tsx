@@ -93,25 +93,36 @@ describe('GenericCombobox create row', () => {
     expect(touchEnd.defaultPrevented).toBe(true);
   });
 
-  it('does not create an option after a pointer drag gesture', async () => {
+  it('does not create an option after a touch drag gesture', async () => {
     const { createRow, onCreate } = await renderGenericCombobox({ isDesktop: true });
 
-    fireEvent.pointerDown(createRow, {
-      pointerType: 'touch',
-      clientX: 8,
-      clientY: 12,
+    fireEvent.touchStart(createRow, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
     });
-    fireEvent.pointerMove(createRow, {
-      pointerType: 'touch',
-      clientX: 8,
-      clientY: 40,
+    fireEvent.touchMove(createRow, {
+      touches: [{ clientX: 8, clientY: 40 }],
+      changedTouches: [{ clientX: 8, clientY: 40 }],
     });
-    fireEvent.pointerUp(createRow, {
-      pointerType: 'touch',
-      clientX: 8,
-      clientY: 40,
+    fireEvent.touchEnd(createRow, {
+      changedTouches: [{ clientX: 8, clientY: 40 }],
     });
 
     expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not create a duplicate option after a follow-up click', async () => {
+    const { createRow, onCreate } = await renderGenericCombobox();
+
+    fireEvent.touchStart(createRow, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+    fireEvent.touchEnd(createRow, {
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+    fireEvent.click(createRow);
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
   });
 });

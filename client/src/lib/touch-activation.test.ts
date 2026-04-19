@@ -1,4 +1,5 @@
 import {
+  activateTouchTap,
   beginTouchTapTracking,
   cancelTouchTapTracking,
   finishTouchTapTracking,
@@ -6,7 +7,7 @@ import {
   markRecentTouchActivation,
   updateTouchTapTracking,
 } from '@/lib/touch-activation';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 function createTouchEvent(x: number, y: number) {
   return {
@@ -49,5 +50,25 @@ describe('touch activation helpers', () => {
 
     expect(hasRecentTouchActivation(element, 200)).toBe(true);
     expect(hasRecentTouchActivation(element, 900)).toBe(false);
+  });
+
+  it('activates a tap with a real click and records the activation window', () => {
+    const element = document.createElement('button');
+    const clickSpy = vi.fn();
+    const preventDefault = vi.fn();
+
+    element.addEventListener('click', clickSpy);
+    beginTouchTapTracking(element, createTouchEvent(10, 20));
+
+    expect(
+      activateTouchTap(element, {
+        ...createTouchEvent(10, 20),
+        preventDefault,
+        timeStamp: 100,
+      } as unknown as TouchEvent)
+    ).toBe(true);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(hasRecentTouchActivation(element, 200)).toBe(true);
   });
 });

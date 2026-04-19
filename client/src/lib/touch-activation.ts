@@ -15,27 +15,18 @@ type TouchListLike = {
   length: number;
 };
 
-type PointerTouchLikeEvent = Pick<PointerEvent, 'pointerType' | 'clientX' | 'clientY'>;
 type TouchLikeEvent = {
   touches: TouchListLike;
   changedTouches: TouchListLike;
 };
+type TouchTapEndEvent = TouchLikeEvent &
+  Pick<TouchEvent, 'preventDefault' | 'timeStamp'>;
 
 function isElement(target: EventTarget | null): target is HTMLElement {
   return target instanceof HTMLElement;
 }
 
-function readTouchPoint(
-  event: PointerTouchLikeEvent | TouchLikeEvent
-) {
-  if ('pointerType' in event) {
-    if (event.pointerType !== 'touch') {
-      return null;
-    }
-
-    return { x: event.clientX, y: event.clientY };
-  }
-
+function readTouchPoint(event: TouchLikeEvent) {
   const touch = event.changedTouches[0] ?? event.touches[0];
 
   if (!touch) {
@@ -100,7 +91,7 @@ export function markRecentTouchActivation(
 
 export function beginTouchTapTracking(
   target: EventTarget | null,
-  event: PointerTouchLikeEvent | TouchLikeEvent
+  event: TouchLikeEvent
 ) {
   if (!isElement(target)) {
     return;
@@ -119,7 +110,7 @@ export function beginTouchTapTracking(
 
 export function updateTouchTapTracking(
   target: EventTarget | null,
-  event: PointerTouchLikeEvent | TouchLikeEvent
+  event: TouchLikeEvent
 ) {
   if (!isElement(target)) {
     return;
@@ -147,7 +138,7 @@ export function cancelTouchTapTracking(target: EventTarget | null) {
 
 export function finishTouchTapTracking(
   target: EventTarget | null,
-  event: PointerTouchLikeEvent | TouchLikeEvent
+  event: TouchLikeEvent
 ) {
   if (!isElement(target)) {
     return false;
@@ -164,4 +155,22 @@ export function finishTouchTapTracking(
   }
 
   return !exceededTapDistance(start, point);
+}
+
+export function activateTouchTap(
+  target: EventTarget | null,
+  event: TouchTapEndEvent
+) {
+  if (!finishTouchTapTracking(target, event)) {
+    return false;
+  }
+
+  if (!isElement(target)) {
+    return false;
+  }
+
+  event.preventDefault();
+  target.click();
+  markRecentTouchActivation(target, event.timeStamp);
+  return true;
 }

@@ -101,4 +101,19 @@ describe('ExerciseCombobox create row', () => {
 
     expect(onCreate).not.toHaveBeenCalled();
   });
+
+  it('does not create a duplicate option after a follow-up click', async () => {
+    const { createRow, onCreate } = await renderMobileExerciseCombobox();
+
+    fireEvent.touchStart(createRow, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+    fireEvent.touchEnd(createRow, {
+      changedTouches: [{ clientX: 8, clientY: 12 }],
+    });
+    fireEvent.click(createRow);
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
 });

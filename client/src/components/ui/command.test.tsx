@@ -102,7 +102,7 @@ describe('CommandList', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('does not select an item after a pointer drag gesture', () => {
+  it('does not select an item after a follow-up click from the same touch', () => {
     const onSelect = vi.fn();
     const { getByRole } = render(
       <Command>
@@ -118,23 +118,16 @@ describe('CommandList', () => {
 
     const option = getByRole('option', { name: 'Squat' });
 
-    fireEvent.pointerDown(option, {
-      pointerType: 'touch',
-      clientX: 8,
-      clientY: 12,
+    fireEvent.touchStart(option, {
+      touches: [{ clientX: 8, clientY: 12 }],
+      changedTouches: [{ clientX: 8, clientY: 12 }],
     });
-    fireEvent.pointerMove(option, {
-      pointerType: 'touch',
-      clientX: 8,
-      clientY: 40,
+    fireEvent.touchEnd(option, {
+      changedTouches: [{ clientX: 8, clientY: 12 }],
     });
-    fireEvent.pointerUp(option, {
-      pointerType: 'touch',
-      clientX: 8,
-      clientY: 40,
-    });
+    fireEvent.click(option);
 
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it('prevents the touchend default after a touch selection', () => {
