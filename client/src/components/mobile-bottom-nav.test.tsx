@@ -4,7 +4,7 @@ import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 
 vi.mock('@/components/mobile-nav-drawer', () => ({
   MobileNavDrawer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="mobile-nav-drawer">{children}</div>
+    <>{children}</>
   ),
 }));
 
