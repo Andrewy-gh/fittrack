@@ -1,6 +1,9 @@
 import { render } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+
+const originalResizeObserver = globalThis.ResizeObserver;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 beforeAll(() => {
   class ResizeObserverMock {
@@ -41,5 +44,17 @@ describe('CommandList', () => {
 
     expect(list).toHaveClass('overscroll-contain');
     expect(list).toHaveClass('touch-pan-y');
+  });
+});
+
+afterAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: originalResizeObserver,
+    writable: true,
+  });
+
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    value: originalScrollIntoView,
+    writable: true,
   });
 });
