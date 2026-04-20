@@ -1,6 +1,9 @@
-import { createEvent, fireEvent, render } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+
+const originalResizeObserver = globalThis.ResizeObserver;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 beforeAll(() => {
   class ResizeObserverMock {
@@ -42,122 +45,16 @@ describe('CommandList', () => {
     expect(list).toHaveClass('overscroll-contain');
     expect(list).toHaveClass('touch-pan-y');
   });
+});
 
-  it('selects an item on touch release', () => {
-    const onSelect = vi.fn();
-    const { getByRole } = render(
-      <Command>
-        <CommandList>
-          <CommandGroup>
-            <CommandItem value="squat" onSelect={onSelect}>
-              Squat
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    );
-
-    const option = getByRole('option', { name: 'Squat' });
-
-    fireEvent.touchStart(option, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-    fireEvent.touchEnd(option, {
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-
-    expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect).toHaveBeenCalledWith('squat');
+afterAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: originalResizeObserver,
+    writable: true,
   });
 
-  it('does not select an item after a drag gesture', () => {
-    const onSelect = vi.fn();
-    const { getByRole } = render(
-      <Command>
-        <CommandList>
-          <CommandGroup>
-            <CommandItem value="squat" onSelect={onSelect}>
-              Squat
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    );
-
-    const option = getByRole('option', { name: 'Squat' });
-
-    fireEvent.touchStart(option, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-    fireEvent.touchMove(option, {
-      touches: [{ clientX: 8, clientY: 40 }],
-      changedTouches: [{ clientX: 8, clientY: 40 }],
-    });
-    fireEvent.touchEnd(option, {
-      changedTouches: [{ clientX: 8, clientY: 40 }],
-    });
-
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
-  it('does not select an item after a follow-up click from the same touch', () => {
-    const onSelect = vi.fn();
-    const { getByRole } = render(
-      <Command>
-        <CommandList>
-          <CommandGroup>
-            <CommandItem value="squat" onSelect={onSelect}>
-              Squat
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    );
-
-    const option = getByRole('option', { name: 'Squat' });
-
-    fireEvent.touchStart(option, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-    fireEvent.touchEnd(option, {
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-    fireEvent.click(option);
-
-    expect(onSelect).toHaveBeenCalledTimes(1);
-  });
-
-  it('prevents the touchend default after a touch selection', () => {
-    const onSelect = vi.fn();
-    const { getByRole } = render(
-      <Command>
-        <CommandList>
-          <CommandGroup>
-            <CommandItem value="squat" onSelect={onSelect}>
-              Squat
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    );
-
-    const option = getByRole('option', { name: 'Squat' });
-
-    fireEvent.touchStart(option, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-
-    const touchEnd = createEvent.touchEnd(option, {
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-
-    fireEvent(option, touchEnd);
-
-    expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(touchEnd.defaultPrevented).toBe(true);
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    value: originalScrollIntoView,
+    writable: true,
   });
 });

@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useState } from 'react';
+import { type ComponentProps, type KeyboardEvent, useEffect, useState } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  activateTouchTap,
+  beginTouchTapTracking,
+  cancelTouchTapTracking,
+  shouldSuppressTouchClick,
+  updateTouchTapTracking,
+} from '@/lib/touch-activation';
 import { cn } from '@/lib/utils';
 import type { ExerciseOption } from '@/lib/api/exercises';
+
+type CommandItemTouchHandlers = Pick<
+  ComponentProps<typeof CommandItem>,
+  'onClickCapture' | 'onTouchCancel' | 'onTouchEnd' | 'onTouchMove' | 'onTouchStart'
+>;
 
 interface ComboboxProps {
   options: ExerciseOption[]; // Can include both DB exercises and manually created ones
@@ -39,6 +51,7 @@ function ExerciseList({
   setOpen,
   onChange,
   onCreate,
+  touchEnabled,
 }: {
   options: ExerciseOption[]; // Can include both DB exercises and manually created ones
   selected: ExerciseOption['name'];
@@ -48,6 +61,7 @@ function ExerciseList({
   setOpen: (open: boolean) => void;
   onChange: (option: ExerciseOption) => void;
   onCreate?: (label: ExerciseOption['name']) => void;
+  touchEnabled: boolean;
 }) {
   function handleSelect(option: ExerciseOption) {
     if (onChange) {
@@ -64,6 +78,31 @@ function ExerciseList({
       setQuery('');
     }
   }
+
+  const touchActivationHandlers: CommandItemTouchHandlers = touchEnabled
+    ? {
+        onClickCapture: (event) => {
+          if (!shouldSuppressTouchClick(event.currentTarget, event.timeStamp)) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+        },
+        onTouchStart: (event) => {
+          beginTouchTapTracking(event.currentTarget, event);
+        },
+        onTouchMove: (event) => {
+          updateTouchTapTracking(event.currentTarget, event);
+        },
+        onTouchCancel: (event) => {
+          cancelTouchTapTracking(event.currentTarget);
+        },
+        onTouchEnd: (event) => {
+          activateTouchTap(event.currentTarget, event);
+        },
+      }
+    : {};
 
   return (
     <Command
@@ -87,7 +126,11 @@ function ExerciseList({
       />
       <CommandEmpty className="flex pl-1 py-1 w-full">
         {query && canCreate && (
-          <CommandAddItem query={query} onCreate={handleCreate} />
+          <CommandAddItem
+            query={query}
+            onCreate={handleCreate}
+            touchEnabled={touchEnabled}
+          />
         )}
       </CommandEmpty>
       <CommandList>
@@ -101,7 +144,11 @@ function ExerciseList({
           )}
           {/* Create option - shown when there are existing options but query doesn't match */}
           {options.length > 0 && canCreate && (
-            <CommandAddItem query={query} onCreate={handleCreate} />
+            <CommandAddItem
+              query={query}
+              onCreate={handleCreate}
+              touchEnabled={touchEnabled}
+            />
           )}
           {/* Select options */}
           {options.map((option) => (
@@ -116,7 +163,8 @@ function ExerciseList({
                   handleSelect(option);
                 }
               }}
-              className={cn('cursor-pointer')}
+              {...touchActivationHandlers}
+              className={cn('cursor-pointer', touchEnabled && 'touch-manipulation')}
             >
               <Check
                 className={cn(
@@ -187,6 +235,7 @@ export function ExerciseCombobox({
             setOpen={setOpen}
             onChange={onChange}
             onCreate={onCreate}
+            touchEnabled={false}
           />
         </PopoverContent>
       </Popover>
@@ -207,6 +256,7 @@ export function ExerciseCombobox({
             setOpen={setOpen}
             onChange={onChange}
             onCreate={onCreate}
+            touchEnabled
           />
         </div>
       </DrawerContent>

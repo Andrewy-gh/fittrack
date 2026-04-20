@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useState } from 'react';
+import { type ComponentProps, type KeyboardEvent, useEffect, useState } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  activateTouchTap,
+  beginTouchTapTracking,
+  cancelTouchTapTracking,
+  shouldSuppressTouchClick,
+  updateTouchTapTracking,
+} from '@/lib/touch-activation';
 import { cn } from '@/lib/utils';
+
+type CommandItemTouchHandlers = Pick<
+  ComponentProps<typeof CommandItem>,
+  'onClickCapture' | 'onTouchCancel' | 'onTouchEnd' | 'onTouchMove' | 'onTouchStart'
+>;
 
 interface ComboboxProps<T extends { name: string }> {
   /** Array of options to display in the combobox */
@@ -51,6 +63,7 @@ function GenericList<T extends { name: string }>({
   onChange,
   onCreate,
   inputAriaLabel,
+  touchEnabled,
 }: {
   options: T[];
   selected: string;
@@ -62,6 +75,7 @@ function GenericList<T extends { name: string }>({
   onChange: (option: T) => void;
   onCreate?: (label: string) => void;
   inputAriaLabel?: string;
+  touchEnabled: boolean;
 }) {
   function handleSelect(option: T) {
     if (onChange) {
@@ -78,6 +92,31 @@ function GenericList<T extends { name: string }>({
       setQuery('');
     }
   }
+
+  const touchActivationHandlers: CommandItemTouchHandlers = touchEnabled
+    ? {
+        onClickCapture: (event) => {
+          if (!shouldSuppressTouchClick(event.currentTarget, event.timeStamp)) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+        },
+        onTouchStart: (event) => {
+          beginTouchTapTracking(event.currentTarget, event);
+        },
+        onTouchMove: (event) => {
+          updateTouchTapTracking(event.currentTarget, event);
+        },
+        onTouchCancel: (event) => {
+          cancelTouchTapTracking(event.currentTarget);
+        },
+        onTouchEnd: (event) => {
+          activateTouchTap(event.currentTarget, event);
+        },
+      }
+    : {};
 
   return (
     <Command
@@ -103,7 +142,11 @@ function GenericList<T extends { name: string }>({
       />
       <CommandEmpty className="flex pl-1 py-1 w-full">
         {query && canCreate && (
-          <CommandAddItem query={query} onCreate={handleCreate} />
+          <CommandAddItem
+            query={query}
+            onCreate={handleCreate}
+            touchEnabled={touchEnabled}
+          />
         )}
       </CommandEmpty>
       <CommandList>
@@ -121,7 +164,11 @@ function GenericList<T extends { name: string }>({
           )}
           {/* Create option - shown when there are existing options but query doesn't match */}
           {options.length > 0 && allowCreate && canCreate && (
-            <CommandAddItem query={query} onCreate={handleCreate} />
+            <CommandAddItem
+              query={query}
+              onCreate={handleCreate}
+              touchEnabled={touchEnabled}
+            />
           )}
           {/* Select options */}
           {options.map((option) => (
@@ -136,7 +183,8 @@ function GenericList<T extends { name: string }>({
                   handleSelect(option);
                 }
               }}
-              className={cn('cursor-pointer')}
+              {...touchActivationHandlers}
+              className={cn('cursor-pointer', touchEnabled && 'touch-manipulation')}
             >
               <Check
                 className={cn(
@@ -213,6 +261,7 @@ export function GenericCombobox<T extends { name: string }>({
           onChange={onChange}
           onCreate={onCreate}
           inputAriaLabel={inputAriaLabel}
+          touchEnabled={false}
           />
         </PopoverContent>
       </Popover>
@@ -235,6 +284,7 @@ export function GenericCombobox<T extends { name: string }>({
           onChange={onChange}
           onCreate={onCreate}
           inputAriaLabel={inputAriaLabel}
+          touchEnabled
           />
         </div>
       </DrawerContent>

@@ -1,8 +1,11 @@
 import { createEvent, fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ExerciseCombobox } from '@/components/exercise-combobox';
 
 let mediaQueryMatches = false;
+const originalResizeObserver = globalThis.ResizeObserver;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const originalMatchMedia = globalThis.matchMedia;
 
 beforeAll(() => {
   class ResizeObserverMock {
@@ -41,6 +44,44 @@ beforeEach(() => {
   mediaQueryMatches = false;
 });
 
+afterAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: originalResizeObserver,
+    writable: true,
+  });
+
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    value: originalScrollIntoView,
+    writable: true,
+  });
+
+  Object.defineProperty(globalThis, 'matchMedia', {
+    value: originalMatchMedia,
+    writable: true,
+  });
+});
+
+function touchStart(target: Element, x = 8, y = 12) {
+  fireEvent.touchStart(target, {
+    touches: [{ clientX: x, clientY: y }],
+    changedTouches: [{ clientX: x, clientY: y }],
+  });
+}
+
+function touchEnd(target: Element, x = 8, y = 12) {
+  const event = createEvent.touchEnd(target, {
+    changedTouches: [{ clientX: x, clientY: y }],
+  });
+
+  fireEvent(target, event);
+  return event;
+}
+
+function touchTap(target: Element, x = 8, y = 12) {
+  touchStart(target, x, y);
+  return touchEnd(target, x, y);
+}
+
 async function renderMobileExerciseCombobox(onCreate = vi.fn()) {
   render(
     <ExerciseCombobox
@@ -71,33 +112,19 @@ describe('ExerciseCombobox create row', () => {
   it('creates an option on touch release in the mobile drawer path', async () => {
     const { createRow, onCreate } = await renderMobileExerciseCombobox();
 
-    fireEvent.touchStart(createRow, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-
-    const touchEnd = createEvent.touchEnd(createRow, {
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-
-    fireEvent(createRow, touchEnd);
+    const releasedTouch = touchTap(createRow);
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate).toHaveBeenCalledWith('Bench');
-    expect(touchEnd.defaultPrevented).toBe(true);
+    expect(releasedTouch.defaultPrevented).toBe(true);
   });
 
   it('does not create an option after touch tracking is canceled', async () => {
     const { createRow, onCreate } = await renderMobileExerciseCombobox();
 
-    fireEvent.touchStart(createRow, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
+    touchStart(createRow);
     fireEvent.touchCancel(createRow);
-    fireEvent.touchEnd(createRow, {
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
+    touchEnd(createRow);
 
     expect(onCreate).not.toHaveBeenCalled();
   });
@@ -105,13 +132,7 @@ describe('ExerciseCombobox create row', () => {
   it('does not create a duplicate option after a follow-up click', async () => {
     const { createRow, onCreate } = await renderMobileExerciseCombobox();
 
-    fireEvent.touchStart(createRow, {
-      touches: [{ clientX: 8, clientY: 12 }],
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
-    fireEvent.touchEnd(createRow, {
-      changedTouches: [{ clientX: 8, clientY: 12 }],
-    });
+    touchTap(createRow);
     fireEvent.click(createRow);
 
     expect(onCreate).toHaveBeenCalledTimes(1);

@@ -1,4 +1,5 @@
 const RECENT_TOUCH_ACTIVATION_ATTR = 'data-recent-touch-activation';
+const PENDING_TOUCH_CLICK_ATTR = 'data-pending-touch-click';
 const TOUCH_START_X_ATTR = 'data-touch-start-x';
 const TOUCH_START_Y_ATTR = 'data-touch-start-y';
 const TOUCH_MOVED_ATTR = 'data-touch-moved';
@@ -40,6 +41,19 @@ function clearTouchTapTracking(target: HTMLElement) {
   target.removeAttribute(TOUCH_START_X_ATTR);
   target.removeAttribute(TOUCH_START_Y_ATTR);
   target.removeAttribute(TOUCH_MOVED_ATTR);
+}
+
+function markPendingTouchClick(target: HTMLElement) {
+  target.setAttribute(PENDING_TOUCH_CLICK_ATTR, 'true');
+}
+
+function consumePendingTouchClick(target: HTMLElement) {
+  if (target.getAttribute(PENDING_TOUCH_CLICK_ATTR) !== 'true') {
+    return false;
+  }
+
+  target.removeAttribute(PENDING_TOUCH_CLICK_ATTR);
+  return true;
 }
 
 function readTouchStart(target: HTMLElement) {
@@ -87,6 +101,21 @@ export function markRecentTouchActivation(
   }
 
   target.setAttribute(RECENT_TOUCH_ACTIVATION_ATTR, String(timeStamp));
+}
+
+export function shouldSuppressTouchClick(
+  target: EventTarget | null,
+  timeStamp: number
+) {
+  if (!isElement(target)) {
+    return false;
+  }
+
+  if (consumePendingTouchClick(target)) {
+    return false;
+  }
+
+  return hasRecentTouchActivation(target, timeStamp);
 }
 
 export function beginTouchTapTracking(
@@ -170,7 +199,14 @@ export function activateTouchTap(
   }
 
   event.preventDefault();
-  target.click();
+  markPendingTouchClick(target);
+
+  try {
+    target.click();
+  } finally {
+    target.removeAttribute(PENDING_TOUCH_CLICK_ATTR);
+  }
+
   markRecentTouchActivation(target, event.timeStamp);
   return true;
 }
