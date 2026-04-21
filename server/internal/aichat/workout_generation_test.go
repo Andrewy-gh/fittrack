@@ -43,6 +43,21 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 	}
 }
 
+func TestBuildWorkoutGenerationPromptUsesUserLocalLanguageForRelativeDates(t *testing.T) {
+	loc := time.FixedZone("EDT", -4*60*60)
+	prompt := buildWorkoutGenerationPrompt(
+		WorkoutGenerationToolInput{WorkoutDate: "tomorrow"},
+		time.Date(2026, 4, 20, 23, 30, 0, 0, loc),
+	)
+
+	if !strings.Contains(prompt, `interpret it from the user's local day rather than UTC`) {
+		t.Fatalf("buildWorkoutGenerationPrompt() = %q, want user-local relative date guidance", prompt)
+	}
+	if strings.Contains(prompt, `relative to`) {
+		t.Fatalf("buildWorkoutGenerationPrompt() = %q, should not anchor relative dates to a server timestamp", prompt)
+	}
+}
+
 func TestExtractWorkoutDraftFromHistoryValidatesCurrentWorkoutContract(t *testing.T) {
 	history := []*ai.Message{
 		ai.NewMessage(ai.RoleTool, nil, ai.NewToolResponsePart(&ai.ToolResponse{

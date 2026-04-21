@@ -424,6 +424,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		Model:          run.Model,
 		Text:           text,
 		Sequence:       prepared.LastSequence,
+		WorkoutDraft:   done.WorkoutDraft,
 	}, nil
 }
 

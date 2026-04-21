@@ -105,13 +105,12 @@ func generateWorkoutDraft(
 }
 
 func buildWorkoutGenerationPrompt(input WorkoutGenerationToolInput, now time.Time) string {
-	currentTimestamp := now.UTC().Format(time.RFC3339)
+	currentTimestamp := now.Format(time.RFC3339)
 	dateInstruction := fmt.Sprintf("If the user did not specify a workout date, use %s for the date field.", currentTimestamp)
 	if requested := strings.TrimSpace(input.WorkoutDate); requested != "" {
 		dateInstruction = fmt.Sprintf(
-			`Resolve the user's requested workout date "%s" relative to %s and return the final value as an RFC3339 timestamp in the "date" field.`,
+			`Use the user's requested workout date "%s" for the "date" field. If the request is relative, interpret it from the user's local day rather than UTC, and do not shift it because of a UTC date boundary. Return the final value as an RFC3339 timestamp in the "date" field.`,
 			requested,
-			currentTimestamp,
 		)
 	}
 

@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -572,6 +573,17 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		},
 		Prompt: "new prompt",
 	}
+	workoutDraft := &workout.CreateWorkoutRequest{
+		Date: "2026-03-26T17:30:00Z",
+		Exercises: []workout.ExerciseInput{
+			{
+				Name: "Goblet Squat",
+				Sets: []workout.SetInput{
+					{Reps: 10, SetType: "working"},
+				},
+			},
+		},
+	}
 
 	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{
 		{Role: roleUser, Text: "previous user"},
@@ -581,8 +593,9 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		_ = onChunk("hello ")
 		_ = onChunk("world")
 	}).Return(&StreamDone{
-		Model: defaultModelName,
-		Text:  "hello world",
+		Model:        defaultModelName,
+		Text:         "hello world",
+		WorkoutDraft: workoutDraft,
 	}, nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
@@ -613,6 +626,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	require.NotNil(t, done)
 	assert.Equal(t, "hello world", done.Text)
 	assert.Equal(t, int32(51), done.RunID)
+	assert.Equal(t, workoutDraft, done.WorkoutDraft)
 	repo.AssertNotCalled(t, "FailRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
