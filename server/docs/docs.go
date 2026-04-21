@@ -481,6 +481,83 @@ const docTemplate = `{
                 }
             }
         },
+        "/ai/conversations/{id}/messages/stream/resume": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Replays persisted AI chat output after a sequence cursor and continues streaming while the run is still active.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "ai-chat"
+                ],
+                "summary": "Resume AI chat message stream",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Run ID",
+                        "name": "runId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Replay everything after this sequence",
+                        "name": "afterSequence",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/aichat.StreamEvent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/exercises": {
             "get": {
                 "security": [
@@ -1486,6 +1563,9 @@ const docTemplate = `{
         "aichat.ConversationDetail": {
             "type": "object",
             "properties": {
+                "active_run": {
+                    "$ref": "#/definitions/aichat.ConversationRunView"
+                },
                 "conversation": {
                     "$ref": "#/definitions/aichat.Conversation"
                 },
@@ -1494,6 +1574,23 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/aichat.ChatMessage"
                     }
+                }
+            }
+        },
+        "aichat.ConversationRunView": {
+            "type": "object",
+            "properties": {
+                "assistant_message_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "latest_sequence": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -1543,11 +1640,17 @@ const docTemplate = `{
                 "run_id": {
                     "type": "integer"
                 },
+                "sequence": {
+                    "type": "integer"
+                },
                 "text": {
                     "type": "string"
                 },
                 "type": {
                     "type": "string"
+                },
+                "workout_draft": {
+                    "$ref": "#/definitions/workout.CreateWorkoutRequest"
                 }
             }
         },

@@ -108,8 +108,11 @@ func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 	if runtime.g != nil {
 		t.Fatal("NewGenkitRuntime() should not retain a genkit instance after init panic")
 	}
-	if runtime.tool != (ai.Tool)(nil) {
-		t.Fatal("NewGenkitRuntime() should not retain a tool after init panic")
+	if runtime.activeFeaturesTool != (ai.Tool)(nil) {
+		t.Fatal("NewGenkitRuntime() should not retain an active features tool after init panic")
+	}
+	if runtime.workoutDraftTool != (ai.Tool)(nil) {
+		t.Fatal("NewGenkitRuntime() should not retain a workout draft tool after init panic")
 	}
 }
 
@@ -121,6 +124,12 @@ func TestActiveFeaturesToolNameIsGeminiCompatible(t *testing.T) {
 	}
 	if strings.Contains(activeFeaturesToolName, "/") {
 		t.Fatalf("activeFeaturesToolName = %q, slash is not allowed in Gemini tool names", activeFeaturesToolName)
+	}
+	if !validToolNamePattern.MatchString(workoutDraftToolName) {
+		t.Fatalf("workoutDraftToolName = %q, want Gemini-compatible tool name", workoutDraftToolName)
+	}
+	if strings.Contains(workoutDraftToolName, "/") {
+		t.Fatalf("workoutDraftToolName = %q, slash is not allowed in Gemini tool names", workoutDraftToolName)
 	}
 }
 
@@ -175,7 +184,7 @@ func TestToolCallGuardCachesErrors(t *testing.T) {
 	}
 }
 
-func TestPromptsReferenceActiveFeaturesToolName(t *testing.T) {
+func TestPromptsReferenceToolNames(t *testing.T) {
 	structuredPrompt := buildStructuredPrompt("test prompt")
 	chatPrompt := buildChatSystemPrompt()
 
@@ -184,6 +193,9 @@ func TestPromptsReferenceActiveFeaturesToolName(t *testing.T) {
 	}
 	if !strings.Contains(chatPrompt, activeFeaturesToolName) {
 		t.Fatalf("buildChatSystemPrompt() = %q, want tool name %q", chatPrompt, activeFeaturesToolName)
+	}
+	if !strings.Contains(chatPrompt, workoutDraftToolName) {
+		t.Fatalf("buildChatSystemPrompt() = %q, want workout tool name %q", chatPrompt, workoutDraftToolName)
 	}
 }
 

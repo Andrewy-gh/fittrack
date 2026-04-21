@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,7 +30,7 @@ type Repository interface {
 	AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error)
 	MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
 	ClaimRunRecovery(ctx context.Context, run *ChatRun) error
-	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error)
+	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error)
 	FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error
 }
 
@@ -585,11 +587,11 @@ func (r *repository) ClaimRunRecovery(ctx context.Context, run *ChatRun) error {
 	defer cancel()
 
 	runRow, err := r.queries.ClaimAIChatRunRecovery(ctx, db.ClaimAIChatRunRecoveryParams{
-		ID:                   run.ID,
-		UserID:               run.UserID,
-		ExpectedErrorMessage: textToPg(strings.TrimSpace(textValue(run.ErrorMessage))),
-		ExpectedUpdatedAt:    pgtype.Timestamptz{Time: run.UpdatedAt.UTC(), Valid: true},
-		ClaimedErrorMessage:  textToPg(runRecoveryClaimedMarker),
+		ID:             run.ID,
+		UserID:         run.UserID,
+		ErrorMessage:   textToPg(strings.TrimSpace(textValue(run.ErrorMessage))),
+		UpdatedAt:      pgtype.Timestamptz{Time: run.UpdatedAt.UTC(), Valid: true},
+		ErrorMessage_2: textToPg(runRecoveryClaimedMarker),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -607,7 +609,7 @@ func (r *repository) ClaimRunRecovery(ctx context.Context, run *ChatRun) error {
 	return nil
 }
 
-func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
+func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -619,6 +621,10 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 
 	qtx := r.queries.WithTx(tx)
 	completedTS := pgtype.Timestamptz{Time: completedAt.UTC(), Valid: true}
+	workoutDraftJSON, err := marshalWorkoutDraft(workoutDraft)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal ai chat workout draft: %w", err)
+	}
 
 	messageRow, err := qtx.UpdateAIChatMessageCompleted(ctx, db.UpdateAIChatMessageCompletedParams{
 		ID:          prepared.AssistantMessage.ID,
@@ -631,9 +637,10 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 	}
 
 	runRow, err := qtx.UpdateAIChatRunCompleted(ctx, db.UpdateAIChatRunCompletedParams{
-		ID:          prepared.Run.ID,
-		UserID:      prepared.Run.UserID,
-		CompletedAt: completedTS,
+		ID:           prepared.Run.ID,
+		UserID:       prepared.Run.UserID,
+		CompletedAt:  completedTS,
+		WorkoutDraft: workoutDraftJSON,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("complete ai chat run: %w", err)
@@ -875,6 +882,10 @@ func mapRun(row db.AiChatRun) (*ChatRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	workoutDraft, err := parseStoredWorkoutDraft(row.WorkoutDraft)
+	if err != nil {
+		return nil, err
+	}
 
 	return &ChatRun{
 		ID:                 row.ID,
@@ -886,11 +897,37 @@ func mapRun(row db.AiChatRun) (*ChatRun, error) {
 		Status:             row.Status,
 		RequestID:          textPtr(row.RequestID),
 		ErrorMessage:       textPtr(row.ErrorMessage),
+		WorkoutDraft:       workoutDraft,
 		CreatedAt:          createdAt,
 		UpdatedAt:          updatedAt,
 		StartedAt:          startedAt,
 		CompletedAt:        completedAt,
 	}, nil
+}
+
+func marshalWorkoutDraft(draft *workout.CreateWorkoutRequest) ([]byte, error) {
+	if draft == nil {
+		return nil, nil
+	}
+	return json.Marshal(draft)
+}
+
+func parseStoredWorkoutDraft(payload []byte) (*workout.CreateWorkoutRequest, error) {
+	if len(payload) == 0 {
+		return nil, nil
+	}
+
+	var draft workout.CreateWorkoutRequest
+	if err := json.Unmarshal(payload, &draft); err != nil {
+		return nil, fmt.Errorf("decode stored workout draft: %w", err)
+	}
+
+	normalizeWorkoutDraft(&draft)
+	if err := validateWorkoutDraft(&draft); err != nil {
+		return nil, fmt.Errorf("validate stored workout draft: %w", err)
+	}
+
+	return &draft, nil
 }
 
 func timeFromPg(ts pgtype.Timestamptz) (time.Time, error) {

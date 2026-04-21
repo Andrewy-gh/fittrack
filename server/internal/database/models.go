@@ -40,6 +40,7 @@ type AiChatRun struct {
 	Status             string             `json:"status"`
 	RequestID          pgtype.Text        `json:"request_id"`
 	ErrorMessage       pgtype.Text        `json:"error_message"`
+	WorkoutDraft       []byte             `json:"workout_draft"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 	StartedAt          pgtype.Timestamptz `json:"started_at"`

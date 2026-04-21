@@ -2,6 +2,9 @@
 
 import type { Options as ClientOptions, TDataShape, Client } from "./client";
 import type {
+  PostAiChatTelemetryData,
+  PostAiChatTelemetryResponses,
+  PostAiChatTelemetryErrors,
   PostAiChatValidateData,
   PostAiChatValidateResponses,
   PostAiChatValidateErrors,
@@ -14,9 +17,15 @@ import type {
   GetAiConversationsByIdData,
   GetAiConversationsByIdResponses,
   GetAiConversationsByIdErrors,
+  PostAiConversationsByIdMessagesRecoverData,
+  PostAiConversationsByIdMessagesRecoverResponses,
+  PostAiConversationsByIdMessagesRecoverErrors,
   PostAiConversationsByIdMessagesStreamData,
   PostAiConversationsByIdMessagesStreamResponses,
   PostAiConversationsByIdMessagesStreamErrors,
+  GetAiConversationsByIdMessagesStreamResumeData,
+  GetAiConversationsByIdMessagesStreamResumeResponses,
+  GetAiConversationsByIdMessagesStreamResumeErrors,
   GetExercisesData,
   GetExercisesResponses,
   GetExercisesErrors,
@@ -88,6 +97,33 @@ export type Options<
    * used to access values that aren't defined as part of the SDK function.
    */
   meta?: Record<string, unknown>;
+};
+
+/**
+ * Record AI chat telemetry
+ * Records authenticated client-observed AI chat outcomes for observability and rollout gating.
+ */
+export const postAiChatTelemetry = <ThrowOnError extends boolean = false>(
+  options: Options<PostAiChatTelemetryData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    PostAiChatTelemetryResponses,
+    PostAiChatTelemetryErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/chat/telemetry",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
 };
 
 /**
@@ -191,6 +227,31 @@ export const getAiConversationsById = <ThrowOnError extends boolean = false>(
 };
 
 /**
+ * Recover AI chat message stream
+ * Queues recovery for an active streaming AI chat run so persisted updates can continue after a disconnect.
+ */
+export const postAiConversationsByIdMessagesRecover = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<PostAiConversationsByIdMessagesRecoverData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    PostAiConversationsByIdMessagesRecoverResponses,
+    PostAiConversationsByIdMessagesRecoverErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/conversations/{id}/messages/recover",
+    ...options,
+  });
+};
+
+/**
  * Stream AI chat message
  * Persists a user message and run, then streams normalized assistant events over SSE. Preflight failures stay JSON.
  */
@@ -216,6 +277,34 @@ export const postAiConversationsByIdMessagesStream = <
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+};
+
+/**
+ * Resume AI chat message stream
+ * Replays persisted AI chat output after a sequence cursor and continues streaming while the run is still active.
+ */
+export const getAiConversationsByIdMessagesStreamResume = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    GetAiConversationsByIdMessagesStreamResumeData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? _heyApiClient).sse.get<
+    GetAiConversationsByIdMessagesStreamResumeResponses,
+    GetAiConversationsByIdMessagesStreamResumeErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/conversations/{id}/messages/stream/resume",
+    ...options,
   });
 };
 

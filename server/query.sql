@@ -600,6 +600,7 @@ SELECT
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -622,6 +623,7 @@ SELECT
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -710,6 +712,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -795,6 +798,7 @@ UPDATE ai_chat_run
 SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
+    workout_draft = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -807,6 +811,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -836,6 +841,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -860,6 +866,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -870,6 +877,7 @@ UPDATE ai_chat_run
 SET status = 'failed',
     error_message = $3,
     completed_at = $4,
+    workout_draft = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -882,6 +890,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,

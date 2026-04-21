@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -129,8 +130,8 @@ func (m *mockRepository) ClaimRunRecovery(ctx context.Context, run *ChatRun) err
 	return args.Error(0)
 }
 
-func (m *mockRepository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
-	args := m.Called(ctx, prepared, assistantText, completedAt)
+func (m *mockRepository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
+	args := m.Called(ctx, prepared, assistantText, workoutDraft, completedAt)
 	message, _ := args.Get(0).(*ChatMessage)
 	run, _ := args.Get(1).(*ChatRun)
 	return message, run, args.Error(2)
@@ -572,6 +573,17 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		},
 		Prompt: "new prompt",
 	}
+	workoutDraft := &workout.CreateWorkoutRequest{
+		Date: "2026-03-26T17:30:00Z",
+		Exercises: []workout.ExerciseInput{
+			{
+				Name: "Goblet Squat",
+				Sets: []workout.SetInput{
+					{Reps: 10, SetType: "working"},
+				},
+			},
+		},
+	}
 
 	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{
 		{Role: roleUser, Text: "previous user"},
@@ -581,12 +593,13 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		_ = onChunk("hello ")
 		_ = onChunk("world")
 	}).Return(&StreamDone{
-		Model: defaultModelName,
-		Text:  "hello world",
+		Model:        defaultModelName,
+		Text:         "hello world",
+		WorkoutDraft: workoutDraft,
 	}, nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
-	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
+	repo.On("CompleteRun", mock.Anything, prepared, "hello world", workoutDraft, mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
 		UserID:         "user-123",
@@ -601,6 +614,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		AssistantMessageID: 61,
 		Model:              defaultModelName,
 		Status:             statusCompleted,
+		WorkoutDraft:       workoutDraft,
 		CreatedAt:          now,
 		UpdatedAt:          now,
 		StartedAt:          now,
@@ -613,6 +627,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	require.NotNil(t, done)
 	assert.Equal(t, "hello world", done.Text)
 	assert.Equal(t, int32(51), done.RunID)
+	assert.Equal(t, workoutDraft, done.WorkoutDraft)
 	repo.AssertNotCalled(t, "FailRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
@@ -660,7 +675,7 @@ func TestServiceStreamMessage_LeavesRunStreamingOnDisconnect(t *testing.T) {
 	assert.Nil(t, done)
 	assert.ErrorIs(t, err, ErrStreamAwaitingRecovery)
 	repo.AssertNotCalled(t, "FailRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }
@@ -704,7 +719,7 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, done)
 	assert.ErrorIs(t, err, expectedErr)
-	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }
@@ -758,7 +773,7 @@ func TestServiceRecoverStreamingRun_CompletesActiveRun(t *testing.T) {
 	}, nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
-	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
+	repo.On("CompleteRun", mock.Anything, prepared, "hello world", (*workout.CreateWorkoutRequest)(nil), mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
 		UserID:         "user-123",
@@ -841,7 +856,7 @@ func TestServiceRecoverStreamingRun_ReclaimsStaleClaimedRun(t *testing.T) {
 	}, nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
-	repo.On("CompleteRun", mock.Anything, prepared, "hello world", mock.AnythingOfType("time.Time")).Return(&ChatMessage{
+	repo.On("CompleteRun", mock.Anything, prepared, "hello world", (*workout.CreateWorkoutRequest)(nil), mock.AnythingOfType("time.Time")).Return(&ChatMessage{
 		ID:             61,
 		ConversationID: 41,
 		UserID:         "user-123",
@@ -953,6 +968,17 @@ func TestServiceResumeMessageStream_ReplaysWhileRunActiveAndCompletes(t *testing
 			AssistantMessageID: 61,
 			Model:              defaultModelName,
 			Status:             statusCompleted,
+			WorkoutDraft: &workout.CreateWorkoutRequest{
+				Date: "2026-03-26T17:31:00Z",
+				Exercises: []workout.ExerciseInput{
+					{
+						Name: "Bench Press",
+						Sets: []workout.SetInput{
+							{Reps: 8, SetType: "working"},
+						},
+					},
+				},
+			},
 			CompletedAt:        &now,
 		},
 		AssistantMessage: &ChatMessage{
@@ -987,6 +1013,8 @@ func TestServiceResumeMessageStream_ReplaysWhileRunActiveAndCompletes(t *testing
 	}, seen)
 	assert.Equal(t, "hello world", done.Text)
 	assert.Equal(t, int32(4), done.Sequence)
+	require.NotNil(t, done.WorkoutDraft)
+	assert.Equal(t, "2026-03-26T17:31:00Z", done.WorkoutDraft.Date)
 	repo.AssertExpectations(t)
 }
 
@@ -1221,6 +1249,7 @@ func TestServiceStreamMessage_PersistsCompletionWhenRequestContextCanceled(t *te
 		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
 		prepared,
 		"hello world",
+		(*workout.CreateWorkoutRequest)(nil),
 		mock.AnythingOfType("time.Time"),
 	).Return(&ChatMessage{
 		ID:             61,
@@ -1301,7 +1330,7 @@ func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testi
 	require.Error(t, err)
 	assert.Nil(t, done)
 	assert.ErrorIs(t, err, expectedErr)
-	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	repo.AssertNotCalled(t, "CompleteRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }

@@ -45,12 +45,25 @@ definitions:
     type: object
   aichat.ConversationDetail:
     properties:
+      active_run:
+        $ref: '#/definitions/aichat.ConversationRunView'
       conversation:
         $ref: '#/definitions/aichat.Conversation'
       messages:
         items:
           $ref: '#/definitions/aichat.ChatMessage'
         type: array
+    type: object
+  aichat.ConversationRunView:
+    properties:
+      assistant_message_id:
+        type: integer
+      id:
+        type: integer
+      latest_sequence:
+        type: integer
+      status:
+        type: string
     type: object
   aichat.RecoverMessageResponse:
     properties:
@@ -82,10 +95,14 @@ definitions:
         type: string
       run_id:
         type: integer
+      sequence:
+        type: integer
       text:
         type: string
       type:
         type: string
+      workout_draft:
+        $ref: '#/definitions/workout.CreateWorkoutRequest'
     type: object
   aichat.ValidateRequest:
     properties:
@@ -946,6 +963,57 @@ paths:
       security:
       - StackAuth: []
       summary: Stream AI chat message
+      tags:
+      - ai-chat
+  /ai/conversations/{id}/messages/stream/resume:
+    get:
+      description: Replays persisted AI chat output after a sequence cursor and continues
+        streaming while the run is still active.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Run ID
+        in: query
+        name: runId
+        required: true
+        type: integer
+      - description: Replay everything after this sequence
+        in: query
+        name: afterSequence
+        type: integer
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.StreamEvent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Resume AI chat message stream
       tags:
       - ai-chat
   /exercises:
