@@ -3,6 +3,8 @@ package aichat
 import (
 	"errors"
 	"time"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
 const (
@@ -131,12 +133,13 @@ type RuntimeChatMessage struct {
 }
 
 type StreamDone struct {
-	ConversationID int32  `json:"conversation_id,omitempty"`
-	RunID          int32  `json:"run_id,omitempty"`
-	MessageID      int32  `json:"message_id,omitempty"`
-	Model          string `json:"model"`
-	Text           string `json:"text"`
-	Sequence       int32  `json:"sequence,omitempty"`
+	ConversationID int32                         `json:"conversation_id,omitempty"`
+	RunID          int32                         `json:"run_id,omitempty"`
+	MessageID      int32                         `json:"message_id,omitempty"`
+	Model          string                        `json:"model"`
+	Text           string                        `json:"text"`
+	Sequence       int32                         `json:"sequence,omitempty"`
+	WorkoutDraft   *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
 }
 
 type StreamChunk struct {
@@ -152,14 +155,15 @@ type ConversationRunView struct {
 }
 
 type StreamEvent struct {
-	Type           string `json:"type"`
-	RequestID      string `json:"request_id,omitempty"`
-	ConversationID int32  `json:"conversation_id,omitempty"`
-	RunID          int32  `json:"run_id,omitempty"`
-	MessageID      int32  `json:"message_id,omitempty"`
-	Model          string `json:"model,omitempty"`
-	Delta          string `json:"delta,omitempty"`
-	Text           string `json:"text,omitempty"`
-	Message        string `json:"message,omitempty"`
-	Sequence       int32  `json:"sequence,omitempty"`
+	Type           string                        `json:"type"`
+	RequestID      string                        `json:"request_id,omitempty"`
+	ConversationID int32                         `json:"conversation_id,omitempty"`
+	RunID          int32                         `json:"run_id,omitempty"`
+	MessageID      int32                         `json:"message_id,omitempty"`
+	Model          string                        `json:"model,omitempty"`
+	Delta          string                        `json:"delta,omitempty"`
+	Text           string                        `json:"text,omitempty"`
+	Message        string                        `json:"message,omitempty"`
+	Sequence       int32                         `json:"sequence,omitempty"`
+	WorkoutDraft   *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
 }

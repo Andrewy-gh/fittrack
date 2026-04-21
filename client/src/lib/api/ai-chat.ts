@@ -42,6 +42,24 @@ export type AIChatRecoveryResponse = {
   status: "queued" | "not_needed";
 };
 
+export type AIWorkoutSetInput = {
+  weight?: number;
+  reps: number;
+  setType: "warmup" | "working";
+};
+
+export type AIWorkoutExerciseInput = {
+  name: string;
+  sets: AIWorkoutSetInput[];
+};
+
+export type AIWorkoutDraft = {
+  date: string;
+  notes?: string;
+  workoutFocus?: string;
+  exercises: AIWorkoutExerciseInput[];
+};
+
 export type AIChatStreamEvent = {
   type: "start" | "delta" | "done" | "error";
   request_id?: string;
@@ -53,6 +71,7 @@ export type AIChatStreamEvent = {
   text?: string;
   message?: string;
   sequence?: number;
+  workout_draft?: AIWorkoutDraft;
 };
 
 export type AIChatStreamResult = {

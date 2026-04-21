@@ -14,6 +14,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -486,6 +487,45 @@ func TestHandlerStreamMessage(t *testing.T) {
 		assert.Contains(t, body, `"delta":"hello "`)
 		assert.Contains(t, body, "event: done")
 		assert.Contains(t, body, `"text":"hello world"`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("includes workout draft payload on done event", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		prepared := preparedStreamFixture()
+		workoutFocus := "pull"
+		service.On("PrepareMessageStream", mock.Anything, int32(41), "build workout", "req-123").Return(prepared, nil).Once()
+		service.On("StreamMessage", mock.Anything, prepared, mock.Anything).Return(&StreamDone{
+			ConversationID: 41,
+			RunID:          51,
+			MessageID:      61,
+			Model:          defaultModelName,
+			Text:           workoutDraftSummaryMessage,
+			WorkoutDraft: &workout.CreateWorkoutRequest{
+				Date:         "2026-04-20T12:00:00Z",
+				WorkoutFocus: &workoutFocus,
+				Exercises: []workout.ExerciseInput{
+					{
+						Name: "Chest Supported Row",
+						Sets: []workout.SetInput{
+							{Reps: 10, SetType: "working"},
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"build workout"}`))
+		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
+		req.SetPathValue("id", "41")
+		rr := newStreamResponseRecorder()
+
+		handler.StreamMessage(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"workout_draft":{"date":"2026-04-20T12:00:00Z"`)
+		assert.Contains(t, rr.Body.String(), `"workoutFocus":"pull"`)
 		service.AssertExpectations(t)
 	})
 
