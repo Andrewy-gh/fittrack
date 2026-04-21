@@ -90,6 +90,7 @@ type ChatRun struct {
 	Status             string     `json:"status"`
 	RequestID          *string    `json:"request_id,omitempty"`
 	ErrorMessage       *string    `json:"error_message,omitempty"`
+	WorkoutDraft       *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
 	CreatedAt          time.Time  `json:"created_at"`
 	UpdatedAt          time.Time  `json:"updated_at"`
 	StartedAt          time.Time  `json:"started_at"`

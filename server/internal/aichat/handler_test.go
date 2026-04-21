@@ -616,6 +616,17 @@ func TestHandlerResumeMessageStream(t *testing.T) {
 			Model:          defaultModelName,
 			Text:           "replayed world",
 			Sequence:       4,
+			WorkoutDraft: &workout.CreateWorkoutRequest{
+				Date: "2026-04-20T12:00:00Z",
+				Exercises: []workout.ExerciseInput{
+					{
+						Name: "Goblet Squat",
+						Sets: []workout.SetInput{
+							{Reps: 10, SetType: "working"},
+						},
+					},
+				},
+			},
 		}, nil).Once()
 
 		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?runId=51&afterSequence=2", nil)
@@ -635,6 +646,7 @@ func TestHandlerResumeMessageStream(t *testing.T) {
 		assert.Contains(t, body, "event: done")
 		assert.Contains(t, body, `"text":"replayed world"`)
 		assert.Contains(t, body, `"sequence":4`)
+		assert.Contains(t, body, `"workout_draft":{"date":"2026-04-20T12:00:00Z"`)
 		service.AssertExpectations(t)
 	})
 

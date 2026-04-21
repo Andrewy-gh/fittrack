@@ -293,6 +293,7 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 					Model:          prepared.Run.Model,
 					Text:           prepared.AssistantMessage.Content,
 					Sequence:       prepared.LastSequence,
+					WorkoutDraft:   prepared.Run.WorkoutDraft,
 				}, nil
 			}
 
@@ -406,7 +407,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		text = strings.TrimSpace(partial.String())
 	}
 
-	message, run, err := s.repo.CompleteRun(persistCtx, prepared, text, time.Now().UTC())
+	message, run, err := s.repo.CompleteRun(persistCtx, prepared, text, done.WorkoutDraft, time.Now().UTC())
 	if err != nil {
 		persistErr := err
 		if failErr := s.failPreparedRun(persistCtx, prepared, text, err); failErr != nil {

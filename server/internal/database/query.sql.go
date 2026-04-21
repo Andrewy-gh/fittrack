@@ -30,6 +30,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -37,22 +38,20 @@ RETURNING
 `
 
 type ClaimAIChatRunRecoveryParams struct {
-	ID                   int32              `json:"id"`
-	UserID               string             `json:"user_id"`
-	ExpectedErrorMessage pgtype.Text        `json:"expected_error_message"`
-	ExpectedUpdatedAt    pgtype.Timestamptz `json:"expected_updated_at"`
-	ClaimedErrorMessage  pgtype.Text        `json:"claimed_error_message"`
+	ID             int32              `json:"id"`
+	UserID         string             `json:"user_id"`
+	ErrorMessage   pgtype.Text        `json:"error_message"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	ErrorMessage_2 pgtype.Text        `json:"error_message_2"`
 }
 
 func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRunRecoveryParams) (AiChatRun, error) {
-	row := q.db.QueryRow(
-		ctx,
-		claimAIChatRunRecovery,
+	row := q.db.QueryRow(ctx, claimAIChatRunRecovery,
 		arg.ID,
 		arg.UserID,
-		arg.ExpectedErrorMessage,
-		arg.ExpectedUpdatedAt,
-		arg.ClaimedErrorMessage,
+		arg.ErrorMessage,
+		arg.UpdatedAt,
+		arg.ErrorMessage_2,
 	)
 	var i AiChatRun
 	err := row.Scan(
@@ -65,6 +64,7 @@ func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRun
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -184,6 +184,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -225,6 +226,7 @@ func (q *Queries) CreateAIChatRun(ctx context.Context, arg CreateAIChatRunParams
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -484,6 +486,7 @@ SELECT
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -511,6 +514,7 @@ func (q *Queries) GetAIChatRun(ctx context.Context, arg GetAIChatRunParams) (AiC
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -530,6 +534,7 @@ SELECT
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -560,6 +565,7 @@ func (q *Queries) GetActiveAIChatRunForConversation(ctx context.Context, arg Get
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -1959,6 +1965,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -1984,6 +1991,7 @@ func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIC
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -2233,6 +2241,7 @@ UPDATE ai_chat_run
 SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
+    workout_draft = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -2245,6 +2254,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -2252,13 +2262,19 @@ RETURNING
 `
 
 type UpdateAIChatRunCompletedParams struct {
-	ID          int32              `json:"id"`
-	UserID      string             `json:"user_id"`
-	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+	ID           int32              `json:"id"`
+	UserID       string             `json:"user_id"`
+	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	WorkoutDraft []byte             `json:"workout_draft"`
 }
 
 func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChatRunCompletedParams) (AiChatRun, error) {
-	row := q.db.QueryRow(ctx, updateAIChatRunCompleted, arg.ID, arg.UserID, arg.CompletedAt)
+	row := q.db.QueryRow(ctx, updateAIChatRunCompleted,
+		arg.ID,
+		arg.UserID,
+		arg.CompletedAt,
+		arg.WorkoutDraft,
+	)
 	var i AiChatRun
 	err := row.Scan(
 		&i.ID,
@@ -2270,6 +2286,7 @@ func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChat
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -2283,6 +2300,7 @@ UPDATE ai_chat_run
 SET status = 'failed',
     error_message = $3,
     completed_at = $4,
+    workout_draft = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -2295,6 +2313,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -2326,6 +2345,7 @@ func (q *Queries) UpdateAIChatRunFailed(ctx context.Context, arg UpdateAIChatRun
 		&i.Status,
 		&i.RequestID,
 		&i.ErrorMessage,
+		&i.WorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,

@@ -143,7 +143,7 @@ describe("ai chat api wrapper", () => {
               'data: {"type":"delta","delta":"world","sequence":4}',
               "",
               "event: done",
-              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"text":"hello world","sequence":4}',
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"text":"hello world","sequence":4,"workout_draft":{"date":"2026-04-20T12:00:00Z","exercises":[{"name":"Goblet Squat","sets":[{"reps":10,"setType":"working"}]}]}}',
               "",
               "",
             ].join("\n"),
@@ -177,6 +177,7 @@ describe("ai chat api wrapper", () => {
     );
     expect(seen).toEqual([3, 4, "done"]);
     expect(result.doneEvent?.sequence).toBe(4);
+    expect(result.doneEvent?.workout_draft?.date).toBe("2026-04-20T12:00:00Z");
   });
 
   it("suppresses duplicate SSE chunks by event id", async () => {
