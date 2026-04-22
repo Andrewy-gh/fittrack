@@ -3,6 +3,7 @@
 ### Quick Start
 
 1. Create the local env files in this folder:
+
 ```bash
 cp setenv.example.sh setenv.sh
 cp .env.example .env
@@ -14,6 +15,7 @@ cp .env.example .env
 - `.env` is handy for local integration tests, Playwright setup helpers, and AI smoke testing
 
 3. Install goose and air:
+
 ```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
 go install github.com/air-verse/air@latest
@@ -21,11 +23,13 @@ export PATH="$HOME/go/bin:$PATH"
 ```
 
 4. Run the complete development environment:
+
 ```bash
 make dev
 ```
 
 That's it! This single command will:
+
 - ✅ Load environment variables from `setenv.sh`
 - ✅ Check prerequisites (docker, docker compose, goose, air)
 - ✅ Start the PostgreSQL database container
@@ -38,22 +42,26 @@ That's it! This single command will:
 If you prefer to run steps individually:
 
 1. Load environment variables:
+
 ```bash
 source ./.setenv.sh
 # or: source ./setenv.sh
 ```
 
 2. Start database:
+
 ```bash
 docker compose up -d postgres
 ```
 
 3. Initialize the database (first time only):
+
 ```bash
 make migrate-up
 ```
 
 4. Start development server:
+
 ```bash
 air
 # OR build and run manually:
@@ -99,10 +107,13 @@ To run recovery locally:
 2. Set `INNGEST_DEV=1` to use Inngest's default local dev server address (`http://127.0.0.1:8288`).
    You can also set `INNGEST_DEV` to an explicit URL if your dev server is running elsewhere.
 3. Start the Inngest dev server in another terminal:
+
 ```bash
 inngest dev
 ```
+
 4. Start the API:
+
 ```bash
 make dev
 ```
@@ -130,17 +141,51 @@ Common optional variables:
 - `METRICS_USERNAME`, `METRICS_PASSWORD`
 - `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 - `GEMINI_MODEL`
+- `E2E_LOCAL_AUTH_ENABLED` to enable the local-only Playwright auth bootstrap in `development`
+- `E2E_LOCAL_AUTH_USER_ID`, `E2E_LOCAL_AUTH_EMAIL`, `E2E_LOCAL_AUTH_DISPLAY_NAME` to override the deterministic local test user
 - `SECRET_SERVER_KEY` for Playwright's server-side auth bootstrap
+
+### Local Playwright Auth Bootstrap
+
+Local structured-chat E2E runs can avoid manual Google or GitHub login.
+
+Set these values in `server/.env` or `setenv.sh`:
+
+```env
+E2E_LOCAL_AUTH_ENABLED=true
+E2E_LOCAL_AUTH_USER_ID=local-e2e-user
+E2E_LOCAL_AUTH_EMAIL=local-e2e-user@example.test
+E2E_LOCAL_AUTH_DISPLAY_NAME=Local E2E User
+```
+
+This local-only path is tightly gated:
+
+- it only turns on when `ENVIRONMENT=development`
+- it requires `E2E_LOCAL_AUTH_ENABLED=true`
+- it only accepts the one configured local E2E user id
+
+When enabled, the server exposes two dev-only helpers:
+
+- `POST /dev/e2e/auth/bootstrap`
+- `POST /dev/e2e/ai-chat/conversations`
+
+Playwright uses them to:
+
+- ensure the local test user exists
+- grant `ai_chatbot` feature access
+- seed a persisted AI chat conversation with `latest_workout_draft`
 
 ### AI Chat API
 
-Phase 1 adds persisted chat endpoints under `/api/ai/*`:
+The structured workout chat slice exposes persisted chat endpoints under `/api/ai/*`:
 
 - `POST /api/ai/conversations`
 - `GET /api/ai/conversations/{id}`
 - `POST /api/ai/conversations/{id}/messages/stream`
 - `POST /api/ai/conversations/{id}/messages/recover`
 - `POST /api/ai/chat/telemetry`
+
+`GET /api/ai/conversations/{id}` also returns the conversation's `latest_workout_draft` when the assistant has produced a structured workout draft for that thread.
 
 The stream endpoint is authenticated fetch-based SSE:
 
@@ -162,11 +207,13 @@ Proxy note:
 ### Configuration
 
 The `make dev` command supports these environment variables:
+
 - `DB_SERVICE` (default: "postgres") - Docker service name for PostgreSQL
-- `DB_READY_TIMEOUT` (default: 90) - Seconds to wait for database readiness  
+- `DB_READY_TIMEOUT` (default: 90) - Seconds to wait for database readiness
 - `AIR_CMD` (default: "air") - Command to run for hot-reload development
 
 Example:
+
 ```bash
 make DB_READY_TIMEOUT=60 dev
 ```
@@ -174,6 +221,7 @@ make DB_READY_TIMEOUT=60 dev
 ### Troubleshooting
 
 **Database connection issues:**
+
 ```bash
 # Check database logs
 docker compose logs postgres
@@ -183,6 +231,7 @@ docker compose ps
 ```
 
 **Missing goose:**
+
 ```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
 export PATH="$HOME/go/bin:$PATH"
@@ -193,6 +242,7 @@ export PATH="$HOME/go/bin:$PATH"
 This repo bind-mounts PostgreSQL data into `server/_db-data`. If that folder was initialized with different `DB_USER`, `DB_PASSWORD`, or `DB_NAME` values, Postgres may still start but `make dev` and `goose` will fail authentication.
 
 PowerShell:
+
 ```powershell
 cd server
 docker compose down
@@ -201,6 +251,7 @@ New-Item -ItemType Directory _db-data | Out-Null
 ```
 
 Bash:
+
 ```bash
 cd server
 docker compose down
@@ -211,6 +262,7 @@ mkdir -p _db-data
 After that, rerun `make dev` so Postgres initializes with the values from `setenv.sh` or `.setenv.sh`.
 
 **Missing air:**
+
 ```bash
 # Install via Go
 go install github.com/air-verse/air@latest

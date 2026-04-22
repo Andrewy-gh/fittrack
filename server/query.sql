@@ -551,10 +551,10 @@ INSERT INTO ai_chat_conversation (
     title
 )
 VALUES ($1, $2)
-RETURNING id, user_id, title, created_at, updated_at, last_message_at;
+RETURNING id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at;
 
 -- name: GetAIChatConversation :one
-SELECT id, user_id, title, created_at, updated_at, last_message_at
+SELECT id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at
 FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2;
 
@@ -600,6 +600,7 @@ SELECT
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -622,6 +623,7 @@ SELECT
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -710,6 +712,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -719,6 +722,12 @@ RETURNING
 UPDATE ai_chat_conversation
 SET updated_at = CURRENT_TIMESTAMP,
     last_message_at = $3
+WHERE id = $1 AND user_id = $2;
+
+-- name: SetAIChatConversationLatestWorkoutDraft :exec
+UPDATE ai_chat_conversation
+SET latest_workout_draft = $3,
+    updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2;
 
 -- name: SetAIChatConversationTitleIfEmpty :execrows
@@ -795,6 +804,7 @@ UPDATE ai_chat_run
 SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
+    workout_draft = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -807,6 +817,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -836,6 +847,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -860,6 +872,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,
@@ -870,6 +883,7 @@ UPDATE ai_chat_run
 SET status = 'failed',
     error_message = $3,
     completed_at = $4,
+    workout_draft = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -882,6 +896,7 @@ RETURNING
     status,
     request_id,
     error_message,
+    workout_draft,
     created_at,
     updated_at,
     started_at,

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
+	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
@@ -15,7 +16,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health endpoints (no authentication required)
@@ -62,6 +63,10 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 		mux.Handle("GET /inngest", api.inngestHandler)
 		mux.Handle("PUT /inngest", api.inngestHandler)
 		mux.Handle("POST /inngest", api.inngestHandler)
+	}
+	if e2eh != nil {
+		mux.HandleFunc("POST /dev/e2e/auth/bootstrap", e2eh.Bootstrap)
+		mux.HandleFunc("POST /dev/e2e/ai-chat/conversations", e2eh.SeedConversation)
 	}
 	// Swagger documentation
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)

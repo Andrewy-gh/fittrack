@@ -346,6 +346,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		Model:          done.Model,
 		Text:           done.Text,
 		Sequence:       done.Sequence,
+		WorkoutDraft:   done.WorkoutDraft,
 	}); err != nil {
 		h.logStreamWriteFailure("failed to finish ai chat stream", r, err)
 	}
@@ -428,6 +429,7 @@ func (h *Handler) ResumeMessageStream(w http.ResponseWriter, r *http.Request) {
 		Model:          done.Model,
 		Text:           done.Text,
 		Sequence:       done.Sequence,
+		WorkoutDraft:   done.WorkoutDraft,
 	}); err != nil {
 		h.logStreamWriteFailure("failed to finish ai chat resume stream", r, err)
 	}

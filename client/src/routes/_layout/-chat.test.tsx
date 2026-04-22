@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AIWorkoutDraft } from "@/lib/api/ai-chat";
 
 const {
   mockSearch,
@@ -58,12 +59,14 @@ import { ChatRouteComponent } from "./chat";
 function conversationDetail(
   messages: Array<Record<string, unknown>>,
   activeRun?: Record<string, unknown>,
+  latestWorkoutDraft?: AIWorkoutDraft,
 ) {
   return {
     conversation: {
       id: 41,
       created_at: "2026-03-26T17:00:00Z",
       updated_at: "2026-03-26T17:00:00Z",
+      latest_workout_draft: latestWorkoutDraft,
     },
     messages,
     active_run: activeRun,
@@ -85,6 +88,7 @@ function deferredPromise<T>() {
 describe("ChatRouteComponent", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    window.localStorage.clear();
     mockSearch.conversationId = "41";
     mockNavigate.mockReset();
     mockCreateConversation.mockReset();
@@ -953,5 +957,171 @@ describe("ChatRouteComponent", () => {
     expect(screen.getByText("...")).toBeInTheDocument();
 
     view.unmount();
+  });
+
+  it("shows the latest workout draft on reopen and imports it into the workout form flow", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const latestWorkoutDraft: AIWorkoutDraft = {
+      date: "2026-04-21T12:00:00Z",
+      notes: "Keep rest short",
+      workoutFocus: "pull",
+      exercises: [
+        {
+          name: "Chest Supported Row",
+          sets: [{ reps: 10, setType: "working" }],
+        },
+      ],
+    };
+
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([], undefined, latestWorkoutDraft),
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("Latest structured workout draft saved"),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit in workout form" }),
+    );
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(window.localStorage.getItem("workout-entry-form-data-user-123")).toBe(
+        JSON.stringify({
+          date: "2026-04-21T12:00:00Z",
+          notes: "Keep rest short",
+          workoutFocus: "pull",
+          exercises: [
+            {
+              name: "Chest Supported Row",
+              sets: [{ reps: 10, setType: "working" }],
+            },
+          ],
+        }),
+      );
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/workouts/new" });
+  });
+
+  it("overwrites the latest workout draft CTA after a regenerated structured workout", async () => {
+    const user = userEvent.setup();
+    const originalDraft: AIWorkoutDraft = {
+      date: "2026-04-20T12:00:00Z",
+      notes: "Original draft",
+      workoutFocus: "push",
+      exercises: [
+        {
+          name: "Bench Press",
+          sets: [{ reps: 8, setType: "working", weight: 185 }],
+        },
+      ],
+    };
+    const regeneratedDraft: AIWorkoutDraft = {
+      date: "2026-04-21T12:00:00Z",
+      notes: "Regenerated draft",
+      workoutFocus: "pull",
+      exercises: [
+        {
+          name: "Chest Supported Row",
+          sets: [{ reps: 10, setType: "working" }],
+        },
+      ],
+    };
+
+    mockGetConversation
+      .mockResolvedValueOnce(conversationDetail([], undefined, originalDraft))
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [
+            {
+              id: 71,
+              conversation_id: 41,
+              role: "user",
+              content: "regenerate it",
+              status: "completed",
+              created_at: "2026-03-26T17:00:01Z",
+              updated_at: "2026-03-26T17:00:01Z",
+              completed_at: "2026-03-26T17:00:01Z",
+            },
+            {
+              id: 72,
+              conversation_id: 41,
+              role: "assistant",
+              content: "I put together a structured workout draft for you.",
+              status: "completed",
+              created_at: "2026-03-26T17:00:01Z",
+              updated_at: "2026-03-26T17:00:02Z",
+              completed_at: "2026-03-26T17:00:02Z",
+            },
+          ],
+          undefined,
+          regeneratedDraft,
+        ),
+      );
+    mockStreamMessage.mockImplementation(
+      async (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+          onDone?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          message_id: 72,
+        });
+        options?.onDone?.({
+          type: "done",
+          message_id: 72,
+          text: "I put together a structured workout draft for you.",
+          workout_draft: regeneratedDraft,
+        });
+
+        return {
+          doneEvent: {
+            type: "done",
+            message_id: 72,
+            text: "I put together a structured workout draft for you.",
+            workout_draft: regeneratedDraft,
+          },
+          endedWithError: false,
+        };
+      },
+    );
+
+    render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "regenerate it",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await user.click(
+      await screen.findByRole("button", { name: "Edit in workout form" }),
+    );
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("workout-entry-form-data-user-123")).toBe(
+        JSON.stringify({
+          date: "2026-04-21T12:00:00Z",
+          notes: "Regenerated draft",
+          workoutFocus: "pull",
+          exercises: [
+            {
+              name: "Chest Supported Row",
+              sets: [{ reps: 10, setType: "working" }],
+            },
+          ],
+        }),
+      );
+    });
   });
 });

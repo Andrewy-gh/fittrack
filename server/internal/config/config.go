@@ -37,27 +37,43 @@ type Config struct {
 	// Optional AI chat recovery wiring
 	InngestEventKey   string `validate:"omitempty"`
 	InngestSigningKey string `validate:"omitempty"`
+
+	// Optional local-development E2E auth bootstrap
+	LocalE2EAuthEnabled     bool   `validate:"omitempty"`
+	LocalE2EAuthUserID      string `validate:"omitempty"`
+	LocalE2EAuthEmail       string `validate:"omitempty,email"`
+	LocalE2EAuthDisplayName string `validate:"omitempty"`
 }
 
 // Load reads configuration from environment variables and validates it
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:       os.Getenv("DATABASE_URL"),
-		ProjectID:         os.Getenv("PROJECT_ID"),
-		Port:              getEnvInt("PORT", 8080),
-		LogLevel:          getEnvString("LOG_LEVEL", "info"),
-		Environment:       getEnvString("ENVIRONMENT", "development"),
-		RateLimitRPM:      getEnvInt("RATE_LIMIT_RPM", 100),
-		AllowedOrigins:    os.Getenv("ALLOWED_ORIGINS"),
-		DBMaxConns:        int32(getEnvInt("DB_MAX_CONNS", 15)),
-		DBMinConns:        int32(getEnvInt("DB_MIN_CONNS", 2)),
-		DBMaxConnIdle:     getEnvString("DB_MAX_CONN_IDLE", "30s"),
-		DBMaxConnLife:     getEnvString("DB_MAX_CONN_LIFE", "30m"),
-		DBHealthCheck:     getEnvString("DB_HEALTHCHECK", "30s"),
-		MetricsUsername:   os.Getenv("METRICS_USERNAME"),
-		MetricsPassword:   os.Getenv("METRICS_PASSWORD"),
-		InngestEventKey:   os.Getenv("INNGEST_EVENT_KEY"),
-		InngestSigningKey: os.Getenv("INNGEST_SIGNING_KEY"),
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		ProjectID:           os.Getenv("PROJECT_ID"),
+		Port:                getEnvInt("PORT", 8080),
+		LogLevel:            getEnvString("LOG_LEVEL", "info"),
+		Environment:         getEnvString("ENVIRONMENT", "development"),
+		RateLimitRPM:        getEnvInt("RATE_LIMIT_RPM", 100),
+		AllowedOrigins:      os.Getenv("ALLOWED_ORIGINS"),
+		DBMaxConns:          int32(getEnvInt("DB_MAX_CONNS", 15)),
+		DBMinConns:          int32(getEnvInt("DB_MIN_CONNS", 2)),
+		DBMaxConnIdle:       getEnvString("DB_MAX_CONN_IDLE", "30s"),
+		DBMaxConnLife:       getEnvString("DB_MAX_CONN_LIFE", "30m"),
+		DBHealthCheck:       getEnvString("DB_HEALTHCHECK", "30s"),
+		MetricsUsername:     os.Getenv("METRICS_USERNAME"),
+		MetricsPassword:     os.Getenv("METRICS_PASSWORD"),
+		InngestEventKey:     os.Getenv("INNGEST_EVENT_KEY"),
+		InngestSigningKey:   os.Getenv("INNGEST_SIGNING_KEY"),
+		LocalE2EAuthEnabled: getEnvBool("E2E_LOCAL_AUTH_ENABLED", false),
+		LocalE2EAuthUserID:  getEnvString("E2E_LOCAL_AUTH_USER_ID", "local-e2e-user"),
+		LocalE2EAuthEmail: getEnvString(
+			"E2E_LOCAL_AUTH_EMAIL",
+			"local-e2e-user@example.test",
+		),
+		LocalE2EAuthDisplayName: getEnvString(
+			"E2E_LOCAL_AUTH_DISPLAY_NAME",
+			"Local E2E User",
+		),
 	}
 
 	// Validate configuration
@@ -72,6 +88,13 @@ func Load() (*Config, error) {
 func (c *Config) AIChatRecoveryConfigured() bool {
 	return strings.TrimSpace(c.InngestEventKey) != "" &&
 		strings.TrimSpace(c.InngestSigningKey) != ""
+}
+
+func (c *Config) LocalE2EAuthConfigured() bool {
+	return c.Environment == "development" &&
+		c.LocalE2EAuthEnabled &&
+		strings.TrimSpace(c.LocalE2EAuthUserID) != "" &&
+		strings.TrimSpace(c.LocalE2EAuthEmail) != ""
 }
 
 // GetAllowedOrigins parses the comma-separated ALLOWED_ORIGINS into a string slice
@@ -108,6 +131,20 @@ func getEnvInt(key string, defaultValue int) int {
 			return intValue
 		} else {
 			log.Printf("config: failed to parse %s=%q as integer: %v, using default: %d", key, value, err, defaultValue)
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		switch strings.ToLower(value) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
+		default:
+			log.Printf("config: failed to parse %s=%q as boolean, using default: %t", key, value, defaultValue)
 		}
 	}
 	return defaultValue

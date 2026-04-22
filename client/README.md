@@ -46,6 +46,12 @@ VITE_API_BASE_URL=http://localhost:8080
 
 You usually do not need `VITE_API_BASE_URL` during local dev because Vite proxies `/api` to the backend by default.
 
+For local Playwright auth bootstrap without manual social login, also set:
+
+```env
+VITE_E2E_LOCAL_AUTH_ENABLED=true
+```
+
 ## API Client Generation
 
 TypeScript client code is auto-generated from the backend's OpenAPI spec. After the backend swagger docs are updated, regenerate with:
@@ -72,6 +78,16 @@ File-based routing via TanStack Router. Routes live in `src/routes/`. The router
 - **E2E tests**: Playwright (Chrome) - `bun run test:e2e`
 - **Project hygiene**: oxlint and knip - `bun run lint` and `bun run knip`
 - E2E tests live in `tests/e2e/`
+
+### Local Structured Chat E2E
+
+When the server also has `E2E_LOCAL_AUTH_ENABLED=true`, Playwright global setup can create a deterministic local test session instead of using Google, GitHub, or email/password login.
+
+Run the structured chat reopen/import E2E with:
+
+```bash
+bun run test:e2e -- tests/e2e/auth/structured-workout-chat-import.test.ts
+```
 
 ## PWA
 

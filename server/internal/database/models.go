@@ -9,12 +9,13 @@ import (
 )
 
 type AiChatConversation struct {
-	ID            int32              `json:"id"`
-	UserID        string             `json:"user_id"`
-	Title         pgtype.Text        `json:"title"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	LastMessageAt pgtype.Timestamptz `json:"last_message_at"`
+	ID                 int32              `json:"id"`
+	UserID             string             `json:"user_id"`
+	Title              pgtype.Text        `json:"title"`
+	LatestWorkoutDraft []byte             `json:"latest_workout_draft"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	LastMessageAt      pgtype.Timestamptz `json:"last_message_at"`
 }
 
 type AiChatMessage struct {
@@ -40,6 +41,7 @@ type AiChatRun struct {
 	Status             string             `json:"status"`
 	RequestID          pgtype.Text        `json:"request_id"`
 	ErrorMessage       pgtype.Text        `json:"error_message"`
+	WorkoutDraft       []byte             `json:"workout_draft"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 	StartedAt          pgtype.Timestamptz `json:"started_at"`

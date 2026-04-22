@@ -4,10 +4,21 @@ const { getUser } = vi.hoisted(() => ({
   getUser: vi.fn(),
 }));
 
+const { applyLocalDevAuthHeader } = vi.hoisted(() => ({
+  applyLocalDevAuthHeader: vi.fn((headers: Headers) => {
+    headers.set("x-fittrack-dev-e2e-user", "local-e2e-user");
+    return headers;
+  }),
+}));
+
 vi.mock("@/stack", () => ({
   stackClientApp: {
     getUser,
   },
+}));
+
+vi.mock("@/lib/local-dev-auth", () => ({
+  applyLocalDevAuthHeader,
 }));
 
 import {
@@ -23,9 +34,47 @@ describe("ai chat api wrapper", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     getUser.mockReset();
+    applyLocalDevAuthHeader.mockClear();
     getUser.mockResolvedValue({
       getAuthJson: vi.fn().mockResolvedValue({ accessToken: "token-123" }),
     });
+  });
+
+  it("falls back to the local dev auth header when Stack has no user", async () => {
+    getUser.mockResolvedValue(null);
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          conversation: {
+            id: 41,
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-03-26T17:00:00Z",
+          },
+          messages: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    await requestAIChatMessageRecovery(41);
+
+    expect(applyLocalDevAuthHeader).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/ai/conversations/41/messages/recover",
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      }),
+    );
+
+    const [, options] = vi.mocked(fetch).mock.calls[0]!;
+    const headers = options?.headers as Headers | undefined;
+    expect(headers?.get("x-fittrack-dev-e2e-user")).toBe("local-e2e-user");
   });
 
   it("parses JSON preflight errors before SSE parsing", async () => {

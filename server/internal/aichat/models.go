@@ -3,6 +3,8 @@ package aichat
 import (
 	"errors"
 	"time"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
 const (
@@ -57,12 +59,13 @@ type ValidateResponse struct {
 }
 
 type Conversation struct {
-	ID            int32      `json:"id"`
-	UserID        string     `json:"-"`
-	Title         *string    `json:"title,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	LastMessageAt *time.Time `json:"last_message_at,omitempty"`
+	ID                 int32                         `json:"id"`
+	UserID             string                        `json:"-"`
+	Title              *string                       `json:"title,omitempty"`
+	LatestWorkoutDraft *workout.CreateWorkoutRequest `json:"latest_workout_draft,omitempty"`
+	CreatedAt          time.Time                     `json:"created_at"`
+	UpdatedAt          time.Time                     `json:"updated_at"`
+	LastMessageAt      *time.Time                    `json:"last_message_at,omitempty"`
 }
 
 type ChatMessage struct {
@@ -79,19 +82,20 @@ type ChatMessage struct {
 }
 
 type ChatRun struct {
-	ID                 int32      `json:"id"`
-	ConversationID     int32      `json:"conversation_id"`
-	UserID             string     `json:"-"`
-	UserMessageID      int32      `json:"user_message_id"`
-	AssistantMessageID int32      `json:"assistant_message_id"`
-	Model              string     `json:"model"`
-	Status             string     `json:"status"`
-	RequestID          *string    `json:"request_id,omitempty"`
-	ErrorMessage       *string    `json:"error_message,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	StartedAt          time.Time  `json:"started_at"`
-	CompletedAt        *time.Time `json:"completed_at,omitempty"`
+	ID                 int32                         `json:"id"`
+	ConversationID     int32                         `json:"conversation_id"`
+	UserID             string                        `json:"-"`
+	UserMessageID      int32                         `json:"user_message_id"`
+	AssistantMessageID int32                         `json:"assistant_message_id"`
+	Model              string                        `json:"model"`
+	Status             string                        `json:"status"`
+	RequestID          *string                       `json:"request_id,omitempty"`
+	ErrorMessage       *string                       `json:"error_message,omitempty"`
+	WorkoutDraft       *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
+	CreatedAt          time.Time                     `json:"created_at"`
+	UpdatedAt          time.Time                     `json:"updated_at"`
+	StartedAt          time.Time                     `json:"started_at"`
+	CompletedAt        *time.Time                    `json:"completed_at,omitempty"`
 }
 
 type ConversationDetail struct {
@@ -131,12 +135,13 @@ type RuntimeChatMessage struct {
 }
 
 type StreamDone struct {
-	ConversationID int32  `json:"conversation_id,omitempty"`
-	RunID          int32  `json:"run_id,omitempty"`
-	MessageID      int32  `json:"message_id,omitempty"`
-	Model          string `json:"model"`
-	Text           string `json:"text"`
-	Sequence       int32  `json:"sequence,omitempty"`
+	ConversationID int32                         `json:"conversation_id,omitempty"`
+	RunID          int32                         `json:"run_id,omitempty"`
+	MessageID      int32                         `json:"message_id,omitempty"`
+	Model          string                        `json:"model"`
+	Text           string                        `json:"text"`
+	Sequence       int32                         `json:"sequence,omitempty"`
+	WorkoutDraft   *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
 }
 
 type StreamChunk struct {
@@ -152,14 +157,15 @@ type ConversationRunView struct {
 }
 
 type StreamEvent struct {
-	Type           string `json:"type"`
-	RequestID      string `json:"request_id,omitempty"`
-	ConversationID int32  `json:"conversation_id,omitempty"`
-	RunID          int32  `json:"run_id,omitempty"`
-	MessageID      int32  `json:"message_id,omitempty"`
-	Model          string `json:"model,omitempty"`
-	Delta          string `json:"delta,omitempty"`
-	Text           string `json:"text,omitempty"`
-	Message        string `json:"message,omitempty"`
-	Sequence       int32  `json:"sequence,omitempty"`
+	Type           string                        `json:"type"`
+	RequestID      string                        `json:"request_id,omitempty"`
+	ConversationID int32                         `json:"conversation_id,omitempty"`
+	RunID          int32                         `json:"run_id,omitempty"`
+	MessageID      int32                         `json:"message_id,omitempty"`
+	Model          string                        `json:"model,omitempty"`
+	Delta          string                        `json:"delta,omitempty"`
+	Text           string                        `json:"text,omitempty"`
+	Message        string                        `json:"message,omitempty"`
+	Sequence       int32                         `json:"sequence,omitempty"`
+	WorkoutDraft   *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
 }

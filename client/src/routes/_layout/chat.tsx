@@ -20,6 +20,7 @@ import {
   type AIChatConversation,
   type AIChatConversationDetail,
   type AIChatMessage,
+  type AIWorkoutDraft,
   type AIChatTelemetryEvent,
 } from "@/lib/api/ai-chat";
 import {
@@ -38,6 +39,9 @@ import {
   updateStreamingMessageWithDone,
   updateStreamingMessageWithError,
 } from "./-chat-resume";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
+import { workoutDraftStorage } from "@/lib/local-storage";
+import { toast } from "sonner";
 
 type ChatSearch = {
   conversationId?: string;
@@ -51,10 +55,7 @@ type ConversationRequestResult = {
 
 export const Route = createFileRoute("/_layout/chat")({
   validateSearch: (search): ChatSearch => ({
-    conversationId:
-      typeof search.conversationId === "string" && search.conversationId.trim()
-        ? search.conversationId
-        : undefined,
+    conversationId: normalizeConversationSearchValue(search.conversationId),
   }),
   component: ChatRouteComponent,
 });
@@ -487,6 +488,7 @@ export function ChatRouteComponent() {
       </div>
     );
   }
+  const currentUserId = user.id;
 
   async function handleNewChat() {
     try {
@@ -622,6 +624,16 @@ export function ChatRouteComponent() {
             setMessages((current) =>
               updateStreamingMessageWithDone(current, targetId, event),
             );
+            if (event.workout_draft) {
+              setConversation((current) =>
+                current
+                  ? {
+                      ...current,
+                      latest_workout_draft: event.workout_draft,
+                    }
+                  : current,
+              );
+            }
             clearResumeCursor(activeConversationId);
           },
           onErrorEvent: (event) => {
@@ -763,6 +775,22 @@ export function ChatRouteComponent() {
     }
   }
 
+  function handleEditInWorkoutForm(draft: AIWorkoutDraft) {
+    const hasDraft = workoutDraftStorage.load(currentUserId) !== null;
+    if (
+      hasDraft &&
+      !window.confirm(
+        "Replace your current workout draft with the latest AI workout draft?",
+      )
+    ) {
+      return;
+    }
+
+    saveAIWorkoutDraftToWorkoutForm(draft, currentUserId, workoutDraftStorage);
+    toast.success("Workout draft loaded into the form");
+    void navigate({ to: "/workouts/new" });
+  }
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <Card>
@@ -770,8 +798,8 @@ export function ChatRouteComponent() {
           <div>
             <CardTitle>AI Chat</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Minimal phase-1 slice. Persisted conversations, fetch-based SSE,
-              app-owned records.
+              Persisted chat with reopenable workout drafts and a direct handoff
+              into the workout form.
             </p>
           </div>
           <Button type="button" variant="outline" onClick={handleNewChat}>
@@ -804,6 +832,30 @@ export function ChatRouteComponent() {
               ))}
             </div>
           )}
+
+          {conversation?.latest_workout_draft ? (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Latest structured workout draft saved
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Open it in the workout form to review and adjust before
+                    saving.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    handleEditInWorkoutForm(conversation.latest_workout_draft!)
+                  }
+                >
+                  Edit in workout form
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <form className="mt-auto flex flex-col gap-3" onSubmit={handleSubmit}>
             <Textarea
@@ -873,6 +925,23 @@ function parseConversationId(value?: string): number | null {
   }
 
   return parsed;
+}
+
+function normalizeConversationSearchValue(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  if (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    Number.isFinite(value)
+  ) {
+    return String(value);
+  }
+
+  return undefined;
 }
 
 function isPreflightAPIError(error: unknown): error is { message: string } {

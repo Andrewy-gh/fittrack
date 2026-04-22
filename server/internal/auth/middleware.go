@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
@@ -35,6 +36,12 @@ type Authenticator struct {
 	jwkCache    JWKSProvider
 	userService UserServiceProvider
 	dbPool      db.DBTX
+	localE2E    *LocalE2EAuthConfig
+}
+
+type LocalE2EAuthConfig struct {
+	Enabled bool
+	UserID  string
 }
 
 func NewAuthenticator(logger *slog.Logger, jwkCache JWKSProvider, userService UserServiceProvider, dbPool db.DBTX) *Authenticator {
@@ -44,6 +51,14 @@ func NewAuthenticator(logger *slog.Logger, jwkCache JWKSProvider, userService Us
 		userService: userService,
 		dbPool:      dbPool,
 	}
+}
+
+func (a *Authenticator) WithLocalE2EAuth(config LocalE2EAuthConfig) *Authenticator {
+	a.localE2E = &LocalE2EAuthConfig{
+		Enabled: config.Enabled,
+		UserID:  strings.TrimSpace(config.UserID),
+	}
+	return a
 }
 
 func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) error {
@@ -82,6 +97,17 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		if userID, ok, err := a.resolveLocalE2EUserID(r); err != nil {
+			a.logger.Warn("invalid local e2e auth header", "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "invalid local e2e auth header", err)
+			return
+		} else if ok {
+			if !a.authenticateUser(w, r, next, userID) {
+				return
+			}
+			return
+		}
+
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
 			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method, "request_id", request.GetRequestID(r.Context()))
@@ -96,32 +122,51 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		dbUser, err := a.userService.EnsureUser(r.Context(), userID)
-		if err != nil {
-			a.logger.Error("failed to ensure user", "error", err, "userID", userID, "request_id", request.GetRequestID(r.Context()))
-			response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to ensure user", err)
-			return
-		}
-
-		// Set the current user ID as a session variable for RLS
-		if a.dbPool != nil {
-			if err := a.setSessionUserID(r.Context(), userID); err != nil {
-				a.logger.Error("failed to set user context",
-					"error", err,
-					"userID", userID,
-					"path", r.URL.Path,
-					"request_id", request.GetRequestID(r.Context()))
-				response.ErrorJSON(w, r, a.logger,
-					http.StatusInternalServerError,
-					"failed to set user context",
-					err)
-				return
-			}
-		}
-
-		ctx := user.WithContext(r.Context(), dbUser.UserID)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		a.authenticateUser(w, r, next, userID)
 	})
+}
+
+func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request, next http.Handler, userID string) bool {
+	dbUser, err := a.userService.EnsureUser(r.Context(), userID)
+	if err != nil {
+		a.logger.Error("failed to ensure user", "error", err, "userID", userID, "request_id", request.GetRequestID(r.Context()))
+		response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to ensure user", err)
+		return false
+	}
+
+	// Set the current user ID as a session variable for RLS
+	if a.dbPool != nil {
+		if err := a.setSessionUserID(r.Context(), userID); err != nil {
+			a.logger.Error("failed to set user context",
+				"error", err,
+				"userID", userID,
+				"path", r.URL.Path,
+				"request_id", request.GetRequestID(r.Context()))
+			response.ErrorJSON(w, r, a.logger,
+				http.StatusInternalServerError,
+				"failed to set user context",
+				err)
+			return false
+		}
+	}
+
+	ctx := user.WithContext(r.Context(), dbUser.UserID)
+	next.ServeHTTP(w, r.WithContext(ctx))
+	return true
+}
+
+func (a *Authenticator) resolveLocalE2EUserID(r *http.Request) (string, bool, error) {
+	headerValue := strings.TrimSpace(r.Header.Get(e2eauth.DevAuthHeaderName))
+	if headerValue == "" {
+		return "", false, nil
+	}
+	if a.localE2E == nil || !a.localE2E.Enabled || a.localE2E.UserID == "" {
+		return "", false, fmt.Errorf("local e2e auth is disabled")
+	}
+	if headerValue != a.localE2E.UserID {
+		return "", false, fmt.Errorf("unexpected local e2e user")
+	}
+	return a.localE2E.UserID, true, nil
 }
 
 type JWKSCache struct {

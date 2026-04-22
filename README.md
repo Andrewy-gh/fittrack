@@ -65,6 +65,7 @@ git commit -m "feat: update API types for [your change]"
    cp .env.example .env
    ```
 2. Update the copied values:
+
    ```bash
    # server/setenv.sh powers make dev, make migrate-*, and make test-short
    export PROJECT_ID=your-stack-project-id
@@ -74,6 +75,7 @@ git commit -m "feat: update API types for [your change]"
    PROJECT_ID=your-stack-project-id
    DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/fittrack?sslmode=disable
    ```
+
 3. Install goose and air, and ensure PATH includes `$HOME/go/bin`:
    ```bash
    go install github.com/pressly/goose/v3/cmd/goose@latest
@@ -103,6 +105,39 @@ bun run dev        # starts on http://localhost:5173 (proxies API to :8080)
 
 After signing in, the minimal phase-1 chat proof is available at `/chat`.
 
+### Local Structured Chat E2E
+
+For local browser E2E runs, you can skip manual Google or GitHub login by enabling the repo's local-only Playwright bootstrap path.
+
+Add these server vars in `server/.env` or `server/setenv.sh`:
+
+```env
+E2E_LOCAL_AUTH_ENABLED=true
+E2E_LOCAL_AUTH_USER_ID=local-e2e-user
+E2E_LOCAL_AUTH_EMAIL=local-e2e-user@example.test
+E2E_LOCAL_AUTH_DISPLAY_NAME=Local E2E User
+```
+
+Add this client var in `client/.env`:
+
+```env
+VITE_E2E_LOCAL_AUTH_ENABLED=true
+```
+
+Then run the normal local servers and Playwright:
+
+```bash
+cd server && make dev
+cd client && bun run test:e2e -- tests/e2e/auth/structured-workout-chat-import.test.ts
+```
+
+That flow:
+
+- bootstraps one deterministic local test user
+- grants that user `ai_chatbot` feature access
+- seeds a persisted chat conversation with a structured workout draft
+- reopens the chat in the browser and imports the draft into `/workouts/new`
+
 ## Environment Cheat Sheet
 
 ### Local app runtime
@@ -129,6 +164,9 @@ Useful optional local vars:
 - `server/setenv.sh`: used by `make dev`, `make migrate-up`, `make migrate-down`, and `make test-short`
 - `server/.env`: read by several Go integration tests, the Gemini smoke test, and Playwright setup helpers
 - `client/.env`: read by the frontend and Playwright setup helpers
+- `E2E_LOCAL_AUTH_ENABLED`: enables the local-only Playwright auth bootstrap on the server in `development`
+- `E2E_LOCAL_AUTH_USER_ID`, `E2E_LOCAL_AUTH_EMAIL`, `E2E_LOCAL_AUTH_DISPLAY_NAME`: optional local test-user overrides for that bootstrap
+- `VITE_E2E_LOCAL_AUTH_ENABLED`: lets the client trust the Playwright-seeded local auth session in dev
 - `SECRET_SERVER_KEY`: optional for Playwright; lets tests create Stack Auth sessions directly instead of logging in through the UI
 - `E2E_STACK_EMAIL` and `E2E_STACK_PASSWORD`: optional fallback for Playwright UI login
 
@@ -163,6 +201,7 @@ Production note:
 ### Available Commands
 
 #### Backend (server/)
+
 ```bash
 make help             # Show all available commands
 make dev              # Complete dev setup (docker + migrations + hot reload via air)
@@ -181,6 +220,7 @@ make clean            # Clean build files and cache
 ```
 
 #### Frontend (client/)
+
 ```bash
 bun run dev           # Development server (http://localhost:5173)
 bun run start         # Development server on port 3000
