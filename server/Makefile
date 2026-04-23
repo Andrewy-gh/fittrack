@@ -18,7 +18,7 @@ DB_SERVICE ?= postgres
 DB_READY_TIMEOUT ?= 90
 AIR_CMD ?= air
 DB_DATA_DIR ?= _db-data
-ENV_FILE ?= $(if $(wildcard .setenv.sh),.setenv.sh,$(if $(wildcard setenv.sh),setenv.sh,setenv.sh))
+ENV_FILE ?= setenv.sh
 
 help:
 	@echo "Available commands:"
@@ -100,7 +100,7 @@ test-short: ## Start local DB and run short test suite
 	fi
 	@if [ ! -f "$(ENV_FILE)" ]; then \
 		echo "ERROR: expected env file at $$(pwd)/$(ENV_FILE)"; \
-		echo "Create .setenv.sh or setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
+		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
 		exit 1; \
 	fi
 	. ./$(ENV_FILE); \

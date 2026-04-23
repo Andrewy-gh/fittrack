@@ -94,19 +94,7 @@ func TestLoadLocalEnvRespectsPriorityAndSetenv(t *testing.T) {
 	writeTestFile(t, filepath.Join(dir, ".env"), "GOOGLE_API_KEY=from-dotenv\nGEMINI_MODEL=env-model\n")
 	writeTestFile(t, filepath.Join(dir, "setenv.sh"), "export GEMINI_API_KEY=from-setenv\nexport GEMINI_MODEL=setenv-model\n")
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("os.Getwd() error = %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("os.Chdir() error = %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(cwd); err != nil {
-			t.Fatalf("restore cwd error = %v", err)
-		}
-	})
-
+	chdirForTest(t, dir)
 	unsetEnvForTest(t, geminiAPIKeyEnvVar, googleAPIKeyEnvVar, "GEMINI_MODEL")
 
 	if err := loadLocalEnv(); err != nil {
@@ -121,6 +109,22 @@ func TestLoadLocalEnvRespectsPriorityAndSetenv(t *testing.T) {
 	}
 	if got := os.Getenv("GEMINI_MODEL"); got != "env-model" {
 		t.Fatalf("expected GEMINI_MODEL from .env, got %q", got)
+	}
+}
+
+func TestLoadLocalEnvIgnoresHiddenSetenv(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, ".setenv.sh"), "export GEMINI_API_KEY=from-hidden-setenv\n")
+
+	chdirForTest(t, dir)
+	unsetEnvForTest(t, geminiAPIKeyEnvVar)
+
+	if err := loadLocalEnv(); err != nil {
+		t.Fatalf("loadLocalEnv() error = %v", err)
+	}
+
+	if got := os.Getenv(geminiAPIKeyEnvVar); got != "" {
+		t.Fatalf("expected %s to ignore .setenv.sh, got %q", geminiAPIKeyEnvVar, got)
 	}
 }
 
@@ -182,6 +186,23 @@ func unsetEnvForTest(t *testing.T, keys ...string) {
 			}
 		})
 	}
+}
+
+func chdirForTest(t *testing.T, dir string) {
+	t.Helper()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("os.Chdir() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("restore cwd error = %v", err)
+		}
+	})
 }
 
 func writeTestFile(t *testing.T, path string, contents string) {

@@ -11,6 +11,7 @@ client/tests/e2e/.auth/
 .env
 server/.env
 server/.env.local
+# Legacy local env file name; keep ignored so old secrets never appear in git status.
 server/.setenv.sh
 server/setenv.sh
 client/.env
