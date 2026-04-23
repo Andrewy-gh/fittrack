@@ -24,8 +24,9 @@ swag init -g cmd/api/main.go -o docs/
 ```
 
 This generates:
+
 - `docs/swagger.json` - OpenAPI specification
-- `docs/swagger.yaml` - YAML version  
+- `docs/swagger.yaml` - YAML version
 - `docs/docs.go` - Go documentation
 
 ### 2. Serve Swagger Documentation
@@ -46,15 +47,15 @@ bun add -D openapi-typescript-codegen
 Create `client/openapi-config.ts`:
 
 ```typescript
-import type { Config } from '@hey-api/openapi-ts';
+import type { Config } from "@hey-api/openapi-ts";
 
 export default {
-  input: '../server/docs/swagger.json',
-  output: 'src/generated',
-  client: 'axios',
+  input: "../server/docs/swagger.json",
+  output: "src/generated",
+  client: "axios",
   types: {
-    enums: 'javascript'
-  }
+    enums: "javascript",
+  },
 } satisfies Config;
 ```
 
@@ -78,6 +79,7 @@ bun run generate:api
 ```
 
 This creates:
+
 - `src/generated/models/` - TypeScript interfaces for all API models
 - `src/generated/services/` - API service classes with methods
 - `src/generated/core/` - HTTP client configuration
@@ -88,16 +90,17 @@ This creates:
 ### 1. Import Generated Types and Services
 
 ```typescript
-import { 
-  WorkoutsService, 
+import {
+  WorkoutsService,
   workout_CreateWorkoutRequest,
-  workout_WorkoutResponse 
-} from '@/generated';
+  workout_WorkoutResponse,
+} from "@/generated";
 ```
 
 ### 2. Replace Manual API Calls
 
 **Before (manual):**
+
 ```typescript
 // Manual API call with custom types
 interface CreateWorkoutRequest {
@@ -106,19 +109,20 @@ interface CreateWorkoutRequest {
 }
 
 const createWorkout = async (data: CreateWorkoutRequest) => {
-  const response = await fetch('/api/workouts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+  const response = await fetch("/api/workouts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
   return response.json();
 };
 ```
 
 **After (generated):**
+
 ```typescript
 // Generated API client with types
-import { WorkoutsService, workout_CreateWorkoutRequest } from '@/generated';
+import { WorkoutsService, workout_CreateWorkoutRequest } from "@/generated";
 
 const createWorkout = async (data: workout_CreateWorkoutRequest) => {
   return await WorkoutsService.createWorkout(data);
@@ -154,9 +158,9 @@ Set the base URL for the generated client:
 
 ```typescript
 // In your app initialization
-import { OpenAPI } from '@/generated';
+import { OpenAPI } from "@/generated";
 
-OpenAPI.BASE = process.env.VITE_API_BASE_URL || 'http://localhost:8080';
+OpenAPI.BASE = process.env.VITE_API_BASE_URL || "http://localhost:8080";
 ```
 
 ## Automation
@@ -223,10 +227,10 @@ Generated services include proper error handling:
 ```typescript
 try {
   const workout = await WorkoutsService.createWorkout(data);
-  console.log('Created:', workout);
+  console.log("Created:", workout);
 } catch (error) {
   if (error instanceof ApiError) {
-    console.error('API Error:', error.message, error.status);
+    console.error("API Error:", error.message, error.status);
   }
 }
 ```
@@ -239,15 +243,17 @@ The generated types ensure compile-time type safety:
 // ✅ Type-safe - will catch missing fields at compile time
 const workoutData: workout_CreateWorkoutRequest = {
   name: "Morning Workout",
-  exercises: [{
-    name: "Push-ups",
-    sets: [{ reps: 10, weight: 0 }]
-  }]
+  exercises: [
+    {
+      name: "Push-ups",
+      sets: [{ reps: 10, weight: 0 }],
+    },
+  ],
 };
 
 // ❌ Type error - missing required fields
 const invalidData: workout_CreateWorkoutRequest = {
-  name: "Incomplete"  // Missing exercises field
+  name: "Incomplete", // Missing exercises field
 };
 ```
 

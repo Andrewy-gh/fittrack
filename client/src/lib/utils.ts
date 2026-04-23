@@ -1,15 +1,14 @@
-import { clsx, type ClassValue } from 'clsx';
-import { format } from 'date-fns';
-import { twMerge } from 'tailwind-merge';
+import { clsx, type ClassValue } from "clsx";
+import { format } from "date-fns";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(dateString: string){
-  return format(new Date(dateString), 'E MM/dd/yyyy')
+export function formatDate(dateString: string) {
+  return format(new Date(dateString), "E MM/dd/yyyy");
 }
-
 
 // export const formatDate = (dateString: string) => {
 //   const date = new Date(dateString);
@@ -30,18 +29,16 @@ export function formatDate(dateString: string){
 //   }
 // };
 
-
-
 export const formatTime = (dateString: string) => {
-  return new Date(dateString).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
+  return new Date(dateString).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
     hour12: true,
   });
 };
 
 export function formatWeight(weight: number | null | undefined): string {
-  if (weight == null) return '0';
+  if (weight == null) return "0";
   // Return whole numbers without decimal point, decimals with one decimal place
   return weight % 1 === 0 ? weight.toString() : weight.toFixed(1);
 }

@@ -1,14 +1,14 @@
-import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
 import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
-  recentExerciseSetsQueryOptions
-} from './exercises';
+  recentExerciseSetsQueryOptions,
+} from "./exercises";
 import {
   workoutsQueryOptions,
   workoutQueryOptions,
-  workoutsFocusValuesQueryOptions
-} from './workouts';
+  workoutsFocusValuesQueryOptions,
+} from "./workouts";
 import {
   getDemoExercisesQueryOptions,
   getDemoExercisesByIdQueryOptions,
@@ -16,32 +16,61 @@ import {
   getDemoWorkoutsQueryOptions,
   getDemoWorkoutsByIdQueryOptions,
   getDemoWorkoutsFocusValuesQueryOptions,
-} from '@/lib/demo-data/query-options';
+} from "@/lib/demo-data/query-options";
 
-export function getExercisesQueryOptions(user: CurrentUser | CurrentInternalUser | null) {
-  return (user ? exercisesQueryOptions() : getDemoExercisesQueryOptions()) as ReturnType<typeof exercisesQueryOptions>;
+export function getExercisesQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+) {
+  return (
+    user ? exercisesQueryOptions() : getDemoExercisesQueryOptions()
+  ) as ReturnType<typeof exercisesQueryOptions>;
 }
 
-export function getRecentSetsQueryOptions(user: CurrentUser | CurrentInternalUser | null, exerciseId: number) {
-  return (user
-    ? recentExerciseSetsQueryOptions(exerciseId)
-    : getDemoExercisesByIdRecentSetsQueryOptions(exerciseId)) as ReturnType<typeof recentExerciseSetsQueryOptions>;
+export function getRecentSetsQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+  exerciseId: number,
+) {
+  return (
+    user
+      ? recentExerciseSetsQueryOptions(exerciseId)
+      : getDemoExercisesByIdRecentSetsQueryOptions(exerciseId)
+  ) as ReturnType<typeof recentExerciseSetsQueryOptions>;
 }
 
-export function getExerciseByIdQueryOptions(user: CurrentUser | CurrentInternalUser | null, exerciseId: number) {
-  return (user
-    ? exerciseByIdQueryOptions(exerciseId)
-    : getDemoExercisesByIdQueryOptions(exerciseId)) as ReturnType<typeof exerciseByIdQueryOptions>;
+export function getExerciseByIdQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+  exerciseId: number,
+) {
+  return (
+    user
+      ? exerciseByIdQueryOptions(exerciseId)
+      : getDemoExercisesByIdQueryOptions(exerciseId)
+  ) as ReturnType<typeof exerciseByIdQueryOptions>;
 }
 
-export function getWorkoutsQueryOptions(user: CurrentUser | CurrentInternalUser | null) {
-  return (user ? workoutsQueryOptions() : getDemoWorkoutsQueryOptions()) as ReturnType<typeof workoutsQueryOptions>;
+export function getWorkoutsQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+) {
+  return (
+    user ? workoutsQueryOptions() : getDemoWorkoutsQueryOptions()
+  ) as ReturnType<typeof workoutsQueryOptions>;
 }
 
-export function getWorkoutByIdQueryOptions(user: CurrentUser | CurrentInternalUser | null, id: number) {
-  return (user ? workoutQueryOptions(id) : getDemoWorkoutsByIdQueryOptions(id)) as ReturnType<typeof workoutQueryOptions>;
+export function getWorkoutByIdQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+  id: number,
+) {
+  return (
+    user ? workoutQueryOptions(id) : getDemoWorkoutsByIdQueryOptions(id)
+  ) as ReturnType<typeof workoutQueryOptions>;
 }
 
-export function getWorkoutsFocusQueryOptions(user: CurrentUser | CurrentInternalUser | null) {
-  return (user ? workoutsFocusValuesQueryOptions() : getDemoWorkoutsFocusValuesQueryOptions()) as ReturnType<typeof workoutsFocusValuesQueryOptions>;
+export function getWorkoutsFocusQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+) {
+  return (
+    user
+      ? workoutsFocusValuesQueryOptions()
+      : getDemoWorkoutsFocusValuesQueryOptions()
+  ) as ReturnType<typeof workoutsFocusValuesQueryOptions>;
 }

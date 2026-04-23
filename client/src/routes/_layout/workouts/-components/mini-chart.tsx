@@ -13,7 +13,7 @@ export function MiniChart({
         <div
           key={index}
           className={`w-1 bg-muted rounded-sm transition-all duration-200 ${
-            index === activeIndex ? 'bg-primary' : ''
+            index === activeIndex ? "bg-primary" : ""
           }`}
           style={{ height: `${(value / maxValue) * 100}%` }}
         />

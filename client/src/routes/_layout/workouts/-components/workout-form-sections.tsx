@@ -1,5 +1,5 @@
-import type { ComponentType, CSSProperties, ReactNode } from 'react';
-import { Link, useRouter } from '@tanstack/react-router';
+import type { ComponentType, CSSProperties, ReactNode } from "react";
+import { Link, useRouter } from "@tanstack/react-router";
 import {
   DndContext,
   KeyboardSensor,
@@ -9,27 +9,27 @@ import {
   type DragEndEvent,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { PencilLine, Plus, Save, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import type { WorkoutExerciseInput } from '@/client';
-import type { WorkoutFocus } from '@/lib/api/workouts';
-import { cn } from '@/lib/utils';
-import type { ReorderableExercise } from './use-exercise-reorder';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { PencilLine, Plus, Save, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { WorkoutExerciseInput } from "@/client";
+import type { WorkoutFocus } from "@/lib/api/workouts";
+import { cn } from "@/lib/utils";
+import type { ReorderableExercise } from "./use-exercise-reorder";
 
-export type WorkoutExerciseCard = Pick<WorkoutExerciseInput, 'name' | 'sets'>;
-type SortableHandleAttributes = ReturnType<typeof useSortable>['attributes'];
-type SortableHandleListeners = ReturnType<typeof useSortable>['listeners'];
-type SortableHandleRef = ReturnType<typeof useSortable>['setActivatorNodeRef'];
+export type WorkoutExerciseCard = Pick<WorkoutExerciseInput, "name" | "sets">;
+type SortableHandleAttributes = ReturnType<typeof useSortable>["attributes"];
+type SortableHandleListeners = ReturnType<typeof useSortable>["listeners"];
+type SortableHandleRef = ReturnType<typeof useSortable>["setActivatorNodeRef"];
 type WorkoutFormSectionApi = {
   AppField: ComponentType<any>;
   Subscribe: ComponentType<any>;
@@ -64,7 +64,7 @@ type WorkoutFormActionsProps = {
 function getExerciseVolume(exercise: WorkoutExerciseCard): number {
   return exercise.sets.reduce(
     (total, set) => total + (set.reps || 0) * (set.weight || 0),
-    0
+    0,
   );
 }
 
@@ -119,7 +119,7 @@ export function WorkoutExerciseCards({
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -158,7 +158,7 @@ export function WorkoutExerciseCards({
             exerciseIndex={exerciseIndex}
             formatVolume={formatVolume}
             onOpenExercise={() => {
-              router.navigate({ to: '.', search: { exerciseIndex } });
+              router.navigate({ to: ".", search: { exerciseIndex } });
             }}
             onRemoveExercise={onRemoveExercise}
             renderMetrics={renderMetrics}
@@ -173,16 +173,23 @@ export function WorkoutExerciseCards({
     <section className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-card-foreground">Exercises</p>
+          <p className="text-sm font-semibold text-card-foreground">
+            Exercises
+          </p>
           <p className="text-sm text-muted-foreground">
             {isReorderMode
-              ? 'Drag the handle to lock in the exercise order, then save it.'
-              : 'Tap an exercise card to manage its sets and details.'}
+              ? "Drag the handle to lock in the exercise order, then save it."
+              : "Tap an exercise card to manage its sets and details."}
           </p>
         </div>
         {isReorderMode ? (
           <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onCancelOrder}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancelOrder}
+            >
               Cancel
             </Button>
             <Button
@@ -265,16 +272,16 @@ function WorkoutExerciseCardContent({
   return (
     <Card
       className={cn(
-        'p-4 transition-all duration-200',
+        "p-4 transition-all duration-200",
         isReorderMode
-          ? 'border-primary/30 bg-primary/5 shadow-sm workout-card-wiggle'
-          : 'hover:shadow-md',
-        isDragging && 'opacity-80 shadow-lg ring-1 ring-primary/30'
+          ? "border-primary/30 bg-primary/5 shadow-sm workout-card-wiggle"
+          : "hover:shadow-md",
+        isDragging && "opacity-80 shadow-lg ring-1 ring-primary/30",
       )}
       style={
         isReorderMode
           ? ({
-              '--wiggle-index': exerciseIndex,
+              "--wiggle-index": exerciseIndex,
             } as CSSProperties)
           : undefined
       }
@@ -286,7 +293,9 @@ function WorkoutExerciseCardContent({
               <div className="mb-2 flex min-w-0 items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-primary"></div>
                 <div className="min-w-0">
-                  <span className="text-sm font-medium text-primary">{exercise.name}</span>
+                  <span className="text-sm font-medium text-primary">
+                    {exercise.name}
+                  </span>
                   {renderNameSupplement?.(exercise)}
                 </div>
               </div>
@@ -300,7 +309,9 @@ function WorkoutExerciseCardContent({
               >
                 <div className="h-2 w-2 rounded-full bg-primary"></div>
                 <div className="min-w-0">
-                  <span className="text-sm font-medium text-primary">{exercise.name}</span>
+                  <span className="text-sm font-medium text-primary">
+                    {exercise.name}
+                  </span>
                   {renderNameSupplement?.(exercise)}
                 </div>
               </button>
@@ -314,7 +325,10 @@ function WorkoutExerciseCardContent({
                 {...sortableAttributes}
                 {...sortableListeners}
               >
-                <span className="flex flex-col gap-1" aria-hidden="true">
+                <span
+                  className="flex flex-col gap-1"
+                  aria-hidden="true"
+                >
                   <span className="h-0.5 w-4 rounded-full bg-current"></span>
                   <span className="h-0.5 w-4 rounded-full bg-current"></span>
                   <span className="h-0.5 w-4 rounded-full bg-current"></span>
@@ -342,7 +356,9 @@ function WorkoutExerciseCardContent({
             {isReorderMode ? (
               <>
                 <div>
-                  <div className="text-lg font-bold text-card-foreground">{exercise.sets.length}</div>
+                  <div className="text-lg font-bold text-card-foreground">
+                    {exercise.sets.length}
+                  </div>
                   <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
                     sets
                   </div>
@@ -368,7 +384,9 @@ function WorkoutExerciseCardContent({
                 onClick={onOpenExercise}
               >
                 <div>
-                  <div className="text-lg font-bold text-card-foreground">{exercise.sets.length}</div>
+                  <div className="text-lg font-bold text-card-foreground">
+                    {exercise.sets.length}
+                  </div>
                   <div className="text-sm font-semibold uppercase tracking-tight text-muted-foreground">
                     sets
                   </div>
@@ -446,7 +464,10 @@ function SortableWorkoutExerciseCard({
   );
 }
 
-export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsProps) {
+export function WorkoutFormActions({
+  form,
+  isReorderMode,
+}: WorkoutFormActionsProps) {
   return (
     <>
       <div className="py-6">
@@ -469,7 +490,10 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
             className="w-full"
             asChild
           >
-            <Link to="." search={{ addExercise: true }}>
+            <Link
+              to="."
+              search={{ addExercise: true }}
+            >
               <Plus className="mr-2 h-5 w-5" />
               Add Exercise
             </Link>
@@ -487,7 +511,7 @@ export function WorkoutFormActions({ form, isReorderMode }: WorkoutFormActionsPr
               className="w-full"
             >
               <Save className="mr-1.5 h-3.5 w-3.5" />
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? "Saving..." : "Save"}
             </Button>
           )}
         />

@@ -1,4 +1,7 @@
-import type { WorkoutCreateWorkoutRequest, WorkoutExerciseInput } from "@/client";
+import type {
+  WorkoutCreateWorkoutRequest,
+  WorkoutExerciseInput,
+} from "@/client";
 import type { AIWorkoutDraft } from "@/lib/api/ai-chat";
 import {
   type WorkoutDraftStorage,

@@ -1,8 +1,13 @@
-import { type ComponentProps, type KeyboardEvent, useEffect, useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { useMediaQuery } from '@/hooks/use-media-query';
-import { Button } from '@/components/ui/button';
-import { CommandAddItem } from '@/components/ui/command-add-item';
+import {
+  type ComponentProps,
+  type KeyboardEvent,
+  useEffect,
+  useState,
+} from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { Button } from "@/components/ui/button";
+import { CommandAddItem } from "@/components/ui/command-add-item";
 import {
   Command,
   CommandEmpty,
@@ -10,25 +15,29 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+} from "@/components/ui/command";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
+} from "@/components/ui/popover";
 import {
   activateTouchTap,
   beginTouchTapTracking,
   cancelTouchTapTracking,
   shouldSuppressTouchClick,
   updateTouchTapTracking,
-} from '@/lib/touch-activation';
-import { cn } from '@/lib/utils';
+} from "@/lib/touch-activation";
+import { cn } from "@/lib/utils";
 
 type CommandItemTouchHandlers = Pick<
   ComponentProps<typeof CommandItem>,
-  'onClickCapture' | 'onTouchCancel' | 'onTouchEnd' | 'onTouchMove' | 'onTouchStart'
+  | "onClickCapture"
+  | "onTouchCancel"
+  | "onTouchEnd"
+  | "onTouchMove"
+  | "onTouchStart"
 >;
 
 interface ComboboxProps<T extends { name: string }> {
@@ -81,7 +90,7 @@ function GenericList<T extends { name: string }>({
     if (onChange) {
       onChange(option);
       setOpen(false);
-      setQuery('');
+      setQuery("");
     }
   }
 
@@ -89,7 +98,7 @@ function GenericList<T extends { name: string }>({
     if (onCreate && query) {
       onCreate(query);
       setOpen(false);
-      setQuery('');
+      setQuery("");
     }
   }
 
@@ -130,11 +139,11 @@ function GenericList<T extends { name: string }>({
     >
       <CommandInput
         placeholder="Search options..."
-        aria-label={inputAriaLabel ?? 'Search options'}
+        aria-label={inputAriaLabel ?? "Search options"}
         value={query}
         onValueChange={(value: string) => setQuery(value)}
         onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-          if (event.key === 'Enter') {
+          if (event.key === "Enter") {
             // Avoid selecting what is displayed as a choice even if you press Enter for the conversion
             event.preventDefault();
           }
@@ -178,18 +187,21 @@ function GenericList<T extends { name: string }>({
               tabIndex={0}
               onSelect={() => handleSelect(option)}
               onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                if (event.key === 'Enter') {
+                if (event.key === "Enter") {
                   event.stopPropagation();
                   handleSelect(option);
                 }
               }}
               {...touchActivationHandlers}
-              className={cn('cursor-pointer', touchEnabled && 'touch-manipulation')}
+              className={cn(
+                "cursor-pointer",
+                touchEnabled && "touch-manipulation",
+              )}
             >
               <Check
                 className={cn(
-                  'mr-2 h-4 w-4 min-h-4 min-w-4',
-                  selected === option.name ? 'opacity-100' : 'opacity-0'
+                  "mr-2 h-4 w-4 min-h-4 min-w-4",
+                  selected === option.name ? "opacity-100" : "opacity-0",
                 )}
               />
               {option.name}
@@ -213,9 +225,9 @@ export function GenericCombobox<T extends { name: string }>({
   onCreate,
 }: ComboboxProps<T>) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [canCreate, setCanCreate] = useState(false);
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const allowCreate = Boolean(onCreate);
 
   useEffect(() => {
@@ -232,14 +244,14 @@ export function GenericCombobox<T extends { name: string }>({
       aria-label={ariaLabel}
       disabled={disabled ?? false}
       aria-expanded={open}
-      className={cn('w-full justify-between font-normal', className)}
+      className={cn("w-full justify-between font-normal", className)}
     >
       {selected && selected.length > 0 ? (
         <div className="truncate">
           {options.find((item) => item.name === selected)?.name}
         </div>
       ) : (
-        <div>{placeholder ?? 'Select an option...'}</div>
+        <div>{placeholder ?? "Select an option..."}</div>
       )}
       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
     </Button>
@@ -247,21 +259,27 @@ export function GenericCombobox<T extends { name: string }>({
 
   if (isDesktop) {
     return (
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+      >
         <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent
+          className="w-full p-0"
+          align="start"
+        >
           <GenericList
-          options={options}
-          selected={selected}
-          query={query}
-          setQuery={setQuery}
-          canCreate={canCreate}
-          allowCreate={allowCreate}
-          setOpen={setOpen}
-          onChange={onChange}
-          onCreate={onCreate}
-          inputAriaLabel={inputAriaLabel}
-          touchEnabled={false}
+            options={options}
+            selected={selected}
+            query={query}
+            setQuery={setQuery}
+            canCreate={canCreate}
+            allowCreate={allowCreate}
+            setOpen={setOpen}
+            onChange={onChange}
+            onCreate={onCreate}
+            inputAriaLabel={inputAriaLabel}
+            touchEnabled={false}
           />
         </PopoverContent>
       </Popover>
@@ -269,22 +287,25 @@ export function GenericCombobox<T extends { name: string }>({
   }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer
+      open={open}
+      onOpenChange={setOpen}
+    >
       <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
       <DrawerContent>
         <div className="mt-4">
           <GenericList
-          options={options}
-          selected={selected}
-          query={query}
-          setQuery={setQuery}
-          canCreate={canCreate}
-          allowCreate={allowCreate}
-          setOpen={setOpen}
-          onChange={onChange}
-          onCreate={onCreate}
-          inputAriaLabel={inputAriaLabel}
-          touchEnabled
+            options={options}
+            selected={selected}
+            query={query}
+            setQuery={setQuery}
+            canCreate={canCreate}
+            allowCreate={allowCreate}
+            setOpen={setOpen}
+            onChange={onChange}
+            onCreate={onCreate}
+            inputAriaLabel={inputAriaLabel}
+            touchEnabled
           />
         </div>
       </DrawerContent>

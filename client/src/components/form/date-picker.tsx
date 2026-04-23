@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useFieldContext } from '@/hooks/form';
-import { format } from 'date-fns';
-import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { useState } from "react";
+import { useFieldContext } from "@/hooks/form";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
+} from "@/components/ui/popover";
 
 export default function DatePicker() {
   const field = useFieldContext<Date>();
@@ -25,7 +25,10 @@ export default function DatePicker() {
 
   return (
     <div className="space-y-2 h-full">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+      >
         <PopoverTrigger asChild>
           <Card className="p-4 h-full flex flex-col justify-between min-h-32">
             <div className="flex items-center gap-2 mb-2">
@@ -34,8 +37,8 @@ export default function DatePicker() {
             </div>
             <div className="text-card-foreground font-semibold">
               {field.state.value
-                ? format(field.state.value, 'PPP')
-                : 'Pick a date'}
+                ? format(field.state.value, "PPP")
+                : "Pick a date"}
             </div>
           </Card>
         </PopoverTrigger>
@@ -49,7 +52,7 @@ export default function DatePicker() {
       </Popover>
       {hasErrors && (
         <p className="text-sm text-destructive">
-          {field.state.meta.errors.join(', ')}
+          {field.state.meta.errors.join(", ")}
         </p>
       )}
     </div>

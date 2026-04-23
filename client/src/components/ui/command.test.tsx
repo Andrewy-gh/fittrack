@@ -1,6 +1,11 @@
-import { render } from '@testing-library/react';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { render } from "@testing-library/react";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 const originalResizeObserver = globalThis.ResizeObserver;
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
@@ -12,19 +17,19 @@ beforeAll(() => {
     disconnect() {}
   }
 
-  Object.defineProperty(globalThis, 'ResizeObserver', {
+  Object.defineProperty(globalThis, "ResizeObserver", {
     value: ResizeObserverMock,
     writable: true,
   });
 
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     value: () => {},
     writable: true,
   });
 });
 
-describe('CommandList', () => {
-  it('contains vertical touch scrolling inside the list', () => {
+describe("CommandList", () => {
+  it("contains vertical touch scrolling inside the list", () => {
     const { container } = render(
       <Command>
         <CommandList>
@@ -32,28 +37,28 @@ describe('CommandList', () => {
             <CommandItem value="squat">Squat</CommandItem>
           </CommandGroup>
         </CommandList>
-      </Command>
+      </Command>,
     );
 
     const list = container.querySelector('[data-slot="command-list"]');
 
     expect(list).not.toBeNull();
     if (!list) {
-      throw new Error('Expected command list to render');
+      throw new Error("Expected command list to render");
     }
 
-    expect(list).toHaveClass('overscroll-contain');
-    expect(list).toHaveClass('touch-pan-y');
+    expect(list).toHaveClass("overscroll-contain");
+    expect(list).toHaveClass("touch-pan-y");
   });
 });
 
 afterAll(() => {
-  Object.defineProperty(globalThis, 'ResizeObserver', {
+  Object.defineProperty(globalThis, "ResizeObserver", {
     value: originalResizeObserver,
     writable: true,
   });
 
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     value: originalScrollIntoView,
     writable: true,
   });

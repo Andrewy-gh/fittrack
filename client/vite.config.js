@@ -1,10 +1,10 @@
-import { defineConfig } from 'vite';
-import viteReact from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import { VitePWA } from 'vite-plugin-pwa';
+import { defineConfig } from "vite";
+import viteReact from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { VitePWA } from "vite-plugin-pwa";
 
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
-import { resolve } from 'node:path';
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { resolve } from "node:path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,51 +13,59 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon.ico', 'logo192.png', 'logo512.png', 'apple-touch-icon.png', 'apple-touch-icon-167.png', 'apple-touch-icon-152.png'],
+      registerType: "autoUpdate",
+      includeAssets: [
+        "favicon.svg",
+        "favicon.ico",
+        "logo192.png",
+        "logo512.png",
+        "apple-touch-icon.png",
+        "apple-touch-icon-167.png",
+        "apple-touch-icon-152.png",
+      ],
       manifest: {
-        name: 'FitTrack',
-        short_name: 'FitTrack',
-        description: 'Track your workouts',
-        theme_color: '#000000',
+        name: "FitTrack",
+        short_name: "FitTrack",
+        description: "Track your workouts",
+        theme_color: "#000000",
         icons: [
           {
-            src: 'logo192.png',
-            sizes: '192x192',
-            type: 'image/png'
+            src: "logo192.png",
+            sizes: "192x192",
+            type: "image/png",
           },
           {
-            src: 'logo512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+            src: "logo512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+        ],
       },
       workbox: {
         navigateFallbackDenylist: [/^\/handler\//, /^\/api\//],
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\./,
-            handler: 'NetworkFirst',
+            handler: "NetworkFirst",
             options: {
-              cacheName: 'api-cache',
+              cacheName: "api-cache",
               networkTimeoutSeconds: 10,
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
-      }
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
     }),
   ],
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('@stackframe/react')) {
-            return 'stackframe';
+          if (id.includes("@stackframe/react")) {
+            return "stackframe";
           }
         },
       },
@@ -65,18 +73,18 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      "@": resolve(__dirname, "./src"),
     },
   },
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
+      "/api": {
+        target: "http://localhost:8080",
         changeOrigin: true,
       },
     },

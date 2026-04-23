@@ -4,7 +4,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-} from 'react';
+} from "react";
 
 import {
   getResponsiveValue,
@@ -12,7 +12,7 @@ import {
   responsiveConfig,
   useBreakpoint,
   type RangeType,
-} from './chart-bar-vol.utils';
+} from "./chart-bar-vol.utils";
 
 interface RangeSelectorProps {
   selectedRange: RangeType;
@@ -26,11 +26,11 @@ export function RangeSelector({
   const breakpoint = useBreakpoint();
   const containerClasses = getResponsiveValue(
     responsiveConfig.containerGap,
-    breakpoint
+    breakpoint,
   );
   const buttonPadding = getResponsiveValue(
     responsiveConfig.buttonPadding,
-    breakpoint
+    breakpoint,
   );
 
   return (
@@ -47,8 +47,8 @@ export function RangeSelector({
             transition-all duration-200 ease-in-out cursor-pointer
             ${
               selectedRange === value
-                ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] font-semibold'
-                : 'bg-transparent text-[var(--color-foreground)]'
+                ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)] font-semibold"
+                : "bg-transparent text-[var(--color-foreground)]"
             }
           `}
         >
@@ -99,18 +99,18 @@ export function ScrollableChart({
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const touchQuery = window.matchMedia('(pointer: coarse)');
+    if (typeof window === "undefined") return;
+    const touchQuery = window.matchMedia("(pointer: coarse)");
 
     const updateTouchState = () => {
       setIsTouchDevice(touchQuery.matches);
     };
 
     updateTouchState();
-    touchQuery.addEventListener('change', updateTouchState);
+    touchQuery.addEventListener("change", updateTouchState);
 
     return () => {
-      touchQuery.removeEventListener('change', updateTouchState);
+      touchQuery.removeEventListener("change", updateTouchState);
     };
   }, []);
 
@@ -144,7 +144,7 @@ export function ScrollableChart({
 
   useEffect(() => {
     const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === 'undefined') return;
+    if (!element || typeof ResizeObserver === "undefined") return;
     const clampScroll = () => {
       const expectedWidth = Math.max(minChartWidth, element.clientWidth);
       const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
@@ -164,7 +164,7 @@ export function ScrollableChart({
 
   useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === 'undefined') return;
+    if (!element || typeof ResizeObserver === "undefined") return;
     const updateWidth = () => {
       setContainerWidth(element.clientWidth);
     };
@@ -174,14 +174,14 @@ export function ScrollableChart({
     return () => observer.disconnect();
   }, []);
 
-  const scroll = (direction: 'left' | 'right') => {
+  const scroll = (direction: "left" | "right") => {
     const element = scrollRef.current;
     if (!element) return;
 
     const scrollAmount = element.clientWidth * 0.8;
     element.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
-      behavior: 'smooth',
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
     });
 
     setTimeout(checkScrollPosition, 300);
@@ -195,7 +195,7 @@ export function ScrollableChart({
         className="overflow-x-auto overflow-y-hidden touch-pan-x"
         style={{ height: `${height}px` }}
       >
-        <div style={{ width: `${chartWidth}px`, height: '100%' }}>
+        <div style={{ width: `${chartWidth}px`, height: "100%" }}>
           {children}
         </div>
       </div>
@@ -203,8 +203,8 @@ export function ScrollableChart({
       {!isTouchDevice && canScrollLeft && (
         <button
           type="button"
-          onClick={() => scroll('left')}
-          className={`absolute ${breakpoint === 'mobile' ? 'left-1' : 'left-2'} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
+          onClick={() => scroll("left")}
+          className={`absolute ${breakpoint === "mobile" ? "left-1" : "left-2"} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
           aria-label="Scroll left"
         >
           <svg
@@ -225,8 +225,8 @@ export function ScrollableChart({
       {!isTouchDevice && canScrollRight && (
         <button
           type="button"
-          onClick={() => scroll('right')}
-          className={`absolute ${breakpoint === 'mobile' ? 'right-1' : 'right-2'} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
+          onClick={() => scroll("right")}
+          className={`absolute ${breakpoint === "mobile" ? "right-1" : "right-2"} top-1/2 -translate-y-1/2 bg-[var(--color-background)] border border-[var(--color-border)] rounded-full ${buttonConfig.padding} shadow-lg hover:bg-[var(--color-muted)] transition-colors`}
           aria-label="Scroll right"
         >
           <svg

@@ -1,5 +1,5 @@
-import type { StoredExercise, StoredSet, StoredWorkout } from './types';
-import { DEMO_USER_ID } from './types';
+import type { StoredExercise, StoredSet, StoredWorkout } from "./types";
+import { DEMO_USER_ID } from "./types";
 
 // Helper to generate ISO timestamps
 const now = new Date();
@@ -12,7 +12,7 @@ const daysAgo = (days: number) => {
 const dateOnly = (days: number) => {
   const date = new Date(now);
   date.setDate(date.getDate() - days);
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 };
 
 // Demo exercises (5 common compound movements)

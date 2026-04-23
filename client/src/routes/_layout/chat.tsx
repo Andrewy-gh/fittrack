@@ -823,7 +823,11 @@ export function ChatRouteComponent() {
               into the workout form.
             </p>
           </div>
-          <Button type="button" variant="outline" onClick={handleNewChat}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleNewChat}
+          >
             New Chat
           </Button>
         </CardHeader>
@@ -856,7 +860,9 @@ export function ChatRouteComponent() {
                   }
                   onEditWorkoutDraft={() => {
                     if (conversation?.latest_workout_draft) {
-                      handleEditInWorkoutForm(conversation.latest_workout_draft);
+                      handleEditInWorkoutForm(
+                        conversation.latest_workout_draft,
+                      );
                     }
                   }}
                 />
@@ -875,7 +881,10 @@ export function ChatRouteComponent() {
             />
           ) : null}
 
-          <form className="mt-auto flex flex-col gap-3" onSubmit={handleSubmit}>
+          <form
+            className="mt-auto flex flex-col gap-3"
+            onSubmit={handleSubmit}
+          >
             <Textarea
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
@@ -888,7 +897,10 @@ export function ChatRouteComponent() {
                 Conversation ID:{" "}
                 {conversation?.id ?? conversationId ?? "not created yet"}
               </p>
-              <Button type="submit" disabled={isSubmitting || !prompt.trim()}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !prompt.trim()}
+              >
                 {isSubmitting ? "Streaming..." : "Send"}
               </Button>
             </div>

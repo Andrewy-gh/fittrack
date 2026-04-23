@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Target } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useMemo, useState } from "react";
+import { Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -9,16 +9,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   formatExerciseGoalSummary,
   getExerciseGoal,
   parseExerciseGoalInput,
   saveExerciseGoal,
   type ExerciseGoal,
-} from '@/lib/exercise-goals';
+} from "@/lib/exercise-goals";
 
 type GoalFieldErrors = {
   targetWeight?: string;
@@ -27,7 +27,7 @@ type GoalFieldErrors = {
 };
 
 function toInputValue(value?: number): string {
-  return value == null ? '' : String(value);
+  return value == null ? "" : String(value);
 }
 
 export function ExerciseGoalsCard({
@@ -38,12 +38,12 @@ export function ExerciseGoalsCard({
   exerciseName: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [goal, setGoal] = useState<ExerciseGoal>(() =>
-    getExerciseGoal({ exerciseId, exerciseName }) ?? {}
+  const [goal, setGoal] = useState<ExerciseGoal>(
+    () => getExerciseGoal({ exerciseId, exerciseName }) ?? {},
   );
-  const [targetWeight, setTargetWeight] = useState('');
-  const [targetReps, setTargetReps] = useState('');
-  const [frequencyPerWeek, setFrequencyPerWeek] = useState('');
+  const [targetWeight, setTargetWeight] = useState("");
+  const [targetReps, setTargetReps] = useState("");
+  const [frequencyPerWeek, setFrequencyPerWeek] = useState("");
   const [errors, setErrors] = useState<GoalFieldErrors>({});
 
   useEffect(() => {
@@ -60,10 +60,7 @@ export function ExerciseGoalsCard({
     }
   }, [goal, isOpen]);
 
-  const goalSummary = useMemo(
-    () => formatExerciseGoalSummary(goal),
-    [goal]
-  );
+  const goalSummary = useMemo(() => formatExerciseGoalSummary(goal), [goal]);
 
   return (
     <>
@@ -76,20 +73,27 @@ export function ExerciseGoalsCard({
                 Simple Goals
               </div>
               <div className="text-2xl font-semibold tracking-tight">
-                {goalSummary ?? 'No goal set'}
+                {goalSummary ?? "No goal set"}
               </div>
               <p className="text-xs text-muted-foreground">
                 Save a target weight, reps, or weekly frequency for this lift.
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setIsOpen(true)}>
-              {goalSummary ? 'Edit' : 'Set'}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsOpen(true)}
+            >
+              {goalSummary ? "Edit" : "Set"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={setIsOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Exercise Goals</DialogTitle>
@@ -112,7 +116,9 @@ export function ExerciseGoalsCard({
                 }}
               />
               {errors.targetWeight && (
-                <p className="text-sm text-destructive">{errors.targetWeight}</p>
+                <p className="text-sm text-destructive">
+                  {errors.targetWeight}
+                </p>
               )}
             </div>
 
@@ -142,7 +148,10 @@ export function ExerciseGoalsCard({
                 value={frequencyPerWeek}
                 onChange={(event) => {
                   setFrequencyPerWeek(event.target.value);
-                  setErrors((prev) => ({ ...prev, frequencyPerWeek: undefined }));
+                  setErrors((prev) => ({
+                    ...prev,
+                    frequencyPerWeek: undefined,
+                  }));
                 }}
               />
               {errors.frequencyPerWeek && (
@@ -154,7 +163,11 @@ export function ExerciseGoalsCard({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -162,17 +175,17 @@ export function ExerciseGoalsCard({
               onClick={() => {
                 const parsedTargetWeight = parseExerciseGoalInput(
                   targetWeight,
-                  'Target Weight'
+                  "Target Weight",
                 );
                 const parsedTargetReps = parseExerciseGoalInput(
                   targetReps,
-                  'Target Reps',
-                  { integer: true }
+                  "Target Reps",
+                  { integer: true },
                 );
                 const parsedFrequencyPerWeek = parseExerciseGoalInput(
                   frequencyPerWeek,
-                  'Weekly Frequency',
-                  { integer: true }
+                  "Weekly Frequency",
+                  { integer: true },
                 );
 
                 const nextErrors: GoalFieldErrors = {

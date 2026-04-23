@@ -1,8 +1,8 @@
-import { useRouter } from '@tanstack/react-router';
-import type { ErrorComponentProps } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { isApiError, getErrorMessage } from '@/lib/errors';
-import { AlertCircle } from 'lucide-react';
+import { useRouter } from "@tanstack/react-router";
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { isApiError, getErrorMessage } from "@/lib/errors";
+import { AlertCircle } from "lucide-react";
 
 export function RouteError({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
@@ -10,10 +10,10 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
   const errorMessage = getErrorMessage(error);
   const loweredMessage = errorMessage.toLowerCase();
   const isModuleLoadError =
-    loweredMessage.includes('importing a module script failed') ||
-    loweredMessage.includes('failed to fetch dynamically imported module') ||
-    loweredMessage.includes('loading chunk') ||
-    loweredMessage.includes('mime type');
+    loweredMessage.includes("importing a module script failed") ||
+    loweredMessage.includes("failed to fetch dynamically imported module") ||
+    loweredMessage.includes("loading chunk") ||
+    loweredMessage.includes("mime type");
 
   // Extract request_id if it's an API error
   const errorAsUnknown = error as unknown;
@@ -39,7 +39,8 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
           </p>
           {requestId && import.meta.env.DEV && (
             <p className="text-xs text-muted-foreground">
-              Request ID: <code className="rounded bg-muted px-1">{requestId}</code>
+              Request ID:{" "}
+              <code className="rounded bg-muted px-1">{requestId}</code>
             </p>
           )}
         </div>
@@ -62,7 +63,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
             }}
             className="flex-1"
           >
-            {isModuleLoadError ? 'Refresh App' : 'Try Again'}
+            {isModuleLoadError ? "Refresh App" : "Try Again"}
           </Button>
         </div>
       </div>

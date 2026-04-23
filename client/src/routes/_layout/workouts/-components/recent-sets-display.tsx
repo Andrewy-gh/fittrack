@@ -1,14 +1,17 @@
-import { Suspense } from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronRight } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
-import type { ExerciseRecentSetsResponse } from '@/client';
-import { formatDate } from '@/lib/utils';
-import { sortByExerciseAndSetOrder } from '@/lib/utils';
-import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
-import { getRecentSetsQueryOptions } from '@/lib/api/unified-query-options';
-import { ErrorBoundary, InlineErrorFallback } from '@/components/error-boundary';
+import { Suspense } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import type { ExerciseRecentSetsResponse } from "@/client";
+import { formatDate } from "@/lib/utils";
+import { sortByExerciseAndSetOrder } from "@/lib/utils";
+import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
+import { getRecentSetsQueryOptions } from "@/lib/api/unified-query-options";
+import {
+  ErrorBoundary,
+  InlineErrorFallback,
+} from "@/components/error-boundary";
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
@@ -17,7 +20,7 @@ interface RecentSetsDisplayProps {
 
 function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
   const { data: recentSets } = useSuspenseQuery(
-    getRecentSetsQueryOptions(user, exerciseId)
+    getRecentSetsQueryOptions(user, exerciseId),
   );
 
   if (recentSets.length === 0) {
@@ -39,7 +42,7 @@ function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
       acc[dateKey].sets.push(set);
       return acc;
     },
-    {} as Record<string, { date: string; sets: ExerciseRecentSetsResponse[] }>
+    {} as Record<string, { date: string; sets: ExerciseRecentSetsResponse[] }>,
   );
 
   return (
@@ -49,7 +52,10 @@ function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
       </h2>
       {Object.entries(groupedSets).map(([dateKey, group]) => {
         return (
-          <Card key={dateKey} className="border-0 shadow-sm backdrop-blur-sm">
+          <Card
+            key={dateKey}
+            className="border-0 shadow-sm backdrop-blur-sm"
+          >
             <CardHeader>
               <CardTitle className="text-medium font-semibold">
                 <Link
@@ -101,7 +107,7 @@ function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
 // Helper component to wrap recent sets with proper error boundaries
 export function RecentSets({
   exerciseId,
-  user
+  user,
 }: {
   exerciseId: number | null;
   user: CurrentUser | CurrentInternalUser | null;
@@ -135,7 +141,10 @@ export function RecentSets({
           </div>
         }
       >
-        <RecentSetsDisplay exerciseId={exerciseId} user={user} />
+        <RecentSetsDisplay
+          exerciseId={exerciseId}
+          user={user}
+        />
       </Suspense>
     </ErrorBoundary>
   );

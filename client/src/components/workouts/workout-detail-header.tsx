@@ -1,6 +1,6 @@
-import { type ReactNode } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { formatDate, formatTime } from '@/lib/utils';
+import { type ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
+import { formatDate, formatTime } from "@/lib/utils";
 
 export interface WorkoutDetailHeaderProps {
   workoutDate?: string;
@@ -18,12 +18,12 @@ export function WorkoutDetailHeader({
       <div>
         <div className="mb-2">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {workoutDate ? formatDate(workoutDate) : ''}
+            {workoutDate ? formatDate(workoutDate) : ""}
           </h1>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <p className="text-sm md:text-base text-muted-foreground">
-            {workoutDate ? formatTime(workoutDate) : ''}
+            {workoutDate ? formatTime(workoutDate) : ""}
           </p>
           {workoutFocus && (
             <>

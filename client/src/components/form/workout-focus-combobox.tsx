@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useFieldContext } from '@/hooks/form';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { useState } from "react";
+import { useFieldContext } from "@/hooks/form";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -11,10 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { GenericCombobox } from '@/components/generic-combobox';
-import { Target, X } from 'lucide-react';
-import type { WorkoutFocus } from '@/lib/api/workouts';
+} from "@/components/ui/dialog";
+import { GenericCombobox } from "@/components/generic-combobox";
+import { Target, X } from "lucide-react";
+import type { WorkoutFocus } from "@/lib/api/workouts";
 
 export default function WorkoutFocusCombobox({
   workoutsFocus,
@@ -23,12 +23,12 @@ export default function WorkoutFocusCombobox({
 }) {
   const field = useFieldContext<string>();
   const [open, setOpen] = useState(false);
-  const [selectedWorkoutFocus, setSelectedWorkoutFocus] = useState<WorkoutFocus>();
+  const [selectedWorkoutFocus, setSelectedWorkoutFocus] =
+    useState<WorkoutFocus>();
 
   // Working list of workout focus values that can include both DB and manually created ones
-  const [workingWorkoutsFocus, setWorkingWorkoutsFocus] = useState<WorkoutFocus[]>(
-    workoutsFocus
-  );
+  const [workingWorkoutsFocus, setWorkingWorkoutsFocus] =
+    useState<WorkoutFocus[]>(workoutsFocus);
 
   function handleSelect(option: WorkoutFocus) {
     setSelectedWorkoutFocus(option);
@@ -42,23 +42,31 @@ export default function WorkoutFocusCombobox({
   }
 
   function handleAddWorkoutFocus() {
-    field.setValue(selectedWorkoutFocus?.name ?? '');
+    field.setValue(selectedWorkoutFocus?.name ?? "");
     setOpen(false);
     setSelectedWorkoutFocus(undefined);
   }
 
   function handleReset() {
-    field.setValue('');
+    field.setValue("");
     setSelectedWorkoutFocus(undefined);
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+    >
       <DialogTrigger asChild>
-        <Card className="p-4 h-full flex flex-col justify-between min-h-32" aria-label="Workout Focus">
+        <Card
+          className="p-4 h-full flex flex-col justify-between min-h-32"
+          aria-label="Workout Focus"
+        >
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-sm tracking-tight">Workout Focus</span>
+            <span className="font-semibold text-sm tracking-tight">
+              Workout Focus
+            </span>
             {field.state.value && (
               <Button
                 type="button"
@@ -75,21 +83,19 @@ export default function WorkoutFocusCombobox({
             )}
           </div>
           <div className="text-card-foreground font-semibold text-xs">
-            {field.state.value || 'What is your focus for today?'}
+            {field.state.value || "What is your focus for today?"}
           </div>
         </Card>
       </DialogTrigger>
       <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
         <DialogHeader>
           <DialogTitle>Workout Focus</DialogTitle>
-          <DialogDescription>
-            What are you working on today?
-          </DialogDescription>
+          <DialogDescription>What are you working on today?</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <GenericCombobox
             options={workingWorkoutsFocus} // Use working list that can include manually created values
-            selected={selectedWorkoutFocus?.name ?? field.state.value ?? ''}
+            selected={selectedWorkoutFocus?.name ?? field.state.value ?? ""}
             ariaLabel="Workout focus options"
             inputAriaLabel="Workout focus search"
             onChange={handleSelect}
@@ -98,7 +104,10 @@ export default function WorkoutFocusCombobox({
           <div className="flex gap-2">
             <Button
               className="flex-1 py-4 text-base font-semibold rounded-lg"
-              disabled={!selectedWorkoutFocus?.name.trim() || selectedWorkoutFocus?.name === field.state.value}
+              disabled={
+                !selectedWorkoutFocus?.name.trim() ||
+                selectedWorkoutFocus?.name === field.state.value
+              }
               onClick={handleAddWorkoutFocus}
             >
               Add today's focus
@@ -117,7 +126,10 @@ export default function WorkoutFocusCombobox({
         </div>
         <DialogFooter className="sm:justify-start">
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button
+              type="button"
+              variant="outline"
+            >
               Close
             </Button>
           </DialogClose>

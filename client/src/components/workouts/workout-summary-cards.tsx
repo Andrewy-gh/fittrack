@@ -1,10 +1,10 @@
-import { Calendar, BarChart3, Dumbbell, Scale } from 'lucide-react';
-import { StatsGrid } from '@/components/stats-grid';
-import type { WorkoutWorkoutResponse } from '@/client';
+import { Calendar, BarChart3, Dumbbell, Scale } from "lucide-react";
+import { StatsGrid } from "@/components/stats-grid";
+import type { WorkoutWorkoutResponse } from "@/client";
 import {
   formatWeekComparison,
   getWorkoutConsistencySummary,
-} from '@/lib/workout-insights';
+} from "@/lib/workout-insights";
 
 export interface WorkoutSummaryCardsProps {
   workouts: Array<WorkoutWorkoutResponse>;
@@ -18,30 +18,30 @@ export function WorkoutSummaryCards({ workouts }: WorkoutSummaryCardsProps) {
       columns={4}
       items={[
         {
-          label: 'Total Workouts',
+          label: "Total Workouts",
           value: summary.totalWorkouts,
           icon: Dumbbell,
         },
         {
-          label: 'This Week',
+          label: "This Week",
           value: summary.workoutsThisWeek,
           icon: Calendar,
           helperText: formatWeekComparison(
             summary.workoutsThisWeek,
-            summary.workoutsLastWeek
+            summary.workoutsLastWeek,
           ),
         },
         {
-          label: 'Active Days',
+          label: "Active Days",
           value: summary.activeDaysThisMonth,
           icon: BarChart3,
-          helperText: 'This month',
+          helperText: "This month",
         },
         {
-          label: 'Avg / Week',
+          label: "Avg / Week",
           value: summary.averageWorkoutsPerWeek,
           icon: Scale,
-          helperText: 'Rolling 8 weeks',
+          helperText: "Rolling 8 weeks",
         },
       ]}
     />

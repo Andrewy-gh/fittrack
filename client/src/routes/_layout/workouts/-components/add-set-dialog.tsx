@@ -1,22 +1,19 @@
-import { Suspense } from 'react';
-import { withForm } from '@/hooks/form';
-import { Button } from '@/components/ui/button';
+import { Suspense } from "react";
+import { withForm } from "@/hooks/form";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { MOCK_VALUES } from './form-options';
+} from "@/components/ui/dialog";
+import { MOCK_VALUES } from "./form-options";
 import {
   ErrorBoundary,
   InlineErrorFallback,
-} from '@/components/error-boundary';
-import {
-  isSetEmptyForDismiss,
-  validateSetReps,
-} from './workout-form-helpers';
+} from "@/components/error-boundary";
+import { isSetEmptyForDismiss, validateSetReps } from "./workout-form-helpers";
 
 type AddSetDialogProps = {
   exerciseIndex: number;
@@ -138,7 +135,7 @@ export const AddSetDialog = withForm({
                   className="w-full mt-6 text-base font-semibold rounded-lg"
                   onClick={onRemoveSet}
                 >
-                  {isEmpty ? 'Cancel' : 'Remove Set'}
+                  {isEmpty ? "Cancel" : "Remove Set"}
                 </Button>
               )}
             />

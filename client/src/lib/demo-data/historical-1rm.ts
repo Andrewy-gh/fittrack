@@ -1,5 +1,5 @@
-import type { StoredSet } from './types';
-import { STORAGE_KEYS } from './types';
+import type { StoredSet } from "./types";
+import { STORAGE_KEYS } from "./types";
 
 type Historical1RmEntry = {
   historical_1rm: number;
@@ -10,7 +10,7 @@ type Historical1RmEntry = {
 type Historical1RmMap = Record<string, Historical1RmEntry>;
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue;
+  if (typeof window === "undefined") return defaultValue;
   const stored = localStorage.getItem(key);
   if (!stored) return defaultValue;
   try {
@@ -21,12 +21,12 @@ function getFromStorage<T>(key: string, defaultValue: T): T {
 }
 
 function setInStorage<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
 }
 
 function removeFromStorage(key: string): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   localStorage.removeItem(key);
 }
 
@@ -43,7 +43,7 @@ function setMap(map: Historical1RmMap): void {
 }
 
 function computeSetE1rm(s: StoredSet): number | null {
-  if (s.set_type !== 'working') return null;
+  if (s.set_type !== "working") return null;
   const w = s.weight ?? 0;
   const reps = s.reps ?? 0;
   const e1rm = w * (1 + reps / 30);
@@ -51,7 +51,10 @@ function computeSetE1rm(s: StoredSet): number | null {
   return e1rm;
 }
 
-function computeBestE1rmForExercise(sets: StoredSet[], exerciseId: number): { best: number; workoutId: number } | null {
+function computeBestE1rmForExercise(
+  sets: StoredSet[],
+  exerciseId: number,
+): { best: number; workoutId: number } | null {
   let best: number | null = null;
   let workoutId: number | null = null;
   for (const s of sets) {
@@ -67,7 +70,10 @@ function computeBestE1rmForExercise(sets: StoredSet[], exerciseId: number): { be
   return { best, workoutId };
 }
 
-function computeWorkoutBestE1rmByExercise(sets: StoredSet[], workoutId: number): Map<number, number> {
+function computeWorkoutBestE1rmByExercise(
+  sets: StoredSet[],
+  workoutId: number,
+): Map<number, number> {
   const byExercise = new Map<number, number>();
   for (const s of sets) {
     if (s.workout_id !== workoutId) continue;
@@ -79,12 +85,17 @@ function computeWorkoutBestE1rmByExercise(sets: StoredSet[], workoutId: number):
   return byExercise;
 }
 
-export function getDemoExerciseHistorical1Rm(exerciseId: number): Historical1RmEntry | null {
+export function getDemoExerciseHistorical1Rm(
+  exerciseId: number,
+): Historical1RmEntry | null {
   const map = getMap();
   return map[String(exerciseId)] ?? null;
 }
 
-export function setDemoExerciseHistorical1RmManual(exerciseId: number, historical1rm: number | null): Historical1RmEntry | null {
+export function setDemoExerciseHistorical1RmManual(
+  exerciseId: number,
+  historical1rm: number | null,
+): Historical1RmEntry | null {
   const map = getMap();
   const key = String(exerciseId);
 
@@ -104,7 +115,9 @@ export function setDemoExerciseHistorical1RmManual(exerciseId: number, historica
   return entry;
 }
 
-export function recomputeDemoExerciseHistorical1Rm(exerciseId: number): Historical1RmEntry | null {
+export function recomputeDemoExerciseHistorical1Rm(
+  exerciseId: number,
+): Historical1RmEntry | null {
   const sets = getAllSets();
   const best = computeBestE1rmForExercise(sets, exerciseId);
 
@@ -178,7 +191,8 @@ export function handleDemoWorkoutDeleted(workoutId: number): void {
   const entries = Object.entries(map);
   const affectedExerciseIds: number[] = [];
   for (const [exerciseId, entry] of entries) {
-    if (entry.source_workout_id === workoutId) affectedExerciseIds.push(Number(exerciseId));
+    if (entry.source_workout_id === workoutId)
+      affectedExerciseIds.push(Number(exerciseId));
   }
   if (affectedExerciseIds.length === 0) return;
 
@@ -216,4 +230,3 @@ export function resetDemoHistorical1Rm(): void {
 export function clearDemoHistorical1Rm(): void {
   removeFromStorage(STORAGE_KEYS.HISTORICAL_1RM);
 }
-

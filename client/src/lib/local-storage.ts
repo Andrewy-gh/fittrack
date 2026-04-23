@@ -1,15 +1,15 @@
-import type { WorkoutCreateWorkoutRequest } from '../client/types.gen';
+import type { WorkoutCreateWorkoutRequest } from "../client/types.gen";
 
-const STORAGE_KEY = 'workout-entry-form-data';
+const STORAGE_KEY = "workout-entry-form-data";
 
-export type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 const getStorageKey = (userId?: string): string => {
   return userId ? `${STORAGE_KEY}-${userId}` : STORAGE_KEY;
 };
 
 // Type for form data that may contain Date objects
-export type FormDataType = Omit<WorkoutCreateWorkoutRequest, 'date'> & {
+export type FormDataType = Omit<WorkoutCreateWorkoutRequest, "date"> & {
   date: Date | string;
 };
 
@@ -27,11 +27,11 @@ function serializeDraft(data: FormDataType): WorkoutCreateWorkoutRequest {
 }
 
 function deserializeDraft(
-  rawValue: string
+  rawValue: string,
 ): WorkoutCreateWorkoutRequest | null {
   try {
     const parsed = JSON.parse(rawValue);
-    if (parsed.date && typeof parsed.date === 'string') {
+    if (parsed.date && typeof parsed.date === "string") {
       parsed.date = new Date(parsed.date);
     }
     return parsed as WorkoutCreateWorkoutRequest;
@@ -41,7 +41,7 @@ function deserializeDraft(
 }
 
 export function createWorkoutDraftStorage(
-  storage?: StorageLike
+  storage?: StorageLike,
 ): WorkoutDraftStorage {
   return {
     save(data, userId) {
@@ -52,10 +52,10 @@ export function createWorkoutDraftStorage(
       try {
         storage.setItem(
           getStorageKey(userId),
-          JSON.stringify(serializeDraft(data))
+          JSON.stringify(serializeDraft(data)),
         );
       } catch (error) {
-        console.warn('Failed to save to localStorage:', error);
+        console.warn("Failed to save to localStorage:", error);
       }
     },
     load(userId) {
@@ -67,7 +67,7 @@ export function createWorkoutDraftStorage(
         const saved = storage.getItem(getStorageKey(userId));
         return saved ? deserializeDraft(saved) : null;
       } catch (error) {
-        console.warn('Failed to load from localStorage:', error);
+        console.warn("Failed to load from localStorage:", error);
         return null;
       }
     },
@@ -79,47 +79,46 @@ export function createWorkoutDraftStorage(
       try {
         storage.removeItem(getStorageKey(userId));
       } catch (error) {
-        console.warn('Failed to clear localStorage:', error);
+        console.warn("Failed to clear localStorage:", error);
       }
     },
   };
 }
 
 function getBrowserStorage(): StorageLike | undefined {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return undefined;
   }
 
   try {
     return window.localStorage;
   } catch (error) {
-    console.warn('Failed to access localStorage:', error);
+    console.warn("Failed to access localStorage:", error);
     return undefined;
   }
 }
 
-export const workoutDraftStorage = createWorkoutDraftStorage(
-  getBrowserStorage()
-);
+export const workoutDraftStorage =
+  createWorkoutDraftStorage(getBrowserStorage());
 
 export const saveToLocalStorage = (
   data: FormDataType,
   userId?: string,
-  draftStorage: WorkoutDraftStorage = workoutDraftStorage
+  draftStorage: WorkoutDraftStorage = workoutDraftStorage,
 ) => {
   draftStorage.save(data, userId);
 };
 
 export const loadFromLocalStorage = (
   userId?: string,
-  draftStorage: WorkoutDraftStorage = workoutDraftStorage
+  draftStorage: WorkoutDraftStorage = workoutDraftStorage,
 ): WorkoutCreateWorkoutRequest | null => {
   return draftStorage.load(userId);
 };
 
 export const clearLocalStorage = (
   userId?: string,
-  draftStorage: WorkoutDraftStorage = workoutDraftStorage
+  draftStorage: WorkoutDraftStorage = workoutDraftStorage,
 ) => {
   draftStorage.clear(userId);
 };

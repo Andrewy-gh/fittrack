@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @plugin "tailwindcss-animate";
 
@@ -7,15 +7,15 @@
 body {
   @apply m-0;
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
   font-family:
-    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 :root {
@@ -52,8 +52,8 @@ code {
   --sidebar-border: oklch(0.9233 0.0067 286.2674);
   --sidebar-ring: oklch(0.6497 0.2383 17.8982);
   --font-sans: Inter, sans-serif;
-  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: Menlo, Monaco, 'Courier New', monospace;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: Menlo, Monaco, "Courier New", monospace;
   --radius: 0.75rem;
   --shadow-2xs: 0px 4px 16px -2px hsl(0 0% 0% / 0.03);
   --shadow-xs: 0px 4px 16px -2px hsl(0 0% 0% / 0.03);
@@ -113,8 +113,8 @@ code {
   --sidebar-border: oklch(0.2686 0 0);
   --sidebar-ring: oklch(0.6497 0.2383 17.8982);
   --font-sans: Inter, sans-serif;
-  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-  --font-mono: Menlo, Monaco, 'Courier New', monospace;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: Menlo, Monaco, "Courier New", monospace;
   --radius: 0.75rem;
   --shadow-2xs: 0px 4px 16px -2px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0px 4px 16px -2px hsl(0 0% 0% / 0.05);
@@ -174,8 +174,8 @@ code {
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-sans: Inter, sans-serif;
-  --font-mono: Menlo, Monaco, 'Courier New', monospace;
-  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: Menlo, Monaco, "Courier New", monospace;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

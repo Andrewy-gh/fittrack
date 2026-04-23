@@ -2,14 +2,14 @@ import type {
   ExerciseExerciseResponse,
   ExerciseExerciseWithSetsResponse,
   WorkoutContributionDataResponse,
-} from '@/client';
-import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
-import { GenericCombobox } from '@/components/generic-combobox';
-import { Card, CardContent } from '@/components/ui/card';
-import { WorkoutContributionGraph } from '@/components/workouts/workout-contribution-graph';
-import { getWorkoutSummary } from '@/lib/analytics';
-import { AnalyticsSummaryCards } from './analytics-summary-cards';
-import { WorkoutVolumeChart } from './workout-volume-chart';
+} from "@/client";
+import { ExerciseMetricCharts } from "@/components/exercises/exercise-metric-charts";
+import { GenericCombobox } from "@/components/generic-combobox";
+import { Card, CardContent } from "@/components/ui/card";
+import { WorkoutContributionGraph } from "@/components/workouts/workout-contribution-graph";
+import { getWorkoutSummary } from "@/lib/analytics";
+import { AnalyticsSummaryCards } from "./analytics-summary-cards";
+import { WorkoutVolumeChart } from "./workout-volume-chart";
 
 export interface AnalyticsPageProps {
   isLoadingExercises: boolean;
@@ -77,7 +77,7 @@ export function AnalyticsPage({
 
   const selectedExerciseName =
     exercises.find((exercise) => exercise.id === selectedExerciseId)?.name ??
-    '';
+    "";
 
   return (
     <main>
@@ -93,7 +93,9 @@ export function AnalyticsPage({
 
         <section className="space-y-4">
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold tracking-tight">Exercise Progress</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Exercise Progress
+            </h2>
             <p className="text-sm text-muted-foreground">
               Pick an exercise to inspect how session metrics move over time.
             </p>
@@ -140,7 +142,10 @@ export function AnalyticsPage({
         )}
 
         {workoutContributionData ? (
-          <WorkoutContributionGraph data={workoutContributionData} defaultOpen />
+          <WorkoutContributionGraph
+            data={workoutContributionData}
+            defaultOpen
+          />
         ) : (
           <Card>
             <CardContent className="py-6 text-sm text-muted-foreground">

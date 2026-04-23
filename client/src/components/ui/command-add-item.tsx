@@ -1,16 +1,20 @@
-import { type HTMLAttributes, type KeyboardEvent } from 'react';
-import { CirclePlus } from 'lucide-react';
+import { type HTMLAttributes, type KeyboardEvent } from "react";
+import { CirclePlus } from "lucide-react";
 import {
   activateTouchTap,
   beginTouchTapTracking,
   cancelTouchTapTracking,
   shouldSuppressTouchClick,
   updateTouchTapTracking,
-} from '@/lib/touch-activation';
+} from "@/lib/touch-activation";
 
 type TouchActivationHandlers = Pick<
   HTMLAttributes<HTMLDivElement>,
-  'onClickCapture' | 'onTouchCancel' | 'onTouchEnd' | 'onTouchMove' | 'onTouchStart'
+  | "onClickCapture"
+  | "onTouchCancel"
+  | "onTouchEnd"
+  | "onTouchMove"
+  | "onTouchStart"
 >;
 
 export function CommandAddItem({
@@ -55,11 +59,11 @@ export function CommandAddItem({
       onClick={onCreate}
       {...touchActivationHandlers}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-        if (event.key === 'Enter') {
+        if (event.key === "Enter") {
           onCreate();
         }
       }}
-      className={`flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 focus:outline-none${touchEnabled ? ' touch-manipulation' : ''}`}
+      className={`flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 focus:outline-none${touchEnabled ? " touch-manipulation" : ""}`}
     >
       <CirclePlus className="mr-2 h-4 w-4" />
       Create "{query}"

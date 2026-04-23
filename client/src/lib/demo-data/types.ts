@@ -25,16 +25,16 @@ export type {
   // Response types
   ResponseSuccessResponse,
   ResponseErrorResponse,
-} from '@/client';
+} from "@/client";
 
 // Demo-specific constants
 export const DEMO_USER_ID = "demo-user" as const;
 
 export const STORAGE_KEYS = {
-  WORKOUTS: 'fittrack-demo-workouts',
-  EXERCISES: 'fittrack-demo-exercises',
-  SETS: 'fittrack-demo-sets',
-  HISTORICAL_1RM: 'fittrack-demo-historical-1rm',
+  WORKOUTS: "fittrack-demo-workouts",
+  EXERCISES: "fittrack-demo-exercises",
+  SETS: "fittrack-demo-sets",
+  HISTORICAL_1RM: "fittrack-demo-historical-1rm",
 } as const;
 
 // Internal storage types (not exposed via API)

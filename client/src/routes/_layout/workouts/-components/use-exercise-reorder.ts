@@ -1,5 +1,5 @@
-import { arrayMove } from '@dnd-kit/sortable';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { arrayMove } from "@dnd-kit/sortable";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export type ReorderableExercise<T> = {
   id: string;
@@ -8,7 +8,7 @@ export type ReorderableExercise<T> = {
 
 function haveSameExerciseCollection<T extends object>(
   entries: ReorderableExercise<T>[],
-  exercises: T[]
+  exercises: T[],
 ) {
   if (entries.length !== exercises.length) {
     return false;
@@ -20,7 +20,7 @@ function haveSameExerciseCollection<T extends object>(
 
 function areExercisesInSameOrder<T extends object>(
   entries: ReorderableExercise<T>[],
-  exercises: T[]
+  exercises: T[],
 ) {
   return (
     entries.length === exercises.length &&
@@ -45,7 +45,9 @@ export function useExerciseReorder<T extends object>(exercises: T[]) {
       return { id, exercise };
     });
 
-  const [draftEntries, setDraftEntries] = useState(() => createEntries(exercises));
+  const [draftEntries, setDraftEntries] = useState(() =>
+    createEntries(exercises),
+  );
   const canReorder = exercises.length > 1;
 
   useEffect(() => {
@@ -78,10 +80,12 @@ export function useExerciseReorder<T extends object>(exercises: T[]) {
     setDraftEntries(createEntries(exercises));
   }, [canReorder, exercises]);
 
-  const displayEntries = isReorderMode ? draftEntries : createEntries(exercises);
+  const displayEntries = isReorderMode
+    ? draftEntries
+    : createEntries(exercises);
   const hasPendingOrderChanges = useMemo(
     () => !areExercisesInSameOrder(draftEntries, exercises),
-    [draftEntries, exercises]
+    [draftEntries, exercises],
   );
 
   const startReorder = () => {
@@ -104,7 +108,9 @@ export function useExerciseReorder<T extends object>(exercises: T[]) {
     }
 
     setDraftEntries((currentEntries) => {
-      const oldIndex = currentEntries.findIndex((entry) => entry.id === activeId);
+      const oldIndex = currentEntries.findIndex(
+        (entry) => entry.id === activeId,
+      );
       const newIndex = currentEntries.findIndex((entry) => entry.id === overId);
 
       if (oldIndex < 0 || newIndex < 0) {

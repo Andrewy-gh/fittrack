@@ -13,7 +13,7 @@ type ExerciseGoalLookup = {
   exerciseName?: string | null;
 };
 
-const STORAGE_KEY = 'fittrack-exercise-goals-v1';
+const STORAGE_KEY = "fittrack-exercise-goals-v1";
 
 function normalizeExerciseName(exerciseName: string): string {
   return exerciseName.trim().toLowerCase();
@@ -35,7 +35,7 @@ function getExerciseGoalKey({
 }
 
 function readExerciseGoals(): Record<string, ExerciseGoal> {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return {};
   }
 
@@ -52,14 +52,16 @@ function readExerciseGoals(): Record<string, ExerciseGoal> {
 }
 
 function writeExerciseGoals(goals: Record<string, ExerciseGoal>): void {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return;
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
 }
 
-export function getExerciseGoal(lookup: ExerciseGoalLookup): ExerciseGoal | null {
+export function getExerciseGoal(
+  lookup: ExerciseGoalLookup,
+): ExerciseGoal | null {
   const goalKey = getExerciseGoalKey(lookup);
   if (!goalKey) {
     return null;
@@ -71,7 +73,7 @@ export function getExerciseGoal(lookup: ExerciseGoalLookup): ExerciseGoal | null
 
 export function saveExerciseGoal(
   lookup: ExerciseGoalLookup,
-  goal: ExerciseGoal
+  goal: ExerciseGoal,
 ): void {
   const goalKey = getExerciseGoalKey(lookup);
   if (!goalKey) {
@@ -90,7 +92,9 @@ export function saveExerciseGoal(
   writeExerciseGoals(goals);
 }
 
-export function formatExerciseGoalSummary(goal?: ExerciseGoal | null): string | null {
+export function formatExerciseGoalSummary(
+  goal?: ExerciseGoal | null,
+): string | null {
   if (!goal) {
     return null;
   }
@@ -109,13 +113,13 @@ export function formatExerciseGoalSummary(goal?: ExerciseGoal | null): string | 
     parts.push(`${goal.frequencyPerWeek}x / week`);
   }
 
-  return parts.length > 0 ? parts.join(' • ') : null;
+  return parts.length > 0 ? parts.join(" • ") : null;
 }
 
 export function parseExerciseGoalInput(
   value: string,
   label: string,
-  options: ExerciseGoalParseOptions = {}
+  options: ExerciseGoalParseOptions = {},
 ): { value?: number; error?: string } {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
@@ -148,7 +152,7 @@ export function parseExerciseGoalInput(
 }
 
 export function clearExerciseGoals(): void {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return;
   }
 

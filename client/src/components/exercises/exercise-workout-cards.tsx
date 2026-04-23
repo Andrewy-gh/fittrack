@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDate, formatTime, formatWeight } from '@/lib/utils';
-import type { ExerciseExerciseWithSetsResponse } from '@/client';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDate, formatTime, formatWeight } from "@/lib/utils";
+import type { ExerciseExerciseWithSetsResponse } from "@/client";
 
 export type ExerciseWorkoutEntry = {
   workoutId: number;
@@ -29,11 +29,11 @@ export function ExerciseWorkoutCards({ workouts }: ExerciseWorkoutCardsProps) {
       {workouts.map((workout) => {
         const exerciseReps = workout.sets.reduce(
           (sum, set) => sum + set.reps,
-          0
+          0,
         );
         const exerciseVolume = workout.sets.reduce(
           (sum, set) => sum + set.volume,
-          0
+          0,
         );
         return (
           <Card

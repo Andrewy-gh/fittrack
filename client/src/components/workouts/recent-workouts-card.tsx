@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/react-router';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, ChevronRight } from 'lucide-react';
-import { formatDate, formatTime } from '@/lib/utils';
-import type { WorkoutWorkoutResponse } from '@/client';
+import { Link } from "@tanstack/react-router";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Clock, ChevronRight } from "lucide-react";
+import { formatDate, formatTime } from "@/lib/utils";
+import type { WorkoutWorkoutResponse } from "@/client";
 
 export interface RecentWorkoutsCardProps {
   workouts: Array<WorkoutWorkoutResponse>;
@@ -14,14 +14,12 @@ export interface RecentWorkoutsCardProps {
 export function RecentWorkoutsCard({
   workouts,
   hasWorkoutInProgress = false,
-  newWorkoutLink = '/workouts/new',
+  newWorkoutLink = "/workouts/new",
 }: RecentWorkoutsCardProps) {
   return (
     <Card className="border-0 shadow-sm backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">
-          Recent Workouts
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold">Recent Workouts</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {hasWorkoutInProgress && (
@@ -67,9 +65,7 @@ export function RecentWorkoutsCard({
               <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap mt-1">
                 <span>{formatDate(workout.date)}</span>
                 <span>•</span>
-                <span>
-                  {formatTime(workout.created_at)}
-                </span>
+                <span>{formatTime(workout.created_at)}</span>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -79,4 +75,3 @@ export function RecentWorkoutsCard({
     </Card>
   );
 }
-

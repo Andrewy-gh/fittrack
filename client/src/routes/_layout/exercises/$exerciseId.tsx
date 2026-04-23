@@ -1,24 +1,24 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { z } from 'zod';
-import { exerciseByIdQueryOptions } from '@/lib/api/exercises';
-import { getDemoExercisesByIdQueryOptions } from '@/lib/demo-data/query-options';
-import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
-import { ExerciseDetail } from '@/components/exercises/exercise-detail';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { z } from "zod";
+import { exerciseByIdQueryOptions } from "@/lib/api/exercises";
+import { getDemoExercisesByIdQueryOptions } from "@/lib/demo-data/query-options";
+import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
+import { ExerciseDetail } from "@/components/exercises/exercise-detail";
 
 const exerciseSearchSchema = z.object({
-  sortOrder: z.enum(['asc', 'desc']).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
   itemsPerPage: z.coerce.number().int().positive().optional(),
   page: z.coerce.number().int().positive().optional(),
 });
 
-export const Route = createFileRoute('/_layout/exercises/$exerciseId')({
+export const Route = createFileRoute("/_layout/exercises/$exerciseId")({
   validateSearch: exerciseSearchSchema,
   params: {
     parse: (params) => {
       const exerciseId = parseInt(params.exerciseId, 10);
       if (isNaN(exerciseId) || !Number.isInteger(exerciseId)) {
-        throw new Error('Invalid exerciseId');
+        throw new Error("Invalid exerciseId");
       }
       return { exerciseId };
     },
@@ -34,7 +34,9 @@ export const Route = createFileRoute('/_layout/exercises/$exerciseId')({
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      context.queryClient.ensureQueryData(getDemoExercisesByIdQueryOptions(exerciseId));
+      context.queryClient.ensureQueryData(
+        getDemoExercisesByIdQueryOptions(exerciseId),
+      );
     }
 
     return { exerciseId };
@@ -52,7 +54,7 @@ function RouteComponent() {
     ? useSuspenseQuery(exerciseByIdQueryOptions(exerciseId))
     : useSuspenseQuery(getDemoExercisesByIdQueryOptions(exerciseId));
 
-  const normalizedSortOrder = sortOrder ?? 'desc';
+  const normalizedSortOrder = sortOrder ?? "desc";
   const normalizedItemsPerPage = [10, 20, 50].includes(itemsPerPage ?? 10)
     ? (itemsPerPage ?? 10)
     : 10;

@@ -1,10 +1,10 @@
-import { Button } from '@/components/ui/button';
-import type { DbExercise, ExerciseOption } from '@/lib/api/exercises';
-import { Plus } from 'lucide-react';
-import { ExerciseCombobox } from '@/components/exercise-combobox';
-import { useFieldContext } from '@/hooks/form';
-import { useState } from 'react';
-import type { WorkoutExerciseInput } from '@/client';
+import { Button } from "@/components/ui/button";
+import type { DbExercise, ExerciseOption } from "@/lib/api/exercises";
+import { Plus } from "lucide-react";
+import { ExerciseCombobox } from "@/components/exercise-combobox";
+import { useFieldContext } from "@/hooks/form";
+import { useState } from "react";
+import type { WorkoutExerciseInput } from "@/client";
 
 export default function AddExerciseField({
   exercises,
@@ -18,7 +18,7 @@ export default function AddExerciseField({
 
   // Working list of exercises that can include both DB and manually created ones
   const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
-    exercises.map((ex) => ({ id: ex.id, name: ex.name }))
+    exercises.map((ex) => ({ id: ex.id, name: ex.name })),
   );
 
   function handleSelect(option: ExerciseOption) {
@@ -39,7 +39,7 @@ export default function AddExerciseField({
     <div className="space-y-4">
       <ExerciseCombobox
         options={workingExercises} // Use working list that can include manually created exercises
-        selected={selectedExercise?.name ?? ''}
+        selected={selectedExercise?.name ?? ""}
         onChange={handleSelect}
         onCreate={handleAppendGroup}
       />
@@ -48,7 +48,7 @@ export default function AddExerciseField({
         disabled={!selectedExercise?.name.trim()}
         onClick={() => {
           field.pushValue({
-            name: selectedExercise?.name ?? '',
+            name: selectedExercise?.name ?? "",
             sets: [],
           });
           const exerciseIndex = field.state.value.length - 1;

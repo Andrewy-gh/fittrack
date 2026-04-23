@@ -1,28 +1,28 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { z } from 'zod';
-import { AnalyticsPage } from '@/components/analytics/analytics-page';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { z } from "zod";
+import { AnalyticsPage } from "@/components/analytics/analytics-page";
 import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
-} from '@/lib/api/exercises';
+} from "@/lib/api/exercises";
 import {
   contributionDataQueryOptions,
   workoutsFocusValuesQueryOptions,
-} from '@/lib/api/workouts';
+} from "@/lib/api/workouts";
 import {
   getDemoContributionDataQueryOptions,
   getDemoExercisesByIdQueryOptions,
   getDemoExercisesQueryOptions,
   getDemoWorkoutsFocusValuesQueryOptions,
-} from '@/lib/demo-data/query-options';
-import { clearDemoData, initializeDemoData } from '@/lib/demo-data/storage';
+} from "@/lib/demo-data/query-options";
+import { clearDemoData, initializeDemoData } from "@/lib/demo-data/storage";
 
 const analyticsSearchSchema = z.object({
   exerciseId: z.coerce.number().int().positive().optional(),
 });
 
-export const Route = createFileRoute('/_layout/analytics')({
+export const Route = createFileRoute("/_layout/analytics")({
   validateSearch: analyticsSearchSchema,
   loader: async ({ context }) => {
     const user = context.user;
@@ -38,8 +38,12 @@ export const Route = createFileRoute('/_layout/analytics')({
       initializeDemoData();
       await Promise.all([
         context.queryClient.ensureQueryData(getDemoExercisesQueryOptions()),
-        context.queryClient.ensureQueryData(getDemoContributionDataQueryOptions()),
-        context.queryClient.ensureQueryData(getDemoWorkoutsFocusValuesQueryOptions()),
+        context.queryClient.ensureQueryData(
+          getDemoContributionDataQueryOptions(),
+        ),
+        context.queryClient.ensureQueryData(
+          getDemoWorkoutsFocusValuesQueryOptions(),
+        ),
       ]);
     }
   },

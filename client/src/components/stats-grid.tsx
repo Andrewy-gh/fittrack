@@ -1,6 +1,6 @@
-import { Card } from '@/components/ui/card';
-import { type LucideIcon } from 'lucide-react';
-import { formatWeight } from '@/lib/utils';
+import { Card } from "@/components/ui/card";
+import { type LucideIcon } from "lucide-react";
+import { formatWeight } from "@/lib/utils";
 
 export type StatsValue = string | number;
 
@@ -23,11 +23,12 @@ export interface StatsGridProps {
 const defaultFormatter = (value: StatsValue) => String(value);
 
 export function StatsGrid({ items, columns = 2 }: StatsGridProps) {
-  const columnClass = columns === 3
-    ? 'grid-cols-1 sm:grid-cols-3'
-    : columns === 4
-      ? 'grid-cols-2 xl:grid-cols-4'
-      : 'grid-cols-2';
+  const columnClass =
+    columns === 3
+      ? "grid-cols-1 sm:grid-cols-3"
+      : columns === 4
+        ? "grid-cols-2 xl:grid-cols-4"
+        : "grid-cols-2";
 
   return (
     <div className={`grid ${columnClass} gap-4`}>
@@ -37,7 +38,10 @@ export function StatsGrid({ items, columns = 2 }: StatsGridProps) {
           ? item.valueFormatter(item.value)
           : defaultFormatter(item.value);
         return (
-          <Card className="p-4" key={item.label}>
+          <Card
+            className="p-4"
+            key={item.label}
+          >
             <div className="flex items-center gap-2 mb-2">
               <Icon className="w-5 h-5 text-primary" />
               {item.hideLabelOnMobile ? (
@@ -52,14 +56,12 @@ export function StatsGrid({ items, columns = 2 }: StatsGridProps) {
                   )}
                 </>
               ) : (
-                <span className="text-sm font-semibold">
-                  {item.label}
-                </span>
+                <span className="text-sm font-semibold">{item.label}</span>
               )}
             </div>
             <div className="text-2xl text-card-foreground font-bold">
               {formattedValue}
-              {item.valueSuffix ? ` ${item.valueSuffix}` : ''}
+              {item.valueSuffix ? ` ${item.valueSuffix}` : ""}
             </div>
             {item.helperText && (
               <div className="mt-1 text-xs text-muted-foreground">
@@ -74,7 +76,7 @@ export function StatsGrid({ items, columns = 2 }: StatsGridProps) {
 }
 
 export const weightFormatter = (value: StatsValue) => {
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return formatWeight(value);
   }
   return defaultFormatter(value);

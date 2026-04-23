@@ -5,14 +5,14 @@ import {
   startOfMonth,
   startOfWeek,
   subWeeks,
-} from 'date-fns';
+} from "date-fns";
 import type {
   ExerciseExerciseWithSetsResponse,
   WorkoutCreateWorkoutRequest,
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
-} from '@/client';
-import { sortByExerciseAndSetOrder } from './utils';
+} from "@/client";
+import { sortByExerciseAndSetOrder } from "./utils";
 
 export type WorkoutNoteContext = {
   date: string;
@@ -35,7 +35,7 @@ function trimNote(note?: string | null): string | null {
 
 export function buildWorkoutDraftFromHistory(
   workout: WorkoutWorkoutWithSetsResponse[],
-  now = new Date()
+  now = new Date(),
 ): WorkoutCreateWorkoutRequest {
   const sortedWorkout = sortByExerciseAndSetOrder(workout);
   const groupedExercises = new Map<
@@ -43,7 +43,7 @@ export function buildWorkoutDraftFromHistory(
     {
       name: string;
       order: number;
-      sets: WorkoutCreateWorkoutRequest['exercises'][number]['sets'];
+      sets: WorkoutCreateWorkoutRequest["exercises"][number]["sets"];
     }
   >();
 
@@ -63,9 +63,9 @@ export function buildWorkoutDraftFromHistory(
       reps: set.reps,
       weight: set.weight,
       setType:
-        set.set_type === 'warmup' || set.set_type === 'working'
+        set.set_type === "warmup" || set.set_type === "working"
           ? set.set_type
-          : 'working',
+          : "working",
     });
   }
 
@@ -80,13 +80,13 @@ export function buildWorkoutDraftFromHistory(
 }
 
 export function getLatestWorkoutNote(
-  workouts: Pick<WorkoutWorkoutResponse, 'date' | 'id' | 'notes'>[]
+  workouts: Pick<WorkoutWorkoutResponse, "date" | "id" | "notes">[],
 ): WorkoutNoteContext | null {
   const latestWorkoutWithNote = [...workouts]
     .filter((workout) => trimNote(workout.notes))
     .sort(
       (left, right) =>
-        new Date(right.date).getTime() - new Date(left.date).getTime()
+        new Date(right.date).getTime() - new Date(left.date).getTime(),
     )[0];
 
   if (!latestWorkoutWithNote) {
@@ -103,15 +103,15 @@ export function getLatestWorkoutNote(
 export function getLatestExerciseNote(
   exerciseSets: Pick<
     ExerciseExerciseWithSetsResponse,
-    'workout_date' | 'workout_id' | 'workout_notes'
-  >[]
+    "workout_date" | "workout_id" | "workout_notes"
+  >[],
 ): WorkoutNoteContext | null {
   const latestExerciseSetWithNote = [...exerciseSets]
     .filter((set) => trimNote(set.workout_notes))
     .sort(
       (left, right) =>
         new Date(right.workout_date).getTime() -
-        new Date(left.workout_date).getTime()
+        new Date(left.workout_date).getTime(),
     )[0];
 
   if (!latestExerciseSetWithNote) {
@@ -126,8 +126,8 @@ export function getLatestExerciseNote(
 }
 
 export function getWorkoutConsistencySummary(
-  workouts: Pick<WorkoutWorkoutResponse, 'date'>[],
-  now = new Date()
+  workouts: Pick<WorkoutWorkoutResponse, "date">[],
+  now = new Date(),
 ): WorkoutConsistencySummary {
   const currentWeekInterval = {
     start: startOfWeek(now, { weekStartsOn: 1 }),
@@ -147,20 +147,20 @@ export function getWorkoutConsistencySummary(
   });
 
   const workoutsThisWeek = workouts.filter((workout) =>
-    isWithinInterval(new Date(workout.date), currentWeekInterval)
+    isWithinInterval(new Date(workout.date), currentWeekInterval),
   ).length;
   const workoutsLastWeek = workouts.filter((workout) =>
-    isWithinInterval(new Date(workout.date), previousWeekInterval)
+    isWithinInterval(new Date(workout.date), previousWeekInterval),
   ).length;
   const activeDaysThisMonth = new Set(
     workouts
       .filter((workout) =>
-        isWithinInterval(new Date(workout.date), currentMonthInterval)
+        isWithinInterval(new Date(workout.date), currentMonthInterval),
       )
-      .map((workout) => workout.date.slice(0, 10))
+      .map((workout) => workout.date.slice(0, 10)),
   ).size;
   const workoutsInRollingWindow = workouts.filter(
-    (workout) => new Date(workout.date) >= rollingAverageStart
+    (workout) => new Date(workout.date) >= rollingAverageStart,
   ).length;
 
   return {
@@ -168,17 +168,18 @@ export function getWorkoutConsistencySummary(
     workoutsThisWeek,
     workoutsLastWeek,
     activeDaysThisMonth,
-    averageWorkoutsPerWeek:
-      Math.round((workoutsInRollingWindow / 8) * 10) / 10,
+    averageWorkoutsPerWeek: Math.round((workoutsInRollingWindow / 8) * 10) / 10,
   };
 }
 
 export function formatWeekComparison(
   workoutsThisWeek: number,
-  workoutsLastWeek: number
+  workoutsLastWeek: number,
 ): string {
   if (workoutsLastWeek === 0) {
-    return workoutsThisWeek === 0 ? 'No workouts yet this week' : 'First week back';
+    return workoutsThisWeek === 0
+      ? "No workouts yet this week"
+      : "First week back";
   }
 
   const difference = workoutsThisWeek - workoutsLastWeek;

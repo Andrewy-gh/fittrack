@@ -1,8 +1,8 @@
-const RECENT_TOUCH_ACTIVATION_ATTR = 'data-recent-touch-activation';
-const PENDING_TOUCH_CLICK_ATTR = 'data-pending-touch-click';
-const TOUCH_START_X_ATTR = 'data-touch-start-x';
-const TOUCH_START_Y_ATTR = 'data-touch-start-y';
-const TOUCH_MOVED_ATTR = 'data-touch-moved';
+const RECENT_TOUCH_ACTIVATION_ATTR = "data-recent-touch-activation";
+const PENDING_TOUCH_CLICK_ATTR = "data-pending-touch-click";
+const TOUCH_START_X_ATTR = "data-touch-start-x";
+const TOUCH_START_Y_ATTR = "data-touch-start-y";
+const TOUCH_MOVED_ATTR = "data-touch-moved";
 const TOUCH_TAP_MAX_DISTANCE_PX = 10;
 const RECENT_TOUCH_ACTIVATION_MS = 750;
 
@@ -21,7 +21,7 @@ type TouchLikeEvent = {
   changedTouches: TouchListLike;
 };
 type TouchTapEndEvent = TouchLikeEvent &
-  Pick<TouchEvent, 'preventDefault' | 'timeStamp'>;
+  Pick<TouchEvent, "preventDefault" | "timeStamp">;
 
 function isElement(target: EventTarget | null): target is HTMLElement {
   return target instanceof HTMLElement;
@@ -44,11 +44,11 @@ function clearTouchTapTracking(target: HTMLElement) {
 }
 
 function markPendingTouchClick(target: HTMLElement) {
-  target.setAttribute(PENDING_TOUCH_CLICK_ATTR, 'true');
+  target.setAttribute(PENDING_TOUCH_CLICK_ATTR, "true");
 }
 
 function consumePendingTouchClick(target: HTMLElement) {
-  if (target.getAttribute(PENDING_TOUCH_CLICK_ATTR) !== 'true') {
+  if (target.getAttribute(PENDING_TOUCH_CLICK_ATTR) !== "true") {
     return false;
   }
 
@@ -69,21 +69,24 @@ function readTouchStart(target: HTMLElement) {
 
 function exceededTapDistance(
   start: { x: number; y: number },
-  current: { x: number; y: number }
+  current: { x: number; y: number },
 ) {
-  return Math.hypot(current.x - start.x, current.y - start.y) > TOUCH_TAP_MAX_DISTANCE_PX;
+  return (
+    Math.hypot(current.x - start.x, current.y - start.y) >
+    TOUCH_TAP_MAX_DISTANCE_PX
+  );
 }
 
 export function hasRecentTouchActivation(
   target: EventTarget | null,
-  timeStamp: number
+  timeStamp: number,
 ) {
   if (!isElement(target)) {
     return false;
   }
 
   const lastTouchActivation = Number(
-    target.getAttribute(RECENT_TOUCH_ACTIVATION_ATTR)
+    target.getAttribute(RECENT_TOUCH_ACTIVATION_ATTR),
   );
 
   return (
@@ -94,7 +97,7 @@ export function hasRecentTouchActivation(
 
 export function markRecentTouchActivation(
   target: EventTarget | null,
-  timeStamp: number
+  timeStamp: number,
 ) {
   if (!isElement(target)) {
     return;
@@ -105,7 +108,7 @@ export function markRecentTouchActivation(
 
 export function shouldSuppressTouchClick(
   target: EventTarget | null,
-  timeStamp: number
+  timeStamp: number,
 ) {
   if (!isElement(target)) {
     return false;
@@ -120,7 +123,7 @@ export function shouldSuppressTouchClick(
 
 export function beginTouchTapTracking(
   target: EventTarget | null,
-  event: TouchLikeEvent
+  event: TouchLikeEvent,
 ) {
   if (!isElement(target)) {
     return;
@@ -134,12 +137,12 @@ export function beginTouchTapTracking(
 
   target.setAttribute(TOUCH_START_X_ATTR, String(point.x));
   target.setAttribute(TOUCH_START_Y_ATTR, String(point.y));
-  target.setAttribute(TOUCH_MOVED_ATTR, 'false');
+  target.setAttribute(TOUCH_MOVED_ATTR, "false");
 }
 
 export function updateTouchTapTracking(
   target: EventTarget | null,
-  event: TouchLikeEvent
+  event: TouchLikeEvent,
 ) {
   if (!isElement(target)) {
     return;
@@ -153,7 +156,7 @@ export function updateTouchTapTracking(
   }
 
   if (exceededTapDistance(start, point)) {
-    target.setAttribute(TOUCH_MOVED_ATTR, 'true');
+    target.setAttribute(TOUCH_MOVED_ATTR, "true");
   }
 }
 
@@ -167,7 +170,7 @@ export function cancelTouchTapTracking(target: EventTarget | null) {
 
 export function finishTouchTapTracking(
   target: EventTarget | null,
-  event: TouchLikeEvent
+  event: TouchLikeEvent,
 ) {
   if (!isElement(target)) {
     return false;
@@ -175,7 +178,7 @@ export function finishTouchTapTracking(
 
   const point = readTouchPoint(event);
   const start = readTouchStart(target);
-  const moved = target.getAttribute(TOUCH_MOVED_ATTR) === 'true';
+  const moved = target.getAttribute(TOUCH_MOVED_ATTR) === "true";
 
   clearTouchTapTracking(target);
 
@@ -188,7 +191,7 @@ export function finishTouchTapTracking(
 
 export function activateTouchTap(
   target: EventTarget | null,
-  event: TouchTapEndEvent
+  event: TouchTapEndEvent,
 ) {
   if (!finishTouchTapTracking(target, event)) {
     return false;

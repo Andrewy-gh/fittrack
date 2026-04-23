@@ -1,16 +1,16 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 const isCI = Boolean(process.env.CI);
-const e2ePort = Number(process.env.E2E_PORT ?? '5173');
+const e2ePort = Number(process.env.E2E_PORT ?? "5173");
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${e2ePort}`;
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./tests/e2e",
 
-  globalSetup: './tests/e2e/global-setup.ts',
+  globalSetup: "./tests/e2e/global-setup.ts",
 
   /* Avoid jobs running forever in CI when setup gets stuck. */
   globalTimeout: isCI ? 20 * 60 * 1000 : undefined,
@@ -31,7 +31,7 @@ export default defineConfig({
   workers: isCI ? 1 : undefined,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: isCI ? [['line'], ['html', { open: 'never' }]] : 'html',
+  reporter: isCI ? [["line"], ["html", { open: "never" }]] : "html",
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -39,28 +39,27 @@ export default defineConfig({
     baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: "on-first-retry",
 
     /* Screenshot on failure */
-    screenshot: 'only-on-failure',
-
+    screenshot: "only-on-failure",
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: isCI ? 'bun run serve:test' : 'bun run dev',
+    command: isCI ? "bun run serve:test" : "bun run dev",
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 120000,
-    stdout: 'pipe',
-    stderr: 'pipe',
+    stdout: "pipe",
+    stderr: "pipe",
   },
 });

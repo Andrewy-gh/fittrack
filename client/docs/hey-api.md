@@ -2,19 +2,19 @@ Example implementation:
 
 ```ts
 // client-config.ts
-import { client } from './client/client.gen';
-import { stackClientApp } from '@/stack';
+import { client } from "./client/client.gen";
+import { stackClientApp } from "@/stack";
 
 // Helper function to get current access token
 const getAccessToken = async (): Promise<string | null> => {
   try {
     const user = await stackClientApp.getUser();
     if (!user) return null;
-    
+
     const { accessToken } = await user.getAuthJson();
     return accessToken || null;
   } catch (error) {
-    console.warn('Failed to get access token:', error);
+    console.warn("Failed to get access token:", error);
     return null;
   }
 };
@@ -28,13 +28,13 @@ client.setConfig({
 client.interceptors.request.use(async (request, options) => {
   // Get fresh token for each request
   const accessToken = await getAccessToken();
-  
+
   if (accessToken) {
-    request.headers.set('Authorization', `Bearer ${accessToken}`);
+    request.headers.set("Authorization", `Bearer ${accessToken}`);
     // or if you need a custom header:
     // request.headers.set('X-Custom-Auth', accessToken);
   }
-  
+
   return request;
 });
 
@@ -48,7 +48,7 @@ client.interceptors.response.use(
       // Redirect will be handled by your auth layout
     }
     throw error;
-  }
+  },
 );
 ```
 
@@ -92,8 +92,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ```ts
 // main.tsx - Configure the global service client
-import { client } from './client/client.gen';
-import { stackClientApp } from '@/stack';
+import { client } from "./client/client.gen";
+import { stackClientApp } from "@/stack";
 
 // Configure the global client that all generated hooks will use
 client.setConfig({
@@ -106,10 +106,9 @@ client.interceptors.request.use(async (request) => {
   if (user) {
     const { accessToken } = await user.getAuthJson();
     if (accessToken) {
-      request.headers.set('Authorization', `Bearer ${accessToken}`);
+      request.headers.set("Authorization", `Bearer ${accessToken}`);
     }
   }
   return request;
 });
 ```
-

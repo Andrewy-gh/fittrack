@@ -96,7 +96,7 @@ const useContributionGraph = () => {
 
   if (!context) {
     throw new Error(
-      "ContributionGraph components must be used within a ContributionGraph"
+      "ContributionGraph components must be used within a ContributionGraph",
     );
   }
 
@@ -110,11 +110,11 @@ const fillHoles = (activities: Activity[]): Activity[] => {
 
   // Sort activities by date to ensure correct date range
   const sortedActivities = [...activities].sort((a, b) =>
-    a.date.localeCompare(b.date)
+    a.date.localeCompare(b.date),
   );
 
   const calendar = new Map<string, Activity>(
-    activities.map((a) => [a.date, a])
+    activities.map((a) => [a.date, a]),
   );
 
   const firstActivity = sortedActivities[0] as Activity;
@@ -144,7 +144,7 @@ const fillHoles = (activities: Activity[]): Activity[] => {
 
 const groupByWeeks = (
   activities: Activity[],
-  weekStart: WeekDay = 0
+  weekStart: WeekDay = 0,
 ): Week[] => {
   if (activities.length === 0) {
     return [];
@@ -161,7 +161,7 @@ const groupByWeeks = (
   const paddedActivities = [
     ...Array.from(
       { length: differenceInCalendarDays(firstDate, firstCalendarDate) },
-      () => undefined
+      () => undefined,
     ),
     ...normalizedActivities,
   ];
@@ -169,13 +169,13 @@ const groupByWeeks = (
   const numberOfWeeks = Math.ceil(paddedActivities.length / 7);
 
   return Array.from({ length: numberOfWeeks }, (_, weekIndex) =>
-    paddedActivities.slice(weekIndex * 7, weekIndex * 7 + 7)
+    paddedActivities.slice(weekIndex * 7, weekIndex * 7 + 7),
   );
 };
 
 const getMonthLabels = (
   weeks: Week[],
-  monthNames: string[] = DEFAULT_MONTH_LABELS
+  monthNames: string[] = DEFAULT_MONTH_LABELS,
 ): MonthLabel[] => {
   return weeks
     .reduce<MonthLabel[]>((labels, week, weekIndex) => {
@@ -183,7 +183,7 @@ const getMonthLabels = (
 
       if (!firstActivity) {
         throw new Error(
-          `Unexpected error: Week ${weekIndex + 1} is empty: [${week}].`
+          `Unexpected error: Week ${weekIndex + 1} is empty: [${week}].`,
         );
       }
 
@@ -194,7 +194,7 @@ const getMonthLabels = (
           month: "short",
         });
         throw new Error(
-          `Unexpected error: undefined month label for ${monthName}.`
+          `Unexpected error: undefined month label for ${monthName}.`,
         );
       }
 
@@ -320,7 +320,7 @@ export const ContributionGraphBlock = ({
 
   if (activity.level < 0 || activity.level > maxLevel) {
     throw new RangeError(
-      `Provided activity level ${activity.level} for ${activity.date} is out of range. It must be between 0 and ${maxLevel}.`
+      `Provided activity level ${activity.level} for ${activity.date} is out of range. It must be between 0 and ${maxLevel}.`,
     );
   }
 
@@ -332,7 +332,7 @@ export const ContributionGraphBlock = ({
         'data-[level="2"]:fill-muted-foreground/40',
         'data-[level="3"]:fill-muted-foreground/60',
         'data-[level="4"]:fill-muted-foreground/80',
-        className
+        className,
       )}
       data-count={activity.count}
       data-date={activity.date}
@@ -372,7 +372,7 @@ export const ContributionGraphCalendar = ({
 
   const monthLabels = useMemo(
     () => getMonthLabels(weeks, labels.months),
-    [weeks, labels.months]
+    [weeks, labels.months],
   );
 
   return (
@@ -411,7 +411,7 @@ export const ContributionGraphCalendar = ({
                 {children({ activity, dayIndex, weekIndex })}
               </Fragment>
             );
-          })
+          }),
         )}
       </svg>
     </div>
@@ -427,7 +427,7 @@ export const ContributionGraphFooter = ({
   <div
     className={cn(
       "flex flex-wrap gap-1 whitespace-nowrap sm:gap-x-4",
-      className
+      className,
     )}
     {...props}
   />
@@ -452,7 +452,10 @@ export const ContributionGraphTotalCount = ({
   }
 
   return (
-    <div className={cn("text-muted-foreground", className)} {...props}>
+    <div
+      className={cn("text-muted-foreground", className)}
+      {...props}
+    >
       {labels.totalCount
         ? labels.totalCount
             .replace("{{count}}", String(totalCount))
@@ -488,7 +491,11 @@ export const ContributionGraphLegend = ({
         children ? (
           <Fragment key={level}>{children({ level })}</Fragment>
         ) : (
-          <svg height={blockSize} key={level} width={blockSize}>
+          <svg
+            height={blockSize}
+            key={level}
+            width={blockSize}
+          >
             <title>{`${level} contributions`}</title>
             <rect
               className={cn(
@@ -497,7 +504,7 @@ export const ContributionGraphLegend = ({
                 'data-[level="1"]:fill-muted-foreground/20',
                 'data-[level="2"]:fill-muted-foreground/40',
                 'data-[level="3"]:fill-muted-foreground/60',
-                'data-[level="4"]:fill-muted-foreground/80'
+                'data-[level="4"]:fill-muted-foreground/80',
               )}
               data-level={level}
               height={blockSize}
@@ -506,7 +513,7 @@ export const ContributionGraphLegend = ({
               width={blockSize}
             />
           </svg>
-        )
+        ),
       )}
       <span className="ml-1 text-muted-foreground">
         {labels.legend?.more || "More"}

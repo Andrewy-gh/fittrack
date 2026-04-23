@@ -5,10 +5,7 @@ export function getPaginationItems(
   totalPages: number,
 ): PaginationItem[] {
   const safeTotalPages = Math.max(1, totalPages);
-  const safeCurrentPage = Math.min(
-    Math.max(1, currentPage),
-    safeTotalPages,
-  );
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), safeTotalPages);
 
   if (safeTotalPages <= 5) {
     return Array.from({ length: safeTotalPages }, (_, index) => index + 1);

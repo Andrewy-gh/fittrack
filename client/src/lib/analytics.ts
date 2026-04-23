@@ -1,9 +1,7 @@
-import { addDays, differenceInCalendarDays, format } from 'date-fns';
-import type {
-  WorkoutContributionDataResponse,
-} from '@/client';
-import type { RangeType } from '@/components/charts/chart-bar-vol.utils';
-import type { MetricPoint } from '@/components/charts/chart-bar-metric';
+import { addDays, differenceInCalendarDays, format } from "date-fns";
+import type { WorkoutContributionDataResponse } from "@/client";
+import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
+import type { MetricPoint } from "@/components/charts/chart-bar-metric";
 
 export interface AnalyticsWorkoutSummary {
   totalWorkouts30d: number;
@@ -21,12 +19,12 @@ export interface DemoContributionWorkout {
 }
 
 export function buildDemoContributionData(
-  workouts: DemoContributionWorkout[]
+  workouts: DemoContributionWorkout[],
 ): WorkoutContributionDataResponse {
   const byDate = new Map<string, DemoContributionWorkout[]>();
 
   for (const workout of workouts) {
-    const day = (workout.date || '').split('T')[0];
+    const day = (workout.date || "").split("T")[0];
     if (!day) continue;
 
     const list = byDate.get(day) ?? [];
@@ -39,7 +37,7 @@ export function buildDemoContributionData(
     .map(([date, items]) => {
       const count = items.reduce(
         (sum, workout) => sum + workout.workingSetCount,
-        0
+        0,
       );
       const level =
         count === 0 ? 0 : count < 6 ? 1 : count < 11 ? 2 : count < 16 ? 3 : 4;
@@ -61,8 +59,8 @@ export function buildDemoContributionData(
 }
 
 export function getWorkoutSummary(
-  days: WorkoutContributionDataResponse['days'] = [],
-  today: Date = new Date()
+  days: WorkoutContributionDataResponse["days"] = [],
+  today: Date = new Date(),
 ): AnalyticsWorkoutSummary {
   const start30 = addDays(today, -29);
 
@@ -78,7 +76,7 @@ export function getWorkoutSummary(
 
   let totalWorkouts30d = 0;
   for (let i = 0; i < 30; i++) {
-    const day = format(addDays(start30, i), 'yyyy-MM-dd');
+    const day = format(addDays(start30, i), "yyyy-MM-dd");
     totalWorkouts30d += countByDate.get(day) ?? 0;
   }
 
@@ -86,7 +84,7 @@ export function getWorkoutSummary(
 
   let currentStreak = 0;
   for (let i = 0; i < 3650; i++) {
-    const day = format(addDays(today, -i), 'yyyy-MM-dd');
+    const day = format(addDays(today, -i), "yyyy-MM-dd");
     if ((countByDate.get(day) ?? 0) > 0) {
       currentStreak += 1;
     } else {
@@ -122,7 +120,7 @@ export function getWorkoutSummary(
 }
 
 function toIsoDate(date: Date) {
-  return format(date, 'yyyy-MM-dd');
+  return format(date, "yyyy-MM-dd");
 }
 
 function startOfWeek(date: Date) {
@@ -143,8 +141,8 @@ function addMonths(date: Date, amount: number) {
 }
 
 function sumVolumeForDay(
-  day: NonNullable<WorkoutContributionDataResponse['days']>[number],
-  focus?: string
+  day: NonNullable<WorkoutContributionDataResponse["days"]>[number],
+  focus?: string,
 ) {
   return (day.workouts ?? []).reduce((sum, workout) => {
     if (focus && workout.focus !== focus) {
@@ -155,8 +153,8 @@ function sumVolumeForDay(
 }
 
 function buildDailyVolumeMap(
-  days: WorkoutContributionDataResponse['days'] = [],
-  focus?: string
+  days: WorkoutContributionDataResponse["days"] = [],
+  focus?: string,
 ) {
   const volumeByDate = new Map<string, number>();
 
@@ -169,15 +167,15 @@ function buildDailyVolumeMap(
 }
 
 export function buildWorkoutVolumeChartData(
-  days: WorkoutContributionDataResponse['days'] = [],
+  days: WorkoutContributionDataResponse["days"] = [],
   range: RangeType,
   focus?: string,
-  today: Date = new Date()
+  today: Date = new Date(),
 ): MetricPoint[] {
   const volumeByDate = buildDailyVolumeMap(days, focus);
 
-  if (range === 'W' || range === 'M') {
-    const span = range === 'W' ? 7 : 30;
+  if (range === "W" || range === "M") {
+    const span = range === "W" ? 7 : 30;
     const start = addDays(today, -(span - 1));
 
     return Array.from({ length: span }, (_, index) => {
@@ -191,7 +189,7 @@ export function buildWorkoutVolumeChartData(
     });
   }
 
-  if (range === '6M') {
+  if (range === "6M") {
     const currentWeekStart = startOfWeek(today);
     const firstWeekStart = addDays(currentWeekStart, -(25 * 7));
 
@@ -240,25 +238,25 @@ export function buildWorkoutVolumeChartData(
 
 export function getWorkoutVolumeBucketLabel(range: RangeType): string {
   switch (range) {
-    case 'W':
-      return 'Daily bars for the last 7 days';
-    case 'M':
-      return 'Daily bars for the last 30 days';
-    case '6M':
-      return 'Weekly bars for the last 26 weeks';
-    case 'Y':
-      return 'Monthly bars for the last 12 months';
+    case "W":
+      return "Daily bars for the last 7 days";
+    case "M":
+      return "Daily bars for the last 30 days";
+    case "6M":
+      return "Weekly bars for the last 26 weeks";
+    case "Y":
+      return "Monthly bars for the last 12 months";
     default:
-      return 'Volume by time period';
+      return "Volume by time period";
   }
 }
 
 export function getWorkoutVolumeTitle(
   range: RangeType,
-  focus?: string
+  focus?: string,
 ): string {
   const period =
-    range === '6M' ? 'Weekly' : range === 'Y' ? 'Monthly' : 'Daily';
+    range === "6M" ? "Weekly" : range === "Y" ? "Monthly" : "Daily";
 
   if (focus) {
     return `${period} ${focus} Volume`;

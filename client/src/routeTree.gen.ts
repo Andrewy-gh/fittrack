@@ -8,252 +8,252 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as HandlerSplatRouteImport } from './routes/handler.$'
-import { Route as LayoutChatRouteImport } from './routes/_layout/chat'
-import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
-import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
-import { Route as LayoutExercisesIndexRouteImport } from './routes/_layout/exercises/index'
-import { Route as LayoutWorkoutsNewRouteImport } from './routes/_layout/workouts/new'
-import { Route as LayoutExercisesExerciseIdRouteImport } from './routes/_layout/exercises/$exerciseId'
-import { Route as LayoutWorkoutsWorkoutIdIndexRouteImport } from './routes/_layout/workouts/$workoutId/index'
-import { Route as LayoutWorkoutsWorkoutIdEditRouteImport } from './routes/_layout/workouts/$workoutId/edit'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as LayoutRouteImport } from "./routes/_layout";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as HandlerSplatRouteImport } from "./routes/handler.$";
+import { Route as LayoutChatRouteImport } from "./routes/_layout/chat";
+import { Route as LayoutAnalyticsRouteImport } from "./routes/_layout/analytics";
+import { Route as LayoutWorkoutsIndexRouteImport } from "./routes/_layout/workouts/index";
+import { Route as LayoutExercisesIndexRouteImport } from "./routes/_layout/exercises/index";
+import { Route as LayoutWorkoutsNewRouteImport } from "./routes/_layout/workouts/new";
+import { Route as LayoutExercisesExerciseIdRouteImport } from "./routes/_layout/exercises/$exerciseId";
+import { Route as LayoutWorkoutsWorkoutIdIndexRouteImport } from "./routes/_layout/workouts/$workoutId/index";
+import { Route as LayoutWorkoutsWorkoutIdEditRouteImport } from "./routes/_layout/workouts/$workoutId/edit";
 
 const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
+  id: "/_layout",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const HandlerSplatRoute = HandlerSplatRouteImport.update({
-  id: '/handler/$',
-  path: '/handler/$',
+  id: "/handler/$",
+  path: "/handler/$",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LayoutChatRoute = LayoutChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
+  id: "/chat",
+  path: "/chat",
   getParentRoute: () => LayoutRoute,
-} as any)
+} as any);
 const LayoutAnalyticsRoute = LayoutAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+  id: "/analytics",
+  path: "/analytics",
   getParentRoute: () => LayoutRoute,
-} as any)
+} as any);
 const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexRouteImport.update({
-  id: '/workouts/',
-  path: '/workouts/',
+  id: "/workouts/",
+  path: "/workouts/",
   getParentRoute: () => LayoutRoute,
-} as any)
+} as any);
 const LayoutExercisesIndexRoute = LayoutExercisesIndexRouteImport.update({
-  id: '/exercises/',
-  path: '/exercises/',
+  id: "/exercises/",
+  path: "/exercises/",
   getParentRoute: () => LayoutRoute,
-} as any)
+} as any);
 const LayoutWorkoutsNewRoute = LayoutWorkoutsNewRouteImport.update({
-  id: '/workouts/new',
-  path: '/workouts/new',
+  id: "/workouts/new",
+  path: "/workouts/new",
   getParentRoute: () => LayoutRoute,
-} as any)
+} as any);
 const LayoutExercisesExerciseIdRoute =
   LayoutExercisesExerciseIdRouteImport.update({
-    id: '/exercises/$exerciseId',
-    path: '/exercises/$exerciseId',
+    id: "/exercises/$exerciseId",
+    path: "/exercises/$exerciseId",
     getParentRoute: () => LayoutRoute,
-  } as any)
+  } as any);
 const LayoutWorkoutsWorkoutIdIndexRoute =
   LayoutWorkoutsWorkoutIdIndexRouteImport.update({
-    id: '/workouts/$workoutId/',
-    path: '/workouts/$workoutId/',
+    id: "/workouts/$workoutId/",
+    path: "/workouts/$workoutId/",
     getParentRoute: () => LayoutRoute,
-  } as any)
+  } as any);
 const LayoutWorkoutsWorkoutIdEditRoute =
   LayoutWorkoutsWorkoutIdEditRouteImport.update({
-    id: '/workouts/$workoutId/edit',
-    path: '/workouts/$workoutId/edit',
+    id: "/workouts/$workoutId/edit",
+    path: "/workouts/$workoutId/edit",
     getParentRoute: () => LayoutRoute,
-  } as any)
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/analytics': typeof LayoutAnalyticsRoute
-  '/chat': typeof LayoutChatRoute
-  '/handler/$': typeof HandlerSplatRoute
-  '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
-  '/workouts/new': typeof LayoutWorkoutsNewRoute
-  '/exercises/': typeof LayoutExercisesIndexRoute
-  '/workouts/': typeof LayoutWorkoutsIndexRoute
-  '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
-  '/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
+  "/": typeof IndexRoute;
+  "/analytics": typeof LayoutAnalyticsRoute;
+  "/chat": typeof LayoutChatRoute;
+  "/handler/$": typeof HandlerSplatRoute;
+  "/exercises/$exerciseId": typeof LayoutExercisesExerciseIdRoute;
+  "/workouts/new": typeof LayoutWorkoutsNewRoute;
+  "/exercises/": typeof LayoutExercisesIndexRoute;
+  "/workouts/": typeof LayoutWorkoutsIndexRoute;
+  "/workouts/$workoutId/edit": typeof LayoutWorkoutsWorkoutIdEditRoute;
+  "/workouts/$workoutId/": typeof LayoutWorkoutsWorkoutIdIndexRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/analytics': typeof LayoutAnalyticsRoute
-  '/chat': typeof LayoutChatRoute
-  '/handler/$': typeof HandlerSplatRoute
-  '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
-  '/workouts/new': typeof LayoutWorkoutsNewRoute
-  '/exercises': typeof LayoutExercisesIndexRoute
-  '/workouts': typeof LayoutWorkoutsIndexRoute
-  '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
-  '/workouts/$workoutId': typeof LayoutWorkoutsWorkoutIdIndexRoute
+  "/": typeof IndexRoute;
+  "/analytics": typeof LayoutAnalyticsRoute;
+  "/chat": typeof LayoutChatRoute;
+  "/handler/$": typeof HandlerSplatRoute;
+  "/exercises/$exerciseId": typeof LayoutExercisesExerciseIdRoute;
+  "/workouts/new": typeof LayoutWorkoutsNewRoute;
+  "/exercises": typeof LayoutExercisesIndexRoute;
+  "/workouts": typeof LayoutWorkoutsIndexRoute;
+  "/workouts/$workoutId/edit": typeof LayoutWorkoutsWorkoutIdEditRoute;
+  "/workouts/$workoutId": typeof LayoutWorkoutsWorkoutIdIndexRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/_layout': typeof LayoutRouteWithChildren
-  '/_layout/analytics': typeof LayoutAnalyticsRoute
-  '/_layout/chat': typeof LayoutChatRoute
-  '/handler/$': typeof HandlerSplatRoute
-  '/_layout/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
-  '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
-  '/_layout/exercises/': typeof LayoutExercisesIndexRoute
-  '/_layout/workouts/': typeof LayoutWorkoutsIndexRoute
-  '/_layout/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
-  '/_layout/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/_layout": typeof LayoutRouteWithChildren;
+  "/_layout/analytics": typeof LayoutAnalyticsRoute;
+  "/_layout/chat": typeof LayoutChatRoute;
+  "/handler/$": typeof HandlerSplatRoute;
+  "/_layout/exercises/$exerciseId": typeof LayoutExercisesExerciseIdRoute;
+  "/_layout/workouts/new": typeof LayoutWorkoutsNewRoute;
+  "/_layout/exercises/": typeof LayoutExercisesIndexRoute;
+  "/_layout/workouts/": typeof LayoutWorkoutsIndexRoute;
+  "/_layout/workouts/$workoutId/edit": typeof LayoutWorkoutsWorkoutIdEditRoute;
+  "/_layout/workouts/$workoutId/": typeof LayoutWorkoutsWorkoutIdIndexRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
-    | '/'
-    | '/analytics'
-    | '/chat'
-    | '/handler/$'
-    | '/exercises/$exerciseId'
-    | '/workouts/new'
-    | '/exercises/'
-    | '/workouts/'
-    | '/workouts/$workoutId/edit'
-    | '/workouts/$workoutId/'
-  fileRoutesByTo: FileRoutesByTo
+    | "/"
+    | "/analytics"
+    | "/chat"
+    | "/handler/$"
+    | "/exercises/$exerciseId"
+    | "/workouts/new"
+    | "/exercises/"
+    | "/workouts/"
+    | "/workouts/$workoutId/edit"
+    | "/workouts/$workoutId/";
+  fileRoutesByTo: FileRoutesByTo;
   to:
-    | '/'
-    | '/analytics'
-    | '/chat'
-    | '/handler/$'
-    | '/exercises/$exerciseId'
-    | '/workouts/new'
-    | '/exercises'
-    | '/workouts'
-    | '/workouts/$workoutId/edit'
-    | '/workouts/$workoutId'
+    | "/"
+    | "/analytics"
+    | "/chat"
+    | "/handler/$"
+    | "/exercises/$exerciseId"
+    | "/workouts/new"
+    | "/exercises"
+    | "/workouts"
+    | "/workouts/$workoutId/edit"
+    | "/workouts/$workoutId";
   id:
-    | '__root__'
-    | '/'
-    | '/_layout'
-    | '/_layout/analytics'
-    | '/_layout/chat'
-    | '/handler/$'
-    | '/_layout/exercises/$exerciseId'
-    | '/_layout/workouts/new'
-    | '/_layout/exercises/'
-    | '/_layout/workouts/'
-    | '/_layout/workouts/$workoutId/edit'
-    | '/_layout/workouts/$workoutId/'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/"
+    | "/_layout"
+    | "/_layout/analytics"
+    | "/_layout/chat"
+    | "/handler/$"
+    | "/_layout/exercises/$exerciseId"
+    | "/_layout/workouts/new"
+    | "/_layout/exercises/"
+    | "/_layout/workouts/"
+    | "/_layout/workouts/$workoutId/edit"
+    | "/_layout/workouts/$workoutId/";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRouteWithChildren
-  HandlerSplatRoute: typeof HandlerSplatRoute
+  IndexRoute: typeof IndexRoute;
+  LayoutRoute: typeof LayoutRouteWithChildren;
+  HandlerSplatRoute: typeof HandlerSplatRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/handler/$': {
-      id: '/handler/$'
-      path: '/handler/$'
-      fullPath: '/handler/$'
-      preLoaderRoute: typeof HandlerSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_layout/chat': {
-      id: '/_layout/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof LayoutChatRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/analytics': {
-      id: '/_layout/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof LayoutAnalyticsRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/workouts/': {
-      id: '/_layout/workouts/'
-      path: '/workouts'
-      fullPath: '/workouts/'
-      preLoaderRoute: typeof LayoutWorkoutsIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/exercises/': {
-      id: '/_layout/exercises/'
-      path: '/exercises'
-      fullPath: '/exercises/'
-      preLoaderRoute: typeof LayoutExercisesIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/workouts/new': {
-      id: '/_layout/workouts/new'
-      path: '/workouts/new'
-      fullPath: '/workouts/new'
-      preLoaderRoute: typeof LayoutWorkoutsNewRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/exercises/$exerciseId': {
-      id: '/_layout/exercises/$exerciseId'
-      path: '/exercises/$exerciseId'
-      fullPath: '/exercises/$exerciseId'
-      preLoaderRoute: typeof LayoutExercisesExerciseIdRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/workouts/$workoutId/': {
-      id: '/_layout/workouts/$workoutId/'
-      path: '/workouts/$workoutId'
-      fullPath: '/workouts/$workoutId/'
-      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/workouts/$workoutId/edit': {
-      id: '/_layout/workouts/$workoutId/edit'
-      path: '/workouts/$workoutId/edit'
-      fullPath: '/workouts/$workoutId/edit'
-      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdEditRouteImport
-      parentRoute: typeof LayoutRoute
-    }
+    "/_layout": {
+      id: "/_layout";
+      path: "";
+      fullPath: "/";
+      preLoaderRoute: typeof LayoutRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/handler/$": {
+      id: "/handler/$";
+      path: "/handler/$";
+      fullPath: "/handler/$";
+      preLoaderRoute: typeof HandlerSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_layout/chat": {
+      id: "/_layout/chat";
+      path: "/chat";
+      fullPath: "/chat";
+      preLoaderRoute: typeof LayoutChatRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/analytics": {
+      id: "/_layout/analytics";
+      path: "/analytics";
+      fullPath: "/analytics";
+      preLoaderRoute: typeof LayoutAnalyticsRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/workouts/": {
+      id: "/_layout/workouts/";
+      path: "/workouts";
+      fullPath: "/workouts/";
+      preLoaderRoute: typeof LayoutWorkoutsIndexRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/exercises/": {
+      id: "/_layout/exercises/";
+      path: "/exercises";
+      fullPath: "/exercises/";
+      preLoaderRoute: typeof LayoutExercisesIndexRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/workouts/new": {
+      id: "/_layout/workouts/new";
+      path: "/workouts/new";
+      fullPath: "/workouts/new";
+      preLoaderRoute: typeof LayoutWorkoutsNewRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/exercises/$exerciseId": {
+      id: "/_layout/exercises/$exerciseId";
+      path: "/exercises/$exerciseId";
+      fullPath: "/exercises/$exerciseId";
+      preLoaderRoute: typeof LayoutExercisesExerciseIdRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/workouts/$workoutId/": {
+      id: "/_layout/workouts/$workoutId/";
+      path: "/workouts/$workoutId";
+      fullPath: "/workouts/$workoutId/";
+      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdIndexRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
+    "/_layout/workouts/$workoutId/edit": {
+      id: "/_layout/workouts/$workoutId/edit";
+      path: "/workouts/$workoutId/edit";
+      fullPath: "/workouts/$workoutId/edit";
+      preLoaderRoute: typeof LayoutWorkoutsWorkoutIdEditRouteImport;
+      parentRoute: typeof LayoutRoute;
+    };
   }
 }
 
 interface LayoutRouteChildren {
-  LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute
-  LayoutChatRoute: typeof LayoutChatRoute
-  LayoutExercisesExerciseIdRoute: typeof LayoutExercisesExerciseIdRoute
-  LayoutWorkoutsNewRoute: typeof LayoutWorkoutsNewRoute
-  LayoutExercisesIndexRoute: typeof LayoutExercisesIndexRoute
-  LayoutWorkoutsIndexRoute: typeof LayoutWorkoutsIndexRoute
-  LayoutWorkoutsWorkoutIdEditRoute: typeof LayoutWorkoutsWorkoutIdEditRoute
-  LayoutWorkoutsWorkoutIdIndexRoute: typeof LayoutWorkoutsWorkoutIdIndexRoute
+  LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute;
+  LayoutChatRoute: typeof LayoutChatRoute;
+  LayoutExercisesExerciseIdRoute: typeof LayoutExercisesExerciseIdRoute;
+  LayoutWorkoutsNewRoute: typeof LayoutWorkoutsNewRoute;
+  LayoutExercisesIndexRoute: typeof LayoutExercisesIndexRoute;
+  LayoutWorkoutsIndexRoute: typeof LayoutWorkoutsIndexRoute;
+  LayoutWorkoutsWorkoutIdEditRoute: typeof LayoutWorkoutsWorkoutIdEditRoute;
+  LayoutWorkoutsWorkoutIdIndexRoute: typeof LayoutWorkoutsWorkoutIdIndexRoute;
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -265,16 +265,16 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutWorkoutsIndexRoute: LayoutWorkoutsIndexRoute,
   LayoutWorkoutsWorkoutIdEditRoute: LayoutWorkoutsWorkoutIdEditRoute,
   LayoutWorkoutsWorkoutIdIndexRoute: LayoutWorkoutsWorkoutIdIndexRoute,
-}
+};
 
 const LayoutRouteWithChildren =
-  LayoutRoute._addFileChildren(LayoutRouteChildren)
+  LayoutRoute._addFileChildren(LayoutRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   HandlerSplatRoute: HandlerSplatRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

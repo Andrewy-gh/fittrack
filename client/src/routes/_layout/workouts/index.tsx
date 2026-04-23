@@ -99,8 +99,7 @@ function RouteComponent() {
     [filteredWorkouts, normalizedSortOrder],
   );
   const { pagedWorkouts, totalPages, currentPage } = useMemo(
-    () =>
-      paginateWorkouts(sortedWorkouts, normalizedItemsPerPage, page),
+    () => paginateWorkouts(sortedWorkouts, normalizedItemsPerPage, page),
     [sortedWorkouts, normalizedItemsPerPage, page],
   );
 
@@ -112,7 +111,10 @@ function RouteComponent() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Workouts</h1>
           </div>
-          <Button size="sm" asChild>
+          <Button
+            size="sm"
+            asChild
+          >
             <Link to={newWorkoutLink}>
               {hasWorkoutInProgress ? (
                 <Clock className="w-4 h-4 mr-2" />
@@ -163,13 +165,19 @@ function RouteComponent() {
                 })
               }
             >
-              <SelectTrigger id="focus-area-compact" className="h-9">
+              <SelectTrigger
+                id="focus-area-compact"
+                className="h-9"
+              >
                 <SelectValue placeholder="Select focus area" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Focus Areas</SelectItem>
                 {focusAreas.map((focus) => (
-                  <SelectItem key={focus} value={focus}>
+                  <SelectItem
+                    key={focus}
+                    value={focus}
+                  >
                     {focus}
                   </SelectItem>
                 ))}
@@ -208,7 +216,10 @@ function RouteComponent() {
         </div>
 
         <div className="flex items-center gap-2 justify-center px-1">
-          <Label htmlFor="items-per-page" className="text-xs whitespace-nowrap">
+          <Label
+            htmlFor="items-per-page"
+            className="text-xs whitespace-nowrap"
+          >
             Show
           </Label>
           <Select
@@ -223,7 +234,10 @@ function RouteComponent() {
               })
             }
           >
-            <SelectTrigger id="items-per-page" className="h-8 w-[70px]">
+            <SelectTrigger
+              id="items-per-page"
+              className="h-8 w-[70px]"
+            >
               <SelectValue placeholder="10" />
             </SelectTrigger>
             <SelectContent>

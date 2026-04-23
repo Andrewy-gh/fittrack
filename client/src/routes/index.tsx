@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   ArrowRight,
   BarChart3,
@@ -14,10 +14,10 @@ import {
   NotebookText,
   Target,
   Zap,
-} from 'lucide-react';
-import { type CurrentInternalUser, type CurrentUser } from '@stackframe/react';
-import { CustomUserButton } from '@/components/custom-user-button';
-import { GuestUserButton } from '@/components/guest-user-button';
+} from "lucide-react";
+import { type CurrentInternalUser, type CurrentUser } from "@stackframe/react";
+import { CustomUserButton } from "@/components/custom-user-button";
+import { GuestUserButton } from "@/components/guest-user-button";
 
 export function HomePage({
   user,
@@ -27,35 +27,35 @@ export function HomePage({
   const features = [
     {
       icon: Zap,
-      title: 'Fast workout logging',
+      title: "Fast workout logging",
       description:
-        'Add exercises, sets, reps, weight, and workout notes without fighting the form.',
+        "Add exercises, sets, reps, weight, and workout notes without fighting the form.",
     },
     {
       icon: Copy,
-      title: 'Repeat what you already did',
+      title: "Repeat what you already did",
       description:
-        'Start from your last workout or reuse an existing session structure when that is faster than starting blank.',
+        "Start from your last workout or reuse an existing session structure when that is faster than starting blank.",
     },
     {
       icon: Eye,
-      title: 'Progress you can see',
+      title: "Progress you can see",
       description:
-        'Review exercise history, recent sets, volume, charts, and past notes in the same place.',
+        "Review exercise history, recent sets, volume, charts, and past notes in the same place.",
     },
     {
       icon: Calendar,
-      title: 'Consistency without pressure',
+      title: "Consistency without pressure",
       description:
-        'See workouts this week, active days this month, and weekly averages without guilt-heavy streak mechanics.',
+        "See workouts this week, active days this month, and weekly averages without guilt-heavy streak mechanics.",
     },
   ];
 
   const groundedProof = [
-    'Track exercises, sets, reps, weight, and workout notes.',
-    'Set simple per-exercise targets for weight, reps, or weekly frequency.',
-    'Bring the last workout note back into view when you start logging again.',
-    'Review workout history and exercise progress without digging through old sessions.',
+    "Track exercises, sets, reps, weight, and workout notes.",
+    "Set simple per-exercise targets for weight, reps, or weekly frequency.",
+    "Bring the last workout note back into view when you start logging again.",
+    "Review workout history and exercise progress without digging through old sessions.",
   ];
 
   return (
@@ -100,9 +100,12 @@ export function HomePage({
                 className="bg-primary px-8 py-4 text-primary-foreground hover:bg-primary/90"
                 asChild
               >
-                <Link to="/workouts" preload={false}>
+                <Link
+                  to="/workouts"
+                  preload={false}
+                >
                   <Dumbbell className="mr-1 h-5 w-5" />
-                  {user ? 'Open Workouts' : 'Try the App'}
+                  {user ? "Open Workouts" : "Try the App"}
                 </Link>
               </Button>
               <Button
@@ -111,7 +114,10 @@ export function HomePage({
                 className="border-border bg-transparent px-8 py-4 text-muted-foreground hover:bg-background/50"
                 asChild
               >
-                <Link to="/exercises" preload={false}>
+                <Link
+                  to="/exercises"
+                  preload={false}
+                >
                   Browse Exercise History
                 </Link>
               </Button>
@@ -217,7 +223,10 @@ export function HomePage({
                     className="mt-4 w-full bg-primary px-8 py-4 text-primary-foreground hover:bg-primary/90"
                     asChild
                   >
-                    <Link to="/workouts" preload={false}>
+                    <Link
+                      to="/workouts"
+                      preload={false}
+                    >
                       <ArrowRight className="mr-1 h-5 w-5" />
                       Start Logging
                     </Link>
@@ -235,7 +244,9 @@ export function HomePage({
             <h2 className="mb-4 text-4xl font-bold leading-snug tracking-wide text-foreground md:text-6xl">
               Grounded features,
               <br />
-              <span className="text-muted-foreground">not product theater.</span>
+              <span className="text-muted-foreground">
+                not product theater.
+              </span>
             </h2>
             <p className="text-xl text-muted-foreground">
               FitTrack stays focused on the parts of training people actually
@@ -283,7 +294,10 @@ export function HomePage({
 
             <div className="space-y-4 text-muted-foreground">
               {groundedProof.map((item) => (
-                <div key={item} className="flex items-center gap-3">
+                <div
+                  key={item}
+                  className="flex items-center gap-3"
+                >
                   <CheckCircle className="h-5 w-5 text-primary" />
                   <span>{item}</span>
                 </div>
@@ -296,7 +310,9 @@ export function HomePage({
               <CardContent className="p-0">
                 <div className="mb-4 flex items-center gap-3">
                   <NotebookText className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Workout notes resurface</h3>
+                  <h3 className="text-lg font-semibold">
+                    Workout notes resurface
+                  </h3>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Last workout notes come back into view when you start a new
@@ -309,7 +325,9 @@ export function HomePage({
               <CardContent className="p-0">
                 <div className="mb-4 flex items-center gap-3">
                   <Target className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Simple exercise goals</h3>
+                  <h3 className="text-lg font-semibold">
+                    Simple exercise goals
+                  </h3>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Set a target weight, reps, or weekly frequency for an
@@ -323,7 +341,9 @@ export function HomePage({
               <CardContent className="p-0">
                 <div className="mb-4 flex items-center gap-3">
                   <BarChart3 className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Consistency summaries</h3>
+                  <h3 className="text-lg font-semibold">
+                    Consistency summaries
+                  </h3>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">
                   Review this week, active days this month, and average workouts
@@ -353,9 +373,12 @@ export function HomePage({
               className="bg-primary px-8 py-4 text-primary-foreground hover:bg-primary/90"
               asChild
             >
-              <Link to="/workouts" preload={false}>
+              <Link
+                to="/workouts"
+                preload={false}
+              >
                 <ArrowRight className="mr-2 h-5 w-5" />
-                {user ? 'Open FitTrack' : 'Try FitTrack'}
+                {user ? "Open FitTrack" : "Try FitTrack"}
               </Link>
             </Button>
             <Button
@@ -364,7 +387,10 @@ export function HomePage({
               className="border-border bg-transparent px-8 py-4 text-muted-foreground hover:bg-background/50"
               asChild
             >
-              <Link to="/workouts" preload={false}>
+              <Link
+                to="/workouts"
+                preload={false}
+              >
                 See Workouts
               </Link>
             </Button>
@@ -379,7 +405,7 @@ export function HomePage({
   );
 }
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: App,
 });
 

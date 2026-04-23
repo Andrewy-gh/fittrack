@@ -1,7 +1,7 @@
-import React, { Component } from 'react';
-import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertCircle } from 'lucide-react';
+import React, { Component } from "react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -13,7 +13,10 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -24,7 +27,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
   render() {
@@ -47,7 +50,7 @@ interface FullScreenErrorFallbackProps {
 export function FullScreenErrorFallback({
   message,
   onAction,
-  actionLabel = 'Reload Page',
+  actionLabel = "Reload Page",
 }: FullScreenErrorFallbackProps) {
   const handleAction = onAction || (() => window.location.reload());
 
@@ -57,9 +60,14 @@ export function FullScreenErrorFallback({
         <div className="flex justify-center">
           <AlertCircle className="w-12 h-12 text-destructive" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
+        <h2 className="text-xl font-semibold text-foreground">
+          Something went wrong
+        </h2>
         <p className="text-destructive font-medium">{message}</p>
-        <Button onClick={handleAction} className="mt-4">
+        <Button
+          onClick={handleAction}
+          className="mt-4"
+        >
           {actionLabel}
         </Button>
       </div>
