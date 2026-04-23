@@ -171,12 +171,9 @@ func (s *Service) SeedConversation(
 	}
 
 	if err := qtx.SetAIChatConversationLatestWorkoutDraft(ctx, db.SetAIChatConversationLatestWorkoutDraftParams{
-		ID:     conversationRow.ID,
-		UserID: s.userID,
-		LatestWorkoutDraft: pgtype.Text{
-			String: string(draftJSON),
-			Valid:  true,
-		},
+		ID:                 conversationRow.ID,
+		UserID:             s.userID,
+		LatestWorkoutDraft: draftJSON,
 	}); err != nil {
 		return nil, fmt.Errorf("set seeded latest workout draft: %w", err)
 	}

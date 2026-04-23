@@ -2010,9 +2010,9 @@ WHERE id = $1 AND user_id = $2
 `
 
 type SetAIChatConversationLatestWorkoutDraftParams struct {
-	ID                 int32       `json:"id"`
-	UserID             string      `json:"user_id"`
-	LatestWorkoutDraft pgtype.Text `json:"latest_workout_draft"`
+	ID                 int32  `json:"id"`
+	UserID             string `json:"user_id"`
+	LatestWorkoutDraft []byte `json:"latest_workout_draft"`
 }
 
 func (q *Queries) SetAIChatConversationLatestWorkoutDraft(ctx context.Context, arg SetAIChatConversationLatestWorkoutDraftParams) error {
@@ -2285,7 +2285,7 @@ type UpdateAIChatRunCompletedParams struct {
 	ID           int32              `json:"id"`
 	UserID       string             `json:"user_id"`
 	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
-	WorkoutDraft pgtype.Text        `json:"workout_draft"`
+	WorkoutDraft []byte             `json:"workout_draft"`
 }
 
 func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChatRunCompletedParams) (AiChatRun, error) {

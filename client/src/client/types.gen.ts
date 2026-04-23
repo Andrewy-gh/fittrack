@@ -12,6 +12,12 @@ export type AichatChatMessage = {
   updated_at?: string;
 };
 
+export type AichatClientTelemetryEvent = {
+  category?: string;
+  outcome?: string;
+  stage?: string;
+};
+
 export type AichatConversation = {
   created_at?: string;
   id?: number;
@@ -21,8 +27,22 @@ export type AichatConversation = {
 };
 
 export type AichatConversationDetail = {
+  active_run?: AichatConversationRunView;
   conversation?: AichatConversation;
   messages?: Array<AichatChatMessage>;
+};
+
+export type AichatConversationRunView = {
+  assistant_message_id?: number;
+  id?: number;
+  latest_sequence?: number;
+  status?: string;
+};
+
+export type AichatRecoverMessageResponse = {
+  conversation_id?: number;
+  run_id?: number;
+  status?: string;
 };
 
 export type AichatSendMessageRequest = {
@@ -37,8 +57,10 @@ export type AichatStreamEvent = {
   model?: string;
   request_id?: string;
   run_id?: number;
+  sequence?: number;
   text?: string;
   type?: string;
+  workout_draft?: WorkoutCreateWorkoutRequest;
 };
 
 export type AichatValidateRequest = {
@@ -276,6 +298,41 @@ export type WorkoutWorkoutWithSetsResponse = {
   workout_notes?: string;
 };
 
+export type PostAiChatTelemetryData = {
+  /**
+   * Telemetry event
+   */
+  body: AichatClientTelemetryEvent;
+  path?: never;
+  query?: never;
+  url: "/ai/chat/telemetry";
+};
+
+export type PostAiChatTelemetryErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseError;
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+};
+
+export type PostAiChatTelemetryError =
+  PostAiChatTelemetryErrors[keyof PostAiChatTelemetryErrors];
+
+export type PostAiChatTelemetryResponses = {
+  /**
+   * Accepted
+   */
+  202: unknown;
+};
+
 export type PostAiChatValidateData = {
   /**
    * Validation request
@@ -451,6 +508,58 @@ export type GetAiConversationsByIdResponses = {
 export type GetAiConversationsByIdResponse =
   GetAiConversationsByIdResponses[keyof GetAiConversationsByIdResponses];
 
+export type PostAiConversationsByIdMessagesRecoverData = {
+  body?: never;
+  path: {
+    /**
+     * Conversation ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/ai/conversations/{id}/messages/recover";
+};
+
+export type PostAiConversationsByIdMessagesRecoverErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseError;
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Forbidden
+   */
+  403: ResponseError;
+  /**
+   * Not Found
+   */
+  404: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+  /**
+   * Service Unavailable
+   */
+  503: ResponseError;
+};
+
+export type PostAiConversationsByIdMessagesRecoverError =
+  PostAiConversationsByIdMessagesRecoverErrors[keyof PostAiConversationsByIdMessagesRecoverErrors];
+
+export type PostAiConversationsByIdMessagesRecoverResponses = {
+  /**
+   * Accepted
+   */
+  202: AichatRecoverMessageResponse;
+};
+
+export type PostAiConversationsByIdMessagesRecoverResponse =
+  PostAiConversationsByIdMessagesRecoverResponses[keyof PostAiConversationsByIdMessagesRecoverResponses];
+
 export type PostAiConversationsByIdMessagesStreamData = {
   /**
    * Send message request
@@ -509,6 +618,63 @@ export type PostAiConversationsByIdMessagesStreamResponses = {
 
 export type PostAiConversationsByIdMessagesStreamResponse =
   PostAiConversationsByIdMessagesStreamResponses[keyof PostAiConversationsByIdMessagesStreamResponses];
+
+export type GetAiConversationsByIdMessagesStreamResumeData = {
+  body?: never;
+  path: {
+    /**
+     * Conversation ID
+     */
+    id: number;
+  };
+  query: {
+    /**
+     * Run ID
+     */
+    runId: number;
+    /**
+     * Replay everything after this sequence
+     */
+    afterSequence?: number;
+  };
+  url: "/ai/conversations/{id}/messages/stream/resume";
+};
+
+export type GetAiConversationsByIdMessagesStreamResumeErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseError;
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Forbidden
+   */
+  403: ResponseError;
+  /**
+   * Not Found
+   */
+  404: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+};
+
+export type GetAiConversationsByIdMessagesStreamResumeError =
+  GetAiConversationsByIdMessagesStreamResumeErrors[keyof GetAiConversationsByIdMessagesStreamResumeErrors];
+
+export type GetAiConversationsByIdMessagesStreamResumeResponses = {
+  /**
+   * OK
+   */
+  200: AichatStreamEvent;
+};
+
+export type GetAiConversationsByIdMessagesStreamResumeResponse =
+  GetAiConversationsByIdMessagesStreamResumeResponses[keyof GetAiConversationsByIdMessagesStreamResumeResponses];
 
 export type GetExercisesData = {
   body?: never;

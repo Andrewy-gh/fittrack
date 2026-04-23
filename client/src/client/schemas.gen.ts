@@ -33,6 +33,21 @@ export const aichat_ChatMessageSchema = {
   },
 } as const;
 
+export const aichat_ClientTelemetryEventSchema = {
+  type: "object",
+  properties: {
+    category: {
+      type: "string",
+    },
+    outcome: {
+      type: "string",
+    },
+    stage: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const aichat_ConversationSchema = {
   type: "object",
   properties: {
@@ -57,6 +72,9 @@ export const aichat_ConversationSchema = {
 export const aichat_ConversationDetailSchema = {
   type: "object",
   properties: {
+    active_run: {
+      $ref: "#/definitions/aichat.ConversationRunView",
+    },
     conversation: {
       $ref: "#/definitions/aichat.Conversation",
     },
@@ -65,6 +83,39 @@ export const aichat_ConversationDetailSchema = {
       items: {
         $ref: "#/definitions/aichat.ChatMessage",
       },
+    },
+  },
+} as const;
+
+export const aichat_ConversationRunViewSchema = {
+  type: "object",
+  properties: {
+    assistant_message_id: {
+      type: "integer",
+    },
+    id: {
+      type: "integer",
+    },
+    latest_sequence: {
+      type: "integer",
+    },
+    status: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const aichat_RecoverMessageResponseSchema = {
+  type: "object",
+  properties: {
+    conversation_id: {
+      type: "integer",
+    },
+    run_id: {
+      type: "integer",
+    },
+    status: {
+      type: "string",
     },
   },
 } as const;
@@ -102,11 +153,17 @@ export const aichat_StreamEventSchema = {
     run_id: {
       type: "integer",
     },
+    sequence: {
+      type: "integer",
+    },
     text: {
       type: "string",
     },
     type: {
       type: "string",
+    },
+    workout_draft: {
+      $ref: "#/definitions/workout.CreateWorkoutRequest",
     },
   },
 } as const;

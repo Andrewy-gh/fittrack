@@ -2,11 +2,14 @@
 
 import {
   type Options,
+  postAiChatTelemetry,
   postAiChatValidate,
   postAiChatValidateStream,
   postAiConversations,
   getAiConversationsById,
+  postAiConversationsByIdMessagesRecover,
   postAiConversationsByIdMessagesStream,
+  getAiConversationsByIdMessagesStreamResume,
   getExercises,
   postExercises,
   deleteExercisesById,
@@ -28,6 +31,8 @@ import {
 } from "../sdk.gen";
 import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import type {
+  PostAiChatTelemetryData,
+  PostAiChatTelemetryError,
   PostAiChatValidateData,
   PostAiChatValidateError,
   PostAiChatValidateResponse,
@@ -38,9 +43,14 @@ import type {
   PostAiConversationsError,
   PostAiConversationsResponse,
   GetAiConversationsByIdData,
+  PostAiConversationsByIdMessagesRecoverData,
+  PostAiConversationsByIdMessagesRecoverError,
+  PostAiConversationsByIdMessagesRecoverResponse,
   PostAiConversationsByIdMessagesStreamData,
   PostAiConversationsByIdMessagesStreamError,
   PostAiConversationsByIdMessagesStreamResponse,
+  GetAiConversationsByIdMessagesStreamResumeData,
+  GetAiConversationsByIdMessagesStreamResumeResponse,
   GetExercisesData,
   PostExercisesData,
   PostExercisesError,
@@ -112,6 +122,59 @@ const createQueryKey = <TOptions extends Options>(
   return [params];
 };
 
+export const postAiChatTelemetryQueryKey = (
+  options: Options<PostAiChatTelemetryData>,
+) => createQueryKey("postAiChatTelemetry", options, false, ["ai-chat"]);
+
+/**
+ * Record AI chat telemetry
+ * Records authenticated client-observed AI chat outcomes for observability and rollout gating.
+ */
+export const postAiChatTelemetryQueryOptions = (
+  options: Options<PostAiChatTelemetryData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await postAiChatTelemetry({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: postAiChatTelemetryQueryKey(options),
+  });
+};
+
+/**
+ * Record AI chat telemetry
+ * Records authenticated client-observed AI chat outcomes for observability and rollout gating.
+ */
+export const postAiChatTelemetryMutation = (
+  options?: Partial<Options<PostAiChatTelemetryData>>,
+): UseMutationOptions<
+  unknown,
+  PostAiChatTelemetryError,
+  Options<PostAiChatTelemetryData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    PostAiChatTelemetryError,
+    Options<PostAiChatTelemetryData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await postAiChatTelemetry({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
 export const postAiChatValidateQueryKey = (
   options: Options<PostAiChatValidateData>,
 ) => createQueryKey("postAiChatValidate", options, false, ["ai-chat"]);
@@ -178,12 +241,12 @@ export const postAiChatValidateStreamQueryOptions = (
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return postAiChatValidateStream({
+      return (await postAiChatValidateStream({
         ...options,
         ...queryKey[0],
         signal,
         throwOnError: true,
-      });
+      })) as unknown as PostAiChatValidateStreamResponse;
     },
     queryKey: postAiChatValidateStreamQueryKey(options),
   });
@@ -294,6 +357,62 @@ export const getAiConversationsByIdQueryOptions = (
   });
 };
 
+export const postAiConversationsByIdMessagesRecoverQueryKey = (
+  options: Options<PostAiConversationsByIdMessagesRecoverData>,
+) =>
+  createQueryKey("postAiConversationsByIdMessagesRecover", options, false, [
+    "ai-chat",
+  ]);
+
+/**
+ * Recover AI chat message stream
+ * Queues recovery for an active streaming AI chat run so persisted updates can continue after a disconnect.
+ */
+export const postAiConversationsByIdMessagesRecoverQueryOptions = (
+  options: Options<PostAiConversationsByIdMessagesRecoverData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await postAiConversationsByIdMessagesRecover({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: postAiConversationsByIdMessagesRecoverQueryKey(options),
+  });
+};
+
+/**
+ * Recover AI chat message stream
+ * Queues recovery for an active streaming AI chat run so persisted updates can continue after a disconnect.
+ */
+export const postAiConversationsByIdMessagesRecoverMutation = (
+  options?: Partial<Options<PostAiConversationsByIdMessagesRecoverData>>,
+): UseMutationOptions<
+  PostAiConversationsByIdMessagesRecoverResponse,
+  PostAiConversationsByIdMessagesRecoverError,
+  Options<PostAiConversationsByIdMessagesRecoverData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiConversationsByIdMessagesRecoverResponse,
+    PostAiConversationsByIdMessagesRecoverError,
+    Options<PostAiConversationsByIdMessagesRecoverData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await postAiConversationsByIdMessagesRecover({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
 export const postAiConversationsByIdMessagesStreamQueryKey = (
   options: Options<PostAiConversationsByIdMessagesStreamData>,
 ) =>
@@ -310,12 +429,12 @@ export const postAiConversationsByIdMessagesStreamQueryOptions = (
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return postAiConversationsByIdMessagesStream({
+      return (await postAiConversationsByIdMessagesStream({
         ...options,
         ...queryKey[0],
         signal,
         throwOnError: true,
-      });
+      })) as unknown as PostAiConversationsByIdMessagesStreamResponse;
     },
     queryKey: postAiConversationsByIdMessagesStreamQueryKey(options),
   });
@@ -346,6 +465,33 @@ export const postAiConversationsByIdMessagesStreamMutation = (
     },
   };
   return mutationOptions;
+};
+
+export const getAiConversationsByIdMessagesStreamResumeQueryKey = (
+  options: Options<GetAiConversationsByIdMessagesStreamResumeData>,
+) =>
+  createQueryKey("getAiConversationsByIdMessagesStreamResume", options, false, [
+    "ai-chat",
+  ]);
+
+/**
+ * Resume AI chat message stream
+ * Replays persisted AI chat output after a sequence cursor and continues streaming while the run is still active.
+ */
+export const getAiConversationsByIdMessagesStreamResumeQueryOptions = (
+  options: Options<GetAiConversationsByIdMessagesStreamResumeData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      return (await getAiConversationsByIdMessagesStreamResume({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      })) as unknown as GetAiConversationsByIdMessagesStreamResumeResponse;
+    },
+    queryKey: getAiConversationsByIdMessagesStreamResumeQueryKey(options),
+  });
 };
 
 export const getExercisesQueryKey = (options?: Options<GetExercisesData>) =>
