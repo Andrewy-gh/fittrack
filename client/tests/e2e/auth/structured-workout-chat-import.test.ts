@@ -48,8 +48,9 @@ test.describe("Authenticated - Structured workout chat import", () => {
 
     await page.goto(`/chat?conversationId=${seeded.conversation_id}`);
 
+    await expect(page.getByRole("heading", { name: "AI Chat" })).toBeVisible();
     await expect(
-      page.getByText("Latest structured workout draft saved"),
+      page.getByText("Latest structured workout draft"),
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Edit in workout form" }).click();
