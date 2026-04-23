@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AIWorkoutDraft } from "@/lib/api/ai-chat";
@@ -1133,5 +1133,170 @@ describe("ChatRouteComponent", () => {
         }),
       );
     });
+  });
+
+  it("keeps the workout draft card with the draft-producing reply after a non-draft follow-up", async () => {
+    const user = userEvent.setup();
+    const generatedDraft: AIWorkoutDraft = {
+      date: "2026-04-21T12:00:00Z",
+      notes: "Generated draft",
+      workoutFocus: "pull",
+      exercises: [
+        {
+          name: "Chest Supported Row",
+          sets: [{ reps: 10, setType: "working" }],
+        },
+      ],
+    };
+    const generatedMessages = [
+      {
+        id: 71,
+        conversation_id: 41,
+        role: "user",
+        content: "build a pull workout",
+        status: "completed",
+        created_at: "2026-03-26T17:00:01Z",
+        updated_at: "2026-03-26T17:00:01Z",
+        completed_at: "2026-03-26T17:00:01Z",
+      },
+      {
+        id: 72,
+        conversation_id: 41,
+        role: "assistant",
+        content: "I put together a structured workout draft for you.",
+        status: "completed",
+        created_at: "2026-03-26T17:00:01Z",
+        updated_at: "2026-03-26T17:00:02Z",
+        completed_at: "2026-03-26T17:00:02Z",
+      },
+    ];
+    const followUpMessages = [
+      ...generatedMessages,
+      {
+        id: 73,
+        conversation_id: 41,
+        role: "user",
+        content: "how long should I rest?",
+        status: "completed",
+        created_at: "2026-03-26T17:01:01Z",
+        updated_at: "2026-03-26T17:01:01Z",
+        completed_at: "2026-03-26T17:01:01Z",
+      },
+      {
+        id: 74,
+        conversation_id: 41,
+        role: "assistant",
+        content: "Rest 90 seconds between these working sets.",
+        status: "completed",
+        created_at: "2026-03-26T17:01:01Z",
+        updated_at: "2026-03-26T17:01:02Z",
+        completed_at: "2026-03-26T17:01:02Z",
+      },
+    ];
+
+    mockGetConversation
+      .mockResolvedValueOnce(conversationDetail([]))
+      .mockResolvedValueOnce(
+        conversationDetail(generatedMessages, undefined, generatedDraft),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail(followUpMessages, undefined, generatedDraft),
+      );
+    mockStreamMessage
+      .mockImplementationOnce(
+        async (
+          _conversationId: number,
+          _prompt: string,
+          options?: {
+            onStart?: (event: Record<string, unknown>) => void;
+            onDone?: (event: Record<string, unknown>) => void;
+          },
+        ) => {
+          options?.onStart?.({ type: "start", message_id: 72 });
+          options?.onDone?.({
+            type: "done",
+            message_id: 72,
+            text: "I put together a structured workout draft for you.",
+            workout_draft: generatedDraft,
+          });
+
+          return {
+            doneEvent: {
+              type: "done",
+              message_id: 72,
+              text: "I put together a structured workout draft for you.",
+              workout_draft: generatedDraft,
+            },
+            endedWithError: false,
+          };
+        },
+      )
+      .mockImplementationOnce(
+        async (
+          _conversationId: number,
+          _prompt: string,
+          options?: {
+            onStart?: (event: Record<string, unknown>) => void;
+            onDone?: (event: Record<string, unknown>) => void;
+          },
+        ) => {
+          options?.onStart?.({ type: "start", message_id: 74 });
+          options?.onDone?.({
+            type: "done",
+            message_id: 74,
+            text: "Rest 90 seconds between these working sets.",
+          });
+
+          return {
+            doneEvent: {
+              type: "done",
+              message_id: 74,
+              text: "Rest 90 seconds between these working sets.",
+            },
+            endedWithError: false,
+          };
+        },
+      );
+
+    render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "build a pull workout",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("chat-message-72")).toBeInTheDocument();
+    });
+    expect(
+      within(screen.getByTestId("chat-message-72")).getByText(
+        "Latest structured workout draft",
+      ),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "how long should I rest?",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(
+      await screen.findByText("Rest 90 seconds between these working sets."),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("chat-message-72")).getByText(
+        "Latest structured workout draft",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("chat-message-74")).queryByText(
+        "Latest structured workout draft",
+      ),
+    ).not.toBeInTheDocument();
   });
 });

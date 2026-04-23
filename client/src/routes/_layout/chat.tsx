@@ -75,6 +75,8 @@ export function ChatRouteComponent() {
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [latestWorkoutDraftMessageId, setLatestWorkoutDraftMessageId] =
+    useState<number | null>(null);
   const pendingAssistantIdRef = useRef<number | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const recoveryAbortRef = useRef<AbortController | null>(null);
@@ -111,6 +113,9 @@ export function ChatRouteComponent() {
         }
         setConversation(detail.conversation);
         setMessages(detail.messages);
+        if (!opts?.silent) {
+          setLatestWorkoutDraftMessageId(null);
+        }
         if (!detail.active_run) {
           clearResumeCursor(id);
         }
@@ -180,6 +185,7 @@ export function ChatRouteComponent() {
         }
         setConversation(detail.conversation);
         setMessages(detail.messages);
+        setLatestWorkoutDraftMessageId(null);
         setLoadError(null);
         return { detail, aborted: false, error: undefined };
       } catch (error) {
@@ -263,6 +269,17 @@ export function ChatRouteComponent() {
               setMessages((current) =>
                 updateStreamingMessageWithDone(current, targetId, event),
               );
+              if (event.workout_draft) {
+                setConversation((current) =>
+                  current
+                    ? {
+                        ...current,
+                        latest_workout_draft: event.workout_draft,
+                      }
+                    : current,
+                );
+                setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
+              }
               clearResumeCursor(detail.conversation.id);
             },
             onErrorEvent: (event) => {
@@ -319,6 +336,7 @@ export function ChatRouteComponent() {
       streamAbortRef.current?.abort();
       setConversation(null);
       setMessages([]);
+      setLatestWorkoutDraftMessageId(null);
       setLoadError(null);
       setIsLoadingConversation(false);
       return;
@@ -490,10 +508,6 @@ export function ChatRouteComponent() {
     );
   }
   const currentUserId = user.id;
-  const latestDraftAssistantId = findLatestDraftAssistantMessageId(
-    messages,
-    conversation?.latest_workout_draft,
-  );
 
   async function handleNewChat() {
     try {
@@ -503,6 +517,7 @@ export function ChatRouteComponent() {
       loadAbortRef.current?.abort();
       setConversation(created);
       setMessages([]);
+      setLatestWorkoutDraftMessageId(null);
       setLoadError(null);
       await navigate({
         to: "/chat",
@@ -638,6 +653,7 @@ export function ChatRouteComponent() {
                     }
                   : current,
               );
+              setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
             }
             clearResumeCursor(activeConversationId);
           },
@@ -834,7 +850,7 @@ export function ChatRouteComponent() {
                   key={`${message.id}-${message.updated_at}`}
                   message={message}
                   workoutDraft={
-                    message.id === latestDraftAssistantId
+                    message.id === latestWorkoutDraftMessageId
                       ? conversation?.latest_workout_draft
                       : undefined
                   }
@@ -848,7 +864,8 @@ export function ChatRouteComponent() {
             </div>
           )}
 
-          {conversation?.latest_workout_draft && latestDraftAssistantId === null ? (
+          {conversation?.latest_workout_draft &&
+          latestWorkoutDraftMessageId === null ? (
             <ChatWorkoutDraftCard
               className="max-w-[85%]"
               draft={conversation.latest_workout_draft}
@@ -901,6 +918,7 @@ function MessageBubble({
 
   return (
     <div
+      data-testid={`chat-message-${message.id}`}
       className={`flex max-w-[85%] flex-col gap-3 ${
         isUser ? "ml-auto items-end" : "mr-auto items-start"
       }`}
@@ -1001,24 +1019,6 @@ function findRecoveredPromptStatus(
     }
 
     return null;
-  }
-
-  return null;
-}
-
-function findLatestDraftAssistantMessageId(
-  messages: AIChatMessage[],
-  latestWorkoutDraft?: AIWorkoutDraft,
-): number | null {
-  if (!latestWorkoutDraft) {
-    return null;
-  }
-
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === "assistant" && message.status === "completed") {
-      return message.id;
-    }
   }
 
   return null;
