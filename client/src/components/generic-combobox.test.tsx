@@ -1,6 +1,14 @@
-import { createEvent, fireEvent, render, screen } from '@testing-library/react';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GenericCombobox } from '@/components/generic-combobox';
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { GenericCombobox } from "@/components/generic-combobox";
 
 let mediaQueryMatches = false;
 const originalResizeObserver = globalThis.ResizeObserver;
@@ -14,17 +22,17 @@ beforeAll(() => {
     disconnect() {}
   }
 
-  Object.defineProperty(globalThis, 'ResizeObserver', {
+  Object.defineProperty(globalThis, "ResizeObserver", {
     value: ResizeObserverMock,
     writable: true,
   });
 
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     value: () => {},
     writable: true,
   });
 
-  Object.defineProperty(globalThis, 'matchMedia', {
+  Object.defineProperty(globalThis, "matchMedia", {
     value: (query: string) =>
       ({
         matches: mediaQueryMatches,
@@ -45,17 +53,17 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  Object.defineProperty(globalThis, 'ResizeObserver', {
+  Object.defineProperty(globalThis, "ResizeObserver", {
     value: originalResizeObserver,
     writable: true,
   });
 
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     value: originalScrollIntoView,
     writable: true,
   });
 
-  Object.defineProperty(globalThis, 'matchMedia', {
+  Object.defineProperty(globalThis, "matchMedia", {
     value: originalMatchMedia,
     writable: true,
   });
@@ -95,38 +103,38 @@ async function renderGenericCombobox({
 
   render(
     <GenericCombobox
-      options={[{ name: 'Squat' }]}
+      options={[{ name: "Squat" }]}
       selected=""
       ariaLabel="Exercise type"
       inputAriaLabel="Search options"
       onChange={onChange}
       onCreate={onCreate}
-    />
+    />,
   );
 
-  fireEvent.click(screen.getByRole('combobox', { name: 'Exercise type' }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Exercise type" }));
 
   return { onChange, onCreate };
 }
 
-describe('GenericCombobox touch activation', () => {
-  it('selects an existing option on touch release in the mobile drawer path', async () => {
+describe("GenericCombobox touch activation", () => {
+  it("selects an existing option on touch release in the mobile drawer path", async () => {
     const onChange = vi.fn();
     await renderGenericCombobox({ onChange });
 
-    const option = await screen.findByRole('option', { name: 'Squat' });
+    const option = await screen.findByRole("option", { name: "Squat" });
     const releasedTouch = touchTap(option);
 
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith({ name: 'Squat' });
+    expect(onChange).toHaveBeenCalledWith({ name: "Squat" });
     expect(releasedTouch.defaultPrevented).toBe(true);
   });
 
-  it('does not select an existing option after a drag gesture', async () => {
+  it("does not select an existing option after a drag gesture", async () => {
     const onChange = vi.fn();
     await renderGenericCombobox({ onChange });
 
-    const option = await screen.findByRole('option', { name: 'Squat' });
+    const option = await screen.findByRole("option", { name: "Squat" });
 
     touchStart(option);
     fireEvent.touchMove(option, {
@@ -138,11 +146,11 @@ describe('GenericCombobox touch activation', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('does not select an existing option twice after a follow-up click', async () => {
+  it("does not select an existing option twice after a follow-up click", async () => {
     const onChange = vi.fn();
     await renderGenericCombobox({ onChange });
 
-    const option = await screen.findByRole('option', { name: 'Squat' });
+    const option = await screen.findByRole("option", { name: "Squat" });
 
     touchTap(option);
     fireEvent.click(option);
@@ -150,31 +158,31 @@ describe('GenericCombobox touch activation', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it('creates an option on touch release in the mobile drawer path', async () => {
+  it("creates an option on touch release in the mobile drawer path", async () => {
     const { onCreate } = await renderGenericCombobox();
 
-    fireEvent.change(screen.getByPlaceholderText('Search options...'), {
-      target: { value: 'Bench' },
+    fireEvent.change(screen.getByPlaceholderText("Search options..."), {
+      target: { value: "Bench" },
     });
 
-    const [createRow] = await screen.findAllByRole('option', {
+    const [createRow] = await screen.findAllByRole("option", {
       name: 'Create "Bench"',
     });
     const releasedTouch = touchTap(createRow);
 
     expect(onCreate).toHaveBeenCalledTimes(1);
-    expect(onCreate).toHaveBeenCalledWith('Bench');
+    expect(onCreate).toHaveBeenCalledWith("Bench");
     expect(releasedTouch.defaultPrevented).toBe(true);
   });
 
-  it('does not create an option after touch tracking is canceled', async () => {
+  it("does not create an option after touch tracking is canceled", async () => {
     const { onCreate } = await renderGenericCombobox();
 
-    fireEvent.change(screen.getByPlaceholderText('Search options...'), {
-      target: { value: 'Bench' },
+    fireEvent.change(screen.getByPlaceholderText("Search options..."), {
+      target: { value: "Bench" },
     });
 
-    const [createRow] = await screen.findAllByRole('option', {
+    const [createRow] = await screen.findAllByRole("option", {
       name: 'Create "Bench"',
     });
 
@@ -185,14 +193,14 @@ describe('GenericCombobox touch activation', () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it('does not create a duplicate option after a follow-up click', async () => {
+  it("does not create a duplicate option after a follow-up click", async () => {
     const { onCreate } = await renderGenericCombobox();
 
-    fireEvent.change(screen.getByPlaceholderText('Search options...'), {
-      target: { value: 'Bench' },
+    fireEvent.change(screen.getByPlaceholderText("Search options..."), {
+      target: { value: "Bench" },
     });
 
-    const [createRow] = await screen.findAllByRole('option', {
+    const [createRow] = await screen.findAllByRole("option", {
       name: 'Create "Bench"',
     });
 

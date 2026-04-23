@@ -1,20 +1,20 @@
-import { Link, useNavigate, useRouteContext } from '@tanstack/react-router';
-import { type ReactNode, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Copy, Edit, Trash } from 'lucide-react';
-import { DeleteDialog } from '@/routes/_layout/workouts/-components/delete-dialog';
-import type { WorkoutWorkoutWithSetsResponse } from '@/client';
-import { WorkoutDetailExercises } from '@/components/workouts/workout-detail-exercises';
-import { WorkoutDetailHeader } from '@/components/workouts/workout-detail-header';
-import { WorkoutDetailSummaryCards } from '@/components/workouts/workout-detail-summary-cards';
-import { WorkoutNotesCard } from '@/components/workouts/workout-notes-card';
-import { buildWorkoutDraftFromHistory } from '@/lib/workout-insights';
+import { Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { type ReactNode, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Copy, Edit, Trash } from "lucide-react";
+import { DeleteDialog } from "@/routes/_layout/workouts/-components/delete-dialog";
+import type { WorkoutWorkoutWithSetsResponse } from "@/client";
+import { WorkoutDetailExercises } from "@/components/workouts/workout-detail-exercises";
+import { WorkoutDetailHeader } from "@/components/workouts/workout-detail-header";
+import { WorkoutDetailSummaryCards } from "@/components/workouts/workout-detail-summary-cards";
+import { WorkoutNotesCard } from "@/components/workouts/workout-notes-card";
+import { buildWorkoutDraftFromHistory } from "@/lib/workout-insights";
 import {
   type WorkoutDraftStorage,
   workoutDraftStorage,
-} from '@/lib/local-storage';
-import { toast } from 'sonner';
+} from "@/lib/local-storage";
+import { toast } from "sonner";
 
 export interface WorkoutDetailProps {
   workout: WorkoutWorkoutWithSetsResponse[];
@@ -89,7 +89,7 @@ export function WorkoutDetailEditable({
 }: WorkoutDetailProps & { draftStorage?: WorkoutDraftStorage }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
-  const { user } = useRouteContext({ from: '/_layout/workouts/$workoutId/' });
+  const { user } = useRouteContext({ from: "/_layout/workouts/$workoutId/" });
 
   if (workout.length === 0) {
     return <WorkoutDetailBase workout={workout} />;
@@ -104,15 +104,15 @@ export function WorkoutDetailEditable({
     const hasDraft = draftStorage.load(user?.id) !== null;
     if (
       hasDraft &&
-      !confirm('Replace your current workout draft with this workout?')
+      !confirm("Replace your current workout draft with this workout?")
     ) {
       return;
     }
 
     const nextDraft = buildWorkoutDraftFromHistory(workout);
     draftStorage.save(nextDraft, user?.id);
-    toast.success('Workout copied into a new draft');
-    navigate({ to: '/workouts/new' });
+    toast.success("Workout copied into a new draft");
+    navigate({ to: "/workouts/new" });
   };
 
   return (
@@ -120,11 +120,19 @@ export function WorkoutDetailEditable({
       workout={workout}
       headerActions={
         <>
-          <Button size="sm" variant="outline" onClick={handleRepeatAsNew}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRepeatAsNew}
+          >
             <Copy className="mr-2 hidden h-4 w-4 md:block" />
             Repeat
           </Button>
-          <Button size="sm" variant="outline" asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            asChild
+          >
             <Link
               to="/workouts/$workoutId/edit"
               params={{ workoutId }}

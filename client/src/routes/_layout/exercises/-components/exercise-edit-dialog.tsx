@@ -5,17 +5,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useState } from 'react';
-import { useRouteContext } from '@tanstack/react-router';
-import { useMutation } from '@tanstack/react-query';
-import { patchExercisesByIdMutation, getExercisesQueryKey, getExercisesByIdQueryKey } from '@/client/@tanstack/react-query.gen';
-import { patchDemoExercisesByIdMutation } from '@/lib/demo-data/query-options';
-import { isApiError, getErrorMessage } from '@/lib/errors';
-import { toast } from 'sonner';
-import { queryClient } from '@/lib/api/api';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { useRouteContext } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import {
+  patchExercisesByIdMutation,
+  getExercisesQueryKey,
+  getExercisesByIdQueryKey,
+} from "@/client/@tanstack/react-query.gen";
+import { patchDemoExercisesByIdMutation } from "@/lib/demo-data/query-options";
+import { isApiError, getErrorMessage } from "@/lib/errors";
+import { toast } from "sonner";
+import { queryClient } from "@/lib/api/api";
 
 interface ExerciseEditDialogProps {
   isOpen: boolean;
@@ -33,7 +37,7 @@ export function ExerciseEditDialog({
   const [name, setName] = useState(exerciseName);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useRouteContext({ from: '/_layout/exercises/$exerciseId' });
+  const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
   // Override global error handler to prevent double toasts
   // We handle errors manually in the catch block below
@@ -69,12 +73,12 @@ export function ExerciseEditDialog({
 
     // Validation
     if (!trimmedName) {
-      setError('Exercise name is required');
+      setError("Exercise name is required");
       return;
     }
 
     if (trimmedName.length > 100) {
-      setError('Exercise name must be 100 characters or less');
+      setError("Exercise name must be 100 characters or less");
       return;
     }
 
@@ -84,18 +88,24 @@ export function ExerciseEditDialog({
         path: { id: exerciseId },
         body: { name: trimmedName },
       });
-      toast.success('Exercise updated successfully');
+      toast.success("Exercise updated successfully");
       onOpenChange(false);
     } catch (err) {
       // Check if it's a duplicate name error (409 conflict)
-      if (isApiError(err) && err.message.toLowerCase().includes('already exists')) {
+      if (
+        isApiError(err) &&
+        err.message.toLowerCase().includes("already exists")
+      ) {
         // Show inline error for duplicate name so user can fix it
         setError(`You already have an exercise named '${trimmedName}'`);
       } else {
         // For other errors (network, server errors, etc.), show toast
         // The global mutation error handler will also show a toast,
         // but we override it here to prevent double toasts
-        const errorMessage = getErrorMessage(err, 'Failed to update exercise. Please try again.');
+        const errorMessage = getErrorMessage(
+          err,
+          "Failed to update exercise. Please try again.",
+        );
         toast.error(errorMessage);
       }
     } finally {
@@ -143,8 +153,11 @@ export function ExerciseEditDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>

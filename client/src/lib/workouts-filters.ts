@@ -1,8 +1,6 @@
 import type { WorkoutWorkoutResponse } from "@/client";
 
-export function getFocusAreas(
-  workouts: WorkoutWorkoutResponse[],
-): string[] {
+export function getFocusAreas(workouts: WorkoutWorkoutResponse[]): string[] {
   return Array.from(
     new Set(
       workouts
@@ -46,10 +44,7 @@ export function paginateWorkouts(
   currentPage: number;
 } {
   const safeItemsPerPage = itemsPerPage > 0 ? itemsPerPage : 10;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(workouts.length / safeItemsPerPage),
-  );
+  const totalPages = Math.max(1, Math.ceil(workouts.length / safeItemsPerPage));
   const currentPage = Math.min(Math.max(1, page ?? 1), totalPages);
   const startIndex = (currentPage - 1) * safeItemsPerPage;
 

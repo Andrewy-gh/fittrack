@@ -1,58 +1,52 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
-import { z } from 'zod';
-import { toast } from 'sonner';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
+import { z } from "zod";
+import { toast } from "sonner";
 import {
   useUpdateWorkoutMutation,
   type WorkoutFocus,
-} from '@/lib/api/workouts';
-import { transformToWorkoutFormValues } from '@/lib/api/workouts';
-import { putDemoWorkoutsByIdMutation } from '@/lib/demo-data/query-options';
-import { initializeDemoData } from '@/lib/demo-data/storage';
-import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+} from "@/lib/api/workouts";
+import { transformToWorkoutFormValues } from "@/lib/api/workouts";
+import { putDemoWorkoutsByIdMutation } from "@/lib/demo-data/query-options";
+import { initializeDemoData } from "@/lib/demo-data/storage";
+import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
 import {
   getExercisesQueryOptions,
   getWorkoutByIdQueryOptions,
   getWorkoutsFocusQueryOptions,
-} from '@/lib/api/unified-query-options';
-import { Suspense } from 'react';
-import { useAppForm } from '@/hooks/form';
-import { Button } from '@/components/ui/button';
-import { MiniChart } from '../-components/mini-chart';
-import { X } from 'lucide-react';
-import { Spinner } from '@/components/ui/spinner';
+} from "@/lib/api/unified-query-options";
+import { Suspense } from "react";
+import { useAppForm } from "@/hooks/form";
+import { Button } from "@/components/ui/button";
+import { MiniChart } from "../-components/mini-chart";
+import { X } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
-} from '../-components/exercise-screen';
-import { AddExerciseScreen } from '../-components/add-exercise-screen';
+} from "../-components/exercise-screen";
+import { AddExerciseScreen } from "../-components/add-exercise-screen";
 import type {
   ExerciseExerciseResponse,
   WorkoutUpdateWorkoutRequest,
-} from '@/client';
+} from "@/client";
 import {
   ErrorBoundary,
   FullScreenErrorFallback,
-} from '@/components/error-boundary';
-import { formatWeight } from '@/lib/utils';
+} from "@/components/error-boundary";
+import { formatWeight } from "@/lib/utils";
 import {
   WorkoutExerciseCards,
   type WorkoutExerciseCard,
   WorkoutFormActions,
   WorkoutMetadataFields,
-} from '../-components/workout-form-sections';
-import { useExerciseReorder } from '../-components/use-exercise-reorder';
+} from "../-components/workout-form-sections";
+import { useExerciseReorder } from "../-components/use-exercise-reorder";
 
-function WorkoutExerciseSection({
-  field,
-  form,
-}: {
-  field: any;
-  form: any;
-}) {
+function WorkoutExerciseSection({ field, form }: { field: any; form: any }) {
   const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(
-    field.state.value as WorkoutExerciseCard[]
+    field.state.value as WorkoutExerciseCard[],
   );
 
   return (
@@ -69,7 +63,7 @@ function WorkoutExerciseSection({
         onReorderExercises={exerciseReorder.moveExercise}
         onSaveOrder={() => {
           field.handleChange(exerciseReorder.commitReorder());
-          toast.success('Exercise order saved');
+          toast.success("Exercise order saved");
         }}
         formatVolume={formatWeight}
         renderMetrics={() => (
@@ -123,19 +117,19 @@ function EditWorkoutForm({
         },
         {
           onSuccess: () => {
-            toast.success('Workout updated successfully');
+            toast.success("Workout updated successfully");
             navigate({
-              to: '/workouts/$workoutId',
+              to: "/workouts/$workoutId",
               params: { workoutId },
             });
           },
-        }
+        },
       );
     },
   });
 
   const handleClearForm = () => {
-    if (confirm('Are you sure you want to clear all form data?')) {
+    if (confirm("Are you sure you want to clear all form data?")) {
       form.reset();
       navigate({ search: {} });
     }
@@ -164,7 +158,9 @@ function EditWorkoutForm({
             form={form}
             exercises={exercises}
             onAddExercise={(index, isNewExercise) =>
-              navigate({ search: { exerciseIndex: index, newExercise: isNewExercise } })
+              navigate({
+                search: { exerciseIndex: index, newExercise: isNewExercise },
+              })
             }
             onBack={() => navigate({ search: {} })}
           />
@@ -186,14 +182,14 @@ function EditWorkoutForm({
     const handleExerciseBack = () => {
       const currentExercise = form.state.values.exercises[exerciseIndex];
       if (newExercise && currentExercise && currentExercise.sets.length === 0) {
-        form.removeFieldValue('exercises', exerciseIndex);
+        form.removeFieldValue("exercises", exerciseIndex);
       }
       navigate({ search: {} });
     };
 
     const handleDiscardNewExercise = () => {
       if (newExercise) {
-        form.removeFieldValue('exercises', exerciseIndex);
+        form.removeFieldValue("exercises", exerciseIndex);
       }
       navigate({ search: {} });
     };
@@ -277,7 +273,10 @@ function EditWorkoutForm({
               form.handleSubmit();
             }}
           >
-            <WorkoutMetadataFields form={form} workoutsFocus={workoutsFocus} />
+            <WorkoutMetadataFields
+              form={form}
+              workoutsFocus={workoutsFocus}
+            />
 
             {/* MARK: Exercise Cards */}
             <form.AppField
@@ -307,13 +306,13 @@ const workoutSearchSchema = z.object({
   newExercise: z.boolean().optional(),
 });
 
-export const Route = createFileRoute('/_layout/workouts/$workoutId/edit')({
+export const Route = createFileRoute("/_layout/workouts/$workoutId/edit")({
   validateSearch: workoutSearchSchema,
   params: {
     parse: (params) => {
       const workoutId = parseInt(params.workoutId, 10);
       if (isNaN(workoutId) || !Number.isInteger(workoutId)) {
-        throw new Error('Invalid workoutId');
+        throw new Error("Invalid workoutId");
       }
       return { workoutId };
     },
@@ -328,11 +327,11 @@ export const Route = createFileRoute('/_layout/workouts/$workoutId/edit')({
     if (!context.user) initializeDemoData();
 
     context.queryClient.ensureQueryData(
-      getWorkoutByIdQueryOptions(context.user, workoutId)
+      getWorkoutByIdQueryOptions(context.user, workoutId),
     );
     context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
     context.queryClient.ensureQueryData(
-      getWorkoutsFocusQueryOptions(context.user)
+      getWorkoutsFocusQueryOptions(context.user),
     );
 
     return { workoutId };
@@ -346,10 +345,10 @@ function RouteComponent() {
 
   const { data: exercises } = useSuspenseQuery(getExercisesQueryOptions(user));
   const { data: workout } = useSuspenseQuery(
-    getWorkoutByIdQueryOptions(user, workoutId)
+    getWorkoutByIdQueryOptions(user, workoutId),
   );
   const { data: workoutsFocusValues } = useSuspenseQuery(
-    getWorkoutsFocusQueryOptions(user)
+    getWorkoutsFocusQueryOptions(user),
   );
 
   const workoutFormValues: WorkoutUpdateWorkoutRequest =

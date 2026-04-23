@@ -9,14 +9,14 @@ import type {
   ExerciseExerciseDetailResponse,
   ExerciseExerciseWithSetsResponse,
   ExerciseRecentSetsResponse,
-} from './types';
-import { STORAGE_KEYS, DEMO_USER_ID } from './types';
+} from "./types";
+import { STORAGE_KEYS, DEMO_USER_ID } from "./types";
 import {
   INITIAL_EXERCISES,
   INITIAL_SETS,
   INITIAL_WORKOUTS,
   getNextId,
-} from './initial-data';
+} from "./initial-data";
 import {
   bootstrapDemoHistorical1Rm,
   clearDemoHistorical1Rm,
@@ -26,15 +26,15 @@ import {
   handleDemoWorkoutDeleted,
   handleDemoWorkoutUpdated,
   resetDemoHistorical1Rm,
-} from './historical-1rm';
-import type { DemoContributionWorkout } from '@/lib/analytics';
+} from "./historical-1rm";
+import type { DemoContributionWorkout } from "@/lib/analytics";
 
 // ===========================
 // localStorage Utilities
 // ===========================
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue;
+  if (typeof window === "undefined") return defaultValue;
 
   const stored = localStorage.getItem(key);
   if (!stored) return defaultValue;
@@ -47,7 +47,7 @@ function getFromStorage<T>(key: string, defaultValue: T): T {
 }
 
 function setInStorage<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
 }
 
@@ -56,7 +56,7 @@ function setInStorage<T>(key: string, value: T): void {
 // ===========================
 
 export function initializeDemoData(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   const hasData = localStorage.getItem(STORAGE_KEYS.WORKOUTS);
 
@@ -76,7 +76,7 @@ export function resetDemoData(): void {
 }
 
 export function clearDemoData(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEYS.EXERCISES);
   localStorage.removeItem(STORAGE_KEYS.WORKOUTS);
   localStorage.removeItem(STORAGE_KEYS.SETS);
@@ -88,7 +88,10 @@ export function clearDemoData(): void {
 // ===========================
 
 export function getAllExercises(): ExerciseExerciseResponse[] {
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
   return exercises.map((ex) => ({
     id: ex.id,
     name: ex.name,
@@ -99,7 +102,10 @@ export function getAllExercises(): ExerciseExerciseResponse[] {
 }
 
 export function getExerciseById(id: number): ExerciseExerciseResponse | null {
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
   const exercise = exercises.find((ex) => ex.id === id);
 
   if (!exercise) return null;
@@ -114,7 +120,10 @@ export function getExerciseById(id: number): ExerciseExerciseResponse | null {
 }
 
 export function createExercise(name: string): ExerciseExerciseResponse {
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
 
   const newExercise: StoredExercise = {
     id: getNextId(exercises),
@@ -137,14 +146,17 @@ export function createExercise(name: string): ExerciseExerciseResponse {
 }
 
 export function updateExercise(id: number, name: string): boolean {
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
   const exerciseIndex = exercises.findIndex((ex) => ex.id === id);
 
   if (exerciseIndex === -1) return false;
 
   // Check for duplicate name (case-insensitive, excluding the exercise being updated)
   const duplicate = exercises.find(
-    (ex) => ex.id !== id && ex.name.toLowerCase() === name.toLowerCase()
+    (ex) => ex.id !== id && ex.name.toLowerCase() === name.toLowerCase(),
   );
   if (duplicate) {
     throw new Error(`Exercise name "${name}" already exists`);
@@ -159,7 +171,10 @@ export function updateExercise(id: number, name: string): boolean {
 }
 
 export function deleteExercise(id: number): boolean {
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
   const filtered = exercises.filter((ex) => ex.id !== id);
 
   if (filtered.length === exercises.length) return false;
@@ -175,10 +190,15 @@ export function deleteExercise(id: number): boolean {
 }
 
 // Get all sets for a specific exercise (with workout context)
-export function getExerciseWithSets(exerciseId: number): ExerciseExerciseWithSetsResponse[] {
+export function getExerciseWithSets(
+  exerciseId: number,
+): ExerciseExerciseWithSetsResponse[] {
   const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
   const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
 
   const exerciseSets = sets.filter((set) => set.exercise_id === exerciseId);
 
@@ -189,9 +209,9 @@ export function getExerciseWithSets(exerciseId: number): ExerciseExerciseWithSet
     return {
       set_id: set.id,
       exercise_id: set.exercise_id,
-      exercise_name: exercise?.name || 'Unknown',
+      exercise_name: exercise?.name || "Unknown",
       workout_id: set.workout_id,
-      workout_date: workout?.date || '',
+      workout_date: workout?.date || "",
       workout_notes: workout?.notes,
       reps: set.reps,
       weight: set.weight,
@@ -203,10 +223,12 @@ export function getExerciseWithSets(exerciseId: number): ExerciseExerciseWithSet
   });
 }
 
-function computeBestE1rmFromWorkingSets(sets: ExerciseExerciseWithSetsResponse[]): number | undefined {
+function computeBestE1rmFromWorkingSets(
+  sets: ExerciseExerciseWithSetsResponse[],
+): number | undefined {
   let best: number | undefined;
   for (const set of sets) {
-    if (set.set_type !== 'working') continue;
+    if (set.set_type !== "working") continue;
     const weight = set.weight ?? 0;
     const e1rm = weight * (1 + set.reps / 30);
     if (!Number.isFinite(e1rm)) continue;
@@ -217,10 +239,15 @@ function computeBestE1rmFromWorkingSets(sets: ExerciseExerciseWithSetsResponse[]
   return best;
 }
 
-export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailResponse {
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+export function getExerciseDetail(
+  exerciseId: number,
+): ExerciseExerciseDetailResponse {
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
   const exercise = exercises.find((e) => e.id === exerciseId);
-  if (!exercise) throw new Error('Exercise not found');
+  if (!exercise) throw new Error("Exercise not found");
 
   const hist = getDemoExerciseHistorical1Rm(exerciseId);
   const sets = getExerciseWithSets(exerciseId);
@@ -245,13 +272,19 @@ export function getExerciseDetail(exerciseId: number): ExerciseExerciseDetailRes
 }
 
 // Get recent sets for an exercise
-export function getExerciseRecentSets(exerciseId: number, limit = 10): ExerciseRecentSetsResponse[] {
+export function getExerciseRecentSets(
+  exerciseId: number,
+  limit = 10,
+): ExerciseRecentSetsResponse[] {
   const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
   const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
 
   const exerciseSets = sets
     .filter((set) => set.exercise_id === exerciseId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
     .slice(0, limit);
 
   return exerciseSets.map((set) => {
@@ -260,7 +293,7 @@ export function getExerciseRecentSets(exerciseId: number, limit = 10): ExerciseR
     return {
       set_id: set.id,
       workout_id: set.workout_id,
-      workout_date: workout?.date || '',
+      workout_date: workout?.date || "",
       reps: set.reps,
       weight: set.weight,
       set_order: set.set_order,
@@ -296,7 +329,7 @@ export function getAllWorkoutsForContribution(): DemoContributionWorkout[] {
 
   return workouts.map((workout) => {
     const workingSets = sets.filter(
-      (set) => set.workout_id === workout.id && set.set_type === 'working'
+      (set) => set.workout_id === workout.id && set.set_type === "working",
     );
 
     return {
@@ -305,7 +338,7 @@ export function getAllWorkoutsForContribution(): DemoContributionWorkout[] {
       workout_focus: workout.workout_focus,
       volume: workingSets.reduce(
         (sum, set) => sum + (set.weight || 0) * set.reps,
-        0
+        0,
       ),
       workingSetCount: workingSets.length,
     };
@@ -315,7 +348,10 @@ export function getAllWorkoutsForContribution(): DemoContributionWorkout[] {
 export function getWorkoutById(id: number): WorkoutWorkoutWithSetsResponse[] {
   const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
   const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
 
   const workout = workouts.find((w) => w.id === id);
   if (!workout) return [];
@@ -339,7 +375,7 @@ export function getWorkoutById(id: number): WorkoutWorkoutWithSetsResponse[] {
       workout_focus: workout.workout_focus,
       set_id: set.id,
       exercise_id: set.exercise_id,
-      exercise_name: exercise?.name || 'Unknown',
+      exercise_name: exercise?.name || "Unknown",
       exercise_order: set.exercise_order,
       set_order: set.set_order,
       reps: set.reps,
@@ -359,7 +395,7 @@ interface CreateWorkoutInput {
     sets: Array<{
       reps: number;
       weight?: number;
-      setType: 'warmup' | 'working';
+      setType: "warmup" | "working";
     }>;
   }>;
 }
@@ -367,7 +403,10 @@ interface CreateWorkoutInput {
 export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
   const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
   const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
 
   // Create new workout
   const newWorkout: StoredWorkout = {
@@ -426,11 +465,14 @@ export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
 
 export function updateWorkout(
   id: number,
-  input: CreateWorkoutInput
+  input: CreateWorkoutInput,
 ): { success: boolean } {
   const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
   const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const exercises = getFromStorage<StoredExercise[]>(STORAGE_KEYS.EXERCISES, []);
+  const exercises = getFromStorage<StoredExercise[]>(
+    STORAGE_KEYS.EXERCISES,
+    [],
+  );
 
   const workoutIndex = workouts.findIndex((w) => w.id === id);
   if (workoutIndex === -1) return { success: false };
@@ -454,7 +496,10 @@ export function updateWorkout(
 
     if (!exercise) {
       exercise = {
-        id: getNextId([...exercises, ...newSets.map((s) => ({ id: s.exercise_id }))]),
+        id: getNextId([
+          ...exercises,
+          ...newSets.map((s) => ({ id: s.exercise_id })),
+        ]),
         name: exerciseInput.name,
         user_id: DEMO_USER_ID,
         created_at: new Date().toISOString(),

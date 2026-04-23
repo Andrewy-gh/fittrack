@@ -1,5 +1,12 @@
-import { Activity, BarChart3, Calendar, Hash, TrendingUp, Weight } from 'lucide-react';
-import { StatsGrid, weightFormatter } from '@/components/stats-grid';
+import {
+  Activity,
+  BarChart3,
+  Calendar,
+  Hash,
+  TrendingUp,
+  Weight,
+} from "lucide-react";
+import { StatsGrid, weightFormatter } from "@/components/stats-grid";
 
 export interface ExerciseSummaryCardsProps {
   totalSets: number;
@@ -22,38 +29,38 @@ export function ExerciseSummaryCards({
     <StatsGrid
       items={[
         {
-          label: 'Total Sets',
+          label: "Total Sets",
           value: totalSets,
           icon: Hash,
         },
         {
-          label: 'Workouts',
+          label: "Workouts",
           value: uniqueWorkouts,
           icon: Calendar,
         },
         {
-          label: 'Average Weight',
+          label: "Average Weight",
           value: averageWeight,
           icon: Weight,
-          valueSuffix: 'lbs',
+          valueSuffix: "lbs",
           valueFormatter: weightFormatter,
         },
         {
-          label: 'Max Weight',
+          label: "Max Weight",
           value: maxWeight,
           icon: TrendingUp,
-          valueSuffix: 'lbs',
+          valueSuffix: "lbs",
           valueFormatter: weightFormatter,
         },
         {
-          label: 'Average Volume',
-          labelShort: 'Avg. Volume',
+          label: "Average Volume",
+          labelShort: "Avg. Volume",
           value: averageVolume.toLocaleString(),
           icon: BarChart3,
           hideLabelOnMobile: true,
         },
         {
-          label: 'Max Volume',
+          label: "Max Volume",
           value: maxVolume.toLocaleString(),
           icon: Activity,
         },

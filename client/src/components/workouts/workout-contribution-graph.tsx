@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   ContributionGraph,
   ContributionGraphBlock,
@@ -11,24 +11,24 @@ import {
   ContributionGraphFooter,
   ContributionGraphLegend,
   type Activity,
-} from '@/components/kibo-ui/contribution-graph';
+} from "@/components/kibo-ui/contribution-graph";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+} from "@/components/ui/collapsible";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { WorkoutContributionDataResponse } from '@/client';
+} from "@/components/ui/popover";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { WorkoutContributionDataResponse } from "@/client";
 
 export interface WorkoutContributionGraphProps {
   data: WorkoutContributionDataResponse;
@@ -42,14 +42,14 @@ export function WorkoutContributionGraph({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [openPopover, setOpenPopover] = useState<string | null>(null);
   const navigate = useNavigate();
-  const isSmallScreen = useMediaQuery('(max-width: 639px)');
-  const isTouchDevice = useMediaQuery('(pointer: coarse)');
+  const isSmallScreen = useMediaQuery("(max-width: 639px)");
+  const isTouchDevice = useMediaQuery("(pointer: coarse)");
   const isLinkingEnabled = !(isSmallScreen || isTouchDevice);
 
   // Transform API response to Activity[] format and track workout IDs
   const activities: Activity[] =
     data.days?.map((day) => ({
-      date: day.date || '',
+      date: day.date || "",
       count: day.count || 0,
       level: day.level || 0,
     })) || [];
@@ -57,23 +57,26 @@ export function WorkoutContributionGraph({
   // Create a map of date to workout IDs for navigation
   const workoutIdsByDate = new Map<string, number[]>(
     data.days?.map((day) => [
-      day.date || '',
-      day.workouts?.map((w) => w.id).filter((id): id is number => id !== undefined) || [],
-    ]) || []
+      day.date || "",
+      day.workouts
+        ?.map((w) => w.id)
+        .filter((id): id is number => id !== undefined) || [],
+    ]) || [],
   );
 
   // Create a map of workout ID to workout details from contribution data
   const workoutDetailsById = new Map(
-    data.days?.flatMap((day) =>
-      day.workouts?.map((workout) => [
-        workout.id,
-        {
-          id: workout.id,
-          time: workout.time,
-          focus: workout.focus,
-        },
-      ]) || []
-    ) || []
+    data.days?.flatMap(
+      (day) =>
+        day.workouts?.map((workout) => [
+          workout.id,
+          {
+            id: workout.id,
+            time: workout.time,
+            focus: workout.focus,
+          },
+        ]) || [],
+    ) || [],
   );
 
   // Empty state: no workouts in 52-week period
@@ -90,7 +93,10 @@ export function WorkoutContributionGraph({
 
   return (
     <Card>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible
+        open={isOpen}
+        onOpenChange={setIsOpen}
+      >
         <div className="flex items-center justify-between">
           <CardHeader>
             <CardTitle className="text-xl font-semibold">Activity</CardTitle>
@@ -112,12 +118,12 @@ export function WorkoutContributionGraph({
                   {({ activity, dayIndex, weekIndex }) => {
                     const formattedDate = format(
                       parseISO(activity.date),
-                      'EEEE, MMM d, yyyy'
+                      "EEEE, MMM d, yyyy",
                     );
                     const workingSets = activity.count;
                     const workingSetsText =
                       workingSets === 1
-                        ? '1 working set'
+                        ? "1 working set"
                         : `${workingSets} working sets`;
 
                     const workoutIds =
@@ -129,7 +135,7 @@ export function WorkoutContributionGraph({
                       if (!isLinkingEnabled) return;
                       if (hasSingleWorkout) {
                         navigate({
-                          to: '/workouts/$workoutId',
+                          to: "/workouts/$workoutId",
                           params: { workoutId: workoutIds[0] },
                         });
                       }
@@ -143,7 +149,9 @@ export function WorkoutContributionGraph({
                         onClick={handleClick}
                         className={cn(
                           "data-[level='0']:fill-muted data-[level='1']:fill-primary/20 data-[level='2']:fill-primary/40 data-[level='3']:fill-primary/60 data-[level='4']:fill-primary/80",
-                          isLinkingEnabled ? 'cursor-pointer' : 'cursor-default'
+                          isLinkingEnabled
+                            ? "cursor-pointer"
+                            : "cursor-default",
                         )}
                       />
                     );
@@ -182,14 +190,14 @@ export function WorkoutContributionGraph({
 
                                 const time = format(
                                   parseISO(workout.time),
-                                  'h:mm a'
+                                  "h:mm a",
                                 );
                                 return (
                                   <button
                                     key={workoutId}
                                     onClick={() => {
                                       navigate({
-                                        to: '/workouts/$workoutId',
+                                        to: "/workouts/$workoutId",
                                         params: { workoutId },
                                       });
                                     }}
@@ -227,16 +235,19 @@ export function WorkoutContributionGraph({
                 <ContributionGraphFooter>
                   <ContributionGraphLegend>
                     {({ level }) => (
-                      <svg height={12} width={12}>
+                      <svg
+                        height={12}
+                        width={12}
+                      >
                         <title>{`Level ${level}`}</title>
                         <rect
                           className={cn(
-                            'stroke-[1px] stroke-border',
+                            "stroke-[1px] stroke-border",
                             'data-[level="0"]:fill-muted',
                             'data-[level="1"]:fill-primary/20',
                             'data-[level="2"]:fill-primary/40',
                             'data-[level="3"]:fill-primary/60',
-                            'data-[level="4"]:fill-primary/80'
+                            'data-[level="4"]:fill-primary/80',
                           )}
                           data-level={level}
                           height={12}

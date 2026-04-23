@@ -21,6 +21,8 @@ bun run start         # Development server on port 3000
 bun run build         # Production build
 bun run serve         # Preview production build
 bun run openapi-ts    # Generate API client from OpenAPI spec
+bun run fmt           # Format client files with oxfmt
+bun run fmt:check     # Check client formatting with oxfmt
 bun run test          # Run unit tests (Vitest)
 bun run test:e2e      # Run end-to-end tests (Playwright)
 bun run test:e2e:ci   # Build then run E2E tests (CI mode)

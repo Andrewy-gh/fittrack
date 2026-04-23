@@ -124,6 +124,10 @@ jobs:
         working-directory: client
         run: bunx playwright install --with-deps chromium
 
+      - name: Run format check
+        working-directory: client
+        run: bun run fmt:check
+
       - name: Run lint
         working-directory: client
         run: bun run lint

@@ -1,20 +1,20 @@
-import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ChevronRight, Plus, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import type { ExerciseExerciseResponse } from '@/client';
+import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChevronRight, Plus, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import type { ExerciseExerciseResponse } from "@/client";
 
 export interface ExerciseListProps {
   exercises: ExerciseExerciseResponse[];
 }
 
 export function ExerciseList({ exercises }: ExerciseListProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredExercises = exercises.filter((exercise) =>
-    exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
+    exercise.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -73,7 +73,7 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
         {searchQuery && (
           <div className="text-center text-sm text-muted-foreground">
             {filteredExercises.length} exercise
-            {filteredExercises.length !== 1 ? 's' : ''} found
+            {filteredExercises.length !== 1 ? "s" : ""} found
           </div>
         )}
       </div>

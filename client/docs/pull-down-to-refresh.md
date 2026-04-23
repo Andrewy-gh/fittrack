@@ -3,22 +3,27 @@
 Short answer: In iOS “Add to Home Screen” mode, the native pull‑to‑refresh gesture is disabled, so it won’t automatically reload like in Safari tabs; to get pull‑to‑refresh, implement a custom JavaScript touch/scroll handler that shows a refresh control and triggers a reload or data refetch when pulled past a threshold.[1][2]
 
 ### Why it’s disabled
+
 iOS treats standalone/home‑screen web apps differently from Safari tabs and removes the built‑in pull‑to‑refresh UI, so the usual “drag to refresh” won’t appear in a PWA shell even if it does in Safari proper. Developers typically re‑implement this behavior within the page if they want it.[2][1]
 
 ### Implementation approach
+
 - Use a top‑level scroll container (not the body) and track touchstart/touchmove when the scroll position is at the very top. On downward drag past a threshold, show a spinner and run either location.reload() or a data refetch function; then stop the spinner when done. This mimics UIRefreshControl behavior used with WKWebView.[3][4]
 - Consider overscroll control: on Android/Chrome you can manage edge effects with CSS overscroll-behavior; iOS Safari support is limited, so rely on JS for detection and visuals.[5][6]
 
 ### Minimal JS pattern
+
 - Container setup: Place page content in a scrollable wrapper div that fills the viewport. Listen for touch events only when scrollTop == 0 to detect a pull.[4]
 - Threshold and spinner: Add a hidden top “refresh header” that slides down as the user pulls; when the pull distance exceeds a threshold (e.g., 60–80px), trigger the refresh and lock the header until complete.[4]
 - Action: Choose either a soft refresh (refetch network data and re-render) or a hard reload via location.reload() depending on the app architecture.[3][4]
 
 ### Example outline
+
 - HTML: a wrapper with a refresh header and content region.[4]
 - JS: track startY, currentY, pulling state, distance; translate the header; on release past threshold call refresh() and then collapse the header when complete. This mirrors native WKWebView + UIRefreshControl patterns used in native shells.[3][4]
 
 ### Notes and pitfalls
+
 - Don’t try to “re‑enable” the native gesture in standalone mode—it’s not available; use a custom component instead.[1][2]
 - If disabling browser bounce or default pull is needed elsewhere, some developers add touchmove handlers or CSS to prevent default behaviors; do this carefully to avoid breaking scrolling.[7][6][5]
 - If the app ever ships as a true native wrapper, iOS provides UIRefreshControl on WKWebView’s scrollView to get native pull‑to‑refresh with few lines of code.[8][3]

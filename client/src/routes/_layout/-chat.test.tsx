@@ -992,7 +992,9 @@ describe("ChatRouteComponent", () => {
 
     expect(confirmSpy).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect(window.localStorage.getItem("workout-entry-form-data-user-123")).toBe(
+      expect(
+        window.localStorage.getItem("workout-entry-form-data-user-123"),
+      ).toBe(
         JSON.stringify({
           date: "2026-04-21T12:00:00Z",
           notes: "Keep rest short",
@@ -1119,7 +1121,9 @@ describe("ChatRouteComponent", () => {
     ).toHaveLength(1);
 
     await waitFor(() => {
-      expect(window.localStorage.getItem("workout-entry-form-data-user-123")).toBe(
+      expect(
+        window.localStorage.getItem("workout-entry-form-data-user-123"),
+      ).toBe(
         JSON.stringify({
           date: "2026-04-21T12:00:00Z",
           notes: "Regenerated draft",

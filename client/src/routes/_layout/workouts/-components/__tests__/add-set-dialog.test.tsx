@@ -1,13 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
-import { useAppForm } from '@/hooks/form';
-import { AddSetDialog } from '../add-set-dialog';
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { useAppForm } from "@/hooks/form";
+import { AddSetDialog } from "../add-set-dialog";
 
 type SetValue = {
   weight: number;
   reps: number;
-  setType: 'warmup' | 'working';
+  setType: "warmup" | "working";
 };
 
 function AddSetDialogHarness({
@@ -23,12 +23,12 @@ function AddSetDialogHarness({
 }) {
   const form = useAppForm({
     defaultValues: {
-      date: '2026-03-24T10:30:00.000Z',
-      notes: '',
-      workoutFocus: '',
+      date: "2026-03-24T10:30:00.000Z",
+      notes: "",
+      workoutFocus: "",
       exercises: [
         {
-          name: 'Bench Press',
+          name: "Bench Press",
           sets: [initialSet],
         },
       ],
@@ -48,32 +48,32 @@ function AddSetDialogHarness({
   );
 }
 
-describe('AddSetDialog', () => {
-  it('shows reps validation errors and only enables save after the value is valid', async () => {
+describe("AddSetDialog", () => {
+  it("shows reps validation errors and only enables save after the value is valid", async () => {
     const user = userEvent.setup();
     const onSaveSet = vi.fn();
 
     render(
       <AddSetDialogHarness
-        initialSet={{ weight: 0, reps: 0, setType: 'working' }}
+        initialSet={{ weight: 0, reps: 0, setType: "working" }}
         onSaveSet={onSaveSet}
-      />
+      />,
     );
 
-    const saveButton = await screen.findByRole('button', { name: 'Save Set' });
+    const saveButton = await screen.findByRole("button", { name: "Save Set" });
     await waitFor(() => {
-      expect(screen.getByText('Reps must be at least 1')).toBeInTheDocument();
+      expect(screen.getByText("Reps must be at least 1")).toBeInTheDocument();
     });
     expect(saveButton).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
 
-    const repsInput = screen.getByLabelText('Reps');
+    const repsInput = screen.getByLabelText("Reps");
     await user.clear(repsInput);
-    await user.type(repsInput, '8');
+    await user.type(repsInput, "8");
 
     await waitFor(() => {
       expect(
-        screen.queryByText('Reps must be at least 1')
+        screen.queryByText("Reps must be at least 1"),
       ).not.toBeInTheDocument();
     });
     expect(saveButton).toBeEnabled();
@@ -83,43 +83,43 @@ describe('AddSetDialog', () => {
     expect(onSaveSet).toHaveBeenCalledTimes(1);
   });
 
-  it('dismisses an empty set by removing it', async () => {
+  it("dismisses an empty set by removing it", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const onRemoveSet = vi.fn();
 
     render(
       <AddSetDialogHarness
-        initialSet={{ weight: 0, reps: 0, setType: 'working' }}
+        initialSet={{ weight: 0, reps: 0, setType: "working" }}
         onClose={onClose}
         onRemoveSet={onRemoveSet}
-      />
+      />,
     );
 
-    await user.click(await screen.findByRole('button', { name: 'Close' }));
+    await user.click(await screen.findByRole("button", { name: "Close" }));
 
     expect(onRemoveSet).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('dismisses a populated set without removing it', async () => {
+  it("dismisses a populated set without removing it", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const onRemoveSet = vi.fn();
 
     render(
       <AddSetDialogHarness
-        initialSet={{ weight: 135, reps: 5, setType: 'working' }}
+        initialSet={{ weight: 135, reps: 5, setType: "working" }}
         onClose={onClose}
         onRemoveSet={onRemoveSet}
-      />
+      />,
     );
 
     expect(
-      await screen.findByRole('button', { name: 'Remove Set' })
+      await screen.findByRole("button", { name: "Remove Set" }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onRemoveSet).not.toHaveBeenCalled();

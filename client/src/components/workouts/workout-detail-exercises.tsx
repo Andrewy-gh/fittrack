@@ -1,13 +1,15 @@
-import { Link } from '@tanstack/react-router';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatWeight, sortByExerciseAndSetOrder } from '@/lib/utils';
-import type { WorkoutWorkoutWithSetsResponse } from '@/client';
+import { Link } from "@tanstack/react-router";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatWeight, sortByExerciseAndSetOrder } from "@/lib/utils";
+import type { WorkoutWorkoutWithSetsResponse } from "@/client";
 
 export interface WorkoutDetailExercisesProps {
   workout: WorkoutWorkoutWithSetsResponse[];
 }
 
-export function WorkoutDetailExercises({ workout }: WorkoutDetailExercisesProps) {
+export function WorkoutDetailExercises({
+  workout,
+}: WorkoutDetailExercisesProps) {
   const sortedWorkouts = sortByExerciseAndSetOrder(workout);
 
   const exerciseGroups = sortedWorkouts.reduce(
@@ -17,7 +19,7 @@ export function WorkoutDetailExercises({ workout }: WorkoutDetailExercisesProps)
 
       if (!acc[exerciseId]) {
         acc[exerciseId] = {
-          name: w.exercise_name || 'Unknown Exercise',
+          name: w.exercise_name || "Unknown Exercise",
           sets: [],
           order: exerciseOrder,
         };
@@ -28,7 +30,7 @@ export function WorkoutDetailExercises({ workout }: WorkoutDetailExercisesProps)
     {} as Record<
       number,
       { name: string; sets: WorkoutWorkoutWithSetsResponse[]; order: number }
-    >
+    >,
   );
 
   return (
@@ -39,11 +41,11 @@ export function WorkoutDetailExercises({ workout }: WorkoutDetailExercisesProps)
         .map(([exerciseId, exercise]) => {
           const exerciseReps = exercise.sets.reduce(
             (sum, set) => sum + (set.reps || 0),
-            0
+            0,
           );
           const exerciseVolume = exercise.sets.reduce(
             (sum, set) => sum + (set.volume || 0),
-            0
+            0,
           );
 
           return (

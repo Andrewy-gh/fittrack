@@ -1,5 +1,5 @@
-import { compose, maxValue, minValue } from '@/lib/validation';
-import type { WorkoutCreateWorkoutRequest } from '@/client';
+import { compose, maxValue, minValue } from "@/lib/validation";
+import type { WorkoutCreateWorkoutRequest } from "@/client";
 
 type WorkoutSetLike = {
   weight?: number | null;
@@ -7,10 +7,10 @@ type WorkoutSetLike = {
   setType?: string | null;
 };
 
-const DEFAULT_SET_TYPE = 'working';
+const DEFAULT_SET_TYPE = "working";
 
 export const validateSetReps = (value: unknown) =>
-  compose(minValue(1), maxValue(1000))(value, 'Reps');
+  compose(minValue(1), maxValue(1000))(value, "Reps");
 
 export const isSetEmptyForDismiss = (set?: WorkoutSetLike): boolean => {
   const weight = Number(set?.weight ?? 0);
@@ -22,11 +22,14 @@ export const isSetEmptyForDismiss = (set?: WorkoutSetLike): boolean => {
 
 export const shouldDiscardNewExerciseAfterSetRemoval = (
   isNewExercise: boolean | undefined,
-  setCount: number
+  setCount: number,
 ): boolean => Boolean(isNewExercise) && setCount <= 1;
 
 export const hasWorkoutDraftContent = (
-  value: Pick<WorkoutCreateWorkoutRequest, 'notes' | 'workoutFocus' | 'exercises'>
+  value: Pick<
+    WorkoutCreateWorkoutRequest,
+    "notes" | "workoutFocus" | "exercises"
+  >,
 ): boolean => {
   const hasNotes = Boolean(value.notes?.trim());
   const hasWorkoutFocus = Boolean(value.workoutFocus?.trim());
@@ -42,7 +45,10 @@ export const shouldShowRecentFocusAreaCard = ({
 }: {
   focusAreaTemplateCount: number;
   isDirty: boolean;
-  value: Pick<WorkoutCreateWorkoutRequest, 'notes' | 'workoutFocus' | 'exercises'>;
+  value: Pick<
+    WorkoutCreateWorkoutRequest,
+    "notes" | "workoutFocus" | "exercises"
+  >;
 }): boolean => {
   if (focusAreaTemplateCount === 0) {
     return false;

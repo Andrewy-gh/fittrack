@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export interface VolumeData {
   date: string;
   volume: number;
 }
 
-export type RangeType = 'W' | 'M' | '6M' | 'Y';
+export type RangeType = "W" | "M" | "6M" | "Y";
 
-export type Breakpoint = 'mobile' | 'tablet' | 'desktop';
+export type Breakpoint = "mobile" | "tablet" | "desktop";
 
 export interface ResponsiveValue<T> {
   mobile: T;
@@ -32,26 +32,26 @@ export const responsiveConfig = {
     desktop: { top: 20, right: 20, bottom: 30, left: 48 },
   },
   buttonPadding: {
-    mobile: 'px-3 py-1.5 text-xs',
-    tablet: 'px-3.5 py-2 text-sm',
-    desktop: 'px-4 py-2 text-sm',
+    mobile: "px-3 py-1.5 text-xs",
+    tablet: "px-3.5 py-2 text-sm",
+    desktop: "px-4 py-2 text-sm",
   },
   containerGap: {
-    mobile: 'gap-0.5 p-0.5',
-    tablet: 'gap-1 p-1',
-    desktop: 'gap-1 p-1',
+    mobile: "gap-0.5 p-0.5",
+    tablet: "gap-1 p-1",
+    desktop: "gap-1 p-1",
   },
   scrollButton: {
     mobile: {
-      padding: 'p-1',
+      padding: "p-1",
       iconSize: 12,
     },
     tablet: {
-      padding: 'p-1.5',
+      padding: "p-1.5",
       iconSize: 14,
     },
     desktop: {
-      padding: 'p-1.5',
+      padding: "p-1.5",
       iconSize: 14,
     },
   },
@@ -63,50 +63,50 @@ export const responsiveConfig = {
 };
 
 export const ranges: Array<{ value: RangeType; label: string }> = [
-  { value: 'W', label: 'W' },
-  { value: 'M', label: 'M' },
-  { value: '6M', label: '6M' },
-  { value: 'Y', label: 'Y' },
+  { value: "W", label: "W" },
+  { value: "M", label: "M" },
+  { value: "6M", label: "6M" },
+  { value: "Y", label: "Y" },
 ];
 
 export function getResponsiveValue<T>(
   values: ResponsiveValue<T>,
-  breakpoint: Breakpoint
+  breakpoint: Breakpoint,
 ): T {
   return values[breakpoint];
 }
 
 export function useBreakpoint(): Breakpoint {
   const [breakpoint, setBreakpoint] = useState<Breakpoint>(() => {
-    if (typeof window === 'undefined') return 'desktop';
+    if (typeof window === "undefined") return "desktop";
     const width = window.innerWidth;
-    if (width < 640) return 'mobile';
-    if (width < 1024) return 'tablet';
-    return 'desktop';
+    if (width < 640) return "mobile";
+    if (width < 1024) return "tablet";
+    return "desktop";
   });
 
   useEffect(() => {
-    const mobileQuery = window.matchMedia('(max-width: 639px)');
+    const mobileQuery = window.matchMedia("(max-width: 639px)");
     const tabletQuery = window.matchMedia(
-      '(min-width: 640px) and (max-width: 1023px)'
+      "(min-width: 640px) and (max-width: 1023px)",
     );
 
     const updateBreakpoint = () => {
       if (mobileQuery.matches) {
-        setBreakpoint('mobile');
+        setBreakpoint("mobile");
       } else if (tabletQuery.matches) {
-        setBreakpoint('tablet');
+        setBreakpoint("tablet");
       } else {
-        setBreakpoint('desktop');
+        setBreakpoint("desktop");
       }
     };
 
-    mobileQuery.addEventListener('change', updateBreakpoint);
-    tabletQuery.addEventListener('change', updateBreakpoint);
+    mobileQuery.addEventListener("change", updateBreakpoint);
+    tabletQuery.addEventListener("change", updateBreakpoint);
 
     return () => {
-      mobileQuery.removeEventListener('change', updateBreakpoint);
-      tabletQuery.removeEventListener('change', updateBreakpoint);
+      mobileQuery.removeEventListener("change", updateBreakpoint);
+      tabletQuery.removeEventListener("change", updateBreakpoint);
     };
   }, []);
 
@@ -115,7 +115,7 @@ export function useBreakpoint(): Breakpoint {
 
 export function filterDataByDays(
   data: VolumeData[],
-  days: number
+  days: number,
 ): VolumeData[] {
   if (days >= data.length) return data;
   return data.slice(-days);
@@ -133,7 +133,7 @@ export function aggregateToWeekly(data: VolumeData[]): VolumeData[] {
     const monday = new Date(date);
     monday.setDate(date.getDate() + diff);
 
-    const weekKey = monday.toISOString().split('T')[0];
+    const weekKey = monday.toISOString().split("T")[0];
 
     if (!weekMap.has(weekKey)) {
       weekMap.set(weekKey, { volumes: [], weekStart: monday });
@@ -146,7 +146,7 @@ export function aggregateToWeekly(data: VolumeData[]): VolumeData[] {
     .map(([weekKey, { volumes }]) => ({
       date: weekKey,
       volume: Math.round(
-        volumes.reduce((sum, v) => sum + v, 0) / volumes.length
+        volumes.reduce((sum, v) => sum + v, 0) / volumes.length,
       ),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -173,11 +173,11 @@ export function aggregateToMonthly(data: VolumeData[]): VolumeData[] {
 
     if (windowData.length > 0) {
       const avgVolume = Math.round(
-        windowData.reduce((sum, d) => sum + d.volume, 0) / windowData.length
+        windowData.reduce((sum, d) => sum + d.volume, 0) / windowData.length,
       );
 
       monthlyData.unshift({
-        date: windowEnd.toISOString().split('T')[0],
+        date: windowEnd.toISOString().split("T")[0],
         volume: avgVolume,
       });
     }
@@ -188,19 +188,19 @@ export function aggregateToMonthly(data: VolumeData[]): VolumeData[] {
 
 export function filterDataByRange(
   data: VolumeData[],
-  range: RangeType
+  range: RangeType,
 ): VolumeData[] {
   switch (range) {
-    case 'W':
+    case "W":
       return filterDataByDays(data, 7);
-    case 'M':
+    case "M":
       return filterDataByDays(data, 30);
-    case '6M': {
+    case "6M": {
       const sixMonthData = filterDataByDays(data, 180);
       const weeklyData = aggregateToWeekly(sixMonthData);
       return weeklyData.slice(-26);
     }
-    case 'Y':
+    case "Y":
       return aggregateToMonthly(data);
     default:
       return data;
@@ -209,14 +209,14 @@ export function filterDataByRange(
 
 export function getRangeLabel(range: RangeType, count: number): string {
   switch (range) {
-    case 'W':
-      return `Showing ${count} day${count !== 1 ? 's' : ''}`;
-    case 'M':
-      return `Showing ${count} day${count !== 1 ? 's' : ''}`;
-    case '6M':
-      return `Showing ${count} week${count !== 1 ? 's' : ''}`;
-    case 'Y':
-      return `Showing ${count} month${count !== 1 ? 's' : ''}`;
+    case "W":
+      return `Showing ${count} day${count !== 1 ? "s" : ""}`;
+    case "M":
+      return `Showing ${count} day${count !== 1 ? "s" : ""}`;
+    case "6M":
+      return `Showing ${count} week${count !== 1 ? "s" : ""}`;
+    case "Y":
+      return `Showing ${count} month${count !== 1 ? "s" : ""}`;
     default:
       return `Showing ${count} points`;
   }
@@ -224,14 +224,14 @@ export function getRangeLabel(range: RangeType, count: number): string {
 
 export function getDateFormat(range: RangeType): string {
   switch (range) {
-    case 'W':
-    case 'M':
-      return 'MMM d';
-    case '6M':
-      return 'MMM d';
-    case 'Y':
-      return 'MMM yyyy';
+    case "W":
+    case "M":
+      return "MMM d";
+    case "6M":
+      return "MMM d";
+    case "Y":
+      return "MMM yyyy";
     default:
-      return 'MMM d';
+      return "MMM d";
   }
 }

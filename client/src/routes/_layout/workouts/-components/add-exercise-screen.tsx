@@ -1,16 +1,16 @@
-import { withForm } from '@/hooks/form';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import type { DbExercise, ExerciseOption } from '@/lib/api/exercises';
-import { MOCK_VALUES } from '../-components/form-options';
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { ChevronLeft, Search } from 'lucide-react';
-import { CardContent } from '@/components/ui/card';
-import { ChevronRight } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
-import { Route } from '../new';
+import { withForm } from "@/hooks/form";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { DbExercise, ExerciseOption } from "@/lib/api/exercises";
+import { MOCK_VALUES } from "../-components/form-options";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, Search } from "lucide-react";
+import { CardContent } from "@/components/ui/card";
+import { ChevronRight } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Route } from "../new";
 
 type AddExerciseScreenProps = {
   exercises: DbExercise[]; // Database exercises with guaranteed IDs
@@ -23,13 +23,13 @@ export const AddExerciseScreen = withForm({
   props: {} as AddExerciseScreenProps,
   render: function Render({ form, exercises, onBack, onAddExercise }) {
     const navigate = useNavigate({ from: Route.fullPath });
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState("");
     const [workingExercises, setWorkingExercises] = useState<ExerciseOption[]>(
-      exercises.map((ex) => ({ id: ex.id, name: ex.name }))
+      exercises.map((ex) => ({ id: ex.id, name: ex.name })),
     ); // ExerciseOption type allows null ids for new exercises not yet in the database
 
     const filteredExercises = workingExercises.filter((exercise) =>
-      exercise.name.toLowerCase().includes(searchQuery.toLowerCase())
+      exercise.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     return (
@@ -37,7 +37,10 @@ export const AddExerciseScreen = withForm({
         <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
           {/* Header */}
           <div className="flex items-center justify-between pt-4">
-            <button onClick={onBack} className="cursor-pointer">
+            <button
+              onClick={onBack}
+              className="cursor-pointer"
+            >
               <ChevronLeft className="text-primary" />
             </button>
             <div>
@@ -67,7 +70,9 @@ export const AddExerciseScreen = withForm({
                         if (onAddExercise) {
                           onAddExercise(exerciseIndex, true);
                         } else {
-                          navigate({ search: { exerciseIndex, newExercise: true } });
+                          navigate({
+                            search: { exerciseIndex, newExercise: true },
+                          });
                         }
                       }}
                     >
@@ -123,7 +128,9 @@ export const AddExerciseScreen = withForm({
                             if (onAddExercise) {
                               onAddExercise(exerciseIndex, true);
                             } else {
-                              navigate({ search: { exerciseIndex, newExercise: true } });
+                              navigate({
+                                search: { exerciseIndex, newExercise: true },
+                              });
                             }
                           }}
                         >
@@ -144,7 +151,7 @@ export const AddExerciseScreen = withForm({
           {searchQuery && (
             <div className="text-center text-sm text-muted-foreground">
               {filteredExercises.length} exercise
-              {filteredExercises.length !== 1 ? 's' : ''} found
+              {filteredExercises.length !== 1 ? "s" : ""} found
             </div>
           )}
         </div>

@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useFieldContext } from '@/hooks/form';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { useFieldContext } from "@/hooks/form";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogClose,
@@ -12,18 +12,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { FileText } from 'lucide-react';
-import { Textarea } from '../ui/textarea';
+} from "@/components/ui/dialog";
+import { FileText } from "lucide-react";
+import { Textarea } from "../ui/textarea";
 
 export default function NotesTextarea() {
   const field = useFieldContext<string>();
   const [open, setOpen] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+    >
       <DialogTrigger asChild>
-        <Card asChild className="p-4">
+        <Card
+          asChild
+          className="p-4"
+        >
           <button
             type="button"
             aria-label="Notes"
@@ -31,11 +37,13 @@ export default function NotesTextarea() {
           >
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-sm tracking-tight">Notes</span>
+              <span className="font-semibold text-sm tracking-tight">
+                Notes
+              </span>
             </div>
             <div className="text-xs font-semibold text-card-foreground">
               {field.state.value ||
-                'Enter any notes, focus areas, or observations for this workout.'}
+                "Enter any notes, focus areas, or observations for this workout."}
             </div>
           </button>
         </Card>
@@ -48,7 +56,10 @@ export default function NotesTextarea() {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor={field.name} className="sr-only">
+          <Label
+            htmlFor={field.name}
+            className="sr-only"
+          >
             Notes
           </Label>
           <Textarea
@@ -63,13 +74,16 @@ export default function NotesTextarea() {
           />
           {field.state.meta.errors.length > 0 && (
             <p className="text-sm text-destructive">
-              {field.state.meta.errors.join(', ')}
+              {field.state.meta.errors.join(", ")}
             </p>
           )}
         </div>
         <DialogFooter className="sm:justify-start">
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button
+              type="button"
+              variant="outline"
+            >
               Close
             </Button>
           </DialogClose>

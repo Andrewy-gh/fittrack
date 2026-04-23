@@ -5,23 +5,25 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogIn, Moon, Sun, User, UserPlus } from 'lucide-react';
-import { useTheme } from '@/components/theme-provider';
-import React from 'react';
-import { stackClientApp } from '@/stack';
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LogIn, Moon, Sun, User, UserPlus } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
+import React from "react";
+import { stackClientApp } from "@/stack";
 
-const Typography: React.FC<{ children: React.ReactNode; className?: string }> =
-  ({ children, className = '' }) => (
-    <span className={`text-sm ${className}`}>{children}</span>
-  );
+const Typography: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className = "" }) => (
+  <span className={`text-sm ${className}`}>{children}</span>
+);
 
 export function GuestUserButton() {
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   const iconProps = { size: 16 };
@@ -51,15 +53,19 @@ export function GuestUserButton() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={toggleTheme}>
           <div className="flex gap-2 items-center">
-            {theme === 'light' ? <Moon {...iconProps} /> : <Sun {...iconProps} />}
-            <Typography>{theme === 'light' ? 'Dark' : 'Light'}</Typography>
+            {theme === "light" ? (
+              <Moon {...iconProps} />
+            ) : (
+              <Sun {...iconProps} />
+            )}
+            <Typography>{theme === "light" ? "Dark" : "Light"}</Typography>
           </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={!stackClientApp}
           onClick={() => stackClientApp?.redirectToSignIn()}
-          title={!stackClientApp ? 'Auth not configured' : undefined}
+          title={!stackClientApp ? "Auth not configured" : undefined}
         >
           <div className="flex gap-2 items-center">
             <LogIn {...iconProps} />
@@ -69,7 +75,7 @@ export function GuestUserButton() {
         <DropdownMenuItem
           disabled={!stackClientApp}
           onClick={() => stackClientApp?.redirectToSignUp()}
-          title={!stackClientApp ? 'Auth not configured' : undefined}
+          title={!stackClientApp ? "Auth not configured" : undefined}
         >
           <div className="flex gap-2 items-center">
             <UserPlus {...iconProps} />

@@ -35,7 +35,9 @@ export function PaginationControl({
           <PaginationPrevious
             href="#"
             aria-disabled={!canGoPrevious}
-            className={!canGoPrevious ? "pointer-events-none opacity-50" : undefined}
+            className={
+              !canGoPrevious ? "pointer-events-none opacity-50" : undefined
+            }
             onClick={(event) => {
               event.preventDefault();
               if (canGoPrevious) {
@@ -70,7 +72,9 @@ export function PaginationControl({
           <PaginationNext
             href="#"
             aria-disabled={!canGoNext}
-            className={!canGoNext ? "pointer-events-none opacity-50" : undefined}
+            className={
+              !canGoNext ? "pointer-events-none opacity-50" : undefined
+            }
             onClick={(event) => {
               event.preventDefault();
               if (canGoNext) {

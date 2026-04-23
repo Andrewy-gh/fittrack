@@ -1,6 +1,6 @@
-import { queryClient } from './api';
-import { useMutation } from '@tanstack/react-query';
-import type { ExerciseExerciseResponse } from '@/client';
+import { queryClient } from "./api";
+import { useMutation } from "@tanstack/react-query";
+import type { ExerciseExerciseResponse } from "@/client";
 import {
   getExercisesQueryOptions,
   getExercisesByIdQueryOptions,
@@ -11,9 +11,9 @@ import {
   patchExercisesByIdHistorical1RmMutation,
   getExercisesQueryKey,
   getExercisesByIdQueryKey,
-} from '@/client/@tanstack/react-query.gen';
+} from "@/client/@tanstack/react-query.gen";
 
-export type DbExercise = Pick<ExerciseExerciseResponse, 'id' | 'name'>;
+export type DbExercise = Pick<ExerciseExerciseResponse, "id" | "name">;
 
 export type ExerciseOption = {
   id: number | null; // null for manually created exercises, number for DB exercises
@@ -32,9 +32,12 @@ export function recentExerciseSetsQueryOptions(id: number) {
   return getExercisesByIdRecentSetsQueryOptions({ path: { id } });
 }
 
-export type MetricsHistoryRange = 'W' | 'M' | '6M' | 'Y';
+export type MetricsHistoryRange = "W" | "M" | "6M" | "Y";
 
-export function exerciseMetricsHistoryQueryOptions(id: number, range: MetricsHistoryRange) {
+export function exerciseMetricsHistoryQueryOptions(
+  id: number,
+  range: MetricsHistoryRange,
+) {
   return getExercisesByIdMetricsHistoryQueryOptions({
     path: { id },
     query: { range },
@@ -84,7 +87,7 @@ export function useUpdateExerciseHistorical1RmMutation() {
         predicate: (q) => {
           const key0 = q.queryKey?.[0] as any;
           return (
-            key0?._id === 'getExercisesByIdMetricsHistory' &&
+            key0?._id === "getExercisesByIdMetricsHistory" &&
             key0?.path?.id === id
           );
         },

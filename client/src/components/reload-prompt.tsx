@@ -1,5 +1,5 @@
-import { useRegisterSW } from 'virtual:pwa-register/react';
-import { Button } from './ui/button';
+import { useRegisterSW } from "virtual:pwa-register/react";
+import { Button } from "./ui/button";
 
 export function ReloadPrompt() {
   const {
@@ -9,7 +9,7 @@ export function ReloadPrompt() {
   } = useRegisterSW({
     onRegisterError(error: Error) {
       if (import.meta.env.DEV) {
-        console.error('SW registration error', error);
+        console.error("SW registration error", error);
       }
     },
   });

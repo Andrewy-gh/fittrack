@@ -1,12 +1,12 @@
-import { withForm } from '@/hooks/form';
-import { useState } from 'react';
-import { AddSetDialog } from '../-components/add-set-dialog';
-import { ChevronLeft, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { MOCK_VALUES } from '../-components/form-options';
-import { formatWeight } from '@/lib/utils';
-import { shouldDiscardNewExerciseAfterSetRemoval } from './workout-form-helpers';
+import { withForm } from "@/hooks/form";
+import { useState } from "react";
+import { AddSetDialog } from "../-components/add-set-dialog";
+import { ChevronLeft, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MOCK_VALUES } from "../-components/form-options";
+import { formatWeight } from "@/lib/utils";
+import { shouldDiscardNewExerciseAfterSetRemoval } from "./workout-form-helpers";
 
 type ExerciseScreenProps = {
   exerciseIndex: number;
@@ -20,7 +20,11 @@ export const ExerciseHeader = withForm({
   render: function Render({ form, exerciseIndex, onBack }) {
     return (
       <div className="flex items-center justify-between pt-6 pb-2">
-        <button onClick={onBack} aria-label="Back" className='cursor-pointer'>
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          className="cursor-pointer"
+        >
           <ChevronLeft className="text-primary" />
         </button>
         <form.AppField
@@ -40,7 +44,7 @@ export const ExerciseHeader = withForm({
 
 export const ExerciseSets = withForm({
   defaultValues: MOCK_VALUES,
-  props: {} as Pick<ExerciseScreenProps, 'exerciseIndex'> & {
+  props: {} as Pick<ExerciseScreenProps, "exerciseIndex"> & {
     isNewExercise?: boolean;
     onDiscardNewExercise?: () => void;
   },
@@ -86,7 +90,7 @@ export const ExerciseSets = withForm({
                             const shouldDiscardExercise =
                               shouldDiscardNewExerciseAfterSetRemoval(
                                 isNewExercise,
-                                setsField.state.value?.length ?? 0
+                                setsField.state.value?.length ?? 0,
                               );
                             setsField.removeValue(setIndex);
                             setDialogOpenIndex(null);
@@ -121,9 +125,9 @@ export const ExerciseSets = withForm({
                               <div>
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                    set.setType === 'working'
-                                      ? 'bg-primary/20 text-primary'
-                                      : 'bg-muted text-muted-foreground'
+                                    set.setType === "working"
+                                      ? "bg-primary/20 text-primary"
+                                      : "bg-muted text-muted-foreground"
                                   }`}
                                 >
                                   {set.setType}
@@ -135,7 +139,9 @@ export const ExerciseSets = withForm({
                                 {formatWeight(set.weight)}lb &#215; {set.reps}
                               </div>
                               <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
-                                {set.weight && set.reps && formatWeight(set.weight * set.reps)}{' '}
+                                {set.weight &&
+                                  set.reps &&
+                                  formatWeight(set.weight * set.reps)}{" "}
                                 volume
                               </div>
                             </div>
@@ -154,7 +160,7 @@ export const ExerciseSets = withForm({
                     setsField.pushValue({
                       weight: 0,
                       reps: 0,
-                      setType: 'working',
+                      setType: "working",
                     });
                     const updatedSets = setsField.state.value || [];
                     setDialogOpenIndex(updatedSets.length - 1);
@@ -171,8 +177,6 @@ export const ExerciseSets = withForm({
     );
   },
 });
-
-
 
 // MARK: Exercise Screen
 export function ExerciseScreen({

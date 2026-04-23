@@ -1,0 +1,21 @@
+# Keep formatter checks consistent between Windows worktrees and Linux CI.
+.github/workflows/*.yml text eol=lf
+.husky/* text eol=lf
+client/*.html text eol=lf
+client/*.json text eol=lf
+client/*.md text eol=lf
+client/*.ts text eol=lf
+client/*.js text eol=lf
+client/*.mjs text eol=lf
+client/**/*.css text eol=lf
+client/**/*.html text eol=lf
+client/**/*.js text eol=lf
+client/**/*.json text eol=lf
+client/**/*.jsonc text eol=lf
+client/**/*.md text eol=lf
+client/**/*.mjs text eol=lf
+client/**/*.ts text eol=lf
+client/**/*.tsx text eol=lf
+client/**/*.yml text eol=lf
+client/**/*.yaml text eol=lf
+client/bun.lock text eol=lf

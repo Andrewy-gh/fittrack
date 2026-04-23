@@ -104,11 +104,9 @@ test.describe("Authenticated - Workouts CRUD", () => {
 
     await expect(page).toHaveURL(/\/workouts\/\d+\/?$/);
     await expect(
-      page
-        .getByRole("main")
-        .locator('[data-slot="badge"]', {
-          hasText: updatedFocus.toUpperCase(),
-        }),
+      page.getByRole("main").locator('[data-slot="badge"]', {
+        hasText: updatedFocus.toUpperCase(),
+      }),
     ).toBeVisible();
 
     const deleteResponsePromise = page.waitForResponse(

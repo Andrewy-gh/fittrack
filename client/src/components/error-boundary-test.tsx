@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Test component to verify ErrorBoundary works correctly.
@@ -23,7 +23,7 @@ export function ErrorBoundaryTest() {
   const [shouldError, setShouldError] = useState(false);
 
   if (shouldError) {
-    throw new Error('Test error: ErrorBoundary is working!');
+    throw new Error("Test error: ErrorBoundary is working!");
   }
 
   return (
@@ -31,7 +31,8 @@ export function ErrorBoundaryTest() {
       <div className="space-y-4 border rounded-lg p-6 bg-card">
         <h2 className="text-xl font-semibold">ErrorBoundary Test</h2>
         <p className="text-sm text-muted-foreground">
-          Click the button below to trigger a React error and test the ErrorBoundary.
+          Click the button below to trigger a React error and test the
+          ErrorBoundary.
         </p>
         <Button
           onClick={() => setShouldError(true)}

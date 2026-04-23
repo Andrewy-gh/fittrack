@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import type { WorkoutContributionDataResponse } from '@/client';
-import { ChartBarMetric } from '@/components/charts/chart-bar-metric';
-import { RangeSelector } from '@/components/charts/chart-bar-vol.components';
-import type { RangeType } from '@/components/charts/chart-bar-vol.utils';
+import { useState } from "react";
+import type { WorkoutContributionDataResponse } from "@/client";
+import { ChartBarMetric } from "@/components/charts/chart-bar-metric";
+import { RangeSelector } from "@/components/charts/chart-bar-vol.components";
+import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   buildWorkoutVolumeChartData,
   getWorkoutVolumeBucketLabel,
   getWorkoutVolumeTitle,
-} from '@/lib/analytics';
+} from "@/lib/analytics";
 
-const ALL_FOCUS_VALUE = 'all';
+const ALL_FOCUS_VALUE = "all";
 
 export function WorkoutVolumeChart({
   data,
@@ -25,7 +25,7 @@ export function WorkoutVolumeChart({
   data: WorkoutContributionDataResponse;
   focusValues: string[];
 }) {
-  const [selectedRange, setSelectedRange] = useState<RangeType>('M');
+  const [selectedRange, setSelectedRange] = useState<RangeType>("M");
   const [selectedFocus, setSelectedFocus] = useState(ALL_FOCUS_VALUE);
 
   const activeFocus =
@@ -33,7 +33,7 @@ export function WorkoutVolumeChart({
   const chartData = buildWorkoutVolumeChartData(
     data.days,
     selectedRange,
-    activeFocus
+    activeFocus,
   );
   const bucketLabel = getWorkoutVolumeBucketLabel(selectedRange);
   const title = getWorkoutVolumeTitle(selectedRange, activeFocus);
@@ -60,7 +60,10 @@ export function WorkoutVolumeChart({
             />
           </div>
 
-          <Select value={selectedFocus} onValueChange={setSelectedFocus}>
+          <Select
+            value={selectedFocus}
+            onValueChange={setSelectedFocus}
+          >
             <SelectTrigger
               aria-label="Workout focus filter"
               className="w-full"
@@ -70,7 +73,10 @@ export function WorkoutVolumeChart({
             <SelectContent>
               <SelectItem value={ALL_FOCUS_VALUE}>All focus types</SelectItem>
               {focusValues.map((focus) => (
-                <SelectItem key={focus} value={focus}>
+                <SelectItem
+                  key={focus}
+                  value={focus}
+                >
                   {focus}
                 </SelectItem>
               ))}
@@ -91,11 +97,11 @@ export function WorkoutVolumeChart({
           description={description}
           range={selectedRange}
           bucket={
-            selectedRange === 'Y'
-              ? 'month'
-              : selectedRange === '6M'
-                ? 'week'
-                : 'day'
+            selectedRange === "Y"
+              ? "month"
+              : selectedRange === "6M"
+                ? "week"
+                : "day"
           }
           data={chartData}
           unit="vol"

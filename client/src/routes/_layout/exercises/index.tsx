@@ -1,11 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { exercisesQueryOptions } from '@/lib/api/exercises';
-import { getDemoExercisesQueryOptions } from '@/lib/demo-data/query-options';
-import { initializeDemoData, clearDemoData } from '@/lib/demo-data/storage';
-import { ExerciseList } from '@/components/exercises/exercise-list';
+import { createFileRoute } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { exercisesQueryOptions } from "@/lib/api/exercises";
+import { getDemoExercisesQueryOptions } from "@/lib/demo-data/query-options";
+import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
+import { ExerciseList } from "@/components/exercises/exercise-list";
 
-export const Route = createFileRoute('/_layout/exercises/')({
+export const Route = createFileRoute("/_layout/exercises/")({
   loader: async ({ context }) => {
     const user = context.user;
 

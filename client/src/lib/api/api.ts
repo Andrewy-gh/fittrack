@@ -1,5 +1,5 @@
-import { MutationCache, QueryClient } from '@tanstack/react-query';
-import { showErrorToast } from '@/lib/errors';
+import { MutationCache, QueryClient } from "@tanstack/react-query";
+import { showErrorToast } from "@/lib/errors";
 
 export const queryClient = new QueryClient({
   defaultOptions: {

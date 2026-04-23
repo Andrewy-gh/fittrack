@@ -91,7 +91,10 @@ export function CustomUserButton() {
               <Typography className="max-w-40 truncate">
                 {user.displayName}
               </Typography>
-              <Typography variant="secondary" className="max-w-40 truncate">
+              <Typography
+                variant="secondary"
+                className="max-w-40 truncate"
+              >
                 {user.primaryEmail}
               </Typography>
             </div>
@@ -113,7 +116,10 @@ export function CustomUserButton() {
 
         {/* Workouts */}
         <DropdownMenuItem asChild>
-          <Link to="/workouts" className="flex gap-2 items-center">
+          <Link
+            to="/workouts"
+            className="flex gap-2 items-center"
+          >
             <Dumbbell {...iconProps} />
             <Typography>Workouts</Typography>
           </Link>

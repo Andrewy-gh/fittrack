@@ -1,5 +1,5 @@
-import { queryClient } from './api';
-import { useMutation } from '@tanstack/react-query';
+import { queryClient } from "./api";
+import { useMutation } from "@tanstack/react-query";
 import {
   getExercisesQueryKey,
   getWorkoutsByIdQueryKey,
@@ -13,14 +13,14 @@ import {
   postWorkoutsMutation,
   putWorkoutsByIdMutation,
   deleteWorkoutsByIdMutation,
-} from '@/client/@tanstack/react-query.gen';
+} from "@/client/@tanstack/react-query.gen";
 import type {
   WorkoutUpdateExercise,
   WorkoutUpdateSet,
   WorkoutUpdateWorkoutRequest,
   WorkoutWorkoutWithSetsResponse,
-} from '@/client';
-import { sortByExerciseAndSetOrder } from '../utils';
+} from "@/client";
+import { sortByExerciseAndSetOrder } from "../utils";
 
 export type WorkoutFocus = {
   name: string;
@@ -112,7 +112,7 @@ export function useDeleteWorkoutMutation() {
 
 // MARK: Utils
 function groupSetsByExercise(
-  sortedWorkouts: WorkoutWorkoutWithSetsResponse[]
+  sortedWorkouts: WorkoutWorkoutWithSetsResponse[],
 ): Map<number, { exercise: WorkoutUpdateExercise; order: number }> {
   const exercisesMap = new Map<
     number,
@@ -126,7 +126,7 @@ function groupSetsByExercise(
     if (!exercisesMap.has(exerciseId)) {
       exercisesMap.set(exerciseId, {
         exercise: {
-          name: workout.exercise_name || '',
+          name: workout.exercise_name || "",
           sets: [],
         },
         order: exerciseOrder,
@@ -137,7 +137,7 @@ function groupSetsByExercise(
     exerciseEntry.exercise.sets.push({
       weight: workout.weight || 0,
       reps: workout.reps || 0,
-      setType: workout.set_type as WorkoutUpdateSet['setType'],
+      setType: workout.set_type as WorkoutUpdateSet["setType"],
     });
   }
 
@@ -145,7 +145,7 @@ function groupSetsByExercise(
 }
 
 function extractOrderedExercises(
-  exercisesMap: Map<number, { exercise: WorkoutUpdateExercise; order: number }>
+  exercisesMap: Map<number, { exercise: WorkoutUpdateExercise; order: number }>,
 ): WorkoutUpdateExercise[] {
   return Array.from(exercisesMap.values())
     .sort((a, b) => a.order - b.order)
@@ -153,12 +153,12 @@ function extractOrderedExercises(
 }
 
 export function transformToWorkoutFormValues(
-  workouts: WorkoutWorkoutWithSetsResponse[]
+  workouts: WorkoutWorkoutWithSetsResponse[],
 ): WorkoutUpdateWorkoutRequest {
   if (workouts.length === 0) {
     return {
       date: new Date().toISOString(),
-      notes: '',
+      notes: "",
       exercises: [],
     };
   }
@@ -169,7 +169,7 @@ export function transformToWorkoutFormValues(
 
   return {
     date: workouts[0].workout_date || new Date().toISOString(),
-    notes: workouts[0].workout_notes || '',
+    notes: workouts[0].workout_notes || "",
     workoutFocus: workouts[0].workout_focus || undefined,
     exercises: orderedExercises,
   };

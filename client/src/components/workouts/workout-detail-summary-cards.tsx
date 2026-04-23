@@ -1,5 +1,5 @@
-import { Dumbbell, Hash, RotateCcw, Weight } from 'lucide-react';
-import { StatsGrid, weightFormatter } from '@/components/stats-grid';
+import { Dumbbell, Hash, RotateCcw, Weight } from "lucide-react";
+import { StatsGrid, weightFormatter } from "@/components/stats-grid";
 
 export interface WorkoutDetailSummaryCardsProps {
   uniqueExercises: number;
@@ -18,22 +18,22 @@ export function WorkoutDetailSummaryCards({
     <StatsGrid
       items={[
         {
-          label: 'Exercises',
+          label: "Exercises",
           value: uniqueExercises,
           icon: Dumbbell,
         },
         {
-          label: 'Total Sets',
+          label: "Total Sets",
           value: totalSets,
           icon: Hash,
         },
         {
-          label: 'Total Reps',
+          label: "Total Reps",
           value: totalReps,
           icon: RotateCcw,
         },
         {
-          label: 'Volume',
+          label: "Volume",
           value: totalVolume,
           icon: Weight,
           valueFormatter: weightFormatter,

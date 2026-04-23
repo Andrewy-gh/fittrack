@@ -1,6 +1,9 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { formatExerciseGoalSummary, getExerciseGoal } from '@/lib/exercise-goals';
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  formatExerciseGoalSummary,
+  getExerciseGoal,
+} from "@/lib/exercise-goals";
 
 function ExerciseContextCard({ goalSummary }: { goalSummary: string | null }) {
   if (!goalSummary) {
@@ -11,7 +14,10 @@ function ExerciseContextCard({ goalSummary }: { goalSummary: string | null }) {
     <Card className="border-0 shadow-sm backdrop-blur-sm">
       <CardContent className="space-y-4 pt-6">
         <div className="space-y-2">
-          <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">
+          <Badge
+            variant="outline"
+            className="border-primary/20 bg-primary/10 text-primary"
+          >
             Goal
           </Badge>
           <p className="text-sm font-medium">{goalSummary}</p>
@@ -29,7 +35,7 @@ export function ExerciseContextPanel({
   exerciseName: string;
 }) {
   const goalSummary = formatExerciseGoalSummary(
-    getExerciseGoal({ exerciseId, exerciseName })
+    getExerciseGoal({ exerciseId, exerciseName }),
   );
 
   if (!exerciseId) {

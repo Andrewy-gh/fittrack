@@ -1,38 +1,41 @@
-import { useMemo, useState } from 'react';
-import { ArrowDownAz, ArrowUpAz } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Toggle } from '@/components/ui/toggle';
+import { useMemo, useState } from "react";
+import { ArrowDownAz, ArrowUpAz } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Toggle } from "@/components/ui/toggle";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { PaginationControl } from '@/components/ui/pagination-control';
-import { sortByExerciseAndSetOrder } from '@/lib/utils';
-import type { ExerciseExerciseDetailExerciseResponse, ExerciseExerciseWithSetsResponse } from '@/client';
-import { ExerciseDeleteDialog } from '@/routes/_layout/exercises/-components/exercise-delete-dialog';
-import { ExerciseEditDialog } from '@/routes/_layout/exercises/-components/exercise-edit-dialog';
-import { ExerciseDetailHeader } from '@/components/exercises/exercise-detail-header';
-import { ExerciseSummaryCards } from '@/components/exercises/exercise-summary-cards';
-import { ExerciseMetricCharts } from '@/components/exercises/exercise-metric-charts';
+} from "@/components/ui/select";
+import { PaginationControl } from "@/components/ui/pagination-control";
+import { sortByExerciseAndSetOrder } from "@/lib/utils";
+import type {
+  ExerciseExerciseDetailExerciseResponse,
+  ExerciseExerciseWithSetsResponse,
+} from "@/client";
+import { ExerciseDeleteDialog } from "@/routes/_layout/exercises/-components/exercise-delete-dialog";
+import { ExerciseEditDialog } from "@/routes/_layout/exercises/-components/exercise-edit-dialog";
+import { ExerciseDetailHeader } from "@/components/exercises/exercise-detail-header";
+import { ExerciseSummaryCards } from "@/components/exercises/exercise-summary-cards";
+import { ExerciseMetricCharts } from "@/components/exercises/exercise-metric-charts";
 import {
   ExerciseWorkoutCards,
   type ExerciseWorkoutEntry,
-} from '@/components/exercises/exercise-workout-cards';
-import { ExerciseHistorical1RmCard } from '@/routes/_layout/exercises/-components/exercise-historical-1rm';
-import { ExerciseGoalsCard } from '@/components/exercises/exercise-goals-card';
+} from "@/components/exercises/exercise-workout-cards";
+import { ExerciseHistorical1RmCard } from "@/routes/_layout/exercises/-components/exercise-historical-1rm";
+import { ExerciseGoalsCard } from "@/components/exercises/exercise-goals-card";
 
 export interface ExerciseDetailProps {
   exercise: ExerciseExerciseDetailExerciseResponse;
   exerciseSets: ExerciseExerciseWithSetsResponse[];
   exerciseId: number;
   isDemoMode: boolean;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: "asc" | "desc";
   itemsPerPage: number;
   page?: number;
-  onSortOrderChange: (sortOrder: 'asc' | 'desc') => void;
+  onSortOrderChange: (sortOrder: "asc" | "desc") => void;
   onItemsPerPageChange: (itemsPerPage: number) => void;
   onPageChange: (page: number) => void;
 }
@@ -60,13 +63,17 @@ export function ExerciseDetail({
   const weights = safeExerciseSets.map((set) => set.weight || 0);
   const volumes = safeExerciseSets.map((set) => set.volume);
 
-  const averageWeight = totalSets > 0
-    ? weights.reduce((sum, weight) => sum + weight, 0) / weights.length
-    : 0;
+  const averageWeight =
+    totalSets > 0
+      ? weights.reduce((sum, weight) => sum + weight, 0) / weights.length
+      : 0;
   const maxWeight = totalSets > 0 ? Math.max(...weights) : 0;
-  const averageVolume = totalSets > 0
-    ? Math.round(volumes.reduce((sum, volume) => sum + volume, 0) / volumes.length)
-    : 0;
+  const averageVolume =
+    totalSets > 0
+      ? Math.round(
+          volumes.reduce((sum, volume) => sum + volume, 0) / volumes.length,
+        )
+      : 0;
   const maxVolume = totalSets > 0 ? Math.max(...volumes) : 0;
 
   const sortedExerciseSets = sortByExerciseAndSetOrder(safeExerciseSets);
@@ -74,7 +81,12 @@ export function ExerciseDetail({
   const workoutEntries = useMemo<ExerciseWorkoutEntry[]>(() => {
     const groups = new Map<
       number,
-      { workoutId: number; date: string; notes: string | null; sets: ExerciseExerciseWithSetsResponse[] }
+      {
+        workoutId: number;
+        date: string;
+        notes: string | null;
+        sets: ExerciseExerciseWithSetsResponse[];
+      }
     >();
     const ordered: ExerciseWorkoutEntry[] = [];
 
@@ -97,7 +109,7 @@ export function ExerciseDetail({
   }, [sortedExerciseSets]);
 
   const sortedWorkouts = useMemo(() => {
-    const direction = sortOrder === 'asc' ? 1 : -1;
+    const direction = sortOrder === "asc" ? 1 : -1;
     return [...workoutEntries].sort((a, b) => {
       const aTime = new Date(a.date).getTime();
       const bTime = new Date(b.date).getTime();
@@ -107,13 +119,13 @@ export function ExerciseDetail({
 
   const totalPages = Math.max(
     1,
-    Math.ceil(sortedWorkouts.length / itemsPerPage)
+    Math.ceil(sortedWorkouts.length / itemsPerPage),
   );
   const currentPage = Math.min(Math.max(1, page ?? 1), totalPages);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const pagedWorkouts = sortedWorkouts.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   const exerciseName = exercise.name;
@@ -142,7 +154,10 @@ export function ExerciseDetail({
           isDemoMode={isDemoMode}
         />
 
-        <ExerciseGoalsCard exerciseId={exerciseId} exerciseName={exerciseName} />
+        <ExerciseGoalsCard
+          exerciseId={exerciseId}
+          exerciseName={exerciseName}
+        />
 
         <ExerciseSummaryCards
           totalSets={totalSets}
@@ -167,17 +182,17 @@ export function ExerciseDetail({
                 Sort Order
               </Label>
               <Toggle
-                pressed={sortOrder === 'asc'}
+                pressed={sortOrder === "asc"}
                 onPressedChange={(pressed) =>
-                  onSortOrderChange(pressed ? 'asc' : 'desc')
+                  onSortOrderChange(pressed ? "asc" : "desc")
                 }
                 aria-label="Toggle sort order"
                 className="inline-flex items-center justify-center gap-2 px-3 py-1.5"
               >
                 <span className="text-sm">
-                  {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                  {sortOrder === "asc" ? "Ascending" : "Descending"}
                 </span>
-                {sortOrder === 'asc' ? (
+                {sortOrder === "asc" ? (
                   <ArrowUpAz className="w-4 h-4 opacity-70" />
                 ) : (
                   <ArrowDownAz className="w-4 h-4 opacity-70" />
@@ -186,7 +201,10 @@ export function ExerciseDetail({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="items-per-page" className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="items-per-page"
+                className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+              >
                 Show
               </Label>
               <div className="flex items-center gap-2">
@@ -194,7 +212,10 @@ export function ExerciseDetail({
                   value={String(itemsPerPage)}
                   onValueChange={(value) => onItemsPerPageChange(Number(value))}
                 >
-                  <SelectTrigger id="items-per-page" className="h-8 w-[70px]">
+                  <SelectTrigger
+                    id="items-per-page"
+                    className="h-8 w-[70px]"
+                  >
                     <SelectValue placeholder="10" />
                   </SelectTrigger>
                   <SelectContent>

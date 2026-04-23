@@ -1,8 +1,8 @@
-import { createFileRoute, useLocation } from '@tanstack/react-router';
-import { StackHandler } from '@stackframe/react';
-import { stackClientApp } from '@/stack';
+import { createFileRoute, useLocation } from "@tanstack/react-router";
+import { StackHandler } from "@stackframe/react";
+import { stackClientApp } from "@/stack";
 
-export const Route = createFileRoute('/handler/$')({
+export const Route = createFileRoute("/handler/$")({
   component: RouteComponent,
 });
 
@@ -19,6 +19,10 @@ function RouteComponent() {
     );
   }
   return (
-    <StackHandler app={stackClientApp} location={location.pathname} fullPage />
+    <StackHandler
+      app={stackClientApp}
+      location={location.pathname}
+      fullPage
+    />
   );
 }

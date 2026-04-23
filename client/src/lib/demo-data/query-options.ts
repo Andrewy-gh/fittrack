@@ -1,5 +1,5 @@
-import { queryOptions, type UseMutationOptions } from '@tanstack/react-query';
-import { queryClient } from '../api/api';
+import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
+import { queryClient } from "../api/api";
 import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
@@ -10,8 +10,8 @@ import type {
   WorkoutCreateWorkoutRequest,
   WorkoutUpdateWorkoutRequest,
   ResponseSuccessResponse,
-} from './types';
-import { buildDemoContributionData } from '@/lib/analytics';
+} from "./types";
+import { buildDemoContributionData } from "@/lib/analytics";
 import {
   getAllExercises,
   getAllWorkoutsForContribution,
@@ -27,10 +27,10 @@ import {
   deleteWorkout,
   getWorkoutFocusValues,
   initializeDemoData,
-} from './storage';
+} from "./storage";
 
 // Initialize demo data when module loads
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   initializeDemoData();
 }
 
@@ -38,24 +38,26 @@ if (typeof window !== 'undefined') {
 // Query Keys
 // ===========================
 
-export const getDemoExercisesQueryKey = () => [{ _id: 'demo_getExercises' }] as const;
+export const getDemoExercisesQueryKey = () =>
+  [{ _id: "demo_getExercises" }] as const;
 
 export const getDemoExercisesByIdQueryKey = (id: number) =>
-  [{ _id: 'demo_getExercisesById', path: { id } }] as const;
+  [{ _id: "demo_getExercisesById", path: { id } }] as const;
 
 export const getDemoExercisesByIdRecentSetsQueryKey = (id: number) =>
-  [{ _id: 'demo_getExercisesByIdRecentSets', path: { id } }] as const;
+  [{ _id: "demo_getExercisesByIdRecentSets", path: { id } }] as const;
 
-export const getDemoWorkoutsQueryKey = () => [{ _id: 'demo_getWorkouts' }] as const;
+export const getDemoWorkoutsQueryKey = () =>
+  [{ _id: "demo_getWorkouts" }] as const;
 
 export const getDemoWorkoutsByIdQueryKey = (id: number) =>
-  [{ _id: 'demo_getWorkoutsById', path: { id } }] as const;
+  [{ _id: "demo_getWorkoutsById", path: { id } }] as const;
 
 export const getDemoWorkoutsFocusValuesQueryKey = () =>
-  [{ _id: 'demo_getWorkoutsFocusValues' }] as const;
+  [{ _id: "demo_getWorkoutsFocusValues" }] as const;
 
 export const getDemoContributionDataQueryKey = () =>
-  [{ _id: 'demo_getWorkoutsContributionData' }] as const;
+  [{ _id: "demo_getWorkoutsContributionData" }] as const;
 
 function invalidateDemoWorkoutAnalyticsQueries() {
   queryClient.invalidateQueries({
@@ -169,7 +171,7 @@ export const patchDemoExercisesByIdMutation = (): UseMutationOptions<
     await new Promise((resolve) => setTimeout(resolve, 100));
     const success = updateExercise(id, body.name);
     if (!success) {
-      throw new Error('Exercise not found');
+      throw new Error("Exercise not found");
     }
   },
   onSuccess: (_, { path: { id } }) => {
@@ -191,7 +193,7 @@ export const deleteDemoExercisesByIdMutation = (): UseMutationOptions<
     await new Promise((resolve) => setTimeout(resolve, 100));
     const success = deleteExercise(id);
     if (!success) {
-      throw new Error('Exercise not found');
+      throw new Error("Exercise not found");
     }
   },
   onSuccess: (_, { path: { id } }) => {
@@ -247,14 +249,17 @@ export const putDemoWorkoutsByIdMutation = (): UseMutationOptions<
     await new Promise((resolve) => setTimeout(resolve, 200));
     const result = updateWorkout(id, body);
     if (!result.success) {
-      throw new Error('Workout not found');
+      throw new Error("Workout not found");
     }
   },
   onSuccess: (_, { path: { id } }) => {
     queryClient.invalidateQueries({
       queryKey: getDemoWorkoutsQueryKey(),
     });
-    queryClient.setQueryData(getDemoWorkoutsByIdQueryKey(id), getWorkoutById(id));
+    queryClient.setQueryData(
+      getDemoWorkoutsByIdQueryKey(id),
+      getWorkoutById(id),
+    );
     invalidateDemoWorkoutAnalyticsQueries();
   },
 });
@@ -268,7 +273,7 @@ export const deleteDemoWorkoutsByIdMutation = (): UseMutationOptions<
     await new Promise((resolve) => setTimeout(resolve, 100));
     const success = deleteWorkout(id);
     if (!success) {
-      throw new Error('Workout not found');
+      throw new Error("Workout not found");
     }
   },
   onSuccess: (_, { path: { id } }) => {

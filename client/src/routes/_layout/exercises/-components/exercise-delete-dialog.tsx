@@ -7,14 +7,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useState } from 'react';
-import { useRouter, useRouteContext } from '@tanstack/react-router';
-import { useMutation } from '@tanstack/react-query';
-import { useDeleteExerciseMutation } from '@/lib/api/exercises';
-import { deleteDemoExercisesByIdMutationWithMeta } from '@/lib/demo-data/query-options';
-import { showErrorToast } from '@/lib/errors';
-import { toast } from 'sonner';
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import { useRouter, useRouteContext } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { useDeleteExerciseMutation } from "@/lib/api/exercises";
+import { deleteDemoExercisesByIdMutationWithMeta } from "@/lib/demo-data/query-options";
+import { showErrorToast } from "@/lib/errors";
+import { toast } from "sonner";
 
 interface ExerciseDeleteDialogProps {
   isOpen: boolean;
@@ -32,7 +32,9 @@ export function ExerciseDeleteDialog({
   const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
   const authDeleteMutation = useDeleteExerciseMutation();
-  const demoDeleteMutation = useMutation(deleteDemoExercisesByIdMutationWithMeta());
+  const demoDeleteMutation = useMutation(
+    deleteDemoExercisesByIdMutationWithMeta(),
+  );
   const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
 
   const handleDelete = async () => {
@@ -42,20 +44,23 @@ export function ExerciseDeleteDialog({
         { path: { id: exerciseId } },
         {
           onSuccess: () => {
-            toast.success('Exercise deleted successfully');
-            router.navigate({ to: '/exercises' });
+            toast.success("Exercise deleted successfully");
+            router.navigate({ to: "/exercises" });
           },
-        }
+        },
       );
     } catch (error) {
-      showErrorToast(error, 'Failed to delete exercise. Please try again.');
+      showErrorToast(error, "Failed to delete exercise. Please try again.");
     } finally {
       setIsDeleting(false);
     }
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={onOpenChange}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -71,7 +76,7 @@ export function ExerciseDeleteDialog({
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? 'Deleting...' : 'Delete Exercise'}
+            {isDeleting ? "Deleting..." : "Delete Exercise"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

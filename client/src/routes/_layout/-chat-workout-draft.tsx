@@ -40,7 +40,9 @@ export function ChatWorkoutDraftCard({
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <DraftMetaPill>{formatWorkoutDate(draft.date)}</DraftMetaPill>
             {draft.workoutFocus ? (
-              <DraftMetaPill>{labelizeWorkoutFocus(draft.workoutFocus)}</DraftMetaPill>
+              <DraftMetaPill>
+                {labelizeWorkoutFocus(draft.workoutFocus)}
+              </DraftMetaPill>
             ) : null}
             <DraftMetaPill>
               {draft.exercises.length} exercise
@@ -51,7 +53,10 @@ export function ChatWorkoutDraftCard({
             </DraftMetaPill>
           </div>
         </div>
-        <Button type="button" onClick={onEdit}>
+        <Button
+          type="button"
+          onClick={onEdit}
+        >
           Edit in workout form
         </Button>
       </div>
@@ -67,7 +72,8 @@ export function ChatWorkoutDraftCard({
                 {exerciseIndex + 1}. {exercise.name}
               </p>
               <p className="shrink-0 text-xs text-muted-foreground">
-                {exercise.sets.length} set{exercise.sets.length === 1 ? "" : "s"}
+                {exercise.sets.length} set
+                {exercise.sets.length === 1 ? "" : "s"}
               </p>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -134,7 +140,8 @@ function labelizeWorkoutFocus(value: string): string {
 
 function formatWorkoutSet(set: AIWorkoutSetInput): string {
   const label = set.setType === "warmup" ? "Warm-up" : "Working";
-  const weight = set.weight === undefined ? "" : ` @ ${formatWeight(set.weight)}`;
+  const weight =
+    set.weight === undefined ? "" : ` @ ${formatWeight(set.weight)}`;
   return `${label}: ${set.reps} reps${weight}`;
 }
 

@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
-import { toast } from 'sonner';
+import { useMemo, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
+import { toast } from "sonner";
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -13,26 +13,26 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 
 import type {
   ExerciseExerciseDetailExerciseResponse,
   ExerciseExerciseWithSetsResponse,
-} from '@/client';
-import {
-  useUpdateExerciseHistorical1RmMutation,
-} from '@/lib/api/exercises';
+} from "@/client";
+import { useUpdateExerciseHistorical1RmMutation } from "@/lib/api/exercises";
 import {
   getDemoExerciseHistorical1Rm,
   recomputeDemoExerciseHistorical1Rm,
   setDemoExerciseHistorical1RmManual,
-} from '@/lib/demo-data/historical-1rm';
+} from "@/lib/demo-data/historical-1rm";
 
-function computeBestE1rmFromSets(sets: ExerciseExerciseWithSetsResponse[]): { best: number; workoutId: number } | null {
+function computeBestE1rmFromSets(
+  sets: ExerciseExerciseWithSetsResponse[],
+): { best: number; workoutId: number } | null {
   let best: number | null = null;
   let workoutId: number | null = null;
   for (const s of sets) {
-    if (s.set_type !== 'working') continue;
+    if (s.set_type !== "working") continue;
     const w = s.weight ?? 0;
     const reps = s.reps ?? 0;
     const e1rm = w * (1 + reps / 30);
@@ -56,7 +56,9 @@ export function resolveBestE1rmForDisplay({
   exerciseSets: ExerciseExerciseWithSetsResponse[];
 }): { best: number | null; workoutId: number | null } {
   const shouldFallbackFromSets = isDemoMode || apiBestE1RM == null;
-  const bestFromSets = shouldFallbackFromSets ? computeBestE1rmFromSets(exerciseSets) : null;
+  const bestFromSets = shouldFallbackFromSets
+    ? computeBestE1rmFromSets(exerciseSets)
+    : null;
 
   return {
     best: apiBestE1RM ?? bestFromSets?.best ?? null,
@@ -65,7 +67,7 @@ export function resolveBestE1rmForDisplay({
 }
 
 function fmtLb(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return '—';
+  if (n == null || !Number.isFinite(n)) return "—";
   return `${n.toFixed(1)} lb`;
 }
 
@@ -89,19 +91,21 @@ export function ExerciseHistorical1RmCard({
         apiBestE1RM: exercise.best_e1rm,
         exerciseSets,
       }),
-    [isDemoMode, exercise.best_e1rm, exerciseSets]
+    [isDemoMode, exercise.best_e1rm, exerciseSets],
   );
-  const demoStored = isDemoMode ? getDemoExerciseHistorical1Rm(exerciseId) : null;
+  const demoStored = isDemoMode
+    ? getDemoExerciseHistorical1Rm(exerciseId)
+    : null;
 
   const stored = isDemoMode
-    ? demoStored?.historical_1rm ?? null
-    : exercise.historical_1rm ?? null;
+    ? (demoStored?.historical_1rm ?? null)
+    : (exercise.historical_1rm ?? null);
   const storedUpdatedAt = isDemoMode
-    ? demoStored?.updated_at ?? null
-    : exercise.historical_1rm_updated_at ?? null;
+    ? (demoStored?.updated_at ?? null)
+    : (exercise.historical_1rm_updated_at ?? null);
   const storedSourceWorkoutId = isDemoMode
-    ? demoStored?.source_workout_id ?? null
-    : exercise.historical_1rm_source_workout_id ?? null;
+    ? (demoStored?.source_workout_id ?? null)
+    : (exercise.historical_1rm_source_workout_id ?? null);
   const computed = computedBest.best;
   const computedWorkoutId = computedBest.workoutId;
 
@@ -168,21 +172,22 @@ function MetaLine({
 }) {
   const router = useRouter();
   const onWorkoutClick = (workoutId: number) =>
-    router.navigate({ to: '/workouts/$workoutId', params: { workoutId } });
+    router.navigate({ to: "/workouts/$workoutId", params: { workoutId } });
 
   if (stored != null) {
     const updated = storedUpdatedAt ? new Date(storedUpdatedAt) : null;
-    const updatedText = updated && !isNaN(updated.getTime())
-      ? `Updated ${updated.toLocaleDateString()}`
-      : 'Updated';
+    const updatedText =
+      updated && !isNaN(updated.getTime())
+        ? `Updated ${updated.toLocaleDateString()}`
+        : "Updated";
 
     return (
       <div className="text-xs text-muted-foreground">
         {updatedText}
         {storedSourceWorkoutId != null ? (
           <>
-            {' '}
-            •{' '}
+            {" "}
+            •{" "}
             <button
               type="button"
               className="underline underline-offset-2"
@@ -204,8 +209,8 @@ function MetaLine({
         Not set. Best e1RM: {fmtLb(computed)}
         {computedWorkoutId != null ? (
           <>
-            {' '}
-            •{' '}
+            {" "}
+            •{" "}
             <button
               type="button"
               className="underline underline-offset-2"
@@ -219,11 +224,7 @@ function MetaLine({
     );
   }
 
-  return (
-    <div className="text-xs text-muted-foreground">
-      Not set yet.
-    </div>
-  );
+  return <div className="text-xs text-muted-foreground">Not set yet.</div>;
 }
 
 function ExerciseHistorical1RmDialog({
@@ -243,7 +244,7 @@ function ExerciseHistorical1RmDialog({
   computed: number | null;
   computedWorkoutId: number | null;
 }) {
-  const [value, setValue] = useState<string>('');
+  const [value, setValue] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mutation = useUpdateExerciseHistorical1RmMutation();
@@ -251,22 +252,22 @@ function ExerciseHistorical1RmDialog({
   const defaultValue = useMemo(() => {
     if (stored != null) return String(stored);
     if (computed != null) return String(computed);
-    return '';
+    return "";
   }, [stored, computed]);
 
   const handleClose = (open: boolean) => {
     onOpenChange(open);
     if (!open) {
-      setValue('');
+      setValue("");
       setIsSubmitting(false);
     }
   };
 
   const submitManual = async () => {
     const trimmed = value.trim();
-    const parsed = trimmed === '' ? null : Number(trimmed);
+    const parsed = trimmed === "" ? null : Number(trimmed);
     if (parsed != null && (!Number.isFinite(parsed) || parsed < 0)) {
-      toast.error('Enter a valid number');
+      toast.error("Enter a valid number");
       return;
     }
 
@@ -277,15 +278,16 @@ function ExerciseHistorical1RmDialog({
       } else {
         await mutation.mutateAsync({
           path: { id: exerciseId },
-          body: parsed == null
-            ? { mode: 'manual' }
-            : { mode: 'manual', historical_1rm: parsed },
+          body:
+            parsed == null
+              ? { mode: "manual" }
+              : { mode: "manual", historical_1rm: parsed },
         });
       }
-      toast.success('Historical 1RM updated');
+      toast.success("Historical 1RM updated");
       handleClose(false);
     } catch {
-      toast.error('Failed to update historical 1RM');
+      toast.error("Failed to update historical 1RM");
     } finally {
       setIsSubmitting(false);
     }
@@ -299,20 +301,23 @@ function ExerciseHistorical1RmDialog({
       } else {
         await mutation.mutateAsync({
           path: { id: exerciseId },
-          body: { mode: 'recompute' },
+          body: { mode: "recompute" },
         });
       }
-      toast.success('Historical 1RM recomputed');
+      toast.success("Historical 1RM recomputed");
       handleClose(false);
     } catch {
-      toast.error('Failed to recompute historical 1RM');
+      toast.error("Failed to recompute historical 1RM");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={handleClose}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Historical 1RM</DialogTitle>
@@ -329,14 +334,16 @@ function ExerciseHistorical1RmDialog({
               type="number"
               inputMode="decimal"
               step="0.1"
-              placeholder={defaultValue || 'e.g. 315'}
+              placeholder={defaultValue || "e.g. 315"}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               disabled={isSubmitting}
             />
             <div className="text-xs text-muted-foreground">
               Stored: {fmtLb(stored)} • Best e1RM: {fmtLb(computed)}
-              {computedWorkoutId != null ? ` (workout ${computedWorkoutId})` : ''}
+              {computedWorkoutId != null
+                ? ` (workout ${computedWorkoutId})`
+                : ""}
             </div>
           </div>
         </div>

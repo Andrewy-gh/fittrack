@@ -1,14 +1,14 @@
-import { Link } from '@tanstack/react-router';
-import { Sun, Moon } from 'lucide-react';
-import { useTheme } from '@/components/theme-provider';
-import { Button } from '@/components/ui/button';
-import { MobileBottomNav } from './mobile-bottom-nav';
+import { Link } from "@tanstack/react-router";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
+import { Button } from "@/components/ui/button";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
 export function DemoHeader() {
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   return (
@@ -18,18 +18,18 @@ export function DemoHeader() {
         data-app-header
       >
         <nav className="hidden md:flex md:flex-row md:mr-auto">
-            <div className="px-2 font-bold">
-              <Link to="/">Home</Link>
-            </div>
-            <div className="px-2 font-bold">
-              <Link to="/workouts">Workouts</Link>
-            </div>
-            <div className="px-2 font-bold">
-              <Link to="/exercises">Exercises</Link>
-            </div>
-            <div className="px-2 font-bold">
-              <Link to="/analytics">Analytics</Link>
-            </div>
+          <div className="px-2 font-bold">
+            <Link to="/">Home</Link>
+          </div>
+          <div className="px-2 font-bold">
+            <Link to="/workouts">Workouts</Link>
+          </div>
+          <div className="px-2 font-bold">
+            <Link to="/exercises">Exercises</Link>
+          </div>
+          <div className="px-2 font-bold">
+            <Link to="/analytics">Analytics</Link>
+          </div>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -39,12 +39,15 @@ export function DemoHeader() {
             onClick={toggleTheme}
             className="h-8 w-8"
           >
-            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
           </Button>
         </div>
       </header>
 
-      <MobileBottomNav includeChat isAuthenticated={false} />
+      <MobileBottomNav
+        includeChat
+        isAuthenticated={false}
+      />
     </>
   );
 }

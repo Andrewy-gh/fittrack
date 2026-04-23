@@ -7,8 +7,8 @@ import {
   markRecentTouchActivation,
   shouldSuppressTouchClick,
   updateTouchTapTracking,
-} from '@/lib/touch-activation';
-import { describe, expect, it, vi } from 'vitest';
+} from "@/lib/touch-activation";
+import { describe, expect, it, vi } from "vitest";
 
 function createTouchEvent(x: number, y: number) {
   return {
@@ -18,9 +18,9 @@ function createTouchEvent(x: number, y: number) {
 }
 
 function dispatchClick(element: HTMLElement, timeStamp: number) {
-  const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+  const event = new MouseEvent("click", { bubbles: true, cancelable: true });
 
-  Object.defineProperty(event, 'timeStamp', {
+  Object.defineProperty(event, "timeStamp", {
     configurable: true,
     value: timeStamp,
   });
@@ -28,12 +28,12 @@ function dispatchClick(element: HTMLElement, timeStamp: number) {
   element.dispatchEvent(event);
 }
 
-function createTouchTarget(tagName: 'button' | 'div') {
+function createTouchTarget(tagName: "button" | "div") {
   const element = document.createElement(tagName);
   const clickSpy = vi.fn();
 
   element.addEventListener(
-    'click',
+    "click",
     (event) => {
       if (!shouldSuppressTouchClick(event.currentTarget, event.timeStamp)) {
         return;
@@ -42,42 +42,48 @@ function createTouchTarget(tagName: 'button' | 'div') {
       event.preventDefault();
       event.stopPropagation();
     },
-    true
+    true,
   );
-  element.addEventListener('click', clickSpy);
+  element.addEventListener("click", clickSpy);
 
   return { clickSpy, element };
 }
 
-describe('touch activation helpers', () => {
-  it('treats a short touch as a tap', () => {
-    const element = document.createElement('div');
+describe("touch activation helpers", () => {
+  it("treats a short touch as a tap", () => {
+    const element = document.createElement("div");
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
 
-    expect(finishTouchTapTracking(element, createTouchEvent(14, 24))).toBe(true);
+    expect(finishTouchTapTracking(element, createTouchEvent(14, 24))).toBe(
+      true,
+    );
   });
 
-  it('treats a moved touch as a drag', () => {
-    const element = document.createElement('div');
+  it("treats a moved touch as a drag", () => {
+    const element = document.createElement("div");
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
     updateTouchTapTracking(element, createTouchEvent(10, 42));
 
-    expect(finishTouchTapTracking(element, createTouchEvent(10, 42))).toBe(false);
+    expect(finishTouchTapTracking(element, createTouchEvent(10, 42))).toBe(
+      false,
+    );
   });
 
-  it('does not treat a canceled touch as a tap', () => {
-    const element = document.createElement('div');
+  it("does not treat a canceled touch as a tap", () => {
+    const element = document.createElement("div");
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
     cancelTouchTapTracking(element);
 
-    expect(finishTouchTapTracking(element, createTouchEvent(10, 20))).toBe(false);
+    expect(finishTouchTapTracking(element, createTouchEvent(10, 20))).toBe(
+      false,
+    );
   });
 
-  it('tracks recent touch activation windows', () => {
-    const element = document.createElement('div');
+  it("tracks recent touch activation windows", () => {
+    const element = document.createElement("div");
 
     markRecentTouchActivation(element, 100);
 
@@ -85,8 +91,8 @@ describe('touch activation helpers', () => {
     expect(hasRecentTouchActivation(element, 900)).toBe(false);
   });
 
-  it('allows repeated quick taps on the same selectable item while suppressing follow-up clicks', () => {
-    const { clickSpy, element } = createTouchTarget('button');
+  it("allows repeated quick taps on the same selectable item while suppressing follow-up clicks", () => {
+    const { clickSpy, element } = createTouchTarget("button");
     const preventDefault = vi.fn();
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
@@ -96,7 +102,7 @@ describe('touch activation helpers', () => {
         ...createTouchEvent(10, 20),
         preventDefault,
         timeStamp: 100,
-      } as unknown as TouchEvent)
+      } as unknown as TouchEvent),
     ).toBe(true);
     expect(preventDefault).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -111,13 +117,13 @@ describe('touch activation helpers', () => {
         ...createTouchEvent(10, 20),
         preventDefault,
         timeStamp: 250,
-      } as unknown as TouchEvent)
+      } as unknown as TouchEvent),
     ).toBe(true);
     expect(clickSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('allows repeated quick taps on the create row while suppressing follow-up clicks', () => {
-    const { clickSpy, element } = createTouchTarget('div');
+  it("allows repeated quick taps on the create row while suppressing follow-up clicks", () => {
+    const { clickSpy, element } = createTouchTarget("div");
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
     activateTouchTap(element, {

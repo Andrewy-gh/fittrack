@@ -1,6 +1,14 @@
-import { createEvent, fireEvent, render, screen } from '@testing-library/react';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ExerciseCombobox } from '@/components/exercise-combobox';
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { ExerciseCombobox } from "@/components/exercise-combobox";
 
 let mediaQueryMatches = false;
 const originalResizeObserver = globalThis.ResizeObserver;
@@ -14,17 +22,17 @@ beforeAll(() => {
     disconnect() {}
   }
 
-  Object.defineProperty(globalThis, 'ResizeObserver', {
+  Object.defineProperty(globalThis, "ResizeObserver", {
     value: ResizeObserverMock,
     writable: true,
   });
 
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     value: () => {},
     writable: true,
   });
 
-  Object.defineProperty(globalThis, 'matchMedia', {
+  Object.defineProperty(globalThis, "matchMedia", {
     value: (query: string) =>
       ({
         matches: mediaQueryMatches,
@@ -45,17 +53,17 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  Object.defineProperty(globalThis, 'ResizeObserver', {
+  Object.defineProperty(globalThis, "ResizeObserver", {
     value: originalResizeObserver,
     writable: true,
   });
 
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     value: originalScrollIntoView,
     writable: true,
   });
 
-  Object.defineProperty(globalThis, 'matchMedia', {
+  Object.defineProperty(globalThis, "matchMedia", {
     value: originalMatchMedia,
     writable: true,
   });
@@ -85,22 +93,22 @@ function touchTap(target: Element, x = 8, y = 12) {
 async function renderMobileExerciseCombobox(onCreate = vi.fn()) {
   render(
     <ExerciseCombobox
-      options={[{ id: 1, name: 'Squat' }]}
+      options={[{ id: 1, name: "Squat" }]}
       selected=""
       onChange={vi.fn()}
       onCreate={onCreate}
-    />
+    />,
   );
 
-  const trigger = screen.getByText('Select exercise...').closest('button');
+  const trigger = screen.getByText("Select exercise...").closest("button");
 
   if (!trigger) {
-    throw new Error('Expected exercise combobox trigger button');
+    throw new Error("Expected exercise combobox trigger button");
   }
 
   fireEvent.click(trigger);
-  fireEvent.change(screen.getByPlaceholderText('Search exercises...'), {
-    target: { value: 'Bench' },
+  fireEvent.change(screen.getByPlaceholderText("Search exercises..."), {
+    target: { value: "Bench" },
   });
 
   const [createRow] = await screen.findAllByText('Create "Bench"');
@@ -108,18 +116,18 @@ async function renderMobileExerciseCombobox(onCreate = vi.fn()) {
   return { createRow, onCreate };
 }
 
-describe('ExerciseCombobox create row', () => {
-  it('creates an option on touch release in the mobile drawer path', async () => {
+describe("ExerciseCombobox create row", () => {
+  it("creates an option on touch release in the mobile drawer path", async () => {
     const { createRow, onCreate } = await renderMobileExerciseCombobox();
 
     const releasedTouch = touchTap(createRow);
 
     expect(onCreate).toHaveBeenCalledTimes(1);
-    expect(onCreate).toHaveBeenCalledWith('Bench');
+    expect(onCreate).toHaveBeenCalledWith("Bench");
     expect(releasedTouch.defaultPrevented).toBe(true);
   });
 
-  it('does not create an option after touch tracking is canceled', async () => {
+  it("does not create an option after touch tracking is canceled", async () => {
     const { createRow, onCreate } = await renderMobileExerciseCombobox();
 
     touchStart(createRow);
@@ -129,7 +137,7 @@ describe('ExerciseCombobox create row', () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it('does not create a duplicate option after a follow-up click', async () => {
+  it("does not create a duplicate option after a follow-up click", async () => {
     const { createRow, onCreate } = await renderMobileExerciseCombobox();
 
     touchTap(createRow);

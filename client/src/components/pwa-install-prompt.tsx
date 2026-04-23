@@ -1,37 +1,37 @@
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
-const DISMISS_KEY = "fittrack:pwa-install-prompt:v1"
+const DISMISS_KEY = "fittrack:pwa-install-prompt:v1";
 
-type DevicePlatform = "ios" | "android" | "other"
+type DevicePlatform = "ios" | "android" | "other";
 
 function getPlatform(): DevicePlatform {
-  const ua = navigator.userAgent.toLowerCase()
+  const ua = navigator.userAgent.toLowerCase();
   if (/iphone|ipad|ipod/.test(ua)) {
-    return "ios"
+    return "ios";
   }
   if (/android/.test(ua)) {
-    return "android"
+    return "android";
   }
-  return "other"
+  return "other";
 }
 
 function isStandalone(): boolean {
   if (window.matchMedia("(display-mode: standalone)").matches) {
-    return true
+    return true;
   }
   const iosStandalone = (navigator as Navigator & { standalone?: boolean })
-    .standalone
-  return iosStandalone === true
+    .standalone;
+  return iosStandalone === true;
 }
 
 function isMobileTouch(platform: DevicePlatform): boolean {
-  const coarsePointer = window.matchMedia("(pointer: coarse)").matches
-  const touchPoints = navigator.maxTouchPoints > 0
-  const isTouch = coarsePointer || touchPoints
-  const mobileViewport = window.matchMedia("(max-width: 1024px)").matches
-  const platformKnown = platform !== "other"
-  return isTouch && (mobileViewport || platformKnown)
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const touchPoints = navigator.maxTouchPoints > 0;
+  const isTouch = coarsePointer || touchPoints;
+  const mobileViewport = window.matchMedia("(max-width: 1024px)").matches;
+  const platformKnown = platform !== "other";
+  return isTouch && (mobileViewport || platformKnown);
 }
 
 function getCopy(platform: DevicePlatform): { title: string; body: string } {
@@ -39,92 +39,92 @@ function getCopy(platform: DevicePlatform): { title: string; body: string } {
     return {
       title: "Install FitTrack",
       body: "Tap Share, then Add to Home Screen for the full app experience.",
-    }
+    };
   }
   if (platform === "android") {
     return {
       title: "Install FitTrack",
       body: "Tap the menu (⋮), then Add to Home screen or Install app.",
-    }
+    };
   }
   return {
     title: "Install FitTrack",
     body: "Use your browser menu to add FitTrack to your home screen.",
-  }
+  };
 }
 
 export function PwaInstallPrompt() {
-  const [visible, setVisible] = useState(false)
-  const [platform, setPlatform] = useState<DevicePlatform>("other")
+  const [visible, setVisible] = useState(false);
+  const [platform, setPlatform] = useState<DevicePlatform>("other");
 
   useEffect(() => {
     if (typeof window === "undefined") {
-      return
+      return;
     }
 
-    const header = document.querySelector<HTMLElement>("[data-app-header]")
+    const header = document.querySelector<HTMLElement>("[data-app-header]");
     const updateHeaderHeight = () => {
       if (!header) {
-        return
+        return;
       }
-      const height = Math.ceil(header.getBoundingClientRect().height)
+      const height = Math.ceil(header.getBoundingClientRect().height);
       document.documentElement.style.setProperty(
         "--app-header-height",
-        `${height}px`
-      )
-    }
+        `${height}px`,
+      );
+    };
 
-    updateHeaderHeight()
+    updateHeaderHeight();
 
-    let observer: ResizeObserver | null = null
+    let observer: ResizeObserver | null = null;
     if ("ResizeObserver" in window && header) {
-      observer = new ResizeObserver(updateHeaderHeight)
-      observer.observe(header)
+      observer = new ResizeObserver(updateHeaderHeight);
+      observer.observe(header);
     }
-    window.addEventListener("resize", updateHeaderHeight)
+    window.addEventListener("resize", updateHeaderHeight);
 
-    const nextPlatform = getPlatform()
+    const nextPlatform = getPlatform();
     if (isStandalone() || !isMobileTouch(nextPlatform)) {
       if (observer) {
-        observer.disconnect()
+        observer.disconnect();
       }
-      window.removeEventListener("resize", updateHeaderHeight)
-      return
+      window.removeEventListener("resize", updateHeaderHeight);
+      return;
     }
 
     try {
       if (localStorage.getItem(DISMISS_KEY) === "1") {
-        return
+        return;
       }
     } catch {
       // Ignore storage errors; still show prompt once per load.
     }
 
-    setPlatform(nextPlatform)
-    setVisible(true)
+    setPlatform(nextPlatform);
+    setVisible(true);
 
     return () => {
       if (observer) {
-        observer.disconnect()
+        observer.disconnect();
       }
-      window.removeEventListener("resize", updateHeaderHeight)
-    }
-  }, [])
+      window.removeEventListener("resize", updateHeaderHeight);
+    };
+  }, []);
 
   const dismiss = () => {
-    setVisible(false)
+    setVisible(false);
     try {
-      localStorage.setItem(DISMISS_KEY, "1")
+      localStorage.setItem(DISMISS_KEY, "1");
     } catch {
       // Ignore storage errors; dismissal will be session-only.
     }
-  }
+  };
 
   if (!visible) {
-    return null
+    return null;
   }
 
-  const { title, body } = getCopy(platform)
+  const { title, body } = getCopy(platform);
 
   return (
     <div
@@ -149,5 +149,5 @@ export function PwaInstallPrompt() {
         </Button>
       </div>
     </div>
-  )
+  );
 }

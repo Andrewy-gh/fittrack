@@ -1,44 +1,47 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Suspense, useMemo, useState, type ReactNode } from 'react';
-import { z } from 'zod';
-import { useAppForm } from '@/hooks/form';
-import { useSaveWorkoutMutation, type WorkoutFocus } from '@/lib/api/workouts';
-import { useSuspenseQuery, useMutation } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { MiniChart } from './-components/mini-chart';
-import { X } from 'lucide-react';
-import { Spinner } from '@/components/ui/spinner';
-import type { CurrentUser, CurrentInternalUser } from '@stackframe/react';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Suspense, useMemo, useState, type ReactNode } from "react";
+import { z } from "zod";
+import { useAppForm } from "@/hooks/form";
+import { useSaveWorkoutMutation, type WorkoutFocus } from "@/lib/api/workouts";
+import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MiniChart } from "./-components/mini-chart";
+import { X } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
 import {
   type WorkoutDraftStorage,
   workoutDraftStorage,
-} from '@/lib/local-storage';
-import { type DbExercise } from '@/lib/api/exercises';
-import { getInitialValues, MOCK_VALUES } from './-components/form-options';
-import { postDemoWorkoutsMutation } from '@/lib/demo-data/query-options';
-import { initializeDemoData } from '@/lib/demo-data/storage';
-import { toast } from 'sonner';
+} from "@/lib/local-storage";
+import { type DbExercise } from "@/lib/api/exercises";
+import { getInitialValues, MOCK_VALUES } from "./-components/form-options";
+import { postDemoWorkoutsMutation } from "@/lib/demo-data/query-options";
+import { initializeDemoData } from "@/lib/demo-data/storage";
+import { toast } from "sonner";
 import {
   getExercisesQueryOptions,
   getWorkoutByIdQueryOptions,
   getWorkoutsQueryOptions,
   getWorkoutsFocusQueryOptions,
-} from '@/lib/api/unified-query-options';
-import { formatWeight } from '@/lib/utils';
+} from "@/lib/api/unified-query-options";
+import { formatWeight } from "@/lib/utils";
 import {
   ErrorBoundary,
   FullScreenErrorFallback,
-} from '@/components/error-boundary';
-import { queryClient } from '@/lib/api/api';
-import { ExerciseContextPanel } from './-components/exercise-context-panel';
-import { LastWorkoutNoteSection } from '@/components/workouts/last-workout-note-section';
+} from "@/components/error-boundary";
+import { queryClient } from "@/lib/api/api";
+import { ExerciseContextPanel } from "./-components/exercise-context-panel";
+import { LastWorkoutNoteSection } from "@/components/workouts/last-workout-note-section";
 import {
   buildWorkoutDraftFromHistory,
   getLatestWorkoutNote,
-} from '@/lib/workout-insights';
-import { formatExerciseGoalSummary, getExerciseGoal } from '@/lib/exercise-goals';
-import type { WorkoutWorkoutResponse } from '@/client';
+} from "@/lib/workout-insights";
+import {
+  formatExerciseGoalSummary,
+  getExerciseGoal,
+} from "@/lib/exercise-goals";
+import type { WorkoutWorkoutResponse } from "@/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,33 +51,33 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 
-import { AddExerciseScreen } from './-components/add-exercise-screen';
+import { AddExerciseScreen } from "./-components/add-exercise-screen";
 import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
-} from './-components/exercise-screen';
-import { RecentSets } from './-components/recent-sets-display';
+} from "./-components/exercise-screen";
+import { RecentSets } from "./-components/recent-sets-display";
 import {
   hasWorkoutDraftContent,
   shouldShowRecentFocusAreaCard,
-} from './-components/workout-form-helpers';
+} from "./-components/workout-form-helpers";
 import {
   WorkoutExerciseCards,
   type WorkoutExerciseCard,
   WorkoutFormActions,
   WorkoutMetadataFields,
-} from './-components/workout-form-sections';
-import { useExerciseReorder } from './-components/use-exercise-reorder';
+} from "./-components/workout-form-sections";
+import { useExerciseReorder } from "./-components/use-exercise-reorder";
 
 function WorkoutExerciseSection({
   field,
@@ -88,7 +91,7 @@ function WorkoutExerciseSection({
   renderExerciseGoalSummary: (exercise: { name: string }) => ReactNode;
 }) {
   const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(
-    field.state.value as WorkoutExerciseCard[]
+    field.state.value as WorkoutExerciseCard[],
   );
 
   return (
@@ -105,7 +108,7 @@ function WorkoutExerciseSection({
         onReorderExercises={exerciseReorder.moveExercise}
         onSaveOrder={() => {
           field.handleChange(exerciseReorder.commitReorder());
-          toast.success('Exercise order saved');
+          toast.success("Exercise order saved");
         }}
         formatVolume={formatVolume}
         renderNameSupplement={renderExerciseGoalSummary}
@@ -167,12 +170,12 @@ export function WorkoutTracker({
         { body: trimmedValue },
         {
           onSuccess: () => {
-            toast.success('Workout saved successfully');
+            toast.success("Workout saved successfully");
             draftStorage.clear(user?.id);
             form.reset(MOCK_VALUES);
             navigate({ search: {} });
           },
-        }
+        },
       );
     },
   });
@@ -185,10 +188,7 @@ export function WorkoutTracker({
 
   const latestWorkoutNote = getLatestWorkoutNote(workouts);
   const focusAreaTemplates = useMemo(() => {
-    const focusMap = new Map<
-      string,
-      { focus: string; workoutId: number }
-    >();
+    const focusMap = new Map<string, { focus: string; workoutId: number }>();
 
     for (const workout of workouts) {
       const focus = workout.workout_focus?.trim();
@@ -207,14 +207,14 @@ export function WorkoutTracker({
 
   const loadWorkoutTemplate = async (workoutId: number) => {
     const workoutToRepeat = await queryClient.fetchQuery(
-      getWorkoutByIdQueryOptions(user, workoutId)
+      getWorkoutByIdQueryOptions(user, workoutId),
     );
     const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat);
 
     form.reset(nextDraft);
     draftStorage.save(nextDraft, user?.id);
     navigate({ search: {} });
-    toast.success('Loaded workout structure');
+    toast.success("Loaded workout structure");
   };
 
   const handleRepeatWorkout = async (workoutId: number) => {
@@ -241,7 +241,7 @@ export function WorkoutTracker({
       getExerciseGoal({
         exerciseId: getExerciseId(exercise.name),
         exerciseName: exercise.name,
-      })
+      }),
     );
 
     if (!exerciseGoalSummary) {
@@ -300,14 +300,14 @@ export function WorkoutTracker({
     const handleExerciseBack = () => {
       const currentExercise = form.state.values.exercises[exerciseIndex];
       if (newExercise && currentExercise && currentExercise.sets.length === 0) {
-        form.removeFieldValue('exercises', exerciseIndex);
+        form.removeFieldValue("exercises", exerciseIndex);
       }
       navigate({ search: {} });
     };
 
     const handleDiscardNewExercise = () => {
       if (newExercise) {
-        form.removeFieldValue('exercises', exerciseIndex);
+        form.removeFieldValue("exercises", exerciseIndex);
       }
       navigate({ search: {} });
     };
@@ -343,7 +343,12 @@ export function WorkoutTracker({
                 exerciseName={exerciseName}
               />
             }
-            recentSets={<RecentSets exerciseId={exerciseId} user={user} />}
+            recentSets={
+              <RecentSets
+                exerciseId={exerciseId}
+                user={user}
+              />
+            }
             sets={
               <ExerciseSets
                 form={form}
@@ -455,7 +460,10 @@ export function WorkoutTracker({
               </div>
             )}
 
-            <WorkoutMetadataFields form={form} workoutsFocus={workoutsFocus} />
+            <WorkoutMetadataFields
+              form={form}
+              workoutsFocus={workoutsFocus}
+            />
 
             {/* MARK: Exercise Cards */}
             <form.AppField
@@ -476,7 +484,10 @@ export function WorkoutTracker({
             {/* MARK: Buttons */}
           </form>
         </div>
-        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+        <AlertDialog
+          open={isClearDialogOpen}
+          onOpenChange={setIsClearDialogOpen}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Clear workout draft?</AlertDialogTitle>
@@ -538,14 +549,14 @@ const workoutSearchSchema = z.object({
   newExercise: z.boolean().optional(),
 });
 
-export const Route = createFileRoute('/_layout/workouts/new')({
+export const Route = createFileRoute("/_layout/workouts/new")({
   validateSearch: workoutSearchSchema,
   loader: ({ context }) => {
     if (!context.user) initializeDemoData();
     context.queryClient.ensureQueryData(getExercisesQueryOptions(context.user));
     context.queryClient.ensureQueryData(getWorkoutsQueryOptions(context.user));
     context.queryClient.ensureQueryData(
-      getWorkoutsFocusQueryOptions(context.user)
+      getWorkoutsFocusQueryOptions(context.user),
     );
   },
   component: RouteComponent,
@@ -555,11 +566,11 @@ function RouteComponent() {
   const { user } = Route.useRouteContext();
 
   const { data: exercisesResponse } = useSuspenseQuery(
-    getExercisesQueryOptions(user)
+    getExercisesQueryOptions(user),
   );
   const { data: workouts } = useSuspenseQuery(getWorkoutsQueryOptions(user));
   const { data: workoutsFocusValues } = useSuspenseQuery(
-    getWorkoutsFocusQueryOptions(user)
+    getWorkoutsFocusQueryOptions(user),
   );
 
   // Convert API response to our cleaner DbExercise type

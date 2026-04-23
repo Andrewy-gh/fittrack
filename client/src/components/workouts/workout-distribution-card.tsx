@@ -1,5 +1,5 @@
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import type { WorkoutWorkoutResponse } from '@/client';
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import type { WorkoutWorkoutResponse } from "@/client";
 
 export interface WorkoutDistributionCardProps {
   workouts: Array<WorkoutWorkoutResponse>;
@@ -15,7 +15,7 @@ export function WorkoutDistributionCard({
       }
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
 
   return (
@@ -26,7 +26,10 @@ export function WorkoutDistributionCard({
       <CardContent className="px-0">
         <div className="flex flex-wrap gap-4">
           {Object.entries(workoutFocusValues).map(([type, count]) => (
-            <div key={type} className="text-center p-4 rounded-xl">
+            <div
+              key={type}
+              className="text-center p-4 rounded-xl"
+            >
               <p className="font-semibold text-lg">{count}</p>
               <p className="text-sm uppercase">{type}</p>
             </div>

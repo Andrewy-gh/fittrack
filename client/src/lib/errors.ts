@@ -14,7 +14,10 @@ export function isApiError(error: unknown): error is ApiError {
   );
 }
 
-export function getErrorMessage(error: unknown, fallback = "An unexpected error occurred"): string {
+export function getErrorMessage(
+  error: unknown,
+  fallback = "An unexpected error occurred",
+): string {
   // Check if it's an ApiError with a non-empty message
   if (isApiError(error) && error.message) {
     return error.message;
