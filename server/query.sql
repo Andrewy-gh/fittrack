@@ -551,10 +551,30 @@ INSERT INTO ai_chat_conversation (
     title
 )
 VALUES ($1, $2)
-RETURNING id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at;
+RETURNING
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at;
 
 -- name: GetAIChatConversation :one
-SELECT id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at
+SELECT
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at
 FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2;
 
@@ -727,8 +747,35 @@ WHERE id = $1 AND user_id = $2;
 -- name: SetAIChatConversationLatestWorkoutDraft :exec
 UPDATE ai_chat_conversation
 SET latest_workout_draft = $3,
+    latest_workout_draft_source_run_id = $4,
+    latest_workout_draft_saved_workout_id = NULL,
+    latest_workout_draft_saved_at = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2;
+
+-- name: MarkAIChatConversationLatestWorkoutDraftSaved :one
+UPDATE ai_chat_conversation
+SET latest_workout_draft_saved_workout_id = $4,
+    latest_workout_draft_saved_at = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND latest_workout_draft IS NOT NULL
+  AND (
+    latest_workout_draft_source_run_id = $3
+    OR ($3::integer IS NULL AND latest_workout_draft_source_run_id IS NULL)
+  )
+RETURNING
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at;
 
 -- name: SetAIChatConversationTitleIfEmpty :execrows
 UPDATE ai_chat_conversation

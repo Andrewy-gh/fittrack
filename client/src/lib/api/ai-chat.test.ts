@@ -27,6 +27,7 @@ import {
   reportAIChatTelemetry,
   resumeAIChatMessageStream,
   requestAIChatMessageRecovery,
+  saveAIChatLatestWorkoutDraft,
   streamAIChatMessage,
 } from "./ai-chat";
 
@@ -500,6 +501,54 @@ describe("ai chat api wrapper", () => {
       run_id: 61,
       status: "queued",
     });
+  });
+
+  it("saves the latest workout draft through the ai chat endpoint", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          workout_id: 901,
+          conversation: {
+            id: 41,
+            latest_workout_draft: {
+              date: "2026-04-21T12:00:00Z",
+              exercises: [
+                {
+                  name: "Chest Supported Row",
+                  sets: [{ reps: 10, setType: "working" }],
+                },
+              ],
+            },
+            latest_workout_draft_status: {
+              is_saved: true,
+              saved_workout_id: 901,
+              saved_at: "2026-04-21T12:30:00Z",
+            },
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-04-21T12:30:00Z",
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    const response = await saveAIChatLatestWorkoutDraft(41);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/ai/conversations/41/latest-workout-draft/save",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+    expect(response.workout_id).toBe(901);
+    expect(response.conversation.latest_workout_draft_status?.is_saved).toBe(
+      true,
+    );
   });
 
   it("posts ai chat telemetry events to the Go API", async () => {

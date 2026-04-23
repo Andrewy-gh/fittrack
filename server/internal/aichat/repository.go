@@ -20,6 +20,7 @@ import (
 type Repository interface {
 	CreateConversation(ctx context.Context, userID string) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
+	MarkLatestWorkoutDraftSaved(ctx context.Context, conversationID int32, userID string, sourceRunID *int32, workoutID int32, savedAt time.Time) (*Conversation, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)
 	GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error)
 	GetLatestStreamSequence(ctx context.Context, runID int32, userID string) (int32, error)
@@ -83,6 +84,46 @@ func (r *repository) GetConversation(ctx context.Context, conversationID int32, 
 			return nil, err
 		}
 		return nil, fmt.Errorf("get ai chat conversation: %w", err)
+	}
+
+	conversation, err := mapConversation(row)
+	if err != nil {
+		return nil, err
+	}
+
+	return conversation, nil
+}
+
+func (r *repository) MarkLatestWorkoutDraftSaved(ctx context.Context, conversationID int32, userID string, sourceRunID *int32, workoutID int32, savedAt time.Time) (*Conversation, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	sourceRun := pgtype.Int4{Valid: false}
+	if sourceRunID != nil {
+		sourceRun = pgtype.Int4{
+			Int32: *sourceRunID,
+			Valid: true,
+		}
+	}
+
+	row, err := r.queries.MarkAIChatConversationLatestWorkoutDraftSaved(ctx, db.MarkAIChatConversationLatestWorkoutDraftSavedParams{
+		ID:                            conversationID,
+		UserID:                        userID,
+		LatestWorkoutDraftSourceRunID: sourceRun,
+		LatestWorkoutDraftSavedWorkoutID: pgtype.Int4{
+			Int32: workoutID,
+			Valid: true,
+		},
+		LatestWorkoutDraftSavedAt: pgtype.Timestamptz{
+			Time:  savedAt.UTC(),
+			Valid: true,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("mark latest ai chat workout draft saved: %w", err)
 	}
 
 	conversation, err := mapConversation(row)
@@ -651,6 +692,10 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 			ID:                 prepared.Conversation.ID,
 			UserID:             prepared.Conversation.UserID,
 			LatestWorkoutDraft: workoutDraftJSON,
+			LatestWorkoutDraftSourceRunID: pgtype.Int4{
+				Int32: prepared.Run.ID,
+				Valid: true,
+			},
 		}); err != nil {
 			return nil, nil, fmt.Errorf("persist latest ai chat workout draft: %w", err)
 		}
@@ -840,12 +885,17 @@ func mapConversation(row db.AiChatConversation) (*Conversation, error) {
 	if err != nil {
 		return nil, err
 	}
+	latestWorkoutDraftStatus, err := draftStatusFromConversationRow(row)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Conversation{
 		ID:                 row.ID,
 		UserID:             row.UserID,
 		Title:              textPtr(row.Title),
 		LatestWorkoutDraft: latestWorkoutDraft,
+		LatestWorkoutDraftStatus: latestWorkoutDraftStatus,
 		CreatedAt:          createdAt,
 		UpdatedAt:          updatedAt,
 		LastMessageAt:      lastMessageAt,
@@ -966,6 +1016,35 @@ func textPtr(txt pgtype.Text) *string {
 	}
 	value := txt.String
 	return &value
+}
+
+func int32Ptr(value int32) *int32 {
+	return &value
+}
+
+func intPtrFromPg(value pgtype.Int4) *int32 {
+	if !value.Valid {
+		return nil
+	}
+	return int32Ptr(value.Int32)
+}
+
+func draftStatusFromConversationRow(row db.AiChatConversation) (*LatestWorkoutDraftStatus, error) {
+	sourceRunID := intPtrFromPg(row.LatestWorkoutDraftSourceRunID)
+	savedWorkoutID := intPtrFromPg(row.LatestWorkoutDraftSavedWorkoutID)
+	savedAt, err := timePtrFromPg(row.LatestWorkoutDraftSavedAt)
+	if err != nil {
+		return nil, err
+	}
+	if sourceRunID == nil && savedWorkoutID == nil && savedAt == nil {
+		return nil, nil
+	}
+	return &LatestWorkoutDraftStatus{
+		SourceRunID:    sourceRunID,
+		IsSaved:        savedWorkoutID != nil,
+		SavedWorkoutID: savedWorkoutID,
+		SavedAt:        savedAt,
+	}, nil
 }
 
 var _ Repository = (*repository)(nil)

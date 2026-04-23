@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 type ChatWorkoutDraftCardProps = {
   draft: AIWorkoutDraft;
   isSaving?: boolean;
+  isSaved?: boolean;
   onSave: () => void;
   onEdit: () => void;
   className?: string;
@@ -14,6 +15,7 @@ type ChatWorkoutDraftCardProps = {
 export function ChatWorkoutDraftCard({
   draft,
   isSaving = false,
+  isSaved = false,
   onSave,
   onEdit,
   className,
@@ -57,8 +59,8 @@ export function ChatWorkoutDraftCard({
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <Button type="button" onClick={onSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save now"}
+          <Button type="button" onClick={onSave} disabled={isSaving || isSaved}>
+            {isSaved ? "Saved" : isSaving ? "Saving..." : "Save now"}
           </Button>
           <Button
             type="button"

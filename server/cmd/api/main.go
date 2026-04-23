@@ -160,7 +160,7 @@ func main() {
 	userService := user.NewService(logger, userRepo)
 	aiChatRepo := aichat.NewRepository(logger, queries, pool)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
-	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo)
+	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutService)
 	var inngestRecovery *aichat.InngestRecovery
 	switch {
 	case cfg.AIChatRecoveryConfigured():

@@ -323,6 +323,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/ai/conversations/{id}/latest-workout-draft/save": {
+            "post": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Creates a workout from the conversation's latest structured workout draft and marks that draft as saved.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-chat"
+                ],
+                "summary": "Save the latest AI chat workout draft",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/aichat.SaveLatestWorkoutDraftResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/ai/conversations/{id}/messages/recover": {
             "post": {
                 "security": [
@@ -1552,6 +1622,12 @@ const docTemplate = `{
                 "last_message_at": {
                     "type": "string"
                 },
+                "latest_workout_draft": {
+                    "$ref": "#/definitions/workout.CreateWorkoutRequest"
+                },
+                "latest_workout_draft_status": {
+                    "$ref": "#/definitions/aichat.LatestWorkoutDraftStatus"
+                },
                 "title": {
                     "type": "string"
                 },
@@ -1594,6 +1670,23 @@ const docTemplate = `{
                 }
             }
         },
+        "aichat.LatestWorkoutDraftStatus": {
+            "type": "object",
+            "properties": {
+                "is_saved": {
+                    "type": "boolean"
+                },
+                "saved_at": {
+                    "type": "string"
+                },
+                "saved_workout_id": {
+                    "type": "integer"
+                },
+                "source_run_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "aichat.RecoverMessageResponse": {
             "type": "object",
             "properties": {
@@ -1605,6 +1698,17 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "aichat.SaveLatestWorkoutDraftResponse": {
+            "type": "object",
+            "properties": {
+                "conversation": {
+                    "$ref": "#/definitions/aichat.Conversation"
+                },
+                "workout_id": {
+                    "type": "integer"
                 }
             }
         },

@@ -21,6 +21,7 @@ type chatService interface {
 	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	CreateConversation(ctx context.Context) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
+	SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error)
 	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
 	PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error)
@@ -185,6 +186,38 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := response.JSON(w, http.StatusOK, detail); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
+}
+
+// SaveLatestWorkoutDraft godoc
+// @Summary Save the latest AI chat workout draft
+// @Description Creates a workout from the conversation's latest structured workout draft and marks that draft as saved.
+// @Tags ai-chat
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Conversation ID"
+// @Success 200 {object} aichat.SaveLatestWorkoutDraftResponse
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 404 {object} response.Error
+// @Failure 409 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations/{id}/latest-workout-draft/save [post]
+func (h *Handler) SaveLatestWorkoutDraft(w http.ResponseWriter, r *http.Request) {
+	conversationID, ok := h.decodeConversationID(w, r)
+	if !ok {
+		return
+	}
+
+	resp, err := h.service.SaveLatestWorkoutDraft(r.Context(), conversationID)
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to save ai chat workout draft")
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, resp); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 	}
 }
@@ -542,6 +575,10 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat recovery is not configured", nil)
 	case errors.Is(err, ErrConversationBusy):
 		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat conversation already has an active run", nil)
+	case errors.Is(err, ErrLatestWorkoutDraftUnavailable):
+		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat conversation does not have a latest workout draft to save", nil)
+	case errors.Is(err, ErrLatestWorkoutDraftSuperseded):
+		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat latest workout draft changed before it could be saved", nil)
 	case errors.Is(err, ErrGenerationTimeout):
 		response.ErrorJSON(w, r, h.logger, http.StatusGatewayTimeout, "ai chat generation timed out", nil)
 	default:

@@ -7,6 +7,7 @@ import {
   postAiChatValidateStream,
   postAiConversations,
   getAiConversationsById,
+  postAiConversationsByIdLatestWorkoutDraftSave,
   postAiConversationsByIdMessagesRecover,
   postAiConversationsByIdMessagesStream,
   getAiConversationsByIdMessagesStreamResume,
@@ -38,19 +39,19 @@ import type {
   PostAiChatValidateResponse,
   PostAiChatValidateStreamData,
   PostAiChatValidateStreamError,
-  PostAiChatValidateStreamResponse,
   PostAiConversationsData,
   PostAiConversationsError,
   PostAiConversationsResponse,
   GetAiConversationsByIdData,
+  PostAiConversationsByIdLatestWorkoutDraftSaveData,
+  PostAiConversationsByIdLatestWorkoutDraftSaveError,
+  PostAiConversationsByIdLatestWorkoutDraftSaveResponse,
   PostAiConversationsByIdMessagesRecoverData,
   PostAiConversationsByIdMessagesRecoverError,
   PostAiConversationsByIdMessagesRecoverResponse,
   PostAiConversationsByIdMessagesStreamData,
   PostAiConversationsByIdMessagesStreamError,
-  PostAiConversationsByIdMessagesStreamResponse,
   GetAiConversationsByIdMessagesStreamResumeData,
-  GetAiConversationsByIdMessagesStreamResumeResponse,
   GetExercisesData,
   PostExercisesData,
   PostExercisesError,
@@ -241,12 +242,13 @@ export const postAiChatValidateStreamQueryOptions = (
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return (await postAiChatValidateStream({
+      const { data } = await postAiChatValidateStream({
         ...options,
         ...queryKey[0],
         signal,
         throwOnError: true,
-      })) as unknown as PostAiChatValidateStreamResponse;
+      });
+      return data;
     },
     queryKey: postAiChatValidateStreamQueryKey(options),
   });
@@ -259,21 +261,22 @@ export const postAiChatValidateStreamQueryOptions = (
 export const postAiChatValidateStreamMutation = (
   options?: Partial<Options<PostAiChatValidateStreamData>>,
 ): UseMutationOptions<
-  PostAiChatValidateStreamResponse,
+  Awaited<ReturnType<typeof postAiChatValidateStream>>["data"],
   PostAiChatValidateStreamError,
   Options<PostAiChatValidateStreamData>
 > => {
   const mutationOptions: UseMutationOptions<
-    PostAiChatValidateStreamResponse,
+    Awaited<ReturnType<typeof postAiChatValidateStream>>["data"],
     PostAiChatValidateStreamError,
     Options<PostAiChatValidateStreamData>
   > = {
     mutationFn: async (localOptions) => {
-      return (await postAiChatValidateStream({
+      const { data } = await postAiChatValidateStream({
         ...options,
         ...localOptions,
         throwOnError: true,
-      })) as unknown as PostAiChatValidateStreamResponse;
+      });
+      return data;
     },
   };
   return mutationOptions;
@@ -357,6 +360,65 @@ export const getAiConversationsByIdQueryOptions = (
   });
 };
 
+export const postAiConversationsByIdLatestWorkoutDraftSaveQueryKey = (
+  options: Options<PostAiConversationsByIdLatestWorkoutDraftSaveData>,
+) =>
+  createQueryKey(
+    "postAiConversationsByIdLatestWorkoutDraftSave",
+    options,
+    false,
+    ["ai-chat"],
+  );
+
+/**
+ * Save the latest AI chat workout draft
+ * Creates a workout from the conversation's latest structured workout draft and marks that draft as saved.
+ */
+export const postAiConversationsByIdLatestWorkoutDraftSaveQueryOptions = (
+  options: Options<PostAiConversationsByIdLatestWorkoutDraftSaveData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await postAiConversationsByIdLatestWorkoutDraftSave({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: postAiConversationsByIdLatestWorkoutDraftSaveQueryKey(options),
+  });
+};
+
+/**
+ * Save the latest AI chat workout draft
+ * Creates a workout from the conversation's latest structured workout draft and marks that draft as saved.
+ */
+export const postAiConversationsByIdLatestWorkoutDraftSaveMutation = (
+  options?: Partial<Options<PostAiConversationsByIdLatestWorkoutDraftSaveData>>,
+): UseMutationOptions<
+  PostAiConversationsByIdLatestWorkoutDraftSaveResponse,
+  PostAiConversationsByIdLatestWorkoutDraftSaveError,
+  Options<PostAiConversationsByIdLatestWorkoutDraftSaveData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiConversationsByIdLatestWorkoutDraftSaveResponse,
+    PostAiConversationsByIdLatestWorkoutDraftSaveError,
+    Options<PostAiConversationsByIdLatestWorkoutDraftSaveData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await postAiConversationsByIdLatestWorkoutDraftSave({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
 export const postAiConversationsByIdMessagesRecoverQueryKey = (
   options: Options<PostAiConversationsByIdMessagesRecoverData>,
 ) =>
@@ -429,12 +491,13 @@ export const postAiConversationsByIdMessagesStreamQueryOptions = (
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return (await postAiConversationsByIdMessagesStream({
+      const { data } = await postAiConversationsByIdMessagesStream({
         ...options,
         ...queryKey[0],
         signal,
         throwOnError: true,
-      })) as unknown as PostAiConversationsByIdMessagesStreamResponse;
+      });
+      return data;
     },
     queryKey: postAiConversationsByIdMessagesStreamQueryKey(options),
   });
@@ -447,21 +510,22 @@ export const postAiConversationsByIdMessagesStreamQueryOptions = (
 export const postAiConversationsByIdMessagesStreamMutation = (
   options?: Partial<Options<PostAiConversationsByIdMessagesStreamData>>,
 ): UseMutationOptions<
-  PostAiConversationsByIdMessagesStreamResponse,
+  Awaited<ReturnType<typeof postAiConversationsByIdMessagesStream>>["data"],
   PostAiConversationsByIdMessagesStreamError,
   Options<PostAiConversationsByIdMessagesStreamData>
 > => {
   const mutationOptions: UseMutationOptions<
-    PostAiConversationsByIdMessagesStreamResponse,
+    Awaited<ReturnType<typeof postAiConversationsByIdMessagesStream>>["data"],
     PostAiConversationsByIdMessagesStreamError,
     Options<PostAiConversationsByIdMessagesStreamData>
   > = {
     mutationFn: async (localOptions) => {
-      return (await postAiConversationsByIdMessagesStream({
+      const { data } = await postAiConversationsByIdMessagesStream({
         ...options,
         ...localOptions,
         throwOnError: true,
-      })) as unknown as PostAiConversationsByIdMessagesStreamResponse;
+      });
+      return data;
     },
   };
   return mutationOptions;
@@ -483,12 +547,13 @@ export const getAiConversationsByIdMessagesStreamResumeQueryOptions = (
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
-      return (await getAiConversationsByIdMessagesStreamResume({
+      const { data } = await getAiConversationsByIdMessagesStreamResume({
         ...options,
         ...queryKey[0],
         signal,
         throwOnError: true,
-      })) as unknown as GetAiConversationsByIdMessagesStreamResumeResponse;
+      });
+      return data;
     },
     queryKey: getAiConversationsByIdMessagesStreamResumeQueryKey(options),
   });

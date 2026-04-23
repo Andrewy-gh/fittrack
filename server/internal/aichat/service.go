@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -29,12 +30,17 @@ type recoveryDispatcher interface {
 	EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error
 }
 
+type workoutCreator interface {
+	CreateWorkoutWithID(ctx context.Context, requestBody workout.CreateWorkoutRequest) (int32, error)
+}
+
 type Service struct {
 	logger        *slog.Logger
 	featureAccess featureAccessService
 	runtime       runtime
 	repo          Repository
 	recovery      recoveryDispatcher
+	workouts      workoutCreator
 }
 
 const (
@@ -46,12 +52,13 @@ const (
 	runRecoveryClaimedMarker     = "ai chat recovery claimed and in progress"
 )
 
-func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository) *Service {
+func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository, workouts workoutCreator) *Service {
 	return &Service{
 		logger:        logger,
 		featureAccess: featureAccess,
 		runtime:       runtime,
 		repo:          repo,
+		workouts:      workouts,
 	}
 }
 
@@ -426,6 +433,86 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		Text:           text,
 		Sequence:       prepared.LastSequence,
 		WorkoutDraft:   done.WorkoutDraft,
+	}, nil
+}
+
+func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {
+	if err := s.ensureFeatureAccess(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.workouts == nil {
+		return nil, fmt.Errorf("ai chat workout saver is not configured")
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	conversation, err := s.repo.GetConversation(ctx, conversationID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, newConversationNotFound(conversationID)
+		}
+		return nil, err
+	}
+
+	if conversation.LatestWorkoutDraft == nil {
+		return nil, ErrLatestWorkoutDraftUnavailable
+	}
+
+	if status := conversation.LatestWorkoutDraftStatus; status != nil && status.IsSaved && status.SavedWorkoutID != nil {
+		return &SaveLatestWorkoutDraftResponse{
+			Conversation: conversation,
+			WorkoutID:    *status.SavedWorkoutID,
+		}, nil
+	}
+
+	workoutID, err := s.workouts.CreateWorkoutWithID(ctx, *conversation.LatestWorkoutDraft)
+	if err != nil {
+		return nil, err
+	}
+
+	var sourceRunID *int32
+	if conversation.LatestWorkoutDraftStatus != nil {
+		sourceRunID = conversation.LatestWorkoutDraftStatus.SourceRunID
+	}
+
+	updatedConversation, err := s.repo.MarkLatestWorkoutDraftSaved(
+		ctx,
+		conversationID,
+		userID,
+		sourceRunID,
+		workoutID,
+		time.Now().UTC(),
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			refreshedConversation, refreshErr := s.repo.GetConversation(ctx, conversationID, userID)
+			switch {
+			case refreshErr == nil &&
+				refreshedConversation.LatestWorkoutDraftStatus != nil &&
+				refreshedConversation.LatestWorkoutDraftStatus.IsSaved &&
+				refreshedConversation.LatestWorkoutDraftStatus.SavedWorkoutID != nil:
+				return &SaveLatestWorkoutDraftResponse{
+					Conversation: refreshedConversation,
+					WorkoutID:    *refreshedConversation.LatestWorkoutDraftStatus.SavedWorkoutID,
+				}, nil
+			case refreshErr == nil:
+				return nil, ErrLatestWorkoutDraftSuperseded
+			case errors.Is(refreshErr, pgx.ErrNoRows):
+				return nil, newConversationNotFound(conversationID)
+			default:
+				return nil, refreshErr
+			}
+		}
+		return nil, err
+	}
+
+	return &SaveLatestWorkoutDraftResponse{
+		Conversation: updatedConversation,
+		WorkoutID:    workoutID,
 	}, nil
 }
 
