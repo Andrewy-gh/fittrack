@@ -40,7 +40,11 @@ import {
   updateStreamingMessageWithError,
 } from "./-chat-resume";
 import { ChatWorkoutDraftCard } from "./-chat-workout-draft";
-import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
+import {
+  saveAIWorkoutDraftToWorkoutForm,
+  toWorkoutCreateRequest,
+} from "@/lib/ai-workout-draft";
+import { useSaveWorkoutMutation } from "@/lib/api/workouts";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { toast } from "sonner";
 
@@ -66,6 +70,7 @@ export function ChatRouteComponent() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const conversationId = parseConversationId(search.conversationId);
+  const saveWorkout = useSaveWorkoutMutation();
 
   const [conversation, setConversation] = useState<AIChatConversation | null>(
     null,
@@ -812,6 +817,18 @@ export function ChatRouteComponent() {
     void navigate({ to: "/workouts/new" });
   }
 
+  async function handleSaveWorkoutDraft(draft: AIWorkoutDraft) {
+    try {
+      await saveWorkout.mutateAsync({
+        body: toWorkoutCreateRequest(draft),
+      });
+      workoutDraftStorage.clear(currentUserId);
+      toast.success("Workout saved successfully");
+    } catch (error) {
+      showErrorToast(error, "Failed to save workout");
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <Card>
@@ -865,6 +882,14 @@ export function ChatRouteComponent() {
                       );
                     }
                   }}
+                  onSaveWorkoutDraft={() => {
+                    if (conversation?.latest_workout_draft) {
+                      void handleSaveWorkoutDraft(
+                        conversation.latest_workout_draft,
+                      );
+                    }
+                  }}
+                  isSavingWorkoutDraft={saveWorkout.isPending}
                 />
               ))}
             </div>
@@ -875,6 +900,10 @@ export function ChatRouteComponent() {
             <ChatWorkoutDraftCard
               className="max-w-[85%]"
               draft={conversation.latest_workout_draft}
+              isSaving={saveWorkout.isPending}
+              onSave={() =>
+                void handleSaveWorkoutDraft(conversation.latest_workout_draft!)
+              }
               onEdit={() =>
                 handleEditInWorkoutForm(conversation.latest_workout_draft!)
               }
@@ -914,10 +943,14 @@ export function ChatRouteComponent() {
 function MessageBubble({
   message,
   workoutDraft,
+  isSavingWorkoutDraft,
+  onSaveWorkoutDraft,
   onEditWorkoutDraft,
 }: {
   message: AIChatMessage;
   workoutDraft?: AIWorkoutDraft;
+  isSavingWorkoutDraft?: boolean;
+  onSaveWorkoutDraft?: () => void;
   onEditWorkoutDraft?: () => void;
 }) {
   const isUser = message.role === "user";
@@ -956,10 +989,12 @@ function MessageBubble({
         ) : null}
       </div>
 
-      {!isUser && workoutDraft && onEditWorkoutDraft ? (
+      {!isUser && workoutDraft && onSaveWorkoutDraft && onEditWorkoutDraft ? (
         <ChatWorkoutDraftCard
           className="w-full"
           draft={workoutDraft}
+          isSaving={isSavingWorkoutDraft}
+          onSave={onSaveWorkoutDraft}
           onEdit={onEditWorkoutDraft}
         />
       ) : null}

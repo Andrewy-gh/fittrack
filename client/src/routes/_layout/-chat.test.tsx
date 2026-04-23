@@ -12,8 +12,10 @@ const {
   mockResumeStream,
   mockReportTelemetry,
   mockRequestRecovery,
+  mockSaveWorkoutMutateAsync,
   mockStreamMessage,
   mockShowErrorToast,
+  mockToastSuccess,
 } = vi.hoisted(() => ({
   mockSearch: { conversationId: "41" as string | undefined },
   mockNavigate: vi.fn(),
@@ -23,8 +25,10 @@ const {
   mockResumeStream: vi.fn(),
   mockReportTelemetry: vi.fn(),
   mockRequestRecovery: vi.fn(),
+  mockSaveWorkoutMutateAsync: vi.fn(),
   mockStreamMessage: vi.fn(),
   mockShowErrorToast: vi.fn(),
+  mockToastSuccess: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -52,6 +56,19 @@ vi.mock("@/lib/errors", () => ({
     fallback = "An unexpected error occurred",
   ) => (error instanceof Error ? error.message : fallback),
   showErrorToast: mockShowErrorToast,
+}));
+
+vi.mock("@/lib/api/workouts", () => ({
+  useSaveWorkoutMutation: () => ({
+    mutateAsync: mockSaveWorkoutMutateAsync,
+    isPending: false,
+  }),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: mockToastSuccess,
+  },
 }));
 
 import { ChatRouteComponent } from "./chat";
@@ -97,9 +114,12 @@ describe("ChatRouteComponent", () => {
     mockResumeStream.mockReset();
     mockReportTelemetry.mockReset();
     mockRequestRecovery.mockReset();
+    mockSaveWorkoutMutateAsync.mockReset();
     mockStreamMessage.mockReset();
     mockShowErrorToast.mockReset();
+    mockToastSuccess.mockReset();
     mockReportTelemetry.mockResolvedValue(undefined);
+    mockSaveWorkoutMutateAsync.mockResolvedValue(undefined);
     mockResumeStream.mockResolvedValue({
       doneEvent: {
         type: "done",
@@ -1009,6 +1029,66 @@ describe("ChatRouteComponent", () => {
       );
     });
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/workouts/new" });
+    expect(mockSaveWorkoutMutateAsync).not.toHaveBeenCalled();
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      "Workout draft loaded into the form",
+    );
+  });
+
+  it("saves the latest workout draft directly and clears stale imported draft state", async () => {
+    const user = userEvent.setup();
+    const latestWorkoutDraft: AIWorkoutDraft = {
+      date: "2026-04-21T12:00:00Z",
+      notes: "  Keep rest short  ",
+      workoutFocus: "  pull  ",
+      exercises: [
+        {
+          name: "Chest Supported Row",
+          sets: [{ reps: 10, setType: "working" }],
+        },
+      ],
+    };
+
+    window.localStorage.setItem(
+      "workout-entry-form-data-user-123",
+      JSON.stringify({
+        date: "2026-04-20T12:00:00Z",
+        notes: "Old imported draft",
+        workoutFocus: "push",
+        exercises: [
+          {
+            name: "Bench Press",
+            sets: [{ reps: 8, setType: "working", weight: 185 }],
+          },
+        ],
+      }),
+    );
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([], undefined, latestWorkoutDraft),
+    );
+
+    render(<ChatRouteComponent />);
+
+    await user.click(await screen.findByRole("button", { name: "Save now" }));
+
+    expect(mockSaveWorkoutMutateAsync).toHaveBeenCalledWith({
+      body: {
+        date: "2026-04-21T12:00:00Z",
+        notes: "Keep rest short",
+        workoutFocus: "pull",
+        exercises: [
+          {
+            name: "Chest Supported Row",
+            sets: [{ reps: 10, setType: "working", weight: undefined }],
+          },
+        ],
+      },
+    });
+    expect(window.localStorage.getItem("workout-entry-form-data-user-123")).toBe(
+      null,
+    );
+    expect(mockToastSuccess).toHaveBeenCalledWith("Workout saved successfully");
+    expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/workouts/new" });
   });
 
   it("overwrites the latest workout draft CTA after a regenerated structured workout", async () => {
