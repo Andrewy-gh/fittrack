@@ -39,6 +39,7 @@ import {
   updateStreamingMessageWithDone,
   updateStreamingMessageWithError,
 } from "./-chat-resume";
+import { ChatWorkoutDraftCard } from "./-chat-workout-draft";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { toast } from "sonner";
@@ -489,6 +490,10 @@ export function ChatRouteComponent() {
     );
   }
   const currentUserId = user.id;
+  const latestDraftAssistantId = findLatestDraftAssistantMessageId(
+    messages,
+    conversation?.latest_workout_draft,
+  );
 
   async function handleNewChat() {
     try {
@@ -828,33 +833,29 @@ export function ChatRouteComponent() {
                 <MessageBubble
                   key={`${message.id}-${message.updated_at}`}
                   message={message}
+                  workoutDraft={
+                    message.id === latestDraftAssistantId
+                      ? conversation?.latest_workout_draft
+                      : undefined
+                  }
+                  onEditWorkoutDraft={() => {
+                    if (conversation?.latest_workout_draft) {
+                      handleEditInWorkoutForm(conversation.latest_workout_draft);
+                    }
+                  }}
                 />
               ))}
             </div>
           )}
 
-          {conversation?.latest_workout_draft ? (
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    Latest structured workout draft saved
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Open it in the workout form to review and adjust before
-                    saving.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() =>
-                    handleEditInWorkoutForm(conversation.latest_workout_draft!)
-                  }
-                >
-                  Edit in workout form
-                </Button>
-              </CardContent>
-            </Card>
+          {conversation?.latest_workout_draft && latestDraftAssistantId === null ? (
+            <ChatWorkoutDraftCard
+              className="max-w-[85%]"
+              draft={conversation.latest_workout_draft}
+              onEdit={() =>
+                handleEditInWorkoutForm(conversation.latest_workout_draft!)
+              }
+            />
           ) : null}
 
           <form className="mt-auto flex flex-col gap-3" onSubmit={handleSubmit}>
@@ -881,7 +882,15 @@ export function ChatRouteComponent() {
   );
 }
 
-function MessageBubble({ message }: { message: AIChatMessage }) {
+function MessageBubble({
+  message,
+  workoutDraft,
+  onEditWorkoutDraft,
+}: {
+  message: AIChatMessage;
+  workoutDraft?: AIWorkoutDraft;
+  onEditWorkoutDraft?: () => void;
+}) {
   const isUser = message.role === "user";
   const statusLabel =
     message.status === "failed"
@@ -892,23 +901,37 @@ function MessageBubble({ message }: { message: AIChatMessage }) {
 
   return (
     <div
-      className={`max-w-[85%] rounded-lg border px-4 py-3 text-sm ${
-        isUser
-          ? "ml-auto border-primary/30 bg-primary/10"
-          : "mr-auto border-border bg-background"
+      className={`flex max-w-[85%] flex-col gap-3 ${
+        isUser ? "ml-auto items-end" : "mr-auto items-start"
       }`}
     >
-      <div className="mb-2 flex items-center justify-between gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-        <span>{isUser ? "You" : "Assistant"}</span>
-        {statusLabel ? <span>{statusLabel}</span> : null}
-      </div>
-      <div className="whitespace-pre-wrap leading-relaxed">
-        {message.content || (message.status === "streaming" ? "..." : "")}
-      </div>
-      {message.error_message ? (
-        <div className="mt-2 text-xs text-destructive">
-          {message.error_message}
+      <div
+        className={`w-full rounded-lg border px-4 py-3 text-sm ${
+          isUser
+            ? "border-primary/30 bg-primary/10"
+            : "border-border bg-background"
+        }`}
+      >
+        <div className="mb-2 flex items-center justify-between gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+          <span>{isUser ? "You" : "Assistant"}</span>
+          {statusLabel ? <span>{statusLabel}</span> : null}
         </div>
+        <div className="whitespace-pre-wrap leading-relaxed">
+          {message.content || (message.status === "streaming" ? "..." : "")}
+        </div>
+        {message.error_message ? (
+          <div className="mt-2 text-xs text-destructive">
+            {message.error_message}
+          </div>
+        ) : null}
+      </div>
+
+      {!isUser && workoutDraft && onEditWorkoutDraft ? (
+        <ChatWorkoutDraftCard
+          className="w-full"
+          draft={workoutDraft}
+          onEdit={onEditWorkoutDraft}
+        />
       ) : null}
     </div>
   );
@@ -978,6 +1001,24 @@ function findRecoveredPromptStatus(
     }
 
     return null;
+  }
+
+  return null;
+}
+
+function findLatestDraftAssistantMessageId(
+  messages: AIChatMessage[],
+  latestWorkoutDraft?: AIWorkoutDraft,
+): number | null {
+  if (!latestWorkoutDraft) {
+    return null;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === "assistant" && message.status === "completed") {
+      return message.id;
+    }
   }
 
   return null;

@@ -7,8 +7,27 @@ export type LocalDevAuthSession = {
   displayName: string;
 };
 
+function parseBooleanFlag(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "yes":
+    case "on":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function isLocalDevAuthEnabled(): boolean {
-  return import.meta.env.DEV;
+  return (
+    import.meta.env.DEV &&
+    parseBooleanFlag(import.meta.env.VITE_E2E_LOCAL_AUTH_ENABLED)
+  );
 }
 
 export function getLocalDevAuthStorageKey(): string {

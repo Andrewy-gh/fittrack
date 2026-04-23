@@ -1,10 +1,13 @@
 package aichat
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
 func TestBuildConversationTitle_TruncatesWithoutBreakingUTF8(t *testing.T) {
@@ -47,5 +50,50 @@ func TestIsStreamingRunStale(t *testing.T) {
 	}
 	if !isStreamingRunStale(now.Add(-streamingRunStaleAfter-time.Second), now) {
 		t.Fatal("run older than stale threshold should be stale")
+	}
+}
+
+func TestMarshalWorkoutDraft_ReturnsJSON(t *testing.T) {
+	workoutFocus := "full body"
+	weight := 50.0
+	draft := &workout.CreateWorkoutRequest{
+		Date:         "2026-04-22T12:00:00Z",
+		WorkoutFocus: &workoutFocus,
+		Exercises: []workout.ExerciseInput{
+			{
+				Name: "Goblet Squat",
+				Sets: []workout.SetInput{
+					{Weight: &weight, Reps: 10, SetType: "working"},
+				},
+			},
+		},
+	}
+
+	payload, err := marshalWorkoutDraft(draft)
+
+	if err != nil {
+		t.Fatalf("marshalWorkoutDraft returned error: %v", err)
+	}
+	if !strings.HasPrefix(string(payload), "{") {
+		t.Fatalf("marshalWorkoutDraft should return JSON, got %q", string(payload))
+	}
+
+	var decoded workout.CreateWorkoutRequest
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatalf("marshalWorkoutDraft returned invalid JSON: %v", err)
+	}
+	if decoded.Date != draft.Date {
+		t.Fatalf("decoded draft date = %q, want %q", decoded.Date, draft.Date)
+	}
+}
+
+func TestMarshalWorkoutDraft_NilDraftReturnsNil(t *testing.T) {
+	payload, err := marshalWorkoutDraft(nil)
+
+	if err != nil {
+		t.Fatalf("marshalWorkoutDraft returned error: %v", err)
+	}
+	if payload != nil {
+		t.Fatal("marshalWorkoutDraft should return nil for nil draft")
 	}
 }

@@ -981,8 +981,10 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     expect(
-      await screen.findByText("Latest structured workout draft saved"),
+      await screen.findByText("Latest structured workout draft"),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Chest Supported Row/)).toBeInTheDocument();
+    expect(screen.getByText("Keep rest short")).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: "Edit in workout form" }),
@@ -1096,6 +1098,8 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
+    expect(await screen.findByText(/Bench Press/)).toBeInTheDocument();
+
     await user.type(
       await screen.findByPlaceholderText(
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
@@ -1107,6 +1111,12 @@ describe("ChatRouteComponent", () => {
     await user.click(
       await screen.findByRole("button", { name: "Edit in workout form" }),
     );
+
+    expect(screen.getByText(/Chest Supported Row/)).toBeInTheDocument();
+    expect(screen.queryByText(/Bench Press/)).not.toBeInTheDocument();
+    expect(
+      screen.queryAllByRole("button", { name: "Edit in workout form" }),
+    ).toHaveLength(1);
 
     await waitFor(() => {
       expect(window.localStorage.getItem("workout-entry-form-data-user-123")).toBe(
