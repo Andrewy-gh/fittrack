@@ -737,8 +737,8 @@ SET title = $3,
 WHERE id = $1
   AND user_id = $2
   AND title IS NULL
-  AND $3 IS NOT NULL
-  AND btrim($3) <> '';
+  AND $3::text IS NOT NULL
+  AND btrim($3::text) <> '';
 
 -- name: UpdateAIChatMessageCompleted :one
 UPDATE ai_chat_message
