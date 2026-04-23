@@ -177,6 +177,36 @@ func TestConfigAIChatRecoveryConfigured(t *testing.T) {
 	})
 }
 
+func TestConfigLocalE2EAuthConfigured(t *testing.T) {
+	t.Run("requires development environment and explicit flag", func(t *testing.T) {
+		cfg := &Config{
+			Environment:             "production",
+			LocalE2EAuthEnabled:     true,
+			LocalE2EAuthUserID:      "local-e2e-user",
+			LocalE2EAuthEmail:       "local-e2e-user@example.test",
+			LocalE2EAuthDisplayName: "Local E2E User",
+		}
+
+		if cfg.LocalE2EAuthConfigured() {
+			t.Fatal("expected local e2e auth to stay disabled outside development")
+		}
+	})
+
+	t.Run("returns true when local e2e auth is fully configured", func(t *testing.T) {
+		cfg := &Config{
+			Environment:             "development",
+			LocalE2EAuthEnabled:     true,
+			LocalE2EAuthUserID:      "local-e2e-user",
+			LocalE2EAuthEmail:       "local-e2e-user@example.test",
+			LocalE2EAuthDisplayName: "Local E2E User",
+		}
+
+		if !cfg.LocalE2EAuthConfigured() {
+			t.Fatal("expected local e2e auth to be enabled when configured in development")
+		}
+	})
+}
+
 func TestGetAllowedOrigins_EmptyString(t *testing.T) {
 	cfg := &Config{AllowedOrigins: ""}
 	origins := cfg.GetAllowedOrigins()
@@ -448,4 +478,8 @@ func cleanupEnv() {
 	os.Unsetenv("DB_HEALTHCHECK")
 	os.Unsetenv("INNGEST_EVENT_KEY")
 	os.Unsetenv("INNGEST_SIGNING_KEY")
+	os.Unsetenv("E2E_LOCAL_AUTH_ENABLED")
+	os.Unsetenv("E2E_LOCAL_AUTH_USER_ID")
+	os.Unsetenv("E2E_LOCAL_AUTH_EMAIL")
+	os.Unsetenv("E2E_LOCAL_AUTH_DISPLAY_NAME")
 }

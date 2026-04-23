@@ -60,6 +60,7 @@ func TestAuthenticator_Middleware(t *testing.T) {
 		name           string
 		path           string
 		headers        map[string]string
+		localE2E       *LocalE2EAuthConfig
 		setupMocks     func(*MockJWKSCache, *MockUserService)
 		expectedStatus int
 		expectContext  bool
@@ -75,6 +76,35 @@ func TestAuthenticator_Middleware(t *testing.T) {
 				// No mocks needed as middleware should bypass
 			},
 			expectedStatus: http.StatusOK,
+			expectContext:  false,
+		},
+		{
+			name: "successful local e2e authentication",
+			path: "/api/test",
+			headers: map[string]string{
+				"x-fittrack-dev-e2e-user": "local-e2e-user",
+			},
+			localE2E: &LocalE2EAuthConfig{
+				Enabled: true,
+				UserID:  "local-e2e-user",
+			},
+			setupMocks: func(jwkCache *MockJWKSCache, userService *MockUserService) {
+				userService.On("EnsureUser", mock.Anything, "local-e2e-user").Return(db.Users{UserID: "local-e2e-user"}, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectContext:  true,
+			expectedUserID: "local-e2e-user",
+		},
+		{
+			name: "rejects local e2e header when disabled",
+			path: "/api/test",
+			headers: map[string]string{
+				"x-fittrack-dev-e2e-user": "local-e2e-user",
+			},
+			setupMocks: func(jwkCache *MockJWKSCache, userService *MockUserService) {
+				// No mocks needed because the middleware should fail early.
+			},
+			expectedStatus: http.StatusUnauthorized,
 			expectContext:  false,
 		},
 		{
@@ -138,6 +168,9 @@ func TestAuthenticator_Middleware(t *testing.T) {
 				logger:      logger,
 				jwkCache:    mockJWKSCache,
 				userService: mockUserService,
+			}
+			if tt.localE2E != nil {
+				auth.WithLocalE2EAuth(*tt.localE2E)
 			}
 
 			var capturedContext context.Context

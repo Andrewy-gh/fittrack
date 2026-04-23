@@ -319,9 +319,22 @@ func TestHandlerGetConversation(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 		now := time.Date(2026, 3, 26, 17, 5, 0, 0, time.UTC)
+		workoutFocus := "pull"
 		service.On("GetConversation", mock.Anything, int32(41)).Return(&ConversationDetail{
 			Conversation: &Conversation{
-				ID:        41,
+				ID: 41,
+				LatestWorkoutDraft: &workout.CreateWorkoutRequest{
+					Date:         "2026-04-21T12:00:00Z",
+					WorkoutFocus: &workoutFocus,
+					Exercises: []workout.ExerciseInput{
+						{
+							Name: "Chest Supported Row",
+							Sets: []workout.SetInput{
+								{Reps: 10, SetType: "working"},
+							},
+						},
+					},
+				},
 				CreatedAt: now,
 				UpdatedAt: now,
 			},
@@ -347,6 +360,7 @@ func TestHandlerGetConversation(t *testing.T) {
 		require.Equal(t, http.StatusOK, rr.Code)
 		assert.Contains(t, rr.Body.String(), `"conversation"`)
 		assert.Contains(t, rr.Body.String(), `"messages"`)
+		assert.Contains(t, rr.Body.String(), `"latest_workout_draft":{"date":"2026-04-21T12:00:00Z"`)
 		service.AssertExpectations(t)
 	})
 

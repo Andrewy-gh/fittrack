@@ -1,4 +1,5 @@
 import type { ApiError } from "@/lib/errors";
+import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
 import { stackClientApp } from "@/stack";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -6,6 +7,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export type AIChatConversation = {
   id: number;
   title?: string;
+  latest_workout_draft?: AIWorkoutDraft;
   created_at: string;
   updated_at: string;
   last_message_at?: string;
@@ -140,20 +142,21 @@ async function getAuthHeaders(contentType = false): Promise<Headers> {
   }
 
   if (!stackClientApp) {
-    return headers;
+    return applyLocalDevAuthHeader(headers);
   }
 
   const user = await stackClientApp.getUser();
   if (!user) {
-    return headers;
+    return applyLocalDevAuthHeader(headers);
   }
 
   const { accessToken } = await user.getAuthJson();
   if (accessToken) {
     headers.set("x-stack-access-token", accessToken);
+    return headers;
   }
 
-  return headers;
+  return applyLocalDevAuthHeader(headers);
 }
 
 async function readApiError(response: Response): Promise<ApiError> {

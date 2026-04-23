@@ -79,7 +79,7 @@ INSERT INTO ai_chat_conversation (
     title
 )
 VALUES ($1, $2)
-RETURNING id, user_id, title, created_at, updated_at, last_message_at
+RETURNING id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at
 `
 
 type CreateAIChatConversationParams struct {
@@ -94,6 +94,7 @@ func (q *Queries) CreateAIChatConversation(ctx context.Context, arg CreateAIChat
 		&i.ID,
 		&i.UserID,
 		&i.Title,
+		&i.LatestWorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastMessageAt,
@@ -412,7 +413,7 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) er
 }
 
 const getAIChatConversation = `-- name: GetAIChatConversation :one
-SELECT id, user_id, title, created_at, updated_at, last_message_at
+SELECT id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at
 FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2
 `
@@ -429,6 +430,7 @@ func (q *Queries) GetAIChatConversation(ctx context.Context, arg GetAIChatConver
 		&i.ID,
 		&i.UserID,
 		&i.Title,
+		&i.LatestWorkoutDraft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastMessageAt,
@@ -1998,6 +2000,24 @@ func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIC
 		&i.CompletedAt,
 	)
 	return i, err
+}
+
+const setAIChatConversationLatestWorkoutDraft = `-- name: SetAIChatConversationLatestWorkoutDraft :exec
+UPDATE ai_chat_conversation
+SET latest_workout_draft = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+`
+
+type SetAIChatConversationLatestWorkoutDraftParams struct {
+	ID                 int32  `json:"id"`
+	UserID             string `json:"user_id"`
+	LatestWorkoutDraft []byte `json:"latest_workout_draft"`
+}
+
+func (q *Queries) SetAIChatConversationLatestWorkoutDraft(ctx context.Context, arg SetAIChatConversationLatestWorkoutDraftParams) error {
+	_, err := q.db.Exec(ctx, setAIChatConversationLatestWorkoutDraft, arg.ID, arg.UserID, arg.LatestWorkoutDraft)
+	return err
 }
 
 const setAIChatConversationTitleIfEmpty = `-- name: SetAIChatConversationTitleIfEmpty :execrows

@@ -33,6 +33,7 @@ CREATE TABLE ai_chat_conversation (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     title VARCHAR(256),
+    latest_workout_draft JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_message_at TIMESTAMPTZ,

@@ -1,24 +1,34 @@
-import { client } from '@/client/client.gen';
-import { stackClientApp } from '@/stack';
-import type { ApiError } from '@/lib/errors';
-import { toast } from 'sonner';
+import { client } from "@/client/client.gen";
+import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
+import { stackClientApp } from "@/stack";
+import type { ApiError } from "@/lib/errors";
+import { toast } from "sonner";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 client.setConfig({
   baseUrl: BASE_URL,
 });
 
 client.interceptors.request.use(async (request) => {
-  if (!stackClientApp) return request;
+  if (!stackClientApp) {
+    applyLocalDevAuthHeader(request.headers);
+    return request;
+  }
 
   const user = await stackClientApp.getUser();
-  if (user) {
-    const { accessToken } = await user.getAuthJson();
-    if (accessToken) {
-      request.headers.set('x-stack-access-token', accessToken);
-    }
+  if (!user) {
+    applyLocalDevAuthHeader(request.headers);
+    return request;
   }
+
+  const { accessToken } = await user.getAuthJson();
+  if (accessToken) {
+    request.headers.set("x-stack-access-token", accessToken);
+    return request;
+  }
+
+  applyLocalDevAuthHeader(request.headers);
   return request;
 });
 
@@ -43,19 +53,19 @@ client.interceptors.response.use(async (response) => {
 
     // Handle 401: session expired or invalid
     if (response.status === 401) {
-      toast.error('Session expired. Please log in again.');
+      toast.error("Session expired. Please log in again.");
       if (stackClientApp) {
         stackClientApp
           .getUser()
           .then((user) => {
             if (user) {
               user.signOut().catch((err: unknown) => {
-                console.error('Error signing out on 401:', err);
+                console.error("Error signing out on 401:", err);
               });
             }
           })
           .catch((err: unknown) => {
-            console.error('Error getting user on 401:', err);
+            console.error("Error getting user on 401:", err);
           });
       }
     }
@@ -64,7 +74,7 @@ client.interceptors.response.use(async (response) => {
     throw error;
   } catch (err) {
     // If JSON parsing fails or error already thrown, re-throw
-    if (err && typeof err === 'object' && 'message' in err) {
+    if (err && typeof err === "object" && "message" in err) {
       throw err;
     }
 

@@ -35,6 +35,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
@@ -181,6 +182,18 @@ func main() {
 	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
 	healthHandler := health.NewHandler(logger, pool)
 	aiChatHandler := aichat.NewHandler(logger, aiChatService)
+	var e2eAuthHandler *e2eauth.Handler
+	if cfg.LocalE2EAuthConfigured() {
+		e2eAuthHandler = e2eauth.NewHandler(logger, e2eauth.NewService(
+			logger,
+			queries,
+			pool,
+			userService,
+			cfg.LocalE2EAuthUserID,
+			cfg.LocalE2EAuthEmail,
+			cfg.LocalE2EAuthDisplayName,
+		))
+	}
 
 	api := &api{
 		logger:         logger,
@@ -200,7 +213,13 @@ func main() {
 	}
 
 	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
-	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler)
+	if cfg.LocalE2EAuthConfigured() {
+		authenticator.WithLocalE2EAuth(auth.LocalE2EAuthConfig{
+			Enabled: true,
+			UserID:  cfg.LocalE2EAuthUserID,
+		})
+	}
+	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, e2eAuthHandler)
 
 	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RequestLog → Metrics → Authentication → RateLimit
 	var handler http.Handler = router

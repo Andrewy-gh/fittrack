@@ -646,6 +646,16 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 		return nil, nil, fmt.Errorf("complete ai chat run: %w", err)
 	}
 
+	if len(workoutDraftJSON) > 0 {
+		if err := qtx.SetAIChatConversationLatestWorkoutDraft(ctx, db.SetAIChatConversationLatestWorkoutDraftParams{
+			ID:                 prepared.Conversation.ID,
+			UserID:             prepared.Conversation.UserID,
+			LatestWorkoutDraft: workoutDraftJSON,
+		}); err != nil {
+			return nil, nil, fmt.Errorf("persist latest ai chat workout draft: %w", err)
+		}
+	}
+
 	if err := qtx.TouchAIChatConversation(ctx, db.TouchAIChatConversationParams{
 		ID:            prepared.Conversation.ID,
 		UserID:        prepared.Conversation.UserID,
@@ -826,14 +836,19 @@ func mapConversation(row db.AiChatConversation) (*Conversation, error) {
 	if err != nil {
 		return nil, err
 	}
+	latestWorkoutDraft, err := parseStoredWorkoutDraft(row.LatestWorkoutDraft)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Conversation{
-		ID:            row.ID,
-		UserID:        row.UserID,
-		Title:         textPtr(row.Title),
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
-		LastMessageAt: lastMessageAt,
+		ID:                 row.ID,
+		UserID:             row.UserID,
+		Title:              textPtr(row.Title),
+		LatestWorkoutDraft: latestWorkoutDraft,
+		CreatedAt:          createdAt,
+		UpdatedAt:          updatedAt,
+		LastMessageAt:      lastMessageAt,
 	}, nil
 }
 

@@ -1,29 +1,30 @@
-'use client';
+"use client";
 
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Sun, Moon, Dumbbell } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
-import React from 'react';
-import { useUser } from '@stackframe/react';
-import { useTheme } from '@/components/theme-provider';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LogOut, Sun, Moon, Dumbbell } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import React from "react";
+import { useUser } from "@stackframe/react";
+import { useTheme } from "@/components/theme-provider";
+import { getLocalDevRouteUser } from "@/lib/local-dev-auth";
 
 // Simple Typography component since we don't have one from shadcn
-const Typography: React.FC<{ children: React.ReactNode; className?: string; variant?: 'secondary' }> = ({ 
-  children, 
-  className = '',
-  variant 
-}) => {
-  const baseClasses = 'text-sm';
-  const variantClasses = variant === 'secondary' ? 'text-gray-500' : '';
-  
+const Typography: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+  variant?: "secondary";
+}> = ({ children, className = "", variant }) => {
+  const baseClasses = "text-sm";
+  const variantClasses = variant === "secondary" ? "text-gray-500" : "";
+
   return (
     <span className={`${baseClasses} ${variantClasses} ${className}`}>
       {children}
@@ -32,7 +33,8 @@ const Typography: React.FC<{ children: React.ReactNode; className?: string; vari
 };
 
 export function CustomUserButton() {
-  const user = useUser();
+  const stackUser = useUser();
+  const user = stackUser ?? getLocalDevRouteUser();
   const { theme, setTheme } = useTheme();
 
   // If there's no user, don't render anything
@@ -44,7 +46,7 @@ export function CustomUserButton() {
 
   // Function to toggle theme
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   return (
@@ -53,14 +55,17 @@ export function CustomUserButton() {
         {/* Button shows only the avatar */}
         <Avatar className="h-8.5 w-8.5">
           {user.profileImageUrl && (
-            <AvatarImage src={user.profileImageUrl} alt={user.displayName || 'User'} />
+            <AvatarImage
+              src={user.profileImageUrl}
+              alt={user.displayName || "User"}
+            />
           )}
           <AvatarFallback>
             {user.displayName
-              ?.split(' ')
-              .map(name => name.charAt(0))
-              .join('')
-              .toUpperCase() || 'U'}
+              ?.split(" ")
+              .map((name) => name.charAt(0))
+              .join("")
+              .toUpperCase() || "U"}
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
@@ -69,18 +74,23 @@ export function CustomUserButton() {
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
               {user.profileImageUrl && (
-                <AvatarImage src={user.profileImageUrl} alt={user.displayName || 'User'} />
+                <AvatarImage
+                  src={user.profileImageUrl}
+                  alt={user.displayName || "User"}
+                />
               )}
               <AvatarFallback>
                 {user.displayName
-                  ?.split(' ')
-                  .map(name => name.charAt(0))
-                  .join('')
-                  .toUpperCase() || 'U'}
+                  ?.split(" ")
+                  .map((name) => name.charAt(0))
+                  .join("")
+                  .toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <Typography className="max-w-40 truncate">{user.displayName}</Typography>
+              <Typography className="max-w-40 truncate">
+                {user.displayName}
+              </Typography>
               <Typography variant="secondary" className="max-w-40 truncate">
                 {user.primaryEmail}
               </Typography>
@@ -88,12 +98,16 @@ export function CustomUserButton() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        
+
         {/* Theme Toggle */}
         <DropdownMenuItem onClick={toggleTheme}>
           <div className="flex gap-2 items-center">
-            {theme === 'light' ? <Moon {...iconProps} /> : <Sun {...iconProps} />}
-            <Typography>{theme === 'light' ? 'Dark' : 'Light'}</Typography>
+            {theme === "light" ? (
+              <Moon {...iconProps} />
+            ) : (
+              <Sun {...iconProps} />
+            )}
+            <Typography>{theme === "light" ? "Dark" : "Light"}</Typography>
           </div>
         </DropdownMenuItem>
 
@@ -109,7 +123,9 @@ export function CustomUserButton() {
         <DropdownMenuItem onClick={() => user.signOut()}>
           <div className="flex gap-2 items-center">
             <LogOut {...iconProps} />
-            <Typography>Sign out</Typography>
+            <Typography>
+              {stackUser ? "Sign out" : "Exit local E2E session"}
+            </Typography>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

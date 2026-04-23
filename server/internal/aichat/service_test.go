@@ -373,6 +373,52 @@ func TestServiceGetConversation_IncludesActiveRunSequence(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceGetConversation_IncludesLatestWorkoutDraft(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo)
+	ctx := user.WithContext(context.Background(), "user-123")
+	now := time.Date(2026, 4, 21, 17, 26, 0, 0, time.UTC)
+	workoutFocus := "pull"
+	latestWorkoutDraft := &workout.CreateWorkoutRequest{
+		Date:         "2026-04-21T12:00:00Z",
+		WorkoutFocus: &workoutFocus,
+		Exercises: []workout.ExerciseInput{
+			{
+				Name: "Chest Supported Row",
+				Sets: []workout.SetInput{
+					{Reps: 10, SetType: "working"},
+				},
+			},
+		},
+	}
+
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	repo.On("GetConversation", mock.Anything, int32(41), "user-123").Return(&Conversation{
+		ID:                 41,
+		UserID:             "user-123",
+		LatestWorkoutDraft: latestWorkoutDraft,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}, nil).Once()
+	repo.On("ListMessages", mock.Anything, int32(41), "user-123").Return([]ChatMessage{}, nil).Once()
+	repo.On("GetActiveRunForConversation", mock.Anything, int32(41), "user-123").Return((*ChatRun)(nil), pgx.ErrNoRows).Once()
+
+	detail, err := service.GetConversation(ctx, 41)
+
+	require.NoError(t, err)
+	require.NotNil(t, detail)
+	require.NotNil(t, detail.Conversation)
+	require.NotNil(t, detail.Conversation.LatestWorkoutDraft)
+	assert.Equal(t, "2026-04-21T12:00:00Z", detail.Conversation.LatestWorkoutDraft.Date)
+	require.NotNil(t, detail.Conversation.LatestWorkoutDraft.WorkoutFocus)
+	assert.Equal(t, "pull", *detail.Conversation.LatestWorkoutDraft.WorkoutFocus)
+	featureAccess.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
 func TestServicePrepareMessageStream_RequiresRuntime(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)
@@ -979,7 +1025,7 @@ func TestServiceResumeMessageStream_ReplaysWhileRunActiveAndCompletes(t *testing
 					},
 				},
 			},
-			CompletedAt:        &now,
+			CompletedAt: &now,
 		},
 		AssistantMessage: &ChatMessage{
 			ID:             61,

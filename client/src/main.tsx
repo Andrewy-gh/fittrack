@@ -1,17 +1,18 @@
-import { StrictMode } from 'react';
-import ReactDOM from 'react-dom/client';
-import { createRouter } from '@tanstack/react-router';
-import { queryClient } from './lib/api/api.ts';
-import { StackProvider, StackTheme, useUser } from '@stackframe/react';
-import { stackClientApp } from './stack.ts';
-import { ThemeProvider } from './components/theme-provider.tsx';
+import { StrictMode } from "react";
+import ReactDOM from "react-dom/client";
+import { createRouter } from "@tanstack/react-router";
+import { queryClient } from "./lib/api/api.ts";
+import { StackProvider, StackTheme, useUser } from "@stackframe/react";
+import { stackClientApp } from "./stack.ts";
+import { ThemeProvider } from "./components/theme-provider.tsx";
+import { getLocalDevRouteUser } from "./lib/local-dev-auth.ts";
 // Import the generated route tree
-import { routeTree } from './routeTree.gen';
+import { routeTree } from "./routeTree.gen";
 
-import './styles.css';
-import reportWebVitals from './reportWebVitals.ts';
+import "./styles.css";
+import reportWebVitals from "./reportWebVitals.ts";
 
-import { App } from './app.tsx';
+import { App } from "./app.tsx";
 
 // Create a new router instance
 export const router = createRouter({
@@ -20,26 +21,26 @@ export const router = createRouter({
     queryClient,
     user: null,
   },
-  defaultPreload: 'intent',
+  defaultPreload: "intent",
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
 });
 
 // Register the router instance for type safety
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
 }
 
 // Render the app
-const rootElement = document.getElementById('app');
+const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
 
   function AppWithStack() {
-    const user = useUser();
+    const user = useUser() ?? getLocalDevRouteUser();
     return <App user={user} />;
   }
 
@@ -58,7 +59,7 @@ if (rootElement && !rootElement.innerHTML) {
           <App user={null} />
         </ThemeProvider>
       )}
-    </StrictMode>
+    </StrictMode>,
   );
 }
 

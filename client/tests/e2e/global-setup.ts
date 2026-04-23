@@ -1,26 +1,46 @@
-import { chromium, type FullConfig } from '@playwright/test';
-import { mkdir, readFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { signInWithStack } from './helpers/stack-auth';
-import { resolveStackAuthBootstrapConfig } from '../stack-auth-config';
+import { chromium, type FullConfig } from "@playwright/test";
+import { mkdir, readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { signInWithStack } from "./helpers/stack-auth";
+import { resolveStackAuthBootstrapConfig } from "../stack-auth-config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const authFile = path.join(__dirname, '.auth', 'stack.json');
-const serverEnvPath = path.resolve(__dirname, '..', '..', '..', 'server', '.env');
-const clientEnvPath = path.resolve(__dirname, '..', '..', '..', 'client', '.env');
+const authFile = path.join(__dirname, ".auth", "stack.json");
+const localDevAuthStorageKey = "fittrack-local-e2e-auth";
+const serverEnvPath = path.resolve(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "server",
+  ".env",
+);
+const clientEnvPath = path.resolve(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "client",
+  ".env",
+);
 
 type StackTokens = { refreshToken: string; accessToken: string };
+type LocalAuthBootstrapResponse = {
+  user_id: string;
+  email: string;
+  display_name: string;
+};
 
 function parseEnvFile(contents: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const line of contents.split(/\r?\n/)) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIndex = trimmed.indexOf('=');
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIndex = trimmed.indexOf("=");
     if (eqIndex === -1) continue;
     const key = trimmed.slice(0, eqIndex).trim();
     let value = trimmed.slice(eqIndex + 1).trim();
@@ -37,7 +57,7 @@ function parseEnvFile(contents: string): Record<string, string> {
 
 async function loadEnvFile(filePath: string) {
   try {
-    const contents = await readFile(filePath, 'utf8');
+    const contents = await readFile(filePath, "utf8");
     return parseEnvFile(contents);
   } catch {
     return {};
@@ -45,20 +65,20 @@ async function loadEnvFile(filePath: string) {
 }
 
 function buildStackHeaders(options: {
-  accessType: 'client' | 'server' | 'admin';
+  accessType: "client" | "server" | "admin";
   projectId: string;
   publishableClientKey?: string;
   secretServerKey?: string;
 }) {
   return {
-    'content-type': 'application/json',
-    'x-stack-access-type': options.accessType,
-    'x-stack-project-id': options.projectId,
+    "content-type": "application/json",
+    "x-stack-access-type": options.accessType,
+    "x-stack-project-id": options.projectId,
     ...(options.publishableClientKey
-      ? { 'x-stack-publishable-client-key': options.publishableClientKey }
+      ? { "x-stack-publishable-client-key": options.publishableClientKey }
       : {}),
     ...(options.secretServerKey
-      ? { 'x-stack-secret-server-key': options.secretServerKey }
+      ? { "x-stack-secret-server-key": options.secretServerKey }
       : {}),
   } as Record<string, string>;
 }
@@ -67,13 +87,13 @@ async function stackRequest<T>(
   baseUrl: string,
   pathName: string,
   options: {
-    method?: 'GET' | 'POST';
+    method?: "GET" | "POST";
     headers: Record<string, string>;
     body?: unknown;
-  }
+  },
 ): Promise<{ status: number; body: T }> {
   const response = await fetch(`${baseUrl}${pathName}`, {
-    method: options.method ?? 'GET',
+    method: options.method ?? "GET",
     headers: options.headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
@@ -95,7 +115,7 @@ async function ensureUserId(options: {
   email: string;
 }) {
   const headers = buildStackHeaders({
-    accessType: 'server',
+    accessType: "server",
     projectId: options.projectId,
     publishableClientKey: options.publishableClientKey,
     secretServerKey: options.secretServerKey,
@@ -103,14 +123,14 @@ async function ensureUserId(options: {
 
   const createResponse = await stackRequest<{ id?: string; code?: string }>(
     options.baseUrl,
-    '/users',
+    "/users",
     {
-      method: 'POST',
+      method: "POST",
       headers,
       body: {
         primary_email: options.email,
       },
-    }
+    },
   );
 
   if (createResponse.status === 201 && createResponse.body.id) {
@@ -119,29 +139,34 @@ async function ensureUserId(options: {
 
   if (
     createResponse.status !== 409 ||
-    typeof createResponse.body !== 'object' ||
+    typeof createResponse.body !== "object" ||
     createResponse.body === null ||
-    (createResponse.body as { code?: string }).code !== 'USER_EMAIL_ALREADY_EXISTS'
+    (createResponse.body as { code?: string }).code !==
+      "USER_EMAIL_ALREADY_EXISTS"
   ) {
     const details =
-      typeof createResponse.body === 'string'
+      typeof createResponse.body === "string"
         ? createResponse.body
         : JSON.stringify(createResponse.body);
-    throw new Error(`Failed to create Stack Auth user: ${createResponse.status} ${details}`);
+    throw new Error(
+      `Failed to create Stack Auth user: ${createResponse.status} ${details}`,
+    );
   }
 
-  const listResponse = await stackRequest<{ items?: Array<{ id: string; primary_email?: string }> }>(
-    options.baseUrl,
-    `/users?query=${encodeURIComponent(options.email)}`,
-    { headers }
-  );
+  const listResponse = await stackRequest<{
+    items?: Array<{ id: string; primary_email?: string }>;
+  }>(options.baseUrl, `/users?query=${encodeURIComponent(options.email)}`, {
+    headers,
+  });
 
   const existingUser = listResponse.body.items?.find(
-    (user) => user.primary_email?.toLowerCase() === options.email.toLowerCase()
+    (user) => user.primary_email?.toLowerCase() === options.email.toLowerCase(),
   );
 
   if (!existingUser) {
-    throw new Error('Stack Auth user exists but could not be found in list results.');
+    throw new Error(
+      "Stack Auth user exists but could not be found in list results.",
+    );
   }
 
   return existingUser.id;
@@ -155,24 +180,23 @@ async function createSession(options: {
   userId: string;
 }): Promise<StackTokens> {
   const headers = buildStackHeaders({
-    accessType: 'server',
+    accessType: "server",
     projectId: options.projectId,
     publishableClientKey: options.publishableClientKey,
     secretServerKey: options.secretServerKey,
   });
 
-  const response = await stackRequest<{ refresh_token: string; access_token: string }>(
-    options.baseUrl,
-    '/auth/sessions',
-    {
-      method: 'POST',
-      headers,
-      body: {
-        user_id: options.userId,
-        expires_in_millis: 1000 * 60 * 60 * 2,
-      },
-    }
-  );
+  const response = await stackRequest<{
+    refresh_token: string;
+    access_token: string;
+  }>(options.baseUrl, "/auth/sessions", {
+    method: "POST",
+    headers,
+    body: {
+      user_id: options.userId,
+      expires_in_millis: 1000 * 60 * 60 * 2,
+    },
+  });
 
   if (response.status !== 200) {
     throw new Error(`Failed to create Stack Auth session: ${response.status}`);
@@ -191,41 +215,44 @@ function buildAuthCookies(options: {
   accessToken: string;
 }) {
   const appUrl = new URL(options.baseUrl);
-  const isSecure = appUrl.protocol === 'https:';
-  const cookieUrl = new URL('/', appUrl).toString();
-  const refreshName = `${isSecure ? '__Host-' : ''}stack-refresh-${options.projectId}--default`;
+  const isSecure = appUrl.protocol === "https:";
+  const cookieUrl = new URL("/", appUrl).toString();
+  const refreshName = `${isSecure ? "__Host-" : ""}stack-refresh-${options.projectId}--default`;
   const legacyRefreshName = `stack-refresh-${options.projectId}`;
   const refreshPayload = JSON.stringify({
     refresh_token: options.refreshToken,
     updated_at_millis: Date.now(),
   });
-  const accessPayload = JSON.stringify([options.refreshToken, options.accessToken]);
+  const accessPayload = JSON.stringify([
+    options.refreshToken,
+    options.accessToken,
+  ]);
 
   const nowSeconds = Math.floor(Date.now() / 1000);
-    return [
-      {
-        name: legacyRefreshName,
-        value: options.refreshToken,
-        url: cookieUrl,
-        expires: nowSeconds + 60 * 60 * 24 * 365,
-      },
-      {
-        name: refreshName,
-        value: refreshPayload,
-        url: cookieUrl,
-        expires: nowSeconds + 60 * 60 * 24 * 365,
-      },
-      {
-        name: 'stack-access',
-        value: accessPayload,
-        url: cookieUrl,
-        expires: nowSeconds + 60 * 60 * 24,
-      },
-    ];
+  return [
+    {
+      name: legacyRefreshName,
+      value: options.refreshToken,
+      url: cookieUrl,
+      expires: nowSeconds + 60 * 60 * 24 * 365,
+    },
+    {
+      name: refreshName,
+      value: refreshPayload,
+      url: cookieUrl,
+      expires: nowSeconds + 60 * 60 * 24 * 365,
+    },
+    {
+      name: "stack-access",
+      value: accessPayload,
+      url: cookieUrl,
+      expires: nowSeconds + 60 * 60 * 24,
+    },
+  ];
 }
 
 async function globalSetup(config: FullConfig) {
-  const baseURL = config.projects[0]?.use?.baseURL ?? 'http://localhost:5173';
+  const baseURL = config.projects[0]?.use?.baseURL ?? "http://localhost:5173";
   const serverEnv = await loadEnvFile(serverEnvPath);
   const clientEnv = await loadEnvFile(clientEnvPath);
   const {
@@ -235,6 +262,8 @@ async function globalSetup(config: FullConfig) {
     secretServerKey,
     publishableClientKey,
     apiBaseUrl,
+    localAuthEnabled,
+    localAuthApiBaseUrl,
   } = resolveStackAuthBootstrapConfig({
     processEnv: process.env,
     clientEnv,
@@ -246,7 +275,27 @@ async function globalSetup(config: FullConfig) {
   const canUseServerAuth = Boolean(projectId && secretServerKey);
   const canUseUiAuth = Boolean(email && password);
 
-  if (canUseServerAuth) {
+  if (localAuthEnabled) {
+    const page = await context.newPage();
+    const localAuth = await bootstrapLocalDevAuth(localAuthApiBaseUrl);
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ([storageKey, session]) => {
+        window.localStorage.setItem(storageKey, JSON.stringify(session));
+      },
+      [
+        localDevAuthStorageKey,
+        {
+          userId: localAuth.user_id,
+          email: localAuth.email,
+          displayName: localAuth.display_name,
+        },
+      ] satisfies [
+        string,
+        { userId: string; email: string; displayName: string },
+      ],
+    );
+  } else if (canUseServerAuth) {
     if (!projectId || !secretServerKey) {
       await browser.close();
       return;
@@ -276,7 +325,7 @@ async function globalSetup(config: FullConfig) {
         projectId,
         refreshToken: tokens.refreshToken,
         accessToken: tokens.accessToken,
-      })
+      }),
     );
   } else if (canUseUiAuth) {
     if (!email || !password) {
@@ -296,3 +345,22 @@ async function globalSetup(config: FullConfig) {
 }
 
 export default globalSetup;
+
+async function bootstrapLocalDevAuth(
+  apiBaseUrl: string,
+): Promise<LocalAuthBootstrapResponse> {
+  const response = await fetch(`${apiBaseUrl}/dev/e2e/auth/bootstrap`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to bootstrap local E2E auth: ${response.status} ${await response.text()}`,
+    );
+  }
+
+  return (await response.json()) as LocalAuthBootstrapResponse;
+}
