@@ -1,3 +1,10 @@
+import {
+  getAiConversationsById,
+  postAiChatTelemetry,
+  postAiConversations,
+  postAiConversationsByIdLatestWorkoutDraftSave,
+  postAiConversationsByIdMessagesRecover,
+} from "@/client";
 import type { ApiError } from "@/lib/errors";
 import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
 import { stackClientApp } from "@/stack";
@@ -183,91 +190,60 @@ async function readApiError(response: Response): Promise<ApiError> {
 }
 
 export async function createAIChatConversation(): Promise<AIChatConversation> {
-  const response = await fetch(`${BASE_URL}/ai/conversations`, {
-    method: "POST",
-    headers: await getAuthHeaders(),
+  const response = await postAiConversations({
+    throwOnError: true,
   });
 
-  if (!response.ok) {
-    throw await readApiError(response);
-  }
-
-  return (await response.json()) as AIChatConversation;
+  return response.data as AIChatConversation;
 }
 
 export async function reportAIChatTelemetry(
   event: AIChatTelemetryEvent,
 ): Promise<void> {
-  const response = await fetch(`${BASE_URL}/ai/chat/telemetry`, {
-    method: "POST",
-    headers: await getAuthHeaders(true),
-    body: JSON.stringify(event),
+  await postAiChatTelemetry({
+    body: event,
     keepalive: true,
+    throwOnError: true,
   });
-
-  if (!response.ok) {
-    throw await readApiError(response);
-  }
 }
 
 export async function getAIChatConversation(
   conversationId: number,
   options: ConversationRequestOptions = {},
 ): Promise<AIChatConversationDetail> {
-  const response = await fetch(
-    `${BASE_URL}/ai/conversations/${conversationId}`,
-    {
-      method: "GET",
-      headers: await getAuthHeaders(),
-      signal: options.signal,
-    },
-  );
+  const response = await getAiConversationsById({
+    path: { id: conversationId },
+    signal: options.signal,
+    throwOnError: true,
+  });
 
-  if (!response.ok) {
-    throw await readApiError(response);
-  }
-
-  return (await response.json()) as AIChatConversationDetail;
+  return response.data as AIChatConversationDetail;
 }
 
 export async function requestAIChatMessageRecovery(
   conversationId: number,
   options: ConversationRecoveryOptions = {},
 ): Promise<AIChatRecoveryResponse> {
-  const response = await fetch(
-    `${BASE_URL}/ai/conversations/${conversationId}/messages/recover`,
-    {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      signal: options.signal,
-    },
-  );
+  const response = await postAiConversationsByIdMessagesRecover({
+    path: { id: conversationId },
+    signal: options.signal,
+    throwOnError: true,
+  });
 
-  if (!response.ok) {
-    throw await readApiError(response);
-  }
-
-  return (await response.json()) as AIChatRecoveryResponse;
+  return response.data as AIChatRecoveryResponse;
 }
 
 export async function saveAIChatLatestWorkoutDraft(
   conversationId: number,
   options: ConversationRequestOptions = {},
 ): Promise<AISaveLatestWorkoutDraftResponse> {
-  const response = await fetch(
-    `${BASE_URL}/ai/conversations/${conversationId}/latest-workout-draft/save`,
-    {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      signal: options.signal,
-    },
-  );
+  const response = await postAiConversationsByIdLatestWorkoutDraftSave({
+    path: { id: conversationId },
+    signal: options.signal,
+    throwOnError: true,
+  });
 
-  if (!response.ok) {
-    throw await readApiError(response);
-  }
-
-  return (await response.json()) as AISaveLatestWorkoutDraftResponse;
+  return response.data as AISaveLatestWorkoutDraftResponse;
 }
 
 export async function streamAIChatMessage(
