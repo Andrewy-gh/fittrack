@@ -7,8 +7,10 @@ type ChatWorkoutDraftCardProps = {
   draft: AIWorkoutDraft;
   isSaving?: boolean;
   isSaved?: boolean;
+  savedWorkoutId?: number;
   onSave: () => void;
   onEdit: () => void;
+  onOpenSavedWorkout?: () => void;
   className?: string;
 };
 
@@ -16,8 +18,10 @@ export function ChatWorkoutDraftCard({
   draft,
   isSaving = false,
   isSaved = false,
+  savedWorkoutId,
   onSave,
   onEdit,
+  onOpenSavedWorkout,
   className,
 }: ChatWorkoutDraftCardProps) {
   const totalSets = draft.exercises.reduce(
@@ -74,6 +78,15 @@ export function ChatWorkoutDraftCard({
           >
             Edit in workout form
           </Button>
+          {isSaved && savedWorkoutId && onOpenSavedWorkout ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onOpenSavedWorkout}
+            >
+              Open saved workout
+            </Button>
+          ) : null}
         </div>
       </div>
 

@@ -154,6 +154,10 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 		`"setType": "warmup" | "working"`,
 		`"date" is always required and must be RFC3339.`,
 		`If fitness level is unknown, prefer omitting weights instead of guessing aggressively.`,
+		`Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.`,
+		`Do not satisfy a normal 40+ minute strength or hypertrophy request with a very small workout unless the user asked for minimal, beginner, rehab, warm-up, or low-volume work.`,
+		`strength can use fewer exercises with longer rests and enough sets`,
+		`endurance or circuit work should use shorter rests and higher density`,
 	}
 
 	for _, snippet := range requiredSnippets {

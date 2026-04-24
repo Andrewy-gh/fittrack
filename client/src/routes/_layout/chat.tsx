@@ -837,8 +837,17 @@ export function ChatRouteComponent() {
     }
   }
 
+  function handleOpenSavedWorkout(workoutId: number) {
+    void navigate({
+      to: "/workouts/$workoutId",
+      params: { workoutId },
+    });
+  }
+
   const isLatestWorkoutDraftSaved =
     conversation?.latest_workout_draft_status?.is_saved ?? false;
+  const savedWorkoutId =
+    conversation?.latest_workout_draft_status?.saved_workout_id;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
@@ -898,8 +907,14 @@ export function ChatRouteComponent() {
                       void handleSaveWorkoutDraft();
                     }
                   }}
+                  onOpenSavedWorkout={
+                    savedWorkoutId
+                      ? () => handleOpenSavedWorkout(savedWorkoutId)
+                      : undefined
+                  }
                   isSavingWorkoutDraft={isSavingWorkoutDraft}
                   isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
+                  savedWorkoutId={savedWorkoutId}
                 />
               ))}
             </div>
@@ -912,9 +927,15 @@ export function ChatRouteComponent() {
               draft={conversation.latest_workout_draft}
               isSaving={isSavingWorkoutDraft}
               isSaved={isLatestWorkoutDraftSaved}
+              savedWorkoutId={savedWorkoutId}
               onSave={() => void handleSaveWorkoutDraft()}
               onEdit={() =>
                 handleEditInWorkoutForm(conversation.latest_workout_draft!)
+              }
+              onOpenSavedWorkout={
+                savedWorkoutId
+                  ? () => handleOpenSavedWorkout(savedWorkoutId)
+                  : undefined
               }
             />
           ) : null}
@@ -954,15 +975,19 @@ function MessageBubble({
   workoutDraft,
   isSavingWorkoutDraft,
   isSavedWorkoutDraft,
+  savedWorkoutId,
   onSaveWorkoutDraft,
   onEditWorkoutDraft,
+  onOpenSavedWorkout,
 }: {
   message: AIChatMessage;
   workoutDraft?: AIWorkoutDraft;
   isSavingWorkoutDraft?: boolean;
   isSavedWorkoutDraft?: boolean;
+  savedWorkoutId?: number;
   onSaveWorkoutDraft?: () => void;
   onEditWorkoutDraft?: () => void;
+  onOpenSavedWorkout?: () => void;
 }) {
   const isUser = message.role === "user";
   const statusLabel =
@@ -1006,8 +1031,10 @@ function MessageBubble({
           draft={workoutDraft}
           isSaving={isSavingWorkoutDraft}
           isSaved={isSavedWorkoutDraft}
+          savedWorkoutId={savedWorkoutId}
           onSave={onSaveWorkoutDraft}
           onEdit={onEditWorkoutDraft}
+          onOpenSavedWorkout={onOpenSavedWorkout}
         />
       ) : null}
     </div>

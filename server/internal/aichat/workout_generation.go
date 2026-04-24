@@ -136,6 +136,9 @@ Rules:
 - The exercise list must contain at least one real exercise, and every exercise must contain at least one set.
 - Use only "warmup" or "working" for setType.
 - Match the workout focus, available equipment, session length, training location, and injury constraints.
+- Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.
+- Use a reasonable share of the requested time. Do not satisfy a normal 40+ minute strength or hypertrophy request with a very small workout unless the user asked for minimal, beginner, rehab, warm-up, or low-volume work.
+- Adjust density by goal: strength can use fewer exercises with longer rests and enough sets; hypertrophy should use moderate rests and enough total working sets; endurance or circuit work should use shorter rests and higher density; rehab, mobility, and beginner sessions can use lower volume when appropriate.
 - Do not invent equipment the user does not have.
 - Use real, established exercise names only.
 - Add weights only when they are reasonably known from the user's context. If fitness level is unknown, prefer omitting weights instead of guessing aggressively.
