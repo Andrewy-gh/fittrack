@@ -1099,9 +1099,19 @@ describe("ChatRouteComponent", () => {
     expect(mockToastSuccess).toHaveBeenCalledWith("Workout saved successfully");
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/workouts/new" });
     expect(await screen.findByRole("button", { name: "Saved" })).toBeDisabled();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Open saved workout" }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/workouts/$workoutId",
+      params: { workoutId: 88 },
+    });
   });
 
-  it("shows a disabled Saved button when reopening a conversation with an already-saved draft", async () => {
+  it("shows a disabled Saved button and saved workout link when reopening an already-saved draft", async () => {
+    const user = userEvent.setup();
     const latestWorkoutDraft: AIWorkoutDraft = {
       date: "2026-04-21T12:00:00Z",
       notes: "Keep rest short",
@@ -1130,6 +1140,15 @@ describe("ChatRouteComponent", () => {
       screen.queryByRole("button", { name: "Save now" }),
     ).not.toBeInTheDocument();
     expect(mockSaveLatestWorkoutDraft).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: "Open saved workout" }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/workouts/$workoutId",
+      params: { workoutId: 88 },
+    });
   });
 
   it("overwrites the latest workout draft CTA after a regenerated structured workout", async () => {
