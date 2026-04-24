@@ -4,7 +4,9 @@ import { stackClientApp } from "@/stack";
 import type { ApiError } from "@/lib/errors";
 import { toast } from "sonner";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.MODE === "test" ? "http://localhost/api" : "/api");
 
 client.setConfig({
   baseUrl: BASE_URL,

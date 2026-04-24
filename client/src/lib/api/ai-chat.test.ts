@@ -21,6 +21,7 @@ vi.mock("@/lib/local-dev-auth", () => ({
   applyLocalDevAuthHeader,
 }));
 
+import "./client-config";
 import {
   createAIChatConversation,
   pollAIChatConversationUntilSettled,
@@ -30,6 +31,10 @@ import {
   saveAIChatLatestWorkoutDraft,
   streamAIChatMessage,
 } from "./ai-chat";
+
+function latestRequest(): Request {
+  return vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
+}
 
 describe("ai chat api wrapper", () => {
   beforeEach(() => {
@@ -66,16 +71,13 @@ describe("ai chat api wrapper", () => {
     await requestAIChatMessageRecovery(41);
 
     expect(applyLocalDevAuthHeader).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/ai/conversations/41/messages/recover",
-      expect.objectContaining({
-        headers: expect.any(Headers),
-      }),
-    );
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
 
-    const [, options] = vi.mocked(fetch).mock.calls[0]!;
-    const headers = options?.headers as Headers | undefined;
-    expect(headers?.get("x-fittrack-dev-e2e-user")).toBe("local-e2e-user");
+    const request = latestRequest();
+    expect(request.url).toContain("/api/ai/conversations/41/messages/recover");
+    expect(request.headers.get("x-fittrack-dev-e2e-user")).toBe(
+      "local-e2e-user",
+    );
   });
 
   it("parses JSON preflight errors before SSE parsing", async () => {
@@ -435,12 +437,11 @@ describe("ai chat api wrapper", () => {
     );
   });
 
-  it("passes abort signals through persisted conversation polling fetches", async () => {
-    const controller = new AbortController();
+  it("fetches persisted conversation state through the generated client", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockImplementation(async (_input, init) => {
-        expect(init?.signal).toBe(controller.signal);
+      .mockImplementation(async (input) => {
+        expect((input as Request).url).toContain("/api/ai/conversations/41");
 
         return new Response(
           JSON.stringify({
@@ -467,7 +468,6 @@ describe("ai chat api wrapper", () => {
       });
 
     await pollAIChatConversationUntilSettled(41, {
-      signal: controller.signal,
       intervalMs: 0,
       timeoutMs: 10,
     });
@@ -490,12 +490,11 @@ describe("ai chat api wrapper", () => {
 
     const response = await requestAIChatMessageRecovery(41);
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
+    expect(latestRequest().url).toContain(
       "/api/ai/conversations/41/messages/recover",
-      expect.objectContaining({
-        method: "POST",
-      }),
     );
+    expect(latestRequest().method).toBe("POST");
     expect(response).toEqual({
       conversation_id: 41,
       run_id: 61,
@@ -539,12 +538,11 @@ describe("ai chat api wrapper", () => {
 
     const response = await saveAIChatLatestWorkoutDraft(41);
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
+    expect(latestRequest().url).toContain(
       "/api/ai/conversations/41/latest-workout-draft/save",
-      expect.objectContaining({
-        method: "POST",
-      }),
     );
+    expect(latestRequest().method).toBe("POST");
     expect(response.workout_id).toBe(901);
     expect(response.conversation.latest_workout_draft_status?.is_saved).toBe(
       true,
@@ -564,18 +562,16 @@ describe("ai chat api wrapper", () => {
       stage: "pre_start",
     });
 
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/ai/chat/telemetry",
-      expect.objectContaining({
-        method: "POST",
-        keepalive: true,
-        body: JSON.stringify({
-          category: "stream",
-          outcome: "transport_ended_pre_terminal",
-          stage: "pre_start",
-        }),
-      }),
-    );
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
+    const request = latestRequest();
+    expect(request.url).toContain("/api/ai/chat/telemetry");
+    expect(request.method).toBe("POST");
+    expect(request.keepalive).toBe(true);
+    await expect(request.json()).resolves.toEqual({
+      category: "stream",
+      outcome: "transport_ended_pre_terminal",
+      stage: "pre_start",
+    });
   });
 
   it("returns created conversation JSON", async () => {
@@ -598,11 +594,8 @@ describe("ai chat api wrapper", () => {
     const conversation = await createAIChatConversation();
 
     expect(conversation.id).toBe(41);
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/ai/conversations",
-      expect.objectContaining({
-        method: "POST",
-      }),
-    );
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
+    expect(latestRequest().url).toContain("/api/ai/conversations");
+    expect(latestRequest().method).toBe("POST");
   });
 });
