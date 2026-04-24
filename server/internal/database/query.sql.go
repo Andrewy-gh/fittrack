@@ -464,6 +464,46 @@ func (q *Queries) GetAIChatConversation(ctx context.Context, arg GetAIChatConver
 	return i, err
 }
 
+const getAIChatConversationForUpdate = `-- name: GetAIChatConversationForUpdate :one
+SELECT
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at
+FROM ai_chat_conversation
+WHERE id = $1 AND user_id = $2
+FOR UPDATE
+`
+
+type GetAIChatConversationForUpdateParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetAIChatConversationForUpdate(ctx context.Context, arg GetAIChatConversationForUpdateParams) (AiChatConversation, error) {
+	row := q.db.QueryRow(ctx, getAIChatConversationForUpdate, arg.ID, arg.UserID)
+	var i AiChatConversation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.LatestWorkoutDraft,
+		&i.LatestWorkoutDraftSourceRunID,
+		&i.LatestWorkoutDraftSavedWorkoutID,
+		&i.LatestWorkoutDraftSavedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastMessageAt,
+	)
+	return i, err
+}
+
 const getAIChatMessage = `-- name: GetAIChatMessage :one
 SELECT
     id,

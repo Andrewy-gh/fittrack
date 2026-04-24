@@ -578,6 +578,22 @@ SELECT
 FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2;
 
+-- name: GetAIChatConversationForUpdate :one
+SELECT
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at
+FROM ai_chat_conversation
+WHERE id = $1 AND user_id = $2
+FOR UPDATE;
+
 -- name: ListAIChatMessagesByConversation :many
 SELECT
     id,

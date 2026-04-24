@@ -108,7 +108,10 @@ func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, conversationID 
 	defer tx.Rollback(ctx)
 
 	qtx := r.queries.WithTx(tx)
-	row, err := getAIChatConversationForUpdate(ctx, tx, conversationID, userID)
+	row, err := qtx.GetAIChatConversationForUpdate(ctx, db.GetAIChatConversationForUpdateParams{
+		ID:     conversationID,
+		UserID: userID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
@@ -1140,37 +1143,3 @@ func draftStatusFromConversationRow(row db.AiChatConversation) (*LatestWorkoutDr
 }
 
 var _ Repository = (*repository)(nil)
-
-func getAIChatConversationForUpdate(ctx context.Context, tx pgx.Tx, conversationID int32, userID string) (db.AiChatConversation, error) {
-	row := tx.QueryRow(ctx, `
-SELECT
-    id,
-    user_id,
-    title,
-    latest_workout_draft,
-    latest_workout_draft_source_run_id,
-    latest_workout_draft_saved_workout_id,
-    latest_workout_draft_saved_at,
-    created_at,
-    updated_at,
-    last_message_at
-FROM ai_chat_conversation
-WHERE id = $1 AND user_id = $2
-FOR UPDATE
-`, conversationID, userID)
-
-	var conversation db.AiChatConversation
-	err := row.Scan(
-		&conversation.ID,
-		&conversation.UserID,
-		&conversation.Title,
-		&conversation.LatestWorkoutDraft,
-		&conversation.LatestWorkoutDraftSourceRunID,
-		&conversation.LatestWorkoutDraftSavedWorkoutID,
-		&conversation.LatestWorkoutDraftSavedAt,
-		&conversation.CreatedAt,
-		&conversation.UpdatedAt,
-		&conversation.LastMessageAt,
-	)
-	return conversation, err
-}
