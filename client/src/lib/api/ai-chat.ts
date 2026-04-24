@@ -8,9 +8,17 @@ export type AIChatConversation = {
   id: number;
   title?: string;
   latest_workout_draft?: AIWorkoutDraft;
+  latest_workout_draft_status?: AIWorkoutDraftStatus;
   created_at: string;
   updated_at: string;
   last_message_at?: string;
+};
+
+export type AIWorkoutDraftStatus = {
+  source_run_id?: number;
+  is_saved: boolean;
+  saved_workout_id?: number;
+  saved_at?: string;
 };
 
 export type AIChatMessage = {
@@ -42,6 +50,11 @@ export type AIChatRecoveryResponse = {
   conversation_id: number;
   run_id?: number;
   status: "queued" | "not_needed";
+};
+
+export type AISaveLatestWorkoutDraftResponse = {
+  conversation: AIChatConversation;
+  workout_id: number;
 };
 
 export type AIWorkoutSetInput = {
@@ -235,6 +248,26 @@ export async function requestAIChatMessageRecovery(
   }
 
   return (await response.json()) as AIChatRecoveryResponse;
+}
+
+export async function saveAIChatLatestWorkoutDraft(
+  conversationId: number,
+  options: ConversationRequestOptions = {},
+): Promise<AISaveLatestWorkoutDraftResponse> {
+  const response = await fetch(
+    `${BASE_URL}/ai/conversations/${conversationId}/latest-workout-draft/save`,
+    {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      signal: options.signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw await readApiError(response);
+  }
+
+  return (await response.json()) as AISaveLatestWorkoutDraftResponse;
 }
 
 export async function streamAIChatMessage(

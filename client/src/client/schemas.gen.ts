@@ -60,6 +60,12 @@ export const aichat_ConversationSchema = {
     last_message_at: {
       type: "string",
     },
+    latest_workout_draft: {
+      $ref: "#/definitions/workout.CreateWorkoutRequest",
+    },
+    latest_workout_draft_status: {
+      $ref: "#/definitions/aichat.LatestWorkoutDraftStatus",
+    },
     title: {
       type: "string",
     },
@@ -105,6 +111,24 @@ export const aichat_ConversationRunViewSchema = {
   },
 } as const;
 
+export const aichat_LatestWorkoutDraftStatusSchema = {
+  type: "object",
+  properties: {
+    is_saved: {
+      type: "boolean",
+    },
+    saved_at: {
+      type: "string",
+    },
+    saved_workout_id: {
+      type: "integer",
+    },
+    source_run_id: {
+      type: "integer",
+    },
+  },
+} as const;
+
 export const aichat_RecoverMessageResponseSchema = {
   type: "object",
   properties: {
@@ -116,6 +140,18 @@ export const aichat_RecoverMessageResponseSchema = {
     },
     status: {
       type: "string",
+    },
+  },
+} as const;
+
+export const aichat_SaveLatestWorkoutDraftResponseSchema = {
+  type: "object",
+  properties: {
+    conversation: {
+      $ref: "#/definitions/aichat.Conversation",
+    },
+    workout_id: {
+      type: "integer",
     },
   },
 } as const;

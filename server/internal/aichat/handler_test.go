@@ -91,6 +91,12 @@ func (m *mockChatService) GetConversation(ctx context.Context, conversationID in
 	return detail, args.Error(1)
 }
 
+func (m *mockChatService) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {
+	args := m.Called(ctx, conversationID)
+	resp, _ := args.Get(0).(*SaveLatestWorkoutDraftResponse)
+	return resp, args.Error(1)
+}
+
 func (m *mockChatService) RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error) {
 	args := m.Called(ctx, conversationID, reason)
 	resp, _ := args.Get(0).(*RecoverMessageResponse)
@@ -377,6 +383,57 @@ func TestHandlerGetConversation(t *testing.T) {
 
 		require.Equal(t, http.StatusNotFound, rr.Code)
 		assert.Contains(t, rr.Body.String(), "ai conversation with id 41 not found")
+		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerSaveLatestWorkoutDraft(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("returns the saved conversation state", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		savedWorkoutID := int32(88)
+		savedAt := time.Date(2026, 4, 21, 17, 30, 0, 0, time.UTC)
+		service.On("SaveLatestWorkoutDraft", mock.Anything, int32(41)).Return(&SaveLatestWorkoutDraftResponse{
+			WorkoutID: savedWorkoutID,
+			Conversation: &Conversation{
+				ID: 41,
+				LatestWorkoutDraftStatus: &LatestWorkoutDraftStatus{
+					IsSaved:        true,
+					SavedWorkoutID: &savedWorkoutID,
+					SavedAt:        &savedAt,
+				},
+				CreatedAt: savedAt,
+				UpdatedAt: savedAt,
+			},
+		}, nil).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/latest-workout-draft/save", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.SaveLatestWorkoutDraft(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+		assert.Contains(t, rr.Body.String(), `"workout_id":88`)
+		assert.Contains(t, rr.Body.String(), `"latest_workout_draft_status":{"is_saved":true`)
+		service.AssertExpectations(t)
+	})
+
+	t.Run("maps missing draft to 409", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("SaveLatestWorkoutDraft", mock.Anything, int32(41)).Return((*SaveLatestWorkoutDraftResponse)(nil), ErrLatestWorkoutDraftUnavailable).Once()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/latest-workout-draft/save", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.SaveLatestWorkoutDraft(rr, req)
+
+		require.Equal(t, http.StatusConflict, rr.Code)
+		assert.Contains(t, rr.Body.String(), "ai chat conversation does not have a latest workout draft to save")
 		service.AssertExpectations(t)
 	})
 }

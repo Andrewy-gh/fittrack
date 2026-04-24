@@ -10,6 +10,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -29,12 +30,17 @@ type recoveryDispatcher interface {
 	EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error
 }
 
+type workoutCreator interface {
+	CreateWorkoutWithID(ctx context.Context, requestBody workout.CreateWorkoutRequest) (int32, error)
+}
+
 type Service struct {
 	logger        *slog.Logger
 	featureAccess featureAccessService
 	runtime       runtime
 	repo          Repository
 	recovery      recoveryDispatcher
+	workouts      workoutCreator
 }
 
 const (
@@ -46,12 +52,13 @@ const (
 	runRecoveryClaimedMarker     = "ai chat recovery claimed and in progress"
 )
 
-func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository) *Service {
+func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository, workouts workoutCreator) *Service {
 	return &Service{
 		logger:        logger,
 		featureAccess: featureAccess,
 		runtime:       runtime,
 		repo:          repo,
+		workouts:      workouts,
 	}
 }
 
@@ -427,6 +434,26 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		Sequence:       prepared.LastSequence,
 		WorkoutDraft:   done.WorkoutDraft,
 	}, nil
+}
+
+func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {
+	if err := s.ensureFeatureAccess(ctx); err != nil {
+		return nil, err
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.repo.SaveLatestWorkoutDraft(ctx, conversationID, userID, time.Now().UTC())
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, newConversationNotFound(conversationID)
+		}
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *Service) AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error {

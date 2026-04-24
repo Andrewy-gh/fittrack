@@ -38,6 +38,10 @@ definitions:
         type: integer
       last_message_at:
         type: string
+      latest_workout_draft:
+        $ref: '#/definitions/workout.CreateWorkoutRequest'
+      latest_workout_draft_status:
+        $ref: '#/definitions/aichat.LatestWorkoutDraftStatus'
       title:
         type: string
       updated_at:
@@ -65,6 +69,17 @@ definitions:
       status:
         type: string
     type: object
+  aichat.LatestWorkoutDraftStatus:
+    properties:
+      is_saved:
+        type: boolean
+      saved_at:
+        type: string
+      saved_workout_id:
+        type: integer
+      source_run_id:
+        type: integer
+    type: object
   aichat.RecoverMessageResponse:
     properties:
       conversation_id:
@@ -73,6 +88,13 @@ definitions:
         type: integer
       status:
         type: string
+    type: object
+  aichat.SaveLatestWorkoutDraftResponse:
+    properties:
+      conversation:
+        $ref: '#/definitions/aichat.Conversation'
+      workout_id:
+        type: integer
     type: object
   aichat.SendMessageRequest:
     properties:
@@ -859,6 +881,52 @@ paths:
       security:
       - StackAuth: []
       summary: Get AI chat conversation
+      tags:
+      - ai-chat
+  /ai/conversations/{id}/latest-workout-draft/save:
+    post:
+      description: Creates a workout from the conversation's latest structured workout
+        draft and marks that draft as saved.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.SaveLatestWorkoutDraftResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Save the latest AI chat workout draft
       tags:
       - ai-chat
   /ai/conversations/{id}/messages/recover:

@@ -16,6 +16,7 @@ import {
   resumeAIChatMessageStream,
   reportAIChatTelemetry,
   requestAIChatMessageRecovery,
+  saveAIChatLatestWorkoutDraft,
   streamAIChatMessage,
   type AIChatConversation,
   type AIChatConversationDetail,
@@ -75,6 +76,7 @@ export function ChatRouteComponent() {
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSavingWorkoutDraft, setIsSavingWorkoutDraft] = useState(false);
   const [latestWorkoutDraftMessageId, setLatestWorkoutDraftMessageId] =
     useState<number | null>(null);
   const pendingAssistantIdRef = useRef<number | null>(null);
@@ -275,6 +277,9 @@ export function ChatRouteComponent() {
                     ? {
                         ...current,
                         latest_workout_draft: event.workout_draft,
+                        latest_workout_draft_status: {
+                          is_saved: false,
+                        },
                       }
                     : current,
                 );
@@ -650,6 +655,9 @@ export function ChatRouteComponent() {
                   ? {
                       ...current,
                       latest_workout_draft: event.workout_draft,
+                      latest_workout_draft_status: {
+                        is_saved: false,
+                      },
                     }
                   : current,
               );
@@ -812,6 +820,26 @@ export function ChatRouteComponent() {
     void navigate({ to: "/workouts/new" });
   }
 
+  async function handleSaveWorkoutDraft() {
+    if (!conversation) {
+      return;
+    }
+
+    try {
+      setIsSavingWorkoutDraft(true);
+      const saved = await saveAIChatLatestWorkoutDraft(conversation.id);
+      setConversation(saved.conversation);
+      toast.success("Workout saved successfully");
+    } catch (error) {
+      showErrorToast(error, "Failed to save workout");
+    } finally {
+      setIsSavingWorkoutDraft(false);
+    }
+  }
+
+  const isLatestWorkoutDraftSaved =
+    conversation?.latest_workout_draft_status?.is_saved ?? false;
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <Card>
@@ -865,6 +893,13 @@ export function ChatRouteComponent() {
                       );
                     }
                   }}
+                  onSaveWorkoutDraft={() => {
+                    if (conversation?.latest_workout_draft) {
+                      void handleSaveWorkoutDraft();
+                    }
+                  }}
+                  isSavingWorkoutDraft={isSavingWorkoutDraft}
+                  isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
                 />
               ))}
             </div>
@@ -875,6 +910,9 @@ export function ChatRouteComponent() {
             <ChatWorkoutDraftCard
               className="max-w-[85%]"
               draft={conversation.latest_workout_draft}
+              isSaving={isSavingWorkoutDraft}
+              isSaved={isLatestWorkoutDraftSaved}
+              onSave={() => void handleSaveWorkoutDraft()}
               onEdit={() =>
                 handleEditInWorkoutForm(conversation.latest_workout_draft!)
               }
@@ -914,10 +952,16 @@ export function ChatRouteComponent() {
 function MessageBubble({
   message,
   workoutDraft,
+  isSavingWorkoutDraft,
+  isSavedWorkoutDraft,
+  onSaveWorkoutDraft,
   onEditWorkoutDraft,
 }: {
   message: AIChatMessage;
   workoutDraft?: AIWorkoutDraft;
+  isSavingWorkoutDraft?: boolean;
+  isSavedWorkoutDraft?: boolean;
+  onSaveWorkoutDraft?: () => void;
   onEditWorkoutDraft?: () => void;
 }) {
   const isUser = message.role === "user";
@@ -956,10 +1000,13 @@ function MessageBubble({
         ) : null}
       </div>
 
-      {!isUser && workoutDraft && onEditWorkoutDraft ? (
+      {!isUser && workoutDraft && onSaveWorkoutDraft && onEditWorkoutDraft ? (
         <ChatWorkoutDraftCard
           className="w-full"
           draft={workoutDraft}
+          isSaving={isSavingWorkoutDraft}
+          isSaved={isSavedWorkoutDraft}
+          onSave={onSaveWorkoutDraft}
           onEdit={onEditWorkoutDraft}
         />
       ) : null}

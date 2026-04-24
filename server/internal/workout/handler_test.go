@@ -71,6 +71,11 @@ func (m *MockWorkoutRepository) SaveWorkout(ctx context.Context, reformatted *Re
 	return args.Error(0)
 }
 
+func (m *MockWorkoutRepository) SaveWorkoutWithID(ctx context.Context, reformatted *ReformattedRequest, userID string) (int32, error) {
+	args := m.Called(ctx, reformatted, userID)
+	return args.Get(0).(int32), args.Error(1)
+}
+
 func (m *MockWorkoutRepository) GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error) {
 	args := m.Called(ctx, id, userID)
 	return args.Get(0).(db.Workout), args.Error(1)
@@ -346,7 +351,7 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 			name:        "successful creation",
 			requestBody: validRequest,
 			setupMock: func(m *MockWorkoutRepository) {
-				m.On("SaveWorkout", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(nil)
+				m.On("SaveWorkoutWithID", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(int32(1), nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,
@@ -394,7 +399,7 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 			name:        "service error",
 			requestBody: validRequest,
 			setupMock: func(m *MockWorkoutRepository) {
-				m.On("SaveWorkout", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(assert.AnError)
+				m.On("SaveWorkoutWithID", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(int32(0), assert.AnError)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusInternalServerError,

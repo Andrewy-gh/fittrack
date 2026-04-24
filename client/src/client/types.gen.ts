@@ -22,6 +22,8 @@ export type AichatConversation = {
   created_at?: string;
   id?: number;
   last_message_at?: string;
+  latest_workout_draft?: WorkoutCreateWorkoutRequest;
+  latest_workout_draft_status?: AichatLatestWorkoutDraftStatus;
   title?: string;
   updated_at?: string;
 };
@@ -39,10 +41,22 @@ export type AichatConversationRunView = {
   status?: string;
 };
 
+export type AichatLatestWorkoutDraftStatus = {
+  is_saved?: boolean;
+  saved_at?: string;
+  saved_workout_id?: number;
+  source_run_id?: number;
+};
+
 export type AichatRecoverMessageResponse = {
   conversation_id?: number;
   run_id?: number;
   status?: string;
+};
+
+export type AichatSaveLatestWorkoutDraftResponse = {
+  conversation?: AichatConversation;
+  workout_id?: number;
 };
 
 export type AichatSendMessageRequest = {
@@ -507,6 +521,58 @@ export type GetAiConversationsByIdResponses = {
 
 export type GetAiConversationsByIdResponse =
   GetAiConversationsByIdResponses[keyof GetAiConversationsByIdResponses];
+
+export type PostAiConversationsByIdLatestWorkoutDraftSaveData = {
+  body?: never;
+  path: {
+    /**
+     * Conversation ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/ai/conversations/{id}/latest-workout-draft/save";
+};
+
+export type PostAiConversationsByIdLatestWorkoutDraftSaveErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseError;
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Forbidden
+   */
+  403: ResponseError;
+  /**
+   * Not Found
+   */
+  404: ResponseError;
+  /**
+   * Conflict
+   */
+  409: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+};
+
+export type PostAiConversationsByIdLatestWorkoutDraftSaveError =
+  PostAiConversationsByIdLatestWorkoutDraftSaveErrors[keyof PostAiConversationsByIdLatestWorkoutDraftSaveErrors];
+
+export type PostAiConversationsByIdLatestWorkoutDraftSaveResponses = {
+  /**
+   * OK
+   */
+  200: AichatSaveLatestWorkoutDraftResponse;
+};
+
+export type PostAiConversationsByIdLatestWorkoutDraftSaveResponse =
+  PostAiConversationsByIdLatestWorkoutDraftSaveResponses[keyof PostAiConversationsByIdLatestWorkoutDraftSaveResponses];
 
 export type PostAiConversationsByIdMessagesRecoverData = {
   body?: never;

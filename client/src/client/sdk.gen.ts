@@ -17,6 +17,9 @@ import type {
   GetAiConversationsByIdData,
   GetAiConversationsByIdResponses,
   GetAiConversationsByIdErrors,
+  PostAiConversationsByIdLatestWorkoutDraftSaveData,
+  PostAiConversationsByIdLatestWorkoutDraftSaveResponses,
+  PostAiConversationsByIdLatestWorkoutDraftSaveErrors,
   PostAiConversationsByIdMessagesRecoverData,
   PostAiConversationsByIdMessagesRecoverResponses,
   PostAiConversationsByIdMessagesRecoverErrors,
@@ -222,6 +225,34 @@ export const getAiConversationsById = <ThrowOnError extends boolean = false>(
       },
     ],
     url: "/ai/conversations/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Save the latest AI chat workout draft
+ * Creates a workout from the conversation's latest structured workout draft and marks that draft as saved.
+ */
+export const postAiConversationsByIdLatestWorkoutDraftSave = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<
+    PostAiConversationsByIdLatestWorkoutDraftSaveData,
+    ThrowOnError
+  >,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    PostAiConversationsByIdLatestWorkoutDraftSaveResponses,
+    PostAiConversationsByIdLatestWorkoutDraftSaveErrors,
+    ThrowOnError
+  >({
+    security: [
+      {
+        name: "x-stack-access-token",
+        type: "apiKey",
+      },
+    ],
+    url: "/ai/conversations/{id}/latest-workout-draft/save",
     ...options,
   });
 };

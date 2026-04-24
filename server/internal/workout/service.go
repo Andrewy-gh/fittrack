@@ -20,6 +20,7 @@ type WorkoutRepository interface {
 	ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error)
 	GetContributionData(ctx context.Context, userID string) ([]db.GetContributionDataRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
+	SaveWorkoutWithID(ctx context.Context, reformatted *ReformattedRequest, userID string) (int32, error)
 	UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error
 	DeleteWorkout(ctx context.Context, id int32, userID string) error
 }
@@ -68,22 +69,28 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]W
 }
 
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {
+	_, err := ws.CreateWorkoutWithID(ctx, requestBody)
+	return err
+}
+
+func (ws *WorkoutService) CreateWorkoutWithID(ctx context.Context, requestBody CreateWorkoutRequest) (int32, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
-		return &apperrors.Unauthorized{Resource: "workout", UserID: ""}
+		return 0, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 	// Transform the request to our internal format
 	reformatted, err := ws.transformRequest(requestBody)
 	if err != nil {
-		return fmt.Errorf("failed to transform request: %w", err)
+		return 0, fmt.Errorf("failed to transform request: %w", err)
 	}
 
 	// Use repository to save the workout
-	if err := ws.repo.SaveWorkout(ctx, reformatted, userID); err != nil {
-		return fmt.Errorf("failed to save workout: %w", err)
+	workoutID, err := ws.repo.SaveWorkoutWithID(ctx, reformatted, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to save workout: %w", err)
 	}
 
-	return nil
+	return workoutID, nil
 }
 
 // UpdateWorkout updates an existing workout (PUT endpoint)

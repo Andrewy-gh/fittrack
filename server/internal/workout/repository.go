@@ -17,6 +17,7 @@ type workoutRepository struct {
 	queries      *db.Queries
 	conn         *pgxpool.Pool
 	exerciseRepo exercise.ExerciseRepository
+	txSaver      TxSaver
 }
 
 func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool, exerciseRepo exercise.ExerciseRepository) WorkoutRepository {
@@ -25,6 +26,7 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool,
 		queries:      queries,
 		conn:         conn,
 		exerciseRepo: exerciseRepo,
+		txSaver:      NewTxSaver(logger, exerciseRepo),
 	}
 }
 
@@ -162,59 +164,39 @@ func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, u
 
 // MARK: SaveWorkout
 func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error {
+	_, err := wr.SaveWorkoutWithID(ctx, reformatted, userID)
+	return err
+}
+
+func (wr *workoutRepository) SaveWorkoutWithID(ctx context.Context, reformatted *ReformattedRequest, userID string) (int32, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-
-	pgData, err := wr.convertToPGTypes(reformatted)
-	if err != nil {
-		wr.logger.Error("failed to convert to PG types", "error", err)
-		return fmt.Errorf("failed to convert to PG types: %w", err)
-	}
 
 	// Start transaction
 	tx, err := wr.conn.Begin(ctx)
 	if err != nil {
 		wr.logger.Error("failed to begin transaction", "error", err)
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	// Create queries instance with transaction
 	qtx := wr.queries.WithTx(tx)
-
-	// Step 1: Insert workout and get ID
-	workout, err := wr.insertWorkout(ctx, qtx, pgData.Workout, userID)
+	requestBody, err := toCreateWorkoutRequest(reformatted)
 	if err != nil {
-		wr.logger.Error("failed to insert workout", "error", err)
-		return fmt.Errorf("failed to insert workout: %w", err)
+		return 0, fmt.Errorf("failed to convert reformatted workout to request: %w", err)
 	}
-
-	// Step 2: Get or create exercises and build exercise name->ID mapping
-	exerciseMap, err := wr.getOrCreateExercises(ctx, qtx, pgData.Exercises, userID)
+	workoutID, err := wr.txSaver.SaveWorkoutTx(ctx, qtx, requestBody, userID)
 	if err != nil {
-		wr.logger.Error("failed to get/create exercises", "error", err)
-		return fmt.Errorf("failed to get/create exercises: %w", err)
-	}
-
-	// Step 3: Insert all sets
-	if err := wr.insertSets(ctx, qtx, pgData.Sets, workout.ID, exerciseMap, userID); err != nil {
-		wr.logger.Error("failed to insert sets", "error", err)
-		return fmt.Errorf("failed to insert sets: %w", err)
-	}
-
-	// Step 4: Update historical 1RM from this workout (auto PR detection).
-	if err := wr.updateHistorical1rmFromWorkout(ctx, qtx, workout.ID, userID); err != nil {
-		wr.logger.Error("failed to update historical 1RM from workout", "error", err, "workout_id", workout.ID)
-		return fmt.Errorf("failed to update historical 1RM from workout: %w", err)
+		return 0, err
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
 		wr.logger.Error("failed to commit transaction", "error", err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return nil
+	return workoutID, nil
 }
 
 // MARK: UpdateWorkout (PUT endpoint)
@@ -225,7 +207,7 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 	defer cancel()
 
 	// Convert to PG types
-	pgData, err := wr.convertToPGTypes(reformatted)
+	pgData, err := convertToPGTypes(reformatted)
 	if err != nil {
 		wr.logger.Error("failed to convert to PG types for update", "error", err)
 		return fmt.Errorf("failed to convert to PG types: %w", err)
@@ -288,14 +270,14 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 		wr.logger.Info("deleted existing sets for workout", "workout_id", id)
 
 		// Get or create exercises and build exercise name->ID mapping
-		exerciseMap, err := wr.getOrCreateExercises(ctx, qtx, pgData.Exercises, userID)
+		exerciseMap, err := getOrCreateExercises(ctx, wr.logger, wr.exerciseRepo, qtx, pgData.Exercises, userID)
 		if err != nil {
 			wr.logger.Error("failed to get/create exercises for update", "error", err)
 			return fmt.Errorf("failed to get/create exercises: %w", err)
 		}
 
 		// Insert new sets
-		if err := wr.insertSets(ctx, qtx, pgData.Sets, id, exerciseMap, userID); err != nil {
+		if err := insertSets(ctx, wr.logger, qtx, pgData.Sets, id, exerciseMap, userID); err != nil {
 			wr.logger.Error("failed to insert new sets", "error", err)
 			return fmt.Errorf("failed to insert new sets: %w", err)
 		}

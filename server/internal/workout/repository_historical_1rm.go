@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (wr *workoutRepository) updateHistorical1rmFromWorkout(ctx context.Context, qtx *db.Queries, workoutID int32, userID string) error {
+func updateHistorical1rmFromWorkout(ctx context.Context, qtx *db.Queries, workoutID int32, userID string) error {
 	rows, err := qtx.GetWorkoutBestE1rmByExercise(ctx, db.GetWorkoutBestE1rmByExerciseParams{
 		WorkoutID: workoutID,
 		UserID:    userID,
@@ -33,6 +33,10 @@ func (wr *workoutRepository) updateHistorical1rmFromWorkout(ctx context.Context,
 	}
 
 	return nil
+}
+
+func (wr *workoutRepository) updateHistorical1rmFromWorkout(ctx context.Context, qtx *db.Queries, workoutID int32, userID string) error {
+	return updateHistorical1rmFromWorkout(ctx, qtx, workoutID, userID)
 }
 
 func (wr *workoutRepository) recomputeHistorical1rmForExercisesSourcedFromWorkout(ctx context.Context, qtx *db.Queries, workoutID int32, userID string) error {

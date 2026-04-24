@@ -79,7 +79,17 @@ INSERT INTO ai_chat_conversation (
     title
 )
 VALUES ($1, $2)
-RETURNING id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at
+RETURNING
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at
 `
 
 type CreateAIChatConversationParams struct {
@@ -95,6 +105,9 @@ func (q *Queries) CreateAIChatConversation(ctx context.Context, arg CreateAIChat
 		&i.UserID,
 		&i.Title,
 		&i.LatestWorkoutDraft,
+		&i.LatestWorkoutDraftSourceRunID,
+		&i.LatestWorkoutDraftSavedWorkoutID,
+		&i.LatestWorkoutDraftSavedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastMessageAt,
@@ -413,7 +426,17 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) er
 }
 
 const getAIChatConversation = `-- name: GetAIChatConversation :one
-SELECT id, user_id, title, latest_workout_draft, created_at, updated_at, last_message_at
+SELECT
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at
 FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2
 `
@@ -431,6 +454,9 @@ func (q *Queries) GetAIChatConversation(ctx context.Context, arg GetAIChatConver
 		&i.UserID,
 		&i.Title,
 		&i.LatestWorkoutDraft,
+		&i.LatestWorkoutDraftSourceRunID,
+		&i.LatestWorkoutDraftSavedWorkoutID,
+		&i.LatestWorkoutDraftSavedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.LastMessageAt,
@@ -1950,6 +1976,63 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 	return items, nil
 }
 
+const markAIChatConversationLatestWorkoutDraftSaved = `-- name: MarkAIChatConversationLatestWorkoutDraftSaved :one
+UPDATE ai_chat_conversation
+SET latest_workout_draft_saved_workout_id = $4,
+    latest_workout_draft_saved_at = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND latest_workout_draft IS NOT NULL
+  AND (
+    latest_workout_draft_source_run_id = $3
+    OR ($3::integer IS NULL AND latest_workout_draft_source_run_id IS NULL)
+  )
+RETURNING
+    id,
+    user_id,
+    title,
+    latest_workout_draft,
+    latest_workout_draft_source_run_id,
+    latest_workout_draft_saved_workout_id,
+    latest_workout_draft_saved_at,
+    created_at,
+    updated_at,
+    last_message_at
+`
+
+type MarkAIChatConversationLatestWorkoutDraftSavedParams struct {
+	ID                               int32              `json:"id"`
+	UserID                           string             `json:"user_id"`
+	LatestWorkoutDraftSourceRunID    pgtype.Int4        `json:"latest_workout_draft_source_run_id"`
+	LatestWorkoutDraftSavedWorkoutID pgtype.Int4        `json:"latest_workout_draft_saved_workout_id"`
+	LatestWorkoutDraftSavedAt        pgtype.Timestamptz `json:"latest_workout_draft_saved_at"`
+}
+
+func (q *Queries) MarkAIChatConversationLatestWorkoutDraftSaved(ctx context.Context, arg MarkAIChatConversationLatestWorkoutDraftSavedParams) (AiChatConversation, error) {
+	row := q.db.QueryRow(ctx, markAIChatConversationLatestWorkoutDraftSaved,
+		arg.ID,
+		arg.UserID,
+		arg.LatestWorkoutDraftSourceRunID,
+		arg.LatestWorkoutDraftSavedWorkoutID,
+		arg.LatestWorkoutDraftSavedAt,
+	)
+	var i AiChatConversation
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.LatestWorkoutDraft,
+		&i.LatestWorkoutDraftSourceRunID,
+		&i.LatestWorkoutDraftSavedWorkoutID,
+		&i.LatestWorkoutDraftSavedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastMessageAt,
+	)
+	return i, err
+}
+
 const markAIChatRunAwaitingRecovery = `-- name: MarkAIChatRunAwaitingRecovery :one
 UPDATE ai_chat_run
 SET error_message = $3,
@@ -2005,18 +2088,27 @@ func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIC
 const setAIChatConversationLatestWorkoutDraft = `-- name: SetAIChatConversationLatestWorkoutDraft :exec
 UPDATE ai_chat_conversation
 SET latest_workout_draft = $3,
+    latest_workout_draft_source_run_id = $4,
+    latest_workout_draft_saved_workout_id = NULL,
+    latest_workout_draft_saved_at = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 `
 
 type SetAIChatConversationLatestWorkoutDraftParams struct {
-	ID                 int32  `json:"id"`
-	UserID             string `json:"user_id"`
-	LatestWorkoutDraft []byte `json:"latest_workout_draft"`
+	ID                            int32       `json:"id"`
+	UserID                        string      `json:"user_id"`
+	LatestWorkoutDraft            []byte      `json:"latest_workout_draft"`
+	LatestWorkoutDraftSourceRunID pgtype.Int4 `json:"latest_workout_draft_source_run_id"`
 }
 
 func (q *Queries) SetAIChatConversationLatestWorkoutDraft(ctx context.Context, arg SetAIChatConversationLatestWorkoutDraftParams) error {
-	_, err := q.db.Exec(ctx, setAIChatConversationLatestWorkoutDraft, arg.ID, arg.UserID, arg.LatestWorkoutDraft)
+	_, err := q.db.Exec(ctx, setAIChatConversationLatestWorkoutDraft,
+		arg.ID,
+		arg.UserID,
+		arg.LatestWorkoutDraft,
+		arg.LatestWorkoutDraftSourceRunID,
+	)
 	return err
 }
 

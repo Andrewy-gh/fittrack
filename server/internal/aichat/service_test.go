@@ -74,6 +74,18 @@ func (m *mockRepository) GetConversation(ctx context.Context, conversationID int
 	return conversation, args.Error(1)
 }
 
+func (m *mockRepository) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32, userID string, savedAt time.Time) (*SaveLatestWorkoutDraftResponse, error) {
+	args := m.Called(ctx, conversationID, userID, savedAt)
+	resp, _ := args.Get(0).(*SaveLatestWorkoutDraftResponse)
+	return resp, args.Error(1)
+}
+
+func (m *mockRepository) MarkLatestWorkoutDraftSaved(ctx context.Context, conversationID int32, userID string, sourceRunID *int32, workoutID int32, savedAt time.Time) (*Conversation, error) {
+	args := m.Called(ctx, conversationID, userID, sourceRunID, workoutID, savedAt)
+	conversation, _ := args.Get(0).(*Conversation)
+	return conversation, args.Error(1)
+}
+
 func (m *mockRepository) ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error) {
 	args := m.Called(ctx, conversationID, userID)
 	messages, _ := args.Get(0).([]ChatMessage)
@@ -151,6 +163,15 @@ func (m *mockRecoveryDispatcher) EnqueueRunRecovery(ctx context.Context, request
 	return args.Error(0)
 }
 
+type mockWorkoutCreator struct {
+	mock.Mock
+}
+
+func (m *mockWorkoutCreator) CreateWorkoutWithID(ctx context.Context, requestBody workout.CreateWorkoutRequest) (int32, error) {
+	args := m.Called(ctx, requestBody)
+	return args.Get(0).(int32), args.Error(1)
+}
+
 func TestServiceValidate(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
@@ -158,7 +179,7 @@ func TestServiceValidate(t *testing.T) {
 		featureAccess := new(mockFeatureAccessService)
 		runtime := new(mockRuntime)
 		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo)
+		service := NewService(logger, featureAccess, runtime, repo, nil)
 
 		runtime.On("Available").Return(true).Once()
 		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(false, nil).Once()
@@ -176,7 +197,7 @@ func TestServiceValidate(t *testing.T) {
 		featureAccess := new(mockFeatureAccessService)
 		runtime := new(mockRuntime)
 		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo)
+		service := NewService(logger, featureAccess, runtime, repo, nil)
 
 		runtime.On("Available").Return(false).Once()
 
@@ -193,7 +214,7 @@ func TestServiceValidate(t *testing.T) {
 		featureAccess := new(mockFeatureAccessService)
 		runtime := new(mockRuntime)
 		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo)
+		service := NewService(logger, featureAccess, runtime, repo, nil)
 
 		expected := &ValidationOutput{
 			Summary:  "Viable.",
@@ -219,7 +240,7 @@ func TestServiceValidate(t *testing.T) {
 		featureAccess := new(mockFeatureAccessService)
 		runtime := new(mockRuntime)
 		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo)
+		service := NewService(logger, featureAccess, runtime, repo, nil)
 		expectedErr := apperrors.NewUnauthorized("feature access", "")
 
 		runtime.On("Available").Return(true).Once()
@@ -238,7 +259,7 @@ func TestServiceValidate(t *testing.T) {
 		featureAccess := new(mockFeatureAccessService)
 		runtime := new(mockRuntime)
 		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo)
+		service := NewService(logger, featureAccess, runtime, repo, nil)
 		expectedErr := errors.New("boom")
 
 		runtime.On("Available").Return(true).Once()
@@ -260,7 +281,7 @@ func TestServiceCreateConversation(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	ctx := user.WithContext(context.Background(), "user-123")
 	now := time.Date(2026, 3, 26, 17, 20, 0, 0, time.UTC)
 
@@ -287,7 +308,7 @@ func TestServiceGetConversation_AllowsReadWithoutRuntime(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	ctx := user.WithContext(context.Background(), "user-123")
 	now := time.Date(2026, 3, 26, 17, 25, 0, 0, time.UTC)
 
@@ -329,7 +350,7 @@ func TestServiceGetConversation_IncludesActiveRunSequence(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	ctx := user.WithContext(context.Background(), "user-123")
 	now := time.Date(2026, 3, 26, 17, 26, 0, 0, time.UTC)
 
@@ -378,7 +399,7 @@ func TestServiceGetConversation_IncludesLatestWorkoutDraft(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	ctx := user.WithContext(context.Background(), "user-123")
 	now := time.Date(2026, 4, 21, 17, 26, 0, 0, time.UTC)
 	workoutFocus := "pull"
@@ -419,12 +440,105 @@ func TestServiceGetConversation_IncludesLatestWorkoutDraft(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceSaveLatestWorkoutDraft(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("delegates the draft save to the repository transaction", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, nil, repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+		savedWorkoutID := int32(88)
+		savedAt := time.Date(2026, 4, 21, 17, 30, 0, 0, time.UTC)
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+		repo.On(
+			"SaveLatestWorkoutDraft",
+			mock.Anything,
+			int32(41),
+			"user-123",
+			mock.AnythingOfType("time.Time"),
+		).Run(func(args mock.Arguments) {
+			actualSavedAt := args.Get(3).(time.Time)
+			assert.WithinDuration(t, time.Now().UTC(), actualSavedAt, 5*time.Second)
+		}).Return(&SaveLatestWorkoutDraftResponse{
+			WorkoutID: savedWorkoutID,
+			Conversation: &Conversation{
+				ID: 41,
+				LatestWorkoutDraftStatus: &LatestWorkoutDraftStatus{
+					IsSaved:        true,
+					SavedWorkoutID: &savedWorkoutID,
+					SavedAt:        &savedAt,
+				},
+			},
+		}, nil).Once()
+
+		resp, err := service.SaveLatestWorkoutDraft(ctx, 41)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, savedWorkoutID, resp.WorkoutID)
+		require.NotNil(t, resp.Conversation)
+		require.NotNil(t, resp.Conversation.LatestWorkoutDraftStatus)
+		assert.True(t, resp.Conversation.LatestWorkoutDraftStatus.IsSaved)
+		assert.Equal(t, &savedWorkoutID, resp.Conversation.LatestWorkoutDraftStatus.SavedWorkoutID)
+		featureAccess.AssertExpectations(t)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("returns the existing saved workout when the latest draft is already saved", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, nil, repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+		savedWorkoutID := int32(88)
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+		repo.On("SaveLatestWorkoutDraft", mock.Anything, int32(41), "user-123", mock.AnythingOfType("time.Time")).Return(&SaveLatestWorkoutDraftResponse{
+			WorkoutID: savedWorkoutID,
+			Conversation: &Conversation{
+				ID: 41,
+				LatestWorkoutDraftStatus: &LatestWorkoutDraftStatus{
+					IsSaved:        true,
+					SavedWorkoutID: &savedWorkoutID,
+				},
+			},
+		}, nil).Once()
+
+		resp, err := service.SaveLatestWorkoutDraft(ctx, 41)
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, savedWorkoutID, resp.WorkoutID)
+		featureAccess.AssertExpectations(t)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("returns an explicit error when there is no latest draft to save", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, nil, repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+		repo.On("SaveLatestWorkoutDraft", mock.Anything, int32(41), "user-123", mock.AnythingOfType("time.Time")).Return((*SaveLatestWorkoutDraftResponse)(nil), ErrLatestWorkoutDraftUnavailable).Once()
+
+		resp, err := service.SaveLatestWorkoutDraft(ctx, 41)
+
+		require.Error(t, err)
+		assert.Nil(t, resp)
+		assert.ErrorIs(t, err, ErrLatestWorkoutDraftUnavailable)
+		featureAccess.AssertExpectations(t)
+		repo.AssertExpectations(t)
+	})
+}
+
 func TestServicePrepareMessageStream_RequiresRuntime(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	ctx := user.WithContext(context.Background(), "user-123")
 
 	runtime.On("Available").Return(false).Once()
@@ -445,7 +559,7 @@ func TestServiceRequestMessageRecovery_QueuesActiveRun(t *testing.T) {
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
 	recovery := new(mockRecoveryDispatcher)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	service.SetRecoveryDispatcher(recovery)
 	ctx := user.WithContext(context.Background(), "user-123")
 
@@ -482,7 +596,7 @@ func TestServiceRequestMessageRecovery_QueuesStaleClaimedRun(t *testing.T) {
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
 	recovery := new(mockRecoveryDispatcher)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	service.SetRecoveryDispatcher(recovery)
 	ctx := user.WithContext(context.Background(), "user-123")
 	staleUpdatedAt := time.Now().UTC().Add(-streamingRunStaleAfter - time.Second)
@@ -520,7 +634,7 @@ func TestServiceRequestMessageRecovery_ReturnsUnavailableWithoutDispatcher(t *te
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	ctx := user.WithContext(context.Background(), "user-123")
 
 	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
@@ -540,7 +654,7 @@ func TestServiceRequestMessageRecovery_NoopsWithoutRecoveryMarker(t *testing.T) 
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
 	recovery := new(mockRecoveryDispatcher)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	service.SetRecoveryDispatcher(recovery)
 	ctx := user.WithContext(context.Background(), "user-123")
 
@@ -570,7 +684,7 @@ func TestServiceRequestMessageRecovery_NoopsWithoutActiveRun(t *testing.T) {
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
 	recovery := new(mockRecoveryDispatcher)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	service.SetRecoveryDispatcher(recovery)
 	ctx := user.WithContext(context.Background(), "user-123")
 
@@ -594,7 +708,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
@@ -684,7 +798,7 @@ func TestServiceStreamMessage_LeavesRunStreamingOnDisconnect(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{
@@ -731,7 +845,7 @@ func TestServiceStreamMessage_FailsRunOnRuntimeError(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{
@@ -775,7 +889,7 @@ func TestServiceRecoverStreamingRun_CompletesActiveRun(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
@@ -857,7 +971,7 @@ func TestServiceRecoverStreamingRun_ReclaimsStaleClaimedRun(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
@@ -940,7 +1054,7 @@ func TestServiceRecoverStreamingRun_SkipsFreshClaimedRun(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{
@@ -983,7 +1097,7 @@ func TestServiceResumeMessageStream_ReplaysWhileRunActiveAndCompletes(t *testing
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	now := time.Date(2026, 3, 26, 17, 31, 0, 0, time.UTC)
 	prepared := &PreparedResumeStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
@@ -1069,7 +1183,7 @@ func TestServiceResumeMessageStream_EndsWhenRunAwaitsRecovery(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedResumeStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{
@@ -1128,7 +1242,7 @@ func TestServiceResumeMessageStream_EndsWhenClaimedRunTurnsStale(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	now := time.Now().UTC()
 	prepared := &PreparedResumeStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
@@ -1186,7 +1300,7 @@ func TestServiceRecoverStreamingRun_IgnoresRunsWithoutRecoveryMarker(t *testing.
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{
@@ -1225,7 +1339,7 @@ func TestServiceAbortPreparedMessageStream_PersistsFailure(t *testing.T) {
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{
@@ -1261,7 +1375,7 @@ func TestServiceStreamMessage_PersistsCompletionWhenRequestContextCanceled(t *te
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	now := time.Date(2026, 3, 26, 17, 40, 0, 0, time.UTC)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
@@ -1333,7 +1447,7 @@ func TestServiceStreamMessage_PersistsFailureWhenRequestContextCanceled(t *testi
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
 	prepared := &PreparedMessageStream{
 		Conversation: &Conversation{ID: 41, UserID: "user-123"},
 		Run: &ChatRun{

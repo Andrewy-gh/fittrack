@@ -55,7 +55,7 @@ func TestWorkoutFocus_CreateWorkout(t *testing.T) {
 				},
 			},
 			setupMock: func(m *MockWorkoutRepository) {
-				m.On("SaveWorkout", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(nil)
+				m.On("SaveWorkoutWithID", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(int32(1), nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,
@@ -79,7 +79,7 @@ func TestWorkoutFocus_CreateWorkout(t *testing.T) {
 				},
 			},
 			setupMock: func(m *MockWorkoutRepository) {
-				m.On("SaveWorkout", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(nil)
+				m.On("SaveWorkoutWithID", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(int32(1), nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,
@@ -102,7 +102,7 @@ func TestWorkoutFocus_CreateWorkout(t *testing.T) {
 				},
 			},
 			setupMock: func(m *MockWorkoutRepository) {
-				m.On("SaveWorkout", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(nil)
+				m.On("SaveWorkoutWithID", mock.Anything, mock.AnythingOfType("*workout.ReformattedRequest"), userID).Return(int32(1), nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,

@@ -5,12 +5,18 @@ import { cn } from "@/lib/utils";
 
 type ChatWorkoutDraftCardProps = {
   draft: AIWorkoutDraft;
+  isSaving?: boolean;
+  isSaved?: boolean;
+  onSave: () => void;
   onEdit: () => void;
   className?: string;
 };
 
 export function ChatWorkoutDraftCard({
   draft,
+  isSaving = false,
+  isSaved = false,
+  onSave,
   onEdit,
   className,
 }: ChatWorkoutDraftCardProps) {
@@ -33,8 +39,7 @@ export function ChatWorkoutDraftCard({
               Latest structured workout draft
             </p>
             <p className="text-sm text-muted-foreground">
-              Review it here, then reprompt if needed or open it in the workout
-              form.
+              Review it here, then save it now or open it in the workout form.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -53,12 +58,23 @@ export function ChatWorkoutDraftCard({
             </DraftMetaPill>
           </div>
         </div>
-        <Button
-          type="button"
-          onClick={onEdit}
-        >
-          Edit in workout form
-        </Button>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <Button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving || isSaved}
+          >
+            {isSaved ? "Saved" : isSaving ? "Saving..." : "Save now"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onEdit}
+            disabled={isSaving}
+          >
+            Edit in workout form
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 space-y-3">

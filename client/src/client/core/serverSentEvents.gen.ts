@@ -67,6 +67,11 @@ export type ServerSentEventsResult<
   TReturn = void,
   TNext = unknown,
 > = {
+  data: AsyncGenerator<
+    TData extends Record<string, unknown> ? TData[keyof TData] : TData,
+    TReturn,
+    TNext
+  >;
   stream: AsyncGenerator<
     TData extends Record<string, unknown> ? TData[keyof TData] : TData,
     TReturn,
@@ -233,5 +238,8 @@ export const createSseClient = <TData = unknown>({
 
   const stream = createStream();
 
-  return { stream };
+  return {
+    data: stream,
+    stream,
+  };
 };
