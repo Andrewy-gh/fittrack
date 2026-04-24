@@ -20,14 +20,14 @@ const (
 )
 
 var (
-	ErrFeatureDisabled        = errors.New("ai chat feature is disabled")
-	ErrRuntimeUnavailable     = errors.New("ai chat runtime is unavailable")
-	ErrRecoveryUnavailable    = errors.New("ai chat recovery is unavailable")
-	ErrConversationBusy       = errors.New("ai chat conversation already has an active run")
-	ErrGenerationTimeout      = errors.New("ai chat generation timed out")
-	ErrStreamDisconnected     = errors.New("ai chat stream disconnected before completion")
-	ErrStreamNotStarted       = errors.New("ai chat stream failed before delivery started")
-	ErrStreamAwaitingRecovery = errors.New("ai chat stream interrupted and awaiting recovery")
+	ErrFeatureDisabled               = errors.New("ai chat feature is disabled")
+	ErrRuntimeUnavailable            = errors.New("ai chat runtime is unavailable")
+	ErrRecoveryUnavailable           = errors.New("ai chat recovery is unavailable")
+	ErrConversationBusy              = errors.New("ai chat conversation already has an active run")
+	ErrGenerationTimeout             = errors.New("ai chat generation timed out")
+	ErrStreamDisconnected            = errors.New("ai chat stream disconnected before completion")
+	ErrStreamNotStarted              = errors.New("ai chat stream failed before delivery started")
+	ErrStreamAwaitingRecovery        = errors.New("ai chat stream interrupted and awaiting recovery")
 	ErrLatestWorkoutDraftUnavailable = errors.New("latest ai workout draft is unavailable")
 	ErrLatestWorkoutDraftSuperseded  = errors.New("latest ai workout draft changed before it could be marked saved")
 )
@@ -61,14 +61,14 @@ type ValidateResponse struct {
 }
 
 type Conversation struct {
-	ID                 int32                         `json:"id"`
-	UserID             string                        `json:"-"`
-	Title              *string                       `json:"title,omitempty"`
-	LatestWorkoutDraft *workout.CreateWorkoutRequest `json:"latest_workout_draft,omitempty"`
-	LatestWorkoutDraftStatus *LatestWorkoutDraftStatus `json:"latest_workout_draft_status,omitempty"`
-	CreatedAt          time.Time                     `json:"created_at"`
-	UpdatedAt          time.Time                     `json:"updated_at"`
-	LastMessageAt      *time.Time                    `json:"last_message_at,omitempty"`
+	ID                       int32                         `json:"id"`
+	UserID                   string                        `json:"-"`
+	Title                    *string                       `json:"title,omitempty"`
+	LatestWorkoutDraft       *workout.CreateWorkoutRequest `json:"latest_workout_draft,omitempty"`
+	LatestWorkoutDraftStatus *LatestWorkoutDraftStatus     `json:"latest_workout_draft_status,omitempty"`
+	CreatedAt                time.Time                     `json:"created_at"`
+	UpdatedAt                time.Time                     `json:"updated_at"`
+	LastMessageAt            *time.Time                    `json:"last_message_at,omitempty"`
 }
 
 type LatestWorkoutDraftStatus struct {
