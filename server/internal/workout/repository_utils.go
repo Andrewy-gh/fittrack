@@ -3,13 +3,15 @@ package workout
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // MARK: insertWorkout
-func (wr *workoutRepository) insertWorkout(ctx context.Context, qtx *db.Queries, workout PGWorkoutData, userID string) (db.Workout, error) {
+func insertWorkout(ctx context.Context, qtx *db.Queries, workout PGWorkoutData, userID string) (db.Workout, error) {
 	workoutID, err := qtx.CreateWorkout(ctx, db.CreateWorkoutParams{
 		Date:         workout.Date,
 		Notes:        workout.Notes,
@@ -31,17 +33,17 @@ func (wr *workoutRepository) insertWorkout(ctx context.Context, qtx *db.Queries,
 }
 
 // MARK: getOrCreateExercises
-func (wr *workoutRepository) getOrCreateExercises(ctx context.Context, qtx *db.Queries, exercises []PGExerciseData, userID string) (map[string]int32, error) {
+func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo exercise.ExerciseRepository, qtx *db.Queries, exercises []PGExerciseData, userID string) (map[string]int32, error) {
 	exerciseMap := make(map[string]int32)
 
 	for _, exercise := range exercises {
-		wr.logger.Info("attempting to get or create exercise", "exercise_name", exercise.Name, "user_id", userID)
-		dbExercise, err := wr.exerciseRepo.GetOrCreateExerciseTx(ctx, qtx, exercise.Name, userID)
+		logger.Info("attempting to get or create exercise", "exercise_name", exercise.Name, "user_id", userID)
+		dbExercise, err := exerciseRepo.GetOrCreateExerciseTx(ctx, qtx, exercise.Name, userID)
 		if err != nil {
-			wr.logger.Error("failed to get/create exercise", "exercise_name", exercise.Name, "error", err)
+			logger.Error("failed to get/create exercise", "exercise_name", exercise.Name, "error", err)
 			return nil, fmt.Errorf("failed to get/create exercise %s: %w", exercise.Name, err)
 		}
-		wr.logger.Info("successfully got/created exercise", "exercise_name", exercise.Name, "exercise_id", dbExercise.ID)
+		logger.Info("successfully got/created exercise", "exercise_name", exercise.Name, "exercise_id", dbExercise.ID)
 		exerciseMap[exercise.Name] = dbExercise.ID
 	}
 
@@ -49,16 +51,16 @@ func (wr *workoutRepository) getOrCreateExercises(ctx context.Context, qtx *db.Q
 }
 
 // MARK: insertSets
-func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, sets []PGSetData, workoutID int32, exerciseMap map[string]int32, userID string) error {
+func insertSets(ctx context.Context, logger *slog.Logger, qtx *db.Queries, sets []PGSetData, workoutID int32, exerciseMap map[string]int32, userID string) error {
 	for _, set := range sets {
 		exerciseID, exists := exerciseMap[set.ExerciseName]
 		if !exists {
 			errMsg := fmt.Sprintf("exercise not found in exercise map: %s", set.ExerciseName)
-			wr.logger.Error(errMsg, "exercise_name", set.ExerciseName, "available_exercises", exerciseMap)
+			logger.Error(errMsg, "exercise_name", set.ExerciseName, "available_exercises", exerciseMap)
 			return fmt.Errorf("exercise not found: %s", set.ExerciseName)
 		}
 
-		wr.logger.Info("attempting to create set",
+		logger.Info("attempting to create set",
 			"exercise_name", set.ExerciseName,
 			"exercise_id", exerciseID,
 			"workout_id", workoutID,
@@ -81,7 +83,7 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 		})
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to create set for exercise %s (ID: %d)", set.ExerciseName, exerciseID)
-			wr.logger.Error(errMsg, "error", err, "set_details", set, "user_id", userID)
+			logger.Error(errMsg, "error", err, "set_details", set, "user_id", userID)
 			return fmt.Errorf("failed to create set for exercise %s: %w", set.ExerciseName, err)
 		}
 	}
@@ -90,7 +92,7 @@ func (wr *workoutRepository) insertSets(ctx context.Context, qtx *db.Queries, se
 }
 
 // MARK: convertToPGTypes
-func (wr *workoutRepository) convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
+func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
 	// Convert workout
 	pgWorkout := PGWorkoutData{
 		Date: pgtype.Timestamptz{

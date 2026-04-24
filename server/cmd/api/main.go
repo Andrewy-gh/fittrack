@@ -152,13 +152,14 @@ func main() {
 	featureAccessRepo := featureaccess.NewRepository(logger, queries)
 	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
 	userRepo := user.NewRepository(logger, queries, pool)
+	workoutTxSaver := workout.NewTxSaver(logger, exerciseRepo)
 
 	// Initialize services
 	workoutService := workout.NewService(logger, workoutRepo)
 	exerciseService := exercise.NewService(logger, exerciseRepo)
 	featureAccessService := featureaccess.NewService(logger, featureAccessRepo)
 	userService := user.NewService(logger, userRepo)
-	aiChatRepo := aichat.NewRepository(logger, queries, pool)
+	aiChatRepo := aichat.NewRepository(logger, queries, pool, workoutTxSaver)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutService)
 	var inngestRecovery *aichat.InngestRecovery
