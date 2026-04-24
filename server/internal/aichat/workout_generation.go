@@ -15,6 +15,7 @@ import (
 
 const (
 	workoutDraftToolName               = "fittrack.generate_workout_draft"
+	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. Fitness level improves weight assumptions but is not required."
 	workoutDraftSummaryMessage         = "I put together a structured workout draft for you."
 	workoutChatFollowUpQuestionCeiling = 3
 )
@@ -22,19 +23,19 @@ const (
 var workoutDraftValidator = validator.New()
 
 type WorkoutGenerationToolInput struct {
-	FitnessLevel     string `json:"fitnessLevel" jsonschema:"description=Training experience level. Use beginner, intermediate, or advanced."`
-	FitnessGoal      string `json:"fitnessGoal" jsonschema:"description=Primary training goal such as strength, hypertrophy, endurance, power, or general fitness."`
-	Equipment        string `json:"equipment" jsonschema:"description=Available equipment such as bodyweight, dumbbells, barbells, machines, cables, or bands."`
+	FitnessLevel     string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
+	FitnessGoal      string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`
+	Equipment        string `json:"equipment,omitempty" jsonschema:"description=Available equipment such as bodyweight, dumbbells, barbells, machines, cables, or bands when known."`
 	SessionDuration  int    `json:"sessionDuration" jsonschema:"description=Available session length in minutes."`
 	WorkoutFocus     string `json:"workoutFocus" jsonschema:"description=Workout focus such as push, pull, legs, upper body, lower body, or full body."`
-	SpaceConstraints string `json:"spaceConstraints" jsonschema:"description=Training location or space constraints such as home, gym, hotel, or outdoors."`
+	SpaceConstraints string `json:"spaceConstraints,omitempty" jsonschema:"description=Training location or space constraints such as home, gym, hotel, or outdoors when known."`
 	Injuries         string `json:"injuries" jsonschema:"description=Current injuries, pain, or movement limitations. Use none when the user reports no injuries."`
 	WorkoutDate      string `json:"workoutDate,omitempty" jsonschema:"description=Optional requested workout date when the user specified one. May be an ISO value or a relative phrase like tomorrow."`
 }
 
 func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
 	return genkit.DefineTool(g, workoutDraftToolName,
-		"Creates a FitTrack workout draft. Call this immediately once you know the user's fitness level, goal, equipment, session duration, workout focus, training location, and injury status.",
+		workoutDraftToolDescription,
 		func(ctx *ai.ToolContext, input WorkoutGenerationToolInput) (*workout.CreateWorkoutRequest, error) {
 			if err := validateWorkoutGenerationToolInput(input); err != nil {
 				return nil, err
@@ -46,25 +47,16 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
 }
 
 func validateWorkoutGenerationToolInput(input WorkoutGenerationToolInput) error {
-	missing := make([]string, 0, 7)
+	missing := make([]string, 0, 4)
 
-	if strings.TrimSpace(input.FitnessLevel) == "" {
-		missing = append(missing, "fitnessLevel")
-	}
-	if strings.TrimSpace(input.FitnessGoal) == "" {
-		missing = append(missing, "fitnessGoal")
-	}
-	if strings.TrimSpace(input.Equipment) == "" {
-		missing = append(missing, "equipment")
-	}
 	if input.SessionDuration <= 0 {
 		missing = append(missing, "sessionDuration")
 	}
 	if strings.TrimSpace(input.WorkoutFocus) == "" {
 		missing = append(missing, "workoutFocus")
 	}
-	if strings.TrimSpace(input.SpaceConstraints) == "" {
-		missing = append(missing, "spaceConstraints")
+	if !hasWorkoutContext(input) {
+		missing = append(missing, "equipment or spaceConstraints")
 	}
 	if strings.TrimSpace(input.Injuries) == "" {
 		missing = append(missing, "injuries")
@@ -78,6 +70,10 @@ func validateWorkoutGenerationToolInput(input WorkoutGenerationToolInput) error 
 	}
 
 	return nil
+}
+
+func hasWorkoutContext(input WorkoutGenerationToolInput) bool {
+	return strings.TrimSpace(input.Equipment) != "" || strings.TrimSpace(input.SpaceConstraints) != ""
 }
 
 func generateWorkoutDraft(
@@ -142,7 +138,7 @@ Rules:
 - Match the workout focus, available equipment, session length, training location, and injury constraints.
 - Do not invent equipment the user does not have.
 - Use real, established exercise names only.
-- Add weights only when they are reasonably known from the user's context. Otherwise omit weight.
+- Add weights only when they are reasonably known from the user's context. If fitness level is unknown, prefer omitting weights instead of guessing aggressively.
 - Keep notes brief and practical. Use notes for rest, effort, or injury reminders when helpful.
 - Place compound lifts before accessories when that fits the request.
 - %s`, dateInstruction)
@@ -152,18 +148,27 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 	var builder strings.Builder
 
 	builder.WriteString("Build a FitTrack workout draft for this user:\n")
-	builder.WriteString(fmt.Sprintf("- Fitness level: %s\n", strings.TrimSpace(input.FitnessLevel)))
-	builder.WriteString(fmt.Sprintf("- Goal: %s\n", strings.TrimSpace(input.FitnessGoal)))
-	builder.WriteString(fmt.Sprintf("- Equipment: %s\n", strings.TrimSpace(input.Equipment)))
+	builder.WriteString(fmt.Sprintf("- Fitness level: %s\n", workoutPromptValue(input.FitnessLevel)))
+	builder.WriteString(fmt.Sprintf("- Goal: %s\n", workoutPromptValue(input.FitnessGoal)))
+	builder.WriteString(fmt.Sprintf("- Equipment: %s\n", workoutPromptValue(input.Equipment)))
 	builder.WriteString(fmt.Sprintf("- Session duration: %d minutes\n", input.SessionDuration))
-	builder.WriteString(fmt.Sprintf("- Workout focus: %s\n", strings.TrimSpace(input.WorkoutFocus)))
-	builder.WriteString(fmt.Sprintf("- Training location or space: %s\n", strings.TrimSpace(input.SpaceConstraints)))
-	builder.WriteString(fmt.Sprintf("- Injuries or limitations: %s\n", strings.TrimSpace(input.Injuries)))
+	builder.WriteString(fmt.Sprintf("- Workout focus: %s\n", workoutPromptValue(input.WorkoutFocus)))
+	builder.WriteString(fmt.Sprintf("- Training location or space: %s\n", workoutPromptValue(input.SpaceConstraints)))
+	builder.WriteString(fmt.Sprintf("- Injuries or limitations: %s\n", workoutPromptValue(input.Injuries)))
 	if requestedDate := strings.TrimSpace(input.WorkoutDate); requestedDate != "" {
 		builder.WriteString(fmt.Sprintf("- Requested workout date: %s\n", requestedDate))
 	}
 
 	return builder.String()
+}
+
+func workoutPromptValue(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "unknown"
+	}
+
+	return trimmed
 }
 
 func validateWorkoutDraft(draft *workout.CreateWorkoutRequest) error {

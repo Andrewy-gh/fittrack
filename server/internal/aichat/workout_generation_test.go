@@ -1,6 +1,7 @@
 package aichat
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -13,7 +14,12 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 	prompt := buildChatSystemPrompt()
 
 	requiredSnippets := []string{
-		"ask at most 3 short, focused follow-up questions",
+		"Ask at most 3 short, focused follow-up questions",
+		"MVP-ready inputs are workout focus, session duration, enough equipment or workout context",
+		"do not treat it as a hard blocker",
+		"If injury status is missing, ask once",
+		"assume injuries are \"none\" and proceed",
+		"Do not ask scheduling, frequency, or future-date questions",
 		"call the " + workoutDraftToolName + " tool immediately",
 		"Do not list specific exercises, sets, or reps in plain text before",
 		"only way to produce a structured workout draft",
@@ -26,6 +32,119 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 	}
 }
 
+func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
+	requiredSnippets := []string{
+		"workout focus",
+		"session duration",
+		"enough equipment or workout context",
+		"injury status",
+		"Fitness level improves weight assumptions but is not required",
+	}
+
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(workoutDraftToolDescription, snippet) {
+			t.Fatalf("workoutDraftToolDescription missing %q\ndescription=%s", snippet, workoutDraftToolDescription)
+		}
+	}
+}
+
+func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(t *testing.T) {
+	inputType := reflect.TypeOf(WorkoutGenerationToolInput{})
+	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints"}
+
+	for _, fieldName := range optionalFields {
+		field, ok := inputType.FieldByName(fieldName)
+		if !ok {
+			t.Fatalf("WorkoutGenerationToolInput missing field %s", fieldName)
+		}
+		if !strings.Contains(field.Tag.Get("json"), "omitempty") {
+			t.Fatalf("%s json tag = %q, want omitempty", fieldName, field.Tag.Get("json"))
+		}
+	}
+
+	injuriesField, ok := inputType.FieldByName("Injuries")
+	if !ok {
+		t.Fatal("WorkoutGenerationToolInput missing field Injuries")
+	}
+	if strings.Contains(injuriesField.Tag.Get("json"), "omitempty") {
+		t.Fatalf("Injuries json tag = %q, should remain required", injuriesField.Tag.Get("json"))
+	}
+}
+
+func TestValidateWorkoutGenerationToolInputAllowsMVPReadyRequestWithoutFitnessLevel(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "hypertrophy pull day",
+		Injuries:        "none",
+	}
+
+	if err := validateWorkoutGenerationToolInput(input); err != nil {
+		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want nil", err)
+	}
+}
+
+func TestValidateWorkoutGenerationToolInputAllowsWorkoutContextWithoutEquipment(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		SessionDuration:  20,
+		WorkoutFocus:     "bodyweight full body",
+		SpaceConstraints: "hotel room",
+		Injuries:         "none",
+	}
+
+	if err := validateWorkoutGenerationToolInput(input); err != nil {
+		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want nil", err)
+	}
+}
+
+func TestValidateWorkoutGenerationToolInputAllowsFullySpecifiedRequest(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessLevel:     "intermediate",
+		FitnessGoal:      "hypertrophy",
+		Equipment:        "barbells, dumbbells, machines",
+		SessionDuration:  60,
+		WorkoutFocus:     "legs",
+		SpaceConstraints: "gym",
+		Injuries:         "none",
+	}
+
+	if err := validateWorkoutGenerationToolInput(input); err != nil {
+		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want nil", err)
+	}
+}
+
+func TestValidateWorkoutGenerationToolInputStillRequiresInjuryStatus(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		Equipment:       "dumbbells",
+		SessionDuration: 30,
+		WorkoutFocus:    "upper body",
+	}
+
+	err := validateWorkoutGenerationToolInput(input)
+	if err == nil {
+		t.Fatal("validateWorkoutGenerationToolInput() error = nil, want missing injuries error")
+	}
+	if !strings.Contains(err.Error(), "injuries") {
+		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want injuries field", err)
+	}
+}
+
+func TestValidateWorkoutGenerationToolInputRequiresFeasibleWorkoutContext(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		SessionDuration: 30,
+		WorkoutFocus:    "legs",
+		Injuries:        "none",
+	}
+
+	err := validateWorkoutGenerationToolInput(input)
+	if err == nil {
+		t.Fatal("validateWorkoutGenerationToolInput() error = nil, want missing context error")
+	}
+	if !strings.Contains(err.Error(), "equipment or spaceConstraints") {
+		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want context field", err)
+	}
+}
+
 func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 	prompt := buildWorkoutGenerationPrompt(WorkoutGenerationToolInput{}, time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC))
 
@@ -34,12 +153,29 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 		`"workoutFocus": "optional string"`,
 		`"setType": "warmup" | "working"`,
 		`"date" is always required and must be RFC3339.`,
+		`If fitness level is unknown, prefer omitting weights instead of guessing aggressively.`,
 	}
 
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(prompt, snippet) {
 			t.Fatalf("buildWorkoutGenerationPrompt() missing %q\nprompt=%s", snippet, prompt)
 		}
+	}
+}
+
+func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *testing.T) {
+	prompt := buildWorkoutGenerationUserPrompt(WorkoutGenerationToolInput{
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "pull",
+		Injuries:        "none",
+	})
+
+	if !strings.Contains(prompt, "- Fitness level: unknown") {
+		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want unknown fitness level", prompt)
+	}
+	if !strings.Contains(prompt, "- Goal: unknown") {
+		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want unknown goal", prompt)
 	}
 }
 
