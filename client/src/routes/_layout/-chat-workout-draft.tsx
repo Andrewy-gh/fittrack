@@ -59,7 +59,11 @@ export function ChatWorkoutDraftCard({
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <Button type="button" onClick={onSave} disabled={isSaving || isSaved}>
+          <Button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving || isSaved}
+          >
             {isSaved ? "Saved" : isSaving ? "Saving..." : "Save now"}
           </Button>
           <Button

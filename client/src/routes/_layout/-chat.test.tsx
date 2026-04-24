@@ -1115,23 +1115,20 @@ describe("ChatRouteComponent", () => {
     };
 
     mockGetConversation.mockResolvedValue(
-      conversationDetail(
-        [],
-        undefined,
-        latestWorkoutDraft,
-        {
-          is_saved: true,
-          saved_workout_id: 88,
-          saved_at: "2026-04-21T12:05:00Z",
-        },
-      ),
+      conversationDetail([], undefined, latestWorkoutDraft, {
+        is_saved: true,
+        saved_workout_id: 88,
+        saved_at: "2026-04-21T12:05:00Z",
+      }),
     );
 
     render(<ChatRouteComponent />);
 
     const savedButton = await screen.findByRole("button", { name: "Saved" });
     expect(savedButton).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Save now" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save now" }),
+    ).not.toBeInTheDocument();
     expect(mockSaveLatestWorkoutDraft).not.toHaveBeenCalled();
   });
 
