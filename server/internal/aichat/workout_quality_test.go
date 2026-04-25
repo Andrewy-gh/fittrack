@@ -90,6 +90,25 @@ func TestValidateWorkoutDraftQualityRejectsUnavailableEquipment(t *testing.T) {
 	}
 }
 
+func TestValidateWorkoutDraftQualityAllowsGymLocationAsEquipmentContext(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:      "general fitness",
+		SessionDuration:  30,
+		WorkoutFocus:     "full body",
+		SpaceConstraints: "gym",
+		Injuries:         "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Barbell Back Squat", workingSet(8), workingSet(8), workingSet(8)),
+		draftExercise("Seated Cable Row", workingSet(10), workingSet(10), workingSet(10)),
+		draftExercise("Leg Press", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	if err := validateWorkoutDraftQuality(input, draft); err != nil {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil for gym context", err)
+	}
+}
+
 func TestValidateWorkoutDraftQualityRejectsExerciseConflictingWithInjury(t *testing.T) {
 	input := WorkoutGenerationToolInput{
 		FitnessGoal:     "strength",
@@ -107,6 +126,27 @@ func TestValidateWorkoutDraftQualityRejectsExerciseConflictingWithInjury(t *test
 	err := validateWorkoutDraftQuality(input, draft)
 	if err == nil {
 		t.Fatal("validateWorkoutDraftQuality() error = nil, want injury conflict error")
+	}
+	if !strings.Contains(err.Error(), "injury") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want injury issue", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityRejectsActiveInjuryWhenAnotherBodyPartIsNegated(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "strength",
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "upper body",
+		Injuries:        "no knee pain but shoulder pain",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Overhead Press", workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want active shoulder injury conflict")
 	}
 	if !strings.Contains(err.Error(), "injury") {
 		t.Fatalf("validateWorkoutDraftQuality() error = %v, want injury issue", err)

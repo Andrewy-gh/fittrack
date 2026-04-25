@@ -87,8 +87,8 @@ func validateDraftEquipmentQuality(input WorkoutGenerationToolInput, draft *work
 }
 
 func validateDraftInjuryQuality(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
-	injuries := normalizeQualityText(input.Injuries)
-	if hasNoActiveInjury(injuries) {
+	injuries := activeInjuryText(input.Injuries)
+	if injuries == "" {
 		return nil
 	}
 
@@ -199,7 +199,7 @@ type equipmentInventory struct {
 
 func parseEquipmentInventory(context string) equipmentInventory {
 	return equipmentInventory{
-		hasFullGym:    hasAnyQualityTerm(context, "full gym", "commercial gym"),
+		hasFullGym:    hasAvailableGymContext(context),
 		hasBench:      hasAvailableEquipmentTerm(context, "bench", "box", "chair", "step"),
 		hasBarbell:    hasAvailableEquipmentTerm(context, "barbell", "power rack", "squat rack"),
 		hasDumbbell:   hasAvailableEquipmentTerm(context, "dumbbell", "dumbbells"),
@@ -258,9 +258,13 @@ func disallowedInjuryTerms(injuries string) []string {
 func hasNoActiveInjury(injuries string) bool {
 	return injuries == "" ||
 		injuries == "none" ||
-		hasExactQualityTerm(injuries, "no injuries", "no injury", "no pain", "no issues", "no limitations") ||
-		hasAnyQualityTerm(
+		hasExactQualityTerm(
 			injuries,
+			"no injuries",
+			"no injury",
+			"no pain",
+			"no issues",
+			"no limitations",
 			"no knee pain",
 			"no knee issues",
 			"no shoulder pain",
@@ -272,6 +276,31 @@ func hasNoActiveInjury(injuries string) bool {
 			"no elbow pain",
 			"no elbow issues",
 		)
+}
+
+func activeInjuryText(value string) string {
+	injuries := normalizeQualityText(value)
+	if hasNoActiveInjury(injuries) {
+		return ""
+	}
+
+	negatedBodyPartPhrases := []string{
+		"no knee pain",
+		"no knee issues",
+		"no shoulder pain",
+		"no shoulder issues",
+		"no back pain",
+		"no back issues",
+		"no wrist pain",
+		"no wrist issues",
+		"no elbow pain",
+		"no elbow issues",
+	}
+	for _, phrase := range negatedBodyPartPhrases {
+		injuries = strings.ReplaceAll(injuries, phrase, " ")
+	}
+
+	return normalizeQualityText(injuries)
 }
 
 func allowsLowerVolume(input WorkoutGenerationToolInput) bool {
@@ -339,6 +368,35 @@ func hasAvailableEquipmentTerm(text string, terms ...string) bool {
 			continue
 		}
 		return true
+	}
+	return false
+}
+
+func hasAvailableGymContext(text string) bool {
+	if hasAnyQualityTerm(
+		text,
+		"no gym",
+		"without gym",
+		"no access to gym",
+		"no full gym",
+		"without full gym",
+		"no access to full gym",
+		"no commercial gym",
+		"without commercial gym",
+		"no access to commercial gym",
+	) {
+		return false
+	}
+
+	return hasAnyQualityTerm(text, "full gym", "commercial gym") || hasQualityWord(text, "gym")
+}
+
+func hasQualityWord(text string, word string) bool {
+	normalizedWord := normalizeQualityText(word)
+	for _, field := range strings.Fields(text) {
+		if strings.Trim(field, ".,;:!?()[]{}") == normalizedWord {
+			return true
+		}
 	}
 	return false
 }
