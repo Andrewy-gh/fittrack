@@ -96,6 +96,9 @@ func generateWorkoutDraft(
 	if err := validateWorkoutDraft(output); err != nil {
 		return nil, fmt.Errorf("validate workout draft: %w", err)
 	}
+	if err := validateWorkoutDraftQuality(input, output); err != nil {
+		return nil, fmt.Errorf("validate workout draft quality: %w", err)
+	}
 
 	return output, nil
 }
