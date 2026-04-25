@@ -88,7 +88,7 @@ func validateDraftEquipmentQuality(input WorkoutGenerationToolInput, draft *work
 
 func validateDraftInjuryQuality(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
 	injuries := normalizeQualityText(input.Injuries)
-	if injuries == "" || injuries == "none" || strings.Contains(injuries, "no injur") {
+	if hasNoActiveInjury(injuries) {
 		return nil
 	}
 
@@ -187,30 +187,52 @@ func workingRestSeconds(input WorkoutGenerationToolInput) int {
 	}
 }
 
+type equipmentInventory struct {
+	hasFullGym    bool
+	hasBench      bool
+	hasBarbell    bool
+	hasDumbbell   bool
+	hasKettlebell bool
+	hasCable      bool
+	hasMachine    bool
+}
+
+func parseEquipmentInventory(context string) equipmentInventory {
+	return equipmentInventory{
+		hasFullGym:    hasAnyQualityTerm(context, "full gym", "commercial gym"),
+		hasBench:      hasAvailableEquipmentTerm(context, "bench", "box", "chair", "step"),
+		hasBarbell:    hasAvailableEquipmentTerm(context, "barbell", "power rack", "squat rack"),
+		hasDumbbell:   hasAvailableEquipmentTerm(context, "dumbbell", "dumbbells"),
+		hasKettlebell: hasAvailableEquipmentTerm(context, "kettlebell", "kettlebells"),
+		hasCable:      hasAvailableEquipmentTerm(context, "cable", "cables"),
+		hasMachine:    hasAvailableEquipmentTerm(context, "machine", "machines", "leg press", "lat pulldown"),
+	}
+}
+
 func disallowedEquipmentTerms(context string) []string {
-	terms := make([]string, 0, 8)
-	bodyweightOnly := hasAnyQualityTerm(context, "bodyweight only", "no equipment", "without equipment")
-	if bodyweightOnly {
-		return []string{"barbell", "dumbbell", "kettlebell", "cable", "machine", "smith", "bench", "leg press", "lat pulldown"}
+	inventory := parseEquipmentInventory(context)
+	if inventory.hasFullGym {
+		return nil
 	}
 
-	if !hasAnyQualityTerm(context, "barbell", "full gym", "commercial gym", "power rack", "squat rack") {
+	terms := make([]string, 0, 12)
+	if !inventory.hasBarbell {
 		terms = append(terms, "barbell", "smith")
 	}
-	if !hasAnyQualityTerm(context, "dumbbell", "full gym", "commercial gym") {
+	if !inventory.hasDumbbell {
 		terms = append(terms, "dumbbell")
 	}
-	if !hasAnyQualityTerm(context, "kettlebell", "full gym", "commercial gym") {
+	if !inventory.hasKettlebell {
 		terms = append(terms, "kettlebell")
 	}
-	if !hasAnyQualityTerm(context, "cable", "full gym", "commercial gym") {
+	if !inventory.hasCable {
 		terms = append(terms, "cable", "lat pulldown")
 	}
-	if !hasAnyQualityTerm(context, "machine", "full gym", "commercial gym") {
+	if !inventory.hasMachine {
 		terms = append(terms, "machine", "leg press")
 	}
-	if !hasAnyQualityTerm(context, "bench", "full gym", "commercial gym") && hasAnyQualityTerm(context, "home", "hotel", "small space") {
-		terms = append(terms, "bench press", "incline bench")
+	if !inventory.hasBench {
+		terms = append(terms, "bench", "bench-supported")
 	}
 
 	return terms
@@ -231,6 +253,25 @@ func disallowedInjuryTerms(injuries string) []string {
 		terms = append(terms, "dip", "skull crusher", "barbell curl")
 	}
 	return terms
+}
+
+func hasNoActiveInjury(injuries string) bool {
+	return injuries == "" ||
+		injuries == "none" ||
+		hasExactQualityTerm(injuries, "no injuries", "no injury", "no pain", "no issues", "no limitations") ||
+		hasAnyQualityTerm(
+			injuries,
+			"no knee pain",
+			"no knee issues",
+			"no shoulder pain",
+			"no shoulder issues",
+			"no back pain",
+			"no back issues",
+			"no wrist pain",
+			"no wrist issues",
+			"no elbow pain",
+			"no elbow issues",
+		)
 }
 
 func allowsLowerVolume(input WorkoutGenerationToolInput) bool {
@@ -271,6 +312,33 @@ func hasAnyQualityTerm(text string, terms ...string) bool {
 		if strings.Contains(text, normalizeQualityText(term)) {
 			return true
 		}
+	}
+	return false
+}
+
+func hasExactQualityTerm(text string, terms ...string) bool {
+	for _, term := range terms {
+		if text == normalizeQualityText(term) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAvailableEquipmentTerm(text string, terms ...string) bool {
+	for _, term := range terms {
+		normalizedTerm := normalizeQualityText(term)
+		if !strings.Contains(text, normalizedTerm) {
+			continue
+		}
+		if hasAnyQualityTerm(text,
+			"no "+normalizedTerm,
+			"without "+normalizedTerm,
+			"no access to "+normalizedTerm,
+		) {
+			continue
+		}
+		return true
 	}
 	return false
 }

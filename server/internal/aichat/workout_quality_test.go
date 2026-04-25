@@ -117,7 +117,7 @@ func TestValidateWorkoutDraftQualityAllowsExplicitBeginnerLowerVolume(t *testing
 	input := WorkoutGenerationToolInput{
 		FitnessLevel:    "beginner",
 		FitnessGoal:     "strength",
-		Equipment:       "dumbbells",
+		Equipment:       "dumbbells, bench",
 		SessionDuration: 45,
 		WorkoutFocus:    "beginner upper body",
 		Injuries:        "none",
@@ -129,6 +129,120 @@ func TestValidateWorkoutDraftQualityAllowsExplicitBeginnerLowerVolume(t *testing
 
 	if err := validateWorkoutDraftQuality(input, draft); err != nil {
 		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil for explicit beginner request", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityRejectsBenchExerciseForBodyweightRequest(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "general fitness",
+		Equipment:       "bodyweight",
+		SessionDuration: 30,
+		WorkoutFocus:    "upper body",
+		Injuries:        "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Bench Dip", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want unavailable bench error")
+	}
+	if !strings.Contains(err.Error(), "bench") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want bench issue", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityAllowsBenchExerciseWhenBenchIsAvailable(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "general fitness",
+		Equipment:       "bodyweight, bench",
+		SessionDuration: 30,
+		WorkoutFocus:    "upper body",
+		Injuries:        "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Bench Dip", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	if err := validateWorkoutDraftQuality(input, draft); err != nil {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil when bench is available", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityRejectsDumbbellBenchPressWithoutBench(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "general fitness",
+		Equipment:       "dumbbells, no bench",
+		SessionDuration: 30,
+		WorkoutFocus:    "upper body",
+		Injuries:        "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Dumbbell Bench Press", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want unavailable bench error")
+	}
+	if !strings.Contains(err.Error(), "bench") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want bench issue", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityAllowsDumbbellBenchPressWithDumbbellsAndBench(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "general fitness",
+		Equipment:       "bodyweight, bench, dumbbells",
+		SessionDuration: 30,
+		WorkoutFocus:    "upper body",
+		Injuries:        "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Dumbbell Bench Press", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	if err := validateWorkoutDraftQuality(input, draft); err != nil {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil when dumbbells and bench are available", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityTreatsNoKneePainAsNoActiveInjury(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "strength",
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "legs",
+		Injuries:        "no knee pain",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Back Squat", workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5)),
+	)
+
+	if err := validateWorkoutDraftQuality(input, draft); err != nil {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil for negated knee pain", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityTreatsHistoryOfKneePainAsActiveConstraint(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "strength",
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "legs",
+		Injuries:        "history of knee pain",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Back Squat", workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5), workingSet(5)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want knee history constraint")
+	}
+	if !strings.Contains(err.Error(), "injury") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want injury issue", err)
 	}
 }
 
