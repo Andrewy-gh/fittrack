@@ -212,7 +212,7 @@ func parseEquipmentInventory(context string) equipmentInventory {
 func disallowedEquipmentTerms(context string) []string {
 	inventory := parseEquipmentInventory(context)
 	if inventory.hasFullGym {
-		return nil
+		return explicitlyUnavailableGymEquipmentTerms(context)
 	}
 
 	terms := make([]string, 0, 12)
@@ -235,6 +235,29 @@ func disallowedEquipmentTerms(context string) []string {
 		terms = append(terms, "bench", "bench-supported")
 	}
 
+	return terms
+}
+
+func explicitlyUnavailableGymEquipmentTerms(context string) []string {
+	terms := make([]string, 0, 12)
+	if hasUnavailableEquipmentTerm(context, "barbell", "power rack", "squat rack") {
+		terms = append(terms, "barbell", "smith")
+	}
+	if hasUnavailableEquipmentTerm(context, "dumbbell", "dumbbells") {
+		terms = append(terms, "dumbbell")
+	}
+	if hasUnavailableEquipmentTerm(context, "kettlebell", "kettlebells") {
+		terms = append(terms, "kettlebell")
+	}
+	if hasUnavailableEquipmentTerm(context, "cable", "cables") {
+		terms = append(terms, "cable", "lat pulldown")
+	}
+	if hasUnavailableEquipmentTerm(context, "machine", "machines", "leg press", "lat pulldown") {
+		terms = append(terms, "machine", "leg press")
+	}
+	if hasUnavailableEquipmentTerm(context, "bench", "box", "chair", "step") {
+		terms = append(terms, "bench", "bench-supported")
+	}
 	return terms
 }
 
@@ -368,6 +391,20 @@ func hasAvailableEquipmentTerm(text string, terms ...string) bool {
 			continue
 		}
 		return true
+	}
+	return false
+}
+
+func hasUnavailableEquipmentTerm(text string, terms ...string) bool {
+	for _, term := range terms {
+		normalizedTerm := normalizeQualityText(term)
+		if hasAnyQualityTerm(text,
+			"no "+normalizedTerm,
+			"without "+normalizedTerm,
+			"no access to "+normalizedTerm,
+		) {
+			return true
+		}
 	}
 	return false
 }

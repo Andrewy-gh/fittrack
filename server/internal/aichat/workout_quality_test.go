@@ -109,6 +109,72 @@ func TestValidateWorkoutDraftQualityAllowsGymLocationAsEquipmentContext(t *testi
 	}
 }
 
+func TestValidateWorkoutDraftQualityRejectsCableExerciseWhenGymContextExcludesCables(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:      "general fitness",
+		Equipment:        "no cables",
+		SessionDuration:  30,
+		WorkoutFocus:     "upper body",
+		SpaceConstraints: "gym",
+		Injuries:         "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Seated Cable Row", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want unavailable cable error")
+	}
+	if !strings.Contains(err.Error(), "cable") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want cable issue", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityRejectsMachineExerciseWhenGymContextExcludesMachines(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:      "general fitness",
+		Equipment:        "no machines",
+		SessionDuration:  30,
+		WorkoutFocus:     "legs",
+		SpaceConstraints: "gym",
+		Injuries:         "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Leg Press", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want unavailable machine error")
+	}
+	if !strings.Contains(err.Error(), "leg press") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want leg press issue", err)
+	}
+}
+
+func TestValidateWorkoutDraftQualityRejectsBenchExerciseWhenGymContextExcludesBench(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:      "general fitness",
+		Equipment:        "dumbbells, no bench",
+		SessionDuration:  30,
+		WorkoutFocus:     "upper body",
+		SpaceConstraints: "gym",
+		Injuries:         "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Dumbbell Bench Press", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want unavailable bench error")
+	}
+	if !strings.Contains(err.Error(), "bench") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want bench issue", err)
+	}
+}
+
 func TestValidateWorkoutDraftQualityRejectsExerciseConflictingWithInjury(t *testing.T) {
 	input := WorkoutGenerationToolInput{
 		FitnessGoal:     "strength",
