@@ -2127,7 +2127,7 @@ func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIC
 
 const setAIChatConversationLatestWorkoutDraft = `-- name: SetAIChatConversationLatestWorkoutDraft :exec
 UPDATE ai_chat_conversation
-SET latest_workout_draft = $3,
+SET latest_workout_draft = NULLIF($3::text, '')::jsonb,
     latest_workout_draft_source_run_id = $4,
     latest_workout_draft_saved_workout_id = NULL,
     latest_workout_draft_saved_at = NULL,
@@ -2138,7 +2138,7 @@ WHERE id = $1 AND user_id = $2
 type SetAIChatConversationLatestWorkoutDraftParams struct {
 	ID                            int32       `json:"id"`
 	UserID                        string      `json:"user_id"`
-	LatestWorkoutDraft            []byte      `json:"latest_workout_draft"`
+	Column3                       string      `json:"column_3"`
 	LatestWorkoutDraftSourceRunID pgtype.Int4 `json:"latest_workout_draft_source_run_id"`
 }
 
@@ -2146,7 +2146,7 @@ func (q *Queries) SetAIChatConversationLatestWorkoutDraft(ctx context.Context, a
 	_, err := q.db.Exec(ctx, setAIChatConversationLatestWorkoutDraft,
 		arg.ID,
 		arg.UserID,
-		arg.LatestWorkoutDraft,
+		arg.Column3,
 		arg.LatestWorkoutDraftSourceRunID,
 	)
 	return err
@@ -2393,7 +2393,7 @@ UPDATE ai_chat_run
 SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
-    workout_draft = $4,
+    workout_draft = NULLIF($4::text, '')::jsonb,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
@@ -2414,10 +2414,10 @@ RETURNING
 `
 
 type UpdateAIChatRunCompletedParams struct {
-	ID           int32              `json:"id"`
-	UserID       string             `json:"user_id"`
-	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
-	WorkoutDraft []byte             `json:"workout_draft"`
+	ID          int32              `json:"id"`
+	UserID      string             `json:"user_id"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+	Column4     string             `json:"column_4"`
 }
 
 func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChatRunCompletedParams) (AiChatRun, error) {
@@ -2425,7 +2425,7 @@ func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChat
 		arg.ID,
 		arg.UserID,
 		arg.CompletedAt,
-		arg.WorkoutDraft,
+		arg.Column4,
 	)
 	var i AiChatRun
 	err := row.Scan(

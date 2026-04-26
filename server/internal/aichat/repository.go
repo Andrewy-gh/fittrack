@@ -766,10 +766,10 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 	}
 
 	runRow, err := qtx.UpdateAIChatRunCompleted(ctx, db.UpdateAIChatRunCompletedParams{
-		ID:           prepared.Run.ID,
-		UserID:       prepared.Run.UserID,
-		CompletedAt:  completedTS,
-		WorkoutDraft: workoutDraftJSON,
+		ID:          prepared.Run.ID,
+		UserID:      prepared.Run.UserID,
+		CompletedAt: completedTS,
+		Column4:     string(workoutDraftJSON),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("complete ai chat run: %w", err)
@@ -777,9 +777,9 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 
 	if len(workoutDraftJSON) > 0 {
 		if err := qtx.SetAIChatConversationLatestWorkoutDraft(ctx, db.SetAIChatConversationLatestWorkoutDraftParams{
-			ID:                 prepared.Conversation.ID,
-			UserID:             prepared.Conversation.UserID,
-			LatestWorkoutDraft: workoutDraftJSON,
+			ID:      prepared.Conversation.ID,
+			UserID:  prepared.Conversation.UserID,
+			Column3: string(workoutDraftJSON),
 			LatestWorkoutDraftSourceRunID: pgtype.Int4{
 				Int32: prepared.Run.ID,
 				Valid: true,
@@ -1062,6 +1062,7 @@ func marshalWorkoutDraft(draft *workout.CreateWorkoutRequest) ([]byte, error) {
 	if draft == nil {
 		return nil, nil
 	}
+	normalizeWorkoutDraft(draft)
 	return json.Marshal(draft)
 }
 
