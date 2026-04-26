@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	workoutDraftToolName               = "fittrack.generate_workout_draft"
+	workoutDraftToolName               = "generate_workout_draft"
 	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. Fitness level improves weight assumptions but is not required."
 	workoutDraftSummaryMessage         = "I put together a structured workout draft for you."
 	workoutChatFollowUpQuestionCeiling = 3
@@ -254,14 +254,15 @@ func normalizeWorkoutDraft(draft *workout.CreateWorkoutRequest) {
 		return
 	}
 
-	draft.Date = strings.TrimSpace(draft.Date)
-	draft.Notes = trimOptionalString(draft.Notes)
-	draft.WorkoutFocus = trimOptionalString(draft.WorkoutFocus)
+	draft.Date = cleanWorkoutDraftText(draft.Date)
+	draft.Notes = cleanOptionalWorkoutDraftText(draft.Notes)
+	draft.WorkoutFocus = cleanOptionalWorkoutDraftText(draft.WorkoutFocus)
 
 	for exerciseIndex := range draft.Exercises {
-		draft.Exercises[exerciseIndex].Name = strings.TrimSpace(draft.Exercises[exerciseIndex].Name)
+		draft.Exercises[exerciseIndex].Name = cleanWorkoutDraftText(draft.Exercises[exerciseIndex].Name)
 		for setIndex := range draft.Exercises[exerciseIndex].Sets {
-			draft.Exercises[exerciseIndex].Sets[setIndex].SetType = strings.ToLower(strings.TrimSpace(draft.Exercises[exerciseIndex].Sets[setIndex].SetType))
+			setType := cleanWorkoutDraftText(draft.Exercises[exerciseIndex].Sets[setIndex].SetType)
+			draft.Exercises[exerciseIndex].Sets[setIndex].SetType = strings.ToLower(setType)
 		}
 	}
 }
@@ -337,15 +338,19 @@ func looksLikeExerciseDump(text string, draft *workout.CreateWorkoutRequest) boo
 	return false
 }
 
-func trimOptionalString(value *string) *string {
+func cleanOptionalWorkoutDraftText(value *string) *string {
 	if value == nil {
 		return nil
 	}
 
-	trimmed := strings.TrimSpace(*value)
+	trimmed := cleanWorkoutDraftText(*value)
 	if trimmed == "" {
 		return nil
 	}
 
 	return &trimmed
+}
+
+func cleanWorkoutDraftText(value string) string {
+	return strings.TrimSpace(strings.ReplaceAll(value, "\x00", ""))
 }

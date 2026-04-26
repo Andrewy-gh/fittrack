@@ -88,6 +88,99 @@ func TestRepositoryCompleteRun_PersistsWorkoutDraftJSONB(t *testing.T) {
 	assert.JSONEq(t, string(expectedJSON), string(storedLatestDraft))
 }
 
+func TestRepositoryCompleteRun_AllowsNilWorkoutDraft(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-complete-run-nil-draft-user"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+
+	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "How should I warm up today?", defaultModelName, "req-complete-run-nil-draft")
+	require.NoError(t, err)
+
+	message, run, err := repo.CompleteRun(ctx, prepared, "Start with five easy minutes and a few ramp-up sets.", nil, time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	require.NotNil(t, message)
+	require.NotNil(t, run)
+	assert.Nil(t, run.WorkoutDraft)
+	assert.Equal(t, statusCompleted, run.Status)
+
+	storedConversation, err := repo.GetConversation(ctx, conversation.ID, userID)
+	require.NoError(t, err)
+	assert.Nil(t, storedConversation.LatestWorkoutDraft)
+
+	var storedRunDraft []byte
+	err = pool.QueryRow(ctx, "SELECT workout_draft FROM ai_chat_run WHERE id = $1 AND user_id = $2", run.ID, userID).Scan(&storedRunDraft)
+	require.NoError(t, err)
+	assert.Nil(t, storedRunDraft)
+}
+
+func TestRepositoryCompleteRun_PersistsWorkoutDraftWithNullByteText(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-complete-run-null-byte-draft-user"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+
+	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "Build me a structured workout draft for today.", defaultModelName, "req-complete-run-null-byte-draft")
+	require.NoError(t, err)
+
+	notes := "Move well\x00and stop with two reps in reserve."
+	draft := &workout.CreateWorkoutRequest{
+		Date:  "2026-04-22T12:00:00Z",
+		Notes: &notes,
+		Exercises: []workout.ExerciseInput{
+			{
+				Name: "Goblet Squat",
+				Sets: []workout.SetInput{
+					{Reps: 10, SetType: "working"},
+				},
+			},
+		},
+	}
+
+	_, run, err := repo.CompleteRun(ctx, prepared, workoutDraftSummaryMessage, draft, time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC))
+	require.NoError(t, err)
+	require.NotNil(t, run)
+	require.NotNil(t, run.WorkoutDraft)
+	require.NotNil(t, run.WorkoutDraft.Notes)
+	assert.NotContains(t, *run.WorkoutDraft.Notes, "\x00")
+}
+
 func TestRepositorySaveLatestWorkoutDraft_ConcurrentCallsCreateOneWorkout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping database-backed AI chat repository test in short mode")
@@ -205,6 +298,10 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 	cleanup := func() {
 		ctx := context.Background()
 		_, err := pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-nil-draft-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-null-byte-draft-user")
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-save-draft-race-user")
 		require.NoError(t, err)

@@ -81,6 +81,30 @@ Optional env var: `GEMINI_MODEL` (defaults to `googleai/gemini-2.5-flash`)
 
 The command respects existing shell env first, then loads `server/.env` and `server/setenv.sh` if present. It sends one real Genkit request to Gemini, times out after 20 seconds, and prints a short model response to stdout.
 
+### AI Chat Scenario Sweep
+
+From `server/`, run real-provider AI chat scenario evals with:
+
+```bash
+go run ./cmd/ai-chat-scenario-sweep -mode single_turn
+go run ./cmd/ai-chat-scenario-sweep -mode two_turn
+```
+
+Expected env var: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
+
+Optional env vars:
+
+- `GEMINI_MODEL` to override the default model
+- `FITTRACK_AI_CHAT_SWEEP_OUT` to override the JSON report path
+
+Optional flags:
+
+- `-mode single_turn` runs one assistant turn for each default scenario
+- `-mode two_turn` answers configured follow-up questions after the assistant asks one
+- `-timeout 15m` limits the full sweep wall-clock runtime; lower it for quick checks or raise it for slower provider runs
+
+The command writes a JSON report to `FITTRACK_AI_CHAT_SWEEP_OUT` when set, otherwise to `~/.codex/diagrams/fittrack-ai-chat-scenario-sweep.json`. The summary includes structured draft count, follow-up count, text-only count, error count, and conversion rates so model or prompt changes can be compared across runs.
+
 ### AI Chat Runtime
 
 The live API chat runtime uses the same model default as the smoke test:

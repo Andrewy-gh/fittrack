@@ -762,7 +762,7 @@ WHERE id = $1 AND user_id = $2;
 
 -- name: SetAIChatConversationLatestWorkoutDraft :exec
 UPDATE ai_chat_conversation
-SET latest_workout_draft = $3,
+SET latest_workout_draft = NULLIF($3::text, '')::jsonb,
     latest_workout_draft_source_run_id = $4,
     latest_workout_draft_saved_workout_id = NULL,
     latest_workout_draft_saved_at = NULL,
@@ -867,7 +867,7 @@ UPDATE ai_chat_run
 SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
-    workout_draft = $4,
+    workout_draft = NULLIF($4::text, '')::jsonb,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING
