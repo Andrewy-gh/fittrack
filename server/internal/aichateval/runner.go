@@ -50,7 +50,21 @@ type Report struct {
 	Mode          string   `json:"mode"`
 	Model         string   `json:"model"`
 	ScenarioCount int      `json:"scenario_count"`
+	Summary       Summary  `json:"summary"`
 	Results       []Result `json:"results"`
+}
+
+type Summary struct {
+	TotalScenarios                 int      `json:"total_scenarios"`
+	StructuredDraftCount           int      `json:"structured_draft_count"`
+	FollowUpQuestionCount          int      `json:"follow_up_question_count"`
+	TextOnlyCount                  int      `json:"text_only_count"`
+	ErrorCount                     int      `json:"error_count"`
+	StructuredOutputConversionRate float64  `json:"structured_output_conversion_rate"`
+	TwoTurnFollowUpCount           int      `json:"two_turn_follow_up_count"`
+	TwoTurnAttemptCount            int      `json:"two_turn_attempt_count"`
+	TwoTurnStructuredDraftCount    int      `json:"two_turn_structured_draft_count"`
+	TwoTurnConversionRate          *float64 `json:"two_turn_conversion_rate"`
 }
 
 type Result struct {
@@ -113,8 +127,59 @@ func Run(ctx context.Context, runtime Runtime, scenarios []Scenario, options Run
 		Mode:          mode,
 		Model:         runtime.ModelName(),
 		ScenarioCount: len(results),
+		Summary:       BuildSummary(mode, results),
 		Results:       results,
 	}
+}
+
+func BuildSummary(mode string, results []Result) Summary {
+	summary := Summary{
+		TotalScenarios: len(results),
+	}
+	for _, result := range results {
+		switch result.Status {
+		case StatusStructuredDraft:
+			summary.StructuredDraftCount++
+		case StatusFollowUpQuestion:
+			summary.FollowUpQuestionCount++
+		case StatusTextOnly:
+			summary.TextOnlyCount++
+		case StatusError:
+			summary.ErrorCount++
+		}
+
+		if mode == ModeTwoTurn && firstTurnStatus(result) == StatusFollowUpQuestion {
+			summary.TwoTurnFollowUpCount++
+			if len(result.Turns) > 1 {
+				summary.TwoTurnAttemptCount++
+				if result.Status == StatusStructuredDraft {
+					summary.TwoTurnStructuredDraftCount++
+				}
+			}
+		}
+	}
+
+	summary.StructuredOutputConversionRate = rate(summary.StructuredDraftCount, summary.TotalScenarios)
+	if mode == ModeTwoTurn {
+		twoTurnRate := rate(summary.TwoTurnStructuredDraftCount, summary.TwoTurnAttemptCount)
+		summary.TwoTurnConversionRate = &twoTurnRate
+	}
+
+	return summary
+}
+
+func firstTurnStatus(result Result) string {
+	if len(result.Turns) == 0 {
+		return ""
+	}
+	return result.Turns[0].Status
+}
+
+func rate(count int, total int) float64 {
+	if total == 0 {
+		return 0
+	}
+	return float64(count) / float64(total)
 }
 
 func normalizeMode(mode string) string {

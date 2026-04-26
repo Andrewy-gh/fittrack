@@ -69,6 +69,15 @@ func TestRunSingleTurnClassifiesStructuredDraft(t *testing.T) {
 	if len(report.Results) != 1 {
 		t.Fatalf("Run() returned %d results, want 1", len(report.Results))
 	}
+	if report.Summary.StructuredDraftCount != 1 {
+		t.Fatalf("StructuredDraftCount = %d, want 1", report.Summary.StructuredDraftCount)
+	}
+	if report.Summary.StructuredOutputConversionRate != 1 {
+		t.Fatalf("StructuredOutputConversionRate = %f, want 1", report.Summary.StructuredOutputConversionRate)
+	}
+	if report.Summary.TwoTurnConversionRate != nil {
+		t.Fatalf("TwoTurnConversionRate = %v, want nil for single-turn mode", *report.Summary.TwoTurnConversionRate)
+	}
 	result := report.Results[0]
 	if result.Status != StatusStructuredDraft {
 		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
@@ -116,6 +125,21 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 	if result.Text != "I made a draft." {
 		t.Fatalf("Result text = %q, want final turn text", result.Text)
 	}
+	if report.Summary.FollowUpQuestionCount != 0 {
+		t.Fatalf("FollowUpQuestionCount = %d, want final status counts only", report.Summary.FollowUpQuestionCount)
+	}
+	if report.Summary.TwoTurnFollowUpCount != 1 {
+		t.Fatalf("TwoTurnFollowUpCount = %d, want 1", report.Summary.TwoTurnFollowUpCount)
+	}
+	if report.Summary.TwoTurnAttemptCount != 1 {
+		t.Fatalf("TwoTurnAttemptCount = %d, want 1", report.Summary.TwoTurnAttemptCount)
+	}
+	if report.Summary.TwoTurnStructuredDraftCount != 1 {
+		t.Fatalf("TwoTurnStructuredDraftCount = %d, want 1", report.Summary.TwoTurnStructuredDraftCount)
+	}
+	if report.Summary.TwoTurnConversionRate == nil || *report.Summary.TwoTurnConversionRate != 1 {
+		t.Fatalf("TwoTurnConversionRate = %v, want 1", report.Summary.TwoTurnConversionRate)
+	}
 	if len(result.Turns) != 2 {
 		t.Fatalf("Turns = %d, want 2", len(result.Turns))
 	}
@@ -134,6 +158,38 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 	}
 	if second.history[1].Role != "assistant" || second.history[1].Text != "Any injuries or equipment limits?" {
 		t.Fatalf("second history[1] = %#v, want first assistant follow-up", second.history[1])
+	}
+}
+
+func TestRunSummaryCountsFinalStatuses(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "Any injuries?"}},
+			{done: &aichat.StreamDone{Text: "General guidance only."}},
+			{err: errors.New("provider failed")},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{
+		{ID: "case-1", Title: "Follow Up", Prompt: "Build legs."},
+		{ID: "case-2", Title: "Text", Prompt: "Ideas."},
+		{ID: "case-3", Title: "Error", Prompt: "Build push."},
+	}, RunOptions{Mode: ModeSingleTurn})
+
+	if report.Summary.TotalScenarios != 3 {
+		t.Fatalf("TotalScenarios = %d, want 3", report.Summary.TotalScenarios)
+	}
+	if report.Summary.FollowUpQuestionCount != 1 {
+		t.Fatalf("FollowUpQuestionCount = %d, want 1", report.Summary.FollowUpQuestionCount)
+	}
+	if report.Summary.TextOnlyCount != 1 {
+		t.Fatalf("TextOnlyCount = %d, want 1", report.Summary.TextOnlyCount)
+	}
+	if report.Summary.ErrorCount != 1 {
+		t.Fatalf("ErrorCount = %d, want 1", report.Summary.ErrorCount)
+	}
+	if report.Summary.StructuredOutputConversionRate != 0 {
+		t.Fatalf("StructuredOutputConversionRate = %f, want 0", report.Summary.StructuredOutputConversionRate)
 	}
 }
 
