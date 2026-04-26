@@ -20,7 +20,7 @@ import (
 const (
 	defaultOutputDirName = ".codex/diagrams"
 	defaultOutputName    = "fittrack-ai-chat-scenario-sweep.json"
-	runTimeout           = 90 * time.Second
+	defaultRunTimeout    = 15 * time.Minute
 )
 
 type stubFeatureAccessReader struct{}
@@ -31,9 +31,13 @@ func (stubFeatureAccessReader) ListCurrentUserAccess(context.Context) ([]feature
 
 func main() {
 	mode := flag.String("mode", aichateval.ModeSingleTurn, "eval mode: single_turn or two_turn")
+	timeout := flag.Duration("timeout", defaultRunTimeout, "maximum wall-clock runtime for the full scenario sweep")
 	flag.Parse()
 	if err := aichateval.ValidateMode(*mode); err != nil {
 		fail("%v", err)
+	}
+	if *timeout <= 0 {
+		fail("timeout must be greater than zero")
 	}
 	if err := loadLocalEnv(); err != nil {
 		fail("failed to load local env files: %v", err)
@@ -44,7 +48,7 @@ func main() {
 		fail("failed to create output directory: %v", err)
 	}
 
-	runtimeCtx, cancel := context.WithTimeout(context.Background(), runTimeout)
+	runtimeCtx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
 	runtime := aichat.NewGenkitRuntime(runtimeCtx, stubFeatureAccessReader{})
@@ -52,7 +56,7 @@ func main() {
 		fail("ai chat runtime unavailable. Set GEMINI_API_KEY or GOOGLE_API_KEY in your shell, server/.env, or server/setenv.sh")
 	}
 
-	report := aichateval.Run(context.Background(), runtime, aichateval.DefaultScenarios(), aichateval.RunOptions{
+	report := aichateval.Run(runtimeCtx, runtime, aichateval.DefaultScenarios(), aichateval.RunOptions{
 		Mode: *mode,
 		OnScenario: func(item aichateval.Scenario) {
 			fmt.Fprintf(os.Stderr, "Running %s: %s\n", item.ID, item.Title)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -230,6 +231,39 @@ func TestClassifyErrorAndRetryDelay(t *testing.T) {
 	}
 	if delay.String() != "2.4s" {
 		t.Fatalf("ParseRetryDelay() = %s, want 2.4s", delay)
+	}
+}
+
+func TestRunRetryWaitStopsWhenContextCanceled(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			err: errors.New("provider rate limited: Please retry in 300s"),
+		}},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	started := time.Now()
+	result := runTurn(ctx, runtime, Scenario{ID: "case-retry"}, "Build legs.", nil, RunOptions{
+		OnRetry: func(Scenario, time.Duration, int, int) {
+			cancel()
+		},
+	})
+
+	if result.Status != StatusError {
+		t.Fatalf("result.Status = %q, want %q", result.Status, StatusError)
+	}
+	if result.Error != context.Canceled.Error() {
+		t.Fatalf("result.Error = %q, want %q", result.Error, context.Canceled.Error())
+	}
+	if result.Attempts != 1 {
+		t.Fatalf("result.Attempts = %d, want 1", result.Attempts)
+	}
+	if len(runtime.calls) != 1 {
+		t.Fatalf("runtime calls = %d, want 1", len(runtime.calls))
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("runTurn waited %s, want context cancellation before retry sleep completes", elapsed)
 	}
 }
 

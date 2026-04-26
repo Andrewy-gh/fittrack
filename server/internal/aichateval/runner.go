@@ -255,6 +255,10 @@ func runTurn(ctx context.Context, runtime Runtime, scenario Scenario, prompt str
 		maxAttempts = defaultMaxAttempts
 	}
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			err = ctxErr
+			break
+		}
 		result.Attempts = attempt
 		done, err = runtime.StreamChat(ctx, prompt, history, func(string) error {
 			return nil
@@ -272,7 +276,10 @@ func runTurn(ctx context.Context, runtime Runtime, scenario Scenario, prompt str
 		if options.OnRetry != nil {
 			options.OnRetry(scenario, waitFor, attempt+1, maxAttempts)
 		}
-		time.Sleep(waitFor)
+		if waitErr := waitForRetry(ctx, waitFor); waitErr != nil {
+			err = waitErr
+			break
+		}
 	}
 
 	result.DurationMS = time.Since(started).Milliseconds()
@@ -288,6 +295,18 @@ func runTurn(ctx context.Context, runtime Runtime, scenario Scenario, prompt str
 	result.DraftSummary = SummarizeDraft(done.WorkoutDraft)
 	result.Status = Classify(done)
 	return result
+}
+
+func waitForRetry(ctx context.Context, waitFor time.Duration) error {
+	timer := time.NewTimer(waitFor)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func Classify(done *aichat.StreamDone) string {
