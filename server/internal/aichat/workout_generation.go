@@ -22,6 +22,14 @@ const (
 
 var workoutDraftValidator = validator.New()
 
+type workoutDraftGenerator func(
+	ctx context.Context,
+	g *genkit.Genkit,
+	modelName string,
+	systemPrompt string,
+	userPrompt string,
+) (*workout.CreateWorkoutRequest, error)
+
 type WorkoutGenerationToolInput struct {
 	FitnessLevel     string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
 	FitnessGoal      string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`
@@ -83,24 +91,62 @@ func generateWorkoutDraft(
 	input WorkoutGenerationToolInput,
 	now time.Time,
 ) (*workout.CreateWorkoutRequest, error) {
+	return generateWorkoutDraftWith(ctx, g, modelName, input, now, generateWorkoutDraftData)
+}
+
+func generateWorkoutDraftData(
+	ctx context.Context,
+	g *genkit.Genkit,
+	modelName string,
+	systemPrompt string,
+	userPrompt string,
+) (*workout.CreateWorkoutRequest, error) {
 	output, _, err := genkit.GenerateData[workout.CreateWorkoutRequest](ctx, g,
 		ai.WithModelName(modelName),
-		ai.WithSystem(buildWorkoutGenerationPrompt(input, now)),
-		ai.WithPrompt(buildWorkoutGenerationUserPrompt(input)),
+		ai.WithSystem(systemPrompt),
+		ai.WithPrompt(userPrompt),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("generate workout draft: %w", err)
-	}
-
-	normalizeWorkoutDraft(output)
-	if err := validateWorkoutDraft(output); err != nil {
-		return nil, fmt.Errorf("validate workout draft: %w", err)
-	}
-	if err := validateWorkoutDraftQuality(input, output); err != nil {
-		return nil, fmt.Errorf("validate workout draft quality: %w", err)
+		return nil, err
 	}
 
 	return output, nil
+}
+
+func generateWorkoutDraftWith(
+	ctx context.Context,
+	g *genkit.Genkit,
+	modelName string,
+	input WorkoutGenerationToolInput,
+	now time.Time,
+	generator workoutDraftGenerator,
+) (*workout.CreateWorkoutRequest, error) {
+	systemPrompt := buildWorkoutGenerationPrompt(input, now)
+	userPrompt := buildWorkoutGenerationUserPrompt(input)
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		output, err := generator(ctx, g, modelName, systemPrompt, userPrompt)
+		if err != nil {
+			return nil, fmt.Errorf("generate workout draft: %w", err)
+		}
+
+		normalizeWorkoutDraft(output)
+		if err := validateWorkoutDraft(output); err != nil {
+			return nil, fmt.Errorf("validate workout draft: %w", err)
+		}
+
+		qualityErr := validateWorkoutDraftQuality(input, output)
+		if qualityErr == nil {
+			return output, nil
+		}
+		if attempt == 2 {
+			return nil, fmt.Errorf("validate workout draft quality after repair retry: %w", qualityErr)
+		}
+
+		userPrompt = buildWorkoutGenerationRepairPrompt(input, qualityErr)
+	}
+
+	return nil, fmt.Errorf("generate workout draft: exhausted quality repair attempts")
 }
 
 func buildWorkoutGenerationPrompt(input WorkoutGenerationToolInput, now time.Time) string {
@@ -164,6 +210,24 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 	if requestedDate := strings.TrimSpace(input.WorkoutDate); requestedDate != "" {
 		builder.WriteString(fmt.Sprintf("- Requested workout date: %s\n", requestedDate))
 	}
+
+	return builder.String()
+}
+
+func buildWorkoutGenerationRepairPrompt(input WorkoutGenerationToolInput, qualityErr error) string {
+	var builder strings.Builder
+
+	builder.WriteString("Regenerate the FitTrack workout draft for the same user.\n")
+	builder.WriteString("The previous draft failed deterministic quality validation. Fix these issues:\n")
+	for _, issue := range strings.Split(qualityErr.Error(), "; ") {
+		issue = strings.TrimSpace(issue)
+		if issue == "" {
+			continue
+		}
+		builder.WriteString(fmt.Sprintf("- %s\n", issue))
+	}
+	builder.WriteString("\nReturn a complete replacement draft that still follows the original request:\n")
+	builder.WriteString(buildWorkoutGenerationUserPrompt(input))
 
 	return builder.String()
 }

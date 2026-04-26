@@ -1,6 +1,8 @@
 package aichat
 
 import (
+	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
 )
 
 func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
@@ -195,6 +198,214 @@ func TestBuildWorkoutGenerationPromptUsesUserLocalLanguageForRelativeDates(t *te
 	}
 	if strings.Contains(prompt, `relative to`) {
 		t.Fatalf("buildWorkoutGenerationPrompt() = %q, should not anchor relative dates to a server timestamp", prompt)
+	}
+}
+
+func TestGenerateWorkoutDraftWithRepairsQualityFailureOnce(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "hypertrophy",
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "pull",
+		Injuries:        "none",
+	}
+	firstDraft := validDraftWithExercises(
+		draftExercise("Lat Pulldown", workingSet(10), workingSet(10)),
+	)
+	repairedDraft := validDraftWithExercises(
+		draftExercise("Pull-Up", warmupSet(6), warmupSet(6), workingSet(8), workingSet(8), workingSet(8)),
+		draftExercise("Chest Supported Row", workingSet(10), workingSet(10), workingSet(10)),
+		draftExercise("Seated Cable Row", workingSet(12), workingSet(12)),
+		draftExercise("Incline Dumbbell Curl", workingSet(12), workingSet(12)),
+	)
+	prompts := make([]string, 0, 2)
+	drafts := []*workout.CreateWorkoutRequest{firstDraft, repairedDraft}
+	generator := func(_ context.Context, _ *genkit.Genkit, _ string, _ string, userPrompt string) (*workout.CreateWorkoutRequest, error) {
+		prompts = append(prompts, userPrompt)
+		return drafts[len(prompts)-1], nil
+	}
+
+	draft, err := generateWorkoutDraftWith(
+		context.Background(),
+		nil,
+		"test-model",
+		input,
+		time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC),
+		generator,
+	)
+	if err != nil {
+		t.Fatalf("generateWorkoutDraftWith() error = %v, want nil", err)
+	}
+	if draft != repairedDraft {
+		t.Fatalf("generateWorkoutDraftWith() draft = %#v, want repaired draft", draft)
+	}
+	if len(prompts) != 2 {
+		t.Fatalf("generator called %d times, want 2", len(prompts))
+	}
+	if !strings.Contains(prompts[1], "failed deterministic quality validation") {
+		t.Fatalf("repair prompt = %q, want quality validation context", prompts[1])
+	}
+	if !strings.Contains(prompts[1], "expected at least") {
+		t.Fatalf("repair prompt = %q, want deterministic validator feedback", prompts[1])
+	}
+	if !strings.Contains(prompts[1], "- Session duration: 45 minutes") || !strings.Contains(prompts[1], "- Workout focus: pull") {
+		t.Fatalf("repair prompt = %q, want original request context", prompts[1])
+	}
+}
+
+func TestGenerateWorkoutDraftWithDoesNotRetryGenerationErrors(t *testing.T) {
+	expectedErr := errors.New("model unavailable")
+	calls := 0
+	generator := func(_ context.Context, _ *genkit.Genkit, _ string, _ string, _ string) (*workout.CreateWorkoutRequest, error) {
+		calls++
+		return nil, expectedErr
+	}
+
+	draft, err := generateWorkoutDraftWith(
+		context.Background(),
+		nil,
+		"test-model",
+		WorkoutGenerationToolInput{Equipment: "full gym", SessionDuration: 45, WorkoutFocus: "pull", Injuries: "none"},
+		time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC),
+		generator,
+	)
+	if err == nil {
+		t.Fatalf("generateWorkoutDraftWith() draft = %#v, error = nil, want generation error", draft)
+	}
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("generateWorkoutDraftWith() error = %v, want %v", err, expectedErr)
+	}
+	if calls != 1 {
+		t.Fatalf("generator called %d times, want 1", calls)
+	}
+}
+
+func TestGenerateWorkoutDraftWithDoesNotRetrySchemaValidationErrors(t *testing.T) {
+	calls := 0
+	generator := func(_ context.Context, _ *genkit.Genkit, _ string, _ string, _ string) (*workout.CreateWorkoutRequest, error) {
+		calls++
+		return &workout.CreateWorkoutRequest{
+			Date: "2026-04-20T12:00:00Z",
+		}, nil
+	}
+
+	draft, err := generateWorkoutDraftWith(
+		context.Background(),
+		nil,
+		"test-model",
+		WorkoutGenerationToolInput{Equipment: "full gym", SessionDuration: 45, WorkoutFocus: "pull", Injuries: "none"},
+		time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC),
+		generator,
+	)
+	if err == nil {
+		t.Fatalf("generateWorkoutDraftWith() draft = %#v, error = nil, want validation error", draft)
+	}
+	if !strings.Contains(err.Error(), "validate workout draft") {
+		t.Fatalf("generateWorkoutDraftWith() error = %v, want schema validation context", err)
+	}
+	if calls != 1 {
+		t.Fatalf("generator called %d times, want 1", calls)
+	}
+}
+
+func TestGenerateWorkoutDraftWithStopsAfterOneQualityRepairRetry(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "hypertrophy",
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "pull",
+		Injuries:        "none",
+	}
+	calls := 0
+	generator := func(_ context.Context, _ *genkit.Genkit, _ string, _ string, _ string) (*workout.CreateWorkoutRequest, error) {
+		calls++
+		return validDraftWithExercises(
+			draftExercise("Lat Pulldown", workingSet(10), workingSet(10)),
+		), nil
+	}
+
+	draft, err := generateWorkoutDraftWith(
+		context.Background(),
+		nil,
+		"test-model",
+		input,
+		time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC),
+		generator,
+	)
+	if err == nil {
+		t.Fatalf("generateWorkoutDraftWith() draft = %#v, error = nil, want quality retry error", draft)
+	}
+	if !strings.Contains(err.Error(), "after repair retry") {
+		t.Fatalf("generateWorkoutDraftWith() error = %v, want repair retry context", err)
+	}
+	if calls != 2 {
+		t.Fatalf("generator called %d times, want 2", calls)
+	}
+}
+
+func TestGenerateWorkoutDraftWithValidDraftPassesDirectly(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "hypertrophy",
+		Equipment:       "full gym",
+		SessionDuration: 45,
+		WorkoutFocus:    "pull",
+		Injuries:        "none",
+	}
+	expectedDraft := validDraftWithExercises(
+		draftExercise("Pull-Up", warmupSet(6), warmupSet(6), workingSet(8), workingSet(8), workingSet(8)),
+		draftExercise("Chest Supported Row", workingSet(10), workingSet(10), workingSet(10)),
+		draftExercise("Seated Cable Row", workingSet(12), workingSet(12)),
+		draftExercise("Incline Dumbbell Curl", workingSet(12), workingSet(12)),
+	)
+	calls := 0
+	generator := func(_ context.Context, _ *genkit.Genkit, _ string, _ string, _ string) (*workout.CreateWorkoutRequest, error) {
+		calls++
+		return expectedDraft, nil
+	}
+
+	draft, err := generateWorkoutDraftWith(
+		context.Background(),
+		nil,
+		"test-model",
+		input,
+		time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC),
+		generator,
+	)
+	if err != nil {
+		t.Fatalf("generateWorkoutDraftWith() error = %v, want nil", err)
+	}
+	if draft != expectedDraft {
+		t.Fatalf("generateWorkoutDraftWith() draft = %#v, want expected draft", draft)
+	}
+	if calls != 1 {
+		t.Fatalf("generator called %d times, want 1", calls)
+	}
+}
+
+func TestBuildWorkoutGenerationRepairPromptUsesDeterministicFeedback(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "hypertrophy",
+		Equipment:       "bodyweight only",
+		SessionDuration: 45,
+		WorkoutFocus:    "upper body",
+		Injuries:        "shoulder pain",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Barbell Overhead Press", workingSet(10), workingSet(10)),
+	)
+	qualityErr := validateWorkoutDraftQuality(input, draft)
+	if qualityErr == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want quality issue")
+	}
+
+	prompt := buildWorkoutGenerationRepairPrompt(input, qualityErr)
+	for _, issue := range strings.Split(qualityErr.Error(), "; ") {
+		if !strings.Contains(prompt, issue) {
+			t.Fatalf("repair prompt = %q, want deterministic issue %q", prompt, issue)
+		}
+	}
+	if !strings.Contains(prompt, "- Equipment: bodyweight only") || !strings.Contains(prompt, "- Injuries or limitations: shoulder pain") {
+		t.Fatalf("repair prompt = %q, want original constraints", prompt)
 	}
 }
 
