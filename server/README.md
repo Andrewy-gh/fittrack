@@ -164,6 +164,7 @@ Common optional variables:
 - `METRICS_USERNAME`, `METRICS_PASSWORD`
 - `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 - `GEMINI_MODEL`
+- `AI_CHAT_TRACE_LOGS=true` to temporarily enable verbose AI chat stream timing logs while debugging
 - `E2E_LOCAL_AUTH_ENABLED` to enable the local-only Playwright auth bootstrap in `development`
 - `E2E_LOCAL_AUTH_USER_ID`, `E2E_LOCAL_AUTH_EMAIL`, `E2E_LOCAL_AUTH_DISPLAY_NAME` to override the deterministic local test user
 - `SECRET_SERVER_KEY` for Playwright's server-side auth bootstrap

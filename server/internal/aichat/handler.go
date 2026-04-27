@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
@@ -312,6 +313,7 @@ func (h *Handler) RecoverMessage(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} response.Error
 // @Router /ai/conversations/{id}/messages/stream [post]
 func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
+	traceStartedAt := time.Now()
 	conversationID, ok := h.decodeConversationID(w, r)
 	if !ok {
 		return
@@ -353,13 +355,35 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		h.logStreamWriteFailure("failed to start ai chat stream", r, err)
 		return
 	}
+	// Trace marker: confirms when the browser should have received the SSE start event.
+	logAIChatTrace(h.logger, "sse_start_written",
+		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+		"conversation_id", prepared.Conversation.ID,
+		"run_id", prepared.Run.ID,
+		"message_id", prepared.AssistantMessage.ID,
+		"request_id", request.GetRequestID(r.Context()),
+	)
 
+	firstDeltaWritten := false
 	done, err := h.service.StreamMessage(r.Context(), prepared, func(chunk StreamChunk) error {
-		return sse.write("delta", StreamEvent{
+		err := sse.write("delta", StreamEvent{
 			Type:     "delta",
 			Delta:    chunk.Delta,
 			Sequence: chunk.Sequence,
 		})
+		if err == nil && !firstDeltaWritten {
+			firstDeltaWritten = true
+			// Trace marker: separates "stream opened" from "assistant text became visible."
+			logAIChatTrace(h.logger, "first_delta_written",
+				"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+				"conversation_id", prepared.Conversation.ID,
+				"run_id", prepared.Run.ID,
+				"message_id", prepared.AssistantMessage.ID,
+				"sequence", chunk.Sequence,
+				"request_id", request.GetRequestID(r.Context()),
+			)
+		}
+		return err
 	})
 	if err != nil {
 		if errors.Is(err, ErrStreamAwaitingRecovery) {
@@ -382,7 +406,18 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		WorkoutDraft:   done.WorkoutDraft,
 	}); err != nil {
 		h.logStreamWriteFailure("failed to finish ai chat stream", r, err)
+		return
 	}
+	// Trace marker: confirms when the terminal payload, including workout draft, reached SSE.
+	logAIChatTrace(h.logger, "sse_done_written",
+		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+		"conversation_id", done.ConversationID,
+		"run_id", done.RunID,
+		"message_id", done.MessageID,
+		"sequence", done.Sequence,
+		"has_workout_draft", done.WorkoutDraft != nil,
+		"request_id", request.GetRequestID(r.Context()),
+	)
 }
 
 // ResumeMessageStream godoc
