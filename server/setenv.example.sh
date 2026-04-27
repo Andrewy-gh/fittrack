@@ -33,6 +33,7 @@ export DB_HEALTHCHECK=30s
 export GEMINI_API_KEY="your-gemini-api-key"
 # export GOOGLE_API_KEY="your-google-api-key"
 # export GEMINI_MODEL="googleai/gemini-2.5-flash"
+# export AI_CHAT_TRACE_LOGS=true # enables verbose AI chat stream timing logs for local debugging
 
 # Optional Inngest-backed AI chat recovery
 # export INNGEST_DEV="1" # or a dev server URL such as http://127.0.0.1:8288

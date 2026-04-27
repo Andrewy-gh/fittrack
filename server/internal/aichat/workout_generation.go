@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -45,11 +46,29 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
 	return genkit.DefineTool(g, workoutDraftToolName,
 		workoutDraftToolDescription,
 		func(ctx *ai.ToolContext, input WorkoutGenerationToolInput) (*workout.CreateWorkoutRequest, error) {
+			startedAt := time.Now()
+			// Trace marker: shows when the outer chat model entered the workout draft tool.
+			logAIChatTraceContext(ctx, "workout_draft_tool_started",
+				"model", modelName,
+				"session_duration", input.SessionDuration,
+				"workout_focus", strings.TrimSpace(input.WorkoutFocus),
+				"request_id", request.GetRequestID(ctx),
+			)
 			if err := validateWorkoutGenerationToolInput(input); err != nil {
 				return nil, err
 			}
 
-			return generateWorkoutDraft(ctx, g, modelName, input, time.Now())
+			draft, err := generateWorkoutDraft(ctx, g, modelName, input, time.Now())
+			logAIChatTraceContext(ctx, "workout_draft_tool_finished",
+				"elapsed_ms", time.Since(startedAt).Milliseconds(),
+				"model", modelName,
+				"session_duration", input.SessionDuration,
+				"workout_focus", strings.TrimSpace(input.WorkoutFocus),
+				"exercise_count", workoutDraftExerciseCount(draft),
+				"error", traceError(err),
+				"request_id", request.GetRequestID(ctx),
+			)
+			return draft, err
 		},
 	)
 }
@@ -125,10 +144,33 @@ func generateWorkoutDraftWith(
 	userPrompt := buildWorkoutGenerationUserPrompt(input)
 
 	for attempt := 1; attempt <= 2; attempt++ {
+		attemptStartedAt := time.Now()
+		// Trace marker: each attempt is a structured model call; a second attempt means quality repair ran.
+		logAIChatTraceContext(ctx, "workout_draft_generation_attempt_started",
+			"attempt", attempt,
+			"model", modelName,
+			"session_duration", input.SessionDuration,
+			"workout_focus", strings.TrimSpace(input.WorkoutFocus),
+			"request_id", request.GetRequestID(ctx),
+		)
 		output, err := generator(ctx, g, modelName, systemPrompt, userPrompt)
 		if err != nil {
+			logAIChatTraceContext(ctx, "workout_draft_generation_attempt_finished",
+				"attempt", attempt,
+				"elapsed_ms", time.Since(attemptStartedAt).Milliseconds(),
+				"model", modelName,
+				"error", traceError(err),
+				"request_id", request.GetRequestID(ctx),
+			)
 			return nil, fmt.Errorf("generate workout draft: %w", err)
 		}
+		logAIChatTraceContext(ctx, "workout_draft_generation_attempt_finished",
+			"attempt", attempt,
+			"elapsed_ms", time.Since(attemptStartedAt).Milliseconds(),
+			"model", modelName,
+			"exercise_count", workoutDraftExerciseCount(output),
+			"request_id", request.GetRequestID(ctx),
+		)
 
 		normalizeWorkoutDraft(output)
 		if err := validateWorkoutDraft(output); err != nil {
@@ -143,10 +185,31 @@ func generateWorkoutDraftWith(
 			return nil, fmt.Errorf("validate workout draft quality after repair retry: %w", qualityErr)
 		}
 
+		// Trace marker: explains why the tool is about to spend time on a second model call.
+		logAIChatTraceContext(ctx, "workout_draft_quality_retry",
+			"attempt", attempt,
+			"model", modelName,
+			"reason", qualityErr.Error(),
+			"request_id", request.GetRequestID(ctx),
+		)
 		userPrompt = buildWorkoutGenerationRepairPrompt(input, qualityErr)
 	}
 
 	return nil, fmt.Errorf("generate workout draft: exhausted quality repair attempts")
+}
+
+func workoutDraftExerciseCount(draft *workout.CreateWorkoutRequest) int {
+	if draft == nil {
+		return 0
+	}
+	return len(draft.Exercises)
+}
+
+func traceError(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 func buildWorkoutGenerationPrompt(input WorkoutGenerationToolInput, now time.Time) string {

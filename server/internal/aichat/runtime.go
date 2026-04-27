@@ -15,6 +15,7 @@ import (
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 )
 
 const (
@@ -164,11 +165,13 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 		return nil, ErrRuntimeUnavailable
 	}
 
+	traceStartedAt := time.Now()
 	streamCtx, cancel := context.WithTimeout(ctx, chatStreamTimeout)
 	defer cancel()
 	streamCtx = withToolGuard(streamCtx)
 
 	var builder strings.Builder
+	firstModelDelta := false
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
 		ai.WithTools(r.activeFeaturesTool, r.workoutDraftTool),
@@ -180,11 +183,27 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 			if delta == "" {
 				return nil
 			}
+			if !firstModelDelta {
+				firstModelDelta = true
+				// Trace marker: confirms when Gemini produced the first text delta.
+				logAIChatTraceContext(ctx, "runtime_first_model_delta",
+					"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+					"model", r.modelName,
+					"history_messages", len(history),
+					"request_id", request.GetRequestID(ctx),
+				)
+			}
 			builder.WriteString(delta)
 			return onChunk(delta)
 		}),
 	}
 
+	// Trace marker: starts the outer chat generation, including any tool planning.
+	logAIChatTraceContext(ctx, "runtime_generate_started",
+		"model", r.modelName,
+		"history_messages", len(history),
+		"request_id", request.GetRequestID(ctx),
+	)
 	resp, err := genkit.Generate(streamCtx, r.g, opts...)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(streamCtx.Err(), context.DeadlineExceeded) {
@@ -192,6 +211,12 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 		}
 		return nil, fmt.Errorf("stream ai chat response: %w", err)
 	}
+	logAIChatTraceContext(ctx, "runtime_generate_finished",
+		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+		"model", r.modelName,
+		"history_messages", len(history),
+		"request_id", request.GetRequestID(ctx),
+	)
 
 	text := strings.TrimSpace(resp.Text())
 	if text == "" {

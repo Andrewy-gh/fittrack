@@ -377,16 +377,36 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 }
 
 func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error, allowRecovery bool) (*StreamDone, error) {
+	traceStartedAt := time.Now()
 	history := toRuntimeHistory(prepared.History)
 	var partial strings.Builder
 	persistCtx := context.WithoutCancel(ctx)
 
+	// Trace marker: measures the whole service layer around model streaming and persistence.
+	logAIChatTrace(s.logger, "service_stream_started",
+		"conversation_id", prepared.Conversation.ID,
+		"run_id", prepared.Run.ID,
+		"message_id", prepared.AssistantMessage.ID,
+		"history_messages", len(history),
+	)
+	firstChunkPersisted := false
 	done, err := s.runtime.StreamChat(ctx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
 		partialText := strings.TrimSpace(partial.String())
 		sequence, err := s.repo.AppendStreamChunk(persistCtx, prepared, delta, partialText, time.Now().UTC())
 		if err != nil {
 			return err
+		}
+		if !firstChunkPersisted {
+			firstChunkPersisted = true
+			// Trace marker: shows when the first model delta was persisted before SSE delivery.
+			logAIChatTrace(s.logger, "first_chunk_persisted",
+				"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+				"conversation_id", prepared.Conversation.ID,
+				"run_id", prepared.Run.ID,
+				"message_id", prepared.AssistantMessage.ID,
+				"sequence", sequence,
+			)
 		}
 		if onChunk == nil {
 			return nil
@@ -408,12 +428,21 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		}
 		return nil, err
 	}
+	// Trace marker: captures total runtime latency before final DB completion.
+	logAIChatTrace(s.logger, "runtime_stream_finished",
+		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+		"conversation_id", prepared.Conversation.ID,
+		"run_id", prepared.Run.ID,
+		"message_id", prepared.AssistantMessage.ID,
+		"has_workout_draft", done.WorkoutDraft != nil,
+	)
 
 	text := strings.TrimSpace(done.Text)
 	if text == "" {
 		text = strings.TrimSpace(partial.String())
 	}
 
+	completeStartedAt := time.Now()
 	message, run, err := s.repo.CompleteRun(persistCtx, prepared, text, done.WorkoutDraft, time.Now().UTC())
 	if err != nil {
 		persistErr := err
@@ -422,6 +451,15 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		}
 		return nil, persistErr
 	}
+	// Trace marker: separates model latency from final persistence latency.
+	logAIChatTrace(s.logger, "complete_run_finished",
+		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
+		"duration_ms", time.Since(completeStartedAt).Milliseconds(),
+		"conversation_id", prepared.Conversation.ID,
+		"run_id", run.ID,
+		"message_id", message.ID,
+		"has_workout_draft", done.WorkoutDraft != nil,
+	)
 	prepared.AssistantMessage = message
 	prepared.Run = run
 
