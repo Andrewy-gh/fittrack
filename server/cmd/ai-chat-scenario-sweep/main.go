@@ -32,12 +32,25 @@ func (stubFeatureAccessReader) ListCurrentUserAccess(context.Context) ([]feature
 func main() {
 	mode := flag.String("mode", aichateval.ModeSingleTurn, "eval mode: single_turn or two_turn")
 	timeout := flag.Duration("timeout", defaultRunTimeout, "maximum wall-clock runtime for the full scenario sweep")
+	scenarioID := flag.String("scenario", "", "run one scenario id from the default pack, for example prompt-03")
+	scenarioIDs := flag.String("scenarios", "", "run comma-separated scenario ids from the default pack, for example prompt-03,prompt-04")
+	fromID := flag.String("from", "", "run an inclusive scenario id range starting at this id")
+	toID := flag.String("to", "", "run an inclusive scenario id range ending at this id")
 	flag.Parse()
 	if err := aichateval.ValidateMode(*mode); err != nil {
 		fail("%v", err)
 	}
 	if *timeout <= 0 {
 		fail("timeout must be greater than zero")
+	}
+	scenarios, err := aichateval.FilterScenarios(aichateval.DefaultScenarios(), aichateval.ScenarioSelection{
+		ScenarioID:  *scenarioID,
+		ScenarioIDs: *scenarioIDs,
+		FromID:      *fromID,
+		ToID:        *toID,
+	})
+	if err != nil {
+		fail("invalid scenario selection: %v", err)
 	}
 	if err := loadLocalEnv(); err != nil {
 		fail("failed to load local env files: %v", err)
@@ -56,7 +69,7 @@ func main() {
 		fail("ai chat runtime unavailable. Set GEMINI_API_KEY or GOOGLE_API_KEY in your shell, server/.env, or server/setenv.sh")
 	}
 
-	report := aichateval.Run(runtimeCtx, runtime, aichateval.DefaultScenarios(), aichateval.RunOptions{
+	report := aichateval.Run(runtimeCtx, runtime, scenarios, aichateval.RunOptions{
 		Mode: *mode,
 		OnScenario: func(item aichateval.Scenario) {
 			fmt.Fprintf(os.Stderr, "Running %s: %s\n", item.ID, item.Title)
