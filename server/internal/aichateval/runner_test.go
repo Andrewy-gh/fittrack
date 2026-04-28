@@ -261,7 +261,7 @@ func TestRunScoresUnexpectedDraftForDoNotGenerateAsFailure(t *testing.T) {
 func TestRunScoresNarrowScopeThenGenerateAsPass(t *testing.T) {
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{
-			{done: &aichat.StreamDone{Text: "I can build one workout at a time. Which session should we start with?"}},
+			{done: &aichat.StreamDone{Text: "I can build one workout at a time. Pick one session to start with."}},
 			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
 		},
 	}
@@ -283,6 +283,34 @@ func TestRunScoresNarrowScopeThenGenerateAsPass(t *testing.T) {
 	}
 	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 0 {
 		t.Fatalf("summary scores = passed %d failed %d, want 1/0", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+	if len(runtime.calls) != 2 {
+		t.Fatalf("runtime calls = %d, want second turn after narrowing text", len(runtime.calls))
+	}
+}
+
+func TestRunScoresNarrowScopeRejectsMissingFocusedDraft(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "I can build one workout at a time. Pick one session to start with."}},
+			{done: &aichat.StreamDone{Text: "I can help once you pick a session."}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope-no-draft",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected a structured draft after the user narrowed the request" {
+		t.Fatalf("ScoreReason = %q, want missing focused draft failure", result.ScoreReason)
 	}
 }
 

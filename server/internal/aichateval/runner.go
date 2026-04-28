@@ -252,7 +252,7 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 
 	first := runTurn(ctx, runtime, scenario, scenario.Prompt, scenario.History, options)
 	applyTurnToResult(&result, first)
-	if mode != ModeTwoTurn || first.Status != StatusFollowUpQuestion || strings.TrimSpace(scenario.FollowUpAnswer) == "" {
+	if !shouldRunFollowUpTurn(scenario, mode, first) {
 		ScoreResult(&result, mode)
 		return result
 	}
@@ -269,6 +269,19 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 
 	ScoreResult(&result, mode)
 	return result
+}
+
+func shouldRunFollowUpTurn(scenario Scenario, mode string, first TurnResult) bool {
+	if mode != ModeTwoTurn || strings.TrimSpace(scenario.FollowUpAnswer) == "" {
+		return false
+	}
+	if first.Status == StatusFollowUpQuestion {
+		return true
+	}
+	if scenario.ExpectedOutcome != ExpectedNarrowScopeBeforeGenerate {
+		return false
+	}
+	return first.Draft == nil && first.Status != StatusError && strings.TrimSpace(first.Text) != ""
 }
 
 func applyTurnToResult(result *Result, turn TurnResult) {

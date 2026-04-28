@@ -107,11 +107,17 @@ func scoreNarrowScopeBeforeGenerate(result *Result, mode string) {
 	if !passesTermChecks(result) {
 		return
 	}
-	if mode == ModeTwoTurn && first.Status == StatusFollowUpQuestion && len(result.Turns) > 1 && result.Status != StatusStructuredDraft {
-		setScore(result, ScoreStatusFail, "expected a structured draft after the user narrowed the request")
-		return
+	if mode == ModeTwoTurn {
+		if len(result.Turns) < 2 {
+			setScore(result, ScoreStatusFail, "expected a second turn after the user narrowed the request")
+			return
+		}
+		if result.Status != StatusStructuredDraft {
+			setScore(result, ScoreStatusFail, "expected a structured draft after the user narrowed the request")
+			return
+		}
 	}
-	setScore(result, ScoreStatusPass, "assistant narrowed scope before generating")
+	setScore(result, ScoreStatusPass, "assistant narrowed scope, then generated a structured draft")
 }
 
 func scoreReviseWithoutRestart(result *Result) {
