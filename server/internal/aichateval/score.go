@@ -104,6 +104,10 @@ func scoreNarrowScopeBeforeGenerate(result *Result, mode string) {
 		setScore(result, ScoreStatusFail, "expected narrowing text before generating")
 		return
 	}
+	if !narrowsToSingleWorkout(first.Text) {
+		setScore(result, ScoreStatusFail, "expected the first turn to ask the user to choose one workout or session")
+		return
+	}
 	if !passesTermChecks(result) {
 		return
 	}
@@ -118,6 +122,36 @@ func scoreNarrowScopeBeforeGenerate(result *Result, mode string) {
 		}
 	}
 	setScore(result, ScoreStatusPass, "assistant narrowed scope, then generated a structured draft")
+}
+
+func narrowsToSingleWorkout(text string) bool {
+	lower := strings.ToLower(text)
+	if containsWholeWeekPlan(lower) {
+		return false
+	}
+	return containsAny(lower, []string{
+		"one workout",
+		"single workout",
+		"one session",
+		"single session",
+		"one training session",
+		"single training session",
+	}) && containsAny(lower, []string{
+		"pick",
+		"choose",
+		"select",
+		"start with",
+		"which day",
+		"which session",
+		"narrow",
+		"focus on",
+	})
+}
+
+func containsWholeWeekPlan(text string) bool {
+	dayNumberPlan := strings.Contains(text, "day 1") && strings.Contains(text, "day 2")
+	dayWordPlan := strings.Contains(text, "day one") && strings.Contains(text, "day two")
+	return dayNumberPlan || dayWordPlan
 }
 
 func scoreReviseWithoutRestart(result *Result) {
@@ -190,6 +224,15 @@ func containsFold(text string, term string) bool {
 		return true
 	}
 	return strings.Contains(strings.ToLower(text), strings.ToLower(normalizedTerm))
+}
+
+func containsAny(text string, terms []string) bool {
+	for _, term := range terms {
+		if strings.Contains(text, term) {
+			return true
+		}
+	}
+	return false
 }
 
 func setScore(result *Result, status string, reason string) {

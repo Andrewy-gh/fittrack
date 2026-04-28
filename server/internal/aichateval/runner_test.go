@@ -314,6 +314,56 @@ func TestRunScoresNarrowScopeRejectsMissingFocusedDraft(t *testing.T) {
 	}
 }
 
+func TestRunScoresNarrowScopeRejectsVagueFirstTurn(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "Sure, I can help with that."}},
+			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope-vague",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session" {
+		t.Fatalf("ScoreReason = %q, want narrow-scope failure", result.ScoreReason)
+	}
+}
+
+func TestRunScoresNarrowScopeRejectsTextOnlyWholeWeekPlan(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "Here is a 4-day split: Day 1 upper, Day 2 lower, Day 3 push, Day 4 pull."}},
+			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope-week-plan",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session" {
+		t.Fatalf("ScoreReason = %q, want narrow-scope failure", result.ScoreReason)
+	}
+}
+
 func TestRunScoresAskOnceThenGenerateRejectsImmediateDraft(t *testing.T) {
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{{
