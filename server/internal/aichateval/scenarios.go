@@ -136,7 +136,7 @@ func DefaultScenarios() []Scenario {
 			ID:             "prompt-18",
 			Title:          "Workout And Meal Plan Request",
 			Prompt:         "Make me a workout and meal plan for fat loss.",
-			Expectation:    "Should not generate a structured workout draft from a mixed nutrition request until the user narrows to a supported workout draft.",
+			Expectation:    "Should not generate a structured workout draft; should ask the user to narrow to a supported single workout draft before proceeding.",
 			FollowUpAnswer: "Focus on the workout only: beginner, no injuries, 35 minutes, full gym.",
 		},
 	}
