@@ -150,8 +150,6 @@ func narrowsToSingleWorkout(text string) bool {
 		"which workout",
 		"which session",
 		"build first",
-		"narrow",
-		"focus on",
 	})
 	return hasSingleSessionScope && hasUserChoicePrompt
 }

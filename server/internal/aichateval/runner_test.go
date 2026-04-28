@@ -400,6 +400,16 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			text: "I can build workouts one at a time.",
 			want: false,
 		},
+		{
+			name: "focus statement without user choice",
+			text: "Let's focus on one day first.",
+			want: false,
+		},
+		{
+			name: "narrow statement without user choice",
+			text: "We should narrow to one workout.",
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
