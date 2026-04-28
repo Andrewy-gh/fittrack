@@ -146,7 +146,7 @@ func narrowsToSingleWorkout(text string) bool {
 }
 
 func asksUserToChooseWorkout(text string) bool {
-	if containsAny(text, []string{
+	if sentenceContainsQuestionPhrase(text, []string{
 		"which day",
 		"which workout",
 		"which session",
@@ -158,6 +158,24 @@ func asksUserToChooseWorkout(text string) bool {
 		return true
 	}
 	return sentenceStartsWithAny(text, []string{"pick", "choose", "select"})
+}
+
+func sentenceContainsQuestionPhrase(text string, phrases []string) bool {
+	sentenceStart := 0
+	for i, char := range text {
+		if char != '.' && char != '?' && char != '!' && char != '\n' {
+			continue
+		}
+		if sentenceHasQuestionPhrase(text[sentenceStart:i+1], phrases) {
+			return true
+		}
+		sentenceStart = i + 1
+	}
+	return sentenceHasQuestionPhrase(text[sentenceStart:], phrases)
+}
+
+func sentenceHasQuestionPhrase(sentence string, phrases []string) bool {
+	return strings.Contains(sentence, "?") && containsAny(sentence, phrases)
 }
 
 func sentenceStartsWithAny(text string, verbs []string) bool {
