@@ -145,7 +145,6 @@ func narrowsToSingleWorkout(text string) bool {
 		"pick",
 		"choose",
 		"select",
-		"start with",
 		"which day",
 		"which workout",
 		"which session",
