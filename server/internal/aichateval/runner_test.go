@@ -364,6 +364,53 @@ func TestRunScoresNarrowScopeRejectsTextOnlyWholeWeekPlan(t *testing.T) {
 	}
 }
 
+func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{
+			name: "existing no question mark wording",
+			text: "I can build one workout at a time. Pick one session to start with.",
+			want: true,
+		},
+		{
+			name: "one at a time and which day",
+			text: "I can draft workouts one at a time. Which day should we build first?",
+			want: true,
+		},
+		{
+			name: "focus on one day first",
+			text: "Let's focus on one day first. Which session should we start with?",
+			want: true,
+		},
+		{
+			name: "vague text",
+			text: "Sure, I can help with that.",
+			want: false,
+		},
+		{
+			name: "whole week text plan",
+			text: "Here is a 4-day split: Day 1 upper, Day 2 lower, Day 3 push, Day 4 pull.",
+			want: false,
+		},
+		{
+			name: "single scope without user choice",
+			text: "I can build workouts one at a time.",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := narrowsToSingleWorkout(tt.text); got != tt.want {
+				t.Fatalf("narrowsToSingleWorkout() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRunScoresAskOnceThenGenerateRejectsImmediateDraft(t *testing.T) {
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{{

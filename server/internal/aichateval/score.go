@@ -129,23 +129,31 @@ func narrowsToSingleWorkout(text string) bool {
 	if containsWholeWeekPlan(lower) {
 		return false
 	}
-	return containsAny(lower, []string{
+	hasSingleSessionScope := containsAny(lower, []string{
 		"one workout",
 		"single workout",
+		"one workout at a time",
 		"one session",
 		"single session",
 		"one training session",
 		"single training session",
-	}) && containsAny(lower, []string{
+		"one at a time",
+		"one day first",
+		"one day to start",
+	})
+	hasUserChoicePrompt := containsAny(lower, []string{
 		"pick",
 		"choose",
 		"select",
 		"start with",
 		"which day",
+		"which workout",
 		"which session",
+		"build first",
 		"narrow",
 		"focus on",
 	})
+	return hasSingleSessionScope && hasUserChoicePrompt
 }
 
 func containsWholeWeekPlan(text string) bool {
