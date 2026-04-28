@@ -386,6 +386,16 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "which one prompt",
+			text: "I can build one workout at a time. Which one should we do first?",
+			want: true,
+		},
+		{
+			name: "please choose prompt",
+			text: "I can build one session at a time. Please choose one session to start.",
+			want: true,
+		},
+		{
 			name: "vague text",
 			text: "Sure, I can help with that.",
 			want: false,
@@ -413,6 +423,21 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 		{
 			name: "start with statement without user choice",
 			text: "Let's start with one workout.",
+			want: false,
+		},
+		{
+			name: "assistant picks workout",
+			text: "I'll pick one workout to start.",
+			want: false,
+		},
+		{
+			name: "assistant chooses session",
+			text: "I'll choose one session for you.",
+			want: false,
+		},
+		{
+			name: "assistant selects session",
+			text: "I'll select one session for you.",
 			want: false,
 		},
 	}

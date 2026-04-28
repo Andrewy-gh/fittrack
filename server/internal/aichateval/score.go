@@ -141,16 +141,41 @@ func narrowsToSingleWorkout(text string) bool {
 		"one day first",
 		"one day to start",
 	})
-	hasUserChoicePrompt := containsAny(lower, []string{
-		"pick",
-		"choose",
-		"select",
+	hasUserChoicePrompt := asksUserToChooseWorkout(lower)
+	return hasSingleSessionScope && hasUserChoicePrompt
+}
+
+func asksUserToChooseWorkout(text string) bool {
+	if containsAny(text, []string{
 		"which day",
 		"which workout",
 		"which session",
-		"build first",
-	})
-	return hasSingleSessionScope && hasUserChoicePrompt
+		"which one",
+		"what day",
+		"what workout",
+		"what session",
+	}) {
+		return true
+	}
+	return sentenceStartsWithAny(text, []string{"pick", "choose", "select"})
+}
+
+func sentenceStartsWithAny(text string, verbs []string) bool {
+	trimmed := strings.TrimSpace(text)
+	for _, verb := range verbs {
+		for _, prefix := range []string{"", "please "} {
+			start := prefix + verb + " "
+			if strings.HasPrefix(trimmed, start) || containsAny(trimmed, []string{
+				". " + start,
+				"? " + start,
+				"! " + start,
+				"\n" + start,
+			}) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func containsWholeWeekPlan(text string) bool {
