@@ -86,8 +86,17 @@ The command respects existing shell env first, then loads `server/.env` and `ser
 From `server/`, run real-provider AI chat scenario evals with:
 
 ```bash
+# Full single-turn default pack
 go run ./cmd/ai-chat-scenario-sweep -mode single_turn
+
+# Full two-turn default pack
 go run ./cmd/ai-chat-scenario-sweep -mode two_turn
+
+# Selected two-turn single scenario
+go run ./cmd/ai-chat-scenario-sweep -mode two_turn -scenario prompt-03
+
+# Selected two-turn batch
+go run ./cmd/ai-chat-scenario-sweep -mode two_turn -scenarios prompt-03,prompt-04,prompt-12
 ```
 
 Expected env var: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
@@ -101,9 +110,12 @@ Optional flags:
 
 - `-mode single_turn` runs one assistant turn for each default scenario
 - `-mode two_turn` answers configured follow-up questions after the assistant asks one
+- `-scenario prompt-03` runs one scenario id from the default pack
+- `-scenarios prompt-03,prompt-04,prompt-12` runs selected scenario ids while preserving default-pack order
+- `-from prompt-03 -to prompt-08` runs an inclusive contiguous id range in default-pack order
 - `-timeout 15m` limits the full sweep wall-clock runtime; lower it for quick checks or raise it for slower provider runs
 
-The command writes a JSON report to `FITTRACK_AI_CHAT_SWEEP_OUT` when set, otherwise to `~/.codex/diagrams/fittrack-ai-chat-scenario-sweep.json`. The summary includes structured draft count, follow-up count, text-only count, error count, and conversion rates so model or prompt changes can be compared across runs.
+The command writes a JSON report to `FITTRACK_AI_CHAT_SWEEP_OUT` when set, otherwise to `~/.codex/diagrams/fittrack-ai-chat-scenario-sweep.json`. The summary includes structured draft count, follow-up count, text-only count, error count, and conversion rates so model or prompt changes can be compared across runs. When scenario selection flags are used, `scenario_count`, summary totals, results, and stderr progress include only the selected scenarios.
 
 ### AI Chat Runtime
 
