@@ -88,7 +88,7 @@ func DefaultScenarios() []Scenario {
 				{Role: "assistant", Text: "I put together a structured workout draft for you."},
 			},
 			Prompt:          "Swap out anything that bothers my elbow.",
-			Expectation:     "Should ask a focused revision follow-up or adapt the next draft around the new elbow constraint.",
+			Expectation:     "Should ask a focused revision follow-up before adapting the next draft around the new elbow constraint.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "It's mild elbow irritation during deep pressing and skull crushers. Keep dumbbells and bench, avoid elbow-aggravating moves.",
 		},
@@ -121,7 +121,7 @@ func DefaultScenarios() []Scenario {
 			Title:           "Weekly Split Request",
 			Prompt:          "Build me a 4-day workout split for the whole week.",
 			Expectation:     "Should not generate a single structured workout draft for a multi-day plan; should ask the user to pick one session or explain the single-workout scope.",
-			ExpectedOutcome: ExpectedDoNotGenerate,
+			ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
 			FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
 		},
 		{

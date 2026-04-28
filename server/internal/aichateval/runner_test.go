@@ -258,6 +258,61 @@ func TestRunScoresUnexpectedDraftForDoNotGenerateAsFailure(t *testing.T) {
 	}
 }
 
+func TestRunScoresNarrowScopeThenGenerateAsPass(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "I can build one workout at a time. Which session should we start with?"}},
+			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+	if result.Status != StatusStructuredDraft {
+		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 0 {
+		t.Fatalf("summary scores = passed %d failed %d, want 1/0", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+}
+
+func TestRunScoresAskOnceThenGenerateRejectsImmediateDraft(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:         "I revised the draft.",
+				WorkoutDraft: testDraft(),
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-elbow-revision",
+		Title:           "Elbow Revision",
+		Prompt:          "Swap out anything that bothers my elbow.",
+		ExpectedOutcome: ExpectedAskOnceThenGenerate,
+		FollowUpAnswer:  "It's mild elbow irritation during deep pressing and skull crushers.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected one follow-up question before generating" {
+		t.Fatalf("ScoreReason = %q, want immediate draft failure", result.ScoreReason)
+	}
+}
+
 func TestRunScoresProviderQuotaAndContextErrorsAsOperational(t *testing.T) {
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{
