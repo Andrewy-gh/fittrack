@@ -22,6 +22,21 @@ const (
 	StatusError            = "error"
 )
 
+const (
+	ExpectedGenerateFirstTurn         = "generate_first_turn"
+	ExpectedAskOnceThenGenerate       = "ask_once_then_generate"
+	ExpectedDoNotGenerate             = "do_not_generate"
+	ExpectedNarrowScopeBeforeGenerate = "narrow_scope_before_generating"
+	ExpectedReviseWithoutRestart      = "revise_without_restart"
+)
+
+const (
+	ScoreStatusPass             = "pass"
+	ScoreStatusFail             = "fail"
+	ScoreStatusOperationalError = "operational_error"
+	ScoreStatusUnscored         = "unscored"
+)
+
 const defaultMaxAttempts = 3
 
 type Runtime interface {
@@ -30,12 +45,16 @@ type Runtime interface {
 }
 
 type Scenario struct {
-	ID             string                      `json:"id"`
-	Title          string                      `json:"title"`
-	Prompt         string                      `json:"prompt"`
-	Expectation    string                      `json:"expectation"`
-	History        []aichat.RuntimeChatMessage `json:"history,omitempty"`
-	FollowUpAnswer string                      `json:"follow_up_answer,omitempty"`
+	ID                     string                      `json:"id"`
+	Title                  string                      `json:"title"`
+	Prompt                 string                      `json:"prompt"`
+	Expectation            string                      `json:"expectation"`
+	ExpectedOutcome        string                      `json:"expected_outcome,omitempty"`
+	RequiredTextTerms      []string                    `json:"required_text_terms,omitempty"`
+	ForbiddenTextTerms     []string                    `json:"forbidden_text_terms,omitempty"`
+	ForbiddenExerciseTerms []string                    `json:"forbidden_exercise_terms,omitempty"`
+	History                []aichat.RuntimeChatMessage `json:"history,omitempty"`
+	FollowUpAnswer         string                      `json:"follow_up_answer,omitempty"`
 }
 
 type RunOptions struct {
@@ -60,6 +79,11 @@ type Summary struct {
 	FollowUpQuestionCount          int      `json:"follow_up_question_count"`
 	TextOnlyCount                  int      `json:"text_only_count"`
 	ErrorCount                     int      `json:"error_count"`
+	PassedCount                    int      `json:"passed_count"`
+	FailedCount                    int      `json:"failed_count"`
+	OperationalErrorCount          int      `json:"operational_error_count"`
+	UnscoredCount                  int      `json:"unscored_count"`
+	PassRate                       float64  `json:"pass_rate"`
 	StructuredOutputConversionRate float64  `json:"structured_output_conversion_rate"`
 	TwoTurnFollowUpCount           int      `json:"two_turn_follow_up_count"`
 	TwoTurnAttemptCount            int      `json:"two_turn_attempt_count"`
@@ -68,21 +92,28 @@ type Summary struct {
 }
 
 type Result struct {
-	ID             string                        `json:"id"`
-	Title          string                        `json:"title"`
-	Prompt         string                        `json:"prompt"`
-	Expectation    string                        `json:"expectation"`
-	History        []HistoryMessage              `json:"history,omitempty"`
-	FollowUpAnswer string                        `json:"follow_up_answer,omitempty"`
-	Status         string                        `json:"status"`
-	Text           string                        `json:"text,omitempty"`
-	Error          string                        `json:"error,omitempty"`
-	Model          string                        `json:"model,omitempty"`
-	DurationMS     int64                         `json:"duration_ms"`
-	Draft          *workout.CreateWorkoutRequest `json:"draft,omitempty"`
-	DraftSummary   *DraftSummary                 `json:"draft_summary,omitempty"`
-	Attempts       int                           `json:"attempts"`
-	Turns          []TurnResult                  `json:"turns,omitempty"`
+	ID                     string                        `json:"id"`
+	Title                  string                        `json:"title"`
+	Prompt                 string                        `json:"prompt"`
+	Expectation            string                        `json:"expectation"`
+	ExpectedOutcome        string                        `json:"expected_outcome,omitempty"`
+	RequiredTextTerms      []string                      `json:"required_text_terms,omitempty"`
+	ForbiddenTextTerms     []string                      `json:"forbidden_text_terms,omitempty"`
+	ForbiddenExerciseTerms []string                      `json:"forbidden_exercise_terms,omitempty"`
+	History                []HistoryMessage              `json:"history,omitempty"`
+	FollowUpAnswer         string                        `json:"follow_up_answer,omitempty"`
+	Status                 string                        `json:"status"`
+	Passed                 bool                          `json:"passed"`
+	ScoreStatus            string                        `json:"score_status"`
+	ScoreReason            string                        `json:"score_reason"`
+	Text                   string                        `json:"text,omitempty"`
+	Error                  string                        `json:"error,omitempty"`
+	Model                  string                        `json:"model,omitempty"`
+	DurationMS             int64                         `json:"duration_ms"`
+	Draft                  *workout.CreateWorkoutRequest `json:"draft,omitempty"`
+	DraftSummary           *DraftSummary                 `json:"draft_summary,omitempty"`
+	Attempts               int                           `json:"attempts"`
+	Turns                  []TurnResult                  `json:"turns,omitempty"`
 }
 
 type TurnResult struct {
@@ -148,6 +179,17 @@ func BuildSummary(mode string, results []Result) Summary {
 			summary.ErrorCount++
 		}
 
+		switch result.ScoreStatus {
+		case ScoreStatusPass:
+			summary.PassedCount++
+		case ScoreStatusFail:
+			summary.FailedCount++
+		case ScoreStatusOperationalError:
+			summary.OperationalErrorCount++
+		case ScoreStatusUnscored:
+			summary.UnscoredCount++
+		}
+
 		if mode == ModeTwoTurn && firstTurnStatus(result) == StatusFollowUpQuestion {
 			summary.TwoTurnFollowUpCount++
 			if len(result.Turns) > 1 {
@@ -159,6 +201,7 @@ func BuildSummary(mode string, results []Result) Summary {
 		}
 	}
 
+	summary.PassRate = rate(summary.PassedCount, summary.PassedCount+summary.FailedCount)
 	summary.StructuredOutputConversionRate = rate(summary.StructuredDraftCount, summary.TotalScenarios)
 	if mode == ModeTwoTurn {
 		twoTurnRate := rate(summary.TwoTurnStructuredDraftCount, summary.TwoTurnAttemptCount)
@@ -195,17 +238,22 @@ func normalizeMode(mode string) string {
 
 func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode string, options RunOptions) Result {
 	result := Result{
-		ID:             scenario.ID,
-		Title:          scenario.Title,
-		Prompt:         scenario.Prompt,
-		Expectation:    scenario.Expectation,
-		History:        ConvertHistory(scenario.History),
-		FollowUpAnswer: scenario.FollowUpAnswer,
+		ID:                     scenario.ID,
+		Title:                  scenario.Title,
+		Prompt:                 scenario.Prompt,
+		Expectation:            scenario.Expectation,
+		ExpectedOutcome:        scenario.ExpectedOutcome,
+		RequiredTextTerms:      append([]string{}, scenario.RequiredTextTerms...),
+		ForbiddenTextTerms:     append([]string{}, scenario.ForbiddenTextTerms...),
+		ForbiddenExerciseTerms: append([]string{}, scenario.ForbiddenExerciseTerms...),
+		History:                ConvertHistory(scenario.History),
+		FollowUpAnswer:         scenario.FollowUpAnswer,
 	}
 
 	first := runTurn(ctx, runtime, scenario, scenario.Prompt, scenario.History, options)
 	applyTurnToResult(&result, first)
 	if mode != ModeTwoTurn || first.Status != StatusFollowUpQuestion || strings.TrimSpace(scenario.FollowUpAnswer) == "" {
+		ScoreResult(&result, mode)
 		return result
 	}
 
@@ -219,6 +267,7 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 	result.Turns = append(result.Turns, second)
 	applyTurnToResult(&result, second)
 
+	ScoreResult(&result, mode)
 	return result
 }
 

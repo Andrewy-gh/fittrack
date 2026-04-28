@@ -58,10 +58,11 @@ func TestRunSingleTurnClassifiesStructuredDraft(t *testing.T) {
 	}
 
 	report := Run(context.Background(), runtime, []Scenario{{
-		ID:          "case-1",
-		Title:       "Ready Prompt",
-		Prompt:      "Beginner upper body, full gym, no injuries.",
-		Expectation: "Should generate.",
+		ID:              "case-1",
+		Title:           "Ready Prompt",
+		Prompt:          "Beginner upper body, full gym, no injuries.",
+		Expectation:     "Should generate.",
+		ExpectedOutcome: ExpectedGenerateFirstTurn,
 	}}, RunOptions{Mode: ModeSingleTurn})
 
 	if report.Mode != ModeSingleTurn {
@@ -82,6 +83,9 @@ func TestRunSingleTurnClassifiesStructuredDraft(t *testing.T) {
 	result := report.Results[0]
 	if result.Status != StatusStructuredDraft {
 		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
+	}
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q, want pass", result.Passed, result.ScoreStatus)
 	}
 	if result.DraftSummary == nil || result.DraftSummary.WorkingSets != 2 {
 		t.Fatalf("DraftSummary = %#v, want 2 working sets", result.DraftSummary)
@@ -110,11 +114,12 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 		},
 	}
 	scenario := Scenario{
-		ID:             "case-2",
-		Title:          "Follow Up",
-		Prompt:         "Give me a pull workout.",
-		Expectation:    "Should ask, then generate.",
-		FollowUpAnswer: "No injuries, dumbbells and bench, 45 minutes.",
+		ID:              "case-2",
+		Title:           "Follow Up",
+		Prompt:          "Give me a pull workout.",
+		Expectation:     "Should ask, then generate.",
+		ExpectedOutcome: ExpectedAskOnceThenGenerate,
+		FollowUpAnswer:  "No injuries, dumbbells and bench, 45 minutes.",
 	}
 
 	report := Run(context.Background(), runtime, []Scenario{scenario}, RunOptions{Mode: ModeTwoTurn})
@@ -122,6 +127,9 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 	result := report.Results[0]
 	if result.Status != StatusStructuredDraft {
 		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
+	}
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q, want pass", result.Passed, result.ScoreStatus)
 	}
 	if result.Text != "I made a draft." {
 		t.Fatalf("Result text = %q, want final turn text", result.Text)
@@ -140,6 +148,9 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 	}
 	if report.Summary.TwoTurnConversionRate == nil || *report.Summary.TwoTurnConversionRate != 1 {
 		t.Fatalf("TwoTurnConversionRate = %v, want 1", report.Summary.TwoTurnConversionRate)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.PassRate != 1 {
+		t.Fatalf("summary score = passed %d rate %f, want 1 and 1", report.Summary.PassedCount, report.Summary.PassRate)
 	}
 	if len(result.Turns) != 2 {
 		t.Fatalf("Turns = %d, want 2", len(result.Turns))
@@ -191,6 +202,120 @@ func TestRunSummaryCountsFinalStatuses(t *testing.T) {
 	}
 	if report.Summary.StructuredOutputConversionRate != 0 {
 		t.Fatalf("StructuredOutputConversionRate = %f, want 0", report.Summary.StructuredOutputConversionRate)
+	}
+}
+
+func TestRunScoresExpectedNonGenerationWhenTextIsPresent(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Model: "test-model",
+				Text:  "Because of chest pain and shortness of breath, get medical care before hard conditioning.",
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-refusal",
+		Title:           "Medical Refusal",
+		Prompt:          "I had chest pain. Give me hard conditioning.",
+		ExpectedOutcome: ExpectedDoNotGenerate,
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 0 {
+		t.Fatalf("summary scores = passed %d failed %d, want 1/0", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+}
+
+func TestRunScoresUnexpectedDraftForDoNotGenerateAsFailure(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Model:        "test-model",
+				Text:         "I made a draft.",
+				WorkoutDraft: testDraft(),
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-bad-refusal",
+		Title:           "Bad Refusal",
+		Prompt:          "Build me a whole week.",
+		ExpectedOutcome: ExpectedDoNotGenerate,
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if report.Summary.FailedCount != 1 || report.Summary.PassRate != 0 {
+		t.Fatalf("summary scores = failed %d rate %f, want 1 and 0", report.Summary.FailedCount, report.Summary.PassRate)
+	}
+}
+
+func TestRunScoresProviderQuotaAndContextErrorsAsOperational(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{err: errors.New("provider failed")},
+			{err: errors.New("rate limited: Please retry in 30s")},
+			{err: context.DeadlineExceeded},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{
+		{ID: "case-provider", Title: "Provider", Prompt: "Build push.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-quota", Title: "Quota", Prompt: "Build pull.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-context", Title: "Context", Prompt: "Build legs.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+	}, RunOptions{Mode: ModeSingleTurn, MaxAttempts: 1})
+
+	if report.Summary.OperationalErrorCount != 3 {
+		t.Fatalf("OperationalErrorCount = %d, want 3", report.Summary.OperationalErrorCount)
+	}
+	if report.Summary.FailedCount != 0 || report.Summary.PassRate != 0 {
+		t.Fatalf("summary scores = failed %d rate %f, want no behavior failures and zero denominator rate", report.Summary.FailedCount, report.Summary.PassRate)
+	}
+	for _, result := range report.Results {
+		if result.ScoreStatus != ScoreStatusOperationalError {
+			t.Fatalf("%s score status = %q, want operational_error", result.ID, result.ScoreStatus)
+		}
+	}
+}
+
+func TestRunSelectedScenarioSummaryUsesOnlySelectedScenarios(t *testing.T) {
+	scenarios := []Scenario{
+		{ID: "case-1", Title: "Skipped", Prompt: "Build push.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-2", Title: "Selected Pass", Prompt: "Ready upper.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-3", Title: "Selected Fail", Prompt: "Do not generate.", ExpectedOutcome: ExpectedDoNotGenerate},
+	}
+	selected, err := FilterScenarios(scenarios, ScenarioSelection{ScenarioIDs: "case-2,case-3"})
+	if err != nil {
+		t.Fatalf("FilterScenarios() error = %v, want nil", err)
+	}
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
+			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, selected, RunOptions{Mode: ModeSingleTurn})
+
+	if report.ScenarioCount != 2 || report.Summary.TotalScenarios != 2 {
+		t.Fatalf("selected counts = scenario_count %d total %d, want 2/2", report.ScenarioCount, report.Summary.TotalScenarios)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 1 {
+		t.Fatalf("score counts = passed %d failed %d, want 1/1", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+	if len(runtime.calls) != 2 {
+		t.Fatalf("runtime calls = %d, want selected scenarios only", len(runtime.calls))
+	}
+	if runtime.calls[0].prompt != "Ready upper." || runtime.calls[1].prompt != "Do not generate." {
+		t.Fatalf("runtime prompts = %#v, want selected prompts only", runtime.calls)
 	}
 }
 
