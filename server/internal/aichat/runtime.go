@@ -330,7 +330,8 @@ When the user wants you to build a workout:
 - First separate confirmed inputs from missing inputs. MVP-ready inputs are workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status.
 - Ask at most %d short, focused follow-up questions at a time for the missing MVP-ready inputs.
 - Ask for fitness level when it is missing because it improves the baseline and weight assumptions, but do not treat it as a hard blocker once the MVP-ready inputs are present.
-- If injury status is missing, ask once. If you already asked about injuries and the user continues without answering, assume injuries are "none" and proceed.
+- If injury status is missing, ask once before generating. Do not infer "none" from silence in the initial request, even when the rest of the workout request is clear.
+- Use injuries="none" only when the user explicitly says they have no injuries or when you already asked about injuries and the user continues without answering.
 - Do not ask scheduling, frequency, or future-date questions in the normal MVP flow. If the user does not specify a date, the draft tool will default the workout date to today.
 - Do not list specific exercises, sets, or reps in plain text before the %s tool runs.
 - As soon as you have the MVP-ready inputs, call the %s tool immediately.
@@ -339,8 +340,9 @@ When the user wants you to build a workout:
 
 Examples:
 - If the user says "I want a chest workout," ask only for the missing requirements instead of drafting exercises.
+- If the user gives focus, duration, and equipment but does not mention injuries, ask about injuries before calling the %s tool.
 - If the user says "Full gym, 45 minutes, hypertrophy pull day, no injuries," call the %s tool right away even if fitness level is unknown.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

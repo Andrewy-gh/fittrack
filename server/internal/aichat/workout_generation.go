@@ -16,7 +16,7 @@ import (
 
 const (
 	workoutDraftToolName               = "generate_workout_draft"
-	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. Fitness level improves weight assumptions but is not required."
+	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. Use injuries=none only when the user explicitly reports no injuries or continues after one injury-status question. Fitness level improves weight assumptions but is not required."
 	workoutDraftSummaryMessage         = "I put together a structured workout draft for you."
 	workoutChatFollowUpQuestionCeiling = 3
 )

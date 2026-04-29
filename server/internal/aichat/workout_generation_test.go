@@ -20,8 +20,10 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Ask at most 3 short, focused follow-up questions",
 		"MVP-ready inputs are workout focus, session duration, enough equipment or workout context",
 		"do not treat it as a hard blocker",
-		"If injury status is missing, ask once",
-		"assume injuries are \"none\" and proceed",
+		"If injury status is missing, ask once before generating",
+		"Do not infer \"none\" from silence in the initial request",
+		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
+		"does not mention injuries, ask about injuries before calling the " + workoutDraftToolName + " tool",
 		"Do not ask scheduling, frequency, or future-date questions",
 		"call the " + workoutDraftToolName + " tool immediately",
 		"Do not list specific exercises, sets, or reps in plain text before",
@@ -41,6 +43,7 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 		"session duration",
 		"enough equipment or workout context",
 		"injury status",
+		"Use injuries=none only when the user explicitly reports no injuries",
 		"Fitness level improves weight assumptions but is not required",
 	}
 
