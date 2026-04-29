@@ -8,6 +8,7 @@
     "dist-ssr/**",
     "node_modules/**",
     "playwright-report/**",
+    "src/routeTree.gen.ts",
     "test-results/**",
     "tests/e2e/.auth/**"
   ]
