@@ -58,10 +58,11 @@ func TestRunSingleTurnClassifiesStructuredDraft(t *testing.T) {
 	}
 
 	report := Run(context.Background(), runtime, []Scenario{{
-		ID:          "case-1",
-		Title:       "Ready Prompt",
-		Prompt:      "Beginner upper body, full gym, no injuries.",
-		Expectation: "Should generate.",
+		ID:              "case-1",
+		Title:           "Ready Prompt",
+		Prompt:          "Beginner upper body, full gym, no injuries.",
+		Expectation:     "Should generate.",
+		ExpectedOutcome: ExpectedGenerateFirstTurn,
 	}}, RunOptions{Mode: ModeSingleTurn})
 
 	if report.Mode != ModeSingleTurn {
@@ -82,6 +83,9 @@ func TestRunSingleTurnClassifiesStructuredDraft(t *testing.T) {
 	result := report.Results[0]
 	if result.Status != StatusStructuredDraft {
 		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
+	}
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q, want pass", result.Passed, result.ScoreStatus)
 	}
 	if result.DraftSummary == nil || result.DraftSummary.WorkingSets != 2 {
 		t.Fatalf("DraftSummary = %#v, want 2 working sets", result.DraftSummary)
@@ -110,11 +114,12 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 		},
 	}
 	scenario := Scenario{
-		ID:             "case-2",
-		Title:          "Follow Up",
-		Prompt:         "Give me a pull workout.",
-		Expectation:    "Should ask, then generate.",
-		FollowUpAnswer: "No injuries, dumbbells and bench, 45 minutes.",
+		ID:              "case-2",
+		Title:           "Follow Up",
+		Prompt:          "Give me a pull workout.",
+		Expectation:     "Should ask, then generate.",
+		ExpectedOutcome: ExpectedAskOnceThenGenerate,
+		FollowUpAnswer:  "No injuries, dumbbells and bench, 45 minutes.",
 	}
 
 	report := Run(context.Background(), runtime, []Scenario{scenario}, RunOptions{Mode: ModeTwoTurn})
@@ -122,6 +127,9 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 	result := report.Results[0]
 	if result.Status != StatusStructuredDraft {
 		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
+	}
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q, want pass", result.Passed, result.ScoreStatus)
 	}
 	if result.Text != "I made a draft." {
 		t.Fatalf("Result text = %q, want final turn text", result.Text)
@@ -140,6 +148,9 @@ func TestRunTwoTurnAnswersFollowUpAndUsesFinalStatus(t *testing.T) {
 	}
 	if report.Summary.TwoTurnConversionRate == nil || *report.Summary.TwoTurnConversionRate != 1 {
 		t.Fatalf("TwoTurnConversionRate = %v, want 1", report.Summary.TwoTurnConversionRate)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.PassRate != 1 {
+		t.Fatalf("summary score = passed %d rate %f, want 1 and 1", report.Summary.PassedCount, report.Summary.PassRate)
 	}
 	if len(result.Turns) != 2 {
 		t.Fatalf("Turns = %d, want 2", len(result.Turns))
@@ -191,6 +202,355 @@ func TestRunSummaryCountsFinalStatuses(t *testing.T) {
 	}
 	if report.Summary.StructuredOutputConversionRate != 0 {
 		t.Fatalf("StructuredOutputConversionRate = %f, want 0", report.Summary.StructuredOutputConversionRate)
+	}
+}
+
+func TestRunScoresExpectedNonGenerationWhenTextIsPresent(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Model: "test-model",
+				Text:  "Because of chest pain and shortness of breath, get medical care before hard conditioning.",
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-refusal",
+		Title:           "Medical Refusal",
+		Prompt:          "I had chest pain. Give me hard conditioning.",
+		ExpectedOutcome: ExpectedDoNotGenerate,
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 0 {
+		t.Fatalf("summary scores = passed %d failed %d, want 1/0", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+}
+
+func TestRunScoresUnexpectedDraftForDoNotGenerateAsFailure(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Model:        "test-model",
+				Text:         "I made a draft.",
+				WorkoutDraft: testDraft(),
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-bad-refusal",
+		Title:           "Bad Refusal",
+		Prompt:          "Build me a whole week.",
+		ExpectedOutcome: ExpectedDoNotGenerate,
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if report.Summary.FailedCount != 1 || report.Summary.PassRate != 0 {
+		t.Fatalf("summary scores = failed %d rate %f, want 1 and 0", report.Summary.FailedCount, report.Summary.PassRate)
+	}
+}
+
+func TestRunScoresNarrowScopeThenGenerateAsPass(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "I can build one workout at a time. Pick one session to start with."}},
+			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+	if result.Status != StatusStructuredDraft {
+		t.Fatalf("Result status = %q, want %q", result.Status, StatusStructuredDraft)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 0 {
+		t.Fatalf("summary scores = passed %d failed %d, want 1/0", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+	if len(runtime.calls) != 2 {
+		t.Fatalf("runtime calls = %d, want second turn after narrowing text", len(runtime.calls))
+	}
+}
+
+func TestRunScoresNarrowScopeRejectsMissingFocusedDraft(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "I can build one workout at a time. Pick one session to start with."}},
+			{done: &aichat.StreamDone{Text: "I can help once you pick a session."}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope-no-draft",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected a structured draft after the user narrowed the request" {
+		t.Fatalf("ScoreReason = %q, want missing focused draft failure", result.ScoreReason)
+	}
+}
+
+func TestRunScoresNarrowScopeRejectsVagueFirstTurn(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "Sure, I can help with that."}},
+			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope-vague",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session" {
+		t.Fatalf("ScoreReason = %q, want narrow-scope failure", result.ScoreReason)
+	}
+}
+
+func TestRunScoresNarrowScopeRejectsTextOnlyWholeWeekPlan(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "Here is a 4-day split: Day 1 upper, Day 2 lower, Day 3 push, Day 4 pull."}},
+			{done: &aichat.StreamDone{Text: "I made a focused draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-narrow-scope-week-plan",
+		Title:           "Weekly Split",
+		Prompt:          "Build me a 4-day workout split for the whole week.",
+		ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
+		FollowUpAnswer:  "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session" {
+		t.Fatalf("ScoreReason = %q, want narrow-scope failure", result.ScoreReason)
+	}
+}
+
+func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{
+			name: "existing no question mark wording",
+			text: "I can build one workout at a time. Pick one session to start with.",
+			want: true,
+		},
+		{
+			name: "one at a time and which day",
+			text: "I can draft workouts one at a time. Which day should we build first?",
+			want: true,
+		},
+		{
+			name: "focus on one day first",
+			text: "Let's focus on one day first. Which session should we start with?",
+			want: true,
+		},
+		{
+			name: "which one prompt",
+			text: "I can build one workout at a time. Which one should we do first?",
+			want: true,
+		},
+		{
+			name: "please choose prompt",
+			text: "I can build one session at a time. Please choose one session to start.",
+			want: true,
+		},
+		{
+			name: "which workout question",
+			text: "I can build one workout at a time. Which workout should we build first?",
+			want: true,
+		},
+		{
+			name: "vague text",
+			text: "Sure, I can help with that.",
+			want: false,
+		},
+		{
+			name: "whole week text plan",
+			text: "Here is a 4-day split: Day 1 upper, Day 2 lower, Day 3 push, Day 4 pull.",
+			want: false,
+		},
+		{
+			name: "single scope without user choice",
+			text: "I can build workouts one at a time.",
+			want: false,
+		},
+		{
+			name: "focus statement without user choice",
+			text: "Let's focus on one day first.",
+			want: false,
+		},
+		{
+			name: "narrow statement without user choice",
+			text: "We should narrow to one workout.",
+			want: false,
+		},
+		{
+			name: "start with statement without user choice",
+			text: "Let's start with one workout.",
+			want: false,
+		},
+		{
+			name: "assistant picks workout",
+			text: "I'll pick one workout to start.",
+			want: false,
+		},
+		{
+			name: "assistant chooses session",
+			text: "I'll choose one session for you.",
+			want: false,
+		},
+		{
+			name: "assistant selects session",
+			text: "I'll select one session for you.",
+			want: false,
+		},
+		{
+			name: "which workout statement",
+			text: "I know which workout to build: one session.",
+			want: false,
+		},
+		{
+			name: "which session without question mark",
+			text: "I can build one workout at a time. Which session should we do first",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := narrowsToSingleWorkout(tt.text); got != tt.want {
+				t.Fatalf("narrowsToSingleWorkout() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunScoresAskOnceThenGenerateRejectsImmediateDraft(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:         "I revised the draft.",
+				WorkoutDraft: testDraft(),
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-elbow-revision",
+		Title:           "Elbow Revision",
+		Prompt:          "Swap out anything that bothers my elbow.",
+		ExpectedOutcome: ExpectedAskOnceThenGenerate,
+		FollowUpAnswer:  "It's mild elbow irritation during deep pressing and skull crushers.",
+	}}, RunOptions{Mode: ModeTwoTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+	if result.ScoreReason != "expected one follow-up question before generating" {
+		t.Fatalf("ScoreReason = %q, want immediate draft failure", result.ScoreReason)
+	}
+}
+
+func TestRunScoresProviderQuotaAndContextErrorsAsOperational(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{err: errors.New("provider failed")},
+			{err: errors.New("rate limited: Please retry in 30s")},
+			{err: context.DeadlineExceeded},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{
+		{ID: "case-provider", Title: "Provider", Prompt: "Build push.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-quota", Title: "Quota", Prompt: "Build pull.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-context", Title: "Context", Prompt: "Build legs.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+	}, RunOptions{Mode: ModeSingleTurn, MaxAttempts: 1})
+
+	if report.Summary.OperationalErrorCount != 3 {
+		t.Fatalf("OperationalErrorCount = %d, want 3", report.Summary.OperationalErrorCount)
+	}
+	if report.Summary.FailedCount != 0 || report.Summary.PassRate != 0 {
+		t.Fatalf("summary scores = failed %d rate %f, want no behavior failures and zero denominator rate", report.Summary.FailedCount, report.Summary.PassRate)
+	}
+	for _, result := range report.Results {
+		if result.ScoreStatus != ScoreStatusOperationalError {
+			t.Fatalf("%s score status = %q, want operational_error", result.ID, result.ScoreStatus)
+		}
+	}
+}
+
+func TestRunSelectedScenarioSummaryUsesOnlySelectedScenarios(t *testing.T) {
+	scenarios := []Scenario{
+		{ID: "case-1", Title: "Skipped", Prompt: "Build push.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-2", Title: "Selected Pass", Prompt: "Ready upper.", ExpectedOutcome: ExpectedGenerateFirstTurn},
+		{ID: "case-3", Title: "Selected Fail", Prompt: "Do not generate.", ExpectedOutcome: ExpectedDoNotGenerate},
+	}
+	selected, err := FilterScenarios(scenarios, ScenarioSelection{ScenarioIDs: "case-2,case-3"})
+	if err != nil {
+		t.Fatalf("FilterScenarios() error = %v, want nil", err)
+	}
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
+			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, selected, RunOptions{Mode: ModeSingleTurn})
+
+	if report.ScenarioCount != 2 || report.Summary.TotalScenarios != 2 {
+		t.Fatalf("selected counts = scenario_count %d total %d, want 2/2", report.ScenarioCount, report.Summary.TotalScenarios)
+	}
+	if report.Summary.PassedCount != 1 || report.Summary.FailedCount != 1 {
+		t.Fatalf("score counts = passed %d failed %d, want 1/1", report.Summary.PassedCount, report.Summary.FailedCount)
+	}
+	if len(runtime.calls) != 2 {
+		t.Fatalf("runtime calls = %d, want selected scenarios only", len(runtime.calls))
+	}
+	if runtime.calls[0].prompt != "Ready upper." || runtime.calls[1].prompt != "Do not generate." {
+		t.Fatalf("runtime prompts = %#v, want selected prompts only", runtime.calls)
 	}
 }
 
