@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	defaultOutputDirName = ".codex/diagrams"
+	defaultOutputDirName = "tmp/ai-chat-scenario-sweeps"
 	defaultOutputName    = "fittrack-ai-chat-scenario-sweep.json"
+	defaultLogName       = "fittrack-ai-chat-scenario-sweep-runs.jsonl"
 	defaultRunTimeout    = 15 * time.Minute
 )
 
@@ -87,7 +88,13 @@ func main() {
 		fail("failed to write report: %v", err)
 	}
 
+	logPath := resolveLogPath()
+	if err := appendSweepLog(logPath, report, outPath); err != nil {
+		fail("failed to append sweep log: %v", err)
+	}
+
 	fmt.Printf("Wrote scenario report to %s\n", outPath)
+	fmt.Printf("Appended sweep log to %s\n", logPath)
 }
 
 func loadLocalEnv() error {
@@ -115,11 +122,18 @@ func resolveOutputPath() string {
 	if explicit := strings.TrimSpace(os.Getenv("FITTRACK_AI_CHAT_SWEEP_OUT")); explicit != "" {
 		return explicit
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return defaultOutputName
+	return defaultSweepArtifactPath(defaultOutputName)
+}
+
+func resolveLogPath() string {
+	if explicit := strings.TrimSpace(os.Getenv("FITTRACK_AI_CHAT_SWEEP_LOG")); explicit != "" {
+		return explicit
 	}
-	return filepath.Join(home, defaultOutputDirName, defaultOutputName)
+	return defaultSweepArtifactPath(defaultLogName)
+}
+
+func defaultSweepArtifactPath(name string) string {
+	return filepath.Join(defaultOutputDirName, name)
 }
 
 func fail(format string, args ...any) {

@@ -105,6 +105,7 @@ Optional env vars:
 
 - `GEMINI_MODEL` to override the default model
 - `FITTRACK_AI_CHAT_SWEEP_OUT` to override the JSON report path
+- `FITTRACK_AI_CHAT_SWEEP_LOG` to override the append-only JSONL run log path
 
 Optional flags:
 
@@ -115,7 +116,9 @@ Optional flags:
 - `-from prompt-03 -to prompt-08` runs an inclusive contiguous id range in default-pack order
 - `-timeout 15m` limits the full sweep wall-clock runtime; lower it for quick checks or raise it for slower provider runs
 
-The command writes a JSON report to `FITTRACK_AI_CHAT_SWEEP_OUT` when set, otherwise to `~/.codex/diagrams/fittrack-ai-chat-scenario-sweep.json`. The summary includes structured draft count, follow-up count, text-only count, error count, and conversion rates so model or prompt changes can be compared across runs. Each scenario result also includes `expected_outcome`, `passed`, `score_status`, and `score_reason` so the report can tell correct refusals and follow-up behavior apart from raw draft conversion. Provider issues such as quota limits, retry exhaustion, and context deadlines are marked as `operational_error`, not assistant behavior failures. When scenario selection flags are used, `scenario_count`, summary totals, pass/fail counts, results, and stderr progress include only the selected scenarios.
+The command writes a JSON report to `FITTRACK_AI_CHAT_SWEEP_OUT` when set, otherwise to `server/tmp/ai-chat-scenario-sweeps/fittrack-ai-chat-scenario-sweep.json` from the repo. It also appends a compact JSONL run entry to `FITTRACK_AI_CHAT_SWEEP_LOG` when set, otherwise to `server/tmp/ai-chat-scenario-sweeps/fittrack-ai-chat-scenario-sweep-runs.jsonl`; each log entry includes the mode, model, selected scenario ids, git branch, git commit, dirty-worktree flag, summary, and compact per-scenario outcomes. The summary includes structured draft count, follow-up count, text-only count, error count, and conversion rates so model or prompt changes can be compared across runs. Each scenario result also includes `expected_outcome`, `passed`, `score_status`, and `score_reason` so the report can tell correct refusals and follow-up behavior apart from raw draft conversion. Provider issues such as quota limits, retry exhaustion, and context deadlines are marked as `operational_error`, not assistant behavior failures. When scenario selection flags are used, `scenario_count`, summary totals, pass/fail counts, results, and stderr progress include only the selected scenarios.
+
+Before starting another incremental provider run, inspect `server/tmp/ai-chat-scenario-sweeps/fittrack-ai-chat-scenario-sweep-runs.jsonl` and choose scenarios that are missing, stale for the current git commit, or previously marked `operational_error`. The `server/tmp/ai-chat-scenario-sweeps/` directory is gitignored so local reports and ledgers stay available to the next agent without being committed.
 
 ### AI Chat Runtime
 
