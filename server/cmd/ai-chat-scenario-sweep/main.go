@@ -22,6 +22,7 @@ const (
 	defaultOutputName    = "fittrack-ai-chat-scenario-sweep.json"
 	defaultLogName       = "fittrack-ai-chat-scenario-sweep-runs.jsonl"
 	defaultRunTimeout    = 15 * time.Minute
+	defaultScenarioDelay = 75 * time.Second
 )
 
 type stubFeatureAccessReader struct{}
@@ -33,6 +34,7 @@ func (stubFeatureAccessReader) ListCurrentUserAccess(context.Context) ([]feature
 func main() {
 	mode := flag.String("mode", aichateval.ModeSingleTurn, "eval mode: single_turn or two_turn")
 	timeout := flag.Duration("timeout", defaultRunTimeout, "maximum wall-clock runtime for the full scenario sweep")
+	scenarioDelay := flag.Duration("scenario-delay", defaultScenarioDelay, "pause between selected scenarios to reduce provider per-minute rate limits")
 	scenarioID := flag.String("scenario", "", "run one scenario id from the default pack, for example prompt-03")
 	scenarioIDs := flag.String("scenarios", "", "run comma-separated scenario ids from the default pack, for example prompt-03,prompt-04")
 	fromID := flag.String("from", "", "run an inclusive scenario id range starting at this id")
@@ -43,6 +45,9 @@ func main() {
 	}
 	if *timeout <= 0 {
 		fail("timeout must be greater than zero")
+	}
+	if *scenarioDelay < 0 {
+		fail("scenario-delay must be zero or greater")
 	}
 	scenarios, err := aichateval.FilterScenarios(aichateval.DefaultScenarios(), aichateval.ScenarioSelection{
 		ScenarioID:  *scenarioID,
@@ -71,9 +76,13 @@ func main() {
 	}
 
 	report := aichateval.Run(runtimeCtx, runtime, scenarios, aichateval.RunOptions{
-		Mode: *mode,
+		Mode:               *mode,
+		InterScenarioDelay: selectedScenarioDelay(*scenarioDelay, len(scenarios)),
 		OnScenario: func(item aichateval.Scenario) {
 			fmt.Fprintf(os.Stderr, "Running %s: %s\n", item.ID, item.Title)
+		},
+		OnScenarioDelay: func(waitFor time.Duration, next aichateval.Scenario) {
+			fmt.Fprintf(os.Stderr, "Waiting %s before %s to reduce provider rate-limit noise\n", waitFor, next.ID)
 		},
 		OnRetry: func(item aichateval.Scenario, waitFor time.Duration, nextAttempt int, maxAttempts int) {
 			fmt.Fprintf(os.Stderr, "Rate limited on %s, waiting %s before retry %d/%d\n", item.ID, waitFor, nextAttempt, maxAttempts)
@@ -134,6 +143,13 @@ func resolveLogPath() string {
 
 func defaultSweepArtifactPath(name string) string {
 	return filepath.Join(defaultOutputDirName, name)
+}
+
+func selectedScenarioDelay(delay time.Duration, scenarioCount int) time.Duration {
+	if scenarioCount <= 1 {
+		return 0
+	}
+	return delay
 }
 
 func fail(format string, args ...any) {

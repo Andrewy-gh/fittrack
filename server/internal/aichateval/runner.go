@@ -58,10 +58,12 @@ type Scenario struct {
 }
 
 type RunOptions struct {
-	Mode        string
-	MaxAttempts int
-	OnScenario  func(Scenario)
-	OnRetry     func(Scenario, time.Duration, int, int)
+	Mode               string
+	MaxAttempts        int
+	InterScenarioDelay time.Duration
+	OnScenario         func(Scenario)
+	OnScenarioDelay    func(time.Duration, Scenario)
+	OnRetry            func(Scenario, time.Duration, int, int)
 }
 
 type Report struct {
@@ -146,7 +148,13 @@ var retryDelayPattern = regexp.MustCompile(`Please retry in ([0-9.]+)s`)
 func Run(ctx context.Context, runtime Runtime, scenarios []Scenario, options RunOptions) Report {
 	mode := normalizeMode(options.Mode)
 	results := make([]Result, 0, len(scenarios))
-	for _, scenario := range scenarios {
+	for index, scenario := range scenarios {
+		if index > 0 && options.InterScenarioDelay > 0 && ctx.Err() == nil {
+			if options.OnScenarioDelay != nil {
+				options.OnScenarioDelay(options.InterScenarioDelay, scenario)
+			}
+			_ = waitForRetry(ctx, options.InterScenarioDelay)
+		}
 		if options.OnScenario != nil {
 			options.OnScenario(scenario)
 		}

@@ -554,6 +554,34 @@ func TestRunSelectedScenarioSummaryUsesOnlySelectedScenarios(t *testing.T) {
 	}
 }
 
+func TestRunWaitsBetweenSelectedScenarios(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "First response."}},
+			{done: &aichat.StreamDone{Text: "Second response."}},
+		},
+	}
+
+	var delayedBefore []string
+	report := Run(context.Background(), runtime, []Scenario{
+		{ID: "case-1", Title: "First", Prompt: "Build push."},
+		{ID: "case-2", Title: "Second", Prompt: "Build pull."},
+	}, RunOptions{
+		Mode:               ModeSingleTurn,
+		InterScenarioDelay: time.Millisecond,
+		OnScenarioDelay: func(_ time.Duration, next Scenario) {
+			delayedBefore = append(delayedBefore, next.ID)
+		},
+	})
+
+	if report.ScenarioCount != 2 {
+		t.Fatalf("ScenarioCount = %d, want 2", report.ScenarioCount)
+	}
+	if len(delayedBefore) != 1 || delayedBefore[0] != "case-2" {
+		t.Fatalf("delayedBefore = %v, want [case-2]", delayedBefore)
+	}
+}
+
 func TestRunTwoTurnDoesNotAnswerWhenFirstTurnIsTextOnly(t *testing.T) {
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{{

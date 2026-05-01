@@ -105,6 +105,15 @@ func TestAppendSweepLogWritesJsonLines(t *testing.T) {
 	}
 }
 
+func TestSelectedScenarioDelaySkipsSingleScenarioRuns(t *testing.T) {
+	if got := selectedScenarioDelay(75*time.Second, 1); got != 0 {
+		t.Fatalf("selectedScenarioDelay(single) = %s, want 0", got)
+	}
+	if got := selectedScenarioDelay(75*time.Second, 2); got != 75*time.Second {
+		t.Fatalf("selectedScenarioDelay(batch) = %s, want 75s", got)
+	}
+}
+
 func splitNonEmptyLines(body string) []string {
 	var lines []string
 	for _, line := range strings.Split(body, "\n") {
