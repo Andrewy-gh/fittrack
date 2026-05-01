@@ -44,6 +44,7 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 		"enough equipment or workout context",
 		"injury status",
 		"Use injuries=none only when the user explicitly reports no injuries",
+		"continues without answering after one injury-status question",
 		"Fitness level improves weight assumptions but is not required",
 	}
 
