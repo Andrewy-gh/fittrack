@@ -30,6 +30,9 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"call the " + workoutDraftToolName + " tool immediately",
 		"Do not list specific exercises, sets, or reps in plain text before",
 		"only way to produce a structured workout draft",
+		"If the user adds a new pain, injury, or movement limitation after a workout draft",
+		"ask one focused follow-up about the painful movements, ranges, or triggers",
+		"swap anything that bothers my knee/elbow/shoulder/back/wrist",
 	}
 
 	for _, snippet := range requiredSnippets {

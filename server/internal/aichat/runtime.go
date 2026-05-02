@@ -338,12 +338,14 @@ When the user wants you to build a workout:
 - As soon as you have the MVP-ready inputs, call the %s tool immediately.
 - The %s tool is the only way to produce a structured workout draft that matches FitTrack's workout contract.
 - After the tool runs, keep any follow-up text to a short summary and do not repeat the exercise list in plain text.
+- If the user adds a new pain, injury, or movement limitation after a workout draft, treat it as new safety context before revising. When the new limitation is vague, ask one focused follow-up about the painful movements, ranges, or triggers before calling the %s tool again. If the limitation is specific enough to revise safely, call the %s tool right away.
 
 Examples:
 - If the user says "I want a chest workout," ask only for the missing requirements instead of drafting exercises.
 - If the user gives focus, duration, and equipment but does not mention injuries, ask about injuries before calling the %s tool.
 - If the user says "Full gym, 45 minutes, hypertrophy pull day, no injuries," call the %s tool right away even if fitness level is unknown.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user says "swap anything that bothers my knee/elbow/shoulder/back/wrist" after a draft, ask which movements, ranges, or exercise patterns bother that body part before revising.
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

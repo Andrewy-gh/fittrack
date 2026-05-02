@@ -219,6 +219,27 @@ func TestValidateWorkoutDraftQualityRejectsActiveInjuryWhenAnotherBodyPartIsNega
 	}
 }
 
+func TestValidateWorkoutDraftQualityRejectsElbowSensitiveTricepsExtension(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "strength",
+		Equipment:       "dumbbells and bench",
+		SessionDuration: 45,
+		WorkoutFocus:    "push",
+		Injuries:        "mild elbow irritation during deep pressing and skull crushers",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Lying Dumbbell Triceps Extension", workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	err := validateWorkoutDraftQuality(input, draft)
+	if err == nil {
+		t.Fatal("validateWorkoutDraftQuality() error = nil, want elbow injury conflict")
+	}
+	if !strings.Contains(err.Error(), "injury") {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want injury issue", err)
+	}
+}
+
 func TestValidateWorkoutDraftQualityAllowsExplicitBeginnerLowerVolume(t *testing.T) {
 	input := WorkoutGenerationToolInput{
 		FitnessLevel:    "beginner",

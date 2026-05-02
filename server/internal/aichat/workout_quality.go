@@ -273,7 +273,7 @@ func disallowedInjuryTerms(injuries string) []string {
 		terms = append(terms, "deadlift", "good morning", "back squat", "barbell row")
 	}
 	if hasAnyQualityTerm(injuries, "wrist", "elbow") {
-		terms = append(terms, "dip", "skull crusher", "barbell curl")
+		terms = append(terms, "dip", "skull crusher", "triceps extension", "barbell curl")
 	}
 	return terms
 }
