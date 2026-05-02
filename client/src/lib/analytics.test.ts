@@ -118,13 +118,136 @@ describe("analytics", () => {
         new Date("2026-03-23T12:00:00.000Z"),
       ),
     ).toEqual([
-      { x: "2026-03-17", date: "2026-03-17", value: 0 },
-      { x: "2026-03-18", date: "2026-03-18", value: 0 },
-      { x: "2026-03-19", date: "2026-03-19", value: 0 },
-      { x: "2026-03-20", date: "2026-03-20", value: 0 },
-      { x: "2026-03-21", date: "2026-03-21", value: 1800 },
-      { x: "2026-03-22", date: "2026-03-22", value: 0 },
-      { x: "2026-03-23", date: "2026-03-23", value: 2600 },
+      {
+        x: "2026-03-21",
+        date: "2026-03-21",
+        focusType: "Push",
+        value: 1800,
+      },
+      {
+        x: "2026-03-23",
+        date: "2026-03-23",
+        focusType: "Push",
+        value: 2600,
+      },
+    ]);
+  });
+
+  it("adds focus types to all-focus daily workout volume buckets", () => {
+    const data = buildDemoContributionData([
+      workout({
+        id: 1,
+        date: "2026-03-21T08:00:00.000Z",
+        workout_focus: "Push",
+        volume: 1800,
+        workingSetCount: 3,
+      }),
+      workout({
+        id: 2,
+        date: "2026-03-21T18:00:00.000Z",
+        workout_focus: "Pull",
+        volume: 2200,
+        workingSetCount: 4,
+      }),
+      workout({
+        id: 3,
+        date: "2026-03-23T08:00:00.000Z",
+        workout_focus: "Push",
+        volume: 2600,
+        workingSetCount: 5,
+      }),
+    ]);
+
+    expect(
+      buildWorkoutVolumeChartData(
+        data.days,
+        "W",
+        undefined,
+        new Date("2026-03-23T12:00:00.000Z"),
+      ),
+    ).toEqual([
+      {
+        x: "2026-03-21",
+        date: "2026-03-21",
+        focusType: "Pull, Push",
+        value: 4000,
+      },
+      {
+        x: "2026-03-23",
+        date: "2026-03-23",
+        focusType: "Push",
+        value: 2600,
+      },
+    ]);
+  });
+
+  it("adds focus types to all-focus weekly and monthly volume buckets", () => {
+    const data = buildDemoContributionData([
+      workout({
+        id: 1,
+        date: "2026-03-16T08:00:00.000Z",
+        workout_focus: "Push",
+        volume: 1800,
+        workingSetCount: 3,
+      }),
+      workout({
+        id: 2,
+        date: "2026-03-17T18:00:00.000Z",
+        workout_focus: "Pull",
+        volume: 2200,
+        workingSetCount: 4,
+      }),
+      workout({
+        id: 3,
+        date: "2026-04-01T08:00:00.000Z",
+        workout_focus: "Legs",
+        volume: 2600,
+        workingSetCount: 5,
+      }),
+    ]);
+
+    expect(
+      buildWorkoutVolumeChartData(
+        data.days,
+        "6M",
+        undefined,
+        new Date("2026-04-05T12:00:00.000Z"),
+      ).filter((point) => point.value > 0),
+    ).toEqual([
+      {
+        x: "2026-03-16",
+        date: "2026-03-16",
+        focusType: "Pull, Push",
+        value: 4000,
+      },
+      {
+        x: "2026-03-30",
+        date: "2026-03-30",
+        focusType: "Legs",
+        value: 2600,
+      },
+    ]);
+
+    expect(
+      buildWorkoutVolumeChartData(
+        data.days,
+        "Y",
+        undefined,
+        new Date("2026-04-05T12:00:00.000Z"),
+      ).filter((point) => point.value > 0),
+    ).toEqual([
+      {
+        x: "2026-03-01",
+        date: "2026-03-01",
+        focusType: "Pull, Push",
+        value: 4000,
+      },
+      {
+        x: "2026-04-01",
+        date: "2026-04-01",
+        focusType: "Legs",
+        value: 2600,
+      },
     ]);
   });
 

@@ -23,16 +23,24 @@ export type MetricPoint = {
   x: string;
   date: string; // ISO date (bucket/workout day)
   workout_id?: number;
+  focusType?: string;
   value: number;
 };
 
 type Unit = "lb" | "%" | "vol";
 type MetricsChartBucket = "workout" | "day" | "week" | "month";
+const MAX_TOOLTIP_FOCUS_LENGTH = 48;
 
 function formatValue(unit: Unit, value: number) {
   if (unit === "%") return `${value.toFixed(1)}%`;
   if (unit === "vol") return `${Math.round(value).toLocaleString()} vol`;
   return `${Math.round(value).toLocaleString()} lb`;
+}
+
+export function formatTooltipFocusType(focusType?: string) {
+  if (!focusType) return undefined;
+  if (focusType.length <= MAX_TOOLTIP_FOCUS_LENGTH) return focusType;
+  return `${focusType.slice(0, MAX_TOOLTIP_FOCUS_LENGTH - 1)}…`;
 }
 
 export function ChartBarMetric({
@@ -195,6 +203,7 @@ export function ChartBarMetric({
                 <Tooltip
                   cursor={false}
                   position={{ y: 0 }}
+                  separator=""
                   contentStyle={{
                     backgroundColor: "var(--color-background)",
                     border: "1px solid var(--color-border)",
@@ -212,7 +221,19 @@ export function ChartBarMetric({
                     marginBottom: "0.25rem",
                   }}
                   labelFormatter={tooltipLabelFormatter}
-                  formatter={(v) => formatValue(unit, Number(v))}
+                  formatter={(v, _name, item) => {
+                    const focusType = formatTooltipFocusType(
+                      (item.payload as MetricPoint | undefined)?.focusType,
+                    );
+                    const value = formatValue(unit, Number(v));
+                    return [
+                      <span>
+                        <span className="font-semibold">{value}</span>
+                        {focusType ? ` - ${focusType}` : ""}
+                      </span>,
+                      "",
+                    ];
+                  }}
                 />
 
                 <Bar
@@ -241,6 +262,6 @@ export function ChartBarMetric({
   );
 }
 
-function getAxisDateFormat(bucket: MetricsChartBucket): string {
-  return bucket === "month" ? "MMM yyyy" : "MMM d";
+export function getAxisDateFormat(bucket: MetricsChartBucket): string {
+  return bucket === "month" ? "MMMMM" : "MMM d";
 }

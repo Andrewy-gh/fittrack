@@ -152,15 +152,44 @@ function sumVolumeForDay(
   }, 0);
 }
 
+function getFocusTypesForDay(
+  day: NonNullable<WorkoutContributionDataResponse["days"]>[number],
+) {
+  const focusTypes = new Set<string>();
+
+  for (const workout of day.workouts ?? []) {
+    if (workout.focus) {
+      focusTypes.add(workout.focus);
+    }
+  }
+
+  return Array.from(focusTypes);
+}
+
+function formatFocusTypes(focusTypes: Set<string>) {
+  return Array.from(focusTypes)
+    .sort((a, b) => a.localeCompare(b))
+    .join(", ");
+}
+
 function buildDailyVolumeMap(
   days: WorkoutContributionDataResponse["days"] = [],
   focus?: string,
 ) {
-  const volumeByDate = new Map<string, number>();
+  const volumeByDate = new Map<
+    string,
+    { focusType?: string; focusTypes: string[]; volume: number }
+  >();
 
   for (const day of days ?? []) {
     if (!day?.date) continue;
-    volumeByDate.set(day.date, sumVolumeForDay(day, focus));
+    const volume = sumVolumeForDay(day, focus);
+    const focusTypes = focus ? [focus] : getFocusTypesForDay(day);
+    volumeByDate.set(day.date, {
+      focusType: formatFocusTypes(new Set(focusTypes)),
+      focusTypes,
+      volume,
+    });
   }
 
   return volumeByDate;
@@ -181,12 +210,14 @@ export function buildWorkoutVolumeChartData(
     return Array.from({ length: span }, (_, index) => {
       const date = addDays(start, index);
       const isoDate = toIsoDate(date);
+      const dayVolume = volumeByDate.get(isoDate);
       return {
         x: isoDate,
         date: isoDate,
-        value: Math.round(volumeByDate.get(isoDate) ?? 0),
+        focusType: dayVolume?.focusType,
+        value: Math.round(dayVolume?.volume ?? 0),
       };
-    });
+    }).filter((point) => point.value > 0);
   }
 
   if (range === "6M") {
@@ -195,17 +226,26 @@ export function buildWorkoutVolumeChartData(
 
     return Array.from({ length: 26 }, (_, index) => {
       const weekStart = addDays(firstWeekStart, index * 7);
+      const focusTypes = new Set<string>();
       let total = 0;
 
       for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
         const day = addDays(weekStart, dayOffset);
-        total += volumeByDate.get(toIsoDate(day)) ?? 0;
+        const dayVolume = volumeByDate.get(toIsoDate(day));
+        total += dayVolume?.volume ?? 0;
+
+        if (dayVolume?.volume) {
+          for (const focusType of dayVolume.focusTypes) {
+            focusTypes.add(focusType);
+          }
+        }
       }
 
       const isoDate = toIsoDate(weekStart);
       return {
         x: isoDate,
         date: isoDate,
+        focusType: formatFocusTypes(focusTypes),
         value: Math.round(total),
       };
     });
@@ -217,6 +257,7 @@ export function buildWorkoutVolumeChartData(
   return Array.from({ length: 12 }, (_, index) => {
     const monthStart = addMonths(firstMonthStart, index);
     const nextMonthStart = addMonths(monthStart, 1);
+    const focusTypes = new Set<string>();
     let total = 0;
 
     for (
@@ -224,13 +265,21 @@ export function buildWorkoutVolumeChartData(
       cursor < nextMonthStart;
       cursor = addDays(cursor, 1)
     ) {
-      total += volumeByDate.get(toIsoDate(cursor)) ?? 0;
+      const dayVolume = volumeByDate.get(toIsoDate(cursor));
+      total += dayVolume?.volume ?? 0;
+
+      if (dayVolume?.volume) {
+        for (const focusType of dayVolume.focusTypes) {
+          focusTypes.add(focusType);
+        }
+      }
     }
 
     const isoDate = toIsoDate(monthStart);
     return {
       x: isoDate,
       date: isoDate,
+      focusType: formatFocusTypes(focusTypes),
       value: Math.round(total),
     };
   });

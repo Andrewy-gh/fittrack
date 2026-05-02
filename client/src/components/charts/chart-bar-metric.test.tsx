@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ChartBarMetric } from "./chart-bar-metric";
+import {
+  ChartBarMetric,
+  formatTooltipFocusType,
+  getAxisDateFormat,
+} from "./chart-bar-metric";
 import { useBreakpoint } from "./chart-bar-vol.utils";
 
 vi.mock("./chart-bar-vol.components", () => ({
@@ -93,5 +97,21 @@ describe("ChartBarMetric", () => {
     await user.click(staticBars[1]);
 
     expect(onWorkoutClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("getAxisDateFormat", () => {
+  it("uses single-letter labels for monthly axis ticks", () => {
+    expect(getAxisDateFormat("month")).toBe("MMMMM");
+  });
+});
+
+describe("formatTooltipFocusType", () => {
+  it("truncates long focus labels for tooltip display", () => {
+    expect(
+      formatTooltipFocusType(
+        "Very Long Custom Focus Type For Heavy Lower Body Strength Work",
+      ),
+    ).toBe("Very Long Custom Focus Type For Heavy Lower Bod…");
   });
 });
