@@ -20,6 +20,8 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Ask at most 3 short, focused follow-up questions",
 		"MVP-ready inputs are workout focus, session duration, enough equipment or workout context",
 		"do not treat it as a hard blocker",
+		"Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests",
+		"Resistance bands, foam rollers, sticks, and similar tools",
 		"If injury status is missing, ask once before generating",
 		"Do not infer \"none\" from silence in the initial request",
 		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
@@ -42,6 +44,7 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 		"workout focus",
 		"session duration",
 		"enough equipment or workout context",
+		"Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests",
 		"injury status",
 		"Use injuries=none only when the user explicitly reports no injuries",
 		"continues without answering after one injury-status question",
@@ -97,6 +100,18 @@ func TestValidateWorkoutGenerationToolInputAllowsWorkoutContextWithoutEquipment(
 		WorkoutFocus:     "bodyweight full body",
 		SpaceConstraints: "hotel room",
 		Injuries:         "none",
+	}
+
+	if err := validateWorkoutGenerationToolInput(input); err != nil {
+		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want nil", err)
+	}
+}
+
+func TestValidateWorkoutGenerationToolInputAllowsMobilityWithoutEquipment(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		SessionDuration: 15,
+		WorkoutFocus:    "mobility and rehab for low-back stiffness",
+		Injuries:        "No acute injury or numbness. Gentle low-back stiffness.",
 	}
 
 	if err := validateWorkoutGenerationToolInput(input); err != nil {

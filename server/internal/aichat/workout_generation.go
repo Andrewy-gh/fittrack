@@ -16,7 +16,7 @@ import (
 
 const (
 	workoutDraftToolName               = "generate_workout_draft"
-	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. Use injuries=none only when the user explicitly reports no injuries or continues without answering after one injury-status question. Fitness level improves weight assumptions but is not required."
+	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests because they can default to no-equipment bodyweight work. Use injuries=none only when the user explicitly reports no injuries or continues without answering after one injury-status question. Fitness level improves weight assumptions but is not required."
 	workoutDraftSummaryMessage         = "I put together a structured workout draft for you."
 	workoutChatFollowUpQuestionCeiling = 3
 )
@@ -100,7 +100,14 @@ func validateWorkoutGenerationToolInput(input WorkoutGenerationToolInput) error 
 }
 
 func hasWorkoutContext(input WorkoutGenerationToolInput) bool {
-	return strings.TrimSpace(input.Equipment) != "" || strings.TrimSpace(input.SpaceConstraints) != ""
+	return strings.TrimSpace(input.Equipment) != "" ||
+		strings.TrimSpace(input.SpaceConstraints) != "" ||
+		isEquipmentOptionalWorkout(input)
+}
+
+func isEquipmentOptionalWorkout(input WorkoutGenerationToolInput) bool {
+	text := normalizeQualityText(input.FitnessGoal + " " + input.WorkoutFocus)
+	return hasAnyQualityTerm(text, "mobility", "rehab", "prehab", "stretching", "warm-up", "warmup")
 }
 
 func generateWorkoutDraft(
