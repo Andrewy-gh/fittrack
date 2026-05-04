@@ -39,7 +39,7 @@ export function AnalyticsPage({
   if (isLoadingExercises) {
     return (
       <main>
-        <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
+        <div className="max-w-lg mx-auto space-y-8 px-4 pb-8">
           <div className="pt-4">
             <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
           </div>
@@ -57,7 +57,7 @@ export function AnalyticsPage({
   if (exercises.length === 0) {
     return (
       <main>
-        <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
+        <div className="max-w-lg mx-auto space-y-8 px-4 pb-8">
           <div className="space-y-2 pt-4">
             <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
             <p className="text-sm text-muted-foreground">
@@ -81,7 +81,7 @@ export function AnalyticsPage({
 
   return (
     <main>
-      <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
+      <div className="max-w-lg mx-auto space-y-8 px-4 pb-8">
         <div className="space-y-2 pt-4">
           <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground">
@@ -145,6 +145,7 @@ export function AnalyticsPage({
           <WorkoutContributionGraph
             data={workoutContributionData}
             defaultOpen
+            variant="inline"
           />
         ) : (
           <Card>
