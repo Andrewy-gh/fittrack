@@ -30,17 +30,17 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Get code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26.0"
+          go-version: "1.26.3"
           cache: true
           cache-dependency-path: server/go.sum
 
       - name: Cache Go tools
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tools-goose-v3.24.3
@@ -74,7 +74,7 @@ jobs:
 
       - name: Deploy PR app to Fly.io
         id: deploy
-        uses: superfly/fly-pr-review-apps@1.2.1
+        uses: superfly/fly-pr-review-apps@6f79ec3a7d017082ed11e7c464dae298ca75b21b # 1.2.1
         with:
           name: fittrack-pr-${{ github.event.number }}
           secrets: |

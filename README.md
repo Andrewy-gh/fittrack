@@ -78,8 +78,8 @@ git commit -m "feat: update API types for [your change]"
 
 3. Install goose and air, and ensure PATH includes `$HOME/go/bin`:
    ```bash
-   go install github.com/pressly/goose/v3/cmd/goose@latest
-   go install github.com/air-verse/air@latest
+   go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
+   go install github.com/air-verse/air@v1.65.1
    export PATH="$HOME/go/bin:$PATH"
    ```
 4. Start services:
@@ -99,9 +99,12 @@ cd client
 cp .env.example .env
 # then set VITE_PROJECT_ID and VITE_PUBLISHABLE_CLIENT_KEY
 bun install
+bun run prepare   # optional: enable local Husky git hooks
 bun run dev        # starts on http://localhost:5173 (proxies API to :8080)
 # or: bun run start  # starts on http://localhost:3000
 ```
+
+The client uses `client/bunfig.toml` to skip install scripts and delay newly published package versions by default. Husky is still installed as a dev dependency; `bun run prepare` enables the local git hooks when you want them.
 
 After signing in, the minimal phase-1 chat proof is available at `/chat`.
 
