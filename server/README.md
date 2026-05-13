@@ -17,8 +17,8 @@ cp .env.example .env
 3. Install goose and air:
 
 ```bash
-go install github.com/pressly/goose/v3/cmd/goose@latest
-go install github.com/air-verse/air@latest
+go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
+go install github.com/air-verse/air@v1.65.1
 export PATH="$HOME/go/bin:$PATH"
 ```
 
@@ -273,7 +273,7 @@ docker compose ps
 **Missing goose:**
 
 ```bash
-go install github.com/pressly/goose/v3/cmd/goose@latest
+go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
 export PATH="$HOME/go/bin:$PATH"
 ```
 
@@ -305,7 +305,7 @@ After that, rerun `make dev` so Postgres initializes with the values from `seten
 
 ```bash
 # Install via Go
-go install github.com/air-verse/air@latest
+go install github.com/air-verse/air@v1.65.1
 
 # Or via Homebrew (macOS)
 brew install air

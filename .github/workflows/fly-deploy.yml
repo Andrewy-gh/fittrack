@@ -11,19 +11,19 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: deploy-group # optional: ensure only one action runs at a time
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Install flyctl
         run: |
           curl -fsSL https://fly.io/install.sh | sh -s -- --non-interactive
           echo "$HOME/.fly/bin" >> "$GITHUB_PATH"
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: "1.26.0"
+          go-version: "1.26.3"
           cache: true
           cache-dependency-path: server/go.sum
       - name: Cache Go tools
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tools-goose-v3.24.3

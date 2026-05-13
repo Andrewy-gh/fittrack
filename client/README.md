@@ -8,10 +8,13 @@ React frontend for FitTrack, built with Vite, TypeScript, TanStack Router, and T
 cp .env.example .env
 # set VITE_PROJECT_ID and VITE_PUBLISHABLE_CLIENT_KEY first
 bun install
+bun run prepare  # optional: enable local Husky git hooks
 bun run dev       # http://localhost:5173 (proxies API calls to :8080)
 # or
 bun run start     # http://localhost:3000
 ```
+
+`bunfig.toml` skips install scripts and delays newly published package versions by default. Husky is still installed through dev dependencies; run `bun run prepare` when you want local git hooks enabled.
 
 ## Available Commands
 
