@@ -4,6 +4,7 @@
 client/*.html text eol=lf
 client/*.json text eol=lf
 client/*.md text eol=lf
+client/*.toml text eol=lf
 client/*.ts text eol=lf
 client/*.js text eol=lf
 client/*.mjs text eol=lf

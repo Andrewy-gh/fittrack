@@ -465,9 +465,6 @@ test.describe("Demo Mode - Workout Create", () => {
     await page.getByRole("link", { name: /add exercise/i }).click();
     await page.getByText("Bench Press", { exact: true }).click();
 
-    // Wait for localStorage to be updated (debounced at 500ms)
-    await page.waitForTimeout(600);
-
     await page.reload();
 
     expect(page.url()).toContain("exerciseIndex=0");
