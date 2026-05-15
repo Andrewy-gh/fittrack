@@ -39,8 +39,6 @@ export default defineConfig({
         // Keep default camelCase
         case: "camelCase",
         enabled: true,
-        // Enable metadata if you want operation info
-        meta: false, // or customize as needed
         // Use "Options" suffix to match your current naming
         name: "{{name}}QueryOptions",
       },
