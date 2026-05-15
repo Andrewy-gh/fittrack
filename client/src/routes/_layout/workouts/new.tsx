@@ -157,7 +157,6 @@ export function WorkoutTracker({
       onChange: ({ formApi }) => {
         draftStorage.save(formApi.state.values, user?.id);
       },
-      onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {
       const trimmedValue = {
