@@ -25,6 +25,8 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"If injury status is missing, ask once before generating",
 		"Do not infer \"none\" from silence in the initial request",
 		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
+		"When the user answers a follow-up, combine that answer with the earlier visible workout request",
+		"previous message only asked about injuries and the user now confirms no injuries",
 		"does not mention injuries, ask about injuries before calling the " + workoutDraftToolName + " tool",
 		"Do not ask scheduling, frequency, or future-date questions",
 		"call the " + workoutDraftToolName + " tool immediately",
