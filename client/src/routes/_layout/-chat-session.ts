@@ -1,0 +1,809 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createAIChatConversation,
+  getAIChatConversation,
+  pollAIChatConversationUntilSettled,
+  resumeAIChatMessageStream,
+  reportAIChatTelemetry,
+  requestAIChatMessageRecovery,
+  saveAIChatLatestWorkoutDraft,
+  streamAIChatMessage,
+  type AIChatConversation,
+  type AIChatConversationDetail,
+  type AIChatMessage,
+  type AIChatTelemetryEvent,
+} from "@/lib/api/ai-chat";
+import {
+  classifyLoadOutcome,
+  classifyRecoveryOutcome,
+  classifyStreamInterruption,
+  isAbortError,
+  terminalStreamStage,
+} from "@/lib/ai-chat-observability";
+import { getErrorMessage, showErrorToast } from "@/lib/errors";
+import {
+  clearResumeCursor,
+  getResumeAfterSequence,
+  saveResumeCursor,
+  updateStreamingMessageWithDelta,
+  updateStreamingMessageWithDone,
+  updateStreamingMessageWithError,
+} from "./-chat-resume";
+import { toast } from "sonner";
+
+type ConversationRequestResult = {
+  detail: AIChatConversationDetail | null;
+  aborted: boolean;
+  error?: unknown;
+};
+
+type UseAIChatSessionOptions = {
+  conversationId: number | null;
+  onConversationCreated: (conversationId: number) => Promise<void>;
+};
+
+export function useAIChatSession({
+  conversationId,
+  onConversationCreated,
+}: UseAIChatSessionOptions) {
+  const [conversation, setConversation] = useState<AIChatConversation | null>(
+    null,
+  );
+  const [messages, setMessages] = useState<AIChatMessage[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSavingWorkoutDraft, setIsSavingWorkoutDraft] = useState(false);
+  const [latestWorkoutDraftMessageId, setLatestWorkoutDraftMessageId] =
+    useState<number | null>(null);
+  const pendingAssistantIdRef = useRef<number | null>(null);
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const recoveryAbortRef = useRef<AbortController | null>(null);
+  const resumeAbortRef = useRef<AbortController | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+
+  const recordTelemetry = useCallback((event: AIChatTelemetryEvent) => {
+    void Promise.resolve(reportAIChatTelemetry(event)).catch((error) => {
+      if (import.meta.env.DEV) {
+        console.warn("Failed to record AI chat telemetry", error, event);
+      }
+    });
+  }, []);
+
+  const loadConversation = useCallback(
+    async (
+      id: number,
+      opts?: { silent?: boolean },
+    ): Promise<ConversationRequestResult> => {
+      loadAbortRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
+
+      if (!opts?.silent) {
+        setIsLoadingConversation(true);
+      }
+
+      try {
+        const detail = await getAIChatConversation(id, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) {
+          return { detail: null, aborted: true };
+        }
+        setConversation(detail.conversation);
+        setMessages(detail.messages);
+        if (!opts?.silent) {
+          setLatestWorkoutDraftMessageId(null);
+        }
+        if (!detail.active_run) {
+          clearResumeCursor(id);
+        }
+        setLoadError(null);
+        return { detail, aborted: false, error: undefined };
+      } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return { detail: null, aborted: true, error };
+        }
+        const message = getErrorMessage(error);
+        setLoadError(message);
+        return { detail: null, aborted: false, error };
+      } finally {
+        if (loadAbortRef.current === controller) {
+          loadAbortRef.current = null;
+          if (!opts?.silent) {
+            setIsLoadingConversation(false);
+          }
+        }
+      }
+    },
+    [],
+  );
+
+  const recoverConversation = useCallback(
+    async (
+      id: number,
+      opts?: { silent?: boolean },
+    ): Promise<ConversationRequestResult> => {
+      recoveryAbortRef.current?.abort();
+      const controller = new AbortController();
+      recoveryAbortRef.current = controller;
+      let recoveryRequestError: unknown = null;
+      let shouldRetryRecovery = false;
+
+      const requestRecovery = async () => {
+        try {
+          const response = await requestAIChatMessageRecovery(id, {
+            signal: controller.signal,
+          });
+          shouldRetryRecovery = response.status === "not_needed";
+        } catch (error) {
+          if (controller.signal.aborted || isAbortError(error)) {
+            throw error;
+          }
+          recoveryRequestError = recoveryRequestError ?? error;
+          shouldRetryRecovery = false;
+        }
+      };
+
+      const retryRecoveryIfNeeded = async () => {
+        if (!shouldRetryRecovery) {
+          return;
+        }
+        await requestRecovery();
+      };
+
+      try {
+        await requestRecovery();
+
+        const detail = await pollAIChatConversationUntilSettled(id, {
+          signal: controller.signal,
+          onStreaming: retryRecoveryIfNeeded,
+        });
+        if (controller.signal.aborted) {
+          return { detail: null, aborted: true };
+        }
+        setConversation(detail.conversation);
+        setMessages(detail.messages);
+        setLatestWorkoutDraftMessageId(null);
+        setLoadError(null);
+        return { detail, aborted: false, error: undefined };
+      } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return { detail: null, aborted: true, error };
+        }
+        if (!controller.signal.aborted) {
+          const message = getErrorMessage(recoveryRequestError ?? error);
+          if (!opts?.silent) {
+            setLoadError(message);
+          }
+        }
+        return {
+          detail: null,
+          aborted: false,
+          error: recoveryRequestError ?? error,
+        };
+      } finally {
+        if (recoveryAbortRef.current === controller) {
+          recoveryAbortRef.current = null;
+        }
+      }
+    },
+    [],
+  );
+
+  const resumeConversation = useCallback(
+    async (
+      detail: AIChatConversationDetail,
+    ): Promise<ConversationRequestResult> => {
+      const activeRun = detail.active_run;
+      if (!activeRun) {
+        return { detail, aborted: false };
+      }
+
+      resumeAbortRef.current?.abort();
+      const controller = new AbortController();
+      resumeAbortRef.current = controller;
+      pendingAssistantIdRef.current = activeRun.assistant_message_id;
+      const afterSequence = getResumeAfterSequence(detail);
+
+      try {
+        const streamResult = await resumeAIChatMessageStream(
+          detail.conversation.id,
+          activeRun.id,
+          afterSequence,
+          {
+            onStart: (event) => {
+              const assistantMessageId =
+                event.message_id ?? activeRun.assistant_message_id;
+              pendingAssistantIdRef.current = assistantMessageId;
+              if (event.sequence !== undefined) {
+                saveResumeCursor(detail.conversation.id, {
+                  runId: activeRun.id,
+                  sequence: event.sequence,
+                  assistantMessageId,
+                });
+              }
+            },
+            onDelta: (event) => {
+              const targetId =
+                pendingAssistantIdRef.current ?? activeRun.assistant_message_id;
+              setMessages((current) =>
+                updateStreamingMessageWithDelta(
+                  current,
+                  targetId,
+                  event.delta ?? "",
+                ),
+              );
+              if (event.sequence !== undefined) {
+                saveResumeCursor(detail.conversation.id, {
+                  runId: activeRun.id,
+                  sequence: event.sequence,
+                  assistantMessageId: targetId,
+                });
+              }
+            },
+            onDone: (event) => {
+              const targetId =
+                pendingAssistantIdRef.current ?? activeRun.assistant_message_id;
+              setMessages((current) =>
+                updateStreamingMessageWithDone(current, targetId, event),
+              );
+              if (event.workout_draft) {
+                setConversation((current) =>
+                  current
+                    ? {
+                        ...current,
+                        latest_workout_draft: event.workout_draft,
+                        latest_workout_draft_status: {
+                          is_saved: false,
+                        },
+                      }
+                    : current,
+                );
+                setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
+              }
+              clearResumeCursor(detail.conversation.id);
+            },
+            onErrorEvent: (event) => {
+              const targetId =
+                pendingAssistantIdRef.current ?? activeRun.assistant_message_id;
+              setMessages((current) =>
+                updateStreamingMessageWithError(current, targetId, event),
+              );
+              clearResumeCursor(detail.conversation.id);
+            },
+            signal: controller.signal,
+          },
+        );
+        if (controller.signal.aborted) {
+          return { detail: null, aborted: true };
+        }
+
+        const refreshed = await loadConversation(detail.conversation.id, {
+          silent: true,
+        });
+        if (!streamResult.endedWithError) {
+          return refreshed;
+        }
+
+        return {
+          detail: refreshed.detail,
+          aborted: refreshed.aborted,
+          error:
+            refreshed.error ??
+            new Error(
+              streamResult.doneEvent?.message ?? "AI chat resume failed",
+            ),
+        };
+      } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return { detail: null, aborted: true, error };
+        }
+        return { detail: null, aborted: false, error };
+      } finally {
+        if (resumeAbortRef.current === controller) {
+          resumeAbortRef.current = null;
+        }
+        pendingAssistantIdRef.current = null;
+      }
+    },
+    [loadConversation],
+  );
+
+  const resetConversation = useCallback(() => {
+    loadAbortRef.current?.abort();
+    recoveryAbortRef.current?.abort();
+    resumeAbortRef.current?.abort();
+    streamAbortRef.current?.abort();
+    setConversation(null);
+    setMessages([]);
+    setLatestWorkoutDraftMessageId(null);
+    setLoadError(null);
+    setIsLoadingConversation(false);
+  }, []);
+
+  useEffect(() => {
+    if (!conversationId) {
+      resetConversation();
+      return;
+    }
+
+    void (async () => {
+      const loadResult = await loadConversation(conversationId);
+      if (loadResult.detail) {
+        recordTelemetry({
+          category: "load",
+          outcome: "load_completed",
+        });
+      } else {
+        recordTelemetry({
+          category: "load",
+          outcome: classifyLoadOutcome(loadResult.aborted),
+        });
+      }
+
+      if (loadResult.detail?.active_run) {
+        const resumeResult = await resumeConversation(loadResult.detail);
+        if (!resumeResult.aborted && resumeResult.detail) {
+          const resumeOutcome = classifyRecoveryOutcome({
+            messages: resumeResult.detail.messages,
+            aborted: false,
+            error: resumeResult.error,
+          });
+          recordTelemetry({
+            category: "recovery",
+            outcome: resumeOutcome,
+          });
+          if (
+            resumeOutcome !== "recovered_completed" &&
+            resumeOutcome !== "recovery_aborted"
+          ) {
+            const resumeError =
+              resumeResult.error ??
+              new Error("Failed to resume AI chat conversation");
+            recordTelemetry({
+              category: "ux",
+              outcome: "failure_toast_shown",
+            });
+            showErrorToast(
+              resumeError,
+              "Failed to recover AI chat conversation",
+            );
+          }
+          return;
+        }
+        if (resumeResult.aborted) {
+          recordTelemetry({
+            category: "recovery",
+            outcome: "recovery_aborted",
+          });
+          return;
+        }
+
+        await recoverLoadedConversation(conversationId);
+        return;
+      }
+
+      if (
+        loadResult.detail?.messages.some(
+          (message) => message.status === "streaming",
+        )
+      ) {
+        await recoverLoadedConversation(conversationId);
+      }
+    })();
+
+    return () => {
+      loadAbortRef.current?.abort();
+      recoveryAbortRef.current?.abort();
+      resumeAbortRef.current?.abort();
+      streamAbortRef.current?.abort();
+    };
+  }, [
+    conversationId,
+    loadConversation,
+    recordTelemetry,
+    recoverConversation,
+    resetConversation,
+    resumeConversation,
+  ]);
+
+  async function recoverLoadedConversation(id: number) {
+    const recoveryResult = await recoverConversation(id, {
+      silent: true,
+    });
+    const recoveryOutcome = classifyRecoveryOutcome({
+      messages: recoveryResult.detail?.messages,
+      aborted: recoveryResult.aborted,
+      error: recoveryResult.error,
+    });
+    recordTelemetry({
+      category: "recovery",
+      outcome: recoveryOutcome,
+    });
+
+    if (
+      recoveryOutcome !== "recovered_completed" &&
+      recoveryOutcome !== "recovery_aborted"
+    ) {
+      const recoveryError =
+        recoveryResult.error ??
+        new Error("Failed to recover AI chat conversation");
+      recordTelemetry({
+        category: "ux",
+        outcome: "failure_toast_shown",
+      });
+      if (!recoveryResult.detail) {
+        setLoadError(
+          getErrorMessage(
+            recoveryError,
+            "Failed to recover AI chat conversation",
+          ),
+        );
+      }
+      showErrorToast(recoveryError, "Failed to recover AI chat conversation");
+    }
+  }
+
+  const createNewChat = useCallback(async () => {
+    try {
+      const created = await createAIChatConversation();
+      streamAbortRef.current?.abort();
+      recoveryAbortRef.current?.abort();
+      loadAbortRef.current?.abort();
+      setConversation(created);
+      setMessages([]);
+      setLatestWorkoutDraftMessageId(null);
+      setLoadError(null);
+      await onConversationCreated(created.id);
+    } catch (error) {
+      showErrorToast(error, "Failed to create chat conversation");
+    }
+  }, [onConversationCreated]);
+
+  const submitPrompt = useCallback(async () => {
+    const nextPrompt = prompt.trim();
+    if (!nextPrompt || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setPrompt("");
+
+    let activeConversationId = conversationId;
+
+    try {
+      if (!activeConversationId) {
+        const createdConversation = await createAIChatConversation();
+        activeConversationId = createdConversation.id;
+        setConversation(createdConversation);
+        await onConversationCreated(activeConversationId);
+      }
+    } catch (error) {
+      setPrompt(nextPrompt);
+      setIsSubmitting(false);
+      showErrorToast(error, "Failed to create chat conversation");
+      return;
+    }
+
+    if (!activeConversationId) {
+      setPrompt(nextPrompt);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const baseTimestamp = new Date().toISOString();
+    const tempUserId = -Date.now();
+    const tempAssistantId = tempUserId - 1;
+    let streamStarted = false;
+    let shouldRefreshConversation = false;
+    const streamController = new AbortController();
+    pendingAssistantIdRef.current = tempAssistantId;
+    streamAbortRef.current = streamController;
+    clearResumeCursor(activeConversationId);
+
+    setMessages((current) => [
+      ...current,
+      {
+        id: tempUserId,
+        conversation_id: activeConversationId,
+        role: "user",
+        content: nextPrompt,
+        status: "completed",
+        created_at: baseTimestamp,
+        updated_at: baseTimestamp,
+        completed_at: baseTimestamp,
+      },
+      {
+        id: tempAssistantId,
+        conversation_id: activeConversationId,
+        role: "assistant",
+        content: "",
+        status: "streaming",
+        created_at: baseTimestamp,
+        updated_at: baseTimestamp,
+      },
+    ]);
+
+    try {
+      const streamResult = await streamAIChatMessage(
+        activeConversationId,
+        nextPrompt,
+        {
+          onStart: (event) => {
+            streamStarted = true;
+            const assistantMessageId = event.message_id ?? tempAssistantId;
+            pendingAssistantIdRef.current = assistantMessageId;
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === tempAssistantId
+                  ? {
+                      ...message,
+                      id: assistantMessageId,
+                    }
+                  : message,
+              ),
+            );
+            saveResumeCursor(activeConversationId, {
+              runId: event.run_id ?? 0,
+              sequence: event.sequence ?? 0,
+              assistantMessageId,
+            });
+          },
+          onDelta: (event) => {
+            const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
+            setMessages((current) =>
+              updateStreamingMessageWithDelta(
+                current,
+                targetId,
+                event.delta ?? "",
+              ),
+            );
+            if (event.sequence !== undefined) {
+              saveResumeCursor(activeConversationId, {
+                runId: event.run_id ?? 0,
+                sequence: event.sequence,
+                assistantMessageId: targetId,
+              });
+            }
+          },
+          onDone: (event) => {
+            const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
+            setMessages((current) =>
+              updateStreamingMessageWithDone(current, targetId, event),
+            );
+            if (event.workout_draft) {
+              setConversation((current) =>
+                current
+                  ? {
+                      ...current,
+                      latest_workout_draft: event.workout_draft,
+                      latest_workout_draft_status: {
+                        is_saved: false,
+                      },
+                    }
+                  : current,
+              );
+              setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
+            }
+            clearResumeCursor(activeConversationId);
+          },
+          onErrorEvent: (event) => {
+            const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
+            setMessages((current) =>
+              updateStreamingMessageWithError(current, targetId, event),
+            );
+            clearResumeCursor(activeConversationId);
+            showErrorToast(
+              { message: event.message ?? "AI chat streaming failed" },
+              "AI chat streaming failed",
+            );
+          },
+          signal: streamController.signal,
+        },
+      );
+
+      recordTelemetry({
+        category: "stream",
+        outcome: streamResult.endedWithError ? "server_error" : "completed",
+        stage: terminalStreamStage(),
+      });
+      if (streamResult.endedWithError) {
+        recordTelemetry({
+          category: "ux",
+          outcome: "failure_toast_shown",
+        });
+      }
+      shouldRefreshConversation = true;
+    } catch (error) {
+      if (!streamStarted && isPreflightAPIError(error)) {
+        setMessages((current) =>
+          current.filter(
+            (message) =>
+              message.id !== tempUserId && message.id !== tempAssistantId,
+          ),
+        );
+        setPrompt(nextPrompt);
+        recordTelemetry({
+          category: "stream",
+          outcome: "server_error",
+          stage: "pre_start",
+        });
+        recordTelemetry({
+          category: "ux",
+          outcome: "failure_toast_shown",
+        });
+        showErrorToast(error, "Failed to stream AI chat response");
+        return;
+      }
+
+      const streamTelemetry = classifyStreamInterruption(error, streamStarted);
+      recordTelemetry({
+        category: "stream",
+        outcome: streamTelemetry.outcome,
+        stage: streamTelemetry.stage,
+      });
+
+      if (streamTelemetry.outcome === "client_aborted") {
+        return;
+      }
+
+      const {
+        detail: recoveredDetail,
+        aborted: recoveryAborted,
+        error: recoveryError,
+      } = await recoverConversation(activeConversationId, {
+        silent: true,
+      });
+      const submitFailure = recoveryError ?? error;
+      const recoveryOutcome = classifyRecoveryOutcome({
+        messages: recoveredDetail?.messages,
+        prompt: nextPrompt,
+        aborted: recoveryAborted,
+        error: recoveryError,
+      });
+      recordTelemetry({
+        category: "recovery",
+        outcome: recoveryOutcome,
+      });
+      if (recoveryAborted) {
+        return;
+      }
+
+      const recoveredPromptStatus = findRecoveredPromptStatus(
+        recoveredDetail?.messages ?? [],
+        nextPrompt,
+      );
+
+      if (!recoveredDetail && !streamStarted) {
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === tempAssistantId
+              ? {
+                  ...message,
+                  status: "failed",
+                  error_message: getErrorMessage(submitFailure),
+                }
+              : message,
+          ),
+        );
+      } else if (!recoveredDetail) {
+        const targetId = pendingAssistantIdRef.current ?? tempAssistantId;
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === targetId
+              ? {
+                  ...message,
+                  status: "failed",
+                  error_message: getErrorMessage(submitFailure),
+                }
+              : message,
+          ),
+        );
+      }
+
+      if (recoveredPromptStatus !== "completed") {
+        recordTelemetry({
+          category: "ux",
+          outcome: "failure_toast_shown",
+        });
+        showErrorToast(submitFailure, "Failed to stream AI chat response");
+      } else {
+        recordTelemetry({
+          category: "ux",
+          outcome: "failure_toast_suppressed_due_to_successful_recovery",
+        });
+      }
+    } finally {
+      if (streamAbortRef.current === streamController) {
+        streamAbortRef.current = null;
+      }
+      pendingAssistantIdRef.current = null;
+      setIsSubmitting(false);
+    }
+
+    if (shouldRefreshConversation) {
+      await loadConversation(activeConversationId, { silent: true });
+    }
+  }, [
+    conversationId,
+    isSubmitting,
+    loadConversation,
+    onConversationCreated,
+    prompt,
+    recordTelemetry,
+    recoverConversation,
+  ]);
+
+  const saveLatestWorkoutDraft = useCallback(async () => {
+    if (!conversation) {
+      return;
+    }
+
+    try {
+      setIsSavingWorkoutDraft(true);
+      const saved = await saveAIChatLatestWorkoutDraft(conversation.id);
+      setConversation(saved.conversation);
+      toast.success("Workout saved successfully");
+    } catch (error) {
+      showErrorToast(error, "Failed to save workout");
+    } finally {
+      setIsSavingWorkoutDraft(false);
+    }
+  }, [conversation]);
+
+  return {
+    conversation,
+    messages,
+    prompt,
+    setPrompt,
+    isLoadingConversation,
+    isSubmitting,
+    loadError,
+    isSavingWorkoutDraft,
+    latestWorkoutDraftMessageId,
+    createNewChat,
+    submitPrompt,
+    saveLatestWorkoutDraft,
+  };
+}
+
+function isPreflightAPIError(error: unknown): error is { message: string } {
+  return (
+    !(error instanceof Error) &&
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  );
+}
+
+function findRecoveredPromptStatus(
+  messages: AIChatMessage[],
+  prompt: string,
+): AIChatMessage["status"] | null {
+  const normalizedPrompt = prompt.trim();
+  if (!normalizedPrompt) {
+    return null;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (
+      message.role !== "user" ||
+      message.content.trim() !== normalizedPrompt
+    ) {
+      continue;
+    }
+
+    const assistant = messages[index + 1];
+    if (assistant?.role === "assistant") {
+      return assistant.status;
+    }
+
+    return null;
+  }
+
+  return null;
+}
