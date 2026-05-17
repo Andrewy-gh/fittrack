@@ -16,17 +16,17 @@ import {
   getWorkoutsFocusQueryOptions,
 } from "@/lib/api/unified-query-options";
 import { Suspense } from "react";
-import { useAppForm } from "@/hooks/form";
+import { useAppForm } from "@/features/workouts/form/use-workout-form";
 import { Button } from "@/components/ui/button";
-import { MiniChart } from "../-components/mini-chart";
+import { MiniChart } from "@/features/workouts/form/components/mini-chart";
 import { X } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
-} from "../-components/exercise-screen";
-import { AddExerciseScreen } from "../-components/add-exercise-screen";
+} from "@/features/workouts/form/components/exercise-screen";
+import { AddExerciseScreen } from "@/features/workouts/form/components/add-exercise-screen";
 import type {
   ExerciseExerciseResponse,
   WorkoutUpdateWorkoutRequest,
@@ -41,8 +41,8 @@ import {
   type WorkoutExerciseCard,
   WorkoutFormActions,
   WorkoutMetadataFields,
-} from "../-components/workout-form-sections";
-import { useExerciseReorder } from "../-components/use-exercise-reorder";
+} from "@/features/workouts/form/components/workout-form-sections";
+import { useExerciseReorder } from "@/features/workouts/form/components/use-exercise-reorder";
 
 function WorkoutExerciseSection({ field, form }: { field: any; form: any }) {
   const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(

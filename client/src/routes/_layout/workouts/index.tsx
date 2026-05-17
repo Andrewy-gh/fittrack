@@ -23,11 +23,11 @@ import {
 import { getDemoWorkoutsQueryOptions } from "@/lib/demo-data/query-options";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
 import { workoutDraftStorage } from "@/lib/local-storage";
-import { WorkoutSummaryCards } from "@/components/workouts/workout-summary-cards";
-import { WorkoutContributionGraph } from "@/components/workouts/workout-contribution-graph";
-import { ContributionGraphError } from "@/components/workouts/contribution-graph-error";
-import { RecentWorkoutsCard } from "@/components/workouts/recent-workouts-card";
-import { WorkoutDistributionCard } from "@/components/workouts/workout-distribution-card";
+import { WorkoutSummaryCards } from "@/features/workouts/components/workout-summary-cards";
+import { WorkoutContributionGraph } from "@/features/workouts/components/workout-contribution-graph";
+import { ContributionGraphError } from "@/features/workouts/components/contribution-graph-error";
+import { RecentWorkoutsCard } from "@/features/workouts/components/recent-workouts-card";
+import { WorkoutDistributionCard } from "@/features/workouts/components/workout-distribution-card";
 import {
   filterWorkoutsByFocus,
   getFocusAreas,

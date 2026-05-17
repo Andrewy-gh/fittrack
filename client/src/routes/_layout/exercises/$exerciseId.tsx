@@ -4,7 +4,7 @@ import { z } from "zod";
 import { exerciseByIdQueryOptions } from "@/lib/api/exercises";
 import { getDemoExercisesByIdQueryOptions } from "@/lib/demo-data/query-options";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
-import { ExerciseDetail } from "@/components/exercises/exercise-detail";
+import { ExerciseDetail } from "@/features/exercises/components/exercise-detail";
 
 const exerciseSearchSchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).optional(),

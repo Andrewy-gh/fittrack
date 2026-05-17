@@ -1,0 +1,310 @@
+import type { FormEvent } from "react";
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import type { AIChatMessage, AIWorkoutDraft } from "@/lib/api/ai-chat";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
+import { workoutDraftStorage } from "@/lib/local-storage";
+import { toast } from "sonner";
+import { useAIChatSession } from "./use-ai-chat-session";
+import { ChatWorkoutDraftCard } from "./chat-workout-draft-card";
+
+type ChatPageProps = {
+  user: CurrentUser | CurrentInternalUser | null;
+  conversationId: number | null;
+  onConversationCreated: (conversationId: number) => Promise<void>;
+  onOpenWorkoutForm: () => void;
+  onOpenSavedWorkout: (workoutId: number) => void;
+};
+
+export function ChatPage({
+  user,
+  conversationId,
+  onConversationCreated,
+  onOpenWorkoutForm,
+  onOpenSavedWorkout,
+}: ChatPageProps) {
+  const {
+    conversation,
+    messages,
+    prompt,
+    setPrompt,
+    isLoadingConversation,
+    isSubmitting,
+    loadError,
+    isSavingWorkoutDraft,
+    latestWorkoutDraftMessageId,
+    createNewChat,
+    submitPrompt,
+    saveLatestWorkoutDraft,
+  } = useAIChatSession({
+    conversationId,
+    onConversationCreated,
+  });
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-4xl p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Chat</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Sign in to create a conversation and stream assistant responses.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  const currentUserId = user.id;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await submitPrompt();
+  }
+
+  function handleEditInWorkoutForm(draft: AIWorkoutDraft) {
+    const hasDraft = workoutDraftStorage.load(currentUserId) !== null;
+    if (
+      hasDraft &&
+      !window.confirm(
+        "Replace your current workout draft with the latest AI workout draft?",
+      )
+    ) {
+      return;
+    }
+
+    saveAIWorkoutDraftToWorkoutForm(draft, currentUserId, workoutDraftStorage);
+    toast.success("Workout draft loaded into the form");
+    onOpenWorkoutForm();
+  }
+
+  const isLatestWorkoutDraftSaved =
+    conversation?.latest_workout_draft_status?.is_saved ?? false;
+  const savedWorkoutId =
+    conversation?.latest_workout_draft_status?.saved_workout_id;
+
+  return (
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle>AI Chat</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Persisted chat with reopenable workout drafts and a direct handoff
+              into the workout form.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={createNewChat}
+          >
+            New Chat
+          </Button>
+        </CardHeader>
+      </Card>
+
+      <Card className="min-h-[32rem]">
+        <CardContent className="flex h-full flex-col gap-4 p-4">
+          {isLoadingConversation ? (
+            <div className="text-sm text-muted-foreground">
+              Loading conversation...
+            </div>
+          ) : loadError ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {loadError}
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
+              No messages yet. Start a new chat or send the first prompt.
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+              {messages.map((message) => (
+                <MessageBubble
+                  key={`${message.id}-${message.updated_at}`}
+                  message={message}
+                  workoutDraft={
+                    message.id === latestWorkoutDraftMessageId
+                      ? conversation?.latest_workout_draft
+                      : undefined
+                  }
+                  onEditWorkoutDraft={() => {
+                    if (conversation?.latest_workout_draft) {
+                      handleEditInWorkoutForm(
+                        conversation.latest_workout_draft,
+                      );
+                    }
+                  }}
+                  onSaveWorkoutDraft={() => {
+                    if (conversation?.latest_workout_draft) {
+                      void saveLatestWorkoutDraft();
+                    }
+                  }}
+                  onOpenSavedWorkout={
+                    savedWorkoutId
+                      ? () => onOpenSavedWorkout(savedWorkoutId)
+                      : undefined
+                  }
+                  isSavingWorkoutDraft={isSavingWorkoutDraft}
+                  isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
+                  savedWorkoutId={savedWorkoutId}
+                />
+              ))}
+            </div>
+          )}
+
+          {conversation?.latest_workout_draft &&
+          latestWorkoutDraftMessageId === null ? (
+            <ChatWorkoutDraftCard
+              className="max-w-[85%]"
+              draft={conversation.latest_workout_draft}
+              isSaving={isSavingWorkoutDraft}
+              isSaved={isLatestWorkoutDraftSaved}
+              savedWorkoutId={savedWorkoutId}
+              onSave={() => void saveLatestWorkoutDraft()}
+              onEdit={() =>
+                handleEditInWorkoutForm(conversation.latest_workout_draft!)
+              }
+              onOpenSavedWorkout={
+                savedWorkoutId
+                  ? () => onOpenSavedWorkout(savedWorkoutId)
+                  : undefined
+              }
+            />
+          ) : null}
+
+          <form
+            className="mt-auto flex flex-col gap-3"
+            onSubmit={handleSubmit}
+          >
+            <Textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder="Ask about training, recovery, exercise choices, or FitTrack usage..."
+              rows={4}
+              disabled={isSubmitting}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Conversation ID:{" "}
+                {conversation?.id ?? conversationId ?? "not created yet"}
+              </p>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !prompt.trim()}
+              >
+                {isSubmitting ? "Streaming..." : "Send"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MessageBubble({
+  message,
+  workoutDraft,
+  isSavingWorkoutDraft,
+  isSavedWorkoutDraft,
+  savedWorkoutId,
+  onSaveWorkoutDraft,
+  onEditWorkoutDraft,
+  onOpenSavedWorkout,
+}: {
+  message: AIChatMessage;
+  workoutDraft?: AIWorkoutDraft;
+  isSavingWorkoutDraft?: boolean;
+  isSavedWorkoutDraft?: boolean;
+  savedWorkoutId?: number;
+  onSaveWorkoutDraft?: () => void;
+  onEditWorkoutDraft?: () => void;
+  onOpenSavedWorkout?: () => void;
+}) {
+  const isUser = message.role === "user";
+  const statusLabel =
+    message.status === "failed"
+      ? "failed"
+      : message.status === "streaming"
+        ? "streaming"
+        : null;
+
+  return (
+    <div
+      data-testid={`chat-message-${message.id}`}
+      className={`flex max-w-[85%] flex-col gap-3 ${
+        isUser ? "ml-auto items-end" : "mr-auto items-start"
+      }`}
+    >
+      <div
+        className={`w-full rounded-lg border px-4 py-3 text-sm ${
+          isUser
+            ? "border-primary/30 bg-primary/10"
+            : "border-border bg-background"
+        }`}
+      >
+        <div className="mb-2 flex items-center justify-between gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+          <span>{isUser ? "You" : "Assistant"}</span>
+          {statusLabel ? <span>{statusLabel}</span> : null}
+        </div>
+        <div className="whitespace-pre-wrap leading-relaxed">
+          {message.content || (message.status === "streaming" ? "..." : "")}
+        </div>
+        {message.error_message ? (
+          <div className="mt-2 text-xs text-destructive">
+            {message.error_message}
+          </div>
+        ) : null}
+      </div>
+
+      {!isUser && workoutDraft && onSaveWorkoutDraft && onEditWorkoutDraft ? (
+        <ChatWorkoutDraftCard
+          className="w-full"
+          draft={workoutDraft}
+          isSaving={isSavingWorkoutDraft}
+          isSaved={isSavedWorkoutDraft}
+          savedWorkoutId={savedWorkoutId}
+          onSave={onSaveWorkoutDraft}
+          onEdit={onEditWorkoutDraft}
+          onOpenSavedWorkout={onOpenSavedWorkout}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export function parseConversationId(value?: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function normalizeConversationSearchValue(
+  value: unknown,
+): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  if (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    Number.isFinite(value)
+  ) {
+    return String(value);
+  }
+
+  return undefined;
+}

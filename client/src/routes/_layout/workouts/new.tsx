@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Suspense, useMemo, useState, type ReactNode } from "react";
 import { z } from "zod";
-import { useAppForm } from "@/hooks/form";
+import { useAppForm } from "@/features/workouts/form/use-workout-form";
 import { useSaveWorkoutMutation, type WorkoutFocus } from "@/lib/api/workouts";
 import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MiniChart } from "./-components/mini-chart";
+import { MiniChart } from "@/features/workouts/form/components/mini-chart";
 import { X } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
@@ -15,7 +15,10 @@ import {
   workoutDraftStorage,
 } from "@/lib/local-storage";
 import { type DbExercise } from "@/lib/api/exercises";
-import { getInitialValues, MOCK_VALUES } from "./-components/form-options";
+import {
+  getInitialValues,
+  MOCK_VALUES,
+} from "@/features/workouts/form/components/form-options";
 import { postDemoWorkoutsMutation } from "@/lib/demo-data/query-options";
 import { initializeDemoData } from "@/lib/demo-data/storage";
 import { toast } from "sonner";
@@ -31,8 +34,8 @@ import {
   FullScreenErrorFallback,
 } from "@/components/error-boundary";
 import { queryClient } from "@/lib/api/api";
-import { ExerciseContextPanel } from "./-components/exercise-context-panel";
-import { LastWorkoutNoteSection } from "@/components/workouts/last-workout-note-section";
+import { ExerciseContextPanel } from "@/features/workouts/form/components/exercise-context-panel";
+import { LastWorkoutNoteSection } from "@/features/workouts/components/last-workout-note-section";
 import {
   buildWorkoutDraftFromHistory,
   getLatestWorkoutNote,
@@ -60,24 +63,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { AddExerciseScreen } from "./-components/add-exercise-screen";
+import { AddExerciseScreen } from "@/features/workouts/form/components/add-exercise-screen";
 import {
   ExerciseHeader,
   ExerciseScreen,
   ExerciseSets,
-} from "./-components/exercise-screen";
-import { RecentSets } from "./-components/recent-sets-display";
+} from "@/features/workouts/form/components/exercise-screen";
+import { RecentSets } from "@/features/workouts/form/components/recent-sets-display";
 import {
   hasWorkoutDraftContent,
   shouldShowRecentFocusAreaCard,
-} from "./-components/workout-form-helpers";
+} from "@/features/workouts/form/components/workout-form-helpers";
 import {
   WorkoutExerciseCards,
   type WorkoutExerciseCard,
   WorkoutFormActions,
   WorkoutMetadataFields,
-} from "./-components/workout-form-sections";
-import { useExerciseReorder } from "./-components/use-exercise-reorder";
+} from "@/features/workouts/form/components/workout-form-sections";
+import { useExerciseReorder } from "@/features/workouts/form/components/use-exercise-reorder";
 
 function WorkoutExerciseSection({
   field,

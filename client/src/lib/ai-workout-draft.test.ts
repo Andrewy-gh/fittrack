@@ -5,7 +5,7 @@ import {
   saveAIWorkoutDraftToWorkoutForm,
   toWorkoutCreateRequest,
 } from "@/lib/ai-workout-draft";
-import { getInitialValues } from "@/routes/_layout/workouts/-components/form-options";
+import { getInitialValues } from "@/features/workouts/form/components/form-options";
 
 function createMemoryStorage() {
   const values = new Map<string, string>();
