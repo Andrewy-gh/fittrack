@@ -1,0 +1,3 @@
+# Use Feature Folders for Client Product Behavior
+
+The client was split across route folders and top-level component folders, so a workout or exercise change required looking in multiple technical buckets. We decided to keep TanStack Router files in `src/routes`, move product-owned UI and local helpers into `src/features/<area>`, and keep `src/components` for shared app shell and design-system UI. This follows the vertical-codebase direction: code that changes together should be close together, while shared behavior such as metric charts can become its own vertical when multiple product areas use it.

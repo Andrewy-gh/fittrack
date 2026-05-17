@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { workoutQueryOptions } from "@/lib/api/workouts";
 import { getDemoWorkoutsByIdQueryOptions } from "@/lib/demo-data/query-options";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
-import { WorkoutDetailEditable } from "@/components/workouts/workout-detail";
+import { WorkoutDetailEditable } from "@/features/workouts/components/workout-detail";
 
 export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
   params: {

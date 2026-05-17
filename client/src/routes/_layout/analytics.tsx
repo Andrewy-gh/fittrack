@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { AnalyticsPage } from "@/components/analytics/analytics-page";
+import { AnalyticsPage } from "@/features/analytics/components/analytics-page";
 import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,

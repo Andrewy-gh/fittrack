@@ -1,7 +1,7 @@
 import { addDays, differenceInCalendarDays, format } from "date-fns";
 import type { WorkoutContributionDataResponse } from "@/client";
-import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
-import type { MetricPoint } from "@/components/charts/chart-bar-metric";
+import type { RangeType } from "@/features/metric-charts/charts/chart-bar-vol.utils";
+import type { MetricPoint } from "@/features/metric-charts/charts/chart-bar-metric";
 
 export interface AnalyticsWorkoutSummary {
   totalWorkouts30d: number;
