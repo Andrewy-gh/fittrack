@@ -401,6 +401,21 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "first workout details question",
+			text: "I can help you build individual workout drafts. What would be the focus for your first workout, how long will it be, and what equipment do you have available? Do you have any injuries I should be aware of?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal redirects to workout session details",
+			text: "I can help you create a workout plan, but I'm unable to provide meal plans.\n\nTo create your workout, I need a few more details:\n* What is your workout focus (e.g., full body, upper body, legs)?\n* How long would you like the session to be?\n* What equipment do you have available, and do you have any injuries?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal asks how long session should be",
+			text: "I can help you create a workout plan, but I'm unable to provide meal plans. What is your workout focus? How long should the session be? What equipment do you have available?",
+			want: true,
+		},
+		{
 			name: "vague text",
 			text: "Sure, I can help with that.",
 			want: false,
@@ -448,6 +463,26 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 		{
 			name: "which workout statement",
 			text: "I know which workout to build: one session.",
+			want: false,
+		},
+		{
+			name: "first workout without user choice",
+			text: "I can build your first workout after this.",
+			want: false,
+		},
+		{
+			name: "meal plan refusal without session details",
+			text: "I can help with workouts, but I'm unable to provide meal plans.",
+			want: false,
+		},
+		{
+			name: "meal plan refusal asks for workout plan details",
+			text: "I can help you create a workout plan, but I'm unable to provide meal plans. What is your workout focus? How long should the plan be? What equipment do you have available?",
+			want: false,
+		},
+		{
+			name: "meal plan refusal asks broad plan duration",
+			text: "I cannot create meal plans, but I can help with your workout plan. What is your workout focus, how long should the plan run, and what equipment do you have?",
 			want: false,
 		},
 		{

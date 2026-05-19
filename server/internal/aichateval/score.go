@@ -129,6 +129,9 @@ func narrowsToSingleWorkout(text string) bool {
 	if containsWholeWeekPlan(lower) {
 		return false
 	}
+	if redirectsMealPlanToWorkoutSession(lower) {
+		return true
+	}
 	hasSingleSessionScope := containsAny(lower, []string{
 		"one workout",
 		"single workout",
@@ -140,9 +143,37 @@ func narrowsToSingleWorkout(text string) bool {
 		"one at a time",
 		"one day first",
 		"one day to start",
+		"first workout",
+		"first session",
 	})
 	hasUserChoicePrompt := asksUserToChooseWorkout(lower)
 	return hasSingleSessionScope && hasUserChoicePrompt
+}
+
+func redirectsMealPlanToWorkoutSession(text string) bool {
+	refusesMealPlan := containsAny(text, []string{
+		"unable to provide meal plans",
+		"can't provide meal plans",
+		"cannot provide meal plans",
+		"can't create meal plans",
+		"cannot create meal plans",
+	})
+	asksForWorkoutFocus := strings.Contains(text, "?") && containsAny(text, []string{
+		"what is your workout focus",
+		"what's your workout focus",
+		"what workout focus",
+		"what is the workout focus",
+		"what should the workout focus be",
+	})
+	asksForSessionDetails := containsAny(text, []string{
+		"session to be",
+		"session should be",
+		"session length",
+		"how long would you like the session",
+		"how long do you want the session",
+		"how long should the session",
+	})
+	return refusesMealPlan && asksForWorkoutFocus && asksForSessionDetails
 }
 
 func asksUserToChooseWorkout(text string) bool {
@@ -154,6 +185,12 @@ func asksUserToChooseWorkout(text string) bool {
 		"what day",
 		"what workout",
 		"what session",
+		"what would be the focus for your first workout",
+		"what is the focus for your first workout",
+		"what should the focus be for your first workout",
+		"what would be the focus for your first session",
+		"what is the focus for your first session",
+		"what should the focus be for your first session",
 	}) {
 		return true
 	}
