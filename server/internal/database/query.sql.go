@@ -73,6 +73,39 @@ func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRun
 	return i, err
 }
 
+const consumeAIChatTrialPrompt = `-- name: ConsumeAIChatTrialPrompt :one
+INSERT INTO ai_chat_trial_prompt_usage (
+    user_id,
+    stripe_subscription_id,
+    prompt_count
+)
+VALUES ($1, $2, 1)
+ON CONFLICT (user_id, stripe_subscription_id) DO UPDATE
+SET prompt_count = ai_chat_trial_prompt_usage.prompt_count + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE ai_chat_trial_prompt_usage.prompt_count < $3
+RETURNING user_id, stripe_subscription_id, prompt_count, created_at, updated_at
+`
+
+type ConsumeAIChatTrialPromptParams struct {
+	UserID               string `json:"user_id"`
+	StripeSubscriptionID string `json:"stripe_subscription_id"`
+	PromptCount          int32  `json:"prompt_count"`
+}
+
+func (q *Queries) ConsumeAIChatTrialPrompt(ctx context.Context, arg ConsumeAIChatTrialPromptParams) (AiChatTrialPromptUsage, error) {
+	row := q.db.QueryRow(ctx, consumeAIChatTrialPrompt, arg.UserID, arg.StripeSubscriptionID, arg.PromptCount)
+	var i AiChatTrialPromptUsage
+	err := row.Scan(
+		&i.UserID,
+		&i.StripeSubscriptionID,
+		&i.PromptCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createAIChatConversation = `-- name: CreateAIChatConversation :one
 INSERT INTO ai_chat_conversation (
     user_id,
@@ -591,6 +624,31 @@ func (q *Queries) GetAIChatRun(ctx context.Context, arg GetAIChatRunParams) (AiC
 	return i, err
 }
 
+const getAIChatTrialPromptUsage = `-- name: GetAIChatTrialPromptUsage :one
+SELECT user_id, stripe_subscription_id, prompt_count, created_at, updated_at
+FROM ai_chat_trial_prompt_usage
+WHERE user_id = $1
+  AND stripe_subscription_id = $2
+`
+
+type GetAIChatTrialPromptUsageParams struct {
+	UserID               string `json:"user_id"`
+	StripeSubscriptionID string `json:"stripe_subscription_id"`
+}
+
+func (q *Queries) GetAIChatTrialPromptUsage(ctx context.Context, arg GetAIChatTrialPromptUsageParams) (AiChatTrialPromptUsage, error) {
+	row := q.db.QueryRow(ctx, getAIChatTrialPromptUsage, arg.UserID, arg.StripeSubscriptionID)
+	var i AiChatTrialPromptUsage
+	err := row.Scan(
+		&i.UserID,
+		&i.StripeSubscriptionID,
+		&i.PromptCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getActiveAIChatRunForConversation = `-- name: GetActiveAIChatRunForConversation :one
 SELECT
     id,
@@ -706,6 +764,49 @@ func (q *Queries) GetContributionData(ctx context.Context, userID string) ([]Get
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCurrentStripeSubscriptionByUserID = `-- name: GetCurrentStripeSubscriptionByUserID :one
+SELECT
+    stripe_subscription_id,
+    user_id,
+    stripe_customer_id,
+    stripe_price_id,
+    status,
+    cancel_at_period_end,
+    current_period_start,
+    current_period_end,
+    trial_start,
+    trial_end,
+    created_at,
+    updated_at
+FROM stripe_subscriptions
+WHERE user_id = $1
+ORDER BY
+    CASE WHEN status IN ('trialing', 'active') THEN 0 ELSE 1 END,
+    updated_at DESC,
+    created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetCurrentStripeSubscriptionByUserID(ctx context.Context, userID string) (StripeSubscriptions, error) {
+	row := q.db.QueryRow(ctx, getCurrentStripeSubscriptionByUserID, userID)
+	var i StripeSubscriptions
+	err := row.Scan(
+		&i.StripeSubscriptionID,
+		&i.UserID,
+		&i.StripeCustomerID,
+		&i.StripePriceID,
+		&i.Status,
+		&i.CancelAtPeriodEnd,
+		&i.CurrentPeriodStart,
+		&i.CurrentPeriodEnd,
+		&i.TrialStart,
+		&i.TrialEnd,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getExercise = `-- name: GetExercise :one
@@ -1486,6 +1587,43 @@ func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (GetSetRow, erro
 	return i, err
 }
 
+const getStripeCustomerByCustomerID = `-- name: GetStripeCustomerByCustomerID :one
+SELECT user_id, stripe_customer_id, created_at, updated_at
+FROM stripe_customers
+WHERE stripe_customer_id = $1
+`
+
+func (q *Queries) GetStripeCustomerByCustomerID(ctx context.Context, stripeCustomerID string) (StripeCustomers, error) {
+	row := q.db.QueryRow(ctx, getStripeCustomerByCustomerID, stripeCustomerID)
+	var i StripeCustomers
+	err := row.Scan(
+		&i.UserID,
+		&i.StripeCustomerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getStripeCustomerByUserID = `-- name: GetStripeCustomerByUserID :one
+SELECT user_id, stripe_customer_id, created_at, updated_at
+FROM stripe_customers
+WHERE user_id = $1
+`
+
+// Billing queries
+func (q *Queries) GetStripeCustomerByUserID(ctx context.Context, userID string) (StripeCustomers, error) {
+	row := q.db.QueryRow(ctx, getStripeCustomerByUserID, userID)
+	var i StripeCustomers
+	err := row.Scan(
+		&i.UserID,
+		&i.StripeCustomerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, user_id, created_at FROM users WHERE id = $1
 `
@@ -1661,6 +1799,39 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 	return items, nil
 }
 
+const grantStripeFeatureAccess = `-- name: GrantStripeFeatureAccess :exec
+INSERT INTO user_feature_access (
+    user_id,
+    feature_key,
+    source,
+    source_reference,
+    granted_by,
+    note,
+    starts_at,
+    expires_at
+)
+VALUES ($1, $2, 'stripe', $3, 'stripe_webhook', $4, CURRENT_TIMESTAMP, $5)
+`
+
+type GrantStripeFeatureAccessParams struct {
+	UserID          string             `json:"user_id"`
+	FeatureKey      string             `json:"feature_key"`
+	SourceReference pgtype.Text        `json:"source_reference"`
+	Note            pgtype.Text        `json:"note"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) GrantStripeFeatureAccess(ctx context.Context, arg GrantStripeFeatureAccessParams) error {
+	_, err := q.db.Exec(ctx, grantStripeFeatureAccess,
+		arg.UserID,
+		arg.FeatureKey,
+		arg.SourceReference,
+		arg.Note,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const hasActiveFeatureAccess = `-- name: HasActiveFeatureAccess :one
 SELECT EXISTS (
     SELECT 1
@@ -1680,6 +1851,21 @@ type HasActiveFeatureAccessParams struct {
 
 func (q *Queries) HasActiveFeatureAccess(ctx context.Context, arg HasActiveFeatureAccessParams) (bool, error) {
 	row := q.db.QueryRow(ctx, hasActiveFeatureAccess, arg.UserID, arg.FeatureKey)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const hasProcessedStripeWebhookEvent = `-- name: HasProcessedStripeWebhookEvent :one
+SELECT EXISTS (
+    SELECT 1
+    FROM stripe_webhook_events
+    WHERE stripe_event_id = $1
+)
+`
+
+func (q *Queries) HasProcessedStripeWebhookEvent(ctx context.Context, stripeEventID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasProcessedStripeWebhookEvent, stripeEventID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -2123,6 +2309,46 @@ func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIC
 		&i.CompletedAt,
 	)
 	return i, err
+}
+
+const markStripeWebhookEventProcessed = `-- name: MarkStripeWebhookEventProcessed :exec
+INSERT INTO stripe_webhook_events (
+    stripe_event_id,
+    event_type
+)
+VALUES ($1, $2)
+ON CONFLICT (stripe_event_id) DO NOTHING
+`
+
+type MarkStripeWebhookEventProcessedParams struct {
+	StripeEventID string `json:"stripe_event_id"`
+	EventType     string `json:"event_type"`
+}
+
+func (q *Queries) MarkStripeWebhookEventProcessed(ctx context.Context, arg MarkStripeWebhookEventProcessedParams) error {
+	_, err := q.db.Exec(ctx, markStripeWebhookEventProcessed, arg.StripeEventID, arg.EventType)
+	return err
+}
+
+const revokeStripeFeatureAccess = `-- name: RevokeStripeFeatureAccess :exec
+UPDATE user_feature_access
+SET revoked_at = CURRENT_TIMESTAMP
+WHERE user_id = $1
+  AND feature_key = $2
+  AND source = 'stripe'
+  AND source_reference = $3
+  AND revoked_at IS NULL
+`
+
+type RevokeStripeFeatureAccessParams struct {
+	UserID          string      `json:"user_id"`
+	FeatureKey      string      `json:"feature_key"`
+	SourceReference pgtype.Text `json:"source_reference"`
+}
+
+func (q *Queries) RevokeStripeFeatureAccess(ctx context.Context, arg RevokeStripeFeatureAccessParams) error {
+	_, err := q.db.Exec(ctx, revokeStripeFeatureAccess, arg.UserID, arg.FeatureKey, arg.SourceReference)
+	return err
 }
 
 const setAIChatConversationLatestWorkoutDraft = `-- name: SetAIChatConversationLatestWorkoutDraft :exec
@@ -2636,4 +2862,117 @@ func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (i
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const upsertStripeCustomer = `-- name: UpsertStripeCustomer :one
+INSERT INTO stripe_customers (
+    user_id,
+    stripe_customer_id
+)
+VALUES ($1, $2)
+ON CONFLICT (user_id) DO UPDATE
+SET stripe_customer_id = EXCLUDED.stripe_customer_id,
+    updated_at = CURRENT_TIMESTAMP
+RETURNING user_id, stripe_customer_id, created_at, updated_at
+`
+
+type UpsertStripeCustomerParams struct {
+	UserID           string `json:"user_id"`
+	StripeCustomerID string `json:"stripe_customer_id"`
+}
+
+func (q *Queries) UpsertStripeCustomer(ctx context.Context, arg UpsertStripeCustomerParams) (StripeCustomers, error) {
+	row := q.db.QueryRow(ctx, upsertStripeCustomer, arg.UserID, arg.StripeCustomerID)
+	var i StripeCustomers
+	err := row.Scan(
+		&i.UserID,
+		&i.StripeCustomerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertStripeSubscription = `-- name: UpsertStripeSubscription :one
+INSERT INTO stripe_subscriptions (
+    stripe_subscription_id,
+    user_id,
+    stripe_customer_id,
+    stripe_price_id,
+    status,
+    cancel_at_period_end,
+    current_period_start,
+    current_period_end,
+    trial_start,
+    trial_end
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (stripe_subscription_id) DO UPDATE
+SET user_id = EXCLUDED.user_id,
+    stripe_customer_id = EXCLUDED.stripe_customer_id,
+    stripe_price_id = EXCLUDED.stripe_price_id,
+    status = EXCLUDED.status,
+    cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+    current_period_start = EXCLUDED.current_period_start,
+    current_period_end = EXCLUDED.current_period_end,
+    trial_start = EXCLUDED.trial_start,
+    trial_end = EXCLUDED.trial_end,
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    stripe_subscription_id,
+    user_id,
+    stripe_customer_id,
+    stripe_price_id,
+    status,
+    cancel_at_period_end,
+    current_period_start,
+    current_period_end,
+    trial_start,
+    trial_end,
+    created_at,
+    updated_at
+`
+
+type UpsertStripeSubscriptionParams struct {
+	StripeSubscriptionID string             `json:"stripe_subscription_id"`
+	UserID               string             `json:"user_id"`
+	StripeCustomerID     string             `json:"stripe_customer_id"`
+	StripePriceID        string             `json:"stripe_price_id"`
+	Status               string             `json:"status"`
+	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
+	TrialStart           pgtype.Timestamptz `json:"trial_start"`
+	TrialEnd             pgtype.Timestamptz `json:"trial_end"`
+}
+
+func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripeSubscriptionParams) (StripeSubscriptions, error) {
+	row := q.db.QueryRow(ctx, upsertStripeSubscription,
+		arg.StripeSubscriptionID,
+		arg.UserID,
+		arg.StripeCustomerID,
+		arg.StripePriceID,
+		arg.Status,
+		arg.CancelAtPeriodEnd,
+		arg.CurrentPeriodStart,
+		arg.CurrentPeriodEnd,
+		arg.TrialStart,
+		arg.TrialEnd,
+	)
+	var i StripeSubscriptions
+	err := row.Scan(
+		&i.StripeSubscriptionID,
+		&i.UserID,
+		&i.StripeCustomerID,
+		&i.StripePriceID,
+		&i.Status,
+		&i.CancelAtPeriodEnd,
+		&i.CurrentPeriodStart,
+		&i.CurrentPeriodEnd,
+		&i.TrialStart,
+		&i.TrialEnd,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

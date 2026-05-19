@@ -30,6 +30,10 @@ type recoveryDispatcher interface {
 	EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error
 }
 
+type premiumAccessService interface {
+	EnsureAIChatPromptAllowed(ctx context.Context) error
+}
+
 type workoutCreator interface {
 	CreateWorkoutWithID(ctx context.Context, requestBody workout.CreateWorkoutRequest) (int32, error)
 }
@@ -41,6 +45,7 @@ type Service struct {
 	repo          Repository
 	recovery      recoveryDispatcher
 	workouts      workoutCreator
+	premiumAccess premiumAccessService
 }
 
 const (
@@ -64,6 +69,10 @@ func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime
 
 func (s *Service) SetRecoveryDispatcher(dispatcher recoveryDispatcher) {
 	s.recovery = dispatcher
+}
+
+func (s *Service) SetPremiumAccessService(service premiumAccessService) {
+	s.premiumAccess = service
 }
 
 func (s *Service) Validate(ctx context.Context, prompt string) (*ValidateResponse, error) {
@@ -221,6 +230,11 @@ func (s *Service) RequestMessageRecovery(ctx context.Context, conversationID int
 func (s *Service) PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error) {
 	if err := s.ensureAllowed(ctx); err != nil {
 		return nil, err
+	}
+	if s.premiumAccess != nil {
+		if err := s.premiumAccess.EnsureAIChatPromptAllowed(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	userID, err := currentUserID(ctx)

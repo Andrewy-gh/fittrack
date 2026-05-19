@@ -37,7 +37,7 @@ func TestRoutes_AllowsInngestHandlerAlongsideStaticFallback(t *testing.T) {
 		}
 	}()
 
-	_ = api.routes(wh, eh, fh, hh, ah, nil)
+	_ = api.routes(wh, eh, fh, hh, ah, nil, nil)
 }
 
 func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
@@ -62,7 +62,7 @@ func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
 	hh := health.NewHandler(logger, nil)
 	ah := aichat.NewHandler(logger, nil)
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil)
 	req := httptest.NewRequest(http.MethodPut, "/inngest", nil)
 	rr := httptest.NewRecorder()
 

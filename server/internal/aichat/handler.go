@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
@@ -604,6 +605,8 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 	case errors.Is(err, ErrFeatureDisabled):
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat feature is not enabled for this user", nil)
+	case errors.Is(err, billing.ErrTrialPromptLimitExceeded):
+		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat trial prompt limit reached", nil)
 	case errors.Is(err, ErrRuntimeUnavailable):
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat runtime is not configured", nil)
 	case errors.Is(err, ErrRecoveryUnavailable):
@@ -636,6 +639,8 @@ func (h *Handler) writeStreamError(sse *sseWriter, r *http.Request, conversation
 		event.Message = errUnauthorized.Error()
 	case errors.Is(err, ErrFeatureDisabled):
 		event.Message = "ai chat feature is not enabled for this user"
+	case errors.Is(err, billing.ErrTrialPromptLimitExceeded):
+		event.Message = "ai chat trial prompt limit reached"
 	case errors.Is(err, ErrRuntimeUnavailable):
 		event.Message = "ai chat runtime is not configured"
 	case errors.Is(err, ErrGenerationTimeout):

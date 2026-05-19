@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
@@ -16,12 +17,15 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, bh *billing.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health endpoints (no authentication required)
 	mux.HandleFunc("GET /health", hh.Health)
 	mux.HandleFunc("GET /ready", hh.Ready)
+	if bh != nil {
+		mux.HandleFunc("POST /stripe/webhook", bh.Webhook)
+	}
 
 	// Metrics endpoint (basic auth if configured)
 	metricsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +48,10 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/workouts/contribution-data", wh.GetContributionData)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("GET /api/features/access", fh.ListActiveFeatureAccess)
+	if bh != nil {
+		mux.HandleFunc("POST /api/billing/checkout-session", bh.CreateCheckoutSession)
+		mux.HandleFunc("GET /api/billing/status", bh.CurrentStatus)
+	}
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)
 	mux.HandleFunc("GET /api/exercises/{id}", eh.GetExerciseWithSets)
 	mux.HandleFunc("GET /api/exercises/{id}/recent-sets", eh.GetRecentSetsForExercise)

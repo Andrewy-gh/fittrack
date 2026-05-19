@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -160,6 +161,15 @@ type mockRecoveryDispatcher struct {
 
 func (m *mockRecoveryDispatcher) EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error {
 	args := m.Called(ctx, request)
+	return args.Error(0)
+}
+
+type mockPremiumAccessService struct {
+	mock.Mock
+}
+
+func (m *mockPremiumAccessService) EnsureAIChatPromptAllowed(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
@@ -550,6 +560,31 @@ func TestServicePrepareMessageStream_RequiresRuntime(t *testing.T) {
 	assert.ErrorIs(t, err, ErrRuntimeUnavailable)
 	repo.AssertNotCalled(t, "PrepareMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	featureAccess.AssertNotCalled(t, "HasCurrentUserFeatureAccess", mock.Anything, mock.Anything)
+	runtime.AssertExpectations(t)
+}
+
+func TestServicePrepareMessageStream_StopsWhenTrialPromptCapReached(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	premiumAccess := new(mockPremiumAccessService)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
+	service.SetPremiumAccessService(premiumAccess)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	runtime.On("Available").Return(true).Once()
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	premiumAccess.On("EnsureAIChatPromptAllowed", mock.Anything).Return(billing.ErrTrialPromptLimitExceeded).Once()
+
+	prepared, err := service.PrepareMessageStream(ctx, 41, "hello", "req-123")
+
+	require.ErrorIs(t, err, billing.ErrTrialPromptLimitExceeded)
+	assert.Nil(t, prepared)
+	repo.AssertNotCalled(t, "PrepareMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertNotCalled(t, "ModelName")
+	featureAccess.AssertExpectations(t)
+	premiumAccess.AssertExpectations(t)
 	runtime.AssertExpectations(t)
 }
 

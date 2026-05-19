@@ -446,6 +446,145 @@ SELECT EXISTS (
       AND (expires_at IS NULL OR expires_at > NOW())
 );
 
+-- Billing queries
+-- name: GetStripeCustomerByUserID :one
+SELECT user_id, stripe_customer_id, created_at, updated_at
+FROM stripe_customers
+WHERE user_id = $1;
+
+-- name: GetStripeCustomerByCustomerID :one
+SELECT user_id, stripe_customer_id, created_at, updated_at
+FROM stripe_customers
+WHERE stripe_customer_id = $1;
+
+-- name: UpsertStripeCustomer :one
+INSERT INTO stripe_customers (
+    user_id,
+    stripe_customer_id
+)
+VALUES ($1, $2)
+ON CONFLICT (user_id) DO UPDATE
+SET stripe_customer_id = EXCLUDED.stripe_customer_id,
+    updated_at = CURRENT_TIMESTAMP
+RETURNING user_id, stripe_customer_id, created_at, updated_at;
+
+-- name: UpsertStripeSubscription :one
+INSERT INTO stripe_subscriptions (
+    stripe_subscription_id,
+    user_id,
+    stripe_customer_id,
+    stripe_price_id,
+    status,
+    cancel_at_period_end,
+    current_period_start,
+    current_period_end,
+    trial_start,
+    trial_end
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (stripe_subscription_id) DO UPDATE
+SET user_id = EXCLUDED.user_id,
+    stripe_customer_id = EXCLUDED.stripe_customer_id,
+    stripe_price_id = EXCLUDED.stripe_price_id,
+    status = EXCLUDED.status,
+    cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+    current_period_start = EXCLUDED.current_period_start,
+    current_period_end = EXCLUDED.current_period_end,
+    trial_start = EXCLUDED.trial_start,
+    trial_end = EXCLUDED.trial_end,
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    stripe_subscription_id,
+    user_id,
+    stripe_customer_id,
+    stripe_price_id,
+    status,
+    cancel_at_period_end,
+    current_period_start,
+    current_period_end,
+    trial_start,
+    trial_end,
+    created_at,
+    updated_at;
+
+-- name: GetCurrentStripeSubscriptionByUserID :one
+SELECT
+    stripe_subscription_id,
+    user_id,
+    stripe_customer_id,
+    stripe_price_id,
+    status,
+    cancel_at_period_end,
+    current_period_start,
+    current_period_end,
+    trial_start,
+    trial_end,
+    created_at,
+    updated_at
+FROM stripe_subscriptions
+WHERE user_id = $1
+ORDER BY
+    CASE WHEN status IN ('trialing', 'active') THEN 0 ELSE 1 END,
+    updated_at DESC,
+    created_at DESC
+LIMIT 1;
+
+-- name: HasProcessedStripeWebhookEvent :one
+SELECT EXISTS (
+    SELECT 1
+    FROM stripe_webhook_events
+    WHERE stripe_event_id = $1
+);
+
+-- name: MarkStripeWebhookEventProcessed :exec
+INSERT INTO stripe_webhook_events (
+    stripe_event_id,
+    event_type
+)
+VALUES ($1, $2)
+ON CONFLICT (stripe_event_id) DO NOTHING;
+
+-- name: RevokeStripeFeatureAccess :exec
+UPDATE user_feature_access
+SET revoked_at = CURRENT_TIMESTAMP
+WHERE user_id = $1
+  AND feature_key = $2
+  AND source = 'stripe'
+  AND source_reference = $3
+  AND revoked_at IS NULL;
+
+-- name: GrantStripeFeatureAccess :exec
+INSERT INTO user_feature_access (
+    user_id,
+    feature_key,
+    source,
+    source_reference,
+    granted_by,
+    note,
+    starts_at,
+    expires_at
+)
+VALUES ($1, $2, 'stripe', $3, 'stripe_webhook', $4, CURRENT_TIMESTAMP, $5);
+
+-- name: GetAIChatTrialPromptUsage :one
+SELECT user_id, stripe_subscription_id, prompt_count, created_at, updated_at
+FROM ai_chat_trial_prompt_usage
+WHERE user_id = $1
+  AND stripe_subscription_id = $2;
+
+-- name: ConsumeAIChatTrialPrompt :one
+INSERT INTO ai_chat_trial_prompt_usage (
+    user_id,
+    stripe_subscription_id,
+    prompt_count
+)
+VALUES ($1, $2, 1)
+ON CONFLICT (user_id, stripe_subscription_id) DO UPDATE
+SET prompt_count = ai_chat_trial_prompt_usage.prompt_count + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE ai_chat_trial_prompt_usage.prompt_count < $3
+RETURNING user_id, stripe_subscription_id, prompt_count, created_at, updated_at;
+
 -- UPDATE queries for PUT endpoint
 -- name: UpdateWorkout :one
 UPDATE workout
