@@ -171,6 +171,7 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"session length",
 		"how long would you like the session",
 		"how long do you want the session",
+		"how long should the session",
 	})
 	return refusesMealPlan && asksForWorkoutFocus && asksForSessionDetails
 }
