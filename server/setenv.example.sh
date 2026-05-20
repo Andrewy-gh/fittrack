@@ -40,7 +40,10 @@ export GEMINI_API_KEY="your-gemini-api-key"
 # export INNGEST_EVENT_KEY="your-inngest-event-key"
 # export INNGEST_SIGNING_KEY="your-inngest-signing-key"
 
-# Optional Stripe premium AI chat billing
+# Optional Stripe premium AI chat billing.
+# Use test-mode values from the same Stripe account. STRIPE_PREMIUM_PRICE_ID
+# must be a recurring test Price ID such as price_..., not a display label.
+# STRIPE_WEBHOOK_SECRET should come from `stripe listen`.
 # export STRIPE_SECRET_KEY="sk_test_..."
 # export STRIPE_WEBHOOK_SECRET="whsec_..."
 # export STRIPE_PREMIUM_PRICE_ID="price_..."
