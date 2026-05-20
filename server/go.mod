@@ -3,14 +3,14 @@ module github.com/Andrewy-gh/fittrack/server
 go 1.26.3
 
 require (
-	github.com/firebase/genkit/go v1.7.0
+	github.com/firebase/genkit/go v1.8.0
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/google/uuid v1.6.0
 	github.com/inngest/inngestgo v0.15.1
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/httprc/v3 v3.0.5
-	github.com/lestrrat-go/jwx/v3 v3.1.0
+	github.com/lestrrat-go/jwx/v3 v3.1.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/http-swagger v1.3.4
