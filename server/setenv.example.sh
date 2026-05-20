@@ -41,9 +41,13 @@ export GEMINI_API_KEY="your-gemini-api-key"
 # export INNGEST_SIGNING_KEY="your-inngest-signing-key"
 
 # Optional Stripe premium AI chat billing.
-# Use test-mode values from the same Stripe account. STRIPE_PREMIUM_PRICE_ID
-# must be a recurring test Price ID such as price_..., not a display label.
-# STRIPE_WEBHOOK_SECRET should come from `stripe listen`.
+# Use test-mode values from the same Stripe account.
+# STRIPE_SECRET_KEY must be a sk_test_... secret key.
+# STRIPE_WEBHOOK_SECRET must be the whsec_... printed by `stripe listen`.
+# STRIPE_PREMIUM_PRICE_ID must be a recurring test Price ID such as price_...,
+# not a display label.
+# APP_BASE_URL is the frontend origin used for Checkout redirects.
+# AI_CHAT_TRIAL_PROMPT_CAP is the Stripe trial AI chat run limit.
 # export STRIPE_SECRET_KEY="sk_test_..."
 # export STRIPE_WEBHOOK_SECRET="whsec_..."
 # export STRIPE_PREMIUM_PRICE_ID="price_..."

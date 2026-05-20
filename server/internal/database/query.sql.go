@@ -106,6 +106,54 @@ func (q *Queries) ConsumeAIChatTrialPrompt(ctx context.Context, arg ConsumeAICha
 	return i, err
 }
 
+const consumeAIChatTrialPromptForCurrentSubscription = `-- name: ConsumeAIChatTrialPromptForCurrentSubscription :one
+WITH current_subscription AS (
+    SELECT stripe_subscription_id, status
+    FROM stripe_subscriptions
+    WHERE stripe_subscriptions.user_id = $1
+    ORDER BY
+        stripe_event_created_at DESC,
+        updated_at DESC,
+        created_at DESC
+    LIMIT 1
+),
+trial_subscription AS (
+    SELECT stripe_subscription_id
+    FROM current_subscription
+    WHERE status = 'trialing'
+),
+consumed AS (
+    INSERT INTO ai_chat_trial_prompt_usage (
+        user_id,
+        stripe_subscription_id,
+        prompt_count
+    )
+    SELECT $1, stripe_subscription_id, 1
+    FROM trial_subscription
+    WHERE $2::integer > 0
+    ON CONFLICT (user_id, stripe_subscription_id) DO UPDATE
+    SET prompt_count = ai_chat_trial_prompt_usage.prompt_count + 1,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE ai_chat_trial_prompt_usage.prompt_count < $2::integer
+    RETURNING 1
+)
+SELECT
+    NOT EXISTS (SELECT 1 FROM trial_subscription)
+    OR EXISTS (SELECT 1 FROM consumed) AS allowed
+`
+
+type ConsumeAIChatTrialPromptForCurrentSubscriptionParams struct {
+	UserID    string `json:"user_id"`
+	PromptCap int32  `json:"prompt_cap"`
+}
+
+func (q *Queries) ConsumeAIChatTrialPromptForCurrentSubscription(ctx context.Context, arg ConsumeAIChatTrialPromptForCurrentSubscriptionParams) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, consumeAIChatTrialPromptForCurrentSubscription, arg.UserID, arg.PromptCap)
+	var allowed pgtype.Bool
+	err := row.Scan(&allowed)
+	return allowed, err
+}
+
 const createAIChatConversation = `-- name: CreateAIChatConversation :one
 INSERT INTO ai_chat_conversation (
     user_id,
@@ -772,6 +820,7 @@ SELECT
     user_id,
     stripe_customer_id,
     stripe_price_id,
+    stripe_event_created_at,
     status,
     cancel_at_period_end,
     current_period_start,
@@ -783,7 +832,7 @@ SELECT
 FROM stripe_subscriptions
 WHERE user_id = $1
 ORDER BY
-    CASE WHEN status IN ('trialing', 'active') THEN 0 ELSE 1 END,
+    stripe_event_created_at DESC,
     updated_at DESC,
     created_at DESC
 LIMIT 1
@@ -797,6 +846,7 @@ func (q *Queries) GetCurrentStripeSubscriptionByUserID(ctx context.Context, user
 		&i.UserID,
 		&i.StripeCustomerID,
 		&i.StripePriceID,
+		&i.StripeEventCreatedAt,
 		&i.Status,
 		&i.CancelAtPeriodEnd,
 		&i.CurrentPeriodStart,
@@ -2899,6 +2949,7 @@ INSERT INTO stripe_subscriptions (
     user_id,
     stripe_customer_id,
     stripe_price_id,
+    stripe_event_created_at,
     status,
     cancel_at_period_end,
     current_period_start,
@@ -2906,11 +2957,24 @@ INSERT INTO stripe_subscriptions (
     trial_start,
     trial_end
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+VALUES (
+    $1,
+    $2,
+    $3,
+    NULLIF($4::text, ''),
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
+)
 ON CONFLICT (stripe_subscription_id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     stripe_customer_id = EXCLUDED.stripe_customer_id,
     stripe_price_id = EXCLUDED.stripe_price_id,
+    stripe_event_created_at = EXCLUDED.stripe_event_created_at,
     status = EXCLUDED.status,
     cancel_at_period_end = EXCLUDED.cancel_at_period_end,
     current_period_start = EXCLUDED.current_period_start,
@@ -2918,11 +2982,13 @@ SET user_id = EXCLUDED.user_id,
     trial_start = EXCLUDED.trial_start,
     trial_end = EXCLUDED.trial_end,
     updated_at = CURRENT_TIMESTAMP
+WHERE stripe_subscriptions.stripe_event_created_at <= EXCLUDED.stripe_event_created_at
 RETURNING
     stripe_subscription_id,
     user_id,
     stripe_customer_id,
     stripe_price_id,
+    stripe_event_created_at,
     status,
     cancel_at_period_end,
     current_period_start,
@@ -2938,6 +3004,7 @@ type UpsertStripeSubscriptionParams struct {
 	UserID               string             `json:"user_id"`
 	StripeCustomerID     string             `json:"stripe_customer_id"`
 	StripePriceID        string             `json:"stripe_price_id"`
+	StripeEventCreatedAt pgtype.Timestamptz `json:"stripe_event_created_at"`
 	Status               string             `json:"status"`
 	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
 	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
@@ -2952,6 +3019,7 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 		arg.UserID,
 		arg.StripeCustomerID,
 		arg.StripePriceID,
+		arg.StripeEventCreatedAt,
 		arg.Status,
 		arg.CancelAtPeriodEnd,
 		arg.CurrentPeriodStart,
@@ -2965,6 +3033,7 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 		&i.UserID,
 		&i.StripeCustomerID,
 		&i.StripePriceID,
+		&i.StripeEventCreatedAt,
 		&i.Status,
 		&i.CancelAtPeriodEnd,
 		&i.CurrentPeriodStart,

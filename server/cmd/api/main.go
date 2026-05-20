@@ -170,10 +170,9 @@ func main() {
 		cfg.AIChatTrialPromptCap,
 	)
 	userService := user.NewService(logger, userRepo)
-	aiChatRepo := aichat.NewRepository(logger, queries, pool, workoutTxSaver)
+	aiChatRepo := aichat.NewRepository(logger, queries, pool, workoutTxSaver, cfg.AIChatTrialPromptCap)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutService)
-	aiChatService.SetPremiumAccessService(billingService)
 	var inngestRecovery *aichat.InngestRecovery
 	switch {
 	case cfg.AIChatRecoveryConfigured():

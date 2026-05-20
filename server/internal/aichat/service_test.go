@@ -568,23 +568,22 @@ func TestServicePrepareMessageStream_StopsWhenTrialPromptCapReached(t *testing.T
 	featureAccess := new(mockFeatureAccessService)
 	runtime := new(mockRuntime)
 	repo := new(mockRepository)
-	premiumAccess := new(mockPremiumAccessService)
 	service := NewService(logger, featureAccess, runtime, repo, nil)
-	service.SetPremiumAccessService(premiumAccess)
 	ctx := user.WithContext(context.Background(), "user-123")
 
 	runtime.On("Available").Return(true).Once()
 	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-	premiumAccess.On("EnsureAIChatPromptAllowed", mock.Anything).Return(billing.ErrTrialPromptLimitExceeded).Once()
+	runtime.On("ModelName").Return(defaultModelName).Once()
+	repo.On("PrepareMessageStream", mock.Anything, int32(41), "user-123", "hello", defaultModelName, "req-123").
+		Return((*PreparedMessageStream)(nil), billing.ErrTrialPromptLimitExceeded).
+		Once()
 
 	prepared, err := service.PrepareMessageStream(ctx, 41, "hello", "req-123")
 
 	require.ErrorIs(t, err, billing.ErrTrialPromptLimitExceeded)
 	assert.Nil(t, prepared)
-	repo.AssertNotCalled(t, "PrepareMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	runtime.AssertNotCalled(t, "ModelName")
 	featureAccess.AssertExpectations(t)
-	premiumAccess.AssertExpectations(t)
+	repo.AssertExpectations(t)
 	runtime.AssertExpectations(t)
 }
 

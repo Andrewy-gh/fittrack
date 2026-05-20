@@ -3,6 +3,7 @@ package aichat
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -264,6 +266,100 @@ func TestRepositorySaveLatestWorkoutDraft_ConcurrentCallsCreateOneWorkout(t *tes
 	assert.Equal(t, 1, workoutCount)
 }
 
+func TestRepositoryPrepareMessageStream_TrialCapAllowsTwoStartsAndBlocksThird(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-trial-cap-user"
+	const subscriptionID = "sub_aichat_trial_cap"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+	seedAIChatRepositoryTestTrialSubscription(t, pool, userID, subscriptionID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo), 2)
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+
+	first, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "first prompt", defaultModelName, "req-trial-cap-1")
+	require.NoError(t, err)
+	_, _, err = repo.CompleteRun(ctx, first, "first answer", nil, time.Now().UTC())
+	require.NoError(t, err)
+
+	second, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "second prompt", defaultModelName, "req-trial-cap-2")
+	require.NoError(t, err)
+	_, _, err = repo.CompleteRun(ctx, second, "second answer", nil, time.Now().UTC())
+	require.NoError(t, err)
+
+	third, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "third prompt", defaultModelName, "req-trial-cap-3")
+	require.ErrorIs(t, err, billing.ErrTrialPromptLimitExceeded)
+	assert.Nil(t, third)
+
+	assertTrialPromptUsage(t, pool, userID, subscriptionID, 2)
+	assertAIChatRunCount(t, pool, userID, conversation.ID, 2)
+}
+
+func TestRepositoryPrepareMessageStream_DoesNotConsumeTrialPromptWhenStartFails(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-trial-failed-start-user"
+	const subscriptionID = "sub_aichat_trial_failed_start"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+	seedAIChatRepositoryTestTrialSubscription(t, pool, userID, subscriptionID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo), 2)
+
+	missing, err := repo.PrepareMessageStream(ctx, 999999, userID, "missing conversation", defaultModelName, "req-missing")
+	require.Error(t, err)
+	assert.Nil(t, missing)
+	assertNoTrialPromptUsage(t, pool, userID, subscriptionID)
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+
+	invalidModel, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "invalid model", "", "req-invalid-model")
+	require.Error(t, err)
+	assert.Nil(t, invalidModel)
+	assertNoTrialPromptUsage(t, pool, userID, subscriptionID)
+
+	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "started prompt", defaultModelName, "req-started")
+	require.NoError(t, err)
+	assertTrialPromptUsage(t, pool, userID, subscriptionID, 1)
+
+	busy, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "busy prompt", defaultModelName, "req-busy")
+	require.ErrorIs(t, err, ErrConversationBusy)
+	assert.Nil(t, busy)
+	assertTrialPromptUsage(t, pool, userID, subscriptionID, 1)
+
+	err = repo.FailRun(ctx, prepared, "", errors.New("provider failed"), time.Now().UTC())
+	require.NoError(t, err)
+	assertTrialPromptUsage(t, pool, userID, subscriptionID, 1)
+}
+
 func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 	t.Helper()
 
@@ -282,6 +378,9 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 
 	tables := []string{
 		"users",
+		"stripe_customers",
+		"stripe_subscriptions",
+		"ai_chat_trial_prompt_usage",
 		"ai_chat_conversation",
 		"ai_chat_message",
 		"ai_chat_run",
@@ -305,6 +404,10 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-save-draft-race-user")
 		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-cap-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-failed-start-user")
+		require.NoError(t, err)
 
 		for _, table := range tables {
 			_, err := pool.Exec(ctx, "ALTER TABLE "+table+" ENABLE ROW LEVEL SECURITY")
@@ -322,6 +425,80 @@ func seedAIChatRepositoryTestUser(t *testing.T, pool *pgxpool.Pool, userID strin
 
 	_, err := pool.Exec(context.Background(), "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID)
 	require.NoError(t, err)
+}
+
+func seedAIChatRepositoryTestTrialSubscription(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) {
+	t.Helper()
+
+	now := time.Now().UTC()
+	_, err := pool.Exec(context.Background(), `
+		INSERT INTO stripe_customers (user_id, stripe_customer_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) DO UPDATE SET stripe_customer_id = EXCLUDED.stripe_customer_id
+	`, userID, "cus_"+subscriptionID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(context.Background(), `
+		INSERT INTO stripe_subscriptions (
+			stripe_subscription_id,
+			user_id,
+			stripe_customer_id,
+			stripe_price_id,
+			stripe_event_created_at,
+			status,
+			cancel_at_period_end,
+			current_period_start,
+			current_period_end,
+			trial_start,
+			trial_end
+		)
+		VALUES ($1, $2, $3, $4, $5, 'trialing', false, $5, $6, $5, $6)
+		ON CONFLICT (stripe_subscription_id) DO UPDATE
+		SET status = 'trialing',
+			stripe_event_created_at = EXCLUDED.stripe_event_created_at,
+			current_period_end = EXCLUDED.current_period_end,
+			trial_end = EXCLUDED.trial_end
+	`, subscriptionID, userID, "cus_"+subscriptionID, "price_test", now, now.Add(24*time.Hour))
+	require.NoError(t, err)
+}
+
+func assertTrialPromptUsage(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string, want int32) {
+	t.Helper()
+
+	var got int32
+	err := pool.QueryRow(context.Background(), `
+		SELECT prompt_count
+		FROM ai_chat_trial_prompt_usage
+		WHERE user_id = $1 AND stripe_subscription_id = $2
+	`, userID, subscriptionID).Scan(&got)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func assertNoTrialPromptUsage(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) {
+	t.Helper()
+
+	var count int
+	err := pool.QueryRow(context.Background(), `
+		SELECT COUNT(*)
+		FROM ai_chat_trial_prompt_usage
+		WHERE user_id = $1 AND stripe_subscription_id = $2
+	`, userID, subscriptionID).Scan(&count)
+	require.NoError(t, err)
+	assert.Zero(t, count)
+}
+
+func assertAIChatRunCount(t *testing.T, pool *pgxpool.Pool, userID string, conversationID int32, want int) {
+	t.Helper()
+
+	var got int
+	err := pool.QueryRow(context.Background(), `
+		SELECT COUNT(*)
+		FROM ai_chat_run
+		WHERE user_id = $1 AND conversation_id = $2
+	`, userID, conversationID).Scan(&got)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
 }
 
 func getAIChatRepositoryTestDatabaseURL() string {

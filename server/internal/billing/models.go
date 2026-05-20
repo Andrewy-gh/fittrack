@@ -54,12 +54,14 @@ type StripeSubscriptionSnapshot struct {
 	UserID               string
 	StripeCustomerID     string
 	StripePriceID        string
+	StripeEventCreatedAt *time.Time
 	Status               string
 	CancelAtPeriodEnd    bool
 	CurrentPeriodStart   *time.Time
 	CurrentPeriodEnd     *time.Time
 	TrialStart           *time.Time
 	TrialEnd             *time.Time
+	GrantAIChatAccess    bool
 }
 
 func statusAllowsAccess(status string) bool {

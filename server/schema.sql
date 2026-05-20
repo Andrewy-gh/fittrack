@@ -40,7 +40,8 @@ CREATE TABLE stripe_subscriptions (
     stripe_subscription_id VARCHAR(256) PRIMARY KEY,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     stripe_customer_id VARCHAR(256) NOT NULL,
-    stripe_price_id VARCHAR(256) NOT NULL,
+    stripe_price_id VARCHAR(256),
+    stripe_event_created_at TIMESTAMPTZ NOT NULL,
     status VARCHAR(64) NOT NULL,
     cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
     current_period_start TIMESTAMPTZ,
@@ -50,7 +51,6 @@ CREATE TABLE stripe_subscriptions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT stripe_subscriptions_customer_id_not_empty CHECK (btrim(stripe_customer_id) <> ''),
-    CONSTRAINT stripe_subscriptions_price_id_not_empty CHECK (btrim(stripe_price_id) <> ''),
     CONSTRAINT stripe_subscriptions_status_not_empty CHECK (btrim(status) <> '')
 );
 
@@ -204,7 +204,7 @@ CREATE INDEX idx_exercise_user_id ON exercise(user_id);
 CREATE INDEX idx_workout_user_date ON workout(user_id, date);
 CREATE INDEX idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_key, starts_at DESC);
 CREATE INDEX idx_user_feature_access_active_lookup ON user_feature_access(user_id, starts_at DESC) WHERE revoked_at IS NULL;
-CREATE INDEX idx_stripe_subscriptions_user_updated ON stripe_subscriptions(user_id, updated_at DESC);
+CREATE INDEX idx_stripe_subscriptions_user_updated ON stripe_subscriptions(user_id, stripe_event_created_at DESC);
 CREATE INDEX idx_stripe_subscriptions_customer ON stripe_subscriptions(stripe_customer_id);
 CREATE INDEX idx_ai_chat_conversation_user_updated ON ai_chat_conversation(user_id, updated_at DESC, id DESC);
 CREATE INDEX idx_ai_chat_message_conversation ON ai_chat_message(conversation_id, id ASC);

@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	DevAuthHeaderName        = "x-fittrack-dev-e2e-user"
-	FeatureKeyAIChatbot      = "ai_chatbot"
+	DevAuthHeaderName   = "x-fittrack-dev-e2e-user"
+	FeatureKeyAIChatbot = "ai_chatbot"
+	// Local E2E grants are intentionally separate from Stripe grants so local
+	// bootstrap does not rewrite subscription-sourced access history.
 	featureAccessSource      = "local_e2e_auth"
 	featureAccessReference   = "local-e2e-bootstrap"
 	featureAccessGrantedBy   = "fittrack-local-e2e"

@@ -79,6 +79,7 @@ func TestServiceHandleWebhook_SubscriptionUpdatedPersistsSnapshotAndEventID(t *t
 	repo := new(mockRepository)
 	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
 	now := time.Date(2026, 5, 18, 16, 0, 0, 0, time.UTC)
+	eventCreatedAt := now.Add(time.Minute)
 	periodEnd := now.Add(30 * 24 * time.Hour)
 	raw := subscriptionEventPayload(t, "sub_123", "trialing", false, now, periodEnd)
 
@@ -87,9 +88,10 @@ func TestServiceHandleWebhook_SubscriptionUpdatedPersistsSnapshotAndEventID(t *t
 		assert.Equal(t, "sig", header)
 		assert.Equal(t, "whsec_123", secret)
 		return stripe.Event{
-			ID:   "evt_123",
-			Type: "customer.subscription.updated",
-			Data: &stripe.EventData{Raw: raw},
+			ID:      "evt_123",
+			Type:    "customer.subscription.updated",
+			Created: eventCreatedAt.Unix(),
+			Data:    &stripe.EventData{Raw: raw},
 		}, nil
 	}
 
@@ -98,12 +100,14 @@ func TestServiceHandleWebhook_SubscriptionUpdatedPersistsSnapshotAndEventID(t *t
 		UserID:               "user-123",
 		StripeCustomerID:     "cus_123",
 		StripePriceID:        "price_premium",
+		StripeEventCreatedAt: &eventCreatedAt,
 		Status:               "trialing",
 		CancelAtPeriodEnd:    false,
 		CurrentPeriodStart:   &now,
 		CurrentPeriodEnd:     &periodEnd,
 		TrialStart:           &now,
 		TrialEnd:             &periodEnd,
+		GrantAIChatAccess:    true,
 	}
 
 	repo.On("HasProcessedWebhookEvent", mock.Anything, "evt_123").Return(false, nil).Once()
@@ -138,6 +142,76 @@ func TestServiceHandleWebhook_SkipsAlreadyProcessedEvent(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceHandleWebhook_DoesNotGrantAccessForWrongOrMissingPrice(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	now := time.Date(2026, 5, 18, 16, 0, 0, 0, time.UTC)
+	periodEnd := now.Add(30 * 24 * time.Hour)
+	eventCreatedAt := now.Add(time.Minute)
+
+	tests := []struct {
+		name          string
+		priceID       *string
+		wantPriceID   string
+		subscription  string
+		stripeEventID string
+	}{
+		{
+			name:          "active subscription with wrong price",
+			priceID:       stringPtr("price_other"),
+			wantPriceID:   "price_other",
+			subscription:  "sub_wrong_price",
+			stripeEventID: "evt_wrong_price",
+		},
+		{
+			name:          "trialing subscription with missing price",
+			priceID:       nil,
+			wantPriceID:   "",
+			subscription:  "sub_missing_price",
+			stripeEventID: "evt_missing_price",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := new(mockRepository)
+			service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+			raw := subscriptionEventPayloadWithPrice(t, tt.subscription, "active", false, now, periodEnd, tt.priceID)
+
+			service.constructEvent = func(payload []byte, header string, secret string) (stripe.Event, error) {
+				return stripe.Event{
+					ID:      tt.stripeEventID,
+					Type:    "customer.subscription.updated",
+					Created: eventCreatedAt.Unix(),
+					Data:    &stripe.EventData{Raw: raw},
+				}, nil
+			}
+
+			expectedSnapshot := StripeSubscriptionSnapshot{
+				StripeSubscriptionID: tt.subscription,
+				UserID:               "user-123",
+				StripeCustomerID:     "cus_123",
+				StripePriceID:        tt.wantPriceID,
+				StripeEventCreatedAt: &eventCreatedAt,
+				Status:               "active",
+				CurrentPeriodStart:   &now,
+				CurrentPeriodEnd:     &periodEnd,
+				TrialStart:           &now,
+				TrialEnd:             &periodEnd,
+				GrantAIChatAccess:    false,
+			}
+
+			repo.On("HasProcessedWebhookEvent", mock.Anything, tt.stripeEventID).Return(false, nil).Once()
+			repo.On("UpsertSubscriptionFromWebhook", mock.Anything, expectedSnapshot).Return(db.StripeSubscriptions{}, nil).Once()
+			repo.On("MarkWebhookEventProcessed", mock.Anything, tt.stripeEventID, "customer.subscription.updated").Return(nil).Once()
+
+			err := service.HandleWebhook(context.Background(), []byte("payload"), "sig")
+
+			require.NoError(t, err)
+			repo.AssertExpectations(t)
+		})
+	}
+}
+
 func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	now := time.Now().UTC()
@@ -145,6 +219,7 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 	tests := []struct {
 		name       string
 		status     string
+		priceID    string
 		canceling  bool
 		periodEnd  time.Time
 		wantAccess bool
@@ -152,12 +227,14 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 		{
 			name:       "active has access",
 			status:     "active",
+			priceID:    "price_premium",
 			periodEnd:  now.Add(24 * time.Hour),
 			wantAccess: true,
 		},
 		{
 			name:       "cancel at period end keeps access until period end",
 			status:     "active",
+			priceID:    "price_premium",
 			canceling:  true,
 			periodEnd:  now.Add(24 * time.Hour),
 			wantAccess: true,
@@ -165,19 +242,29 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 		{
 			name:       "ended cancellation blocks after period end",
 			status:     "active",
+			priceID:    "price_premium",
 			canceling:  true,
 			periodEnd:  now.Add(-time.Hour),
 			wantAccess: false,
 		},
 		{
+			name:       "active wrong price blocks",
+			status:     "active",
+			priceID:    "price_other",
+			periodEnd:  now.Add(24 * time.Hour),
+			wantAccess: false,
+		},
+		{
 			name:       "past_due blocks immediately",
 			status:     "past_due",
+			priceID:    "price_premium",
 			periodEnd:  now.Add(24 * time.Hour),
 			wantAccess: false,
 		},
 		{
 			name:       "canceled blocks",
 			status:     "canceled",
+			priceID:    "price_premium",
 			periodEnd:  now.Add(24 * time.Hour),
 			wantAccess: false,
 		},
@@ -192,7 +279,7 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 				StripeSubscriptionID: "sub_123",
 				UserID:               "user-123",
 				StripeCustomerID:     "cus_123",
-				StripePriceID:        "price_premium",
+				StripePriceID:        textToPg(tt.priceID),
 				Status:               tt.status,
 				CancelAtPeriodEnd:    tt.canceling,
 				CurrentPeriodEnd:     pgtype.Timestamptz{Time: tt.periodEnd, Valid: true},
@@ -249,6 +336,33 @@ func TestServiceEnsureAIChatPromptAllowed_TrialCap(t *testing.T) {
 		require.ErrorIs(t, err, ErrTrialPromptLimitExceeded)
 		repo.AssertExpectations(t)
 	})
+
+	t.Run("cap two allows two prompts and blocks the third", func(t *testing.T) {
+		repo := new(mockRepository)
+		service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 2)
+		ctx := user.WithContext(context.Background(), "user-123")
+		subscription := db.StripeSubscriptions{
+			StripeSubscriptionID: "sub_123",
+			UserID:               "user-123",
+			Status:               "trialing",
+		}
+
+		repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(subscription, nil).Times(3)
+		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(2)).
+			Return(db.AiChatTrialPromptUsage{PromptCount: 1}, nil).
+			Once()
+		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(2)).
+			Return(db.AiChatTrialPromptUsage{PromptCount: 2}, nil).
+			Once()
+		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(2)).
+			Return(db.AiChatTrialPromptUsage{}, ErrTrialPromptLimitExceeded).
+			Once()
+
+		require.NoError(t, service.EnsureAIChatPromptAllowed(ctx))
+		require.NoError(t, service.EnsureAIChatPromptAllowed(ctx))
+		require.ErrorIs(t, service.EnsureAIChatPromptAllowed(ctx), ErrTrialPromptLimitExceeded)
+		repo.AssertExpectations(t)
+	})
 }
 
 func TestServiceCurrentStatus_NoSubscription(t *testing.T) {
@@ -269,6 +383,24 @@ func TestServiceCurrentStatus_NoSubscription(t *testing.T) {
 
 func subscriptionEventPayload(t *testing.T, subscriptionID string, status string, cancelAtPeriodEnd bool, periodStart time.Time, periodEnd time.Time) []byte {
 	t.Helper()
+	return subscriptionEventPayloadWithPrice(t, subscriptionID, status, cancelAtPeriodEnd, periodStart, periodEnd, stringPtr("price_premium"))
+}
+
+func subscriptionEventPayloadWithPrice(t *testing.T, subscriptionID string, status string, cancelAtPeriodEnd bool, periodStart time.Time, periodEnd time.Time, priceID *string) []byte {
+	t.Helper()
+
+	item := map[string]any{
+		"id":                   "si_123",
+		"object":               "subscription_item",
+		"current_period_start": periodStart.Unix(),
+		"current_period_end":   periodEnd.Unix(),
+	}
+	if priceID != nil {
+		item["price"] = map[string]any{
+			"id":     *priceID,
+			"object": "price",
+		}
+	}
 
 	payload := map[string]any{
 		"id":                   subscriptionID,
@@ -283,22 +415,15 @@ func subscriptionEventPayload(t *testing.T, subscriptionID string, status string
 		"trial_end":   periodEnd.Unix(),
 		"items": map[string]any{
 			"object": "list",
-			"data": []map[string]any{
-				{
-					"id":                   "si_123",
-					"object":               "subscription_item",
-					"current_period_start": periodStart.Unix(),
-					"current_period_end":   periodEnd.Unix(),
-					"price": map[string]any{
-						"id":     "price_premium",
-						"object": "price",
-					},
-				},
-			},
+			"data":   []map[string]any{item},
 		},
 	}
 
 	raw, err := json.Marshal(payload)
 	require.NoError(t, err)
 	return raw
+}
+
+func stringPtr(value string) *string {
+	return &value
 }

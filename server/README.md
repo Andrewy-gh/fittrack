@@ -177,6 +177,14 @@ export APP_BASE_URL="http://localhost:5173"
 export AI_CHAT_TRIAL_PROMPT_CAP=30
 ```
 
+Variable notes:
+
+- `STRIPE_SECRET_KEY` must be a test-mode secret key from the same Stripe account as the Price.
+- `STRIPE_PREMIUM_PRICE_ID` must be the recurring premium AI chat Price ID, for example `price_...`.
+- `STRIPE_WEBHOOK_SECRET` must be the `whsec_...` value printed by `stripe listen` for the webhook forwarding session.
+- `APP_BASE_URL` is the frontend origin used for Checkout success and cancel redirects.
+- `AI_CHAT_TRIAL_PROMPT_CAP` is the number of AI chat runs allowed during a Stripe trial; default is 30.
+
 3. Start the API:
 
 ```bash
@@ -203,6 +211,12 @@ Webhook behavior:
 - `active` subscriptions with `cancel_at_period_end=true` keep access until `current_period_end`.
 - `past_due`, `unpaid`, `canceled`, `incomplete`, and `incomplete_expired` revoke Stripe-granted AI chat access.
 - Trial users can start up to `AI_CHAT_TRIAL_PROMPT_CAP` AI chat runs; the default cap is 30.
+
+Testing caveat:
+
+- Local E2E auth bootstrap grants `ai_chatbot` access with `source='local_e2e_auth'`.
+- Stripe webhooks grant and revoke only `source='stripe'` rows.
+- Stripe access or revocation tests should use a user without local E2E bootstrap grants, or assert access by `source` so local dev access does not mask the Stripe-backed behavior being tested.
 
 ### Required vs Optional Variables
 
@@ -246,6 +260,7 @@ This local-only path is tightly gated:
 - it only turns on when `ENVIRONMENT=development`
 - it requires `E2E_LOCAL_AUTH_ENABLED=true`
 - it only accepts the one configured local E2E user id
+- it grants `ai_chatbot` with `source='local_e2e_auth'`, which is intentionally separate from Stripe billing grants
 
 When enabled, the server exposes two dev-only helpers:
 

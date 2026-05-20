@@ -12,7 +12,8 @@ CREATE TABLE stripe_subscriptions (
     stripe_subscription_id VARCHAR(256) PRIMARY KEY,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     stripe_customer_id VARCHAR(256) NOT NULL,
-    stripe_price_id VARCHAR(256) NOT NULL,
+    stripe_price_id VARCHAR(256),
+    stripe_event_created_at TIMESTAMPTZ NOT NULL,
     status VARCHAR(64) NOT NULL,
     cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
     current_period_start TIMESTAMPTZ,
@@ -22,12 +23,11 @@ CREATE TABLE stripe_subscriptions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT stripe_subscriptions_customer_id_not_empty CHECK (btrim(stripe_customer_id) <> ''),
-    CONSTRAINT stripe_subscriptions_price_id_not_empty CHECK (btrim(stripe_price_id) <> ''),
     CONSTRAINT stripe_subscriptions_status_not_empty CHECK (btrim(status) <> '')
 );
 
 CREATE INDEX idx_stripe_subscriptions_user_updated
-    ON stripe_subscriptions (user_id, updated_at DESC);
+    ON stripe_subscriptions (user_id, stripe_event_created_at DESC);
 
 CREATE INDEX idx_stripe_subscriptions_customer
     ON stripe_subscriptions (stripe_customer_id);

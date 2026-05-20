@@ -103,7 +103,8 @@ type StripeSubscriptions struct {
 	StripeSubscriptionID string             `json:"stripe_subscription_id"`
 	UserID               string             `json:"user_id"`
 	StripeCustomerID     string             `json:"stripe_customer_id"`
-	StripePriceID        string             `json:"stripe_price_id"`
+	StripePriceID        pgtype.Text        `json:"stripe_price_id"`
+	StripeEventCreatedAt pgtype.Timestamptz `json:"stripe_event_created_at"`
 	Status               string             `json:"status"`
 	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
 	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`

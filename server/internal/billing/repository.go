@@ -123,6 +123,7 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 		UserID:               snapshot.UserID,
 		StripeCustomerID:     snapshot.StripeCustomerID,
 		StripePriceID:        snapshot.StripePriceID,
+		StripeEventCreatedAt: timePtrToPg(snapshot.StripeEventCreatedAt),
 		Status:               snapshot.Status,
 		CancelAtPeriodEnd:    snapshot.CancelAtPeriodEnd,
 		CurrentPeriodStart:   timePtrToPg(snapshot.CurrentPeriodStart),
@@ -130,6 +131,10 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 		TrialStart:           timePtrToPg(snapshot.TrialStart),
 		TrialEnd:             timePtrToPg(snapshot.TrialEnd),
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		r.logger.Debug("ignored stale stripe subscription event", "stripe_subscription_id", snapshot.StripeSubscriptionID)
+		return db.StripeSubscriptions{}, nil
+	}
 	if err != nil {
 		return db.StripeSubscriptions{}, fmt.Errorf("upsert stripe subscription: %w", err)
 	}
@@ -142,7 +147,7 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 		return db.StripeSubscriptions{}, fmt.Errorf("revoke previous stripe feature access: %w", err)
 	}
 
-	if statusAllowsAccess(snapshot.Status) {
+	if snapshot.GrantAIChatAccess {
 		if err := qtx.GrantStripeFeatureAccess(ctx, db.GrantStripeFeatureAccessParams{
 			UserID:          snapshot.UserID,
 			FeatureKey:      FeatureKeyAIChatbot,

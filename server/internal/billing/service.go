@@ -123,7 +123,7 @@ func (s *Service) CurrentStatus(ctx context.Context) (*StatusResponse, error) {
 		return nil, fmt.Errorf("get current billing subscription: %w", err)
 	}
 
-	resp.HasAccess = statusAllowsAccess(subscription.Status) && subscriptionAccessPeriodOpen(subscription, time.Now().UTC())
+	resp.HasAccess = s.subscriptionRowGrantsAccess(subscription) && subscriptionAccessPeriodOpen(subscription, time.Now().UTC())
 	resp.Subscription = subscriptionView(subscription)
 
 	if statusConsumesTrialPrompts(subscription.Status) {
@@ -220,15 +220,16 @@ func (s *Service) applyWebhookEvent(ctx context.Context, event stripe.Event) err
 		if err := json.Unmarshal(event.Data.Raw, &subscription); err != nil {
 			return fmt.Errorf("decode stripe subscription: %w", err)
 		}
-		return s.applySubscriptionEvent(ctx, subscription)
+		return s.applySubscriptionEvent(ctx, subscription, unixPtr(event.Created))
 	default:
 		s.logger.Debug("ignoring unsupported stripe webhook event", "event_type", event.Type, "event_id", event.ID)
 		return nil
 	}
 }
 
-func (s *Service) applySubscriptionEvent(ctx context.Context, subscription stripe.Subscription) error {
+func (s *Service) applySubscriptionEvent(ctx context.Context, subscription stripe.Subscription, eventCreatedAt *time.Time) error {
 	snapshot := subscriptionSnapshot(subscription)
+	snapshot.StripeEventCreatedAt = eventCreatedAt
 	if snapshot.UserID == "" && snapshot.StripeCustomerID != "" {
 		customerRow, err := s.repo.GetStripeCustomerByCustomerID(ctx, snapshot.StripeCustomerID)
 		if err != nil {
@@ -236,9 +237,7 @@ func (s *Service) applySubscriptionEvent(ctx context.Context, subscription strip
 		}
 		snapshot.UserID = customerRow.UserID
 	}
-	if snapshot.StripePriceID == "" {
-		snapshot.StripePriceID = s.premiumPriceID
-	}
+	snapshot.GrantAIChatAccess = s.snapshotGrantsAccess(snapshot)
 	return s.ApplySubscriptionSnapshot(ctx, snapshot)
 }
 
@@ -336,13 +335,21 @@ func validateSnapshot(snapshot StripeSubscriptionSnapshot) error {
 	if strings.TrimSpace(snapshot.StripeCustomerID) == "" {
 		return ErrStripeCustomerMissing
 	}
-	if strings.TrimSpace(snapshot.StripePriceID) == "" {
-		return fmt.Errorf("stripe subscription price id is required")
+	if snapshot.StripeEventCreatedAt == nil || snapshot.StripeEventCreatedAt.IsZero() {
+		return fmt.Errorf("stripe event created time is required")
 	}
 	if strings.TrimSpace(snapshot.Status) == "" {
 		return fmt.Errorf("stripe subscription status is required")
 	}
 	return nil
+}
+
+func (s *Service) snapshotGrantsAccess(snapshot StripeSubscriptionSnapshot) bool {
+	return statusAllowsAccess(snapshot.Status) && strings.TrimSpace(snapshot.StripePriceID) == s.premiumPriceID
+}
+
+func (s *Service) subscriptionRowGrantsAccess(subscription db.StripeSubscriptions) bool {
+	return statusAllowsAccess(subscription.Status) && textFromPg(subscription.StripePriceID) == s.premiumPriceID
 }
 
 func subscriptionAccessPeriodOpen(subscription db.StripeSubscriptions, now time.Time) bool {
@@ -376,6 +383,13 @@ func timePtrFromPg(value pgtype.Timestamptz) *time.Time {
 	}
 	t := value.Time.UTC()
 	return &t
+}
+
+func textFromPg(value pgtype.Text) string {
+	if !value.Valid {
+		return ""
+	}
+	return strings.TrimSpace(value.String)
 }
 
 func currentUserID(ctx context.Context) (string, error) {

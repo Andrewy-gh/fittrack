@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
@@ -73,5 +74,33 @@ func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
 	}
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("expected status %d, got %d", http.StatusNoContent, rr.Code)
+	}
+}
+
+func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg:    &config.Config{},
+		pool:   nil,
+	}
+
+	wh := &workout.WorkoutHandler{}
+	eh := &exercise.ExerciseHandler{}
+	fh := &featureaccess.Handler{}
+	hh := health.NewHandler(logger, nil)
+	ah := aichat.NewHandler(logger, nil)
+
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil)
+
+	for _, path := range []string{"/api/ai/chat/validate", "/api/ai/chat/validate/stream"} {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"prompt":"prove the slice"}`))
+		rr := httptest.NewRecorder()
+
+		mux.ServeHTTP(rr, req)
+
+		if rr.Code == http.StatusOK {
+			t.Fatalf("%s should not expose a product prompt endpoint", path)
+		}
 	}
 }
