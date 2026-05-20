@@ -73,4 +73,4 @@ Fly preview apps set these runtime vars on the server:
 Production note:
 
 - `PROJECT_ID` should match the Stack project behind `VITE_PROJECT_ID`
-- `DATABASE_URL` should use a non-superuser app role in production so Postgres row-level security keeps working
+- `DATABASE_URL` should use the production application database role, not a personal or admin connection string

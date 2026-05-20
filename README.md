@@ -6,7 +6,7 @@ A full-stack fitness tracking application with a Go backend and React frontend.
 
 - **Backend**: Go API with PostgreSQL database
 - **Frontend**: React with TypeScript, TanStack Router, and TailwindCSS
-- **Auth**: Stack authentication with JWT verification and Row Level Security
+- **Auth**: Stack authentication with JWT verification
 - **API**: OpenAPI/Swagger specification with auto-generated client code
 - **AI chat**: In-process Go API slice under `/api/ai/*` with Postgres-owned conversation state and fetch-based SSE
 
