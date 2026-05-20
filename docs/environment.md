@@ -19,7 +19,14 @@ Useful optional local vars:
 - `ALLOWED_ORIGINS`: needed when the frontend is not using the default Vite proxy or same-origin `/api`
 - `GEMINI_API_KEY` or `GOOGLE_API_KEY`: enables AI chat and `go run ./cmd/gemini-smoke`
 - `GEMINI_MODEL`: overrides the default Gemini model
+- `STRIPE_SECRET_KEY`: enables Stripe customer and checkout session creation
+- `STRIPE_WEBHOOK_SECRET`: verifies Stripe webhook signatures
+- `STRIPE_PREMIUM_PRICE_ID`: Stripe recurring price that grants FitTrack premium AI chat access
+- `APP_BASE_URL`: absolute frontend URL used for Stripe checkout success and cancel redirects, defaults to `http://localhost:5173`
+- `AI_CHAT_TRIAL_PROMPT_CAP`: number of AI chat prompts allowed while a Stripe subscription is `trialing`, defaults to `30`
 - `VITE_API_BASE_URL`: points the client at a non-default API base URL
+
+See [Stripe Billing](stripe-billing.md) for the checkout and webhook integration details.
 
 ## Local Testing
 
@@ -40,6 +47,9 @@ GitHub Actions currently expect these secrets:
 - `VITE_PROJECT_ID`
 - `VITE_PUBLISHABLE_CLIENT_KEY`
 - `FLY_API_TOKEN`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PREMIUM_PRICE_ID`
 
 Preview deploys also use:
 
@@ -54,6 +64,11 @@ Fly preview apps set these runtime vars on the server:
 - `ENVIRONMENT=staging`
 - `METRICS_USERNAME`
 - `METRICS_PASSWORD`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PREMIUM_PRICE_ID`
+- `APP_BASE_URL`
+- `AI_CHAT_TRIAL_PROMPT_CAP`
 
 Production note:
 
