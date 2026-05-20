@@ -507,7 +507,14 @@ SET user_id = EXCLUDED.user_id,
     trial_start = EXCLUDED.trial_start,
     trial_end = EXCLUDED.trial_end,
     updated_at = CURRENT_TIMESTAMP
-WHERE stripe_subscriptions.stripe_event_created_at <= EXCLUDED.stripe_event_created_at
+WHERE stripe_subscriptions.stripe_event_created_at < EXCLUDED.stripe_event_created_at
+   OR (
+       stripe_subscriptions.stripe_event_created_at = EXCLUDED.stripe_event_created_at
+       AND NOT (
+           stripe_subscriptions.status IN ('past_due', 'unpaid', 'canceled', 'incomplete', 'incomplete_expired')
+           AND EXCLUDED.status IN ('trialing', 'active')
+       )
+   )
 RETURNING
     stripe_subscription_id,
     user_id,

@@ -209,6 +209,61 @@ func TestRepositoryUpsertSubscriptionFromWebhook_AppliesSameSecondEvent(t *testi
 	assert.Equal(t, subscriptionStatusCanceled, currentStripeSubscriptionStatus(t, pool, userID, subscriptionID))
 }
 
+func TestRepositoryUpsertSubscriptionFromWebhook_SameSecondRevocationBeatsGrantingEvent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed billing integration test without DATABASE_URL")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	require.NoError(t, err)
+	defer pool.Close()
+	require.NoError(t, pool.Ping(ctx))
+
+	userID := "billing-same-second-revoke-user"
+	subscriptionID := "sub_same_second_revoke"
+	customerID := "cus_same_second_revoke"
+	cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+	defer cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+	seedBillingUser(t, pool, userID)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	periodStart := time.Now().UTC().Add(-time.Hour)
+	periodEnd := periodStart.Add(30 * 24 * time.Hour)
+	eventCreatedAt := periodStart.Add(time.Minute).Truncate(time.Second)
+
+	_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
+		StripeSubscriptionID: subscriptionID,
+		UserID:               userID,
+		StripeCustomerID:     customerID,
+		StripePriceID:        "price_premium",
+		StripeEventCreatedAt: &eventCreatedAt,
+		Status:               subscriptionStatusCanceled,
+		CurrentPeriodStart:   &periodStart,
+		CurrentPeriodEnd:     &periodEnd,
+	})
+	require.NoError(t, err)
+
+	_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
+		StripeSubscriptionID: subscriptionID,
+		UserID:               userID,
+		StripeCustomerID:     customerID,
+		StripePriceID:        "price_premium",
+		StripeEventCreatedAt: &eventCreatedAt,
+		Status:               subscriptionStatusActive,
+		CurrentPeriodStart:   &periodStart,
+		CurrentPeriodEnd:     &periodEnd,
+		GrantAIChatAccess:    true,
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, activeAIChatSources(t, pool, userID))
+	assert.Equal(t, subscriptionStatusCanceled, currentStripeSubscriptionStatus(t, pool, userID, subscriptionID))
+}
+
 func TestRepositoryUpsertSubscriptionFromWebhook_DoesNotGrantWithoutPremiumPrice(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
