@@ -27,6 +27,10 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
 		"When the user answers a follow-up, combine that answer with the earlier visible workout request",
 		"previous message only asked about injuries and the user now confirms no injuries",
+		"not full weekly splits, multi-day programs, or bundled plans",
+		"ask the user to choose one day, workout, or session to build first",
+		"If the user follows up after a multi-day request with one day or session",
+		"treat that as a valid single-session scope",
 		"does not mention injuries, ask about injuries before calling the " + workoutDraftToolName + " tool",
 		"Do not ask scheduling, frequency, or future-date questions",
 		"call the " + workoutDraftToolName + " tool immediately",
@@ -34,6 +38,8 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"only way to produce a structured workout draft",
 		"If the user adds a new pain, injury, or movement limitation after a workout draft",
 		"ask one focused follow-up about the painful movements, ranges, or triggers",
+		"If the user first asks for a 4-day split",
+		"Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes",
 		"swap anything that bothers my knee/elbow/shoulder/back/wrist",
 	}
 
