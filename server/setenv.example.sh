@@ -39,3 +39,17 @@ export GEMINI_API_KEY="your-gemini-api-key"
 # export INNGEST_DEV="1" # or a dev server URL such as http://127.0.0.1:8288
 # export INNGEST_EVENT_KEY="your-inngest-event-key"
 # export INNGEST_SIGNING_KEY="your-inngest-signing-key"
+
+# Optional Stripe premium AI chat billing.
+# Use test-mode values from the same Stripe account.
+# STRIPE_SECRET_KEY must be a sk_test_... secret key.
+# STRIPE_WEBHOOK_SECRET must be the whsec_... printed by `stripe listen`.
+# STRIPE_PREMIUM_PRICE_ID must be a recurring test Price ID such as price_...,
+# not a display label.
+# APP_BASE_URL is the frontend origin used for Checkout redirects.
+# AI_CHAT_TRIAL_PROMPT_CAP is the Stripe trial AI chat run limit.
+# export STRIPE_SECRET_KEY="sk_test_..."
+# export STRIPE_WEBHOOK_SECRET="whsec_..."
+# export STRIPE_PREMIUM_PRICE_ID="price_..."
+# export APP_BASE_URL="http://localhost:5173"
+# export AI_CHAT_TRIAL_PROMPT_CAP=30

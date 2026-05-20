@@ -28,6 +28,49 @@ CREATE TABLE user_feature_access (
     )
 );
 
+CREATE TABLE stripe_customers (
+    user_id VARCHAR(256) PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    stripe_customer_id VARCHAR(256) NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT stripe_customers_customer_id_not_empty CHECK (btrim(stripe_customer_id) <> '')
+);
+
+CREATE TABLE stripe_subscriptions (
+    stripe_subscription_id VARCHAR(256) PRIMARY KEY,
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    stripe_customer_id VARCHAR(256) NOT NULL,
+    stripe_price_id VARCHAR(256),
+    stripe_event_created_at TIMESTAMPTZ NOT NULL,
+    status VARCHAR(64) NOT NULL,
+    cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    trial_start TIMESTAMPTZ,
+    trial_end TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT stripe_subscriptions_customer_id_not_empty CHECK (btrim(stripe_customer_id) <> ''),
+    CONSTRAINT stripe_subscriptions_status_not_empty CHECK (btrim(status) <> '')
+);
+
+CREATE TABLE stripe_webhook_events (
+    stripe_event_id VARCHAR(256) PRIMARY KEY,
+    event_type VARCHAR(128) NOT NULL,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT stripe_webhook_events_event_type_not_empty CHECK (btrim(event_type) <> '')
+);
+
+CREATE TABLE ai_chat_trial_prompt_usage (
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    stripe_subscription_id VARCHAR(256) NOT NULL REFERENCES stripe_subscriptions(stripe_subscription_id) ON DELETE CASCADE,
+    prompt_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, stripe_subscription_id),
+    CONSTRAINT ai_chat_trial_prompt_usage_count_non_negative CHECK (prompt_count >= 0)
+);
+
 -- AI chat conversations table
 CREATE TABLE ai_chat_conversation (
     id SERIAL PRIMARY KEY,
@@ -161,6 +204,8 @@ CREATE INDEX idx_exercise_user_id ON exercise(user_id);
 CREATE INDEX idx_workout_user_date ON workout(user_id, date);
 CREATE INDEX idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_key, starts_at DESC);
 CREATE INDEX idx_user_feature_access_active_lookup ON user_feature_access(user_id, starts_at DESC) WHERE revoked_at IS NULL;
+CREATE INDEX idx_stripe_subscriptions_user_updated ON stripe_subscriptions(user_id, stripe_event_created_at DESC);
+CREATE INDEX idx_stripe_subscriptions_customer ON stripe_subscriptions(stripe_customer_id);
 CREATE INDEX idx_ai_chat_conversation_user_updated ON ai_chat_conversation(user_id, updated_at DESC, id DESC);
 CREATE INDEX idx_ai_chat_message_conversation ON ai_chat_message(conversation_id, id ASC);
 CREATE INDEX idx_ai_chat_message_user_conversation ON ai_chat_message(user_id, conversation_id, id ASC);

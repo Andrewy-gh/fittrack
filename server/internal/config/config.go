@@ -38,6 +38,13 @@ type Config struct {
 	InngestEventKey   string `validate:"omitempty"`
 	InngestSigningKey string `validate:"omitempty"`
 
+	// Optional Stripe billing wiring
+	StripeSecretKey      string `validate:"omitempty"`
+	StripeWebhookSecret  string `validate:"omitempty"`
+	StripePremiumPriceID string `validate:"omitempty"`
+	AppBaseURL           string `validate:"omitempty,url"`
+	AIChatTrialPromptCap int    `validate:"omitempty,min=1"`
+
 	// Optional local-development E2E auth bootstrap
 	LocalE2EAuthEnabled     bool   `validate:"omitempty"`
 	LocalE2EAuthUserID      string `validate:"omitempty"`
@@ -64,8 +71,15 @@ func Load() (*Config, error) {
 		MetricsPassword:     os.Getenv("METRICS_PASSWORD"),
 		InngestEventKey:     os.Getenv("INNGEST_EVENT_KEY"),
 		InngestSigningKey:   os.Getenv("INNGEST_SIGNING_KEY"),
-		LocalE2EAuthEnabled: getEnvBool("E2E_LOCAL_AUTH_ENABLED", false),
-		LocalE2EAuthUserID:  getEnvString("E2E_LOCAL_AUTH_USER_ID", "local-e2e-user"),
+		StripeSecretKey:     os.Getenv("STRIPE_SECRET_KEY"),
+		StripeWebhookSecret: os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		StripePremiumPriceID: os.Getenv(
+			"STRIPE_PREMIUM_PRICE_ID",
+		),
+		AppBaseURL:           getEnvString("APP_BASE_URL", "http://localhost:5173"),
+		AIChatTrialPromptCap: getEnvInt("AI_CHAT_TRIAL_PROMPT_CAP", 30),
+		LocalE2EAuthEnabled:  getEnvBool("E2E_LOCAL_AUTH_ENABLED", false),
+		LocalE2EAuthUserID:   getEnvString("E2E_LOCAL_AUTH_USER_ID", "local-e2e-user"),
 		LocalE2EAuthEmail: getEnvString(
 			"E2E_LOCAL_AUTH_EMAIL",
 			"local-e2e-user@example.test",
@@ -88,6 +102,13 @@ func Load() (*Config, error) {
 func (c *Config) AIChatRecoveryConfigured() bool {
 	return strings.TrimSpace(c.InngestEventKey) != "" &&
 		strings.TrimSpace(c.InngestSigningKey) != ""
+}
+
+func (c *Config) StripeConfigured() bool {
+	return strings.TrimSpace(c.StripeSecretKey) != "" &&
+		strings.TrimSpace(c.StripeWebhookSecret) != "" &&
+		strings.TrimSpace(c.StripePremiumPriceID) != "" &&
+		strings.TrimSpace(c.AppBaseURL) != ""
 }
 
 func (c *Config) LocalE2EAuthConfigured() bool {

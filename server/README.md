@@ -162,6 +162,62 @@ Notes:
 - If `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are not both set, `POST /api/ai/conversations/{id}/messages/recover` returns `503`.
 - `GET /inngest` should respond once recovery is configured and the handler is mounted.
 
+### Stripe Premium AI Chat In Dev
+
+Premium access is currently for AI chat only. The backend creates Stripe-hosted Checkout Sessions, then treats Stripe webhooks as the source of truth for local subscription state and the `ai_chatbot` feature grant.
+
+1. In Stripe test mode, create one recurring monthly Price for the premium AI chat subscription.
+2. Export the billing env vars in `setenv.sh` or your shell:
+
+```bash
+export STRIPE_SECRET_KEY="sk_test_..."
+export STRIPE_PREMIUM_PRICE_ID="price_..."
+export STRIPE_WEBHOOK_SECRET="whsec_..."
+export APP_BASE_URL="http://localhost:5173"
+export AI_CHAT_TRIAL_PROMPT_CAP=30
+```
+
+Variable notes:
+
+- `STRIPE_SECRET_KEY` must be a test-mode secret key from the same Stripe account as the Price.
+- `STRIPE_PREMIUM_PRICE_ID` must be the recurring premium AI chat Price ID, for example `price_...`.
+- `STRIPE_WEBHOOK_SECRET` must be the `whsec_...` value printed by `stripe listen` for the webhook forwarding session.
+- `APP_BASE_URL` is the frontend origin used for Checkout success and cancel redirects.
+- `AI_CHAT_TRIAL_PROMPT_CAP` is the number of AI chat runs allowed during a Stripe trial; default is 30.
+
+3. Start the API:
+
+```bash
+make dev
+```
+
+4. In another terminal, forward Stripe test webhooks to the local API:
+
+```bash
+stripe listen --forward-to http://localhost:8080/stripe/webhook
+```
+
+Copy the `whsec_...` signing secret printed by `stripe listen` into `STRIPE_WEBHOOK_SECRET`, then restart the API so signature verification uses the same secret.
+
+Useful local endpoints:
+
+- `POST /api/billing/checkout-session` returns a Stripe-hosted Checkout URL for the current user.
+- `GET /api/billing/status` returns the current premium AI chat subscription and trial prompt usage state.
+- `POST /stripe/webhook` receives Stripe CLI or Dashboard webhooks and does not use Stack Auth.
+
+Webhook behavior:
+
+- `trialing` and `active` subscriptions grant `ai_chatbot` access.
+- `active` subscriptions with `cancel_at_period_end=true` keep access until `current_period_end`.
+- `past_due`, `unpaid`, `canceled`, `incomplete`, and `incomplete_expired` revoke Stripe-granted AI chat access.
+- Trial users can start up to `AI_CHAT_TRIAL_PROMPT_CAP` AI chat runs; the default cap is 30.
+
+Testing caveat:
+
+- Local E2E auth bootstrap grants `ai_chatbot` access with `source='local_e2e_auth'`.
+- Stripe webhooks grant and revoke only `source='stripe'` rows.
+- Stripe access or revocation tests should use a user without local E2E bootstrap grants, or assert access by `source` so local dev access does not mask the Stripe-backed behavior being tested.
+
 ### Required vs Optional Variables
 
 Required to boot the API:
@@ -181,6 +237,7 @@ Common optional variables:
 - `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 - `GEMINI_MODEL`
 - `AI_CHAT_TRACE_LOGS=true` to temporarily enable verbose AI chat stream timing logs while debugging
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PREMIUM_PRICE_ID`, `APP_BASE_URL`, `AI_CHAT_TRIAL_PROMPT_CAP` for Stripe-hosted premium AI chat billing
 - `E2E_LOCAL_AUTH_ENABLED` to enable the local-only Playwright auth bootstrap in `development`
 - `E2E_LOCAL_AUTH_USER_ID`, `E2E_LOCAL_AUTH_EMAIL`, `E2E_LOCAL_AUTH_DISPLAY_NAME` to override the deterministic local test user
 - `SECRET_SERVER_KEY` for Playwright's server-side auth bootstrap
@@ -203,6 +260,7 @@ This local-only path is tightly gated:
 - it only turns on when `ENVIRONMENT=development`
 - it requires `E2E_LOCAL_AUTH_ENABLED=true`
 - it only accepts the one configured local E2E user id
+- it grants `ai_chatbot` with `source='local_e2e_auth'`, which is intentionally separate from Stripe billing grants
 
 When enabled, the server exposes two dev-only helpers:
 

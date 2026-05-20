@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
@@ -37,20 +38,26 @@ type Repository interface {
 }
 
 type repository struct {
-	logger       *slog.Logger
-	queries      *db.Queries
-	pool         *pgxpool.Pool
-	workoutSaver workout.TxSaver
+	logger         *slog.Logger
+	queries        *db.Queries
+	pool           *pgxpool.Pool
+	workoutSaver   workout.TxSaver
+	trialPromptCap int32
 }
 
 const streamingRunStaleAfter = chatStreamTimeout + 15*time.Second
 
-func NewRepository(logger *slog.Logger, queries *db.Queries, pool *pgxpool.Pool, workoutSaver workout.TxSaver) Repository {
+func NewRepository(logger *slog.Logger, queries *db.Queries, pool *pgxpool.Pool, workoutSaver workout.TxSaver, trialPromptCap ...int) Repository {
+	var cap int32
+	if len(trialPromptCap) > 0 {
+		cap = int32(trialPromptCap[0])
+	}
 	return &repository{
-		logger:       logger,
-		queries:      queries,
-		pool:         pool,
-		workoutSaver: workoutSaver,
+		logger:         logger,
+		queries:        queries,
+		pool:           pool,
+		workoutSaver:   workoutSaver,
+		trialPromptCap: cap,
 	}
 }
 
@@ -550,6 +557,17 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 			return nil, ErrConversationBusy
 		}
 		return nil, fmt.Errorf("create ai chat run: %w", err)
+	}
+
+	allowed, err := qtx.ConsumeAIChatTrialPromptForCurrentSubscription(ctx, db.ConsumeAIChatTrialPromptForCurrentSubscriptionParams{
+		UserID:    userID,
+		PromptCap: r.trialPromptCap,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("consume ai chat trial prompt: %w", err)
+	}
+	if !allowed.Valid || !allowed.Bool {
+		return nil, billing.ErrTrialPromptLimitExceeded
 	}
 
 	now := time.Now().UTC()

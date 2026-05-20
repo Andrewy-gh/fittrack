@@ -59,6 +59,14 @@ type AiChatStreamChunk struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type AiChatTrialPromptUsage struct {
+	UserID               string             `json:"user_id"`
+	StripeSubscriptionID string             `json:"stripe_subscription_id"`
+	PromptCount          int32              `json:"prompt_count"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Exercise struct {
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`
@@ -82,6 +90,35 @@ type Set struct {
 	UserID        string             `json:"user_id"`
 	ExerciseOrder int32              `json:"exercise_order"`
 	SetOrder      int32              `json:"set_order"`
+}
+
+type StripeCustomers struct {
+	UserID           string             `json:"user_id"`
+	StripeCustomerID string             `json:"stripe_customer_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type StripeSubscriptions struct {
+	StripeSubscriptionID string             `json:"stripe_subscription_id"`
+	UserID               string             `json:"user_id"`
+	StripeCustomerID     string             `json:"stripe_customer_id"`
+	StripePriceID        pgtype.Text        `json:"stripe_price_id"`
+	StripeEventCreatedAt pgtype.Timestamptz `json:"stripe_event_created_at"`
+	Status               string             `json:"status"`
+	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
+	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
+	TrialStart           pgtype.Timestamptz `json:"trial_start"`
+	TrialEnd             pgtype.Timestamptz `json:"trial_end"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+type StripeWebhookEvents struct {
+	StripeEventID string             `json:"stripe_event_id"`
+	EventType     string             `json:"event_type"`
+	ProcessedAt   pgtype.Timestamptz `json:"processed_at"`
 }
 
 type UserFeatureAccess struct {

@@ -33,6 +33,7 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
@@ -150,6 +151,7 @@ func main() {
 	// Initialize repositories
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
 	featureAccessRepo := featureaccess.NewRepository(logger, queries)
+	billingRepo := billing.NewRepository(logger, queries, pool)
 	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
 	userRepo := user.NewRepository(logger, queries, pool)
 	workoutTxSaver := workout.NewTxSaver(logger, exerciseRepo)
@@ -158,8 +160,17 @@ func main() {
 	workoutService := workout.NewService(logger, workoutRepo)
 	exerciseService := exercise.NewService(logger, exerciseRepo)
 	featureAccessService := featureaccess.NewService(logger, featureAccessRepo)
+	billingService := billing.NewService(
+		logger,
+		billingRepo,
+		cfg.StripeSecretKey,
+		cfg.StripeWebhookSecret,
+		cfg.StripePremiumPriceID,
+		cfg.AppBaseURL,
+		cfg.AIChatTrialPromptCap,
+	)
 	userService := user.NewService(logger, userRepo)
-	aiChatRepo := aichat.NewRepository(logger, queries, pool, workoutTxSaver)
+	aiChatRepo := aichat.NewRepository(logger, queries, pool, workoutTxSaver, cfg.AIChatTrialPromptCap)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx, featureAccessService)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutService)
 	var inngestRecovery *aichat.InngestRecovery
@@ -181,6 +192,7 @@ func main() {
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
 	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
 	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
+	billingHandler := billing.NewHandler(logger, billingService)
 	healthHandler := health.NewHandler(logger, pool)
 	aiChatHandler := aichat.NewHandler(logger, aiChatService)
 	var e2eAuthHandler *e2eauth.Handler
@@ -220,7 +232,7 @@ func main() {
 			UserID:  cfg.LocalE2EAuthUserID,
 		})
 	}
-	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, e2eAuthHandler)
+	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, billingHandler, e2eAuthHandler)
 
 	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RequestLog → Metrics → Authentication → RateLimit
 	var handler http.Handler = router
