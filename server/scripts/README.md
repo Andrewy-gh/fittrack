@@ -217,8 +217,8 @@ Use the provided `rls-smoke-test.yml` GitHub Action for complete deployment and 
 ## Support
 
 If RLS tests fail:
-1. Check the [RLS documentation](../docs/rls.md)
-2. Review [E2E testing guide](../E2E_TESTING_GUIDE.md)  
+1. Check the RLS migration in [`../migrations/00006_add_rls_policies.sql`](../migrations/00006_add_rls_policies.sql)
+2. Review the current E2E tests in [`../../client/tests/e2e`](../../client/tests/e2e)
 3. Run integration tests: `go test ./...`
 4. Verify database RLS policies are active
 
