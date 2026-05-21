@@ -1,10 +1,18 @@
-import type { FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AIChatBillingCard } from "@/components/billing/ai-chat-billing-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import type { AIChatMessage, AIWorkoutDraft } from "@/lib/api/ai-chat";
+import {
+  billingStatusQueryOptions,
+  createBillingCheckoutSession,
+  redirectToBillingCheckout,
+} from "@/lib/api/billing";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
+import { showErrorToast } from "@/lib/errors";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { toast } from "sonner";
 import { useAIChatSession } from "./-chat-session";
@@ -12,11 +20,13 @@ import { ChatWorkoutDraftCard } from "./-chat-workout-draft";
 
 type ChatSearch = {
   conversationId?: string;
+  checkout?: "success" | "cancelled";
 };
 
 export const Route = createFileRoute("/_layout/chat")({
   validateSearch: (search): ChatSearch => ({
     conversationId: normalizeConversationSearchValue(search.conversationId),
+    checkout: normalizeCheckoutSearchValue(search.checkout),
   }),
   component: ChatRouteComponent,
 });
@@ -26,6 +36,9 @@ export function ChatRouteComponent() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const conversationId = parseConversationId(search.conversationId);
+  const [checkoutNotice, setCheckoutNotice] = useState<
+    ChatSearch["checkout"] | null
+  >(search.checkout ?? null);
   const {
     conversation,
     messages,
@@ -48,6 +61,33 @@ export function ChatRouteComponent() {
       });
     },
   });
+  const billingQuery = useQuery({
+    ...billingStatusQueryOptions(),
+    enabled: Boolean(user),
+  });
+  const refetchBillingStatus = billingQuery.refetch;
+  const checkoutMutation = useMutation({
+    mutationFn: createBillingCheckoutSession,
+    onSuccess: (session) => redirectToBillingCheckout(session.url),
+    onError: (error) => showErrorToast(error, "Could not open Checkout"),
+  });
+
+  useEffect(() => {
+    if (!search.checkout) {
+      return;
+    }
+
+    setCheckoutNotice(search.checkout);
+    if (search.checkout === "success") {
+      void refetchBillingStatus();
+    }
+
+    void navigate({
+      to: "/chat",
+      search: { conversationId: search.conversationId },
+      replace: true,
+    });
+  }, [navigate, refetchBillingStatus, search.checkout, search.conversationId]);
 
   if (!user) {
     return (
@@ -64,13 +104,23 @@ export function ChatRouteComponent() {
     );
   }
   const currentUserId = user.id;
+  const hasAIChatAccess = billingQuery.data?.has_access === true;
+  const isBillingLoading = billingQuery.isLoading || billingQuery.isPending;
 
   async function handleNewChat() {
+    if (!hasAIChatAccess) {
+      return;
+    }
+
     await createNewChat();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!hasAIChatAccess) {
+      return;
+    }
+
     await submitPrompt();
   }
 
@@ -121,11 +171,22 @@ export function ChatRouteComponent() {
             type="button"
             variant="outline"
             onClick={handleNewChat}
+            disabled={!hasAIChatAccess}
           >
             New Chat
           </Button>
         </CardHeader>
       </Card>
+
+      {checkoutNotice ? <CheckoutNotice checkout={checkoutNotice} /> : null}
+
+      <AIChatBillingCard
+        status={billingQuery.data}
+        isLoading={isBillingLoading}
+        isError={billingQuery.isError}
+        isCheckoutLoading={checkoutMutation.isPending}
+        onStartCheckout={() => checkoutMutation.mutate()}
+      />
 
       <Card className="min-h-[32rem]">
         <CardContent className="flex h-full flex-col gap-4 p-4">
@@ -206,16 +267,19 @@ export function ChatRouteComponent() {
               onChange={(event) => setPrompt(event.target.value)}
               placeholder="Ask about training, recovery, exercise choices, or FitTrack usage..."
               rows={4}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !hasAIChatAccess}
             />
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                Conversation ID:{" "}
-                {conversation?.id ?? conversationId ?? "not created yet"}
+                {hasAIChatAccess
+                  ? `Conversation ID: ${
+                      conversation?.id ?? conversationId ?? "not created yet"
+                    }`
+                  : "Start or restore premium access to use AI chat."}
               </p>
               <Button
                 type="submit"
-                disabled={isSubmitting || !prompt.trim()}
+                disabled={isSubmitting || !prompt.trim() || !hasAIChatAccess}
               >
                 {isSubmitting ? "Streaming..." : "Send"}
               </Button>
@@ -223,6 +287,28 @@ export function ChatRouteComponent() {
           </form>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function CheckoutNotice({
+  checkout,
+}: {
+  checkout: NonNullable<ChatSearch["checkout"]>;
+}) {
+  const isSuccess = checkout === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-3 text-sm ${
+        isSuccess
+          ? "border-primary/30 bg-primary/5 text-foreground"
+          : "border-border bg-muted/40 text-muted-foreground"
+      }`}
+    >
+      {isSuccess
+        ? "Checkout complete. We are refreshing your AI chat access."
+        : "Checkout was cancelled. You can restart the trial when you are ready."}
     </div>
   );
 }
@@ -326,4 +412,10 @@ function normalizeConversationSearchValue(value: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+function normalizeCheckoutSearchValue(
+  value: unknown,
+): ChatSearch["checkout"] | undefined {
+  return value === "success" || value === "cancelled" ? value : undefined;
 }

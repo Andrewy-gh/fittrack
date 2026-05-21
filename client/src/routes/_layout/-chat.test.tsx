@@ -16,8 +16,17 @@ const {
   mockStreamMessage,
   mockShowErrorToast,
   mockToastSuccess,
+  mockBillingStatusQueryOptions,
+  mockCreateBillingCheckoutSession,
+  mockRedirectToBillingCheckout,
+  mockUseMutation,
+  mockUseQuery,
+  mockRefetchBillingStatus,
 } = vi.hoisted(() => ({
-  mockSearch: { conversationId: "41" as string | undefined },
+  mockSearch: {
+    conversationId: "41" as string | undefined,
+    checkout: undefined as "success" | "cancelled" | undefined,
+  },
   mockNavigate: vi.fn(),
   mockCreateConversation: vi.fn(),
   mockGetConversation: vi.fn(),
@@ -29,6 +38,17 @@ const {
   mockStreamMessage: vi.fn(),
   mockShowErrorToast: vi.fn(),
   mockToastSuccess: vi.fn(),
+  mockBillingStatusQueryOptions: vi.fn(),
+  mockCreateBillingCheckoutSession: vi.fn(),
+  mockRedirectToBillingCheckout: vi.fn(),
+  mockUseMutation: vi.fn(),
+  mockUseQuery: vi.fn(),
+  mockRefetchBillingStatus: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: mockUseMutation,
+  useQuery: mockUseQuery,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -49,6 +69,12 @@ vi.mock("@/lib/api/ai-chat", () => ({
   requestAIChatMessageRecovery: mockRequestRecovery,
   saveAIChatLatestWorkoutDraft: mockSaveLatestWorkoutDraft,
   streamAIChatMessage: mockStreamMessage,
+}));
+
+vi.mock("@/lib/api/billing", () => ({
+  billingStatusQueryOptions: mockBillingStatusQueryOptions,
+  createBillingCheckoutSession: mockCreateBillingCheckoutSession,
+  redirectToBillingCheckout: mockRedirectToBillingCheckout,
 }));
 
 vi.mock("@/lib/errors", () => ({
@@ -103,6 +129,7 @@ describe("ChatRouteComponent", () => {
     window.sessionStorage.clear();
     window.localStorage.clear();
     mockSearch.conversationId = "41";
+    mockSearch.checkout = undefined;
     mockNavigate.mockReset();
     mockCreateConversation.mockReset();
     mockGetConversation.mockReset();
@@ -114,6 +141,48 @@ describe("ChatRouteComponent", () => {
     mockStreamMessage.mockReset();
     mockShowErrorToast.mockReset();
     mockToastSuccess.mockReset();
+    mockBillingStatusQueryOptions.mockReset();
+    mockCreateBillingCheckoutSession.mockReset();
+    mockRedirectToBillingCheckout.mockReset();
+    mockUseMutation.mockReset();
+    mockUseQuery.mockReset();
+    mockRefetchBillingStatus.mockReset();
+    mockBillingStatusQueryOptions.mockReturnValue({
+      queryKey: ["billing", "ai-chatbot", "status"],
+      queryFn: vi.fn(),
+    });
+    mockUseQuery.mockReturnValue({
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: true,
+        subscription: {
+          stripe_subscription_id: "sub_123",
+          status: "active",
+          cancel_at_period_end: false,
+        },
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    });
+    mockCreateBillingCheckoutSession.mockResolvedValue({
+      url: "https://checkout.stripe.test/session",
+    });
+    mockUseMutation.mockImplementation(
+      (options: {
+        mutationFn: () => Promise<{ url: string }>;
+        onSuccess: (session: { url: string }) => void;
+        onError: (error: unknown) => void;
+      }) => ({
+        isPending: false,
+        mutate: () => {
+          void options
+            .mutationFn()
+            .then(options.onSuccess)
+            .catch(options.onError);
+        },
+      }),
+    );
     mockReportTelemetry.mockResolvedValue(undefined);
     mockResumeStream.mockResolvedValue({
       doneEvent: {
@@ -128,6 +197,59 @@ describe("ChatRouteComponent", () => {
       run_id: 61,
       status: "queued",
     });
+  });
+
+  it("shows checkout success and cleans the query state", async () => {
+    mockSearch.checkout = "success";
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Checkout complete. We are refreshing your AI chat access.",
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "41" },
+      replace: true,
+    });
+  });
+
+  it("starts Checkout from the no-access trial CTA", async () => {
+    const user = userEvent.setup();
+    mockUseQuery.mockReturnValue({
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    });
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Start 7-day trial" }),
+    );
+
+    await waitFor(() => {
+      expect(mockCreateBillingCheckoutSession).toHaveBeenCalledTimes(1);
+    });
+    expect(mockRedirectToBillingCheckout).toHaveBeenCalledWith(
+      "https://checkout.stripe.test/session",
+    );
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeDisabled();
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
