@@ -18,6 +18,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # 2.8.79+ currently triggers Stack Auth handoff warnings in our client tests,
+      # and 2.8.83+ also pulls AI SDK packages into the eager auth bundle.
+      - dependency-name: "@stackframe/react"
+        versions:
+          - ">= 2.8.79"
     commit-message:
       prefix: "chore"
       include: "scope"
