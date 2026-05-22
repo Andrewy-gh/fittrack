@@ -17,11 +17,17 @@ const {
   mockShowErrorToast,
   mockToastSuccess,
   mockBillingStatusQueryOptions,
+  mockFeatureAccessQueryOptions,
   mockCreateBillingCheckoutSession,
+  mockCreateBillingCustomerPortalSession,
   mockRedirectToBillingCheckout,
+  mockRedirectToBillingPortal,
   mockUseMutation,
   mockUseQuery,
   mockRefetchBillingStatus,
+  mockRefetchFeatureAccess,
+  mockBillingQueryResult,
+  mockFeatureAccessQueryResult,
 } = vi.hoisted(() => ({
   mockSearch: {
     conversationId: "41" as string | undefined,
@@ -39,11 +45,17 @@ const {
   mockShowErrorToast: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockBillingStatusQueryOptions: vi.fn(),
+  mockFeatureAccessQueryOptions: vi.fn(),
   mockCreateBillingCheckoutSession: vi.fn(),
+  mockCreateBillingCustomerPortalSession: vi.fn(),
   mockRedirectToBillingCheckout: vi.fn(),
+  mockRedirectToBillingPortal: vi.fn(),
   mockUseMutation: vi.fn(),
   mockUseQuery: vi.fn(),
   mockRefetchBillingStatus: vi.fn(),
+  mockRefetchFeatureAccess: vi.fn(),
+  mockBillingQueryResult: { value: undefined as unknown },
+  mockFeatureAccessQueryResult: { value: undefined as unknown },
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -73,8 +85,19 @@ vi.mock("@/lib/api/ai-chat", () => ({
 
 vi.mock("@/lib/api/billing", () => ({
   billingStatusQueryOptions: mockBillingStatusQueryOptions,
+  createBillingCustomerPortalSession: mockCreateBillingCustomerPortalSession,
   createBillingCheckoutSession: mockCreateBillingCheckoutSession,
   redirectToBillingCheckout: mockRedirectToBillingCheckout,
+  redirectToBillingPortal: mockRedirectToBillingPortal,
+}));
+
+vi.mock("@/lib/api/feature-access", () => ({
+  featureAccessQueryOptions: mockFeatureAccessQueryOptions,
+  hasAIChatFeatureAccess: (
+    grants?: Array<{
+      feature_key: string;
+    }>,
+  ) => grants?.some((grant) => grant.feature_key === "ai_chatbot") ?? false,
 }));
 
 vi.mock("@/lib/errors", () => ({
@@ -142,16 +165,24 @@ describe("ChatRouteComponent", () => {
     mockShowErrorToast.mockReset();
     mockToastSuccess.mockReset();
     mockBillingStatusQueryOptions.mockReset();
+    mockFeatureAccessQueryOptions.mockReset();
     mockCreateBillingCheckoutSession.mockReset();
+    mockCreateBillingCustomerPortalSession.mockReset();
     mockRedirectToBillingCheckout.mockReset();
+    mockRedirectToBillingPortal.mockReset();
     mockUseMutation.mockReset();
     mockUseQuery.mockReset();
     mockRefetchBillingStatus.mockReset();
+    mockRefetchFeatureAccess.mockReset();
     mockBillingStatusQueryOptions.mockReturnValue({
       queryKey: ["billing", "ai-chatbot", "status"],
       queryFn: vi.fn(),
     });
-    mockUseQuery.mockReturnValue({
+    mockFeatureAccessQueryOptions.mockReturnValue({
+      queryKey: ["feature-access"],
+      queryFn: vi.fn(),
+    });
+    mockBillingQueryResult.value = {
       data: {
         feature_key: "ai_chatbot",
         has_access: true,
@@ -164,10 +195,32 @@ describe("ChatRouteComponent", () => {
       isLoading: false,
       isPending: false,
       refetch: mockRefetchBillingStatus,
-    });
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [
+        {
+          feature_key: "ai_chatbot",
+        },
+      ],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockUseQuery.mockImplementation((options: { queryKey?: unknown[] }) =>
+      options.queryKey?.[0] === "feature-access"
+        ? mockFeatureAccessQueryResult.value
+        : mockBillingQueryResult.value,
+    );
     mockCreateBillingCheckoutSession.mockResolvedValue({
       url: "https://checkout.stripe.test/session",
     });
+    mockCreateBillingCustomerPortalSession.mockResolvedValue({
+      url: "https://billing.stripe.test/session",
+    });
+    mockRefetchBillingStatus.mockResolvedValue(mockBillingQueryResult.value);
+    mockRefetchFeatureAccess.mockResolvedValue(
+      mockFeatureAccessQueryResult.value,
+    );
     mockUseMutation.mockImplementation(
       (options: {
         mutationFn: () => Promise<{ url: string }>;
@@ -213,6 +266,7 @@ describe("ChatRouteComponent", () => {
     await waitFor(() => {
       expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
     });
+    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/chat",
       search: { conversationId: "41" },
@@ -220,9 +274,42 @@ describe("ChatRouteComponent", () => {
     });
   });
 
+  it("keeps polling access after checkout success until the webhook grant appears", async () => {
+    mockSearch.checkout = "success";
+    mockFeatureAccessQueryResult.value = {
+      data: [],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockRefetchFeatureAccess
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            feature_key: "ai_chatbot",
+          },
+        ],
+      });
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    await waitFor(() => {
+      expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(
+      () => {
+        expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 2000 },
+    );
+    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(2);
+  });
+
   it("starts Checkout from the no-access trial CTA", async () => {
     const user = userEvent.setup();
-    mockUseQuery.mockReturnValue({
+    mockBillingQueryResult.value = {
       data: {
         feature_key: "ai_chatbot",
         has_access: false,
@@ -230,7 +317,13 @@ describe("ChatRouteComponent", () => {
       isLoading: false,
       isPending: false,
       refetch: mockRefetchBillingStatus,
-    });
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
     mockGetConversation.mockResolvedValue(conversationDetail([]));
 
     render(<ChatRouteComponent />);
@@ -250,6 +343,41 @@ describe("ChatRouteComponent", () => {
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
     ).toBeDisabled();
+  });
+
+  it("keeps chat enabled when feature access is granted without a Stripe subscription", async () => {
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [
+        {
+          feature_key: "ai_chatbot",
+        },
+      ],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Access active")).toBeInTheDocument();
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {

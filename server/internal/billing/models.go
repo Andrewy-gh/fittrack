@@ -29,6 +29,10 @@ type CheckoutSessionResponse struct {
 	URL string `json:"url"`
 }
 
+type CustomerPortalSessionResponse struct {
+	URL string `json:"url"`
+}
+
 type StatusResponse struct {
 	FeatureKey   string            `json:"feature_key"`
 	HasAccess    bool              `json:"has_access"`

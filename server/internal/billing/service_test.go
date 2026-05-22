@@ -381,6 +381,32 @@ func TestServiceCurrentStatus_NoSubscription(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceCreateCustomerPortalSession(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetStripeCustomerByUserID", mock.Anything, "user-123").Return(db.StripeCustomers{
+		UserID:           "user-123",
+		StripeCustomerID: "cus_123",
+	}, nil).Once()
+	service.createPortalSession = func(params *stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		require.NotNil(t, params.Customer)
+		require.NotNil(t, params.ReturnURL)
+		assert.Equal(t, "cus_123", *params.Customer)
+		assert.Equal(t, "http://localhost:5173/chat", *params.ReturnURL)
+		return &stripe.BillingPortalSession{URL: "https://billing.stripe.test/session"}, nil
+	}
+
+	resp, err := service.CreateCustomerPortalSession(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "https://billing.stripe.test/session", resp.URL)
+	repo.AssertExpectations(t)
+}
+
 func subscriptionEventPayload(t *testing.T, subscriptionID string, status string, cancelAtPeriodEnd bool, periodStart time.Time, periodEnd time.Time) []byte {
 	t.Helper()
 	return subscriptionEventPayloadWithPrice(t, subscriptionID, status, cancelAtPeriodEnd, periodStart, periodEnd, stringPtr("price_premium"))

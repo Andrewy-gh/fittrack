@@ -4,16 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import type { BillingStatusResponse } from "@/lib/api/billing";
 import { AIChatBillingCard } from "./ai-chat-billing-card";
 
-function renderCard(status?: BillingStatusResponse) {
+function renderCard(
+  status?: BillingStatusResponse,
+  options: { hasFeatureAccess?: boolean } = {},
+) {
   const onStartCheckout = vi.fn();
+  const onManageBilling = vi.fn();
   render(
     <AIChatBillingCard
       status={status}
+      hasFeatureAccess={options.hasFeatureAccess}
       onStartCheckout={onStartCheckout}
+      onManageBilling={onManageBilling}
     />,
   );
 
-  return { onStartCheckout };
+  return { onStartCheckout, onManageBilling };
 }
 
 describe("AIChatBillingCard", () => {
@@ -36,6 +42,7 @@ describe("AIChatBillingCard", () => {
       <AIChatBillingCard
         isError
         onStartCheckout={vi.fn()}
+        onManageBilling={vi.fn()}
       />,
     );
 
@@ -89,6 +96,24 @@ describe("AIChatBillingCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows active access without Checkout when access comes from a non-Stripe grant", () => {
+    renderCard(
+      {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      { hasFeatureAccess: true },
+    );
+
+    expect(screen.getByText("Access active")).toBeInTheDocument();
+    expect(
+      screen.getByText("AI chat access is active for this account."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows cancellation-at-period-end access messaging", () => {
     renderCard({
       feature_key: "ai_chatbot",
@@ -109,27 +134,51 @@ describe("AIChatBillingCard", () => {
   it.each([
     ["past_due", "AI chat is paused until the payment issue is resolved."],
     ["unpaid", "AI chat is paused until the payment issue is resolved."],
-    ["canceled", "AI chat is blocked because the subscription is canceled."],
-    ["incomplete", "AI chat is blocked until Checkout is completed."],
-    [
-      "incomplete_expired",
-      "AI chat is blocked because the Checkout session expired.",
-    ],
-  ] as const)("shows a blocked state for %s", (subscriptionStatus, message) => {
-    renderCard({
-      feature_key: "ai_chatbot",
-      has_access: false,
-      subscription: {
-        stripe_subscription_id: `sub_${subscriptionStatus}`,
-        status: subscriptionStatus,
-        cancel_at_period_end: false,
-      },
-    });
+  ] as const)(
+    "opens billing management for payment issue state %s",
+    async (subscriptionStatus, message) => {
+      const user = userEvent.setup();
+      const { onManageBilling, onStartCheckout } = renderCard({
+        feature_key: "ai_chatbot",
+        has_access: false,
+        subscription: {
+          stripe_subscription_id: `sub_${subscriptionStatus}`,
+          status: subscriptionStatus,
+          cancel_at_period_end: false,
+        },
+      });
 
-    expect(screen.getByText("Action needed")).toBeInTheDocument();
-    expect(screen.getByText(message)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Update billing" }),
-    ).toBeInTheDocument();
-  });
+      expect(screen.getByText("Action needed")).toBeInTheDocument();
+      expect(screen.getByText(message)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Update billing" }));
+
+      expect(onManageBilling).toHaveBeenCalledTimes(1);
+      expect(onStartCheckout).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["canceled", "Restart premium"],
+    ["incomplete", "Finish Checkout"],
+    ["incomplete_expired", "Restart Checkout"],
+  ] as const)(
+    "uses Checkout for restartable blocked state %s",
+    async (subscriptionStatus, buttonLabel) => {
+      const user = userEvent.setup();
+      const { onStartCheckout, onManageBilling } = renderCard({
+        feature_key: "ai_chatbot",
+        has_access: false,
+        subscription: {
+          stripe_subscription_id: `sub_${subscriptionStatus}`,
+          status: subscriptionStatus,
+          cancel_at_period_end: false,
+        },
+      });
+
+      await user.click(screen.getByRole("button", { name: buttonLabel }));
+
+      expect(onStartCheckout).toHaveBeenCalledTimes(1);
+      expect(onManageBilling).not.toHaveBeenCalled();
+    },
+  );
 });

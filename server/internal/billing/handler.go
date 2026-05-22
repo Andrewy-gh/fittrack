@@ -15,6 +15,7 @@ const maxWebhookPayloadBytes = 1 << 20
 
 type billingService interface {
 	CreateCheckoutSession(ctx context.Context) (*CheckoutSessionResponse, error)
+	CreateCustomerPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error)
 	CurrentStatus(ctx context.Context) (*StatusResponse, error)
 	HandleWebhook(ctx context.Context, payload []byte, signatureHeader string) error
 }
@@ -35,6 +36,18 @@ func (h *Handler) CreateCheckoutSession(w http.ResponseWriter, r *http.Request) 
 	resp, err := h.service.CreateCheckoutSession(r.Context())
 	if err != nil {
 		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to create checkout session")
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, resp); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
+}
+
+func (h *Handler) CreateCustomerPortalSession(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.service.CreateCustomerPortalSession(r.Context())
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to create billing portal session")
 		return
 	}
 

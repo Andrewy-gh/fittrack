@@ -36,12 +36,20 @@ export type BillingCheckoutSessionResponse = {
   url: string;
 };
 
+export type BillingCustomerPortalSessionResponse = {
+  url: string;
+};
+
 type BillingStatusResponses = {
   200: BillingStatusResponse;
 };
 
 type BillingCheckoutSessionResponses = {
   200: BillingCheckoutSessionResponse;
+};
+
+type BillingCustomerPortalSessionResponses = {
+  200: BillingCustomerPortalSessionResponse;
 };
 
 export function billingStatusQueryOptions() {
@@ -78,6 +86,23 @@ export async function createBillingCheckoutSession(): Promise<BillingCheckoutSes
   return response.data;
 }
 
+export async function createBillingCustomerPortalSession(): Promise<BillingCustomerPortalSessionResponse> {
+  const response = await client.post<
+    BillingCustomerPortalSessionResponses,
+    ApiError,
+    true
+  >({
+    url: "/billing/customer-portal-session",
+    throwOnError: true,
+  });
+
+  return response.data;
+}
+
 export function redirectToBillingCheckout(url: string): void {
+  window.location.assign(url);
+}
+
+export function redirectToBillingPortal(url: string): void {
   window.location.assign(url);
 }

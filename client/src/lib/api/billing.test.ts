@@ -21,7 +21,11 @@ vi.mock("@/lib/local-dev-auth", () => ({
   applyLocalDevAuthHeader,
 }));
 
-import { createBillingCheckoutSession, getBillingStatus } from "./billing";
+import {
+  createBillingCheckoutSession,
+  createBillingCustomerPortalSession,
+  getBillingStatus,
+} from "./billing";
 
 function latestRequest(): Request {
   return vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
@@ -91,5 +95,30 @@ describe("billing api wrapper", () => {
     expect(latestRequest().url).toContain("/api/billing/checkout-session");
     expect(latestRequest().method).toBe("POST");
     expect(session.url).toBe("https://checkout.stripe.test/session");
+  });
+
+  it("creates a Stripe-hosted billing portal session", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          url: "https://billing.stripe.test/session",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    const session = await createBillingCustomerPortalSession();
+
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
+    expect(latestRequest().url).toContain(
+      "/api/billing/customer-portal-session",
+    );
+    expect(latestRequest().method).toBe("POST");
+    expect(session.url).toBe("https://billing.stripe.test/session");
   });
 });

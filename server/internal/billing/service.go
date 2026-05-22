@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stripe/stripe-go/v83"
+	portalsession "github.com/stripe/stripe-go/v83/billingportal/session"
 	"github.com/stripe/stripe-go/v83/checkout/session"
 	"github.com/stripe/stripe-go/v83/customer"
 	"github.com/stripe/stripe-go/v83/webhook"
@@ -30,6 +31,7 @@ type Service struct {
 	trialPromptCap        int32
 	createCustomer        func(*stripe.CustomerParams) (*stripe.Customer, error)
 	createCheckoutSession func(*stripe.CheckoutSessionParams) (*stripe.CheckoutSession, error)
+	createPortalSession   func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error)
 	constructEvent        func([]byte, string, string) (stripe.Event, error)
 }
 
@@ -44,6 +46,7 @@ func NewService(logger *slog.Logger, repo Repository, stripeSecretKey string, we
 		trialPromptCap:        int32(trialPromptCap),
 		createCustomer:        customer.New,
 		createCheckoutSession: session.New,
+		createPortalSession:   portalsession.New,
 		constructEvent: func(payload []byte, header string, secret string) (stripe.Event, error) {
 			return webhook.ConstructEventWithOptions(payload, header, secret, webhook.ConstructEventOptions{
 				IgnoreAPIVersionMismatch: true,
@@ -103,6 +106,36 @@ func (s *Service) CreateCheckoutSession(ctx context.Context) (*CheckoutSessionRe
 	}
 
 	return &CheckoutSessionResponse{URL: checkoutSession.URL}, nil
+}
+
+func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error) {
+	if !s.configuredForPortal() {
+		return nil, ErrBillingNotConfigured
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stripe.Key = s.stripeSecretKey
+	customerID, err := s.ensureStripeCustomer(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	portalSession, err := s.createPortalSession(&stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(customerID),
+		ReturnURL: stripe.String(s.appBaseURL + "/chat"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create stripe billing portal session: %w", err)
+	}
+	if strings.TrimSpace(portalSession.URL) == "" {
+		return nil, fmt.Errorf("stripe billing portal session did not include a hosted url")
+	}
+
+	return &CustomerPortalSessionResponse{URL: portalSession.URL}, nil
 }
 
 func (s *Service) CurrentStatus(ctx context.Context) (*StatusResponse, error) {
@@ -289,6 +322,11 @@ func (s *Service) ensureStripeCustomer(ctx context.Context, userID string) (stri
 func (s *Service) configuredForCheckout() bool {
 	return strings.TrimSpace(s.stripeSecretKey) != "" &&
 		strings.TrimSpace(s.premiumPriceID) != "" &&
+		strings.TrimSpace(s.appBaseURL) != ""
+}
+
+func (s *Service) configuredForPortal() bool {
+	return strings.TrimSpace(s.stripeSecretKey) != "" &&
 		strings.TrimSpace(s.appBaseURL) != ""
 }
 

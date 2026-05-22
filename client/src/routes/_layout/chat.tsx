@@ -7,10 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import type { AIChatMessage, AIWorkoutDraft } from "@/lib/api/ai-chat";
 import {
+  createBillingCustomerPortalSession,
   billingStatusQueryOptions,
   createBillingCheckoutSession,
   redirectToBillingCheckout,
+  redirectToBillingPortal,
 } from "@/lib/api/billing";
+import {
+  featureAccessQueryOptions,
+  hasAIChatFeatureAccess,
+} from "@/lib/api/feature-access";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
 import { showErrorToast } from "@/lib/errors";
 import { workoutDraftStorage } from "@/lib/local-storage";
@@ -22,6 +28,8 @@ type ChatSearch = {
   conversationId?: string;
   checkout?: "success" | "cancelled";
 };
+
+const checkoutAccessPollDelaysMs = [0, 1000, 2000, 4000, 8000];
 
 export const Route = createFileRoute("/_layout/chat")({
   validateSearch: (search): ChatSearch => ({
@@ -39,6 +47,9 @@ export function ChatRouteComponent() {
   const [checkoutNotice, setCheckoutNotice] = useState<
     ChatSearch["checkout"] | null
   >(search.checkout ?? null);
+  const [isPollingCheckoutAccess, setIsPollingCheckoutAccess] = useState(
+    search.checkout === "success",
+  );
   const {
     conversation,
     messages,
@@ -65,11 +76,21 @@ export function ChatRouteComponent() {
     ...billingStatusQueryOptions(),
     enabled: Boolean(user),
   });
+  const featureAccessQuery = useQuery({
+    ...featureAccessQueryOptions(),
+    enabled: Boolean(user),
+  });
   const refetchBillingStatus = billingQuery.refetch;
+  const refetchFeatureAccess = featureAccessQuery.refetch;
   const checkoutMutation = useMutation({
     mutationFn: createBillingCheckoutSession,
     onSuccess: (session) => redirectToBillingCheckout(session.url),
     onError: (error) => showErrorToast(error, "Could not open Checkout"),
+  });
+  const billingPortalMutation = useMutation({
+    mutationFn: createBillingCustomerPortalSession,
+    onSuccess: (session) => redirectToBillingPortal(session.url),
+    onError: (error) => showErrorToast(error, "Could not open billing"),
   });
 
   useEffect(() => {
@@ -79,7 +100,7 @@ export function ChatRouteComponent() {
 
     setCheckoutNotice(search.checkout);
     if (search.checkout === "success") {
-      void refetchBillingStatus();
+      setIsPollingCheckoutAccess(true);
     }
 
     void navigate({
@@ -87,7 +108,47 @@ export function ChatRouteComponent() {
       search: { conversationId: search.conversationId },
       replace: true,
     });
-  }, [navigate, refetchBillingStatus, search.checkout, search.conversationId]);
+  }, [navigate, search.checkout, search.conversationId]);
+
+  useEffect(() => {
+    if (!isPollingCheckoutAccess) {
+      return;
+    }
+
+    let isCancelled = false;
+    void pollCheckoutAccess();
+
+    return () => {
+      isCancelled = true;
+    };
+
+    async function pollCheckoutAccess() {
+      for (const delayMs of checkoutAccessPollDelaysMs) {
+        if (delayMs > 0) {
+          await waitForCheckoutAccessRetry(delayMs);
+        }
+        if (isCancelled) {
+          return;
+        }
+
+        const [featureAccessResult] = await Promise.all([
+          refetchFeatureAccess(),
+          refetchBillingStatus(),
+        ]);
+        if (isCancelled) {
+          return;
+        }
+        if (hasAIChatFeatureAccess(featureAccessResult.data)) {
+          setIsPollingCheckoutAccess(false);
+          return;
+        }
+      }
+
+      if (!isCancelled) {
+        setIsPollingCheckoutAccess(false);
+      }
+    }
+  }, [isPollingCheckoutAccess, refetchBillingStatus, refetchFeatureAccess]);
 
   if (!user) {
     return (
@@ -104,11 +165,14 @@ export function ChatRouteComponent() {
     );
   }
   const currentUserId = user.id;
-  const hasAIChatAccess = billingQuery.data?.has_access === true;
+  const hasAIChatAccess = hasAIChatFeatureAccess(featureAccessQuery.data);
+  const isFeatureAccessLoading =
+    featureAccessQuery.isLoading || featureAccessQuery.isPending;
   const isBillingLoading = billingQuery.isLoading || billingQuery.isPending;
+  const isChatAccessLoading = isFeatureAccessLoading || isPollingCheckoutAccess;
 
   async function handleNewChat() {
-    if (!hasAIChatAccess) {
+    if (!hasAIChatAccess || isChatAccessLoading) {
       return;
     }
 
@@ -117,7 +181,7 @@ export function ChatRouteComponent() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!hasAIChatAccess) {
+    if (!hasAIChatAccess || isChatAccessLoading) {
       return;
     }
 
@@ -171,7 +235,7 @@ export function ChatRouteComponent() {
             type="button"
             variant="outline"
             onClick={handleNewChat}
-            disabled={!hasAIChatAccess}
+            disabled={isChatAccessLoading || !hasAIChatAccess}
           >
             New Chat
           </Button>
@@ -182,10 +246,13 @@ export function ChatRouteComponent() {
 
       <AIChatBillingCard
         status={billingQuery.data}
+        hasFeatureAccess={hasAIChatAccess}
         isLoading={isBillingLoading}
         isError={billingQuery.isError}
         isCheckoutLoading={checkoutMutation.isPending}
+        isBillingPortalLoading={billingPortalMutation.isPending}
         onStartCheckout={() => checkoutMutation.mutate()}
+        onManageBilling={() => billingPortalMutation.mutate()}
       />
 
       <Card className="min-h-[32rem]">
@@ -267,19 +334,26 @@ export function ChatRouteComponent() {
               onChange={(event) => setPrompt(event.target.value)}
               placeholder="Ask about training, recovery, exercise choices, or FitTrack usage..."
               rows={4}
-              disabled={isSubmitting || !hasAIChatAccess}
+              disabled={isSubmitting || isChatAccessLoading || !hasAIChatAccess}
             />
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                {hasAIChatAccess
-                  ? `Conversation ID: ${
-                      conversation?.id ?? conversationId ?? "not created yet"
-                    }`
-                  : "Start or restore premium access to use AI chat."}
+                {isChatAccessLoading
+                  ? "Checking AI chat access..."
+                  : hasAIChatAccess
+                    ? `Conversation ID: ${
+                        conversation?.id ?? conversationId ?? "not created yet"
+                      }`
+                    : "Start or restore premium access to use AI chat."}
               </p>
               <Button
                 type="submit"
-                disabled={isSubmitting || !prompt.trim() || !hasAIChatAccess}
+                disabled={
+                  isSubmitting ||
+                  !prompt.trim() ||
+                  isChatAccessLoading ||
+                  !hasAIChatAccess
+                }
               >
                 {isSubmitting ? "Streaming..." : "Send"}
               </Button>
@@ -418,4 +492,8 @@ function normalizeCheckoutSearchValue(
   value: unknown,
 ): ChatSearch["checkout"] | undefined {
   return value === "success" || value === "cancelled" ? value : undefined;
+}
+
+function waitForCheckoutAccessRetry(delayMs: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, delayMs));
 }
