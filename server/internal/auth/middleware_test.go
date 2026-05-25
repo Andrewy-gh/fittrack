@@ -2,18 +2,25 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -321,6 +328,23 @@ func TestJWKSCache_GetUserIDFromToken(t *testing.T) {
 	var _ JWKSProvider = (*JWKSCache)(nil)
 }
 
+func TestJWKSCache_GetUserIDFromToken_AllowsSmallIssuedAtClockSkew(t *testing.T) {
+	cache, signedToken := newTestJWKSCacheAndToken(t, time.Now().Add(30*time.Second))
+
+	userID, err := cache.GetUserIDFromToken(signedToken)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "user-123", userID)
+}
+
+func TestJWKSCache_GetUserIDFromToken_RejectsIssuedAtBeyondClockSkew(t *testing.T) {
+	cache, signedToken := newTestJWKSCacheAndToken(t, time.Now().Add(2*time.Minute))
+
+	_, err := cache.GetUserIDFromToken(signedToken)
+
+	assert.Error(t, err)
+}
+
 func TestJWKSCache_GetUserIDFromToken_ErrorCases(t *testing.T) {
 	// This is a simplified test - in a real scenario, you'd want to mock the jwk library
 	// or use test vectors with known good/bad tokens
@@ -338,6 +362,39 @@ func TestJWKSCache_GetUserIDFromToken_ErrorCases(t *testing.T) {
 		_, err := cache.GetUserIDFromToken("")
 		assert.Error(t, err, "Expected error for empty token")
 	})
+}
+
+func newTestJWKSCacheAndToken(t *testing.T, issuedAt time.Time) (*JWKSCache, string) {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	assert.NoError(t, err)
+
+	const keyID = "test-key"
+	alg := jwa.RS256()
+
+	publicKey, err := jwk.Import(&key.PublicKey)
+	assert.NoError(t, err)
+	assert.NoError(t, publicKey.Set(jwk.KeyIDKey, keyID))
+	assert.NoError(t, publicKey.Set(jwk.AlgorithmKey, alg))
+
+	keySet := jwk.NewSet()
+	assert.NoError(t, keySet.AddKey(publicKey))
+
+	token, err := jwt.NewBuilder().
+		Subject("user-123").
+		IssuedAt(issuedAt).
+		Expiration(time.Now().Add(5 * time.Minute)).
+		Build()
+	assert.NoError(t, err)
+
+	headers := jws.NewHeaders()
+	assert.NoError(t, headers.Set(jws.KeyIDKey, keyID))
+
+	signedToken, err := jwt.Sign(token, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
+	assert.NoError(t, err)
+
+	return &JWKSCache{keySet: keySet}, string(signedToken)
 }
 
 func TestErrorResponse(t *testing.T) {

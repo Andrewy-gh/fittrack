@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	jwksUrlTemplate = "https://api.stack-auth.com/api/v1/projects/%s/.well-known/jwks.json"
-	setUserIDQuery  = "SELECT set_config('app.current_user_id', $1, false) WHERE $1 IS NOT NULL"
+	jwksUrlTemplate           = "https://api.stack-auth.com/api/v1/projects/%s/.well-known/jwks.json"
+	setUserIDQuery            = "SELECT set_config('app.current_user_id', $1, false) WHERE $1 IS NOT NULL"
+	stackAccessTokenClockSkew = time.Minute
 )
 
 type JWKSProvider interface {
@@ -202,6 +203,7 @@ func (j *JWKSCache) GetUserIDFromToken(tokenString string) (string, error) {
 		tokenString,
 		jwt.WithKeySet(j.keySet),
 		jwt.WithValidate(true),
+		jwt.WithAcceptableSkew(stackAccessTokenClockSkew),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse/validate token: %w", err)
