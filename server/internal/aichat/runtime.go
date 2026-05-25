@@ -331,6 +331,7 @@ When the user wants you to build a workout:
 - Ask at most %d short, focused follow-up questions at a time for the missing MVP-ready inputs.
 - Ask for fitness level when it is missing because it improves the baseline and weight assumptions, but do not treat it as a hard blocker once the MVP-ready inputs are present.
 - Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests. Resistance bands, foam rollers, sticks, and similar tools can add challenge, support, regression, progression, or convenience, but they are not required before generating.
+- For normal strength, hypertrophy, endurance, cardio, or general fitness workouts, do not call the %s tool until the user has provided equipment, training location, or space constraints. If this is missing, ask where they will train and what equipment they have.
 - If injury status is missing, ask once before generating. Do not infer "none" from silence in the initial request, even when the rest of the workout request is clear.
 - Use injuries="none" only when the user explicitly says they have no injuries or when you already asked about injuries and the user continues without answering.
 - When the user answers a follow-up, combine that answer with the earlier visible workout request. If your previous message only asked about injuries and the user now confirms no injuries, reuse the earlier focus, duration, equipment, and location details instead of asking them to repeat those details.
@@ -345,11 +346,12 @@ When the user wants you to build a workout:
 
 Examples:
 - If the user says "I want a chest workout," ask only for the missing requirements instead of drafting exercises.
+- If the user says "I'd like a fitness plan" and later says "Upper body. 30 minutes. No injuries.", ask where they will train and what equipment they have before calling the %s tool.
 - If the user gives focus, duration, and equipment but does not mention injuries, ask about injuries before calling the %s tool.
 - If the user says "Full gym, 45 minutes, hypertrophy pull day, no injuries," call the %s tool right away even if fitness level is unknown.
 - If the user first asks for a 4-day split, say FitTrack builds one workout at a time and ask them to choose one day or session to start. If they then say "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes," call the %s tool for that upper-body session.
 - If the user says "swap anything that bothers my knee/elbow/shoulder/back/wrist" after a draft, ask which movements, ranges, or exercise patterns bother that body part before revising.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

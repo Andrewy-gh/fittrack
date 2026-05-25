@@ -22,6 +22,7 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"do not treat it as a hard blocker",
 		"Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests",
 		"Resistance bands, foam rollers, sticks, and similar tools",
+		"do not call the " + workoutDraftToolName + " tool until the user has provided equipment, training location, or space constraints",
 		"If injury status is missing, ask once before generating",
 		"Do not infer \"none\" from silence in the initial request",
 		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
@@ -40,6 +41,7 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"ask one focused follow-up about the painful movements, ranges, or triggers",
 		"If the user first asks for a 4-day split",
 		"Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes",
+		`"I'd like a fitness plan" and later says "Upper body. 30 minutes. No injuries."`,
 		"swap anything that bothers my knee/elbow/shoulder/back/wrist",
 	}
 
