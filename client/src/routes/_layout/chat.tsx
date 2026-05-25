@@ -186,6 +186,7 @@ export function ChatRouteComponent() {
     }
 
     await submitPrompt();
+    void refetchBillingStatus();
   }
 
   function handleEditInWorkoutForm(draft: AIWorkoutDraft) {
@@ -247,7 +248,7 @@ export function ChatRouteComponent() {
       <AIChatBillingCard
         status={billingQuery.data}
         hasFeatureAccess={hasAIChatAccess}
-        isLoading={isBillingLoading}
+        isLoading={isBillingLoading || isChatAccessLoading}
         isError={billingQuery.isError}
         isCheckoutLoading={checkoutMutation.isPending}
         isBillingPortalLoading={billingPortalMutation.isPending}

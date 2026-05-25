@@ -114,6 +114,39 @@ describe("AIChatBillingCard", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps billing management available when a non-Stripe grant overrides blocked Stripe billing", async () => {
+    const user = userEvent.setup();
+    const { onManageBilling, onStartCheckout } = renderCard(
+      {
+        feature_key: "ai_chatbot",
+        has_access: false,
+        subscription: {
+          stripe_subscription_id: "sub_past_due",
+          status: "past_due",
+          cancel_at_period_end: false,
+        },
+      },
+      { hasFeatureAccess: true },
+    );
+
+    expect(screen.getByText("Access active")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "AI chat access is active for this account. Billing still needs attention.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "AI chat is paused until the payment issue is resolved.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Update billing" }));
+
+    expect(onManageBilling).toHaveBeenCalledTimes(1);
+    expect(onStartCheckout).not.toHaveBeenCalled();
+  });
+
   it("shows cancellation-at-period-end access messaging", () => {
     renderCard({
       feature_key: "ai_chatbot",

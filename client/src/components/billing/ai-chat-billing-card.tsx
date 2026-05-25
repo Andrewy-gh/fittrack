@@ -50,6 +50,11 @@ export function AIChatBillingCard({
     isBlockedStatus(subscription.status);
   const canUseChat = hasFeatureAccess ?? status?.has_access === true;
   const billingAction = getBillingAction(status);
+  const shouldShowBillingAction =
+    !isLoading &&
+    !isError &&
+    billingAction &&
+    (!canUseChat || billingAction === "portal");
   const isActionLoading =
     billingAction === "portal" ? isBillingPortalLoading : isCheckoutLoading;
 
@@ -74,7 +79,7 @@ export function AIChatBillingCard({
             </p>
           </div>
 
-          {!canUseChat && !isError && billingAction ? (
+          {shouldShowBillingAction ? (
             <Button
               type="button"
               className="w-full sm:w-auto"
@@ -162,6 +167,15 @@ function BillingStatusBadge({
     );
   }
 
+  if (hasFeatureAccess) {
+    return (
+      <Badge>
+        <CheckCircle2 className="size-3" />
+        Access active
+      </Badge>
+    );
+  }
+
   return (
     <Badge
       variant="outline"
@@ -215,10 +229,12 @@ function BillingMessage({
 
   const cancellationMessage = getCancellationMessage(status.subscription);
 
-  if (hasFeatureAccess && !status.subscription) {
+  if (hasFeatureAccess && !isTrialing && !isActive) {
     return (
       <p className="text-sm text-muted-foreground">
-        AI chat access is active for this account.
+        {billingPortalStatuses.has(status.subscription?.status ?? "active")
+          ? "AI chat access is active for this account. Billing still needs attention."
+          : "AI chat access is active for this account."}
       </p>
     );
   }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,12 +10,31 @@ import (
 	"testing"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
+	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
+
+type routeBillingService struct{}
+
+func (routeBillingService) CreateCheckoutSession(context.Context) (*billing.CheckoutSessionResponse, error) {
+	return &billing.CheckoutSessionResponse{URL: "https://checkout.stripe.test/session"}, nil
+}
+
+func (routeBillingService) CreateCustomerPortalSession(context.Context) (*billing.CustomerPortalSessionResponse, error) {
+	return &billing.CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
+}
+
+func (routeBillingService) CurrentStatus(context.Context) (*billing.StatusResponse, error) {
+	return &billing.StatusResponse{FeatureKey: billing.FeatureKeyAIChatbot}, nil
+}
+
+func (routeBillingService) HandleWebhook(context.Context, []byte, string) error {
+	return nil
+}
 
 func TestRoutes_AllowsInngestHandlerAlongsideStaticFallback(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -102,5 +122,34 @@ func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
 		if rr.Code == http.StatusOK {
 			t.Fatalf("%s should not expose a product prompt endpoint", path)
 		}
+	}
+}
+
+func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg:    &config.Config{},
+		pool:   nil,
+	}
+
+	wh := &workout.WorkoutHandler{}
+	eh := &exercise.ExerciseHandler{}
+	fh := &featureaccess.Handler{}
+	hh := health.NewHandler(logger, nil)
+	ah := aichat.NewHandler(logger, nil)
+	bh := billing.NewHandler(logger, routeBillingService{})
+
+	mux := api.routes(wh, eh, fh, hh, ah, bh, nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "https://billing.stripe.test/session") {
+		t.Fatalf("expected billing portal URL response, got %s", rr.Body.String())
 	}
 }

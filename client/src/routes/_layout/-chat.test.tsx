@@ -305,6 +305,10 @@ describe("ChatRouteComponent", () => {
       { timeout: 2000 },
     );
     expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(2);
+
+    await new Promise((resolve) => window.setTimeout(resolve, 2200));
+    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(2);
+    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(2);
   });
 
   it("starts Checkout from the no-access trial CTA", async () => {
@@ -345,6 +349,40 @@ describe("ChatRouteComponent", () => {
     ).toBeDisabled();
   });
 
+  it("keeps the trial CTA hidden while feature access is still loading", async () => {
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: undefined,
+      isLoading: true,
+      isPending: true,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("Checking your AI chat access..."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeDisabled();
+    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
+  });
+
   it("keeps chat enabled when feature access is granted without a Stripe subscription", async () => {
     mockBillingQueryResult.value = {
       data: {
@@ -378,6 +416,65 @@ describe("ChatRouteComponent", () => {
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Access active")).toBeInTheDocument();
+  });
+
+  it("keeps chat enabled when a manual feature grant overrides blocked Stripe billing", async () => {
+    const user = userEvent.setup();
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+        subscription: {
+          stripe_subscription_id: "sub_past_due",
+          status: "past_due",
+          cancel_at_period_end: false,
+        },
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [
+        {
+          feature_key: "ai_chatbot",
+        },
+      ],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    expect(screen.getByText("Access active")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "AI chat access is active for this account. Billing still needs attention.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "AI chat is paused until the payment issue is resolved.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Start or restore premium access to use AI chat."),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Update billing" }));
+
+    await waitFor(() => {
+      expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
@@ -1176,6 +1273,101 @@ describe("ChatRouteComponent", () => {
     );
     expect(mockPollConversation).not.toHaveBeenCalled();
     expect(mockShowErrorToast).not.toHaveBeenCalled();
+  });
+
+  it("refreshes billing status after a submitted prompt so trial usage updates", async () => {
+    const user = userEvent.setup();
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: true,
+        subscription: {
+          stripe_subscription_id: "sub_trial",
+          status: "trialing",
+          cancel_at_period_end: false,
+        },
+        trial_usage: {
+          used: 1,
+          limit: 30,
+        },
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(conversationDetail([]))
+      .mockResolvedValueOnce(
+        conversationDetail([
+          {
+            id: 71,
+            conversation_id: 41,
+            role: "user",
+            content: "hello",
+            status: "completed",
+            created_at: "2026-03-26T17:00:01Z",
+            updated_at: "2026-03-26T17:00:01Z",
+            completed_at: "2026-03-26T17:00:01Z",
+          },
+          {
+            id: 72,
+            conversation_id: 41,
+            role: "assistant",
+            content: "Completed answer",
+            status: "completed",
+            created_at: "2026-03-26T17:00:01Z",
+            updated_at: "2026-03-26T17:00:02Z",
+            completed_at: "2026-03-26T17:00:02Z",
+          },
+        ]),
+      );
+    mockStreamMessage.mockImplementation(
+      async (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+          onDone?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          message_id: 72,
+        });
+        options?.onDone?.({
+          type: "done",
+          message_id: 72,
+          text: "Completed answer",
+        });
+
+        return {
+          doneEvent: {
+            type: "done",
+            message_id: 72,
+            text: "Completed answer",
+          },
+          endedWithError: false,
+        };
+      },
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("1 of 30 trial prompts used"),
+    ).toBeInTheDocument();
+    await user.type(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("Completed answer")).toBeInTheDocument();
   });
 
   it("keeps the active stream running when new chat creation fails", async () => {

@@ -407,6 +407,19 @@ func TestServiceCreateCustomerPortalSession(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceCreateCustomerPortalSession_NotConfigured(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	resp, err := service.CreateCustomerPortalSession(ctx)
+
+	require.ErrorIs(t, err, ErrBillingNotConfigured)
+	assert.Nil(t, resp)
+	repo.AssertNotCalled(t, "GetStripeCustomerByUserID", mock.Anything, mock.Anything)
+}
+
 func subscriptionEventPayload(t *testing.T, subscriptionID string, status string, cancelAtPeriodEnd bool, periodStart time.Time, periodEnd time.Time) []byte {
 	t.Helper()
 	return subscriptionEventPayloadWithPrice(t, subscriptionID, status, cancelAtPeriodEnd, periodStart, periodEnd, stringPtr("price_premium"))
