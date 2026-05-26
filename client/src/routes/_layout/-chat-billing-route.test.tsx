@@ -17,7 +17,6 @@ import {
   mockSearch,
   resetChatRouteMocks,
 } from "./-chat-route-test-utils";
-import { CheckoutAccessPendingError } from "./-chat-billing-access";
 
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
@@ -79,7 +78,7 @@ describe("ChatRouteComponent", () => {
     expect(mockRefetchBillingStatus).not.toHaveBeenCalled();
   });
 
-  it("shows an activation recovery action when checkout polling exhausts retries after billing becomes active", async () => {
+  it("shows an activation recovery action when checkout polling returns active billing before the feature grant", async () => {
     const user = userEvent.setup();
     mockSearch.checkout = "success";
     mockBillingQueryResult.value = {
@@ -98,8 +97,7 @@ describe("ChatRouteComponent", () => {
       refetch: mockRefetchFeatureAccess,
     };
     mockCheckoutAccessQueryResult.value = {
-      data: undefined,
-      error: new CheckoutAccessPendingError({
+      data: {
         billingStatus: {
           feature_key: "ai_chatbot",
           has_access: true,
@@ -110,10 +108,10 @@ describe("ChatRouteComponent", () => {
           },
         },
         featureAccess: [],
-      }),
+      },
       isFetching: false,
-      isError: true,
-      isSuccess: false,
+      isError: false,
+      isSuccess: true,
     };
     mockGetConversation.mockResolvedValue(conversationDetail([]));
 

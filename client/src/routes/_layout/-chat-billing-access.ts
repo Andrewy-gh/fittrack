@@ -32,6 +32,13 @@ export type CheckoutAccessPollResult = {
   featureAccess: FeatureAccessGrant[];
 };
 
+export type CheckoutAccessPollingView =
+  | { status: "idle" }
+  | { status: "polling" }
+  | { status: "ready"; result: CheckoutAccessPollResult }
+  | { status: "activating"; result: CheckoutAccessPollResult }
+  | { status: "failed"; error: unknown };
+
 export type AIChatBillingAccess = {
   billingStatus?: BillingStatusResponse;
   checkoutNotice: CheckoutSearch | null;
@@ -48,7 +55,8 @@ export type AIChatBillingAccess = {
   refreshAccess: () => void;
 };
 
-const checkoutAccessRetryDelaysMs = [1000, 2000, 4000, 8000];
+const checkoutAccessRetryDelaysMs =
+  import.meta.env.MODE === "test" ? [1, 1, 1, 1] : [1000, 2000, 4000, 8000];
 
 export type AIChatAccessState =
   | "checking"
@@ -57,7 +65,7 @@ export type AIChatAccessState =
   | "blocked"
   | "error";
 
-export class CheckoutAccessPendingError extends Error {
+class CheckoutAccessPendingError extends Error {
   result: CheckoutAccessPollResult;
 
   constructor(result: CheckoutAccessPollResult) {
@@ -143,10 +151,13 @@ export function useAIChatBillingAccess({
     }
   }, [checkoutAccessQuery.isError, checkoutAccessQuery.isSuccess]);
 
-  const checkoutAccessResult = resolveCheckoutAccessResult(
-    checkoutAccessQuery.data,
-    checkoutAccessQuery.error,
-  );
+  const checkoutPollingView = resolveCheckoutAccessPollingView({
+    data: checkoutAccessQuery.data,
+    error: checkoutAccessQuery.error,
+    isFetching: checkoutAccessQuery.isFetching,
+  });
+  const checkoutAccessResult =
+    getCheckoutAccessPollingResult(checkoutPollingView);
   const accessView = resolveAIChatAccessView({
     billingStatus: checkoutAccessResult?.billingStatus ?? billingQuery.data,
     featureAccess:
@@ -156,8 +167,11 @@ export function useAIChatBillingAccess({
       billingQuery.isPending ||
       featureAccessQuery.isLoading ||
       featureAccessQuery.isPending ||
-      checkoutAccessQuery.isFetching,
-    isError: billingQuery.isError || featureAccessQuery.isError,
+      checkoutPollingView.status === "polling",
+    isError:
+      billingQuery.isError ||
+      featureAccessQuery.isError ||
+      checkoutPollingView.status === "failed",
   });
   const isRefreshingAccess =
     checkoutAccessQuery.isFetching ||
@@ -213,16 +227,41 @@ export function resolveAIChatAccessView({
   };
 }
 
-export function resolveCheckoutAccessResult(
-  data: CheckoutAccessPollResult | undefined,
-  error: unknown,
-): CheckoutAccessPollResult | undefined {
+export function resolveCheckoutAccessPollingView({
+  data,
+  error,
+  isFetching,
+}: {
+  data?: CheckoutAccessPollResult;
+  error?: unknown;
+  isFetching?: boolean;
+}): CheckoutAccessPollingView {
+  if (isFetching) {
+    return { status: "polling" };
+  }
+
   if (data) {
-    return data;
+    return hasAIChatFeatureAccess(data.featureAccess)
+      ? { status: "ready", result: data }
+      : { status: "activating", result: data };
   }
 
   if (error instanceof CheckoutAccessPendingError) {
-    return error.result;
+    return { status: "activating", result: error.result };
+  }
+
+  if (error) {
+    return { status: "failed", error };
+  }
+
+  return { status: "idle" };
+}
+
+function getCheckoutAccessPollingResult(
+  view: CheckoutAccessPollingView,
+): CheckoutAccessPollResult | undefined {
+  if (view.status === "ready" || view.status === "activating") {
+    return view.result;
   }
 
   return undefined;

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  CheckoutAccessPendingError,
   resolveAIChatAccessView,
-  resolveCheckoutAccessResult,
+  resolveCheckoutAccessPollingView,
 } from "./-chat-billing-access";
 
 describe("resolveAIChatAccessView", () => {
@@ -57,10 +56,9 @@ describe("resolveAIChatAccessView", () => {
     expect(view.state).toBe("blocked");
   });
 
-  it("preserves active billing from an exhausted checkout poll while the feature grant is still pending", () => {
-    const result = resolveCheckoutAccessResult(
-      undefined,
-      new CheckoutAccessPendingError({
+  it("models an active checkout poll result as activating until the feature grant refreshes", () => {
+    const pollingView = resolveCheckoutAccessPollingView({
+      data: {
         billingStatus: {
           feature_key: "ai_chatbot",
           has_access: true,
@@ -71,15 +69,40 @@ describe("resolveAIChatAccessView", () => {
           },
         },
         featureAccess: [],
-      }),
-    );
+      },
+      isFetching: false,
+    });
+
+    expect(pollingView.status).toBe("activating");
+    if (pollingView.status !== "activating") {
+      throw new Error("expected activating checkout polling view");
+    }
 
     const view = resolveAIChatAccessView({
-      billingStatus: result?.billingStatus,
-      featureAccess: result?.featureAccess,
+      billingStatus: pollingView.result.billingStatus,
+      featureAccess: pollingView.result.featureAccess,
+    });
+    expect(view.hasChatAccess).toBe(false);
+    expect(view.state).toBe("activating");
+  });
+
+  it("models unexpected checkout polling failures as recoverable errors", () => {
+    const pollingView = resolveCheckoutAccessPollingView({
+      error: new Error("network unavailable"),
+      isFetching: false,
+    });
+
+    expect(pollingView.status).toBe("failed");
+    const view = resolveAIChatAccessView({
+      billingStatus: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      featureAccess: [],
+      isError: pollingView.status === "failed",
     });
 
     expect(view.hasChatAccess).toBe(false);
-    expect(view.state).toBe("activating");
+    expect(view.state).toBe("error");
   });
 });
