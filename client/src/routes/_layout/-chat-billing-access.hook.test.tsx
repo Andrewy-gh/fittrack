@@ -105,7 +105,7 @@ describe("useAIChatBillingAccess checkout polling", () => {
     const { result } = renderBillingAccessHook();
 
     await waitFor(() => {
-      expect(result.current.accessState).toBe("error");
+      expect(result.current.accessState).toBe("checkout-activation-error");
     });
     expect(result.current.hasChatAccess).toBe(false);
     expect(result.current.billingStatus?.has_access).toBe(false);

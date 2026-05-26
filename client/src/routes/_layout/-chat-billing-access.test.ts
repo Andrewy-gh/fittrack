@@ -86,7 +86,7 @@ describe("resolveAIChatAccessView", () => {
     expect(view.state).toBe("activating");
   });
 
-  it("models unexpected checkout polling failures as recoverable errors", () => {
+  it("models unexpected checkout polling failures as checkout activation errors", () => {
     const pollingView = resolveCheckoutAccessPollingView({
       error: new Error("network unavailable"),
       isFetching: false,
@@ -99,10 +99,25 @@ describe("resolveAIChatAccessView", () => {
         has_access: false,
       },
       featureAccess: [],
-      isError: pollingView.status === "failed",
+      errorSource:
+        pollingView.status === "failed" ? "checkout-activation" : undefined,
     });
 
     expect(view.hasChatAccess).toBe(false);
-    expect(view.state).toBe("error");
+    expect(view.state).toBe("checkout-activation-error");
+  });
+
+  it("models base billing or feature access failures as billing errors", () => {
+    const view = resolveAIChatAccessView({
+      billingStatus: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      featureAccess: [],
+      errorSource: "billing",
+    });
+
+    expect(view.hasChatAccess).toBe(false);
+    expect(view.state).toBe("billing-error");
   });
 });

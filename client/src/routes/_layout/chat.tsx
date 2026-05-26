@@ -127,7 +127,9 @@ export function ChatRouteComponent() {
   const chatAccessMessage =
     billingAccess.accessState === "activating"
       ? "AI chat activation is still finishing."
-      : "Start or restore premium access to use AI chat.";
+      : billingAccess.accessState === "checkout-activation-error"
+        ? "AI chat activation needs another access refresh."
+        : "Start or restore premium access to use AI chat.";
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">

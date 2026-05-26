@@ -48,7 +48,7 @@ describe("AIChatBillingCard", () => {
     render(
       <AIChatBillingCard
         isError
-        accessState="error"
+        accessState="billing-error"
         onStartCheckout={vi.fn()}
         onManageBilling={vi.fn()}
         onRefreshAccess={vi.fn()}
@@ -64,6 +64,40 @@ describe("AIChatBillingCard", () => {
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers refresh instead of Checkout when checkout activation verification fails", async () => {
+    const user = userEvent.setup();
+    const onStartCheckout = vi.fn();
+    const onRefreshAccess = vi.fn();
+    render(
+      <AIChatBillingCard
+        isError
+        accessState="checkout-activation-error"
+        status={{
+          feature_key: "ai_chatbot",
+          has_access: false,
+        }}
+        onStartCheckout={onStartCheckout}
+        onManageBilling={vi.fn()}
+        onRefreshAccess={onRefreshAccess}
+      />,
+    );
+
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Checkout finished, but we could not refresh AI chat access. Try refreshing access.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Refresh access" }));
+
+    expect(onRefreshAccess).toHaveBeenCalledTimes(1);
+    expect(onStartCheckout).not.toHaveBeenCalled();
   });
 
   it("shows the trial badge and prompt usage while trialing", () => {

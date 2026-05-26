@@ -33,7 +33,8 @@ export type AIChatBillingCardAccessState =
   | "ready"
   | "activating"
   | "blocked"
-  | "error";
+  | "billing-error"
+  | "checkout-activation-error";
 
 const checkoutBlockedStatuses = new Set<BillingSubscriptionStatus>([
   "canceled",
@@ -69,8 +70,8 @@ export function AIChatBillingCard({
   const billingAction = getBillingAction(status, accessState);
   const shouldShowBillingAction =
     !isLoading &&
-    !isError &&
     billingAction &&
+    (!isError || billingAction === "refresh") &&
     (accessState !== "ready" || billingAction === "portal");
   const isActionLoading = getActionLoadingState({
     billingAction,
@@ -248,6 +249,15 @@ function BillingMessage({
   }
 
   if (isError) {
+    if (accessState === "checkout-activation-error") {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Checkout finished, but we could not refresh AI chat access. Try
+          refreshing access.
+        </p>
+      );
+    }
+
     return (
       <p className="text-sm text-muted-foreground">
         We could not confirm billing status. Refresh the page or try again soon.
@@ -343,9 +353,16 @@ type BillingAction = "checkout" | "portal" | "refresh";
 function getBillingAction(
   status: BillingStatusResponse | undefined,
   accessState: AIChatBillingCardAccessState,
-): BillingAction {
-  if (accessState === "activating") {
+): BillingAction | null {
+  if (
+    accessState === "activating" ||
+    accessState === "checkout-activation-error"
+  ) {
     return "refresh";
+  }
+
+  if (accessState === "billing-error") {
+    return null;
   }
 
   if (billingPortalStatuses.has(status?.subscription?.status ?? "active")) {
@@ -400,11 +417,15 @@ function getActionLoadingState({
   isCheckoutLoading,
   isRefreshingAccess,
 }: {
-  billingAction: BillingAction;
+  billingAction: BillingAction | null;
   isBillingPortalLoading: boolean;
   isCheckoutLoading: boolean;
   isRefreshingAccess: boolean;
 }): boolean {
+  if (!billingAction) {
+    return false;
+  }
+
   switch (billingAction) {
     case "portal":
       return isBillingPortalLoading;

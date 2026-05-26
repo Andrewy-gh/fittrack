@@ -63,7 +63,10 @@ export type AIChatAccessState =
   | "ready"
   | "activating"
   | "blocked"
-  | "error";
+  | "billing-error"
+  | "checkout-activation-error";
+
+type AIChatAccessErrorSource = "billing" | "checkout-activation";
 
 class CheckoutAccessPendingError extends Error {
   result: CheckoutAccessPollResult;
@@ -158,6 +161,10 @@ export function useAIChatBillingAccess({
   });
   const checkoutAccessResult =
     getCheckoutAccessPollingResult(checkoutPollingView);
+  const errorSource = getAIChatAccessErrorSource({
+    isBillingError: billingQuery.isError || featureAccessQuery.isError,
+    checkoutPollingView,
+  });
   const accessView = resolveAIChatAccessView({
     billingStatus: checkoutAccessResult?.billingStatus ?? billingQuery.data,
     featureAccess:
@@ -168,10 +175,7 @@ export function useAIChatBillingAccess({
       featureAccessQuery.isLoading ||
       featureAccessQuery.isPending ||
       checkoutPollingView.status === "polling",
-    isError:
-      billingQuery.isError ||
-      featureAccessQuery.isError ||
-      checkoutPollingView.status === "failed",
+    errorSource,
   });
   const isRefreshingAccess =
     checkoutAccessQuery.isFetching ||
@@ -185,14 +189,17 @@ export function useAIChatBillingAccess({
     hasChatAccess: accessView.hasChatAccess,
     isCheckingAccess: accessView.state === "checking",
     isBillingCardLoading: accessView.state === "checking",
-    isBillingError: accessView.state === "error",
+    isBillingError: isAIChatAccessErrorState(accessView.state),
     isRefreshingAccess,
     isCheckoutLoading: checkoutMutation.isPending,
     isBillingPortalLoading: billingPortalMutation.isPending,
     startCheckout: () => checkoutMutation.mutate(),
     manageBilling: () => billingPortalMutation.mutate(),
     refreshAccess: () => {
-      if (accessView.state === "activating") {
+      if (
+        accessView.state === "activating" ||
+        accessView.state === "checkout-activation-error"
+      ) {
         setShouldPollCheckoutAccess(true);
       }
       void billingQuery.refetch();
@@ -205,19 +212,19 @@ export function resolveAIChatAccessView({
   billingStatus,
   featureAccess,
   isChecking,
-  isError,
+  errorSource,
 }: {
   billingStatus?: BillingStatusResponse;
   featureAccess?: FeatureAccessGrant[];
   isChecking?: boolean;
-  isError?: boolean;
+  errorSource?: AIChatAccessErrorSource;
 }) {
   const hasChatAccess = hasAIChatFeatureAccess(featureAccess);
   const state = resolveAIChatAccessState({
     billingStatus,
     hasChatAccess,
     isChecking,
-    isError,
+    errorSource,
   });
 
   return {
@@ -271,19 +278,23 @@ function resolveAIChatAccessState({
   billingStatus,
   hasChatAccess,
   isChecking,
-  isError,
+  errorSource,
 }: {
   billingStatus?: BillingStatusResponse;
   hasChatAccess: boolean;
   isChecking?: boolean;
-  isError?: boolean;
+  errorSource?: AIChatAccessErrorSource;
 }): AIChatAccessState {
   if (hasChatAccess) {
     return "ready";
   }
 
-  if (isError) {
-    return "error";
+  if (errorSource === "checkout-activation") {
+    return "checkout-activation-error";
+  }
+
+  if (errorSource === "billing") {
+    return "billing-error";
   }
 
   if (isChecking) {
@@ -295,6 +306,24 @@ function resolveAIChatAccessState({
   }
 
   return "blocked";
+}
+
+function getAIChatAccessErrorSource({
+  isBillingError,
+  checkoutPollingView,
+}: {
+  isBillingError: boolean;
+  checkoutPollingView: CheckoutAccessPollingView;
+}): AIChatAccessErrorSource | undefined {
+  if (checkoutPollingView.status === "failed") {
+    return "checkout-activation";
+  }
+
+  return isBillingError ? "billing" : undefined;
+}
+
+function isAIChatAccessErrorState(state: AIChatAccessState): boolean {
+  return state === "billing-error" || state === "checkout-activation-error";
 }
 
 async function waitForCheckoutAccess(): Promise<CheckoutAccessPollResult> {
