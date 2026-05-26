@@ -119,7 +119,7 @@ func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPor
 	}
 
 	stripe.Key = s.stripeSecretKey
-	customerID, err := s.ensureStripeCustomer(ctx, userID)
+	customerID, err := s.existingStripeCustomer(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -317,6 +317,24 @@ func (s *Service) ensureStripeCustomer(ctx context.Context, userID string) (stri
 	}
 
 	return customer.ID, nil
+}
+
+func (s *Service) existingStripeCustomer(ctx context.Context, userID string) (string, error) {
+	row, err := s.repo.GetStripeCustomerByUserID(ctx, userID)
+	switch {
+	case err == nil:
+	case errors.Is(err, pgx.ErrNoRows):
+		return "", ErrBillingCustomerMissing
+	default:
+		return "", fmt.Errorf("get stripe customer: %w", err)
+	}
+
+	customerID := strings.TrimSpace(row.StripeCustomerID)
+	if customerID == "" {
+		return "", ErrBillingCustomerMissing
+	}
+
+	return customerID, nil
 }
 
 func (s *Service) configuredForCheckout() bool {

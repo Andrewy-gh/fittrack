@@ -91,6 +91,8 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 	case errors.Is(err, ErrBillingNotConfigured):
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "billing is not configured", nil)
+	case errors.Is(err, ErrBillingCustomerMissing):
+		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, "billing customer was not found", nil)
 	case errors.Is(err, ErrTrialPromptLimitExceeded):
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat trial prompt limit reached", nil)
 	default:

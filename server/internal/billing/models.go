@@ -19,6 +19,7 @@ const (
 
 var (
 	ErrBillingNotConfigured     = errors.New("billing is not configured")
+	ErrBillingCustomerMissing   = errors.New("billing customer is missing")
 	ErrTrialPromptLimitExceeded = errors.New("ai chat trial prompt limit exceeded")
 	ErrStripeUserMissing        = errors.New("stripe payload is missing fittrack user metadata")
 	ErrStripeCustomerMissing    = errors.New("stripe payload is missing customer")

@@ -20,14 +20,17 @@ const {
   mockFeatureAccessQueryOptions,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
+  mockGetBillingStatus,
   mockRedirectToBillingCheckout,
   mockRedirectToBillingPortal,
+  mockGetFeatureAccess,
   mockUseMutation,
   mockUseQuery,
   mockRefetchBillingStatus,
   mockRefetchFeatureAccess,
   mockBillingQueryResult,
   mockFeatureAccessQueryResult,
+  mockCheckoutAccessQueryResult,
 } = vi.hoisted(() => ({
   mockSearch: {
     conversationId: "41" as string | undefined,
@@ -48,14 +51,17 @@ const {
   mockFeatureAccessQueryOptions: vi.fn(),
   mockCreateBillingCheckoutSession: vi.fn(),
   mockCreateBillingCustomerPortalSession: vi.fn(),
+  mockGetBillingStatus: vi.fn(),
   mockRedirectToBillingCheckout: vi.fn(),
   mockRedirectToBillingPortal: vi.fn(),
+  mockGetFeatureAccess: vi.fn(),
   mockUseMutation: vi.fn(),
   mockUseQuery: vi.fn(),
   mockRefetchBillingStatus: vi.fn(),
   mockRefetchFeatureAccess: vi.fn(),
   mockBillingQueryResult: { value: undefined as unknown },
   mockFeatureAccessQueryResult: { value: undefined as unknown },
+  mockCheckoutAccessQueryResult: { value: undefined as unknown },
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -87,12 +93,14 @@ vi.mock("@/lib/api/billing", () => ({
   billingStatusQueryOptions: mockBillingStatusQueryOptions,
   createBillingCustomerPortalSession: mockCreateBillingCustomerPortalSession,
   createBillingCheckoutSession: mockCreateBillingCheckoutSession,
+  getBillingStatus: mockGetBillingStatus,
   redirectToBillingCheckout: mockRedirectToBillingCheckout,
   redirectToBillingPortal: mockRedirectToBillingPortal,
 }));
 
 vi.mock("@/lib/api/feature-access", () => ({
   featureAccessQueryOptions: mockFeatureAccessQueryOptions,
+  getFeatureAccess: mockGetFeatureAccess,
   hasAIChatFeatureAccess: (
     grants?: Array<{
       feature_key: string;
@@ -168,8 +176,10 @@ describe("ChatRouteComponent", () => {
     mockFeatureAccessQueryOptions.mockReset();
     mockCreateBillingCheckoutSession.mockReset();
     mockCreateBillingCustomerPortalSession.mockReset();
+    mockGetBillingStatus.mockReset();
     mockRedirectToBillingCheckout.mockReset();
     mockRedirectToBillingPortal.mockReset();
+    mockGetFeatureAccess.mockReset();
     mockUseMutation.mockReset();
     mockUseQuery.mockReset();
     mockRefetchBillingStatus.mockReset();
@@ -206,11 +216,21 @@ describe("ChatRouteComponent", () => {
       isPending: false,
       refetch: mockRefetchFeatureAccess,
     };
-    mockUseQuery.mockImplementation((options: { queryKey?: unknown[] }) =>
-      options.queryKey?.[0] === "feature-access"
-        ? mockFeatureAccessQueryResult.value
-        : mockBillingQueryResult.value,
-    );
+    mockCheckoutAccessQueryResult.value = {
+      data: undefined,
+      isFetching: false,
+      isError: false,
+      isSuccess: false,
+    };
+    mockUseQuery.mockImplementation((options: { queryKey?: unknown[] }) => {
+      if (options.queryKey?.[0] === "feature-access") {
+        return mockFeatureAccessQueryResult.value;
+      }
+      if (options.queryKey?.[2] === "checkout-access") {
+        return mockCheckoutAccessQueryResult.value;
+      }
+      return mockBillingQueryResult.value;
+    });
     mockCreateBillingCheckoutSession.mockResolvedValue({
       url: "https://checkout.stripe.test/session",
     });
@@ -220,6 +240,20 @@ describe("ChatRouteComponent", () => {
     mockRefetchBillingStatus.mockResolvedValue(mockBillingQueryResult.value);
     mockRefetchFeatureAccess.mockResolvedValue(
       mockFeatureAccessQueryResult.value,
+    );
+    mockGetBillingStatus.mockResolvedValue(
+      (
+        mockBillingQueryResult.value as {
+          data: unknown;
+        }
+      ).data,
+    );
+    mockGetFeatureAccess.mockResolvedValue(
+      (
+        mockFeatureAccessQueryResult.value as {
+          data: unknown;
+        }
+      ).data,
     );
     mockUseMutation.mockImplementation(
       (options: {
@@ -263,10 +297,6 @@ describe("ChatRouteComponent", () => {
         "Checkout complete. We are refreshing your AI chat access.",
       ),
     ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
-    });
-    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/chat",
       search: { conversationId: "41" },
@@ -274,7 +304,7 @@ describe("ChatRouteComponent", () => {
     });
   });
 
-  it("keeps polling access after checkout success until the webhook grant appears", async () => {
+  it("uses checkout access polling results when the webhook grant appears", async () => {
     mockSearch.checkout = "success";
     mockFeatureAccessQueryResult.value = {
       data: [],
@@ -282,33 +312,100 @@ describe("ChatRouteComponent", () => {
       isPending: false,
       refetch: mockRefetchFeatureAccess,
     };
-    mockRefetchFeatureAccess
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({
-        data: [
-          {
-            feature_key: "ai_chatbot",
+    mockCheckoutAccessQueryResult.value = {
+      data: {
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: true,
+          subscription: {
+            stripe_subscription_id: "sub_123",
+            status: "active",
+            cancel_at_period_end: false,
           },
-        ],
-      });
+        },
+        featureAccess: [{ feature_key: "ai_chatbot" }],
+      },
+      isFetching: false,
+      isError: false,
+      isSuccess: true,
+    };
     mockGetConversation.mockResolvedValue(conversationDetail([]));
 
     render(<ChatRouteComponent />);
 
-    await waitFor(() => {
-      expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
-    });
-    await waitFor(
-      () => {
-        expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(2);
-      },
-      { timeout: 2000 },
-    );
-    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(2);
+    expect(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeEnabled();
+    expect(screen.getByText("Premium")).toBeInTheDocument();
+    expect(mockRefetchFeatureAccess).not.toHaveBeenCalled();
+    expect(mockRefetchBillingStatus).not.toHaveBeenCalled();
+  });
 
-    await new Promise((resolve) => window.setTimeout(resolve, 2200));
-    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(2);
-    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(2);
+  it("stops showing the checking state when checkout access polling exhausts retries", async () => {
+    mockSearch.checkout = "success";
+    mockFeatureAccessQueryResult.value = {
+      data: [],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockCheckoutAccessQueryResult.value = {
+      data: undefined,
+      isFetching: false,
+      isError: true,
+      isSuccess: false,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Start or restore premium access to use AI chat.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Checking your AI chat access..."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer Checkout when billing status is active but the feature grant has not refreshed", async () => {
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: true,
+        subscription: {
+          stripe_subscription_id: "sub_active",
+          status: "active",
+          cancel_at_period_end: false,
+        },
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Premium")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeDisabled();
+    expect(screen.getByText("Start or restore premium access to use AI chat."));
   });
 
   it("starts Checkout from the no-access trial CTA", async () => {

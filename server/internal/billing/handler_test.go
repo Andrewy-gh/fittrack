@@ -72,3 +72,18 @@ func TestHandlerCreateCustomerPortalSession_NotConfiguredReturns503(t *testing.T
 	require.Equal(t, http.StatusServiceUnavailable, rr.Code)
 	assert.Contains(t, rr.Body.String(), "billing is not configured")
 }
+
+func TestHandlerCreateCustomerPortalSession_MissingCustomerReturns404(t *testing.T) {
+	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
+		createCustomerPortalSession: func(context.Context) (*CustomerPortalSessionResponse, error) {
+			return nil, ErrBillingCustomerMissing
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session", nil)
+	rr := httptest.NewRecorder()
+
+	handler.CreateCustomerPortalSession(rr, req)
+
+	require.Equal(t, http.StatusNotFound, rr.Code)
+	assert.Contains(t, rr.Body.String(), "billing customer was not found")
+}
