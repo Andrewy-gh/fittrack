@@ -1237,7 +1237,7 @@ func TestContributionData_Integration_RLS(t *testing.T) {
 	userBID := "test-user-rls-b"
 
 	// Create test workouts for both users on the same day
-	today := time.Now()
+	todayStr := getDatabaseCurrentDateString(t, pool)
 	workoutAID := setupTestWorkout(t, pool, userAID, "User A's workout")
 	workoutBID := setupTestWorkout(t, pool, userBID, "User B's workout")
 
@@ -1261,7 +1261,6 @@ func TestContributionData_Integration_RLS(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Find today's contribution data
-		todayStr := today.Format("2006-01-02")
 		var todayData *ContributionDay
 		for i := range result.Days {
 			if result.Days[i].Date == todayStr {
@@ -1270,7 +1269,7 @@ func TestContributionData_Integration_RLS(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, todayData, "Should have contribution data for today")
+		require.NotNil(t, todayData, "Should have contribution data for today")
 		assert.Len(t, todayData.Workouts, 1, "User A should see exactly 1 workout (their own)")
 		assert.Equal(t, workoutAID, todayData.Workouts[0].ID, "User A should see their own workout ID")
 		assert.NotEqual(t, workoutBID, todayData.Workouts[0].ID, "User A should NOT see User B's workout ID")
@@ -1292,7 +1291,6 @@ func TestContributionData_Integration_RLS(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Find today's contribution data
-		todayStr := today.Format("2006-01-02")
 		var todayData *ContributionDay
 		for i := range result.Days {
 			if result.Days[i].Date == todayStr {
@@ -1301,7 +1299,7 @@ func TestContributionData_Integration_RLS(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, todayData, "Should have contribution data for today")
+		require.NotNil(t, todayData, "Should have contribution data for today")
 		assert.Len(t, todayData.Workouts, 1, "User B should see exactly 1 workout (their own)")
 		assert.Equal(t, workoutBID, todayData.Workouts[0].ID, "User B should see their own workout ID")
 		assert.NotEqual(t, workoutAID, todayData.Workouts[0].ID, "User B should NOT see User A's workout ID")
@@ -1380,7 +1378,7 @@ func TestContributionData_Integration(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Check that the within-range workout appears
-		withinRangeDateStr := withinRangeDate.Format("2006-01-02")
+		withinRangeDateStr := getDatabaseDateString(t, pool, withinRangeDate)
 		var foundWithinRange bool
 		for _, day := range result.Days {
 			if day.Date == withinRangeDateStr {
@@ -1391,7 +1389,7 @@ func TestContributionData_Integration(t *testing.T) {
 		assert.True(t, foundWithinRange, "Workout within 52 weeks should appear in contribution data")
 
 		// Check that the outside-range workout does NOT appear
-		outsideRangeDateStr := outsideRangeDate.Format("2006-01-02")
+		outsideRangeDateStr := getDatabaseDateString(t, pool, outsideRangeDate)
 		var foundOutsideRange bool
 		for _, day := range result.Days {
 			if day.Date == outsideRangeDateStr {
@@ -1404,7 +1402,7 @@ func TestContributionData_Integration(t *testing.T) {
 
 	t.Run("VerifyMultipleWorkoutsPerDay", func(t *testing.T) {
 		// Create multiple workouts on the same day
-		now := time.Now()
+		todayStr := getDatabaseCurrentDateString(t, pool)
 		ctx := setTestUserContext(context.Background(), t, pool, userID)
 
 		// Create 3 workouts on the same day with different focuses
@@ -1444,7 +1442,6 @@ func TestContributionData_Integration(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Find today's data (use database's current date)
-		todayStr := now.Format("2006-01-02")
 		var todayData *ContributionDay
 		for i := range result.Days {
 			if result.Days[i].Date == todayStr {
@@ -1464,7 +1461,7 @@ func TestContributionData_Integration(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, todayData, "Should have contribution data for workouts created")
+		require.NotNil(t, todayData, "Should have contribution data for workouts created")
 		assert.Len(t, todayData.Workouts, 3, "Should have 3 workouts")
 
 		// Verify workout metadata
@@ -1536,7 +1533,7 @@ func TestContributionData_Integration(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Find the test date
-		testDateStr := testDate.Format("2006-01-02")
+		testDateStr := getDatabaseDateString(t, pool, testDate)
 		var testDayData *ContributionDay
 		for i := range result.Days {
 			if result.Days[i].Date == testDateStr {
@@ -1545,7 +1542,7 @@ func TestContributionData_Integration(t *testing.T) {
 			}
 		}
 
-		assert.NotNil(t, testDayData, "Should have contribution data for test date")
+		require.NotNil(t, testDayData, "Should have contribution data for test date")
 		assert.Equal(t, 15, testDayData.Count, "Count should be 15")
 		// With static thresholds [1, 6, 11, 16], count=15 should give level 3
 		// (15 >= 11 and 15 < 16)
@@ -1760,6 +1757,28 @@ func setupTestSet(t *testing.T, pool *pgxpool.Pool, userID string, workoutID int
 func setTestUserContext(ctx context.Context, t *testing.T, pool *pgxpool.Pool, userID string) context.Context {
 	t.Helper()
 	return testutils.SetTestUserContext(ctx, t, pool, userID)
+}
+
+func getDatabaseCurrentDateString(t *testing.T, pool *pgxpool.Pool) string {
+	t.Helper()
+
+	var date string
+	err := pool.QueryRow(context.Background(), "SELECT CURRENT_DATE::TEXT").Scan(&date)
+	require.NoError(t, err, "Failed to get current database date")
+	return date
+}
+
+func getDatabaseDateString(t *testing.T, pool *pgxpool.Pool, date time.Time) string {
+	t.Helper()
+
+	var dateString string
+	err := pool.QueryRow(
+		context.Background(),
+		"SELECT DATE_TRUNC('day', $1::timestamptz)::DATE::TEXT",
+		date,
+	).Scan(&dateString)
+	require.NoError(t, err, "Failed to normalize date with database timezone")
+	return dateString
 }
 
 func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
