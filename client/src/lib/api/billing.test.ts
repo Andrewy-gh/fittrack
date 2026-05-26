@@ -22,6 +22,7 @@ vi.mock("@/lib/local-dev-auth", () => ({
 }));
 
 import {
+  billingStatusQueryOptions,
   createBillingCheckoutSession,
   createBillingCustomerPortalSession,
   getBillingStatus,
@@ -39,6 +40,15 @@ describe("billing api wrapper", () => {
     getUser.mockResolvedValue({
       getAuthJson: vi.fn().mockResolvedValue({ accessToken: "token-123" }),
     });
+  });
+
+  it("scopes the billing status query cache by user", () => {
+    expect(billingStatusQueryOptions("user-123").queryKey).toEqual([
+      "billing",
+      "ai-chatbot",
+      "status",
+      "user-123",
+    ]);
   });
 
   it("loads current AI chat billing status", async () => {

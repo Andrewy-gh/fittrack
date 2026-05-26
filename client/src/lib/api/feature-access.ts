@@ -13,9 +13,9 @@ type FeatureAccessResponses = {
   200: FeatureAccessGrant[];
 };
 
-export function featureAccessQueryOptions() {
+export function featureAccessQueryOptions(userId?: string) {
   return queryOptions({
-    queryKey: ["feature-access"],
+    queryKey: ["feature-access", userId],
     queryFn: ({ signal }) => getFeatureAccess({ signal }),
   });
 }

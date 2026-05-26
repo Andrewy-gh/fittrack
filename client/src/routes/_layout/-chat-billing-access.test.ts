@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveAIChatAccessView } from "./-chat-billing-access";
+import {
+  CheckoutAccessPendingError,
+  resolveAIChatAccessView,
+  resolveCheckoutAccessResult,
+} from "./-chat-billing-access";
 
 describe("resolveAIChatAccessView", () => {
   it("uses feature grants as the chat composer access source", () => {
@@ -51,5 +55,31 @@ describe("resolveAIChatAccessView", () => {
 
     expect(view.hasChatAccess).toBe(false);
     expect(view.state).toBe("blocked");
+  });
+
+  it("preserves active billing from an exhausted checkout poll while the feature grant is still pending", () => {
+    const result = resolveCheckoutAccessResult(
+      undefined,
+      new CheckoutAccessPendingError({
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: true,
+          subscription: {
+            stripe_subscription_id: "sub_active",
+            status: "active",
+            cancel_at_period_end: false,
+          },
+        },
+        featureAccess: [],
+      }),
+    );
+
+    const view = resolveAIChatAccessView({
+      billingStatus: result?.billingStatus,
+      featureAccess: result?.featureAccess,
+    });
+
+    expect(view.hasChatAccess).toBe(false);
+    expect(view.state).toBe("activating");
   });
 });

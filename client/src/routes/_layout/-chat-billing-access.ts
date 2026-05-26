@@ -27,7 +27,7 @@ type UseAIChatBillingAccessOptions = {
   navigate: NavigateFn;
 };
 
-type CheckoutAccessPollResult = {
+export type CheckoutAccessPollResult = {
   billingStatus: BillingStatusResponse;
   featureAccess: FeatureAccessGrant[];
 };
@@ -57,10 +57,13 @@ export type AIChatAccessState =
   | "blocked"
   | "error";
 
-class CheckoutAccessPendingError extends Error {
-  constructor() {
+export class CheckoutAccessPendingError extends Error {
+  result: CheckoutAccessPollResult;
+
+  constructor(result: CheckoutAccessPollResult) {
     super("checkout access is still pending");
     this.name = "CheckoutAccessPendingError";
+    this.result = result;
   }
 }
 
@@ -79,15 +82,21 @@ export function useAIChatBillingAccess({
   const isSignedIn = Boolean(userId);
 
   const billingQuery = useQuery({
-    ...billingStatusQueryOptions(),
+    ...billingStatusQueryOptions(userId),
     enabled: isSignedIn,
   });
   const featureAccessQuery = useQuery({
-    ...featureAccessQueryOptions(),
+    ...featureAccessQueryOptions(userId),
     enabled: isSignedIn,
   });
   const checkoutAccessQuery = useQuery({
-    queryKey: ["billing", "ai-chatbot", "checkout-access", conversationId],
+    queryKey: [
+      "billing",
+      "ai-chatbot",
+      "checkout-access",
+      userId,
+      conversationId,
+    ],
     queryFn: waitForCheckoutAccess,
     enabled: isSignedIn && shouldPollCheckoutAccess,
     retry: checkoutAccessRetryDelaysMs.length,
@@ -134,10 +143,14 @@ export function useAIChatBillingAccess({
     }
   }, [checkoutAccessQuery.isError, checkoutAccessQuery.isSuccess]);
 
+  const checkoutAccessResult = resolveCheckoutAccessResult(
+    checkoutAccessQuery.data,
+    checkoutAccessQuery.error,
+  );
   const accessView = resolveAIChatAccessView({
-    billingStatus: checkoutAccessQuery.data?.billingStatus ?? billingQuery.data,
+    billingStatus: checkoutAccessResult?.billingStatus ?? billingQuery.data,
     featureAccess:
-      checkoutAccessQuery.data?.featureAccess ?? featureAccessQuery.data,
+      checkoutAccessResult?.featureAccess ?? featureAccessQuery.data,
     isChecking:
       billingQuery.isLoading ||
       billingQuery.isPending ||
@@ -200,6 +213,21 @@ export function resolveAIChatAccessView({
   };
 }
 
+export function resolveCheckoutAccessResult(
+  data: CheckoutAccessPollResult | undefined,
+  error: unknown,
+): CheckoutAccessPollResult | undefined {
+  if (data) {
+    return data;
+  }
+
+  if (error instanceof CheckoutAccessPendingError) {
+    return error.result;
+  }
+
+  return undefined;
+}
+
 function resolveAIChatAccessState({
   billingStatus,
   hasChatAccess,
@@ -237,7 +265,7 @@ async function waitForCheckoutAccess(): Promise<CheckoutAccessPollResult> {
   ]);
 
   if (!hasAIChatFeatureAccess(featureAccess)) {
-    throw new CheckoutAccessPendingError();
+    throw new CheckoutAccessPendingError({ billingStatus, featureAccess });
   }
 
   return { billingStatus, featureAccess };

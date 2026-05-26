@@ -52,9 +52,9 @@ type BillingCustomerPortalSessionResponses = {
   200: BillingCustomerPortalSessionResponse;
 };
 
-export function billingStatusQueryOptions() {
+export function billingStatusQueryOptions(userId?: string) {
   return queryOptions({
-    queryKey: ["billing", "ai-chatbot", "status"],
+    queryKey: ["billing", "ai-chatbot", "status", userId],
     queryFn: ({ signal }) => getBillingStatus({ signal }),
   });
 }
