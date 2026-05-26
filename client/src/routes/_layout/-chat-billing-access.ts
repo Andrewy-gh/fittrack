@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { NavigateFn } from "@tanstack/react-router";
 import {
@@ -90,6 +90,8 @@ export function useAIChatBillingAccess({
   const [shouldPollCheckoutAccess, setShouldPollCheckoutAccess] = useState(
     checkout === "success",
   );
+  const [settledCheckoutPollingView, setSettledCheckoutPollingView] =
+    useState<CheckoutAccessPollingView>({ status: "idle" });
   const isSignedIn = Boolean(userId);
 
   const billingQuery = useQuery({
@@ -148,17 +150,50 @@ export function useAIChatBillingAccess({
     });
   }, [checkout, conversationId, navigate]);
 
+  const currentCheckoutPollingView = useMemo(
+    () =>
+      resolveCheckoutAccessPollingView({
+        data: checkoutAccessQuery.data,
+        error: checkoutAccessQuery.error,
+        isFetching: checkoutAccessQuery.isFetching,
+        isError: checkoutAccessQuery.isError,
+      }),
+    [
+      checkoutAccessQuery.data,
+      checkoutAccessQuery.error,
+      checkoutAccessQuery.isError,
+      checkoutAccessQuery.isFetching,
+    ],
+  );
+
   useEffect(() => {
+    if (checkoutNotice !== "success") {
+      setSettledCheckoutPollingView((previousView) =>
+        previousView.status === "idle" ? previousView : { status: "idle" },
+      );
+      return;
+    }
+
+    if (isTerminalCheckoutPollingView(currentCheckoutPollingView)) {
+      setSettledCheckoutPollingView(currentCheckoutPollingView);
+    }
+
     if (checkoutAccessQuery.isSuccess || checkoutAccessQuery.isError) {
       setShouldPollCheckoutAccess(false);
     }
-  }, [checkoutAccessQuery.isError, checkoutAccessQuery.isSuccess]);
+  }, [
+    checkoutAccessQuery.isError,
+    checkoutAccessQuery.isSuccess,
+    checkoutNotice,
+    currentCheckoutPollingView,
+  ]);
 
-  const checkoutPollingView = resolveCheckoutAccessPollingView({
-    data: checkoutAccessQuery.data,
-    error: checkoutAccessQuery.error,
-    isFetching: checkoutAccessQuery.isFetching,
-  });
+  const checkoutPollingView =
+    checkoutNotice === "success" &&
+    isTerminalCheckoutPollingView(settledCheckoutPollingView) &&
+    !isTerminalCheckoutPollingView(currentCheckoutPollingView)
+      ? settledCheckoutPollingView
+      : currentCheckoutPollingView;
   const checkoutAccessResult =
     getCheckoutAccessPollingResult(checkoutPollingView);
   const errorSource = getAIChatAccessErrorSource({
@@ -201,6 +236,7 @@ export function useAIChatBillingAccess({
         accessView.state === "activating" ||
         accessView.state === "checkout-activation-error"
       ) {
+        setSettledCheckoutPollingView({ status: "idle" });
         setShouldPollCheckoutAccess(true);
       }
       void billingQuery.refetch();
@@ -238,10 +274,12 @@ export function resolveAIChatAccessView({
 export function resolveCheckoutAccessPollingView({
   data,
   error,
+  isError,
   isFetching,
 }: {
   data?: CheckoutAccessPollResult;
   error?: unknown;
+  isError?: boolean;
   isFetching?: boolean;
 }): CheckoutAccessPollingView {
   if (isFetching) {
@@ -254,12 +292,16 @@ export function resolveCheckoutAccessPollingView({
       : { status: "activating", result: data };
   }
 
-  if (error instanceof CheckoutAccessPendingError) {
+  if (error instanceof CheckoutAccessPendingError && isError !== false) {
     return { status: "activating", result: error.result };
   }
 
-  if (error) {
+  if (error && isError !== false) {
     return { status: "failed", error };
+  }
+
+  if (error) {
+    return { status: "polling" };
   }
 
   return { status: "idle" };
@@ -273,6 +315,19 @@ function getCheckoutAccessPollingResult(
   }
 
   return undefined;
+}
+
+function isTerminalCheckoutPollingView(
+  view: CheckoutAccessPollingView,
+): view is Extract<
+  CheckoutAccessPollingView,
+  { status: "ready" | "activating" | "failed" }
+> {
+  return (
+    view.status === "ready" ||
+    view.status === "activating" ||
+    view.status === "failed"
+  );
 }
 
 function resolveAIChatAccessState({
