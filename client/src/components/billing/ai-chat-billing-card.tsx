@@ -1,4 +1,10 @@
-import { AlertCircle, CheckCircle2, CreditCard, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  CreditCard,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,14 +17,23 @@ import { cn } from "@/lib/utils";
 
 type AIChatBillingCardProps = {
   status?: BillingStatusResponse;
-  hasFeatureAccess?: boolean;
+  accessState: AIChatBillingCardAccessState;
   isLoading?: boolean;
   isError?: boolean;
+  isRefreshingAccess?: boolean;
   isCheckoutLoading?: boolean;
   isBillingPortalLoading?: boolean;
   onStartCheckout: () => void;
   onManageBilling: () => void;
+  onRefreshAccess: () => void;
 };
+
+export type AIChatBillingCardAccessState =
+  | "checking"
+  | "ready"
+  | "activating"
+  | "blocked"
+  | "error";
 
 const checkoutBlockedStatuses = new Set<BillingSubscriptionStatus>([
   "canceled",
@@ -33,13 +48,15 @@ const billingPortalStatuses = new Set<BillingSubscriptionStatus>([
 
 export function AIChatBillingCard({
   status,
-  hasFeatureAccess,
+  accessState,
   isLoading = false,
   isError = false,
+  isRefreshingAccess = false,
   isCheckoutLoading = false,
   isBillingPortalLoading = false,
   onStartCheckout,
   onManageBilling,
+  onRefreshAccess,
 }: AIChatBillingCardProps) {
   const subscription = status?.subscription;
   const isTrialing = status?.has_access && subscription?.status === "trialing";
@@ -48,15 +65,19 @@ export function AIChatBillingCard({
     !status?.has_access &&
     subscription?.status !== undefined &&
     isBlockedStatus(subscription.status);
-  const canUseChat = hasFeatureAccess ?? status?.has_access === true;
-  const billingAction = getBillingAction(status);
+  const hasChatAccess = accessState === "ready";
+  const billingAction = getBillingAction(status, accessState);
   const shouldShowBillingAction =
     !isLoading &&
     !isError &&
     billingAction &&
-    (!canUseChat || billingAction === "portal");
-  const isActionLoading =
-    billingAction === "portal" ? isBillingPortalLoading : isCheckoutLoading;
+    (accessState !== "ready" || billingAction === "portal");
+  const isActionLoading = getActionLoadingState({
+    billingAction,
+    isBillingPortalLoading,
+    isCheckoutLoading,
+    isRefreshingAccess,
+  });
 
   return (
     <Card className="rounded-lg">
@@ -71,7 +92,7 @@ export function AIChatBillingCard({
                 isLoading={isLoading}
                 isError={isError}
                 status={status}
-                hasFeatureAccess={canUseChat}
+                accessState={accessState}
               />
             </div>
             <p className="text-sm text-muted-foreground">
@@ -84,11 +105,19 @@ export function AIChatBillingCard({
               type="button"
               className="w-full sm:w-auto"
               onClick={
-                billingAction === "portal" ? onManageBilling : onStartCheckout
+                billingAction === "portal"
+                  ? onManageBilling
+                  : billingAction === "refresh"
+                    ? onRefreshAccess
+                    : onStartCheckout
               }
               disabled={isActionLoading || isLoading}
             >
-              <CreditCard className="size-4" />
+              {billingAction === "refresh" ? (
+                <RefreshCw className="size-4" />
+              ) : (
+                <CreditCard className="size-4" />
+              )}
               {isActionLoading
                 ? billingActionLoadingLabel(billingAction)
                 : billingActionLabel(status, billingAction)}
@@ -103,7 +132,8 @@ export function AIChatBillingCard({
           isBlocked={isBlocked}
           isTrialing={Boolean(isTrialing)}
           isActive={Boolean(isActive)}
-          hasFeatureAccess={canUseChat}
+          accessState={accessState}
+          hasChatAccess={hasChatAccess}
         />
       </CardContent>
     </Card>
@@ -114,12 +144,12 @@ function BillingStatusBadge({
   status,
   isLoading,
   isError,
-  hasFeatureAccess,
+  accessState,
 }: {
   status?: BillingStatusResponse;
   isLoading: boolean;
   isError: boolean;
-  hasFeatureAccess: boolean;
+  accessState: AIChatBillingCardAccessState;
 }) {
   if (isLoading) {
     return <Badge variant="secondary">Checking</Badge>;
@@ -136,8 +166,12 @@ function BillingStatusBadge({
     );
   }
 
+  if (accessState === "activating") {
+    return <Badge variant="secondary">Activating</Badge>;
+  }
+
   if (!status?.subscription) {
-    if (hasFeatureAccess) {
+    if (accessState === "ready") {
       return (
         <Badge>
           <CheckCircle2 className="size-3" />
@@ -167,7 +201,7 @@ function BillingStatusBadge({
     );
   }
 
-  if (hasFeatureAccess) {
+  if (accessState === "ready") {
     return (
       <Badge>
         <CheckCircle2 className="size-3" />
@@ -193,7 +227,8 @@ function BillingMessage({
   isBlocked,
   isTrialing,
   isActive,
-  hasFeatureAccess,
+  accessState,
+  hasChatAccess,
 }: {
   status?: BillingStatusResponse;
   isLoading: boolean;
@@ -201,7 +236,8 @@ function BillingMessage({
   isBlocked: boolean;
   isTrialing: boolean;
   isActive: boolean;
-  hasFeatureAccess: boolean;
+  accessState: AIChatBillingCardAccessState;
+  hasChatAccess: boolean;
 }) {
   if (isLoading) {
     return (
@@ -229,7 +265,16 @@ function BillingMessage({
 
   const cancellationMessage = getCancellationMessage(status.subscription);
 
-  if (hasFeatureAccess && !isTrialing && !isActive) {
+  if (accessState === "activating") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Premium is active. We are finishing AI chat activation. Refresh access
+        if this takes more than a moment.
+      </p>
+    );
+  }
+
+  if (hasChatAccess && !isTrialing && !isActive) {
     return (
       <p className="text-sm text-muted-foreground">
         {billingPortalStatuses.has(status.subscription?.status ?? "active")
@@ -293,9 +338,16 @@ function BillingMessage({
   );
 }
 
-type BillingAction = "checkout" | "portal";
+type BillingAction = "checkout" | "portal" | "refresh";
 
-function getBillingAction(status?: BillingStatusResponse): BillingAction {
+function getBillingAction(
+  status: BillingStatusResponse | undefined,
+  accessState: AIChatBillingCardAccessState,
+): BillingAction {
+  if (accessState === "activating") {
+    return "refresh";
+  }
+
   if (billingPortalStatuses.has(status?.subscription?.status ?? "active")) {
     return "portal";
   }
@@ -307,6 +359,10 @@ function billingActionLabel(
   status: BillingStatusResponse | undefined,
   action: BillingAction,
 ): string {
+  if (action === "refresh") {
+    return "Refresh access";
+  }
+
   if (action === "portal") {
     return "Update billing";
   }
@@ -328,7 +384,35 @@ function billingActionLabel(
 }
 
 function billingActionLoadingLabel(action: BillingAction): string {
-  return action === "portal" ? "Opening billing..." : "Opening Checkout...";
+  switch (action) {
+    case "portal":
+      return "Opening billing...";
+    case "refresh":
+      return "Refreshing access...";
+    case "checkout":
+      return "Opening Checkout...";
+  }
+}
+
+function getActionLoadingState({
+  billingAction,
+  isBillingPortalLoading,
+  isCheckoutLoading,
+  isRefreshingAccess,
+}: {
+  billingAction: BillingAction;
+  isBillingPortalLoading: boolean;
+  isCheckoutLoading: boolean;
+  isRefreshingAccess: boolean;
+}): boolean {
+  switch (billingAction) {
+    case "portal":
+      return isBillingPortalLoading;
+    case "refresh":
+      return isRefreshingAccess;
+    case "checkout":
+      return isCheckoutLoading;
+  }
 }
 
 function isBlockedStatus(status: BillingSubscriptionStatus): boolean {

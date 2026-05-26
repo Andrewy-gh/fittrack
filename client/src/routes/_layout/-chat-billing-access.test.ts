@@ -19,10 +19,10 @@ describe("resolveAIChatAccessView", () => {
     });
 
     expect(view.hasChatAccess).toBe(true);
-    expect(view.hasBillingDisplayAccess).toBe(true);
+    expect(view.state).toBe("ready");
   });
 
-  it("keeps billing display active while waiting for the feature grant to refresh", () => {
+  it("keeps active billing in an activating state until the feature grant refreshes", () => {
     const view = resolveAIChatAccessView({
       billingStatus: {
         feature_key: "ai_chatbot",
@@ -37,6 +37,19 @@ describe("resolveAIChatAccessView", () => {
     });
 
     expect(view.hasChatAccess).toBe(false);
-    expect(view.hasBillingDisplayAccess).toBe(true);
+    expect(view.state).toBe("activating");
+  });
+
+  it("keeps users blocked when neither billing nor feature grants allow access", () => {
+    const view = resolveAIChatAccessView({
+      billingStatus: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      featureAccess: [],
+    });
+
+    expect(view.hasChatAccess).toBe(false);
+    expect(view.state).toBe("blocked");
   });
 });

@@ -2,24 +2,31 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { BillingStatusResponse } from "@/lib/api/billing";
-import { AIChatBillingCard } from "./ai-chat-billing-card";
+import {
+  AIChatBillingCard,
+  type AIChatBillingCardAccessState,
+} from "./ai-chat-billing-card";
 
 function renderCard(
   status?: BillingStatusResponse,
-  options: { hasFeatureAccess?: boolean } = {},
+  options: { accessState?: AIChatBillingCardAccessState } = {},
 ) {
   const onStartCheckout = vi.fn();
   const onManageBilling = vi.fn();
+  const onRefreshAccess = vi.fn();
   render(
     <AIChatBillingCard
       status={status}
-      hasFeatureAccess={options.hasFeatureAccess}
+      accessState={
+        options.accessState ?? (status?.has_access ? "ready" : "blocked")
+      }
       onStartCheckout={onStartCheckout}
       onManageBilling={onManageBilling}
+      onRefreshAccess={onRefreshAccess}
     />,
   );
 
-  return { onStartCheckout, onManageBilling };
+  return { onStartCheckout, onManageBilling, onRefreshAccess };
 }
 
 describe("AIChatBillingCard", () => {
@@ -41,8 +48,10 @@ describe("AIChatBillingCard", () => {
     render(
       <AIChatBillingCard
         isError
+        accessState="error"
         onStartCheckout={vi.fn()}
         onManageBilling={vi.fn()}
+        onRefreshAccess={vi.fn()}
       />,
     );
 
@@ -102,7 +111,7 @@ describe("AIChatBillingCard", () => {
         feature_key: "ai_chatbot",
         has_access: false,
       },
-      { hasFeatureAccess: true },
+      { accessState: "ready" },
     );
 
     expect(screen.getByText("Access active")).toBeInTheDocument();
@@ -126,7 +135,7 @@ describe("AIChatBillingCard", () => {
           cancel_at_period_end: false,
         },
       },
-      { hasFeatureAccess: true },
+      { accessState: "ready" },
     );
 
     expect(screen.getByText("Access active")).toBeInTheDocument();
@@ -144,6 +153,37 @@ describe("AIChatBillingCard", () => {
     await user.click(screen.getByRole("button", { name: "Update billing" }));
 
     expect(onManageBilling).toHaveBeenCalledTimes(1);
+    expect(onStartCheckout).not.toHaveBeenCalled();
+  });
+
+  it("offers refresh instead of Checkout while paid access is activating", async () => {
+    const user = userEvent.setup();
+    const { onRefreshAccess, onStartCheckout } = renderCard(
+      {
+        feature_key: "ai_chatbot",
+        has_access: true,
+        subscription: {
+          stripe_subscription_id: "sub_active",
+          status: "active",
+          cancel_at_period_end: false,
+        },
+      },
+      { accessState: "activating" },
+    );
+
+    expect(screen.getByText("Activating")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Premium is active. We are finishing AI chat activation. Refresh access if this takes more than a moment.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Refresh access" }));
+
+    expect(onRefreshAccess).toHaveBeenCalledTimes(1);
     expect(onStartCheckout).not.toHaveBeenCalled();
   });
 

@@ -90,7 +90,7 @@ export function ChatRouteComponent() {
     }
 
     await submitPrompt();
-    billingAccess.refreshBillingStatus();
+    billingAccess.refreshAccess();
   }
 
   function handleEditInWorkoutForm(draft: AIWorkoutDraft) {
@@ -124,6 +124,10 @@ export function ChatRouteComponent() {
     conversation?.latest_workout_draft_status?.is_saved ?? false;
   const savedWorkoutId =
     conversation?.latest_workout_draft_status?.saved_workout_id;
+  const chatAccessMessage =
+    billingAccess.accessState === "activating"
+      ? "AI chat activation is still finishing."
+      : "Start or restore premium access to use AI chat.";
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
@@ -155,13 +159,15 @@ export function ChatRouteComponent() {
 
       <AIChatBillingCard
         status={billingAccess.billingStatus}
-        hasFeatureAccess={billingAccess.hasBillingDisplayAccess}
+        accessState={billingAccess.accessState}
         isLoading={billingAccess.isBillingCardLoading}
         isError={billingAccess.isBillingError}
+        isRefreshingAccess={billingAccess.isRefreshingAccess}
         isCheckoutLoading={billingAccess.isCheckoutLoading}
         isBillingPortalLoading={billingAccess.isBillingPortalLoading}
         onStartCheckout={billingAccess.startCheckout}
         onManageBilling={billingAccess.manageBilling}
+        onRefreshAccess={billingAccess.refreshAccess}
       />
 
       <Card className="min-h-[32rem]">
@@ -257,7 +263,7 @@ export function ChatRouteComponent() {
                     ? `Conversation ID: ${
                         conversation?.id ?? conversationId ?? "not created yet"
                       }`
-                    : "Start or restore premium access to use AI chat."}
+                    : chatAccessMessage}
               </p>
               <Button
                 type="submit"

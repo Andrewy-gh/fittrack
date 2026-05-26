@@ -35,19 +35,27 @@ type CheckoutAccessPollResult = {
 export type AIChatBillingAccess = {
   billingStatus?: BillingStatusResponse;
   checkoutNotice: CheckoutSearch | null;
+  accessState: AIChatAccessState;
   hasChatAccess: boolean;
-  hasBillingDisplayAccess: boolean;
   isCheckingAccess: boolean;
   isBillingCardLoading: boolean;
   isBillingError: boolean;
+  isRefreshingAccess: boolean;
   isCheckoutLoading: boolean;
   isBillingPortalLoading: boolean;
   startCheckout: () => void;
   manageBilling: () => void;
-  refreshBillingStatus: () => void;
+  refreshAccess: () => void;
 };
 
 const checkoutAccessRetryDelaysMs = [1000, 2000, 4000, 8000];
+
+export type AIChatAccessState =
+  | "checking"
+  | "ready"
+  | "activating"
+  | "blocked"
+  | "error";
 
 class CheckoutAccessPendingError extends Error {
   constructor() {
@@ -130,27 +138,38 @@ export function useAIChatBillingAccess({
     billingStatus: checkoutAccessQuery.data?.billingStatus ?? billingQuery.data,
     featureAccess:
       checkoutAccessQuery.data?.featureAccess ?? featureAccessQuery.data,
+    isChecking:
+      billingQuery.isLoading ||
+      billingQuery.isPending ||
+      featureAccessQuery.isLoading ||
+      featureAccessQuery.isPending ||
+      checkoutAccessQuery.isFetching,
+    isError: billingQuery.isError || featureAccessQuery.isError,
   });
-  const isFeatureAccessLoading =
-    featureAccessQuery.isLoading || featureAccessQuery.isPending;
-  const isBillingLoading = billingQuery.isLoading || billingQuery.isPending;
-  const isCheckingAccess =
-    isFeatureAccessLoading || checkoutAccessQuery.isFetching;
+  const isRefreshingAccess =
+    checkoutAccessQuery.isFetching ||
+    Boolean(billingQuery.isFetching) ||
+    Boolean(featureAccessQuery.isFetching);
 
   return {
     billingStatus: accessView.billingStatus,
     checkoutNotice,
+    accessState: accessView.state,
     hasChatAccess: accessView.hasChatAccess,
-    hasBillingDisplayAccess: accessView.hasBillingDisplayAccess,
-    isCheckingAccess,
-    isBillingCardLoading: isBillingLoading || isCheckingAccess,
-    isBillingError: billingQuery.isError,
+    isCheckingAccess: accessView.state === "checking",
+    isBillingCardLoading: accessView.state === "checking",
+    isBillingError: accessView.state === "error",
+    isRefreshingAccess,
     isCheckoutLoading: checkoutMutation.isPending,
     isBillingPortalLoading: billingPortalMutation.isPending,
     startCheckout: () => checkoutMutation.mutate(),
     manageBilling: () => billingPortalMutation.mutate(),
-    refreshBillingStatus: () => {
+    refreshAccess: () => {
+      if (accessView.state === "activating") {
+        setShouldPollCheckoutAccess(true);
+      }
       void billingQuery.refetch();
+      void featureAccessQuery.refetch();
     },
   };
 }
@@ -158,18 +177,57 @@ export function useAIChatBillingAccess({
 export function resolveAIChatAccessView({
   billingStatus,
   featureAccess,
+  isChecking,
+  isError,
 }: {
   billingStatus?: BillingStatusResponse;
   featureAccess?: FeatureAccessGrant[];
+  isChecking?: boolean;
+  isError?: boolean;
 }) {
   const hasChatAccess = hasAIChatFeatureAccess(featureAccess);
+  const state = resolveAIChatAccessState({
+    billingStatus,
+    hasChatAccess,
+    isChecking,
+    isError,
+  });
 
   return {
     billingStatus,
+    state,
     hasChatAccess,
-    hasBillingDisplayAccess:
-      hasChatAccess || billingStatus?.has_access === true,
   };
+}
+
+function resolveAIChatAccessState({
+  billingStatus,
+  hasChatAccess,
+  isChecking,
+  isError,
+}: {
+  billingStatus?: BillingStatusResponse;
+  hasChatAccess: boolean;
+  isChecking?: boolean;
+  isError?: boolean;
+}): AIChatAccessState {
+  if (hasChatAccess) {
+    return "ready";
+  }
+
+  if (isError) {
+    return "error";
+  }
+
+  if (isChecking) {
+    return "checking";
+  }
+
+  if (billingStatus?.has_access === true) {
+    return "activating";
+  }
+
+  return "blocked";
 }
 
 async function waitForCheckoutAccess(): Promise<CheckoutAccessPollResult> {

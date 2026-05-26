@@ -343,7 +343,8 @@ describe("ChatRouteComponent", () => {
     expect(mockRefetchBillingStatus).not.toHaveBeenCalled();
   });
 
-  it("stops showing the checking state when checkout access polling exhausts retries", async () => {
+  it("shows an activation recovery action when checkout polling exhausts retries after billing becomes active", async () => {
+    const user = userEvent.setup();
     mockSearch.checkout = "success";
     mockFeatureAccessQueryResult.value = {
       data: [],
@@ -362,13 +363,20 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     expect(
-      await screen.findByText(
-        "Start or restore premium access to use AI chat.",
-      ),
+      await screen.findByText("AI chat activation is still finishing."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Activating")).toBeInTheDocument();
     expect(
       screen.queryByText("Checking your AI chat access..."),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Refresh access" }));
+
+    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
+    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
   });
 
   it("does not offer Checkout when billing status is active but the feature grant has not refreshed", async () => {
@@ -396,7 +404,7 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Premium")).toBeInTheDocument();
+    expect(await screen.findByText("Activating")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
@@ -405,7 +413,7 @@ describe("ChatRouteComponent", () => {
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
     ).toBeDisabled();
-    expect(screen.getByText("Start or restore premium access to use AI chat."));
+    expect(screen.getByText("AI chat activation is still finishing."));
   });
 
   it("starts Checkout from the no-access trial CTA", async () => {
