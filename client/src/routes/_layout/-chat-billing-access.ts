@@ -164,6 +164,7 @@ export function useAIChatBillingAccess({
   const errorSource = getAIChatAccessErrorSource({
     isBillingError: billingQuery.isError || featureAccessQuery.isError,
     checkoutPollingView,
+    isCheckoutReturn: checkoutNotice === "success",
   });
   const accessView = resolveAIChatAccessView({
     billingStatus: checkoutAccessResult?.billingStatus ?? billingQuery.data,
@@ -311,15 +312,26 @@ function resolveAIChatAccessState({
 function getAIChatAccessErrorSource({
   isBillingError,
   checkoutPollingView,
+  isCheckoutReturn,
 }: {
   isBillingError: boolean;
   checkoutPollingView: CheckoutAccessPollingView;
+  isCheckoutReturn: boolean;
 }): AIChatAccessErrorSource | undefined {
-  if (checkoutPollingView.status === "failed") {
-    return "checkout-activation";
-  }
+  switch (checkoutPollingView.status) {
+    case "failed":
+      return "checkout-activation";
+    case "polling":
+    case "ready":
+    case "activating":
+      return undefined;
+    case "idle":
+      if (isCheckoutReturn && isBillingError) {
+        return "checkout-activation";
+      }
 
-  return isBillingError ? "billing" : undefined;
+      return isBillingError ? "billing" : undefined;
+  }
 }
 
 function isAIChatAccessErrorState(state: AIChatAccessState): boolean {

@@ -8,8 +8,10 @@ import type { FeatureAccessGrant } from "@/lib/api/feature-access";
 const mocks = vi.hoisted(() => ({
   mockCreateBillingCheckoutSession: vi.fn(),
   mockCreateBillingCustomerPortalSession: vi.fn(),
-  mockGetBillingStatus: vi.fn(),
-  mockGetFeatureAccess: vi.fn(),
+  mockGetBaseBillingStatus: vi.fn(),
+  mockGetBaseFeatureAccess: vi.fn(),
+  mockGetCheckoutBillingStatus: vi.fn(),
+  mockGetCheckoutFeatureAccess: vi.fn(),
   mockRedirectToBillingCheckout: vi.fn(),
   mockRedirectToBillingPortal: vi.fn(),
   mockShowErrorToast: vi.fn(),
@@ -22,12 +24,12 @@ vi.mock("@/lib/api/billing", async () => {
     billingStatusQueryOptions: (userId?: string) =>
       queryOptions({
         queryKey: ["billing", "ai-chatbot", "status", userId],
-        queryFn: () => mocks.mockGetBillingStatus(),
+        queryFn: () => mocks.mockGetBaseBillingStatus(),
       }),
     createBillingCheckoutSession: mocks.mockCreateBillingCheckoutSession,
     createBillingCustomerPortalSession:
       mocks.mockCreateBillingCustomerPortalSession,
-    getBillingStatus: mocks.mockGetBillingStatus,
+    getBillingStatus: mocks.mockGetCheckoutBillingStatus,
     redirectToBillingCheckout: mocks.mockRedirectToBillingCheckout,
     redirectToBillingPortal: mocks.mockRedirectToBillingPortal,
   };
@@ -40,9 +42,9 @@ vi.mock("@/lib/api/feature-access", async () => {
     featureAccessQueryOptions: (userId?: string) =>
       queryOptions({
         queryKey: ["feature-access", userId],
-        queryFn: () => mocks.mockGetFeatureAccess(),
+        queryFn: () => mocks.mockGetBaseFeatureAccess(),
       }),
-    getFeatureAccess: mocks.mockGetFeatureAccess,
+    getFeatureAccess: mocks.mockGetCheckoutFeatureAccess,
     hasAIChatFeatureAccess: (grants?: FeatureAccessGrant[]) =>
       grants?.some((grant) => grant.feature_key === "ai_chatbot") ?? false,
   };
@@ -73,18 +75,20 @@ describe("useAIChatBillingAccess checkout polling", () => {
   beforeEach(() => {
     mocks.mockCreateBillingCheckoutSession.mockReset();
     mocks.mockCreateBillingCustomerPortalSession.mockReset();
-    mocks.mockGetBillingStatus.mockReset();
-    mocks.mockGetFeatureAccess.mockReset();
+    mocks.mockGetBaseBillingStatus.mockReset();
+    mocks.mockGetBaseFeatureAccess.mockReset();
+    mocks.mockGetCheckoutBillingStatus.mockReset();
+    mocks.mockGetCheckoutFeatureAccess.mockReset();
     mocks.mockRedirectToBillingCheckout.mockReset();
     mocks.mockRedirectToBillingPortal.mockReset();
     mocks.mockShowErrorToast.mockReset();
   });
 
   it("keeps exhausted checkout polling in activating when billing is active but the feature grant is still pending", async () => {
-    mocks.mockGetBillingStatus
-      .mockResolvedValueOnce(blockedBillingStatus)
-      .mockResolvedValue(activeBillingStatus);
-    mocks.mockGetFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
 
     const { result } = renderBillingAccessHook();
 
@@ -97,23 +101,68 @@ describe("useAIChatBillingAccess checkout polling", () => {
   });
 
   it("returns a recoverable error when checkout polling fails unexpectedly instead of falling back to stale blocked data", async () => {
-    mocks.mockGetBillingStatus
-      .mockResolvedValueOnce(blockedBillingStatus)
-      .mockRejectedValue(new Error("billing status unavailable"));
-    mocks.mockGetFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockRejectedValue(
+      new Error("billing status unavailable"),
+    );
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
 
     const { result } = renderBillingAccessHook();
 
-    await waitFor(() => {
-      expect(result.current.accessState).toBe("checkout-activation-error");
-    });
+    await waitFor(
+      () => {
+        expect(result.current.accessState).toBe("checkout-activation-error");
+      },
+      { timeout: 5000 },
+    );
     expect(result.current.hasChatAccess).toBe(false);
     expect(result.current.billingStatus?.has_access).toBe(false);
     expect(result.current.isBillingError).toBe(true);
   });
+
+  it("keeps checkout activation recoverable when the base access queries fail during polling", async () => {
+    mocks.mockGetBaseBillingStatus.mockRejectedValue(
+      new Error("base billing unavailable"),
+    );
+    mocks.mockGetBaseFeatureAccess.mockRejectedValue(
+      new Error("base feature access unavailable"),
+    );
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
+
+    const { result } = renderBillingAccessHook();
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("activating");
+      expect(result.current.billingStatus?.has_access).toBe(true);
+    });
+    expect(result.current.hasChatAccess).toBe(false);
+    expect(result.current.isBillingError).toBe(false);
+  });
+
+  it("keeps normal billing failures distinct outside checkout return", async () => {
+    mocks.mockGetBaseBillingStatus.mockRejectedValue(
+      new Error("base billing unavailable"),
+    );
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
+
+    const { result } = renderBillingAccessHook({ checkout: undefined });
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("billing-error");
+    });
+    expect(result.current.isBillingError).toBe(true);
+  });
 });
 
-function renderBillingAccessHook() {
+function renderBillingAccessHook(
+  options: {
+    checkout?: "success";
+  } = { checkout: "success" },
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -126,7 +175,7 @@ function renderBillingAccessHook() {
     () =>
       useAIChatBillingAccess({
         userId: "user-123",
-        checkout: "success",
+        checkout: options.checkout,
         conversationId: "41",
         navigate: vi.fn(),
       }),
