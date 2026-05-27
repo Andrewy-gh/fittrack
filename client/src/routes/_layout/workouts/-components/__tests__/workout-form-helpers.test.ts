@@ -29,6 +29,16 @@ describe("workout-form-helpers", () => {
       ).toBe(true);
     });
 
+    it("treats zeroed warmup set as empty", () => {
+      expect(
+        isSetEmptyForDismiss({
+          reps: 0,
+          weight: 0,
+          setType: "warmup",
+        }),
+      ).toBe(true);
+    });
+
     it("treats set with reps as non-empty", () => {
       expect(
         isSetEmptyForDismiss({
