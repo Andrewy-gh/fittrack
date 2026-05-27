@@ -196,17 +196,19 @@ export function useAIChatBillingAccess({
     !isTerminalCheckoutPollingView(currentCheckoutPollingView)
       ? settledCheckoutPollingView
       : currentCheckoutPollingView;
-  const checkoutAccessResult =
-    getCheckoutAccessPollingResult(checkoutPollingView);
+  const checkoutAccessOverride = getCheckoutAccessOverride({
+    checkoutPollingView,
+    featureAccess: featureAccessQuery.data,
+  });
   const errorSource = getAIChatAccessErrorSource({
     isBillingError: billingQuery.isError || featureAccessQuery.isError,
     checkoutPollingView,
     isCheckoutReturn: checkoutNotice === "success",
   });
   const accessView = resolveAIChatAccessView({
-    billingStatus: checkoutAccessResult?.billingStatus ?? billingQuery.data,
+    billingStatus: checkoutAccessOverride?.billingStatus ?? billingQuery.data,
     featureAccess:
-      checkoutAccessResult?.featureAccess ?? featureAccessQuery.data,
+      checkoutAccessOverride?.featureAccess ?? featureAccessQuery.data,
     isPaymentConfirming: checkoutPollingView.status === "payment-confirming",
     isChecking:
       billingQuery.isLoading ||
@@ -312,18 +314,26 @@ export function resolveCheckoutAccessPollingView({
   return { status: "idle" };
 }
 
-function getCheckoutAccessPollingResult(
-  view: CheckoutAccessPollingView,
-): CheckoutAccessPollResult | undefined {
-  if (view.status === "ready" || view.status === "activating") {
-    return view.result;
+function getCheckoutAccessOverride({
+  checkoutPollingView,
+  featureAccess,
+}: {
+  checkoutPollingView: CheckoutAccessPollingView;
+  featureAccess?: FeatureAccessGrant[];
+}): CheckoutAccessPollResult | undefined {
+  switch (checkoutPollingView.status) {
+    case "payment-confirming":
+    case "activating":
+      return checkoutPollingView.result;
+    case "ready":
+      return hasAIChatFeatureAccess(featureAccess)
+        ? undefined
+        : checkoutPollingView.result;
+    case "idle":
+    case "polling":
+    case "failed":
+      return undefined;
   }
-
-  if (view.status === "payment-confirming") {
-    return view.result;
-  }
-
-  return undefined;
 }
 
 function resolveCheckoutAccessSettledView(

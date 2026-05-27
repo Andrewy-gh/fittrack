@@ -71,6 +71,13 @@ const activeBillingStatus: BillingStatusResponse = {
   },
 };
 
+const aiChatFeatureGrant: FeatureAccessGrant = {
+  created_at: "2026-05-26T12:00:00Z",
+  feature_key: "ai_chatbot",
+  source: "subscription",
+  starts_at: "2026-05-26T12:00:00Z",
+};
+
 describe("useAIChatBillingAccess checkout polling", () => {
   beforeEach(() => {
     mocks.mockCreateBillingCheckoutSession.mockReset();
@@ -131,14 +138,7 @@ describe("useAIChatBillingAccess checkout polling", () => {
       mocks.mockGetCheckoutBillingStatus.mock.calls.length;
 
     mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
-    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([
-      {
-        created_at: "2026-05-26T12:00:00Z",
-        feature_key: "ai_chatbot",
-        source: "subscription",
-        starts_at: "2026-05-26T12:00:00Z",
-      },
-    ]);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
 
     act(() => {
       result.current.refreshAccess();
@@ -151,6 +151,47 @@ describe("useAIChatBillingAccess checkout polling", () => {
       ).toBeGreaterThan(checkoutAttemptsBeforeRefresh);
     });
     expect(result.current.hasChatAccess).toBe(true);
+  });
+
+  it("uses refreshed base billing data after checkout reaches ready", async () => {
+    const checkoutReadyStatus: BillingStatusResponse = {
+      ...activeBillingStatus,
+      trial_usage: {
+        used: 0,
+        limit: 30,
+      },
+    };
+    const refreshedBillingStatus: BillingStatusResponse = {
+      ...activeBillingStatus,
+      trial_usage: {
+        used: 1,
+        limit: 30,
+      },
+    };
+    mocks.mockGetBaseBillingStatus
+      .mockResolvedValueOnce(blockedBillingStatus)
+      .mockResolvedValue(refreshedBillingStatus);
+    mocks.mockGetBaseFeatureAccess
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([aiChatFeatureGrant]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(checkoutReadyStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    const { result } = renderBillingAccessHook();
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+      expect(result.current.billingStatus?.trial_usage?.used).toBe(0);
+    });
+
+    act(() => {
+      result.current.refreshAccess();
+    });
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+      expect(result.current.billingStatus?.trial_usage?.used).toBe(1);
+    });
   });
 
   it("returns a recoverable error when checkout polling fails unexpectedly instead of falling back to stale blocked data", async () => {
