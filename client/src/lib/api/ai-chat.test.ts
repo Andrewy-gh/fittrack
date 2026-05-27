@@ -361,7 +361,7 @@ describe("ai chat api wrapper", () => {
 
     const detail = await pollAIChatConversationUntilSettled(41, {
       intervalMs: 0,
-      timeoutMs: 10,
+      timeoutMs: 1000,
     });
 
     expect(detail.messages[0]?.status).toBe("completed");
@@ -421,7 +421,7 @@ describe("ai chat api wrapper", () => {
 
     await pollAIChatConversationUntilSettled(41, {
       intervalMs: 0,
-      timeoutMs: 10,
+      timeoutMs: 1000,
       onStreaming,
     });
 

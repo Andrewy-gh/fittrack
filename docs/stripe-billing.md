@@ -10,7 +10,9 @@ FitTrack uses Stripe subscriptions to grant premium access to the AI chat featur
 - Trialing subscriptions consume AI chat prompts against `AI_CHAT_TRIAL_PROMPT_CAP`.
 - `past_due`, `unpaid`, `canceled`, `incomplete`, and `incomplete_expired` subscriptions do not grant access.
 - Checkout redirects users back to `/chat?checkout=success` or `/chat?checkout=cancelled`.
-- The backend endpoints exist now; the frontend still needs an upgrade or paywall surface to call checkout and display status.
+- The chat UI gates composer access on the same active `ai_chatbot` feature grant that the AI chat backend enforces.
+- After Checkout success, the chat UI polls access briefly because Stripe redirects can arrive before subscription webhooks finish.
+- Users with `past_due` or `unpaid` subscriptions are sent to Stripe's billing portal to update payment details.
 
 ## Required Stripe Setup
 
@@ -29,10 +31,12 @@ AI_CHAT_TRIAL_PROMPT_CAP=30
 ## Backend Endpoints
 
 - `POST /api/billing/checkout-session`: authenticated endpoint that creates or reuses the current user's Stripe customer, then returns a hosted checkout URL.
+- `POST /api/billing/customer-portal-session`: authenticated endpoint that creates a Stripe billing portal session for the current customer, then returns a hosted billing management URL.
 - `GET /api/billing/status`: authenticated endpoint that returns the current user's AI chat billing access, subscription details, and trial prompt usage when applicable.
 - `POST /stripe/webhook`: unauthenticated Stripe webhook endpoint. Signature verification uses `STRIPE_WEBHOOK_SECRET`.
 
 If checkout variables are missing, checkout returns `503 billing is not configured`. If only webhook configuration is missing, webhook processing returns the same configuration error.
+Stripe billing portal sessions require a Stripe Billing Portal configuration in the Stripe account.
 
 ## Webhook Events
 

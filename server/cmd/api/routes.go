@@ -50,6 +50,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/features/access", fh.ListActiveFeatureAccess)
 	if bh != nil {
 		mux.HandleFunc("POST /api/billing/checkout-session", bh.CreateCheckoutSession)
+		mux.HandleFunc("POST /api/billing/customer-portal-session", bh.CreateCustomerPortalSession)
 		mux.HandleFunc("GET /api/billing/status", bh.CurrentStatus)
 	}
 	mux.HandleFunc("POST /api/exercises", eh.GetOrCreateExercise)

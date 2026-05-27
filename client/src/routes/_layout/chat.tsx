@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AIChatBillingCard } from "@/components/billing/ai-chat-billing-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,16 +8,19 @@ import type { AIChatMessage, AIWorkoutDraft } from "@/lib/api/ai-chat";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { toast } from "sonner";
+import { useAIChatBillingAccess } from "./-chat-billing-access";
 import { useAIChatSession } from "./-chat-session";
 import { ChatWorkoutDraftCard } from "./-chat-workout-draft";
 
 type ChatSearch = {
   conversationId?: string;
+  checkout?: "success" | "cancelled";
 };
 
 export const Route = createFileRoute("/_layout/chat")({
   validateSearch: (search): ChatSearch => ({
     conversationId: normalizeConversationSearchValue(search.conversationId),
+    checkout: normalizeCheckoutSearchValue(search.checkout),
   }),
   component: ChatRouteComponent,
 });
@@ -48,6 +52,12 @@ export function ChatRouteComponent() {
       });
     },
   });
+  const billingAccess = useAIChatBillingAccess({
+    userId: user?.id,
+    checkout: search.checkout,
+    conversationId: search.conversationId,
+    navigate,
+  });
 
   if (!user) {
     return (
@@ -66,12 +76,21 @@ export function ChatRouteComponent() {
   const currentUserId = user.id;
 
   async function handleNewChat() {
+    if (!billingAccess.hasChatAccess || billingAccess.isCheckingAccess) {
+      return;
+    }
+
     await createNewChat();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!billingAccess.hasChatAccess || billingAccess.isCheckingAccess) {
+      return;
+    }
+
     await submitPrompt();
+    billingAccess.refreshAccess();
   }
 
   function handleEditInWorkoutForm(draft: AIWorkoutDraft) {
@@ -105,6 +124,14 @@ export function ChatRouteComponent() {
     conversation?.latest_workout_draft_status?.is_saved ?? false;
   const savedWorkoutId =
     conversation?.latest_workout_draft_status?.saved_workout_id;
+  const chatAccessMessage =
+    billingAccess.accessState === "payment-confirming"
+      ? "Payment complete. We are confirming your AI chat access."
+      : billingAccess.accessState === "activating"
+        ? "AI chat activation is still finishing."
+        : billingAccess.accessState === "checkout-activation-error"
+          ? "AI chat activation needs another access refresh."
+          : "Start or restore premium access to use AI chat.";
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
@@ -121,11 +148,31 @@ export function ChatRouteComponent() {
             type="button"
             variant="outline"
             onClick={handleNewChat}
+            disabled={
+              billingAccess.isCheckingAccess || !billingAccess.hasChatAccess
+            }
           >
             New Chat
           </Button>
         </CardHeader>
       </Card>
+
+      {billingAccess.checkoutNotice ? (
+        <CheckoutNotice checkout={billingAccess.checkoutNotice} />
+      ) : null}
+
+      <AIChatBillingCard
+        status={billingAccess.billingStatus}
+        accessState={billingAccess.accessState}
+        isLoading={billingAccess.isBillingCardLoading}
+        isError={billingAccess.isBillingError}
+        isRefreshingAccess={billingAccess.isRefreshingAccess}
+        isCheckoutLoading={billingAccess.isCheckoutLoading}
+        isBillingPortalLoading={billingAccess.isBillingPortalLoading}
+        onStartCheckout={billingAccess.startCheckout}
+        onManageBilling={billingAccess.manageBilling}
+        onRefreshAccess={billingAccess.refreshAccess}
+      />
 
       <Card className="min-h-[32rem]">
         <CardContent className="flex h-full flex-col gap-4 p-4">
@@ -206,16 +253,30 @@ export function ChatRouteComponent() {
               onChange={(event) => setPrompt(event.target.value)}
               placeholder="Ask about training, recovery, exercise choices, or FitTrack usage..."
               rows={4}
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting ||
+                billingAccess.isCheckingAccess ||
+                !billingAccess.hasChatAccess
+              }
             />
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
-                Conversation ID:{" "}
-                {conversation?.id ?? conversationId ?? "not created yet"}
+                {billingAccess.isCheckingAccess
+                  ? "Checking AI chat access..."
+                  : billingAccess.hasChatAccess
+                    ? `Conversation ID: ${
+                        conversation?.id ?? conversationId ?? "not created yet"
+                      }`
+                    : chatAccessMessage}
               </p>
               <Button
                 type="submit"
-                disabled={isSubmitting || !prompt.trim()}
+                disabled={
+                  isSubmitting ||
+                  !prompt.trim() ||
+                  billingAccess.isCheckingAccess ||
+                  !billingAccess.hasChatAccess
+                }
               >
                 {isSubmitting ? "Streaming..." : "Send"}
               </Button>
@@ -223,6 +284,28 @@ export function ChatRouteComponent() {
           </form>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function CheckoutNotice({
+  checkout,
+}: {
+  checkout: NonNullable<ChatSearch["checkout"]>;
+}) {
+  const isSuccess = checkout === "success";
+
+  return (
+    <div
+      className={`rounded-md border p-3 text-sm ${
+        isSuccess
+          ? "border-primary/30 bg-primary/5 text-foreground"
+          : "border-border bg-muted/40 text-muted-foreground"
+      }`}
+    >
+      {isSuccess
+        ? "Checkout complete. We are refreshing your AI chat access."
+        : "Checkout was cancelled. You can restart the trial when you are ready."}
     </div>
   );
 }
@@ -326,4 +409,10 @@ function normalizeConversationSearchValue(value: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+function normalizeCheckoutSearchValue(
+  value: unknown,
+): ChatSearch["checkout"] | undefined {
+  return value === "success" || value === "cancelled" ? value : undefined;
 }
