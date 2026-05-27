@@ -31,6 +31,7 @@ type AIChatBillingCardProps = {
 export type AIChatBillingCardAccessState =
   | "checking"
   | "ready"
+  | "payment-confirming"
   | "activating"
   | "blocked"
   | "billing-error"
@@ -167,6 +168,10 @@ function BillingStatusBadge({
     );
   }
 
+  if (accessState === "payment-confirming") {
+    return <Badge variant="secondary">Confirming</Badge>;
+  }
+
   if (accessState === "activating") {
     return <Badge variant="secondary">Activating</Badge>;
   }
@@ -275,6 +280,15 @@ function BillingMessage({
 
   const cancellationMessage = getCancellationMessage(status.subscription);
 
+  if (accessState === "payment-confirming") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Payment complete. We are confirming your AI chat access. Refresh access
+        if this takes more than a moment.
+      </p>
+    );
+  }
+
   if (accessState === "activating") {
     return (
       <p className="text-sm text-muted-foreground">
@@ -355,6 +369,7 @@ function getBillingAction(
   accessState: AIChatBillingCardAccessState,
 ): BillingAction | null {
   if (
+    accessState === "payment-confirming" ||
     accessState === "activating" ||
     accessState === "checkout-activation-error"
   ) {

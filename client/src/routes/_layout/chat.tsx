@@ -125,11 +125,13 @@ export function ChatRouteComponent() {
   const savedWorkoutId =
     conversation?.latest_workout_draft_status?.saved_workout_id;
   const chatAccessMessage =
-    billingAccess.accessState === "activating"
-      ? "AI chat activation is still finishing."
-      : billingAccess.accessState === "checkout-activation-error"
-        ? "AI chat activation needs another access refresh."
-        : "Start or restore premium access to use AI chat.";
+    billingAccess.accessState === "payment-confirming"
+      ? "Payment complete. We are confirming your AI chat access."
+      : billingAccess.accessState === "activating"
+        ? "AI chat activation is still finishing."
+        : billingAccess.accessState === "checkout-activation-error"
+          ? "AI chat activation needs another access refresh."
+          : "Start or restore premium access to use AI chat.";
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">

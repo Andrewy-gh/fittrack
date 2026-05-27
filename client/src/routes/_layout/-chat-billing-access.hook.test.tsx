@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BillingStatusResponse } from "@/lib/api/billing";
 import type { FeatureAccessGrant } from "@/lib/api/feature-access";
@@ -100,6 +100,59 @@ describe("useAIChatBillingAccess checkout polling", () => {
     expect(result.current.isBillingError).toBe(false);
   });
 
+  it("keeps exhausted checkout polling in payment confirming when billing has not caught up", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
+
+    const { result } = renderBillingAccessHook();
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("payment-confirming");
+      expect(result.current.billingStatus?.has_access).toBe(false);
+    });
+    expect(result.current.hasChatAccess).toBe(false);
+    expect(result.current.isBillingError).toBe(false);
+  });
+
+  it("restarts checkout polling when payment confirmation is refreshed", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
+
+    const { result } = renderBillingAccessHook();
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("payment-confirming");
+    });
+    const checkoutAttemptsBeforeRefresh =
+      mocks.mockGetCheckoutBillingStatus.mock.calls.length;
+
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([
+      {
+        created_at: "2026-05-26T12:00:00Z",
+        feature_key: "ai_chatbot",
+        source: "subscription",
+        starts_at: "2026-05-26T12:00:00Z",
+      },
+    ]);
+
+    act(() => {
+      result.current.refreshAccess();
+    });
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+      expect(
+        mocks.mockGetCheckoutBillingStatus.mock.calls.length,
+      ).toBeGreaterThan(checkoutAttemptsBeforeRefresh);
+    });
+    expect(result.current.hasChatAccess).toBe(true);
+  });
+
   it("returns a recoverable error when checkout polling fails unexpectedly instead of falling back to stale blocked data", async () => {
     mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
     mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
@@ -163,6 +216,7 @@ function renderBillingAccessHook(
     checkout?: "success";
   } = { checkout: "success" },
 ) {
+  const navigate = vi.fn();
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -177,7 +231,7 @@ function renderBillingAccessHook(
         userId: "user-123",
         checkout: options.checkout,
         conversationId: "41",
-        navigate: vi.fn(),
+        navigate,
       }),
     {
       wrapper: ({ children }: { children: ReactNode }) => (

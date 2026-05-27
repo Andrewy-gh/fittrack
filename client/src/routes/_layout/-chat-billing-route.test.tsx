@@ -135,6 +135,57 @@ describe("ChatRouteComponent", () => {
     expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
   });
 
+  it("confirms payment without offering Checkout when the checkout poll has not received billing access yet", async () => {
+    const user = userEvent.setup();
+    mockSearch.checkout = "success";
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockCheckoutAccessQueryResult.value = {
+      data: {
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: false,
+        },
+        featureAccess: [],
+      },
+      isFetching: false,
+      isError: false,
+      isSuccess: true,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Payment complete. We are confirming your AI chat access.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Confirming")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Refresh access" }));
+
+    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
+    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
+    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
+  });
+
   it("offers refresh instead of Checkout when checkout activation verification fails", async () => {
     const user = userEvent.setup();
     mockSearch.checkout = "success";

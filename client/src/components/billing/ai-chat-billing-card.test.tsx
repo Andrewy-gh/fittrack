@@ -100,6 +100,32 @@ describe("AIChatBillingCard", () => {
     expect(onStartCheckout).not.toHaveBeenCalled();
   });
 
+  it("shows payment confirmation after Checkout without offering Checkout again", async () => {
+    const user = userEvent.setup();
+    const { onRefreshAccess, onStartCheckout } = renderCard(
+      {
+        feature_key: "ai_chatbot",
+        has_access: false,
+      },
+      { accessState: "payment-confirming" },
+    );
+
+    expect(screen.getByText("Confirming")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Payment complete. We are confirming your AI chat access. Refresh access if this takes more than a moment.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Refresh access" }));
+
+    expect(onRefreshAccess).toHaveBeenCalledTimes(1);
+    expect(onStartCheckout).not.toHaveBeenCalled();
+  });
+
   it("shows the trial badge and prompt usage while trialing", () => {
     renderCard({
       feature_key: "ai_chatbot",

@@ -36,6 +36,7 @@ export type CheckoutAccessPollingView =
   | { status: "idle" }
   | { status: "polling" }
   | { status: "ready"; result: CheckoutAccessPollResult }
+  | { status: "payment-confirming"; result: CheckoutAccessPollResult }
   | { status: "activating"; result: CheckoutAccessPollResult }
   | { status: "failed"; error: unknown };
 
@@ -61,6 +62,7 @@ const checkoutAccessRetryDelaysMs =
 export type AIChatAccessState =
   | "checking"
   | "ready"
+  | "payment-confirming"
   | "activating"
   | "blocked"
   | "billing-error"
@@ -205,6 +207,7 @@ export function useAIChatBillingAccess({
     billingStatus: checkoutAccessResult?.billingStatus ?? billingQuery.data,
     featureAccess:
       checkoutAccessResult?.featureAccess ?? featureAccessQuery.data,
+    isPaymentConfirming: checkoutPollingView.status === "payment-confirming",
     isChecking:
       billingQuery.isLoading ||
       billingQuery.isPending ||
@@ -234,6 +237,7 @@ export function useAIChatBillingAccess({
     refreshAccess: () => {
       if (
         accessView.state === "activating" ||
+        accessView.state === "payment-confirming" ||
         accessView.state === "checkout-activation-error"
       ) {
         setSettledCheckoutPollingView({ status: "idle" });
@@ -248,11 +252,13 @@ export function useAIChatBillingAccess({
 export function resolveAIChatAccessView({
   billingStatus,
   featureAccess,
+  isPaymentConfirming,
   isChecking,
   errorSource,
 }: {
   billingStatus?: BillingStatusResponse;
   featureAccess?: FeatureAccessGrant[];
+  isPaymentConfirming?: boolean;
   isChecking?: boolean;
   errorSource?: AIChatAccessErrorSource;
 }) {
@@ -260,6 +266,7 @@ export function resolveAIChatAccessView({
   const state = resolveAIChatAccessState({
     billingStatus,
     hasChatAccess,
+    isPaymentConfirming,
     isChecking,
     errorSource,
   });
@@ -287,13 +294,11 @@ export function resolveCheckoutAccessPollingView({
   }
 
   if (data) {
-    return hasAIChatFeatureAccess(data.featureAccess)
-      ? { status: "ready", result: data }
-      : { status: "activating", result: data };
+    return resolveCheckoutAccessSettledView(data);
   }
 
   if (error instanceof CheckoutAccessPendingError && isError !== false) {
-    return { status: "activating", result: error.result };
+    return resolveCheckoutAccessSettledView(error.result);
   }
 
   if (error && isError !== false) {
@@ -314,17 +319,39 @@ function getCheckoutAccessPollingResult(
     return view.result;
   }
 
+  if (view.status === "payment-confirming") {
+    return view.result;
+  }
+
   return undefined;
+}
+
+function resolveCheckoutAccessSettledView(
+  result: CheckoutAccessPollResult,
+): Exclude<
+  CheckoutAccessPollingView,
+  { status: "idle" | "polling" | "failed" }
+> {
+  if (hasAIChatFeatureAccess(result.featureAccess)) {
+    return { status: "ready", result };
+  }
+
+  if (result.billingStatus.has_access) {
+    return { status: "activating", result };
+  }
+
+  return { status: "payment-confirming", result };
 }
 
 function isTerminalCheckoutPollingView(
   view: CheckoutAccessPollingView,
 ): view is Extract<
   CheckoutAccessPollingView,
-  { status: "ready" | "activating" | "failed" }
+  { status: "ready" | "payment-confirming" | "activating" | "failed" }
 > {
   return (
     view.status === "ready" ||
+    view.status === "payment-confirming" ||
     view.status === "activating" ||
     view.status === "failed"
   );
@@ -333,11 +360,13 @@ function isTerminalCheckoutPollingView(
 function resolveAIChatAccessState({
   billingStatus,
   hasChatAccess,
+  isPaymentConfirming,
   isChecking,
   errorSource,
 }: {
   billingStatus?: BillingStatusResponse;
   hasChatAccess: boolean;
+  isPaymentConfirming?: boolean;
   isChecking?: boolean;
   errorSource?: AIChatAccessErrorSource;
 }): AIChatAccessState {
@@ -351,6 +380,10 @@ function resolveAIChatAccessState({
 
   if (errorSource === "billing") {
     return "billing-error";
+  }
+
+  if (isPaymentConfirming) {
+    return "payment-confirming";
   }
 
   if (isChecking) {
@@ -378,6 +411,7 @@ function getAIChatAccessErrorSource({
       return "checkout-activation";
     case "polling":
     case "ready":
+    case "payment-confirming":
     case "activating":
       return undefined;
     case "idle":

@@ -86,6 +86,32 @@ describe("resolveAIChatAccessView", () => {
     expect(view.state).toBe("activating");
   });
 
+  it("models a checkout poll result without active billing as payment confirming", () => {
+    const pollingView = resolveCheckoutAccessPollingView({
+      data: {
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: false,
+        },
+        featureAccess: [],
+      },
+      isFetching: false,
+    });
+
+    expect(pollingView.status).toBe("payment-confirming");
+    if (pollingView.status !== "payment-confirming") {
+      throw new Error("expected payment-confirming checkout polling view");
+    }
+
+    const view = resolveAIChatAccessView({
+      billingStatus: pollingView.result.billingStatus,
+      featureAccess: pollingView.result.featureAccess,
+      isPaymentConfirming: pollingView.status === "payment-confirming",
+    });
+    expect(view.hasChatAccess).toBe(false);
+    expect(view.state).toBe("payment-confirming");
+  });
+
   it("models unexpected checkout polling failures as checkout activation errors", () => {
     const pollingView = resolveCheckoutAccessPollingView({
       error: new Error("network unavailable"),
