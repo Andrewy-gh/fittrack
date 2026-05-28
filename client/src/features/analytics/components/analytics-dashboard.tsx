@@ -7,11 +7,11 @@ import { ExerciseMetricCharts } from "@/features/exercises/components/exercise-m
 import { GenericCombobox } from "@/components/generic-combobox";
 import { Card, CardContent } from "@/components/ui/card";
 import { WorkoutContributionGraph } from "@/features/workouts/components/workout-contribution-graph";
-import { getWorkoutSummary } from "@/lib/analytics";
-import { AnalyticsSummaryCards } from "./analytics-summary-cards";
-import { WorkoutVolumeChart } from "./workout-volume-chart";
+import { getWorkoutSummary } from "@/features/analytics/utils/analytics-workouts";
+import { AnalyticsSummaryCards } from "@/features/analytics/components/analytics-summary-cards";
+import { WorkoutVolumeChart } from "@/features/analytics/components/workout-volume-chart";
 
-export interface AnalyticsPageProps {
+export interface AnalyticsDashboardProps {
   isLoadingExercises: boolean;
   exercises: ExerciseExerciseResponse[];
   selectedExerciseId?: number;
@@ -23,7 +23,7 @@ export interface AnalyticsPageProps {
   workoutFocusValues?: string[];
 }
 
-export function AnalyticsPage({
+export function AnalyticsDashboard({
   isLoadingExercises,
   exercises,
   selectedExerciseId,
@@ -33,7 +33,7 @@ export function AnalyticsPage({
   isDemoMode,
   workoutContributionData,
   workoutFocusValues = [],
-}: AnalyticsPageProps) {
+}: AnalyticsDashboardProps) {
   const summary = getWorkoutSummary(workoutContributionData?.days);
 
   if (isLoadingExercises) {

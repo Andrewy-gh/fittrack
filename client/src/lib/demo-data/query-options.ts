@@ -11,7 +11,7 @@ import type {
   WorkoutUpdateWorkoutRequest,
   ResponseSuccessResponse,
 } from "./types";
-import { buildDemoContributionData } from "@/lib/analytics";
+import { buildDemoContributionData } from "@/lib/demo-data/contribution-data";
 import {
   getAllExercises,
   getAllWorkoutsForContribution,

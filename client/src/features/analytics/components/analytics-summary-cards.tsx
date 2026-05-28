@@ -1,6 +1,6 @@
 import { Activity, BarChart3, Calendar, TrendingUp } from "lucide-react";
 import { StatsGrid } from "@/components/stats-grid";
-import type { AnalyticsWorkoutSummary } from "@/lib/analytics";
+import type { AnalyticsWorkoutSummary } from "@/features/analytics/utils/analytics-workouts";
 
 export interface AnalyticsSummaryCardsProps {
   summary: AnalyticsWorkoutSummary;

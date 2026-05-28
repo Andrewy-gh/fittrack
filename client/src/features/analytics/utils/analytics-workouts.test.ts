@@ -1,118 +1,65 @@
 import { describe, expect, it } from "vitest";
+import type { WorkoutContributionDataResponse } from "@/client";
 import {
-  buildDemoContributionData,
   buildWorkoutVolumeChartData,
   getWorkoutVolumeBucketLabel,
   getWorkoutVolumeTitle,
   getWorkoutSummary,
-  type DemoContributionWorkout,
-} from "./analytics";
+} from "@/features/analytics/utils/analytics-workouts";
 
-function workout(
-  overrides: Partial<DemoContributionWorkout>,
-): DemoContributionWorkout {
-  return {
-    id: 0,
-    date: "",
-    workout_focus: null,
-    volume: 0,
-    workingSetCount: 0,
-    ...overrides,
-  };
+function contributionDays(
+  days: WorkoutContributionDataResponse["days"],
+): WorkoutContributionDataResponse["days"] {
+  return days;
 }
 
-describe("analytics", () => {
-  it("builds sorted contribution data from demo workouts", () => {
-    const data = buildDemoContributionData([
-      workout({
-        id: 2,
-        date: "2026-03-12T08:00:00.000Z",
-        workout_focus: "Upper",
-        volume: 3600,
-        workingSetCount: 3,
-      }),
-      workout({
-        id: 1,
-        date: "2026-03-10T07:00:00.000Z",
-        workout_focus: "Lower",
-        volume: 2800,
-        workingSetCount: 2,
-      }),
-      workout({
-        id: 3,
-        date: "2026-03-12T17:00:00.000Z",
-        workout_focus: "Conditioning",
-        volume: 1800,
-        workingSetCount: 4,
-      }),
-    ]);
-
-    expect(data).toEqual({
-      days: [
-        {
-          date: "2026-03-10",
-          count: 2,
-          level: 1,
-          workouts: [
-            {
-              id: 1,
-              focus: "Lower",
-              time: "2026-03-10T07:00:00.000Z",
-              volume: 2800,
-            },
-          ],
-        },
-        {
-          date: "2026-03-12",
-          count: 7,
-          level: 2,
-          workouts: [
-            {
-              id: 2,
-              focus: "Upper",
-              time: "2026-03-12T08:00:00.000Z",
-              volume: 3600,
-            },
-            {
-              id: 3,
-              focus: "Conditioning",
-              time: "2026-03-12T17:00:00.000Z",
-              volume: 1800,
-            },
-          ],
-        },
-      ],
-    });
-  });
-
+describe("analytics workout helpers", () => {
   it("builds workout volume buckets for focus-filtered chart ranges", () => {
-    const data = buildDemoContributionData([
-      workout({
-        id: 1,
-        date: "2026-03-21T08:00:00.000Z",
-        workout_focus: "Push",
-        volume: 1800,
-        workingSetCount: 3,
-      }),
-      workout({
-        id: 2,
-        date: "2026-03-22T08:00:00.000Z",
-        workout_focus: "Pull",
-        volume: 2200,
-        workingSetCount: 4,
-      }),
-      workout({
-        id: 3,
-        date: "2026-03-23T08:00:00.000Z",
-        workout_focus: "Push",
-        volume: 2600,
-        workingSetCount: 5,
-      }),
+    const days = contributionDays([
+      {
+        date: "2026-03-21",
+        count: 3,
+        level: 1,
+        workouts: [
+          {
+            id: 1,
+            focus: "Push",
+            time: "2026-03-21T08:00:00.000Z",
+            volume: 1800,
+          },
+        ],
+      },
+      {
+        date: "2026-03-22",
+        count: 4,
+        level: 1,
+        workouts: [
+          {
+            id: 2,
+            focus: "Pull",
+            time: "2026-03-22T08:00:00.000Z",
+            volume: 2200,
+          },
+        ],
+      },
+      {
+        date: "2026-03-23",
+        count: 5,
+        level: 1,
+        workouts: [
+          {
+            id: 3,
+            focus: "Push",
+            time: "2026-03-23T08:00:00.000Z",
+            volume: 2600,
+          },
+        ],
+      },
     ]);
 
     expect(
       buildWorkoutVolumeChartData(
-        data.days,
+        days,
         "W",
         "Push",
         new Date("2026-03-23T12:00:00.000Z"),
@@ -134,33 +81,44 @@ describe("analytics", () => {
   });
 
   it("adds focus types to all-focus daily workout volume buckets", () => {
-    const data = buildDemoContributionData([
-      workout({
-        id: 1,
-        date: "2026-03-21T08:00:00.000Z",
-        workout_focus: "Push",
-        volume: 1800,
-        workingSetCount: 3,
-      }),
-      workout({
-        id: 2,
-        date: "2026-03-21T18:00:00.000Z",
-        workout_focus: "Pull",
-        volume: 2200,
-        workingSetCount: 4,
-      }),
-      workout({
-        id: 3,
-        date: "2026-03-23T08:00:00.000Z",
-        workout_focus: "Push",
-        volume: 2600,
-        workingSetCount: 5,
-      }),
+    const days = contributionDays([
+      {
+        date: "2026-03-21",
+        count: 7,
+        level: 2,
+        workouts: [
+          {
+            id: 1,
+            focus: "Push",
+            time: "2026-03-21T08:00:00.000Z",
+            volume: 1800,
+          },
+          {
+            id: 2,
+            focus: "Pull",
+            time: "2026-03-21T18:00:00.000Z",
+            volume: 2200,
+          },
+        ],
+      },
+      {
+        date: "2026-03-23",
+        count: 5,
+        level: 1,
+        workouts: [
+          {
+            id: 3,
+            focus: "Push",
+            time: "2026-03-23T08:00:00.000Z",
+            volume: 2600,
+          },
+        ],
+      },
     ]);
 
     expect(
       buildWorkoutVolumeChartData(
-        data.days,
+        days,
         "W",
         undefined,
         new Date("2026-03-23T12:00:00.000Z"),
@@ -182,33 +140,51 @@ describe("analytics", () => {
   });
 
   it("adds focus types to all-focus weekly and monthly volume buckets", () => {
-    const data = buildDemoContributionData([
-      workout({
-        id: 1,
-        date: "2026-03-16T08:00:00.000Z",
-        workout_focus: "Push",
-        volume: 1800,
-        workingSetCount: 3,
-      }),
-      workout({
-        id: 2,
-        date: "2026-03-17T18:00:00.000Z",
-        workout_focus: "Pull",
-        volume: 2200,
-        workingSetCount: 4,
-      }),
-      workout({
-        id: 3,
-        date: "2026-04-01T08:00:00.000Z",
-        workout_focus: "Legs",
-        volume: 2600,
-        workingSetCount: 5,
-      }),
+    const days = contributionDays([
+      {
+        date: "2026-03-16",
+        count: 3,
+        level: 1,
+        workouts: [
+          {
+            id: 1,
+            focus: "Push",
+            time: "2026-03-16T08:00:00.000Z",
+            volume: 1800,
+          },
+        ],
+      },
+      {
+        date: "2026-03-17",
+        count: 4,
+        level: 1,
+        workouts: [
+          {
+            id: 2,
+            focus: "Pull",
+            time: "2026-03-17T18:00:00.000Z",
+            volume: 2200,
+          },
+        ],
+      },
+      {
+        date: "2026-04-01",
+        count: 5,
+        level: 1,
+        workouts: [
+          {
+            id: 3,
+            focus: "Legs",
+            time: "2026-04-01T08:00:00.000Z",
+            volume: 2600,
+          },
+        ],
+      },
     ]);
 
     expect(
       buildWorkoutVolumeChartData(
-        data.days,
+        days,
         "6M",
         undefined,
         new Date("2026-04-05T12:00:00.000Z"),
@@ -230,7 +206,7 @@ describe("analytics", () => {
 
     expect(
       buildWorkoutVolumeChartData(
-        data.days,
+        days,
         "Y",
         undefined,
         new Date("2026-04-05T12:00:00.000Z"),
