@@ -115,7 +115,9 @@ test.describe("Demo Mode - Workout Create", () => {
     // TODO(issue-81): overlay dismissal currently preserves the zeroed set.
   });
 
-  test("should keep set when only set type changes", async ({ page }) => {
+  test("should discard zeroed warmup set when the dialog is closed", async ({
+    page,
+  }) => {
     await page.getByRole("link", { name: /new workout/i }).click();
 
     await page.getByRole("link", { name: /add exercise/i }).click();
@@ -128,13 +130,15 @@ test.describe("Demo Mode - Workout Create", () => {
     await page
       .locator('[data-slot="select-item"]', { hasText: /warmup/i })
       .click();
-    await expect(
-      page.getByRole("button", { name: /remove set/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /cancel/i })).toBeVisible();
 
     await page.getByRole("button", { name: /close/i }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByTestId("exercise-card")).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { name: /today's training/i }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/workouts\/new$/);
+    await expect(exerciseCards(page)).toHaveCount(0);
   });
 
   test("should persist created workout to localStorage", async ({ page }) => {
