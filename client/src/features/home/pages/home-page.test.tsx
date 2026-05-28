@@ -15,7 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
-import { HomePage } from "@/routes/index";
+import { HomePage } from "@/features/home/pages/home-page";
 
 describe("HomePage feature cards", () => {
   it("uses the favicon for the navbar brand mark", () => {
