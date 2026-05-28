@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useRouteContext } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import {
   patchExercisesByIdMutation,
@@ -26,6 +25,7 @@ interface ExerciseEditDialogProps {
   onOpenChange: (open: boolean) => void;
   exerciseId: number;
   exerciseName: string;
+  isDemoMode: boolean;
 }
 
 export function ExerciseEditDialog({
@@ -33,11 +33,11 @@ export function ExerciseEditDialog({
   onOpenChange,
   exerciseId,
   exerciseName,
+  isDemoMode,
 }: ExerciseEditDialogProps) {
   const [name, setName] = useState(exerciseName);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
   // Override global error handler to prevent double toasts
   // We handle errors manually in the catch block below
@@ -63,7 +63,7 @@ export function ExerciseEditDialog({
     },
   });
 
-  const updateMutation = user ? authUpdateMutation : demoUpdateMutation;
+  const updateMutation = isDemoMode ? demoUpdateMutation : authUpdateMutation;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

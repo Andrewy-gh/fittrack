@@ -1,4 +1,4 @@
-import { queryClient } from "./api";
+import { queryClient } from "@/lib/api/api";
 import { useMutation } from "@tanstack/react-query";
 import type { ExerciseExerciseResponse } from "@/client";
 import {

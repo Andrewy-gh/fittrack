@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import type { WorkoutFocus } from "@/features/workouts/api/workouts";
 import { NewWorkoutPage } from "@/features/workouts/pages/new-workout-page";
-import type { DbExercise } from "@/lib/api/exercises";
+import type { DbExercise } from "@/features/exercises/api/exercises";
 import {
   getExercisesQueryOptions,
   getWorkoutsFocusQueryOptions,

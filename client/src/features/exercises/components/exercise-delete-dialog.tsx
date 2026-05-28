@@ -9,9 +9,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { useRouter, useRouteContext } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
-import { useDeleteExerciseMutation } from "@/lib/api/exercises";
+import { useDeleteExerciseMutation } from "@/features/exercises/api/exercises";
 import { deleteDemoExercisesByIdMutationWithMeta } from "@/lib/demo-data/query-options";
 import { showErrorToast } from "@/lib/errors";
 import { toast } from "sonner";
@@ -20,22 +20,23 @@ interface ExerciseDeleteDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   exerciseId: number;
+  isDemoMode: boolean;
 }
 
 export function ExerciseDeleteDialog({
   isOpen,
   onOpenChange,
   exerciseId,
+  isDemoMode,
 }: ExerciseDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
-  const { user } = useRouteContext({ from: "/_layout/exercises/$exerciseId" });
 
   const authDeleteMutation = useDeleteExerciseMutation();
   const demoDeleteMutation = useMutation(
     deleteDemoExercisesByIdMutationWithMeta(),
   );
-  const deleteMutation = user ? authDeleteMutation : demoDeleteMutation;
+  const deleteMutation = isDemoMode ? demoDeleteMutation : authDeleteMutation;
 
   const handleDelete = async () => {
     setIsDeleting(true);

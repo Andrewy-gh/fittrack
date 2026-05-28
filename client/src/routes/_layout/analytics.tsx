@@ -5,7 +5,7 @@ import { AnalyticsPage } from "@/components/analytics/analytics-page";
 import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
-} from "@/lib/api/exercises";
+} from "@/features/exercises/api/exercises";
 import {
   contributionDataQueryOptions,
   workoutsFocusValuesQueryOptions,
