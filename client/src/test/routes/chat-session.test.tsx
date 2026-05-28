@@ -50,7 +50,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-import { useAIChatSession } from "./-chat-session";
+import { useAIChatSession } from "@/routes/_layout/-chat-session";
 
 function conversationDetail(
   messages: Array<Record<string, unknown>>,

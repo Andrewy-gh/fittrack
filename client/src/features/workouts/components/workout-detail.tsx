@@ -3,13 +3,13 @@ import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Copy, Edit, Trash } from "lucide-react";
-import { DeleteDialog } from "@/routes/_layout/workouts/-components/delete-dialog";
+import { DeleteDialog } from "@/features/workouts/components/form/delete-dialog";
 import type { WorkoutWorkoutWithSetsResponse } from "@/client";
-import { WorkoutDetailExercises } from "@/components/workouts/workout-detail-exercises";
-import { WorkoutDetailHeader } from "@/components/workouts/workout-detail-header";
-import { WorkoutDetailSummaryCards } from "@/components/workouts/workout-detail-summary-cards";
-import { WorkoutNotesCard } from "@/components/workouts/workout-notes-card";
-import { buildWorkoutDraftFromHistory } from "@/lib/workout-insights";
+import { WorkoutDetailExercises } from "@/features/workouts/components/workout-detail-exercises";
+import { WorkoutDetailHeader } from "@/features/workouts/components/workout-detail-header";
+import { WorkoutDetailSummaryCards } from "@/features/workouts/components/workout-detail-summary-cards";
+import { WorkoutNotesCard } from "@/features/workouts/components/workout-notes-card";
+import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
 import {
   type WorkoutDraftStorage,
   workoutDraftStorage,

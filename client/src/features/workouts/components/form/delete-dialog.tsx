@@ -11,7 +11,7 @@ import {
 import { useState } from "react";
 import { useRouter, useRouteContext } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
-import { useDeleteWorkoutMutation } from "@/lib/api/workouts";
+import { useDeleteWorkoutMutation } from "@/features/workouts/api/workouts";
 import { deleteDemoWorkoutsByIdMutationWithMeta } from "@/lib/demo-data/query-options";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";

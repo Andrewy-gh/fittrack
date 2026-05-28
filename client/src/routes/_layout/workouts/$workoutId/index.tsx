@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { workoutQueryOptions } from "@/lib/api/workouts";
+import { workoutQueryOptions } from "@/features/workouts/api/workouts";
+import { WorkoutDetailEditable } from "@/features/workouts/components/workout-detail";
 import { getDemoWorkoutsByIdQueryOptions } from "@/lib/demo-data/query-options";
-import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
-import { WorkoutDetailEditable } from "@/components/workouts/workout-detail";
+import { clearDemoData, initializeDemoData } from "@/lib/demo-data/storage";
 
 export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
   params: {
@@ -20,11 +20,9 @@ export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
     const user = context.user;
 
     if (user) {
-      // Authenticated: use API data
       clearDemoData();
       context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
     } else {
-      // Demo mode: use localStorage
       initializeDemoData();
       context.queryClient.ensureQueryData(
         getDemoWorkoutsByIdQueryOptions(workoutId),
@@ -44,6 +42,5 @@ function RouteComponent() {
     ? useSuspenseQuery(workoutQueryOptions(workoutId))
     : useSuspenseQuery(getDemoWorkoutsByIdQueryOptions(workoutId));
 
-  // Show edit/delete in both auth and demo modes (demo has mutations)
   return <WorkoutDetailEditable workout={workout} />;
 }

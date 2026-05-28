@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { GenericCombobox } from "@/components/generic-combobox";
 import { Target, X } from "lucide-react";
-import type { WorkoutFocus } from "@/lib/api/workouts";
+import type { WorkoutFocus } from "@/features/workouts/api/workouts";
 
 export default function WorkoutFocusCombobox({
   workoutsFocus,

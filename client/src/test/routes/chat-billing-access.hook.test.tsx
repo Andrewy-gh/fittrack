@@ -54,7 +54,8 @@ vi.mock("@/lib/errors", () => ({
   showErrorToast: mocks.mockShowErrorToast,
 }));
 
-const { useAIChatBillingAccess } = await import("./-chat-billing-access");
+const { useAIChatBillingAccess } =
+  await import("@/routes/_layout/-chat-billing-access");
 
 const blockedBillingStatus: BillingStatusResponse = {
   feature_key: "ai_chatbot",

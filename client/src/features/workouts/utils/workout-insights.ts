@@ -12,7 +12,7 @@ import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
 } from "@/client";
-import { sortByExerciseAndSetOrder } from "./utils";
+import { sortByExerciseAndSetOrder } from "@/lib/utils";
 
 export type WorkoutNoteContext = {
   date: string;

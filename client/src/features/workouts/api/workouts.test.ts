@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation,
 }));
 
-vi.mock("./api", () => ({
+vi.mock("@/lib/api/api", () => ({
   queryClient: {
     invalidateQueries,
     removeQueries,

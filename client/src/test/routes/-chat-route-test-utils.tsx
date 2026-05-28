@@ -122,7 +122,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-export const { ChatRouteComponent } = await import("./chat");
+export const { ChatRouteComponent } = await import("@/routes/_layout/chat");
 
 export function conversationDetail(
   messages: Array<Record<string, unknown>>,
