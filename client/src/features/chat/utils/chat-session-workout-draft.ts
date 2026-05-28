@@ -4,7 +4,7 @@ import {
 } from "@/lib/api/ai-chat";
 import { showErrorToast } from "@/lib/errors";
 import { toast } from "sonner";
-import type { ChatSessionSetters } from "./-chat-session-types";
+import type { ChatSessionSetters } from "./chat-session-types";
 
 export async function saveLatestWorkoutDraft({
   conversation,

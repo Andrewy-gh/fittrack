@@ -15,16 +15,16 @@ import {
   updateStreamingMessageWithDelta,
   updateStreamingMessageWithDone,
   updateStreamingMessageWithError,
-} from "./-chat-resume";
+} from "./chat-resume";
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
   RecordChatTelemetry,
-} from "./-chat-session-types";
+} from "./chat-session-types";
 import type {
   LoadConversation,
   RecoverConversation,
-} from "./-chat-session-recovery";
+} from "./chat-session-recovery";
 
 type SubmitPromptOptions = {
   conversationId: number | null;

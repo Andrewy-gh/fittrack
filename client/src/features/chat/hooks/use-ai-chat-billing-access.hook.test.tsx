@@ -55,7 +55,7 @@ vi.mock("@/lib/errors", () => ({
 }));
 
 const { useAIChatBillingAccess } =
-  await import("@/routes/_layout/-chat-billing-access");
+  await import("@/features/chat/hooks/use-ai-chat-billing-access");
 
 const blockedBillingStatus: BillingStatusResponse = {
   feature_key: "ai_chatbot",

@@ -17,13 +17,13 @@ import {
   recoverConversation as recoverConversationRequest,
   recoverLoadedConversation,
   resumeConversation as resumeConversationRequest,
-} from "./-chat-session-recovery";
-import { submitPrompt as submitPromptRequest } from "./-chat-session-submit";
+} from "../utils/chat-session-recovery";
+import { submitPrompt as submitPromptRequest } from "../utils/chat-session-submit";
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
-} from "./-chat-session-types";
-import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "./-chat-session-workout-draft";
+} from "../utils/chat-session-types";
+import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../utils/chat-session-workout-draft";
 
 type UseAIChatSessionOptions = {
   conversationId: number | null;

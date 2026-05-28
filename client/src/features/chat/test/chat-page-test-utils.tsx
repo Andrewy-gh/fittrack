@@ -70,11 +70,6 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => () => ({
-    useRouteContext: () => ({ user: { id: "user-123" } }),
-    useSearch: () => mockSearch,
-    fullPath: "/chat",
-  }),
   useNavigate: () => mockNavigate,
 }));
 
@@ -122,7 +117,18 @@ vi.mock("sonner", () => ({
   },
 }));
 
-export const { ChatRouteComponent } = await import("@/routes/_layout/chat");
+const { ChatPage } = await import("@/features/chat/pages/chat-page");
+
+export function ChatRouteComponent() {
+  return (
+    <ChatPage
+      userId="user-123"
+      conversationId={parseConversationId(mockSearch.conversationId)}
+      conversationIdSearch={mockSearch.conversationId}
+      checkout={mockSearch.checkout}
+    />
+  );
+}
 
 export function conversationDetail(
   messages: Array<Record<string, unknown>>,
@@ -284,4 +290,17 @@ export function resetChatRouteMocks() {
     run_id: 61,
     status: "queued",
   });
+}
+
+function parseConversationId(value?: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
 }
