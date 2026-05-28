@@ -18,6 +18,10 @@ type AddExerciseScreenProps = {
   onAddExercise?: (index: number, isNewExercise?: boolean) => void; // Optional callback for when exercise is added (used by edit.tsx)
 };
 
+function normalizeExerciseName(name: string) {
+  return name.trim().toLowerCase();
+}
+
 export const AddExerciseScreen = withForm({
   defaultValues: MOCK_VALUES,
   props: {} as AddExerciseScreenProps,
@@ -31,6 +35,14 @@ export const AddExerciseScreen = withForm({
     const filteredExercises = workingExercises.filter((exercise) =>
       exercise.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
+    const trimmedSearchQuery = searchQuery.trim();
+    const canCreateExercise =
+      normalizeExerciseName(trimmedSearchQuery).length > 0 &&
+      !workingExercises.some(
+        (exercise) =>
+          normalizeExerciseName(exercise.name) ===
+          normalizeExerciseName(trimmedSearchQuery),
+      );
 
     return (
       <main>
@@ -53,17 +65,17 @@ export const AddExerciseScreen = withForm({
               mode="array"
               children={(field) => (
                 <>
-                  {filteredExercises.length === 0 && (
+                  {canCreateExercise && (
                     <Button
                       size="sm"
                       onClick={() => {
                         const newExercise: ExerciseOption = {
                           id: null, // null ID for new exercises not yet in the database
-                          name: searchQuery,
+                          name: trimmedSearchQuery,
                         };
                         setWorkingExercises((prev) => [...prev, newExercise]);
                         field.pushValue({
-                          name: searchQuery,
+                          name: trimmedSearchQuery,
                           sets: [],
                         });
                         const exerciseIndex = field.state.value.length - 1;
