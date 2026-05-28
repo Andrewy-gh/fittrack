@@ -22,7 +22,7 @@ import { PencilLine, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { WorkoutExerciseInput } from "@/client";
-import type { WorkoutFocus } from "@/lib/api/workouts";
+import type { WorkoutFocus } from "@/features/workouts/api/workouts";
 import { cn } from "@/lib/utils";
 import type { ReorderableExercise } from "./use-exercise-reorder";
 

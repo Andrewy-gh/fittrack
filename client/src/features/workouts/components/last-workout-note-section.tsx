@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { WorkoutNotesCard } from "@/components/workouts/workout-notes-card";
+import { WorkoutNotesCard } from "@/features/workouts/components/workout-notes-card";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,

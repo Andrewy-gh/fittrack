@@ -7,24 +7,6 @@ import type {
 import { useAppForm } from "@/hooks/form";
 import { AddExerciseScreen } from "../add-exercise-screen";
 
-const navigateMock = vi.fn();
-
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tanstack/react-router")>();
-
-  return {
-    ...actual,
-    useNavigate: () => navigateMock,
-  };
-});
-
-vi.mock("@/routes/_layout/workouts/new", () => ({
-  Route: {
-    fullPath: "/_layout/workouts/new",
-  },
-}));
-
 function AddExerciseScreenHarness() {
   const defaultValues: WorkoutCreateWorkoutRequest = {
     date: new Date().toISOString(),
@@ -41,6 +23,7 @@ function AddExerciseScreenHarness() {
     <AddExerciseScreen
       form={form}
       exercises={[{ id: 1, name: "Incline Hammer Curl" }]}
+      onAddExercise={vi.fn()}
       onBack={vi.fn()}
     />
   );

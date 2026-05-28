@@ -8,7 +8,7 @@ import {
   workoutsQueryOptions,
   workoutQueryOptions,
   workoutsFocusValuesQueryOptions,
-} from "./workouts";
+} from "@/features/workouts/api/workouts";
 import {
   getDemoExercisesQueryOptions,
   getDemoExercisesByIdQueryOptions,

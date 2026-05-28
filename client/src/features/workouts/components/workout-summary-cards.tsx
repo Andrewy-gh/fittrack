@@ -4,7 +4,7 @@ import type { WorkoutWorkoutResponse } from "@/client";
 import {
   formatWeekComparison,
   getWorkoutConsistencySummary,
-} from "@/lib/workout-insights";
+} from "@/features/workouts/utils/workout-insights";
 
 export interface WorkoutSummaryCardsProps {
   workouts: Array<WorkoutWorkoutResponse>;

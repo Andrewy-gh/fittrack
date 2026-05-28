@@ -1,10 +1,10 @@
 import { withForm } from "@/hooks/form";
 import { useState } from "react";
-import { AddSetDialog } from "../-components/add-set-dialog";
+import { AddSetDialog } from "@/features/workouts/components/form/add-set-dialog";
 import { ChevronLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MOCK_VALUES } from "../-components/form-options";
+import { MOCK_VALUES } from "@/features/workouts/components/form/form-options";
 import { formatWeight } from "@/lib/utils";
 import { shouldDiscardNewExerciseAfterSetRemoval } from "./workout-form-helpers";
 

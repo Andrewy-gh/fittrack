@@ -1,5 +1,5 @@
-import { queryClient } from "./api";
 import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/api/api";
 import {
   getExercisesQueryKey,
   getWorkoutsByIdQueryKey,
@@ -20,7 +20,7 @@ import type {
   WorkoutUpdateWorkoutRequest,
   WorkoutWorkoutWithSetsResponse,
 } from "@/client";
-import { sortByExerciseAndSetOrder } from "../utils";
+import { sortByExerciseAndSetOrder } from "@/lib/utils";
 
 export type WorkoutFocus = {
   name: string;

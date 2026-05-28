@@ -9,7 +9,7 @@ import {
 import {
   contributionDataQueryOptions,
   workoutsFocusValuesQueryOptions,
-} from "@/lib/api/workouts";
+} from "@/features/workouts/api/workouts";
 import {
   getDemoContributionDataQueryOptions,
   getDemoExercisesByIdQueryOptions,
