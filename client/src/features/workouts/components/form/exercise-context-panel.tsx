@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   formatExerciseGoalSummary,
   getExerciseGoal,
-} from "@/lib/exercise-goals";
+} from "@/features/exercises/utils/exercise-goals";
 
 function ExerciseContextCard({ goalSummary }: { goalSummary: string | null }) {
   if (!goalSummary) {

@@ -15,17 +15,17 @@ import type {
   ExerciseExerciseDetailExerciseResponse,
   ExerciseExerciseWithSetsResponse,
 } from "@/client";
-import { ExerciseDeleteDialog } from "@/routes/_layout/exercises/-components/exercise-delete-dialog";
-import { ExerciseEditDialog } from "@/routes/_layout/exercises/-components/exercise-edit-dialog";
-import { ExerciseDetailHeader } from "@/components/exercises/exercise-detail-header";
-import { ExerciseSummaryCards } from "@/components/exercises/exercise-summary-cards";
-import { ExerciseMetricCharts } from "@/components/exercises/exercise-metric-charts";
+import { ExerciseDeleteDialog } from "@/features/exercises/components/exercise-delete-dialog";
+import { ExerciseEditDialog } from "@/features/exercises/components/exercise-edit-dialog";
+import { ExerciseDetailHeader } from "@/features/exercises/components/exercise-detail-header";
+import { ExerciseSummaryCards } from "@/features/exercises/components/exercise-summary-cards";
+import { ExerciseMetricCharts } from "@/features/exercises/components/exercise-metric-charts";
 import {
   ExerciseWorkoutCards,
   type ExerciseWorkoutEntry,
-} from "@/components/exercises/exercise-workout-cards";
-import { ExerciseHistorical1RmCard } from "@/routes/_layout/exercises/-components/exercise-historical-1rm";
-import { ExerciseGoalsCard } from "@/components/exercises/exercise-goals-card";
+} from "@/features/exercises/components/exercise-workout-cards";
+import { ExerciseHistorical1RmCard } from "@/features/exercises/components/exercise-historical-1rm";
+import { ExerciseGoalsCard } from "@/features/exercises/components/exercise-goals-card";
 
 export interface ExerciseDetailProps {
   exercise: ExerciseExerciseDetailExerciseResponse;
@@ -244,11 +244,13 @@ export function ExerciseDetail({
           onOpenChange={setIsEditDialogOpen}
           exerciseId={exerciseId}
           exerciseName={exerciseName}
+          isDemoMode={isDemoMode}
         />
         <ExerciseDeleteDialog
           isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
           exerciseId={exerciseId}
+          isDemoMode={isDemoMode}
         />
       </div>
     </main>

@@ -3,7 +3,7 @@ import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
   recentExerciseSetsQueryOptions,
-} from "./exercises";
+} from "@/features/exercises/api/exercises";
 import {
   workoutsQueryOptions,
   workoutQueryOptions,

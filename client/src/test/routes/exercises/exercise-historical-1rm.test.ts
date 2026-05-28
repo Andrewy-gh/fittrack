@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExerciseExerciseWithSetsResponse } from "@/client";
-import { resolveBestE1rmForDisplay } from "@/routes/_layout/exercises/-components/exercise-historical-1rm";
+import { resolveBestE1rmForDisplay } from "@/features/exercises/components/exercise-historical-1rm";
 
 function makeSet(
   overrides: Partial<ExerciseExerciseWithSetsResponse>,

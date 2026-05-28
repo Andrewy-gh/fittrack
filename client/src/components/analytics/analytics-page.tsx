@@ -3,7 +3,7 @@ import type {
   ExerciseExerciseWithSetsResponse,
   WorkoutContributionDataResponse,
 } from "@/client";
-import { ExerciseMetricCharts } from "@/components/exercises/exercise-metric-charts";
+import { ExerciseMetricCharts } from "@/features/exercises/components/exercise-metric-charts";
 import { GenericCombobox } from "@/components/generic-combobox";
 import { Card, CardContent } from "@/components/ui/card";
 import { WorkoutContributionGraph } from "@/features/workouts/components/workout-contribution-graph";

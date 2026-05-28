@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
-import type { DbExercise, ExerciseOption } from "@/lib/api/exercises";
+import type {
+  DbExercise,
+  ExerciseOption,
+} from "@/features/exercises/api/exercises";
 import { Plus } from "lucide-react";
-import { ExerciseCombobox } from "@/components/exercise-combobox";
+import { ExerciseCombobox } from "@/features/exercises/components/exercise-combobox";
 import { useFieldContext } from "@/hooks/form";
 import { useState } from "react";
 import type { WorkoutExerciseInput } from "@/client";

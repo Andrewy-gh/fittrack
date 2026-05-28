@@ -1,7 +1,7 @@
 import { parseISO, subDays, subMonths, subYears } from "date-fns";
 
 import type { ExerciseExerciseWithSetsResponse } from "@/client";
-import type { MetricsHistoryRange } from "@/lib/api/exercises";
+import type { MetricsHistoryRange } from "@/features/exercises/api/exercises";
 
 type Bucket = "workout";
 

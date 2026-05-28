@@ -8,7 +8,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { ExerciseCombobox } from "@/components/exercise-combobox";
+import { ExerciseCombobox } from "@/features/exercises/components/exercise-combobox";
 
 let mediaQueryMatches = false;
 const originalResizeObserver = globalThis.ResizeObserver;

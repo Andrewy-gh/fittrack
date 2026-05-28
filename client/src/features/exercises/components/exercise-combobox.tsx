@@ -30,7 +30,7 @@ import {
   updateTouchTapTracking,
 } from "@/lib/touch-activation";
 import { cn } from "@/lib/utils";
-import type { ExerciseOption } from "@/lib/api/exercises";
+import type { ExerciseOption } from "@/features/exercises/api/exercises";
 
 type CommandItemTouchHandlers = Pick<
   ComponentProps<typeof CommandItem>,

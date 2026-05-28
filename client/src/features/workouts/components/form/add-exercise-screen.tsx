@@ -2,7 +2,10 @@ import { withForm } from "@/hooks/form";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { DbExercise, ExerciseOption } from "@/lib/api/exercises";
+import type {
+  DbExercise,
+  ExerciseOption,
+} from "@/features/exercises/api/exercises";
 import { MOCK_VALUES } from "@/features/workouts/components/form/form-options";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";

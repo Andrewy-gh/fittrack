@@ -19,7 +19,7 @@ import type {
   ExerciseExerciseDetailExerciseResponse,
   ExerciseExerciseWithSetsResponse,
 } from "@/client";
-import { useUpdateExerciseHistorical1RmMutation } from "@/lib/api/exercises";
+import { useUpdateExerciseHistorical1RmMutation } from "@/features/exercises/api/exercises";
 import {
   getDemoExerciseHistorical1Rm,
   recomputeDemoExerciseHistorical1Rm,

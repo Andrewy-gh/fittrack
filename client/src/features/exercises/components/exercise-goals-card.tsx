@@ -18,7 +18,7 @@ import {
   parseExerciseGoalInput,
   saveExerciseGoal,
   type ExerciseGoal,
-} from "@/lib/exercise-goals";
+} from "@/features/exercises/utils/exercise-goals";
 
 type GoalFieldErrors = {
   targetWeight?: string;

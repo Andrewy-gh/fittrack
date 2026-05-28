@@ -10,8 +10,8 @@ import type {
 import {
   exerciseMetricsHistoryQueryOptions,
   type MetricsHistoryRange,
-} from "@/lib/api/exercises";
-import { computeDemoMetricsHistory } from "@/lib/metrics-history";
+} from "@/features/exercises/api/exercises";
+import { computeDemoMetricsHistory } from "@/features/exercises/utils/metrics-history";
 import { RangeSelector } from "@/components/charts/chart-bar-vol.components";
 import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
 import {

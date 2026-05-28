@@ -16,7 +16,7 @@ import {
   type WorkoutDraftStorage,
   workoutDraftStorage,
 } from "@/lib/local-storage";
-import { type DbExercise } from "@/lib/api/exercises";
+import { type DbExercise } from "@/features/exercises/api/exercises";
 import {
   getInitialValues,
   MOCK_VALUES,
@@ -39,7 +39,7 @@ import {
 import {
   formatExerciseGoalSummary,
   getExerciseGoal,
-} from "@/lib/exercise-goals";
+} from "@/features/exercises/utils/exercise-goals";
 import type { WorkoutWorkoutResponse } from "@/client";
 import {
   AlertDialog,

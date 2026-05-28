@@ -6,12 +6,12 @@ import {
   getWorkoutByIdQueryOptions,
   getWorkoutsFocusQueryOptions,
 } from "../unified-query-options";
-import * as apiExercises from "../exercises";
+import * as apiExercises from "@/features/exercises/api/exercises";
 import * as apiWorkouts from "@/features/workouts/api/workouts";
 import * as demoQueryOptions from "@/lib/demo-data/query-options";
 
 // Mock the API modules
-vi.mock("../exercises");
+vi.mock("@/features/exercises/api/exercises");
 vi.mock("@/features/workouts/api/workouts");
 vi.mock("@/lib/demo-data/query-options");
 
