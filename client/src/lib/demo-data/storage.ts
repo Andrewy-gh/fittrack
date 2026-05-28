@@ -27,7 +27,7 @@ import {
   handleDemoWorkoutUpdated,
   resetDemoHistorical1Rm,
 } from "./historical-1rm";
-import type { DemoContributionWorkout } from "@/lib/analytics";
+import type { DemoContributionWorkout } from "@/lib/demo-data/contribution-data";
 
 // ===========================
 // localStorage Utilities

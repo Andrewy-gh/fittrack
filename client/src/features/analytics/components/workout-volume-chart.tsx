@@ -14,7 +14,7 @@ import {
   buildWorkoutVolumeChartData,
   getWorkoutVolumeBucketLabel,
   getWorkoutVolumeTitle,
-} from "@/lib/analytics";
+} from "@/features/analytics/utils/analytics-workouts";
 
 const ALL_FOCUS_VALUE = "all";
 

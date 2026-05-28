@@ -1,18 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { AnalyticsPage } from "@/components/analytics/analytics-page";
-import {
-  exerciseByIdQueryOptions,
-  exercisesQueryOptions,
-} from "@/features/exercises/api/exercises";
+import { AnalyticsPage } from "@/features/analytics/pages/analytics-page";
+import { exercisesQueryOptions } from "@/features/exercises/api/exercises";
 import {
   contributionDataQueryOptions,
   workoutsFocusValuesQueryOptions,
 } from "@/features/workouts/api/workouts";
 import {
   getDemoContributionDataQueryOptions,
-  getDemoExercisesByIdQueryOptions,
   getDemoExercisesQueryOptions,
   getDemoWorkoutsFocusValuesQueryOptions,
 } from "@/lib/demo-data/query-options";
@@ -53,64 +48,11 @@ export const Route = createFileRoute("/_layout/analytics")({
 function RouteComponent() {
   const { exerciseId } = Route.useSearch();
   const { user } = Route.useRouteContext();
-  const navigate = useNavigate({ from: Route.fullPath });
-
-  const { data: exercises } = user
-    ? useSuspenseQuery(exercisesQueryOptions())
-    : useSuspenseQuery(getDemoExercisesQueryOptions());
-
-  const selectedExerciseId =
-    exerciseId && exercises.some((exercise) => exercise.id === exerciseId)
-      ? exerciseId
-      : exercises[0]?.id;
-
-  const exerciseDetailQuery = user
-    ? useQuery({
-        ...exerciseByIdQueryOptions(selectedExerciseId ?? 0),
-        enabled: Boolean(selectedExerciseId),
-      })
-    : useQuery({
-        ...getDemoExercisesByIdQueryOptions(selectedExerciseId ?? 0),
-        enabled: Boolean(selectedExerciseId),
-      });
-
-  const authedContributionQuery = useQuery({
-    ...contributionDataQueryOptions(),
-    enabled: Boolean(user),
-  });
-  const demoContributionQuery = useQuery({
-    ...getDemoContributionDataQueryOptions(),
-    enabled: !user,
-  });
-  const authedFocusValuesQuery = useQuery({
-    ...workoutsFocusValuesQueryOptions(),
-    enabled: Boolean(user),
-  });
-  const demoFocusValuesQuery = useQuery({
-    ...getDemoWorkoutsFocusValuesQueryOptions(),
-    enabled: !user,
-  });
-
-  const workoutContributionData = user
-    ? authedContributionQuery.data
-    : demoContributionQuery.data;
-  const workoutFocusValues = user
-    ? (authedFocusValuesQuery.data ?? [])
-    : (demoFocusValuesQuery.data ?? []);
 
   return (
     <AnalyticsPage
-      isLoadingExercises={false}
-      exercises={exercises}
-      selectedExerciseId={selectedExerciseId}
-      onSelectExercise={(id) =>
-        navigate({ search: (prev) => ({ ...prev, exerciseId: id }) })
-      }
-      isLoadingDetails={exerciseDetailQuery.isLoading}
-      exerciseSets={exerciseDetailQuery.data?.sets}
+      exerciseId={exerciseId}
       isDemoMode={!user}
-      workoutContributionData={workoutContributionData}
-      workoutFocusValues={workoutFocusValues}
     />
   );
 }
