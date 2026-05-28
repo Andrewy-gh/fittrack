@@ -11,7 +11,7 @@ import {
   mockStreamMessage,
   mockToastSuccess,
   resetChatRouteMocks,
-} from "./-chat-route-test-utils";
+} from "../test/chat-page-test-utils";
 
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);

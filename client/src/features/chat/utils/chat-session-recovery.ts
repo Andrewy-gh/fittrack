@@ -17,14 +17,14 @@ import {
   updateStreamingMessageWithDelta,
   updateStreamingMessageWithDone,
   updateStreamingMessageWithError,
-} from "./-chat-resume";
+} from "./chat-resume";
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
   ConversationRequestOptions,
   ConversationRequestResult,
   RecordChatTelemetry,
-} from "./-chat-session-types";
+} from "./chat-session-types";
 
 type SessionStateContext = {
   refs: ChatSessionRefs;

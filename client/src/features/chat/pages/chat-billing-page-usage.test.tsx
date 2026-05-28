@@ -9,7 +9,7 @@ import {
   mockRefetchBillingStatus,
   mockStreamMessage,
   resetChatRouteMocks,
-} from "./-chat-route-test-utils";
+} from "../test/chat-page-test-utils";
 
 describe("ChatRouteComponent billing usage", () => {
   beforeEach(resetChatRouteMocks);

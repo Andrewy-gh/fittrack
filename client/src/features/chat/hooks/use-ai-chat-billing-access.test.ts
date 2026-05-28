@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveAIChatAccessView,
   resolveCheckoutAccessPollingView,
-} from "./-chat-billing-access";
+} from "./use-ai-chat-billing-access";
 
 describe("resolveAIChatAccessView", () => {
   it("uses feature grants as the chat composer access source", () => {
