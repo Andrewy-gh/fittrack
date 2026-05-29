@@ -1,5 +1,8 @@
 import { vi } from "vitest";
-import type { AIWorkoutDraft, AIWorkoutDraftStatus } from "@/lib/api/ai-chat";
+import type {
+  AIWorkoutDraft,
+  AIWorkoutDraftStatus,
+} from "@/features/chat/api/ai-chat";
 
 const mocks = vi.hoisted(() => ({
   mockSearch: {
@@ -73,7 +76,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@/lib/api/ai-chat", () => ({
+vi.mock("@/features/chat/api/ai-chat", () => ({
   createAIChatConversation: mockCreateConversation,
   getAIChatConversation: mockGetConversation,
   pollAIChatConversationUntilSettled: mockPollConversation,
@@ -84,7 +87,7 @@ vi.mock("@/lib/api/ai-chat", () => ({
   streamAIChatMessage: mockStreamMessage,
 }));
 
-vi.mock("@/lib/api/billing", () => ({
+vi.mock("@/features/chat/api/billing", () => ({
   billingStatusQueryOptions: mockBillingStatusQueryOptions,
   createBillingCustomerPortalSession: mockCreateBillingCustomerPortalSession,
   createBillingCheckoutSession: mockCreateBillingCheckoutSession,
@@ -93,7 +96,7 @@ vi.mock("@/lib/api/billing", () => ({
   redirectToBillingPortal: mockRedirectToBillingPortal,
 }));
 
-vi.mock("@/lib/api/feature-access", () => ({
+vi.mock("@/features/chat/api/feature-access", () => ({
   featureAccessQueryOptions: mockFeatureAccessQueryOptions,
   getFeatureAccess: mockGetFeatureAccess,
   hasAIChatFeatureAccess: (

@@ -9,13 +9,13 @@ import {
   redirectToBillingCheckout,
   redirectToBillingPortal,
   type BillingStatusResponse,
-} from "@/lib/api/billing";
+} from "@/features/chat/api/billing";
 import {
   featureAccessQueryOptions,
   getFeatureAccess,
   hasAIChatFeatureAccess,
   type FeatureAccessGrant,
-} from "@/lib/api/feature-access";
+} from "@/features/chat/api/feature-access";
 import { showErrorToast } from "@/lib/errors";
 
 type CheckoutSearch = "success" | "cancelled";

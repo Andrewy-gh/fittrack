@@ -21,7 +21,7 @@ vi.mock("@/lib/local-dev-auth", () => ({
   applyLocalDevAuthHeader,
 }));
 
-import "./client-config";
+import "@/lib/api/client-config";
 import {
   createAIChatConversation,
   pollAIChatConversationUntilSettled,

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { BillingStatusResponse } from "@/lib/api/billing";
+import type { BillingStatusResponse } from "@/features/chat/api/billing";
 import {
   AIChatBillingCard,
   type AIChatBillingCardAccessState,

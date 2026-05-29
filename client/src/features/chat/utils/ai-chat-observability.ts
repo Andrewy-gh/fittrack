@@ -2,7 +2,7 @@ import type {
   AIChatMessage,
   AIChatTelemetryEvent,
   AIChatTelemetryStage,
-} from "@/lib/api/ai-chat";
+} from "@/features/chat/api/ai-chat";
 
 type RecoveryTelemetryInput = {
   messages?: AIChatMessage[];

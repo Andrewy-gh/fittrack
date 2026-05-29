@@ -3,8 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import type { AIChatMessage, AIWorkoutDraft } from "@/lib/api/ai-chat";
-import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
+import type {
+  AIChatMessage,
+  AIWorkoutDraft,
+} from "@/features/chat/api/ai-chat";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { toast } from "sonner";
 import { AIChatBillingCard } from "../components/ai-chat-billing-card";

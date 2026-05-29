@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/client/client.gen";
 import type { ApiError } from "@/lib/errors";
-import "./client-config";
+import "@/lib/api/client-config";
 
 export type BillingSubscriptionStatus =
   | "trialing"

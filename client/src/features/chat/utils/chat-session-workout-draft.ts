@@ -1,7 +1,7 @@
 import {
   saveAIChatLatestWorkoutDraft,
   type AIChatConversation,
-} from "@/lib/api/ai-chat";
+} from "@/features/chat/api/ai-chat";
 import { showErrorToast } from "@/lib/errors";
 import { toast } from "sonner";
 import type { ChatSessionSetters } from "./chat-session-types";

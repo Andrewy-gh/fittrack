@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { AIWorkoutDraft } from "@/lib/api/ai-chat";
+import type { AIWorkoutDraft } from "@/features/chat/api/ai-chat";
 import { createWorkoutDraftStorage } from "@/lib/local-storage";
 import {
   saveAIWorkoutDraftToWorkoutForm,
   toWorkoutCreateRequest,
-} from "@/lib/ai-workout-draft";
+} from "@/features/chat/utils/ai-workout-draft";
 import { getInitialValues } from "@/features/workouts/components/form/form-options";
 
 function createMemoryStorage() {

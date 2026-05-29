@@ -6,11 +6,11 @@ import {
   type AIChatConversationDetail,
   type AIChatMessage,
   type AIChatTelemetryEvent,
-} from "@/lib/api/ai-chat";
+} from "@/features/chat/api/ai-chat";
 import {
   classifyLoadOutcome,
   classifyRecoveryOutcome,
-} from "@/lib/ai-chat-observability";
+} from "@/features/chat/utils/ai-chat-observability";
 import { showErrorToast } from "@/lib/errors";
 import {
   loadConversation as loadConversationRequest,
