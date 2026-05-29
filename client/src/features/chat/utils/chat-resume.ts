@@ -2,7 +2,7 @@ import type {
   AIChatConversationDetail,
   AIChatMessage,
   AIChatStreamEvent,
-} from "@/lib/api/ai-chat";
+} from "@/features/chat/api/ai-chat";
 
 const storageKeyPrefix = "fittrack.ai-chat.resume";
 

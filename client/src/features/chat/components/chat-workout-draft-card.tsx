@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import type { AIWorkoutDraft, AIWorkoutSetInput } from "@/lib/api/ai-chat";
+import type {
+  AIWorkoutDraft,
+  AIWorkoutSetInput,
+} from "@/features/chat/api/ai-chat";
 import { cn } from "@/lib/utils";
 
 type ChatWorkoutDraftCardProps = {

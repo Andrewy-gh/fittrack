@@ -4,11 +4,11 @@ import {
   requestAIChatMessageRecovery,
   resumeAIChatMessageStream,
   type AIChatConversationDetail,
-} from "@/lib/api/ai-chat";
+} from "@/features/chat/api/ai-chat";
 import {
   classifyRecoveryOutcome,
   isAbortError,
-} from "@/lib/ai-chat-observability";
+} from "@/features/chat/utils/ai-chat-observability";
 import { getErrorMessage, showErrorToast } from "@/lib/errors";
 import {
   clearResumeCursor,

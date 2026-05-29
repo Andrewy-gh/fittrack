@@ -3,7 +3,7 @@ import {
   getFeaturesAccess,
   type FeatureaccessFeatureAccessResponse,
 } from "@/client";
-import "./client-config";
+import "@/lib/api/client-config";
 
 export const AI_CHAT_FEATURE_KEY = "ai_chatbot";
 

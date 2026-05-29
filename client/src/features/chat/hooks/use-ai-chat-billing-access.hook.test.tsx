@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BillingStatusResponse } from "@/lib/api/billing";
-import type { FeatureAccessGrant } from "@/lib/api/feature-access";
+import type { BillingStatusResponse } from "@/features/chat/api/billing";
+import type { FeatureAccessGrant } from "@/features/chat/api/feature-access";
 
 const mocks = vi.hoisted(() => ({
   mockCreateBillingCheckoutSession: vi.fn(),
@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   mockShowErrorToast: vi.fn(),
 }));
 
-vi.mock("@/lib/api/billing", async () => {
+vi.mock("@/features/chat/api/billing", async () => {
   const { queryOptions } = await import("@tanstack/react-query");
 
   return {
@@ -35,7 +35,7 @@ vi.mock("@/lib/api/billing", async () => {
   };
 });
 
-vi.mock("@/lib/api/feature-access", async () => {
+vi.mock("@/features/chat/api/feature-access", async () => {
   const { queryOptions } = await import("@tanstack/react-query");
 
   return {

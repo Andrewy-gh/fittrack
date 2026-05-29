@@ -12,7 +12,7 @@ import type {
   BillingStatusResponse,
   BillingSubscription,
   BillingSubscriptionStatus,
-} from "@/lib/api/billing";
+} from "@/features/chat/api/billing";
 import { cn } from "@/lib/utils";
 
 type AIChatBillingCardProps = {

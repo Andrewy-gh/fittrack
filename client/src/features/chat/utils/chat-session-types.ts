@@ -4,7 +4,7 @@ import type {
   AIChatConversationDetail,
   AIChatMessage,
   AIChatTelemetryEvent,
-} from "@/lib/api/ai-chat";
+} from "@/features/chat/api/ai-chat";
 
 export type ConversationRequestResult = {
   detail: AIChatConversationDetail | null;

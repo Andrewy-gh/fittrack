@@ -25,7 +25,7 @@ const {
   mockToastSuccess: vi.fn(),
 }));
 
-vi.mock("@/lib/api/ai-chat", () => ({
+vi.mock("@/features/chat/api/ai-chat", () => ({
   createAIChatConversation: mockCreateConversation,
   getAIChatConversation: mockGetConversation,
   pollAIChatConversationUntilSettled: mockPollConversation,
