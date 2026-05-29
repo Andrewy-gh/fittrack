@@ -1,6 +1,5 @@
 import type { FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AIChatBillingCard } from "@/components/billing/ai-chat-billing-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +7,7 @@ import type { AIChatMessage, AIWorkoutDraft } from "@/lib/api/ai-chat";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/lib/ai-workout-draft";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { toast } from "sonner";
+import { AIChatBillingCard } from "../components/ai-chat-billing-card";
 import { ChatWorkoutDraftCard } from "../components/chat-workout-draft-card";
 import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
