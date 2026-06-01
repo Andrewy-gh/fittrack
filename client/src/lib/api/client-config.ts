@@ -4,6 +4,9 @@ import { stackClientApp } from "@/stack";
 import type { ApiError } from "@/lib/errors";
 import { toast } from "sonner";
 
+export const AUTH_SESSION_UNAVAILABLE_MESSAGE =
+  "We couldn't verify your session. Please check your connection and try again.";
+
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.MODE === "test" ? "http://localhost/api" : "/api");
@@ -18,16 +21,24 @@ client.interceptors.request.use(async (request) => {
     return request;
   }
 
-  const user = await stackClientApp.getUser();
-  if (!user) {
-    applyLocalDevAuthHeader(request.headers);
-    return request;
-  }
+  try {
+    const user = await stackClientApp.getUser();
+    if (!user) {
+      applyLocalDevAuthHeader(request.headers);
+      return request;
+    }
 
-  const { accessToken } = await user.getAuthJson();
-  if (accessToken) {
-    request.headers.set("x-stack-access-token", accessToken);
-    return request;
+    const { accessToken } = await user.getAuthJson();
+    if (accessToken) {
+      request.headers.set("x-stack-access-token", accessToken);
+      return request;
+    }
+  } catch (err) {
+    console.error("Failed to verify Stack Auth session.", err);
+    const authUnavailableError: ApiError = {
+      message: AUTH_SESSION_UNAVAILABLE_MESSAGE,
+    };
+    throw authUnavailableError;
   }
 
   applyLocalDevAuthHeader(request.headers);
