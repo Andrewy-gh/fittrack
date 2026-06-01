@@ -32,15 +32,12 @@ import {
 import { queryClient } from "@/lib/api/api";
 import { ExerciseContextPanel } from "@/features/workouts/components/form/exercise-context-panel";
 import { LastWorkoutNoteSection } from "@/features/workouts/components/last-workout-note-section";
-import {
-  buildWorkoutDraftFromHistory,
-  getLatestWorkoutNote,
-} from "@/features/workouts/utils/workout-insights";
+import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
 import {
   formatExerciseGoalSummary,
   getExerciseGoal,
 } from "@/features/exercises/utils/exercise-goals";
-import type { WorkoutWorkoutResponse } from "@/client";
+import type { WorkoutNewWorkoutContextResponse } from "@/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,14 +133,14 @@ export type WorkoutFormSearch = {
 export function NewWorkoutPage({
   user,
   exercises,
-  workouts,
+  newWorkoutContext,
   workoutsFocus,
   search,
   draftStorage = workoutDraftStorage,
 }: {
   user: CurrentUser | CurrentInternalUser | null; // need user for localStorage
   exercises: DbExercise[];
-  workouts: WorkoutWorkoutResponse[];
+  newWorkoutContext: WorkoutNewWorkoutContextResponse;
   workoutsFocus: WorkoutFocus[];
   search: WorkoutFormSearch;
   draftStorage?: WorkoutDraftStorage;
@@ -192,24 +189,11 @@ export function NewWorkoutPage({
     return exercise?.id || null;
   };
 
-  const latestWorkoutNote = getLatestWorkoutNote(workouts);
-  const focusAreaTemplates = useMemo(() => {
-    const focusMap = new Map<string, { focus: string; workoutId: number }>();
-
-    for (const workout of workouts) {
-      const focus = workout.workout_focus?.trim();
-      if (!focus || focusMap.has(focus.toLowerCase())) {
-        continue;
-      }
-
-      focusMap.set(focus.toLowerCase(), {
-        focus,
-        workoutId: workout.id,
-      });
-    }
-
-    return Array.from(focusMap.values());
-  }, [workouts]);
+  const latestWorkoutNote = newWorkoutContext.latestWorkoutNote;
+  const focusAreaTemplates = useMemo(
+    () => newWorkoutContext.focusTemplates ?? [],
+    [newWorkoutContext.focusTemplates],
+  );
 
   const loadWorkoutTemplate = async (workoutId: number) => {
     const workoutToRepeat = await queryClient.fetchQuery(

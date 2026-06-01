@@ -92,6 +92,36 @@ func (h *WorkoutHandler) ListWorkoutFocusValues(w http.ResponseWriter, r *http.R
 	}
 }
 
+// MARK: GetNewWorkoutContext
+// GetNewWorkoutContext godoc
+// @Summary Get new workout context
+// @Description Get the newest reusable workout per focus area plus the latest workout note for the authenticated user.
+// @Tags workouts
+// @Accept json
+// @Produce json
+// @Security StackAuth
+// @Success 200 {object} workout.NewWorkoutContextResponse
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal Server Error"
+// @Router /workouts/new-workout-context [get]
+func (h *WorkoutHandler) GetNewWorkoutContext(w http.ResponseWriter, r *http.Request) {
+	context, err := h.workoutService.GetNewWorkoutContext(r.Context())
+	if err != nil {
+		var errUnauthorized *apperrors.Unauthorized
+		if errors.As(err, &errUnauthorized) {
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get new workout context", err)
+		}
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, context); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+		return
+	}
+}
+
 // MARK: GetContributionData
 // GetContributionData godoc
 // @Summary Get contribution graph data

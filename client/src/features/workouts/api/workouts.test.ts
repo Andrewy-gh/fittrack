@@ -25,6 +25,8 @@ vi.mock("@/client/@tanstack/react-query.gen", () => ({
   getWorkoutsContributionDataQueryOptions: vi.fn(),
   getWorkoutsFocusValuesQueryKey: vi.fn(() => ["focus-values"]),
   getWorkoutsFocusValuesQueryOptions: vi.fn(),
+  getWorkoutsNewWorkoutContextQueryKey: vi.fn(() => ["new-workout-context"]),
+  getWorkoutsNewWorkoutContextQueryOptions: vi.fn(),
   getWorkoutsQueryKey: vi.fn(() => ["workouts"]),
   getWorkoutsQueryOptions: vi.fn(),
   postWorkoutsMutation: vi.fn(() => ({ mutationFn: vi.fn() })),
@@ -58,6 +60,9 @@ describe("workout mutation cache invalidation", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["focus-values"],
     });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["new-workout-context"],
+    });
   });
 
   it("invalidates analytics queries after updating a workout", () => {
@@ -75,6 +80,9 @@ describe("workout mutation cache invalidation", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["focus-values"],
     });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["new-workout-context"],
+    });
   });
 
   it("invalidates analytics queries after deleting a workout", () => {
@@ -90,6 +98,9 @@ describe("workout mutation cache invalidation", () => {
     });
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["focus-values"],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["new-workout-context"],
     });
   });
 });

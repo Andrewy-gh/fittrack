@@ -236,3 +236,21 @@ type ContributionDay struct {
 type ContributionDataResponse struct {
 	Days []ContributionDay `json:"days"`
 }
+
+// FocusTemplateResponse identifies the newest reusable workout for one focus area.
+type FocusTemplateResponse struct {
+	Focus     string    `json:"focus" validate:"required" example:"Upper Body"`
+	WorkoutID int32     `json:"workoutId" validate:"required" example:"1"`
+	Date      time.Time `json:"date" validate:"required" example:"2023-01-01T15:04:05Z"`
+}
+
+type LatestWorkoutNoteResponse struct {
+	WorkoutID int32     `json:"workoutId" validate:"required" example:"1"`
+	Date      time.Time `json:"date" validate:"required" example:"2023-01-01T15:04:05Z"`
+	Note      string    `json:"note" validate:"required" example:"Great workout today"`
+}
+
+type NewWorkoutContextResponse struct {
+	FocusTemplates    []FocusTemplateResponse    `json:"focusTemplates"`
+	LatestWorkoutNote *LatestWorkoutNoteResponse `json:"latestWorkoutNote,omitempty"`
+}

@@ -73,6 +73,16 @@ func (m *MockWorkoutRepository) ListWorkouts(ctx context.Context, userID string)
 	return args.Get(0).([]db.Workout), args.Error(1)
 }
 
+func (m *MockWorkoutRepository) ListWorkoutFocusTemplates(ctx context.Context, userID string) ([]db.ListWorkoutFocusTemplatesRow, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]db.ListWorkoutFocusTemplatesRow), args.Error(1)
+}
+
+func (m *MockWorkoutRepository) GetLatestWorkoutNote(ctx context.Context, userID string) (db.GetLatestWorkoutNoteRow, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).(db.GetLatestWorkoutNoteRow), args.Error(1)
+}
+
 func (m *MockWorkoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error) {
 	args := m.Called(ctx, id, userID)
 	return args.Get(0).([]db.GetWorkoutWithSetsRow), args.Error(1)

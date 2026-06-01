@@ -5,6 +5,7 @@ import {
   recentExerciseSetsQueryOptions,
 } from "@/features/exercises/api/exercises";
 import {
+  newWorkoutContextQueryOptions,
   workoutsQueryOptions,
   workoutQueryOptions,
   workoutsFocusValuesQueryOptions,
@@ -15,6 +16,7 @@ import {
   getDemoExercisesByIdRecentSetsQueryOptions,
   getDemoWorkoutsQueryOptions,
   getDemoWorkoutsByIdQueryOptions,
+  getDemoNewWorkoutContextQueryOptions,
   getDemoWorkoutsFocusValuesQueryOptions,
 } from "@/lib/demo-data/query-options";
 
@@ -63,6 +65,16 @@ export function getWorkoutByIdQueryOptions(
   return (
     user ? workoutQueryOptions(id) : getDemoWorkoutsByIdQueryOptions(id)
   ) as ReturnType<typeof workoutQueryOptions>;
+}
+
+export function getNewWorkoutContextQueryOptions(
+  user: CurrentUser | CurrentInternalUser | null,
+) {
+  return (
+    user
+      ? newWorkoutContextQueryOptions()
+      : getDemoNewWorkoutContextQueryOptions()
+  ) as ReturnType<typeof newWorkoutContextQueryOptions>;
 }
 
 export function getWorkoutsFocusQueryOptions(

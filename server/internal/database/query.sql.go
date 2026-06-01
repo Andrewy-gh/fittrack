@@ -1512,6 +1512,29 @@ func (q *Queries) GetLatestAIChatStreamChunkSequence(ctx context.Context, arg Ge
 	return column_1, err
 }
 
+const getLatestWorkoutNote = `-- name: GetLatestWorkoutNote :one
+SELECT id AS workout_id, date, notes
+FROM workout
+WHERE user_id = $1
+  AND notes IS NOT NULL
+  AND BTRIM(notes) <> ''
+ORDER BY date DESC, id DESC
+LIMIT 1
+`
+
+type GetLatestWorkoutNoteRow struct {
+	WorkoutID int32              `json:"workout_id"`
+	Date      pgtype.Timestamptz `json:"date"`
+	Notes     pgtype.Text        `json:"notes"`
+}
+
+func (q *Queries) GetLatestWorkoutNote(ctx context.Context, userID string) (GetLatestWorkoutNoteRow, error) {
+	row := q.db.QueryRow(ctx, getLatestWorkoutNote, userID)
+	var i GetLatestWorkoutNoteRow
+	err := row.Scan(&i.WorkoutID, &i.Date, &i.Notes)
+	return i, err
+}
+
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
 INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
@@ -2174,6 +2197,53 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]ListSetsRow, e
 			&i.ExerciseOrder,
 			&i.SetOrder,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkoutFocusTemplates = `-- name: ListWorkoutFocusTemplates :many
+WITH ranked_focus_workouts AS (
+    SELECT
+        id AS workout_id,
+        date,
+        BTRIM(workout_focus)::VARCHAR(256) AS workout_focus,
+        ROW_NUMBER() OVER (
+            PARTITION BY LOWER(BTRIM(workout_focus))
+            ORDER BY date DESC, id DESC
+        ) AS rank
+    FROM workout
+    WHERE user_id = $1
+      AND workout_focus IS NOT NULL
+      AND BTRIM(workout_focus) <> ''
+)
+SELECT workout_id, date, workout_focus
+FROM ranked_focus_workouts
+WHERE rank = 1
+ORDER BY date DESC, workout_id DESC
+`
+
+type ListWorkoutFocusTemplatesRow struct {
+	WorkoutID    int32              `json:"workout_id"`
+	Date         pgtype.Timestamptz `json:"date"`
+	WorkoutFocus string             `json:"workout_focus"`
+}
+
+func (q *Queries) ListWorkoutFocusTemplates(ctx context.Context, userID string) ([]ListWorkoutFocusTemplatesRow, error) {
+	rows, err := q.db.Query(ctx, listWorkoutFocusTemplates, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkoutFocusTemplatesRow
+	for rows.Next() {
+		var i ListWorkoutFocusTemplatesRow
+		if err := rows.Scan(&i.WorkoutID, &i.Date, &i.WorkoutFocus); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

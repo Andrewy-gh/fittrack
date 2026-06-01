@@ -3,6 +3,7 @@ package workout
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -11,10 +12,13 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5"
 )
 
 type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
+	ListWorkoutFocusTemplates(ctx context.Context, userID string) ([]db.ListWorkoutFocusTemplatesRow, error)
+	GetLatestWorkoutNote(ctx context.Context, userID string) (db.GetLatestWorkoutNoteRow, error)
 	GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
 	ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error)
@@ -47,6 +51,49 @@ func (ws *WorkoutService) ListWorkouts(ctx context.Context) ([]db.Workout, error
 		return nil, fmt.Errorf("failed to list workouts: %w", err)
 	}
 	return workouts, nil
+}
+
+func (ws *WorkoutService) GetNewWorkoutContext(ctx context.Context) (*NewWorkoutContextResponse, error) {
+	userID, ok := user.Current(ctx)
+	if !ok {
+		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
+	}
+
+	templates, err := ws.repo.ListWorkoutFocusTemplates(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workout focus templates: %w", err)
+	}
+
+	latestNote, err := ws.repo.GetLatestWorkoutNote(ctx, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get latest workout note: %w", err)
+	}
+
+	response := &NewWorkoutContextResponse{
+		FocusTemplates: make([]FocusTemplateResponse, 0, len(templates)),
+	}
+
+	for _, template := range templates {
+		if template.WorkoutFocus == "" {
+			continue
+		}
+
+		response.FocusTemplates = append(response.FocusTemplates, FocusTemplateResponse{
+			Focus:     template.WorkoutFocus,
+			WorkoutID: template.WorkoutID,
+			Date:      template.Date.Time,
+		})
+	}
+
+	if err == nil && latestNote.Notes.Valid {
+		response.LatestWorkoutNote = &LatestWorkoutNoteResponse{
+			WorkoutID: latestNote.WorkoutID,
+			Date:      latestNote.Date.Time,
+			Note:      latestNote.Notes.String,
+		}
+	}
+
+	return response, nil
 }
 
 func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]WorkoutWithSetsResponse, error) {

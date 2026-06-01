@@ -1383,6 +1383,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/workouts/new-workout-context": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Get the newest reusable workout per focus area plus the latest workout note for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workouts"
+                ],
+                "summary": "Get new workout context",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/workout.NewWorkoutContextResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/workouts/{id}": {
             "get": {
                 "security": [
@@ -2303,6 +2343,64 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/workout.SetInput"
                     }
+                }
+            }
+        },
+        "workout.FocusTemplateResponse": {
+            "type": "object",
+            "required": [
+                "date",
+                "focus",
+                "workoutId"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "focus": {
+                    "type": "string",
+                    "example": "Upper Body"
+                },
+                "workoutId": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "workout.LatestWorkoutNoteResponse": {
+            "type": "object",
+            "required": [
+                "date",
+                "note",
+                "workoutId"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2023-01-01T15:04:05Z"
+                },
+                "note": {
+                    "type": "string",
+                    "example": "Great workout today"
+                },
+                "workoutId": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "workout.NewWorkoutContextResponse": {
+            "type": "object",
+            "properties": {
+                "focusTemplates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workout.FocusTemplateResponse"
+                    }
+                },
+                "latestWorkoutNote": {
+                    "$ref": "#/definitions/workout.LatestWorkoutNoteResponse"
                 }
             }
         },
