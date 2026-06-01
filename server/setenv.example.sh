@@ -29,6 +29,10 @@ export DB_HEALTHCHECK=30s
 # export METRICS_USERNAME="metrics-user"
 # export METRICS_PASSWORD="metrics-password"
 
+# Optional local Fly read-only token for inspecting app status/logs with flyctl.
+# Keep deploy tokens in GitHub Actions secrets instead.
+# export FLY_API_TOKEN="fly-readonly-token"
+
 # Optional AI chat / Gemini smoke test
 export GEMINI_API_KEY="your-gemini-api-key"
 # export GOOGLE_API_KEY="your-google-api-key"
