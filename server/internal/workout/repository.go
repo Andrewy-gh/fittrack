@@ -78,6 +78,48 @@ func (wr *workoutRepository) ListWorkouts(ctx context.Context, userId string) ([
 	return workouts, nil
 }
 
+func (wr *workoutRepository) ListWorkoutFocusTemplates(ctx context.Context, userID string) ([]db.ListWorkoutFocusTemplatesRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	templates, err := wr.queries.ListWorkoutFocusTemplates(ctx, userID)
+	if err != nil {
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("list workout focus templates query failed - RLS policy violation",
+				"error", err,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		} else {
+			wr.logger.Error("list workout focus templates query failed", "error", err, "user_id", userID)
+		}
+		return nil, fmt.Errorf("failed to list workout focus templates: %w", err)
+	}
+
+	if templates == nil {
+		return []db.ListWorkoutFocusTemplatesRow{}, nil
+	}
+
+	return templates, nil
+}
+
+func (wr *workoutRepository) GetLatestWorkoutNote(ctx context.Context, userID string) (db.GetLatestWorkoutNoteRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	note, err := wr.queries.GetLatestWorkoutNote(ctx, userID)
+	if err != nil {
+		if db.IsRowLevelSecurityError(err) {
+			wr.logger.Error("get latest workout note query failed - RLS policy violation",
+				"error", err,
+				"user_id", userID,
+				"error_type", "rls_violation")
+		}
+		return db.GetLatestWorkoutNoteRow{}, fmt.Errorf("failed to get latest workout note: %w", err)
+	}
+
+	return note, nil
+}
+
 // MARK: GetWorkout
 func (wr *workoutRepository) GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)

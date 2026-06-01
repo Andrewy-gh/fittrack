@@ -44,6 +44,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/workouts/{id}", wh.GetWorkoutWithSets)
 	mux.HandleFunc("PUT /api/workouts/{id}", wh.UpdateWorkout)
 	mux.HandleFunc("DELETE /api/workouts/{id}", wh.DeleteWorkout)
+	mux.HandleFunc("GET /api/workouts/new-workout-context", wh.GetNewWorkoutContext)
 	mux.HandleFunc("GET /api/workouts/focus-values", wh.ListWorkoutFocusValues)
 	mux.HandleFunc("GET /api/workouts/contribution-data", wh.GetContributionData)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)

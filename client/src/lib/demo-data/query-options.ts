@@ -3,6 +3,7 @@ import { queryClient } from "../api/api";
 import type {
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
+  WorkoutNewWorkoutContextResponse,
   WorkoutContributionDataResponse,
   ExerciseExerciseResponse,
   ExerciseExerciseDetailResponse,
@@ -56,6 +57,9 @@ export const getDemoWorkoutsByIdQueryKey = (id: number) =>
 export const getDemoWorkoutsFocusValuesQueryKey = () =>
   [{ _id: "demo_getWorkoutsFocusValues" }] as const;
 
+export const getDemoNewWorkoutContextQueryKey = () =>
+  [{ _id: "demo_getWorkoutsNewWorkoutContext" }] as const;
+
 export const getDemoContributionDataQueryKey = () =>
   [{ _id: "demo_getWorkoutsContributionData" }] as const;
 
@@ -65,6 +69,9 @@ function invalidateDemoWorkoutAnalyticsQueries() {
   });
   queryClient.invalidateQueries({
     queryKey: getDemoWorkoutsFocusValuesQueryKey(),
+  });
+  queryClient.invalidateQueries({
+    queryKey: getDemoNewWorkoutContextQueryKey(),
   });
 }
 
@@ -133,6 +140,48 @@ export const getDemoWorkoutsFocusValuesQueryOptions = () => {
     queryFn: async (): Promise<string[]> => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       return getWorkoutFocusValues();
+    },
+  });
+};
+
+export const getDemoNewWorkoutContextQueryOptions = () => {
+  return queryOptions({
+    queryKey: getDemoNewWorkoutContextQueryKey(),
+    queryFn: async (): Promise<WorkoutNewWorkoutContextResponse> => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const workouts = getAllWorkouts();
+      const focusTemplates = new Map<
+        string,
+        { focus: string; workoutId: number; date: string }
+      >();
+
+      for (const workout of workouts) {
+        const focus = workout.workout_focus?.trim();
+        if (!focus || focusTemplates.has(focus.toLowerCase())) {
+          continue;
+        }
+
+        focusTemplates.set(focus.toLowerCase(), {
+          focus,
+          workoutId: workout.id,
+          date: workout.date,
+        });
+      }
+
+      const latestWorkoutWithNote = workouts.find((workout) =>
+        workout.notes?.trim(),
+      );
+
+      return {
+        focusTemplates: Array.from(focusTemplates.values()),
+        latestWorkoutNote: latestWorkoutWithNote
+          ? {
+              workoutId: latestWorkoutWithNote.id,
+              date: latestWorkoutWithNote.date,
+              note: latestWorkoutWithNote.notes!.trim(),
+            }
+          : undefined,
+      };
     },
   });
 };

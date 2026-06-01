@@ -8,9 +8,9 @@ import {
 } from "@/features/workouts/api/workouts";
 import {
   getExercisesQueryOptions,
+  getNewWorkoutContextQueryOptions,
   getWorkoutByIdQueryOptions,
   getWorkoutsFocusQueryOptions,
-  getWorkoutsQueryOptions,
 } from "@/lib/api/unified-query-options";
 import { initializeDemoData } from "@/lib/demo-data/storage";
 import { EditWorkoutPage } from "@/features/workouts/pages/edit-workout-page";
@@ -33,7 +33,7 @@ export function preloadNewWorkoutRouteData({
   if (!user) initializeDemoData();
 
   queryClient.ensureQueryData(getExercisesQueryOptions(user));
-  queryClient.ensureQueryData(getWorkoutsQueryOptions(user));
+  queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user));
   queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
 }
 
@@ -65,7 +65,9 @@ export function NewWorkoutRouteComposition({
   const { data: exercisesResponse } = useSuspenseQuery(
     getExercisesQueryOptions(user),
   );
-  const { data: workouts } = useSuspenseQuery(getWorkoutsQueryOptions(user));
+  const { data: newWorkoutContext } = useSuspenseQuery(
+    getNewWorkoutContextQueryOptions(user),
+  );
   const { data: workoutsFocusValues } = useSuspenseQuery(
     getWorkoutsFocusQueryOptions(user),
   );
@@ -79,7 +81,7 @@ export function NewWorkoutRouteComposition({
     <NewWorkoutPage
       user={user}
       exercises={exercises}
-      workouts={workouts}
+      newWorkoutContext={newWorkoutContext}
       workoutsFocus={toWorkoutFocus(workoutsFocusValues)}
       search={search}
     />

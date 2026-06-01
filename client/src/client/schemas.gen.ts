@@ -728,6 +728,59 @@ export const workout_ExerciseInputSchema = {
   },
 } as const;
 
+export const workout_FocusTemplateResponseSchema = {
+  type: "object",
+  required: ["date", "focus", "workoutId"],
+  properties: {
+    date: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    focus: {
+      type: "string",
+      example: "Upper Body",
+    },
+    workoutId: {
+      type: "integer",
+      example: 1,
+    },
+  },
+} as const;
+
+export const workout_LatestWorkoutNoteResponseSchema = {
+  type: "object",
+  required: ["date", "note", "workoutId"],
+  properties: {
+    date: {
+      type: "string",
+      example: "2023-01-01T15:04:05Z",
+    },
+    note: {
+      type: "string",
+      example: "Great workout today",
+    },
+    workoutId: {
+      type: "integer",
+      example: 1,
+    },
+  },
+} as const;
+
+export const workout_NewWorkoutContextResponseSchema = {
+  type: "object",
+  properties: {
+    focusTemplates: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/workout.FocusTemplateResponse",
+      },
+    },
+    latestWorkoutNote: {
+      $ref: "#/definitions/workout.LatestWorkoutNoteResponse",
+    },
+  },
+} as const;
+
 export const workout_SetInputSchema = {
   type: "object",
   required: ["reps", "setType"],

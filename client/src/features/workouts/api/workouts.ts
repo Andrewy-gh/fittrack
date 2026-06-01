@@ -4,6 +4,8 @@ import {
   getExercisesQueryKey,
   getWorkoutsByIdQueryKey,
   getWorkoutsByIdQueryOptions,
+  getWorkoutsNewWorkoutContextQueryKey,
+  getWorkoutsNewWorkoutContextQueryOptions,
   getWorkoutsFocusValuesQueryKey,
   getWorkoutsQueryKey,
   getWorkoutsQueryOptions,
@@ -36,6 +38,10 @@ export function workoutQueryOptions(id: number) {
   return getWorkoutsByIdQueryOptions({ path: { id } });
 }
 
+export function newWorkoutContextQueryOptions() {
+  return getWorkoutsNewWorkoutContextQueryOptions();
+}
+
 // MARK: Get focus values
 export function workoutsFocusValuesQueryOptions() {
   return getWorkoutsFocusValuesQueryOptions();
@@ -52,6 +58,9 @@ function invalidateWorkoutAnalyticsQueries() {
   });
   queryClient.invalidateQueries({
     queryKey: getWorkoutsFocusValuesQueryKey(),
+  });
+  queryClient.invalidateQueries({
+    queryKey: getWorkoutsNewWorkoutContextQueryKey(),
   });
 }
 

@@ -4,6 +4,7 @@ import {
   getRecentSetsQueryOptions,
   getWorkoutsQueryOptions,
   getWorkoutByIdQueryOptions,
+  getNewWorkoutContextQueryOptions,
   getWorkoutsFocusQueryOptions,
 } from "../unified-query-options";
 import * as apiExercises from "@/features/exercises/api/exercises";
@@ -157,6 +158,43 @@ describe("Unified Query Options Factory Functions", () => {
       expect(
         demoQueryOptions.getDemoWorkoutsByIdQueryOptions,
       ).toHaveBeenCalledWith(workoutId);
+      expect(result).toBe(mockDemoOptions);
+    });
+  });
+
+  describe("getNewWorkoutContextQueryOptions", () => {
+    it("returns API query options when user is authenticated", () => {
+      const mockUser = { id: "user123" } as any;
+      const mockApiOptions = {
+        queryKey: ["new_workout_context"],
+        queryFn: vi.fn(),
+      };
+
+      vi.mocked(apiWorkouts.newWorkoutContextQueryOptions).mockReturnValue(
+        mockApiOptions as any,
+      );
+
+      const result = getNewWorkoutContextQueryOptions(mockUser);
+
+      expect(apiWorkouts.newWorkoutContextQueryOptions).toHaveBeenCalled();
+      expect(result).toBe(mockApiOptions);
+    });
+
+    it("returns demo query options when user is null", () => {
+      const mockDemoOptions = {
+        queryKey: ["demo_new_workout_context"],
+        queryFn: vi.fn(),
+      };
+
+      vi.mocked(
+        demoQueryOptions.getDemoNewWorkoutContextQueryOptions,
+      ).mockReturnValue(mockDemoOptions as any);
+
+      const result = getNewWorkoutContextQueryOptions(null);
+
+      expect(
+        demoQueryOptions.getDemoNewWorkoutContextQueryOptions,
+      ).toHaveBeenCalled();
       expect(result).toBe(mockDemoOptions);
     });
   });

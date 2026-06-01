@@ -5,6 +5,35 @@ SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE
 -- name: ListWorkouts :many
 SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE user_id = $1 ORDER BY date DESC;
 
+-- name: ListWorkoutFocusTemplates :many
+WITH ranked_focus_workouts AS (
+    SELECT
+        id AS workout_id,
+        date,
+        BTRIM(workout_focus)::VARCHAR(256) AS workout_focus,
+        ROW_NUMBER() OVER (
+            PARTITION BY LOWER(BTRIM(workout_focus))
+            ORDER BY date DESC, id DESC
+        ) AS rank
+    FROM workout
+    WHERE user_id = $1
+      AND workout_focus IS NOT NULL
+      AND BTRIM(workout_focus) <> ''
+)
+SELECT workout_id, date, workout_focus
+FROM ranked_focus_workouts
+WHERE rank = 1
+ORDER BY date DESC, workout_id DESC;
+
+-- name: GetLatestWorkoutNote :one
+SELECT id AS workout_id, date, notes
+FROM workout
+WHERE user_id = $1
+  AND notes IS NOT NULL
+  AND BTRIM(notes) <> ''
+ORDER BY date DESC, id DESC
+LIMIT 1;
+
 -- name: GetExercise :one
 SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2;
 

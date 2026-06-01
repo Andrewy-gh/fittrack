@@ -513,6 +513,47 @@ definitions:
     - name
     - sets
     type: object
+  workout.FocusTemplateResponse:
+    properties:
+      date:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      focus:
+        example: Upper Body
+        type: string
+      workoutId:
+        example: 1
+        type: integer
+    required:
+    - date
+    - focus
+    - workoutId
+    type: object
+  workout.LatestWorkoutNoteResponse:
+    properties:
+      date:
+        example: "2023-01-01T15:04:05Z"
+        type: string
+      note:
+        example: Great workout today
+        type: string
+      workoutId:
+        example: 1
+        type: integer
+    required:
+    - date
+    - note
+    - workoutId
+    type: object
+  workout.NewWorkoutContextResponse:
+    properties:
+      focusTemplates:
+        items:
+          $ref: '#/definitions/workout.FocusTemplateResponse'
+        type: array
+      latestWorkoutNote:
+        $ref: '#/definitions/workout.LatestWorkoutNoteResponse'
+    type: object
   workout.SetInput:
     properties:
       reps:
@@ -1694,6 +1735,32 @@ paths:
       security:
       - StackAuth: []
       summary: List workout focus values
+      tags:
+      - workouts
+  /workouts/new-workout-context:
+    get:
+      consumes:
+      - application/json
+      description: Get the newest reusable workout per focus area plus the latest
+        workout note for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/workout.NewWorkoutContextResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Get new workout context
       tags:
       - workouts
 schemes:
