@@ -125,6 +125,65 @@ func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
 	}
 }
 
+func TestRoutes_PublicMetricsRequiresBasicAuthWhenConfigured(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg: &config.Config{
+			MetricsUsername: "metrics-user",
+			MetricsPassword: "metrics-password",
+		},
+		pool: nil,
+	}
+
+	wh := &workout.WorkoutHandler{}
+	eh := &exercise.ExerciseHandler{}
+	fh := &featureaccess.Handler{}
+	hh := health.NewHandler(logger, nil)
+	ah := aichat.NewHandler(logger, nil)
+
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected public /metrics to require auth, got %d", rr.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	req.SetBasicAuth("metrics-user", "metrics-password")
+	rr = httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected authorized public /metrics request to succeed, got %d", rr.Code)
+	}
+}
+
+func TestMetricsHandler_AllowsInternalScrapeWithoutBasicAuth(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg: &config.Config{
+			MetricsUsername: "metrics-user",
+			MetricsPassword: "metrics-password",
+		},
+		pool: nil,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rr := httptest.NewRecorder()
+
+	api.metricsHandler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected internal metrics handler to allow scrape without auth, got %d", rr.Code)
+	}
+}
+
 func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	api := &api{

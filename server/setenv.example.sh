@@ -11,6 +11,7 @@ export PROJECT_ID="your-stack-project-id"
 
 # Common local defaults
 export PORT=8080
+export METRICS_PORT=9091
 export LOG_LEVEL=info
 export ENVIRONMENT=development
 export RATE_LIMIT_RPM=100

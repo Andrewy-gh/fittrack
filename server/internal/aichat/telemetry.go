@@ -48,7 +48,7 @@ const (
 	aiChatStreamEventStartWriteFailed = "start_write_failed"
 	aiChatStreamEventDoneWriteFailed  = "done_write_failed"
 
-	aiChatRuntimeOperationStreamChat = "stream_chat"
+	aiChatModelOperationStreamChat = "stream_chat"
 
 	aiChatPersistenceOperationAppendChunk      = "append_stream_chunk"
 	aiChatPersistenceOperationCompleteRun      = "complete_run"
@@ -86,10 +86,10 @@ var (
 		[]string{"event"},
 	)
 
-	aiChatRuntimeDuration = promauto.NewHistogramVec(
+	aiChatModelDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "ai_chat_runtime_duration_seconds",
-			Help:    "Duration of AI chat runtime/provider work.",
+			Name:    "ai_chat_model_duration_seconds",
+			Help:    "Duration of AI chat model/provider work.",
 			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"operation", "result"},
@@ -202,12 +202,12 @@ func recordAIChatStreamEvent(event string) {
 	aiChatStreamEventsTotal.WithLabelValues(event).Inc()
 }
 
-func recordAIChatRuntimeDuration(operation string, startedAt time.Time, result string) {
+func recordAIChatModelDuration(operation string, startedAt time.Time, result string) {
 	if startedAt.IsZero() {
 		return
 	}
 
-	aiChatRuntimeDuration.WithLabelValues(operation, result).Observe(time.Since(startedAt).Seconds())
+	aiChatModelDuration.WithLabelValues(operation, result).Observe(time.Since(startedAt).Seconds())
 }
 
 func recordAIChatPersistenceDuration(operation string, startedAt time.Time, result string) {

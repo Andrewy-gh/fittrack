@@ -24,9 +24,9 @@ Current decision:
 
 Implementation steps:
 
-1. Rename ambiguous AI metric wording from `runtime` to `provider` or `model` so it is not confused with the Go runtime.
-2. Add an internal metrics listener on a non-public port that serves Prometheus metrics without public Basic Auth.
-3. Add Fly `[metrics]` config pointing at the internal metrics port and path.
+1. Rename ambiguous AI metric wording from `runtime` to `provider` or `model` so it is not confused with the Go runtime. Done in code as `ai_chat_model_duration_seconds`.
+2. Add an internal metrics listener on a non-public port that serves Prometheus metrics without public Basic Auth. Done in code on `METRICS_PORT`, default `9091`.
+3. Add Fly `[metrics]` config pointing at the internal metrics port and path. Done in `fly.toml` with `port = 9091` and `path = "/metrics"`.
 4. Deploy and verify:
    - public `/metrics` remains Basic Auth protected
    - Fly/Grafana receives custom metrics
@@ -34,6 +34,13 @@ Implementation steps:
    - a stopped Machine is not kept awake by metrics scraping
 5. Create dashboard queries for route health, DB pool health, AI chat client outcomes, AI chat stream milestones, provider/model duration, and persistence duration.
 6. Add alert routing to Discord and email once the alerting backend is chosen.
+
+Parallel work lanes used for this rollout:
+
+- Metrics naming: rename `ai_chat_runtime_*` wording to model/provider naming, then update focused tests and dashboard docs.
+- Internal scraping: add the separate metrics listener and Fly `[metrics]` config without changing public `/metrics` auth.
+- Dashboard and alert prep: prepare PromQL panels and alert candidates without adding new code or exposing sensitive labels.
+- Verification: keep deploy, auth, custom metric ingestion, and auto-stop behavior checks as explicit rollout gates.
 
 Open validation items:
 
@@ -51,6 +58,30 @@ Outcome taxonomy:
 For `stream` events, `stage` is one of `pre_start`, `post_start`, or `terminal`. Other categories use `stage="n/a"`.
 
 ## Dashboard Panels
+
+Route 5xx rate by route:
+
+```promql
+sum by (path) (rate(http_requests_total{status=~"5.."}[15m]))
+```
+
+Route p95 latency:
+
+```promql
+histogram_quantile(0.95, sum by (le, path) (rate(http_request_duration_seconds_bucket[15m])))
+```
+
+DB active connections:
+
+```promql
+max(db_connections_active)
+```
+
+DB idle connections:
+
+```promql
+max(db_connections_idle)
+```
 
 True stream failure rate:
 
@@ -106,6 +137,30 @@ Beta vs non-beta comparison:
 sum by (cohort, outcome) (rate(ai_chat_client_outcomes_total{category="stream"}[15m]))
 ```
 
+Stream milestone p95 by milestone:
+
+```promql
+histogram_quantile(0.95, sum by (le, milestone) (rate(ai_chat_stream_milestone_duration_seconds_bucket[15m])))
+```
+
+Stream lifecycle events:
+
+```promql
+sum by (event) (rate(ai_chat_stream_events_total[15m]))
+```
+
+Model/provider p95 duration:
+
+```promql
+histogram_quantile(0.95, sum by (le, operation, result) (rate(ai_chat_model_duration_seconds_bucket[15m])))
+```
+
+Persistence p95 duration:
+
+```promql
+histogram_quantile(0.95, sum by (le, operation, result) (rate(ai_chat_persistence_duration_seconds_bucket[15m])))
+```
+
 ## Alerting Rules
 
 Page on:
@@ -121,6 +176,51 @@ Do not page on:
 - `load=load_aborted_stale`
 - `recovery=recovery_aborted`
 - `ux=failure_toast_suppressed_due_to_successful_recovery`
+
+Alerting backend decision:
+
+- First choice: Fly managed Grafana, if contact points and alert rules are available for the organization and can send Discord plus email.
+- Fallback: Grafana Cloud Free with the Fly Prometheus datasource and Discord/email contact points.
+- Last-resort fallback: a small Alertmanager-style service only if managed options cannot route both channels without keeping extra compute awake.
+
+Alert text must name only metric categories, outcomes, stages, and cohort. Do not include prompts, generated workout content, user IDs, workout IDs, emails, or request IDs.
+
+## Verification Checklist
+
+After deploy:
+
+1. Confirm public metrics still require Basic Auth:
+
+```sh
+curl -i https://fittrack.fly.dev/metrics
+curl -i -u "$METRICS_USERNAME:$METRICS_PASSWORD" https://fittrack.fly.dev/metrics
+```
+
+2. Confirm Fly receives custom metrics after at least one scrape interval:
+
+```sh
+flyctl orgs list
+TOKEN=$(flyctl auth token)
+curl "https://api.fly.io/prometheus/$ORG_SLUG/api/v1/query" \
+  --data-urlencode 'query=ai_chat_model_duration_seconds_count' \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+3. Confirm auto-stop still works with `min_machines_running = 0`:
+
+```sh
+flyctl status --app fittrack
+flyctl machine list --app fittrack
+```
+
+4. Validate whether metrics scraping wakes stopped Machines:
+
+- Let the app go idle until all Machines are stopped.
+- Do not send public traffic.
+- Wait at least two custom metrics scrape intervals.
+- Re-run `flyctl machine list --app fittrack`.
+- Passing result: Machines remain stopped, or no new app request traffic appears.
+- Failing result: a stopped Machine starts without public traffic; stop rollout and revisit the scrape approach.
 
 ## Failure Drills
 

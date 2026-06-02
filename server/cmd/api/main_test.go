@@ -15,3 +15,11 @@ func TestNewHTTPServerUsesBoundedWriteTimeout(t *testing.T) {
 		t.Fatalf("WriteTimeout = %v, want %v", srv.WriteTimeout, 10*time.Second)
 	}
 }
+
+func TestNewInternalMetricsServerUsesMetricsPort(t *testing.T) {
+	srv := newInternalMetricsServer(&config.Config{MetricsPort: 9091}, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+
+	if srv.Addr != ":9091" {
+		t.Fatalf("Addr = %q, want %q", srv.Addr, ":9091")
+	}
+}

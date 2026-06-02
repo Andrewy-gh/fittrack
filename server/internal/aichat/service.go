@@ -421,7 +421,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		return nil
 	})
 	if err != nil {
-		recordAIChatRuntimeDuration(aiChatRuntimeOperationStreamChat, runtimeStartedAt, aiChatRuntimeResult(err))
+		recordAIChatModelDuration(aiChatModelOperationStreamChat, runtimeStartedAt, aiChatModelResult(err))
 		if allowRecovery && errors.Is(err, ErrStreamDisconnected) {
 			if markErr := s.repo.MarkRunAwaitingRecovery(persistCtx, prepared, strings.TrimSpace(partial.String()), time.Now().UTC()); markErr != nil {
 				return nil, markErr
@@ -433,7 +433,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		}
 		return nil, err
 	}
-	recordAIChatRuntimeDuration(aiChatRuntimeOperationStreamChat, runtimeStartedAt, aiChatMetricResultSuccess)
+	recordAIChatModelDuration(aiChatModelOperationStreamChat, runtimeStartedAt, aiChatMetricResultSuccess)
 	// Trace marker: captures total runtime latency before final DB completion.
 	logAIChatTrace(s.logger, "runtime_stream_finished",
 		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
@@ -512,7 +512,7 @@ func (s *Service) AbortPreparedMessageStream(ctx context.Context, prepared *Prep
 	return s.failPreparedRun(context.WithoutCancel(ctx), prepared, prepared.AssistantMessage.Content, failure)
 }
 
-func aiChatRuntimeResult(err error) string {
+func aiChatModelResult(err error) string {
 	switch {
 	case errors.Is(err, ErrGenerationTimeout):
 		return aiChatMetricResultTimeout

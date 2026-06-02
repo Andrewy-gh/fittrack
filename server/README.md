@@ -176,6 +176,7 @@ Required to boot the API:
 Common optional variables:
 
 - `PORT` (default `8080`)
+- `METRICS_PORT` (default `9091`)
 - `LOG_LEVEL` (default `info`)
 - `ENVIRONMENT` (default `development`)
 - `RATE_LIMIT_RPM` (default `100`)

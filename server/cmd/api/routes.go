@@ -28,14 +28,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	}
 
 	// Metrics endpoint (basic auth if configured)
-	metricsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Update database metrics before serving
-		middleware.UpdateDatabaseMetrics(api.pool)
-		promhttp.Handler().ServeHTTP(w, r)
-	})
-
-	// Wrap with basic auth if credentials are configured
-	protectedMetrics := middleware.BasicAuth(api.cfg.MetricsUsername, api.cfg.MetricsPassword, api.logger)(metricsHandler)
+	protectedMetrics := middleware.BasicAuth(api.cfg.MetricsUsername, api.cfg.MetricsPassword, api.logger)(api.metricsHandler())
 	mux.Handle("GET /metrics", protectedMetrics)
 
 	// API endpoints (authentication required)
@@ -82,6 +75,13 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /", api.handleStaticFiles())
 
 	return mux
+}
+
+func (api *api) metricsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		middleware.UpdateDatabaseMetrics(api.pool)
+		promhttp.Handler().ServeHTTP(w, r)
+	})
 }
 
 func (api *api) handleStaticFiles() http.HandlerFunc {
