@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -55,5 +56,36 @@ func TestRecordClientTelemetryNormalizesLabels(t *testing.T) {
 		telemetryCohortBeta,
 	)); got != 1 {
 		t.Fatalf("expected canonical telemetry labels to be recorded once, got %v", got)
+	}
+}
+
+func TestRecordAIChatStreamEvent(t *testing.T) {
+	aiChatStreamEventsTotal.Reset()
+
+	recordAIChatStreamEvent(aiChatStreamEventCompleted)
+
+	if got := testutil.ToFloat64(aiChatStreamEventsTotal.WithLabelValues(aiChatStreamEventCompleted)); got != 1 {
+		t.Fatalf("expected completed stream event to be recorded once, got %v", got)
+	}
+}
+
+func TestRecordAIChatDurationMetrics(t *testing.T) {
+	aiChatStreamMilestoneDuration.Reset()
+	aiChatRuntimeDuration.Reset()
+	aiChatPersistenceDuration.Reset()
+	startedAt := time.Now().Add(-time.Millisecond)
+
+	recordAIChatStreamMilestone(aiChatStreamMilestoneFirstDelta, startedAt)
+	recordAIChatRuntimeDuration(aiChatRuntimeOperationStreamChat, startedAt, aiChatMetricResultSuccess)
+	recordAIChatPersistenceDuration(aiChatPersistenceOperationCompleteRun, startedAt, aiChatMetricResultSuccess)
+
+	if got := testutil.CollectAndCount(aiChatStreamMilestoneDuration); got != 1 {
+		t.Fatalf("expected one stream milestone metric, got %v", got)
+	}
+	if got := testutil.CollectAndCount(aiChatRuntimeDuration); got != 1 {
+		t.Fatalf("expected one runtime duration metric, got %v", got)
+	}
+	if got := testutil.CollectAndCount(aiChatPersistenceDuration); got != 1 {
+		t.Fatalf("expected one persistence duration metric, got %v", got)
 	}
 }

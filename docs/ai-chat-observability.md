@@ -2,6 +2,45 @@
 
 This repo records client-observed AI chat outcomes into Prometheus via `ai_chat_client_outcomes_total{category,outcome,stage,cohort}`.
 
+## 2026-06 Observability Decisions
+
+Product goals:
+
+- Keep Fly compute low and preserve `min_machines_running = 0`.
+- Prefer free/default Fly-managed retention before adding another vendor or always-on collector.
+- Keep prompts, generated workout content, user IDs, workout IDs, emails, and request IDs out of metric labels and alert text.
+- Use Discord and email for alerts when alerting is wired; Discord is the preferred push channel.
+- Do not block a small private/beta AI chat test on every dashboard, but do gate broader rollout on retained production metrics.
+
+Current decision:
+
+- Use Prometheus-native metrics first, not OpenTelemetry, because the immediate need is retained route and AI-chat health with minimal runtime and cost overhead.
+- Use Fly custom metrics for retained dashboards if it can be wired without weakening public metrics auth or keeping Machines awake.
+- Keep the public `/metrics` endpoint Basic Auth protected.
+- Add a separate internal-only metrics listener/port for Fly scraping because Fly's documented `[metrics]` config only supports `port` and `path`; Basic Auth or custom scrape headers are not documented.
+- Treat Fly retention/cost details as best-effort platform behavior, not a guaranteed 30-day free retention contract, unless current Fly docs state otherwise.
+- Validate in production or staging that Fly custom metrics scraping does not wake stopped Machines or materially increase compute.
+- Plan alerting separately if Fly managed Grafana does not support contact points/rules. Grafana Cloud Free or Alertmanager are fallback paths for Discord/email.
+
+Implementation steps:
+
+1. Rename ambiguous AI metric wording from `runtime` to `provider` or `model` so it is not confused with the Go runtime.
+2. Add an internal metrics listener on a non-public port that serves Prometheus metrics without public Basic Auth.
+3. Add Fly `[metrics]` config pointing at the internal metrics port and path.
+4. Deploy and verify:
+   - public `/metrics` remains Basic Auth protected
+   - Fly/Grafana receives custom metrics
+   - the app still auto-stops under `min_machines_running = 0`
+   - a stopped Machine is not kept awake by metrics scraping
+5. Create dashboard queries for route health, DB pool health, AI chat client outcomes, AI chat stream milestones, provider/model duration, and persistence duration.
+6. Add alert routing to Discord and email once the alerting backend is chosen.
+
+Open validation items:
+
+- Fly docs do not clearly guarantee whether custom metrics scrapes wake auto-stopped Machines; verify empirically.
+- Fly docs do not clearly guarantee 30-day free retention for managed Prometheus/Grafana; accept free/default retention unless a no-cost longer option is confirmed.
+- Fly managed Grafana may be dashboard-only for this use case; confirm alerting support before relying on it.
+
 Outcome taxonomy:
 
 - `stream`: `completed`, `server_error`, `transport_ended_pre_terminal`, `client_aborted`

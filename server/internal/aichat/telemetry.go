@@ -3,6 +3,7 @@ package aichat
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -33,6 +34,30 @@ const (
 	telemetryStageNotApplicable               = "n/a"
 	telemetryCohortBeta                       = "beta"
 	telemetryCohortNonBeta                    = "non_beta"
+
+	aiChatStreamMilestonePrepared   = "prepared"
+	aiChatStreamMilestoneSSEStarted = "sse_started"
+	aiChatStreamMilestoneFirstDelta = "first_delta"
+	aiChatStreamMilestoneDone       = "done"
+
+	aiChatStreamEventStarted          = "started"
+	aiChatStreamEventFirstDelta       = "first_delta"
+	aiChatStreamEventCompleted        = "completed"
+	aiChatStreamEventAwaitingRecovery = "awaiting_recovery"
+	aiChatStreamEventError            = "error"
+	aiChatStreamEventStartWriteFailed = "start_write_failed"
+	aiChatStreamEventDoneWriteFailed  = "done_write_failed"
+
+	aiChatRuntimeOperationStreamChat = "stream_chat"
+
+	aiChatPersistenceOperationAppendChunk      = "append_stream_chunk"
+	aiChatPersistenceOperationCompleteRun      = "complete_run"
+	aiChatPersistenceOperationSaveWorkoutDraft = "save_workout_draft"
+
+	aiChatMetricResultSuccess          = "success"
+	aiChatMetricResultError            = "error"
+	aiChatMetricResultTimeout          = "timeout"
+	aiChatMetricResultClientDisconnect = "client_disconnect"
 )
 
 var (
@@ -42,6 +67,41 @@ var (
 			Help: "Client-observed AI chat outcomes for stream, recovery, load, and UX flows.",
 		},
 		[]string{"category", "outcome", "stage", "cohort"},
+	)
+
+	aiChatStreamMilestoneDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ai_chat_stream_milestone_duration_seconds",
+			Help:    "Elapsed time from an AI chat stream request start to key stream milestones.",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"milestone"},
+	)
+
+	aiChatStreamEventsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ai_chat_stream_events_total",
+			Help: "Server-observed AI chat stream lifecycle events.",
+		},
+		[]string{"event"},
+	)
+
+	aiChatRuntimeDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ai_chat_runtime_duration_seconds",
+			Help:    "Duration of AI chat runtime/provider work.",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"operation", "result"},
+	)
+
+	aiChatPersistenceDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "ai_chat_persistence_duration_seconds",
+			Help:    "Duration of AI chat persistence operations.",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"operation", "result"},
 	)
 
 	validTelemetryOutcomes = map[string]map[string]struct{}{
@@ -128,6 +188,34 @@ func recordClientTelemetry(hasFeatureAccess bool, event ClientTelemetryEvent) {
 		stage,
 		resolveTelemetryCohort(hasFeatureAccess),
 	).Inc()
+}
+
+func recordAIChatStreamMilestone(milestone string, startedAt time.Time) {
+	if startedAt.IsZero() {
+		return
+	}
+
+	aiChatStreamMilestoneDuration.WithLabelValues(milestone).Observe(time.Since(startedAt).Seconds())
+}
+
+func recordAIChatStreamEvent(event string) {
+	aiChatStreamEventsTotal.WithLabelValues(event).Inc()
+}
+
+func recordAIChatRuntimeDuration(operation string, startedAt time.Time, result string) {
+	if startedAt.IsZero() {
+		return
+	}
+
+	aiChatRuntimeDuration.WithLabelValues(operation, result).Observe(time.Since(startedAt).Seconds())
+}
+
+func recordAIChatPersistenceDuration(operation string, startedAt time.Time, result string) {
+	if startedAt.IsZero() {
+		return
+	}
+
+	aiChatPersistenceDuration.WithLabelValues(operation, result).Observe(time.Since(startedAt).Seconds())
 }
 
 func resolveTelemetryCohort(hasFeatureAccess bool) string {

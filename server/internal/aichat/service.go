@@ -390,13 +390,17 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		"history_messages", len(history),
 	)
 	firstChunkPersisted := false
+	runtimeStartedAt := time.Now()
 	done, err := s.runtime.StreamChat(ctx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
 		partialText := strings.TrimSpace(partial.String())
+		appendStartedAt := time.Now()
 		sequence, err := s.repo.AppendStreamChunk(persistCtx, prepared, delta, partialText, time.Now().UTC())
 		if err != nil {
+			recordAIChatPersistenceDuration(aiChatPersistenceOperationAppendChunk, appendStartedAt, aiChatMetricResultError)
 			return err
 		}
+		recordAIChatPersistenceDuration(aiChatPersistenceOperationAppendChunk, appendStartedAt, aiChatMetricResultSuccess)
 		if !firstChunkPersisted {
 			firstChunkPersisted = true
 			// Trace marker: shows when the first model delta was persisted before SSE delivery.
@@ -417,6 +421,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		return nil
 	})
 	if err != nil {
+		recordAIChatRuntimeDuration(aiChatRuntimeOperationStreamChat, runtimeStartedAt, aiChatRuntimeResult(err))
 		if allowRecovery && errors.Is(err, ErrStreamDisconnected) {
 			if markErr := s.repo.MarkRunAwaitingRecovery(persistCtx, prepared, strings.TrimSpace(partial.String()), time.Now().UTC()); markErr != nil {
 				return nil, markErr
@@ -428,6 +433,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		}
 		return nil, err
 	}
+	recordAIChatRuntimeDuration(aiChatRuntimeOperationStreamChat, runtimeStartedAt, aiChatMetricResultSuccess)
 	// Trace marker: captures total runtime latency before final DB completion.
 	logAIChatTrace(s.logger, "runtime_stream_finished",
 		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
@@ -445,12 +451,14 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 	completeStartedAt := time.Now()
 	message, run, err := s.repo.CompleteRun(persistCtx, prepared, text, done.WorkoutDraft, time.Now().UTC())
 	if err != nil {
+		recordAIChatPersistenceDuration(aiChatPersistenceOperationCompleteRun, completeStartedAt, aiChatMetricResultError)
 		persistErr := err
 		if failErr := s.failPreparedRun(persistCtx, prepared, text, err); failErr != nil {
 			s.logger.Error("failed to mark ai chat run failed after completion error", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
 		return nil, persistErr
 	}
+	recordAIChatPersistenceDuration(aiChatPersistenceOperationCompleteRun, completeStartedAt, aiChatMetricResultSuccess)
 	// Trace marker: separates model latency from final persistence latency.
 	logAIChatTrace(s.logger, "complete_run_finished",
 		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
@@ -484,13 +492,16 @@ func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int
 		return nil, err
 	}
 
+	saveStartedAt := time.Now()
 	resp, err := s.repo.SaveLatestWorkoutDraft(ctx, conversationID, userID, time.Now().UTC())
 	if err != nil {
+		recordAIChatPersistenceDuration(aiChatPersistenceOperationSaveWorkoutDraft, saveStartedAt, aiChatMetricResultError)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, newConversationNotFound(conversationID)
 		}
 		return nil, err
 	}
+	recordAIChatPersistenceDuration(aiChatPersistenceOperationSaveWorkoutDraft, saveStartedAt, aiChatMetricResultSuccess)
 	return resp, nil
 }
 
@@ -499,6 +510,17 @@ func (s *Service) AbortPreparedMessageStream(ctx context.Context, prepared *Prep
 		return nil
 	}
 	return s.failPreparedRun(context.WithoutCancel(ctx), prepared, prepared.AssistantMessage.Content, failure)
+}
+
+func aiChatRuntimeResult(err error) string {
+	switch {
+	case errors.Is(err, ErrGenerationTimeout):
+		return aiChatMetricResultTimeout
+	case errors.Is(err, ErrStreamDisconnected):
+		return aiChatMetricResultClientDisconnect
+	default:
+		return aiChatMetricResultError
+	}
 }
 
 func (s *Service) ensureAllowed(ctx context.Context) error {

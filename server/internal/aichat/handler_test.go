@@ -527,6 +527,7 @@ func TestHandlerStreamMessage(t *testing.T) {
 	})
 
 	t.Run("writes SSE frames with start delta done sequence", func(t *testing.T) {
+		aiChatStreamEventsTotal.Reset()
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
@@ -558,6 +559,9 @@ func TestHandlerStreamMessage(t *testing.T) {
 		assert.Contains(t, body, `"delta":"hello "`)
 		assert.Contains(t, body, "event: done")
 		assert.Contains(t, body, `"text":"hello world"`)
+		assert.Equal(t, 1.0, testutil.ToFloat64(aiChatStreamEventsTotal.WithLabelValues(aiChatStreamEventStarted)))
+		assert.Equal(t, 1.0, testutil.ToFloat64(aiChatStreamEventsTotal.WithLabelValues(aiChatStreamEventFirstDelta)))
+		assert.Equal(t, 1.0, testutil.ToFloat64(aiChatStreamEventsTotal.WithLabelValues(aiChatStreamEventCompleted)))
 		service.AssertExpectations(t)
 	})
 

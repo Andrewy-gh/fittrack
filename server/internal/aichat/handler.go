@@ -330,12 +330,14 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to start ai chat stream")
 		return
 	}
+	recordAIChatStreamMilestone(aiChatStreamMilestonePrepared, traceStartedAt)
 
 	sse, err := h.startSSE(w)
 	if err != nil {
 		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
 			h.logger.Error("failed to abort ai chat run after stream preflight error", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
+		recordAIChatStreamEvent(aiChatStreamEventError)
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat stream", err)
 		return
 	}
@@ -354,8 +356,11 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 			h.logger.Error("failed to abort ai chat run after start event write failure", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
 		h.logStreamWriteFailure("failed to start ai chat stream", r, err)
+		recordAIChatStreamEvent(aiChatStreamEventStartWriteFailed)
 		return
 	}
+	recordAIChatStreamMilestone(aiChatStreamMilestoneSSEStarted, traceStartedAt)
+	recordAIChatStreamEvent(aiChatStreamEventStarted)
 	// Trace marker: confirms when the browser should have received the SSE start event.
 	logAIChatTrace(h.logger, "sse_start_written",
 		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
@@ -374,6 +379,8 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		})
 		if err == nil && !firstDeltaWritten {
 			firstDeltaWritten = true
+			recordAIChatStreamMilestone(aiChatStreamMilestoneFirstDelta, traceStartedAt)
+			recordAIChatStreamEvent(aiChatStreamEventFirstDelta)
 			// Trace marker: separates "stream opened" from "assistant text became visible."
 			logAIChatTrace(h.logger, "first_delta_written",
 				"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
@@ -388,8 +395,10 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrStreamAwaitingRecovery) {
+			recordAIChatStreamEvent(aiChatStreamEventAwaitingRecovery)
 			return
 		}
+		recordAIChatStreamEvent(aiChatStreamEventError)
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to generate ai chat response", err) {
 			h.logger.Error("failed to stream ai chat response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
 		}
@@ -407,8 +416,11 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		WorkoutDraft:   done.WorkoutDraft,
 	}); err != nil {
 		h.logStreamWriteFailure("failed to finish ai chat stream", r, err)
+		recordAIChatStreamEvent(aiChatStreamEventDoneWriteFailed)
 		return
 	}
+	recordAIChatStreamMilestone(aiChatStreamMilestoneDone, traceStartedAt)
+	recordAIChatStreamEvent(aiChatStreamEventCompleted)
 	// Trace marker: confirms when the terminal payload, including workout draft, reached SSE.
 	logAIChatTrace(h.logger, "sse_done_written",
 		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
