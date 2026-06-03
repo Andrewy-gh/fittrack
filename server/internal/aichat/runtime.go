@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -14,35 +13,28 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 )
 
 const (
-	geminiAPIKeyEnvVar     = "GEMINI_API_KEY"
-	googleAPIKeyEnvVar     = "GOOGLE_API_KEY"
-	chatStreamTimeout      = 45 * time.Second
-	chatMaxTurns           = 6
-	activeFeaturesToolName = "fittrack.list_active_features"
+	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
+	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
+	chatStreamTimeout  = 45 * time.Second
+	chatMaxTurns       = 6
 )
 
 var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
 	return genkit.Init(ctx, opts...)
 }
 
-type featureAccessReader interface {
-	ListCurrentUserAccess(ctx context.Context) ([]featureaccess.FeatureAccessGrant, error)
-}
-
 type GenkitRuntime struct {
-	available          bool
-	modelName          string
-	g                  *genkit.Genkit
-	activeFeaturesTool ai.Tool
-	workoutDraftTool   ai.Tool
+	available        bool
+	modelName        string
+	g                *genkit.Genkit
+	workoutDraftTool ai.Tool
 }
 
-func NewGenkitRuntime(ctx context.Context, featureAccess featureAccessReader) *GenkitRuntime {
+func NewGenkitRuntime(ctx context.Context) *GenkitRuntime {
 	modelName := resolveModelName()
 	runtime := &GenkitRuntime{
 		modelName: modelName,
@@ -52,20 +44,19 @@ func NewGenkitRuntime(ctx context.Context, featureAccess featureAccessReader) *G
 		return runtime
 	}
 
-	g, activeFeaturesTool, workoutDraftTool, ok := activateGenkitRuntime(ctx, modelName, featureAccess)
+	g, workoutDraftTool, ok := activateGenkitRuntime(ctx, modelName)
 	if !ok {
 		return runtime
 	}
 
 	runtime.g = g
-	runtime.activeFeaturesTool = activeFeaturesTool
 	runtime.workoutDraftTool = workoutDraftTool
 	runtime.available = true
 
 	return runtime
 }
 
-func activateGenkitRuntime(ctx context.Context, modelName string, featureAccess featureAccessReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, ok bool) {
+func activateGenkitRuntime(ctx context.Context, modelName string) (_ *genkit.Genkit, _ ai.Tool, ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			slog.Warn("ai chat runtime initialization skipped after genkit panic",
@@ -81,20 +72,9 @@ func activateGenkitRuntime(ctx context.Context, modelName string, featureAccess 
 		genkit.WithDefaultModel(modelName),
 	)
 
-	activeFeaturesTool := genkit.DefineTool(g, activeFeaturesToolName,
-		"Lists the active FitTrack feature keys for the authenticated viewer.",
-		func(ctx *ai.ToolContext, _ struct{}) (*featureSnapshot, error) {
-			guard := toolGuardFromContext(ctx)
-			if guard == nil {
-				return listActiveFeaturesSnapshot(ctx, featureAccess)
-			}
-			return guard.listActiveFeatures(ctx, featureAccess)
-		},
-	)
-
 	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
 
-	return g, activeFeaturesTool, workoutDraftTool, true
+	return g, workoutDraftTool, true
 }
 
 func (r *GenkitRuntime) ModelName() string {
@@ -105,7 +85,6 @@ func (r *GenkitRuntime) Available() bool {
 	return r != nil &&
 		r.available &&
 		r.g != nil &&
-		r.activeFeaturesTool != nil &&
 		r.workoutDraftTool != nil
 }
 
@@ -114,10 +93,9 @@ func (r *GenkitRuntime) GenerateValidation(ctx context.Context, prompt string) (
 		return nil, ErrRuntimeUnavailable
 	}
 
-	output, _, err := genkit.GenerateData[ValidationOutput](withToolGuard(ctx), r.g,
+	output, _, err := genkit.GenerateData[ValidationOutput](ctx, r.g,
 		ai.WithModelName(r.modelName),
 		ai.WithOutputType(ValidationOutput{}),
-		ai.WithTools(r.activeFeaturesTool),
 		ai.WithPrompt(buildStructuredPrompt(prompt)),
 	)
 	if err != nil {
@@ -133,7 +111,7 @@ func (r *GenkitRuntime) StreamValidation(ctx context.Context, prompt string, onC
 	}
 
 	var builder strings.Builder
-	resp, err := genkit.Generate(withToolGuard(ctx), r.g,
+	resp, err := genkit.Generate(ctx, r.g,
 		ai.WithModelName(r.modelName),
 		ai.WithPrompt(buildStreamingPrompt(prompt)),
 		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
@@ -168,13 +146,12 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 	traceStartedAt := time.Now()
 	streamCtx, cancel := context.WithTimeout(ctx, chatStreamTimeout)
 	defer cancel()
-	streamCtx = withToolGuard(streamCtx)
 
 	var builder strings.Builder
 	firstModelDelta := false
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
-		ai.WithTools(r.activeFeaturesTool, r.workoutDraftTool),
+		ai.WithTools(r.workoutDraftTool),
 		ai.WithMaxTurns(chatMaxTurns),
 		ai.WithMessages(buildChatMessages(history)...),
 		ai.WithPrompt(prompt),
@@ -235,25 +212,6 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 	}, nil
 }
 
-func listActiveFeaturesSnapshot(ctx context.Context, featureAccess featureAccessReader) (*featureSnapshot, error) {
-	grants, err := featureAccess.ListCurrentUserAccess(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make([]string, 0, len(grants))
-	for _, grant := range grants {
-		keys = append(keys, grant.FeatureKey)
-	}
-	sort.Strings(keys)
-
-	return &featureSnapshot{FeatureKeys: keys}, nil
-}
-
-type featureSnapshot struct {
-	FeatureKeys []string `json:"feature_keys"`
-}
-
 func configuredAPIKeyEnvVar() string {
 	if strings.TrimSpace(os.Getenv(geminiAPIKeyEnvVar)) != "" {
 		return geminiAPIKeyEnvVar
@@ -274,14 +232,12 @@ func resolveModelName() string {
 func buildStructuredPrompt(prompt string) string {
 	return fmt.Sprintf(`You are validating the phase-0 FitTrack AI chat architecture.
 
-You must call the "%s" tool exactly once before answering.
-
 Return JSON with:
 - "summary": one short sentence describing whether the architecture is viable for the authenticated viewer.
 - "next_step": one short sentence naming the highest-value phase-1 implementation step.
 
-Keep the response concise and grounded in the tool result plus this user validation prompt:
-%s`, activeFeaturesToolName, prompt)
+Keep the response concise and grounded in this user validation prompt:
+%s`, prompt)
 }
 
 func buildStreamingPrompt(prompt string) string {
@@ -323,7 +279,6 @@ Rules:
 - Stay focused on fitness, training, recovery, exercise selection, and how to use FitTrack.
 - Keep answers concise, practical, and safe.
 - Base your response on the visible conversation only. Do not invent personal history or workout data.
-- If feature access is relevant, you may use the %s tool.
 
 When the user wants you to build a workout:
 - Review the visible conversation first and reason about which workout inputs are already confirmed versus still missing.
@@ -351,7 +306,7 @@ Examples:
 - If the user says "Full gym, 45 minutes, hypertrophy pull day, no injuries," call the %s tool right away even if fitness level is unknown.
 - If the user first asks for a 4-day split, say FitTrack builds one workout at a time and ask them to choose one day or session to start. If they then say "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes," call the %s tool for that upper-body session.
 - If the user says "swap anything that bothers my knee/elbow/shoulder/back/wrist" after a draft, ask which movements, ranges, or exercise patterns bother that body part before revising.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, activeFeaturesToolName, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

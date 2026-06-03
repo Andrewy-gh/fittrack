@@ -14,7 +14,6 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichateval"
-	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 )
 
 const (
@@ -24,12 +23,6 @@ const (
 	defaultRunTimeout    = 15 * time.Minute
 	defaultScenarioDelay = 75 * time.Second
 )
-
-type stubFeatureAccessReader struct{}
-
-func (stubFeatureAccessReader) ListCurrentUserAccess(context.Context) ([]featureaccess.FeatureAccessGrant, error) {
-	return nil, nil
-}
 
 func main() {
 	mode := flag.String("mode", aichateval.ModeSingleTurn, "eval mode: single_turn or two_turn")
@@ -70,7 +63,7 @@ func main() {
 	runtimeCtx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	runtime := aichat.NewGenkitRuntime(runtimeCtx, stubFeatureAccessReader{})
+	runtime := aichat.NewGenkitRuntime(runtimeCtx)
 	if !runtime.Available() {
 		fail("ai chat runtime unavailable. Set GEMINI_API_KEY or GOOGLE_API_KEY in your shell, server/.env, or server/setenv.sh")
 	}
