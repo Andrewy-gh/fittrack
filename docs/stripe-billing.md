@@ -12,6 +12,7 @@ FitTrack uses Stripe subscriptions to grant premium access to the AI chat featur
 - Checkout redirects users back to `/chat?checkout=success` or `/chat?checkout=cancelled`.
 - The chat UI gates composer access on the same active `ai_chatbot` feature grant that the AI chat backend enforces.
 - After Checkout success, the chat UI polls access briefly because Stripe redirects can arrive before subscription webhooks finish.
+- Users with `trialing` or `active` subscriptions can manage the plan or start a Stripe-hosted cancellation flow from the chat billing card.
 - Users with `past_due` or `unpaid` subscriptions are sent to Stripe's billing portal to update payment details.
 
 ## Required Stripe Setup
@@ -32,11 +33,12 @@ AI_CHAT_TRIAL_PROMPT_CAP=30
 
 - `POST /api/billing/checkout-session`: authenticated endpoint that creates or reuses the current user's Stripe customer, then returns a hosted checkout URL.
 - `POST /api/billing/customer-portal-session`: authenticated endpoint that creates a Stripe billing portal session for the current customer, then returns a hosted billing management URL.
+- `POST /api/billing/subscription-cancel-portal-session`: authenticated endpoint that creates a Stripe billing portal deep link for canceling the current AI chat subscription, then redirects back to `/chat?billing=cancelled` after the Stripe flow completes.
 - `GET /api/billing/status`: authenticated endpoint that returns the current user's AI chat billing access, subscription details, and trial prompt usage when applicable.
 - `POST /stripe/webhook`: unauthenticated Stripe webhook endpoint. Signature verification uses `STRIPE_WEBHOOK_SECRET`.
 
 If checkout variables are missing, checkout returns `503 billing is not configured`. If only webhook configuration is missing, webhook processing returns the same configuration error.
-Stripe billing portal sessions require a Stripe Billing Portal configuration in the Stripe account.
+Stripe billing portal sessions require a Stripe Billing Portal configuration in the Stripe account. The subscription cancellation flow requires subscription cancellation to be enabled in that portal configuration.
 
 ## Webhook Events
 

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   mockSearch: {
     conversationId: "41" as string | undefined,
     checkout: undefined as "success" | "cancelled" | undefined,
+    billing: undefined as "cancelled" | "portal-return" | undefined,
   },
   mockNavigate: vi.fn(),
   mockCreateConversation: vi.fn(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   mockFeatureAccessQueryOptions: vi.fn(),
   mockCreateBillingCheckoutSession: vi.fn(),
   mockCreateBillingCustomerPortalSession: vi.fn(),
+  mockCreateBillingSubscriptionCancelPortalSession: vi.fn(),
   mockGetBillingStatus: vi.fn(),
   mockRedirectToBillingCheckout: vi.fn(),
   mockRedirectToBillingPortal: vi.fn(),
@@ -35,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   mockBillingQueryResult: { value: undefined as unknown },
   mockFeatureAccessQueryResult: { value: undefined as unknown },
   mockCheckoutAccessQueryResult: { value: undefined as unknown },
+  mockBillingCancellationQueryResult: { value: undefined as unknown },
 }));
 
 export const {
@@ -54,6 +57,7 @@ export const {
   mockFeatureAccessQueryOptions,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
+  mockCreateBillingSubscriptionCancelPortalSession,
   mockGetBillingStatus,
   mockRedirectToBillingCheckout,
   mockRedirectToBillingPortal,
@@ -65,6 +69,7 @@ export const {
   mockBillingQueryResult,
   mockFeatureAccessQueryResult,
   mockCheckoutAccessQueryResult,
+  mockBillingCancellationQueryResult,
 } = mocks;
 
 vi.mock("@tanstack/react-query", () => ({
@@ -90,6 +95,8 @@ vi.mock("@/features/chat/api/ai-chat", () => ({
 vi.mock("@/features/chat/api/billing", () => ({
   billingStatusQueryOptions: mockBillingStatusQueryOptions,
   createBillingCustomerPortalSession: mockCreateBillingCustomerPortalSession,
+  createBillingSubscriptionCancelPortalSession:
+    mockCreateBillingSubscriptionCancelPortalSession,
   createBillingCheckoutSession: mockCreateBillingCheckoutSession,
   getBillingStatus: mockGetBillingStatus,
   redirectToBillingCheckout: mockRedirectToBillingCheckout,
@@ -129,6 +136,7 @@ export function ChatRouteComponent() {
       conversationId={parseConversationId(mockSearch.conversationId)}
       conversationIdSearch={mockSearch.conversationId}
       checkout={mockSearch.checkout}
+      billing={mockSearch.billing}
     />
   );
 }
@@ -169,6 +177,7 @@ export function resetChatRouteMocks() {
   window.localStorage.clear();
   mockSearch.conversationId = "41";
   mockSearch.checkout = undefined;
+  mockSearch.billing = undefined;
   mockNavigate.mockReset();
   mockCreateConversation.mockReset();
   mockGetConversation.mockReset();
@@ -184,6 +193,7 @@ export function resetChatRouteMocks() {
   mockFeatureAccessQueryOptions.mockReset();
   mockCreateBillingCheckoutSession.mockReset();
   mockCreateBillingCustomerPortalSession.mockReset();
+  mockCreateBillingSubscriptionCancelPortalSession.mockReset();
   mockGetBillingStatus.mockReset();
   mockRedirectToBillingCheckout.mockReset();
   mockRedirectToBillingPortal.mockReset();
@@ -231,12 +241,22 @@ export function resetChatRouteMocks() {
     isError: false,
     isSuccess: false,
   };
+  mockBillingCancellationQueryResult.value = {
+    data: undefined,
+    error: null,
+    isFetching: false,
+    isError: false,
+    isSuccess: false,
+  };
   mockUseQuery.mockImplementation((options: { queryKey?: unknown[] }) => {
     if (options.queryKey?.[0] === "feature-access") {
       return mockFeatureAccessQueryResult.value;
     }
     if (options.queryKey?.[2] === "checkout-access") {
       return mockCheckoutAccessQueryResult.value;
+    }
+    if (options.queryKey?.[2] === "billing-cancellation") {
+      return mockBillingCancellationQueryResult.value;
     }
     return mockBillingQueryResult.value;
   });
@@ -245,6 +265,9 @@ export function resetChatRouteMocks() {
   });
   mockCreateBillingCustomerPortalSession.mockResolvedValue({
     url: "https://billing.stripe.test/session",
+  });
+  mockCreateBillingSubscriptionCancelPortalSession.mockResolvedValue({
+    url: "https://billing.stripe.test/cancel-session",
   });
   mockRefetchBillingStatus.mockResolvedValue(mockBillingQueryResult.value);
   mockRefetchFeatureAccess.mockResolvedValue(

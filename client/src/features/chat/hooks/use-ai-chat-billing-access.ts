@@ -5,6 +5,7 @@ import {
   billingStatusQueryOptions,
   createBillingCheckoutSession,
   createBillingCustomerPortalSession,
+  createBillingSubscriptionCancelPortalSession,
   getBillingStatus,
   redirectToBillingCheckout,
   redirectToBillingPortal,
@@ -19,10 +20,12 @@ import {
 import { showErrorToast } from "@/lib/errors";
 
 type CheckoutSearch = "success" | "cancelled";
+type BillingSearch = "cancelled" | "portal-return";
 
 type UseAIChatBillingAccessOptions = {
   userId?: string;
   checkout?: CheckoutSearch;
+  billing?: BillingSearch;
   conversationId?: string;
   navigate: NavigateFn;
 };
@@ -43,6 +46,7 @@ export type CheckoutAccessPollingView =
 export type AIChatBillingAccess = {
   billingStatus?: BillingStatusResponse;
   checkoutNotice: CheckoutSearch | null;
+  billingNotice: BillingSearch | null;
   accessState: AIChatAccessState;
   hasChatAccess: boolean;
   isCheckingAccess: boolean;
@@ -51,8 +55,10 @@ export type AIChatBillingAccess = {
   isRefreshingAccess: boolean;
   isCheckoutLoading: boolean;
   isBillingPortalLoading: boolean;
+  isCancelPlanLoading: boolean;
   startCheckout: () => void;
   manageBilling: () => void;
+  cancelPlan: () => void;
   refreshAccess: () => void;
 };
 
@@ -82,18 +88,34 @@ class CheckoutAccessPendingError extends Error {
   }
 }
 
+class BillingCancellationPendingError extends Error {
+  result: CheckoutAccessPollResult;
+
+  constructor(result: CheckoutAccessPollResult) {
+    super("billing cancellation is still pending");
+    this.name = "BillingCancellationPendingError";
+    this.result = result;
+  }
+}
+
 export function useAIChatBillingAccess({
   userId,
   checkout,
+  billing,
   conversationId,
   navigate,
 }: UseAIChatBillingAccessOptions): AIChatBillingAccess {
   const [checkoutNotice, setCheckoutNotice] = useState<CheckoutSearch | null>(
     checkout ?? null,
   );
+  const [billingNotice, setBillingNotice] = useState<BillingSearch | null>(
+    billing ?? null,
+  );
   const [shouldPollCheckoutAccess, setShouldPollCheckoutAccess] = useState(
     checkout === "success",
   );
+  const [shouldPollBillingCancellation, setShouldPollBillingCancellation] =
+    useState(billing === "cancelled");
   const [settledCheckoutPollingView, setSettledCheckoutPollingView] =
     useState<CheckoutAccessPollingView>({ status: "idle" });
   const isSignedIn = Boolean(userId);
@@ -125,6 +147,25 @@ export function useAIChatBillingAccess({
         )
       ],
   });
+  const billingCancellationQuery = useQuery({
+    queryKey: [
+      "billing",
+      "ai-chatbot",
+      "billing-cancellation",
+      userId,
+      conversationId,
+    ],
+    queryFn: waitForBillingCancellation,
+    enabled: isSignedIn && shouldPollBillingCancellation,
+    retry: checkoutAccessRetryDelaysMs.length,
+    retryDelay: (failureCount) =>
+      checkoutAccessRetryDelaysMs[
+        Math.min(
+          Math.max(failureCount - 1, 0),
+          checkoutAccessRetryDelaysMs.length - 1,
+        )
+      ],
+  });
 
   const checkoutMutation = useMutation({
     mutationFn: createBillingCheckoutSession,
@@ -135,6 +176,11 @@ export function useAIChatBillingAccess({
     mutationFn: createBillingCustomerPortalSession,
     onSuccess: (session) => redirectToBillingPortal(session.url),
     onError: (error) => showErrorToast(error, "Could not open billing"),
+  });
+  const subscriptionCancelMutation = useMutation({
+    mutationFn: createBillingSubscriptionCancelPortalSession,
+    onSuccess: (session) => redirectToBillingPortal(session.url),
+    onError: (error) => showErrorToast(error, "Could not open cancellation"),
   });
   const restartCheckoutAccessPolling = useCallback(() => {
     setSettledCheckoutPollingView({ status: "idle" });
@@ -159,6 +205,40 @@ export function useAIChatBillingAccess({
       replace: true,
     });
   }, [checkout, conversationId, navigate]);
+
+  useEffect(() => {
+    if (!billing) {
+      return;
+    }
+
+    setBillingNotice(billing);
+    if (billing === "cancelled") {
+      setShouldPollBillingCancellation(true);
+    } else {
+      void billingQuery.refetch();
+      void featureAccessQuery.refetch();
+    }
+    void navigate({
+      to: "/chat",
+      search: { conversationId },
+      replace: true,
+    });
+  }, [
+    billing,
+    billingQuery.refetch,
+    conversationId,
+    featureAccessQuery.refetch,
+    navigate,
+  ]);
+
+  useEffect(() => {
+    if (
+      billingCancellationQuery.isSuccess ||
+      billingCancellationQuery.isError
+    ) {
+      setShouldPollBillingCancellation(false);
+    }
+  }, [billingCancellationQuery.isError, billingCancellationQuery.isSuccess]);
 
   const currentCheckoutPollingView = useMemo(
     () =>
@@ -208,26 +288,38 @@ export function useAIChatBillingAccess({
     checkoutPollingView,
     featureAccess: featureAccessQuery.data,
   });
+  const billingCancellationOverride = getBillingCancellationOverride({
+    data: billingCancellationQuery.data,
+    error: billingCancellationQuery.error,
+    isError: billingCancellationQuery.isError,
+  });
   const errorSource = getAIChatAccessErrorSource({
     isBillingError: billingQuery.isError || featureAccessQuery.isError,
     checkoutPollingView,
     isCheckoutReturn: checkoutNotice === "success",
   });
   const accessView = resolveAIChatAccessView({
-    billingStatus: checkoutAccessOverride?.billingStatus ?? billingQuery.data,
+    billingStatus:
+      checkoutAccessOverride?.billingStatus ??
+      billingCancellationOverride?.billingStatus ??
+      billingQuery.data,
     featureAccess:
-      checkoutAccessOverride?.featureAccess ?? featureAccessQuery.data,
+      checkoutAccessOverride?.featureAccess ??
+      billingCancellationOverride?.featureAccess ??
+      featureAccessQuery.data,
     isPaymentConfirming: checkoutPollingView.status === "payment-confirming",
     isChecking:
       billingQuery.isLoading ||
       billingQuery.isPending ||
       featureAccessQuery.isLoading ||
       featureAccessQuery.isPending ||
-      checkoutPollingView.status === "polling",
+      checkoutPollingView.status === "polling" ||
+      billingCancellationQuery.isFetching,
     errorSource,
   });
   const isRefreshingAccess =
     checkoutAccessQuery.isFetching ||
+    billingCancellationQuery.isFetching ||
     Boolean(billingQuery.isFetching) ||
     Boolean(featureAccessQuery.isFetching);
 
@@ -263,6 +355,7 @@ export function useAIChatBillingAccess({
   return {
     billingStatus: accessView.billingStatus,
     checkoutNotice,
+    billingNotice,
     accessState: accessView.state,
     hasChatAccess: accessView.hasChatAccess,
     isCheckingAccess: accessView.state === "checking",
@@ -271,8 +364,10 @@ export function useAIChatBillingAccess({
     isRefreshingAccess,
     isCheckoutLoading: checkoutMutation.isPending,
     isBillingPortalLoading: billingPortalMutation.isPending,
+    isCancelPlanLoading: subscriptionCancelMutation.isPending,
     startCheckout: () => checkoutMutation.mutate(),
     manageBilling: () => billingPortalMutation.mutate(),
+    cancelPlan: () => subscriptionCancelMutation.mutate(),
     refreshAccess: () => {
       if (
         accessView.state === "activating" ||
@@ -371,6 +466,26 @@ function getCheckoutAccessOverride({
     case "failed":
       return undefined;
   }
+}
+
+function getBillingCancellationOverride({
+  data,
+  error,
+  isError,
+}: {
+  data?: CheckoutAccessPollResult;
+  error?: unknown;
+  isError?: boolean;
+}): CheckoutAccessPollResult | undefined {
+  if (data) {
+    return data;
+  }
+
+  if (error instanceof BillingCancellationPendingError && isError !== false) {
+    return error.result;
+  }
+
+  return undefined;
 }
 
 function resolveCheckoutAccessSettledView(
@@ -485,4 +600,28 @@ async function waitForCheckoutAccess(): Promise<CheckoutAccessPollResult> {
   }
 
   return { billingStatus, featureAccess };
+}
+
+async function waitForBillingCancellation(): Promise<CheckoutAccessPollResult> {
+  const [featureAccess, billingStatus] = await Promise.all([
+    getFeatureAccess(),
+    getBillingStatus(),
+  ]);
+
+  if (!isBillingCancellationReflected(billingStatus)) {
+    throw new BillingCancellationPendingError({ billingStatus, featureAccess });
+  }
+
+  return { billingStatus, featureAccess };
+}
+
+function isBillingCancellationReflected(
+  billingStatus: BillingStatusResponse,
+): boolean {
+  const subscription = billingStatus.subscription;
+  return (
+    !subscription ||
+    subscription.cancel_at_period_end ||
+    subscription.status === "canceled"
+  );
 }

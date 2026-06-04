@@ -8,6 +8,7 @@ import type { FeatureAccessGrant } from "@/features/chat/api/feature-access";
 const mocks = vi.hoisted(() => ({
   mockCreateBillingCheckoutSession: vi.fn(),
   mockCreateBillingCustomerPortalSession: vi.fn(),
+  mockCreateBillingSubscriptionCancelPortalSession: vi.fn(),
   mockGetBaseBillingStatus: vi.fn(),
   mockGetBaseFeatureAccess: vi.fn(),
   mockGetCheckoutBillingStatus: vi.fn(),
@@ -29,6 +30,8 @@ vi.mock("@/features/chat/api/billing", async () => {
     createBillingCheckoutSession: mocks.mockCreateBillingCheckoutSession,
     createBillingCustomerPortalSession:
       mocks.mockCreateBillingCustomerPortalSession,
+    createBillingSubscriptionCancelPortalSession:
+      mocks.mockCreateBillingSubscriptionCancelPortalSession,
     getBillingStatus: mocks.mockGetCheckoutBillingStatus,
     redirectToBillingCheckout: mocks.mockRedirectToBillingCheckout,
     redirectToBillingPortal: mocks.mockRedirectToBillingPortal,
@@ -83,6 +86,7 @@ describe("useAIChatBillingAccess checkout polling", () => {
   beforeEach(() => {
     mocks.mockCreateBillingCheckoutSession.mockReset();
     mocks.mockCreateBillingCustomerPortalSession.mockReset();
+    mocks.mockCreateBillingSubscriptionCancelPortalSession.mockReset();
     mocks.mockGetBaseBillingStatus.mockReset();
     mocks.mockGetBaseFeatureAccess.mockReset();
     mocks.mockGetCheckoutBillingStatus.mockReset();
@@ -308,11 +312,40 @@ describe("useAIChatBillingAccess checkout polling", () => {
     });
     expect(result.current.isBillingError).toBe(true);
   });
+
+  it("polls cancellation return until billing reflects the canceled state", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+    mocks.mockGetCheckoutBillingStatus
+      .mockResolvedValueOnce(activeBillingStatus)
+      .mockResolvedValue({
+        ...activeBillingStatus,
+        subscription: {
+          ...activeBillingStatus.subscription!,
+          cancel_at_period_end: true,
+          current_period_end: "2026-06-10T12:00:00Z",
+        },
+      });
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    const { result } = renderBillingAccessHook({
+      checkout: undefined,
+      billing: "cancelled",
+    });
+
+    await waitFor(() => {
+      expect(
+        result.current.billingStatus?.subscription?.cancel_at_period_end,
+      ).toBe(true);
+    });
+    expect(mocks.mockGetCheckoutBillingStatus).toHaveBeenCalledTimes(2);
+  });
 });
 
 function renderBillingAccessHook(
   options: {
     checkout?: "success";
+    billing?: "cancelled";
   } = { checkout: "success" },
 ) {
   const navigate = vi.fn();
@@ -329,6 +362,7 @@ function renderBillingAccessHook(
       useAIChatBillingAccess({
         userId: "user-123",
         checkout: options.checkout,
+        billing: options.billing,
         conversationId: "41",
         navigate,
       }),

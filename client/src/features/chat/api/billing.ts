@@ -99,6 +99,19 @@ export async function createBillingCustomerPortalSession(): Promise<BillingCusto
   return response.data;
 }
 
+export async function createBillingSubscriptionCancelPortalSession(): Promise<BillingCustomerPortalSessionResponse> {
+  const response = await client.post<
+    BillingCustomerPortalSessionResponses,
+    ApiError,
+    true
+  >({
+    url: "/billing/subscription-cancel-portal-session",
+    throwOnError: true,
+  });
+
+  return response.data;
+}
+
 export function redirectToBillingCheckout(url: string): void {
   window.location.assign(url);
 }

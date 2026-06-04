@@ -28,6 +28,10 @@ func (routeBillingService) CreateCustomerPortalSession(context.Context) (*billin
 	return &billing.CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
 }
 
+func (routeBillingService) CreateSubscriptionCancelPortalSession(context.Context) (*billing.CustomerPortalSessionResponse, error) {
+	return &billing.CustomerPortalSessionResponse{URL: "https://billing.stripe.test/cancel-session"}, nil
+}
+
 func (routeBillingService) CurrentStatus(context.Context) (*billing.StatusResponse, error) {
 	return &billing.StatusResponse{FeatureKey: billing.FeatureKeyAIChatbot}, nil
 }
@@ -151,5 +155,34 @@ func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), "https://billing.stripe.test/session") {
 		t.Fatalf("expected billing portal URL response, got %s", rr.Body.String())
+	}
+}
+
+func TestRoutes_RegistersBillingSubscriptionCancelPortalSession(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg:    &config.Config{},
+		pool:   nil,
+	}
+
+	wh := &workout.WorkoutHandler{}
+	eh := &exercise.ExerciseHandler{}
+	fh := &featureaccess.Handler{}
+	hh := health.NewHandler(logger, nil)
+	ah := aichat.NewHandler(logger, nil)
+	bh := billing.NewHandler(logger, routeBillingService{})
+
+	mux := api.routes(wh, eh, fh, hh, ah, bh, nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/billing/subscription-cancel-portal-session", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "https://billing.stripe.test/cancel-session") {
+		t.Fatalf("expected billing cancel portal URL response, got %s", rr.Body.String())
 	}
 }

@@ -16,6 +16,7 @@ const maxWebhookPayloadBytes = 1 << 20
 type billingService interface {
 	CreateCheckoutSession(ctx context.Context) (*CheckoutSessionResponse, error)
 	CreateCustomerPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error)
+	CreateSubscriptionCancelPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error)
 	CurrentStatus(ctx context.Context) (*StatusResponse, error)
 	HandleWebhook(ctx context.Context, payload []byte, signatureHeader string) error
 }
@@ -48,6 +49,18 @@ func (h *Handler) CreateCustomerPortalSession(w http.ResponseWriter, r *http.Req
 	resp, err := h.service.CreateCustomerPortalSession(r.Context())
 	if err != nil {
 		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to create billing portal session")
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, resp); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
+}
+
+func (h *Handler) CreateSubscriptionCancelPortalSession(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.service.CreateSubscriptionCancelPortalSession(r.Context())
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to create subscription cancellation portal session")
 		return
 	}
 
@@ -93,6 +106,10 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "billing is not configured", nil)
 	case errors.Is(err, ErrBillingCustomerMissing):
 		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, "billing customer was not found", nil)
+	case errors.Is(err, ErrBillingSubscriptionMissing):
+		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, "billing subscription was not found", nil)
+	case errors.Is(err, ErrBillingSubscriptionNotCancelable):
+		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "billing subscription cannot be canceled", nil)
 	case errors.Is(err, ErrTrialPromptLimitExceeded):
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat trial prompt limit reached", nil)
 	default:

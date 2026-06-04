@@ -13,6 +13,7 @@ function renderCard(
 ) {
   const onStartCheckout = vi.fn();
   const onManageBilling = vi.fn();
+  const onCancelPlan = vi.fn();
   const onRefreshAccess = vi.fn();
   render(
     <AIChatBillingCard
@@ -22,11 +23,12 @@ function renderCard(
       }
       onStartCheckout={onStartCheckout}
       onManageBilling={onManageBilling}
+      onCancelPlan={onCancelPlan}
       onRefreshAccess={onRefreshAccess}
     />,
   );
 
-  return { onStartCheckout, onManageBilling, onRefreshAccess };
+  return { onStartCheckout, onManageBilling, onCancelPlan, onRefreshAccess };
 }
 
 describe("AIChatBillingCard", () => {
@@ -51,6 +53,7 @@ describe("AIChatBillingCard", () => {
         accessState="billing-error"
         onStartCheckout={vi.fn()}
         onManageBilling={vi.fn()}
+        onCancelPlan={vi.fn()}
         onRefreshAccess={vi.fn()}
       />,
     );
@@ -80,6 +83,7 @@ describe("AIChatBillingCard", () => {
         }}
         onStartCheckout={onStartCheckout}
         onManageBilling={vi.fn()}
+        onCancelPlan={vi.fn()}
         onRefreshAccess={onRefreshAccess}
       />,
     );
@@ -126,8 +130,9 @@ describe("AIChatBillingCard", () => {
     expect(onStartCheckout).not.toHaveBeenCalled();
   });
 
-  it("shows the trial badge and prompt usage while trialing", () => {
-    renderCard({
+  it("opens plan management while trialing", async () => {
+    const user = userEvent.setup();
+    const { onManageBilling, onCancelPlan, onStartCheckout } = renderCard({
       feature_key: "ai_chatbot",
       has_access: true,
       subscription: {
@@ -146,10 +151,21 @@ describe("AIChatBillingCard", () => {
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Manage plan" }));
+
+    expect(onManageBilling).toHaveBeenCalledTimes(1);
+    expect(onCancelPlan).not.toHaveBeenCalled();
+    expect(onStartCheckout).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel plan" }));
+
+    expect(onCancelPlan).toHaveBeenCalledTimes(1);
   });
 
-  it("shows premium status when active", () => {
-    renderCard({
+  it("opens plan management when premium is active", async () => {
+    const user = userEvent.setup();
+    const { onManageBilling, onCancelPlan, onStartCheckout } = renderCard({
       feature_key: "ai_chatbot",
       has_access: true,
       subscription: {
@@ -163,6 +179,59 @@ describe("AIChatBillingCard", () => {
     expect(
       screen.getByText("Premium is active. AI chat is available."),
     ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Manage plan" }));
+
+    expect(onManageBilling).toHaveBeenCalledTimes(1);
+    expect(onCancelPlan).not.toHaveBeenCalled();
+    expect(onStartCheckout).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancel plan" }));
+
+    expect(onCancelPlan).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables both portal actions while either active plan action is opening", () => {
+    const activeStatus = {
+      feature_key: "ai_chatbot",
+      has_access: true,
+      subscription: {
+        stripe_subscription_id: "sub_active",
+        status: "active",
+        cancel_at_period_end: false,
+      },
+    } satisfies BillingStatusResponse;
+    const props = {
+      status: activeStatus,
+      accessState: "ready" as const,
+      onStartCheckout: vi.fn(),
+      onManageBilling: vi.fn(),
+      onCancelPlan: vi.fn(),
+      onRefreshAccess: vi.fn(),
+    };
+    const { rerender } = render(
+      <AIChatBillingCard
+        {...props}
+        isBillingPortalLoading
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Opening billing..." }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel plan" })).toBeDisabled();
+
+    rerender(
+      <AIChatBillingCard
+        {...props}
+        isCancelPlanLoading
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Manage plan" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Opening cancellation..." }),
+    ).toBeDisabled();
   });
 
   it("shows active access without Checkout when access comes from a non-Stripe grant", () => {
@@ -262,6 +331,9 @@ describe("AIChatBillingCard", () => {
     expect(
       screen.getByText("Access continues until May 30, 2026."),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel plan" }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([

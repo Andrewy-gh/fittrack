@@ -23,8 +23,10 @@ type AIChatBillingCardProps = {
   isRefreshingAccess?: boolean;
   isCheckoutLoading?: boolean;
   isBillingPortalLoading?: boolean;
+  isCancelPlanLoading?: boolean;
   onStartCheckout: () => void;
   onManageBilling: () => void;
+  onCancelPlan: () => void;
   onRefreshAccess: () => void;
 };
 
@@ -48,6 +50,12 @@ const billingPortalStatuses = new Set<BillingSubscriptionStatus>([
   "unpaid",
 ]);
 
+const planManagementStatuses = new Set<BillingSubscriptionStatus>([
+  "trialing",
+  "active",
+  ...billingPortalStatuses,
+]);
+
 export function AIChatBillingCard({
   status,
   accessState,
@@ -56,8 +64,10 @@ export function AIChatBillingCard({
   isRefreshingAccess = false,
   isCheckoutLoading = false,
   isBillingPortalLoading = false,
+  isCancelPlanLoading = false,
   onStartCheckout,
   onManageBilling,
+  onCancelPlan,
   onRefreshAccess,
 }: AIChatBillingCardProps) {
   const subscription = status?.subscription;
@@ -74,12 +84,19 @@ export function AIChatBillingCard({
     billingAction &&
     (!isError || billingAction === "refresh") &&
     (accessState !== "ready" || billingAction === "portal");
+  const shouldShowCancelPlan =
+    !isLoading &&
+    !isError &&
+    accessState === "ready" &&
+    (subscription ? isCancelableSubscription(subscription) : false);
   const isActionLoading = getActionLoadingState({
     billingAction,
     isBillingPortalLoading,
     isCheckoutLoading,
     isRefreshingAccess,
   });
+  const isPortalActionLoading =
+    (billingAction === "portal" && isActionLoading) || isCancelPlanLoading;
 
   return (
     <Card className="rounded-lg">
@@ -102,28 +119,46 @@ export function AIChatBillingCard({
             </p>
           </div>
 
-          {shouldShowBillingAction ? (
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onClick={
-                billingAction === "portal"
-                  ? onManageBilling
-                  : billingAction === "refresh"
-                    ? onRefreshAccess
-                    : onStartCheckout
-              }
-              disabled={isActionLoading || isLoading}
-            >
-              {billingAction === "refresh" ? (
-                <RefreshCw className="size-4" />
-              ) : (
-                <CreditCard className="size-4" />
-              )}
-              {isActionLoading
-                ? billingActionLoadingLabel(billingAction)
-                : billingActionLabel(status, billingAction)}
-            </Button>
+          {shouldShowBillingAction || shouldShowCancelPlan ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              {shouldShowBillingAction ? (
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onClick={
+                    billingAction === "portal"
+                      ? onManageBilling
+                      : billingAction === "refresh"
+                        ? onRefreshAccess
+                        : onStartCheckout
+                  }
+                  disabled={isActionLoading || isCancelPlanLoading || isLoading}
+                >
+                  {billingAction === "refresh" ? (
+                    <RefreshCw className="size-4" />
+                  ) : (
+                    <CreditCard className="size-4" />
+                  )}
+                  {isActionLoading
+                    ? billingActionLoadingLabel(billingAction)
+                    : billingActionLabel(status, billingAction)}
+                </Button>
+              ) : null}
+              {shouldShowCancelPlan ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto"
+                  onClick={onCancelPlan}
+                  disabled={isPortalActionLoading}
+                >
+                  <CreditCard className="size-4" />
+                  {isCancelPlanLoading
+                    ? "Opening cancellation..."
+                    : "Cancel plan"}
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
@@ -380,7 +415,7 @@ function getBillingAction(
     return null;
   }
 
-  if (billingPortalStatuses.has(status?.subscription?.status ?? "active")) {
+  if (planManagementStatuses.has(status?.subscription?.status ?? "canceled")) {
     return "portal";
   }
 
@@ -396,7 +431,9 @@ function billingActionLabel(
   }
 
   if (action === "portal") {
-    return "Update billing";
+    return billingPortalStatuses.has(status?.subscription?.status ?? "active")
+      ? "Update billing"
+      : "Manage plan";
   }
 
   if (!status?.subscription) {
@@ -454,6 +491,13 @@ function getActionLoadingState({
 function isBlockedStatus(status: BillingSubscriptionStatus): boolean {
   return (
     checkoutBlockedStatuses.has(status) || billingPortalStatuses.has(status)
+  );
+}
+
+function isCancelableSubscription(subscription: BillingSubscription): boolean {
+  return (
+    !subscription.cancel_at_period_end &&
+    (subscription.status === "trialing" || subscription.status === "active")
   );
 }
 

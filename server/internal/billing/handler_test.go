@@ -13,10 +13,11 @@ import (
 )
 
 type stubBillingService struct {
-	createCheckoutSession       func(context.Context) (*CheckoutSessionResponse, error)
-	createCustomerPortalSession func(context.Context) (*CustomerPortalSessionResponse, error)
-	currentStatus               func(context.Context) (*StatusResponse, error)
-	handleWebhook               func(context.Context, []byte, string) error
+	createCheckoutSession                 func(context.Context) (*CheckoutSessionResponse, error)
+	createCustomerPortalSession           func(context.Context) (*CustomerPortalSessionResponse, error)
+	createSubscriptionCancelPortalSession func(context.Context) (*CustomerPortalSessionResponse, error)
+	currentStatus                         func(context.Context) (*StatusResponse, error)
+	handleWebhook                         func(context.Context, []byte, string) error
 }
 
 func (s stubBillingService) CreateCheckoutSession(ctx context.Context) (*CheckoutSessionResponse, error) {
@@ -31,6 +32,13 @@ func (s stubBillingService) CreateCustomerPortalSession(ctx context.Context) (*C
 		return s.createCustomerPortalSession(ctx)
 	}
 	return &CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
+}
+
+func (s stubBillingService) CreateSubscriptionCancelPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error) {
+	if s.createSubscriptionCancelPortalSession != nil {
+		return s.createSubscriptionCancelPortalSession(ctx)
+	}
+	return &CustomerPortalSessionResponse{URL: "https://billing.stripe.test/cancel-session"}, nil
 }
 
 func (s stubBillingService) CurrentStatus(ctx context.Context) (*StatusResponse, error) {
@@ -86,4 +94,30 @@ func TestHandlerCreateCustomerPortalSession_MissingCustomerReturns404(t *testing
 
 	require.Equal(t, http.StatusNotFound, rr.Code)
 	assert.Contains(t, rr.Body.String(), "billing customer was not found")
+}
+
+func TestHandlerCreateSubscriptionCancelPortalSession_ReturnsPortalURL(t *testing.T) {
+	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{})
+	req := httptest.NewRequest(http.MethodPost, "/api/billing/subscription-cancel-portal-session", nil)
+	rr := httptest.NewRecorder()
+
+	handler.CreateSubscriptionCancelPortalSession(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.JSONEq(t, `{"url":"https://billing.stripe.test/cancel-session"}`, rr.Body.String())
+}
+
+func TestHandlerCreateSubscriptionCancelPortalSession_NotCancelableReturns409(t *testing.T) {
+	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
+		createSubscriptionCancelPortalSession: func(context.Context) (*CustomerPortalSessionResponse, error) {
+			return nil, ErrBillingSubscriptionNotCancelable
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/billing/subscription-cancel-portal-session", nil)
+	rr := httptest.NewRecorder()
+
+	handler.CreateSubscriptionCancelPortalSession(rr, req)
+
+	require.Equal(t, http.StatusConflict, rr.Code)
+	assert.Contains(t, rr.Body.String(), "billing subscription cannot be canceled")
 }

@@ -77,3 +77,92 @@ func TestServiceCreateCustomerPortalSession_MissingCustomerDoesNotCreateStripeCu
 	repo.AssertExpectations(t)
 	repo.AssertNotCalled(t, "UpsertStripeCustomer", mock.Anything, mock.Anything, mock.Anything)
 }
+
+func TestServiceCreateSubscriptionCancelPortalSession(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		StripePriceID:        textToPg("price_premium"),
+		Status:               subscriptionStatusActive,
+	}, nil).Once()
+	repo.On("GetStripeCustomerByUserID", mock.Anything, "user-123").Return(db.StripeCustomers{
+		UserID:           "user-123",
+		StripeCustomerID: "cus_123",
+	}, nil).Once()
+	service.createPortalSession = func(params *stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		require.NotNil(t, params.Customer)
+		require.NotNil(t, params.ReturnURL)
+		require.NotNil(t, params.FlowData)
+		require.NotNil(t, params.FlowData.AfterCompletion)
+		require.NotNil(t, params.FlowData.AfterCompletion.Redirect)
+		require.NotNil(t, params.FlowData.SubscriptionCancel)
+		require.NotNil(t, params.FlowData.SubscriptionCancel.Subscription)
+		assert.Equal(t, "cus_123", *params.Customer)
+		assert.Equal(t, "http://localhost:5173/chat?billing=portal-return", *params.ReturnURL)
+		assert.Equal(t, string(stripe.BillingPortalSessionFlowTypeSubscriptionCancel), *params.FlowData.Type)
+		assert.Equal(t, string(stripe.BillingPortalSessionFlowAfterCompletionTypeRedirect), *params.FlowData.AfterCompletion.Type)
+		assert.Equal(t, "http://localhost:5173/chat?billing=cancelled", *params.FlowData.AfterCompletion.Redirect.ReturnURL)
+		assert.Equal(t, "sub_123", *params.FlowData.SubscriptionCancel.Subscription)
+		return &stripe.BillingPortalSession{URL: "https://billing.stripe.test/cancel-session"}, nil
+	}
+
+	resp, err := service.CreateSubscriptionCancelPortalSession(ctx)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "https://billing.stripe.test/cancel-session", resp.URL)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCreateSubscriptionCancelPortalSession_MissingSubscription(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{}, pgx.ErrNoRows).Once()
+	service.createPortalSession = func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		t.Fatal("portal session should not open without a cancelable subscription")
+		return nil, nil
+	}
+
+	resp, err := service.CreateSubscriptionCancelPortalSession(ctx)
+
+	require.ErrorIs(t, err, ErrBillingSubscriptionMissing)
+	assert.Nil(t, resp)
+	repo.AssertExpectations(t)
+	repo.AssertNotCalled(t, "GetStripeCustomerByUserID", mock.Anything, mock.Anything)
+}
+
+func TestServiceCreateSubscriptionCancelPortalSession_AlreadyCanceling(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		StripePriceID:        textToPg("price_premium"),
+		Status:               subscriptionStatusActive,
+		CancelAtPeriodEnd:    true,
+	}, nil).Once()
+	service.createPortalSession = func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		t.Fatal("portal session should not open for a subscription already set to cancel")
+		return nil, nil
+	}
+
+	resp, err := service.CreateSubscriptionCancelPortalSession(ctx)
+
+	require.ErrorIs(t, err, ErrBillingSubscriptionNotCancelable)
+	assert.Nil(t, resp)
+	repo.AssertExpectations(t)
+	repo.AssertNotCalled(t, "GetStripeCustomerByUserID", mock.Anything, mock.Anything)
+}
