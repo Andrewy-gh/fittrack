@@ -35,20 +35,27 @@ type AiChatMessage struct {
 }
 
 type AiChatRun struct {
-	ID                 int32              `json:"id"`
-	ConversationID     int32              `json:"conversation_id"`
-	UserID             string             `json:"user_id"`
-	UserMessageID      int32              `json:"user_message_id"`
-	AssistantMessageID int32              `json:"assistant_message_id"`
-	Model              string             `json:"model"`
-	Status             string             `json:"status"`
-	RequestID          pgtype.Text        `json:"request_id"`
-	ErrorMessage       pgtype.Text        `json:"error_message"`
-	WorkoutDraft       []byte             `json:"workout_draft"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
-	StartedAt          pgtype.Timestamptz `json:"started_at"`
-	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
+	ID                       int32              `json:"id"`
+	ConversationID           int32              `json:"conversation_id"`
+	UserID                   string             `json:"user_id"`
+	UserMessageID            int32              `json:"user_message_id"`
+	AssistantMessageID       int32              `json:"assistant_message_id"`
+	Model                    string             `json:"model"`
+	Status                   string             `json:"status"`
+	RequestID                pgtype.Text        `json:"request_id"`
+	ErrorMessage             pgtype.Text        `json:"error_message"`
+	WorkoutDraft             []byte             `json:"workout_draft"`
+	GenerationStatus         string             `json:"generation_status"`
+	GenerationOwner          pgtype.Text        `json:"generation_owner"`
+	GenerationLeaseExpiresAt pgtype.Timestamptz `json:"generation_lease_expires_at"`
+	GenerationHeartbeatAt    pgtype.Timestamptz `json:"generation_heartbeat_at"`
+	GenerationAttempt        int32              `json:"generation_attempt"`
+	InterruptedAt            pgtype.Timestamptz `json:"interrupted_at"`
+	InterruptionReason       pgtype.Text        `json:"interruption_reason"`
+	CreatedAt                pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
+	StartedAt                pgtype.Timestamptz `json:"started_at"`
+	CompletedAt              pgtype.Timestamptz `json:"completed_at"`
 }
 
 type AiChatStreamChunk struct {

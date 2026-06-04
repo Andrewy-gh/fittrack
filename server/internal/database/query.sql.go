@@ -11,15 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const claimAIChatRunRecovery = `-- name: ClaimAIChatRunRecovery :one
+const claimAIChatRunGeneration = `-- name: ClaimAIChatRunGeneration :one
 UPDATE ai_chat_run
-SET error_message = $5,
+SET generation_status = 'generating',
+    generation_owner = $3,
+    generation_lease_expires_at = $4,
+    generation_heartbeat_at = $5,
+    generation_attempt = generation_attempt + 1,
+    error_message = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming'
-  AND error_message = $3
-  AND updated_at = $4
+  AND generation_attempt < $6
+  AND (
+    generation_status = 'queued'
+    OR (
+      generation_status = 'generating'
+      AND generation_lease_expires_at IS NOT NULL
+      AND generation_lease_expires_at < $5
+    )
+  )
 RETURNING
     id,
     conversation_id,
@@ -31,27 +43,36 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
     completed_at
 `
 
-type ClaimAIChatRunRecoveryParams struct {
-	ID             int32              `json:"id"`
-	UserID         string             `json:"user_id"`
-	ErrorMessage   pgtype.Text        `json:"error_message"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	ErrorMessage_2 pgtype.Text        `json:"error_message_2"`
+type ClaimAIChatRunGenerationParams struct {
+	ID                       int32              `json:"id"`
+	UserID                   string             `json:"user_id"`
+	GenerationOwner          pgtype.Text        `json:"generation_owner"`
+	GenerationLeaseExpiresAt pgtype.Timestamptz `json:"generation_lease_expires_at"`
+	GenerationHeartbeatAt    pgtype.Timestamptz `json:"generation_heartbeat_at"`
+	GenerationAttempt        int32              `json:"generation_attempt"`
 }
 
-func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRunRecoveryParams) (AiChatRun, error) {
-	row := q.db.QueryRow(ctx, claimAIChatRunRecovery,
+func (q *Queries) ClaimAIChatRunGeneration(ctx context.Context, arg ClaimAIChatRunGenerationParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, claimAIChatRunGeneration,
 		arg.ID,
 		arg.UserID,
-		arg.ErrorMessage,
-		arg.UpdatedAt,
-		arg.ErrorMessage_2,
+		arg.GenerationOwner,
+		arg.GenerationLeaseExpiresAt,
+		arg.GenerationHeartbeatAt,
+		arg.GenerationAttempt,
 	)
 	var i AiChatRun
 	err := row.Scan(
@@ -65,6 +86,13 @@ func (q *Queries) ClaimAIChatRunRecovery(ctx context.Context, arg ClaimAIChatRun
 		&i.RequestID,
 		&i.ErrorMessage,
 		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -280,6 +308,13 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -322,6 +357,13 @@ func (q *Queries) CreateAIChatRun(ctx context.Context, arg CreateAIChatRunParams
 		&i.RequestID,
 		&i.ErrorMessage,
 		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -337,7 +379,19 @@ INSERT INTO ai_chat_stream_chunk (
     sequence,
     delta_text
 )
-VALUES ($1, $2, $3, $4)
+SELECT $1, $2, $3, $4
+WHERE (
+    NULLIF($5::text, '') IS NULL
+    OR EXISTS (
+        SELECT 1
+        FROM ai_chat_run
+        WHERE id = $1
+          AND user_id = $2
+          AND status = 'streaming'
+          AND generation_status = 'generating'
+          AND generation_owner = $5
+    )
+)
 RETURNING
     run_id,
     user_id,
@@ -351,6 +405,7 @@ type CreateAIChatStreamChunkParams struct {
 	UserID    string `json:"user_id"`
 	Sequence  int32  `json:"sequence"`
 	DeltaText string `json:"delta_text"`
+	Column5   string `json:"column_5"`
 }
 
 func (q *Queries) CreateAIChatStreamChunk(ctx context.Context, arg CreateAIChatStreamChunkParams) (AiChatStreamChunk, error) {
@@ -359,6 +414,7 @@ func (q *Queries) CreateAIChatStreamChunk(ctx context.Context, arg CreateAIChatS
 		arg.UserID,
 		arg.Sequence,
 		arg.DeltaText,
+		arg.Column5,
 	)
 	var i AiChatStreamChunk
 	err := row.Scan(
@@ -636,6 +692,13 @@ SELECT
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -664,6 +727,13 @@ func (q *Queries) GetAIChatRun(ctx context.Context, arg GetAIChatRunParams) (AiC
 		&i.RequestID,
 		&i.ErrorMessage,
 		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -709,6 +779,13 @@ SELECT
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -740,6 +817,13 @@ func (q *Queries) GetActiveAIChatRunForConversation(ctx context.Context, arg Get
 		&i.RequestID,
 		&i.ErrorMessage,
 		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -1944,6 +2028,40 @@ func (q *Queries) HasProcessedStripeWebhookEvent(ctx context.Context, stripeEven
 	return exists, err
 }
 
+const heartbeatAIChatRunGeneration = `-- name: HeartbeatAIChatRunGeneration :execrows
+UPDATE ai_chat_run
+SET generation_lease_expires_at = $3,
+    generation_heartbeat_at = $4,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND generation_status = 'generating'
+  AND generation_owner = $5
+`
+
+type HeartbeatAIChatRunGenerationParams struct {
+	ID                       int32              `json:"id"`
+	UserID                   string             `json:"user_id"`
+	GenerationLeaseExpiresAt pgtype.Timestamptz `json:"generation_lease_expires_at"`
+	GenerationHeartbeatAt    pgtype.Timestamptz `json:"generation_heartbeat_at"`
+	GenerationOwner          pgtype.Text        `json:"generation_owner"`
+}
+
+func (q *Queries) HeartbeatAIChatRunGeneration(ctx context.Context, arg HeartbeatAIChatRunGenerationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, heartbeatAIChatRunGeneration,
+		arg.ID,
+		arg.UserID,
+		arg.GenerationLeaseExpiresAt,
+		arg.GenerationHeartbeatAt,
+		arg.GenerationOwner,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listAIChatMessagesByConversation = `-- name: ListAIChatMessagesByConversation :many
 SELECT
     id,
@@ -2379,58 +2497,6 @@ func (q *Queries) MarkAIChatConversationLatestWorkoutDraftSaved(ctx context.Cont
 	return i, err
 }
 
-const markAIChatRunAwaitingRecovery = `-- name: MarkAIChatRunAwaitingRecovery :one
-UPDATE ai_chat_run
-SET error_message = $3,
-    updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-  AND user_id = $2
-  AND status = 'streaming'
-RETURNING
-    id,
-    conversation_id,
-    user_id,
-    user_message_id,
-    assistant_message_id,
-    model,
-    status,
-    request_id,
-    error_message,
-    workout_draft,
-    created_at,
-    updated_at,
-    started_at,
-    completed_at
-`
-
-type MarkAIChatRunAwaitingRecoveryParams struct {
-	ID           int32       `json:"id"`
-	UserID       string      `json:"user_id"`
-	ErrorMessage pgtype.Text `json:"error_message"`
-}
-
-func (q *Queries) MarkAIChatRunAwaitingRecovery(ctx context.Context, arg MarkAIChatRunAwaitingRecoveryParams) (AiChatRun, error) {
-	row := q.db.QueryRow(ctx, markAIChatRunAwaitingRecovery, arg.ID, arg.UserID, arg.ErrorMessage)
-	var i AiChatRun
-	err := row.Scan(
-		&i.ID,
-		&i.ConversationID,
-		&i.UserID,
-		&i.UserMessageID,
-		&i.AssistantMessageID,
-		&i.Model,
-		&i.Status,
-		&i.RequestID,
-		&i.ErrorMessage,
-		&i.WorkoutDraft,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.StartedAt,
-		&i.CompletedAt,
-	)
-	return i, err
-}
-
 const markStripeWebhookEventProcessed = `-- name: MarkStripeWebhookEventProcessed :exec
 INSERT INTO stripe_webhook_events (
     stripe_event_id,
@@ -2740,8 +2806,16 @@ SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
     workout_draft = NULLIF($4::text, '')::jsonb,
+    generation_status = 'completed',
+    generation_owner = NULL,
+    generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL,
+    interrupted_at = NULL,
+    interruption_reason = NULL,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
+  AND user_id = $2
+  AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
     conversation_id,
@@ -2753,6 +2827,13 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -2764,6 +2845,7 @@ type UpdateAIChatRunCompletedParams struct {
 	UserID      string             `json:"user_id"`
 	CompletedAt pgtype.Timestamptz `json:"completed_at"`
 	Column4     string             `json:"column_4"`
+	Column5     string             `json:"column_5"`
 }
 
 func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChatRunCompletedParams) (AiChatRun, error) {
@@ -2772,6 +2854,7 @@ func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChat
 		arg.UserID,
 		arg.CompletedAt,
 		arg.Column4,
+		arg.Column5,
 	)
 	var i AiChatRun
 	err := row.Scan(
@@ -2785,6 +2868,13 @@ func (q *Queries) UpdateAIChatRunCompleted(ctx context.Context, arg UpdateAIChat
 		&i.RequestID,
 		&i.ErrorMessage,
 		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,
@@ -2799,8 +2889,16 @@ SET status = 'failed',
     error_message = $3,
     completed_at = $4,
     workout_draft = NULL,
+    generation_status = 'failed',
+    generation_owner = NULL,
+    generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL,
+    interrupted_at = NULL,
+    interruption_reason = NULL,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
+  AND user_id = $2
+  AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
     conversation_id,
@@ -2812,6 +2910,13 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -2823,6 +2928,7 @@ type UpdateAIChatRunFailedParams struct {
 	UserID       string             `json:"user_id"`
 	ErrorMessage pgtype.Text        `json:"error_message"`
 	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
+	Column5      string             `json:"column_5"`
 }
 
 func (q *Queries) UpdateAIChatRunFailed(ctx context.Context, arg UpdateAIChatRunFailedParams) (AiChatRun, error) {
@@ -2831,6 +2937,7 @@ func (q *Queries) UpdateAIChatRunFailed(ctx context.Context, arg UpdateAIChatRun
 		arg.UserID,
 		arg.ErrorMessage,
 		arg.CompletedAt,
+		arg.Column5,
 	)
 	var i AiChatRun
 	err := row.Scan(
@@ -2844,6 +2951,94 @@ func (q *Queries) UpdateAIChatRunFailed(ctx context.Context, arg UpdateAIChatRun
 		&i.RequestID,
 		&i.ErrorMessage,
 		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const updateAIChatRunInterrupted = `-- name: UpdateAIChatRunInterrupted :one
+UPDATE ai_chat_run
+SET status = 'failed',
+    error_message = $3,
+    completed_at = $4,
+    workout_draft = NULL,
+    generation_status = 'interrupted',
+    generation_owner = NULL,
+    generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL,
+    interrupted_at = $4,
+    interruption_reason = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at
+`
+
+type UpdateAIChatRunInterruptedParams struct {
+	ID                 int32              `json:"id"`
+	UserID             string             `json:"user_id"`
+	ErrorMessage       pgtype.Text        `json:"error_message"`
+	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
+	InterruptionReason pgtype.Text        `json:"interruption_reason"`
+}
+
+func (q *Queries) UpdateAIChatRunInterrupted(ctx context.Context, arg UpdateAIChatRunInterruptedParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, updateAIChatRunInterrupted,
+		arg.ID,
+		arg.UserID,
+		arg.ErrorMessage,
+		arg.CompletedAt,
+		arg.InterruptionReason,
+	)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.StartedAt,

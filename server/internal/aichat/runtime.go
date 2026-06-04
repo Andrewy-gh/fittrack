@@ -19,7 +19,7 @@ import (
 const (
 	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
 	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
-	chatStreamTimeout  = 45 * time.Second
+	chatStreamTimeout  = chatGenerationTimeout
 	chatMaxTurns       = 6
 )
 

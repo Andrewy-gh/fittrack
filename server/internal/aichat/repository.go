@@ -30,9 +30,10 @@ type Repository interface {
 	LoadPreparedRunForResume(ctx context.Context, conversationID int32, runID int32, userID string, afterSequence int32) (*PreparedResumeStream, error)
 	ListStreamChunksAfter(ctx context.Context, runID int32, userID string, afterSequence int32) ([]StreamChunk, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
+	ClaimRunGeneration(ctx context.Context, run *ChatRun, owner runOwner, now time.Time) error
+	HeartbeatRunGeneration(ctx context.Context, run *ChatRun, owner runOwner, now time.Time) (bool, error)
 	AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error)
-	MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error
-	ClaimRunRecovery(ctx context.Context, run *ChatRun) error
+	InterruptRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, reason string, completedAt time.Time) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error)
 	FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error
 }
@@ -632,6 +633,70 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 	}, nil
 }
 
+func (r *repository) ClaimRunGeneration(ctx context.Context, run *ChatRun, owner runOwner, now time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	runRow, err := r.queries.ClaimAIChatRunGeneration(ctx, db.ClaimAIChatRunGenerationParams{
+		ID:     run.ID,
+		UserID: run.UserID,
+		GenerationOwner: pgtype.Text{
+			String: owner.Value(),
+			Valid:  true,
+		},
+		GenerationLeaseExpiresAt: pgtype.Timestamptz{
+			Time:  owner.LeaseExpiresAt(now),
+			Valid: true,
+		},
+		GenerationHeartbeatAt: pgtype.Timestamptz{
+			Time:  now.UTC(),
+			Valid: true,
+		},
+		GenerationAttempt: maxGenerationAttempts,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		return fmt.Errorf("claim ai chat run generation: %w", err)
+	}
+
+	claimedRun, err := mapRun(runRow)
+	if err != nil {
+		return err
+	}
+	*run = *claimedRun
+
+	return nil
+}
+
+func (r *repository) HeartbeatRunGeneration(ctx context.Context, run *ChatRun, owner runOwner, now time.Time) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := r.queries.HeartbeatAIChatRunGeneration(ctx, db.HeartbeatAIChatRunGenerationParams{
+		ID:     run.ID,
+		UserID: run.UserID,
+		GenerationLeaseExpiresAt: pgtype.Timestamptz{
+			Time:  owner.LeaseExpiresAt(now),
+			Valid: true,
+		},
+		GenerationHeartbeatAt: pgtype.Timestamptz{
+			Time:  now.UTC(),
+			Valid: true,
+		},
+		GenerationOwner: pgtype.Text{
+			String: owner.Value(),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return false, fmt.Errorf("heartbeat ai chat run generation: %w", err)
+	}
+
+	return rows > 0, nil
+}
+
 func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -649,6 +714,7 @@ func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMe
 		UserID:    prepared.Run.UserID,
 		Sequence:  nextSequence,
 		DeltaText: delta,
+		Column5:   textValue(prepared.Run.GenerationOwner),
 	}); err != nil {
 		return 0, fmt.Errorf("create ai chat stream chunk: %w", err)
 	}
@@ -680,78 +746,51 @@ func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMe
 	return nextSequence, nil
 }
 
-func (r *repository) MarkRunAwaitingRecovery(ctx context.Context, prepared *PreparedMessageStream, partialText string, updatedAt time.Time) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+func (r *repository) InterruptRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, reason string, completedAt time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("begin ai chat recovery handoff transaction: %w", err)
+		return fmt.Errorf("begin ai chat interruption transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	qtx := r.queries.WithTx(tx)
-	partialText = strings.TrimSpace(partialText)
-	if partialText != "" {
-		if _, err := qtx.UpdateAIChatMessageStreaming(ctx, db.UpdateAIChatMessageStreamingParams{
-			ID:      prepared.AssistantMessage.ID,
-			UserID:  prepared.AssistantMessage.UserID,
-			Content: partialText,
-		}); err != nil {
-			return fmt.Errorf("update ai chat assistant message for recovery handoff: %w", err)
-		}
+	completedTS := pgtype.Timestamptz{Time: completedAt.UTC(), Valid: true}
+	errorText := truncateForStorage(streamInterruptedFailureMessage, 512)
+
+	if _, err := qtx.UpdateAIChatMessageFailed(ctx, db.UpdateAIChatMessageFailedParams{
+		ID:           prepared.AssistantMessage.ID,
+		UserID:       prepared.AssistantMessage.UserID,
+		Content:      strings.TrimSpace(partialText),
+		ErrorMessage: textToPg(errorText),
+		CompletedAt:  completedTS,
+	}); err != nil {
+		return fmt.Errorf("interrupt ai chat assistant message: %w", err)
 	}
 
-	runRow, err := qtx.MarkAIChatRunAwaitingRecovery(ctx, db.MarkAIChatRunAwaitingRecoveryParams{
-		ID:           prepared.Run.ID,
-		UserID:       prepared.Run.UserID,
-		ErrorMessage: textToPg(runAwaitingRecoveryMarker),
-	})
-	if err != nil {
-		return fmt.Errorf("mark ai chat run awaiting recovery: %w", err)
+	if _, err := qtx.UpdateAIChatRunInterrupted(ctx, db.UpdateAIChatRunInterruptedParams{
+		ID:                 prepared.Run.ID,
+		UserID:             prepared.Run.UserID,
+		ErrorMessage:       textToPg(errorText),
+		CompletedAt:        completedTS,
+		InterruptionReason: textToPg(reason),
+	}); err != nil {
+		return fmt.Errorf("interrupt ai chat run: %w", err)
+	}
+
+	if err := qtx.TouchAIChatConversation(ctx, db.TouchAIChatConversationParams{
+		ID:            prepared.Conversation.ID,
+		UserID:        prepared.Conversation.UserID,
+		LastMessageAt: completedTS,
+	}); err != nil {
+		return fmt.Errorf("touch ai chat conversation after interruption: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit ai chat recovery handoff transaction: %w", err)
+		return fmt.Errorf("commit ai chat interruption transaction: %w", err)
 	}
-
-	if partialText != "" {
-		prepared.AssistantMessage.Content = partialText
-		prepared.AssistantMessage.UpdatedAt = updatedAt.UTC()
-	}
-
-	run, err := mapRun(runRow)
-	if err != nil {
-		return err
-	}
-	prepared.Run = run
-
-	return nil
-}
-
-func (r *repository) ClaimRunRecovery(ctx context.Context, run *ChatRun) error {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	runRow, err := r.queries.ClaimAIChatRunRecovery(ctx, db.ClaimAIChatRunRecoveryParams{
-		ID:             run.ID,
-		UserID:         run.UserID,
-		ErrorMessage:   textToPg(strings.TrimSpace(textValue(run.ErrorMessage))),
-		UpdatedAt:      pgtype.Timestamptz{Time: run.UpdatedAt.UTC(), Valid: true},
-		ErrorMessage_2: textToPg(runRecoveryClaimedMarker),
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-		return fmt.Errorf("claim ai chat recovery run: %w", err)
-	}
-
-	claimedRun, err := mapRun(runRow)
-	if err != nil {
-		return err
-	}
-	*run = *claimedRun
 
 	return nil
 }
@@ -788,6 +827,7 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 		UserID:      prepared.Run.UserID,
 		CompletedAt: completedTS,
 		Column4:     string(workoutDraftJSON),
+		Column5:     textValue(prepared.Run.GenerationOwner),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("complete ai chat run: %w", err)
@@ -861,6 +901,7 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 		UserID:       prepared.Run.UserID,
 		ErrorMessage: textToPg(errorText),
 		CompletedAt:  completedTS,
+		Column5:      textValue(prepared.Run.GenerationOwner),
 	}); err != nil {
 		return fmt.Errorf("fail ai chat run: %w", err)
 	}
@@ -1053,6 +1094,18 @@ func mapRun(row db.AiChatRun) (*ChatRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	leaseExpiresAt, err := timePtrFromPg(row.GenerationLeaseExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	heartbeatAt, err := timePtrFromPg(row.GenerationHeartbeatAt)
+	if err != nil {
+		return nil, err
+	}
+	interruptedAt, err := timePtrFromPg(row.InterruptedAt)
+	if err != nil {
+		return nil, err
+	}
 	workoutDraft, err := parseStoredWorkoutDraft(row.WorkoutDraft)
 	if err != nil {
 		return nil, err
@@ -1069,6 +1122,13 @@ func mapRun(row db.AiChatRun) (*ChatRun, error) {
 		RequestID:          textPtr(row.RequestID),
 		ErrorMessage:       textPtr(row.ErrorMessage),
 		WorkoutDraft:       workoutDraft,
+		GenerationStatus:   row.GenerationStatus,
+		GenerationOwner:    textPtr(row.GenerationOwner),
+		LeaseExpiresAt:     leaseExpiresAt,
+		HeartbeatAt:        heartbeatAt,
+		GenerationAttempt:  row.GenerationAttempt,
+		InterruptedAt:      interruptedAt,
+		InterruptionReason: textPtr(row.InterruptionReason),
 		CreatedAt:          createdAt,
 		UpdatedAt:          updatedAt,
 		StartedAt:          startedAt,

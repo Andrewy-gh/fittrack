@@ -123,6 +123,13 @@ CREATE TABLE ai_chat_run (
     request_id VARCHAR(128),
     error_message VARCHAR(512),
     workout_draft JSONB,
+    generation_status VARCHAR(32) NOT NULL DEFAULT 'queued',
+    generation_owner VARCHAR(128),
+    generation_lease_expires_at TIMESTAMPTZ,
+    generation_heartbeat_at TIMESTAMPTZ,
+    generation_attempt INTEGER NOT NULL DEFAULT 0,
+    interrupted_at TIMESTAMPTZ,
+    interruption_reason VARCHAR(128),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -136,6 +143,18 @@ CREATE TABLE ai_chat_run (
     ),
     CONSTRAINT ai_chat_run_error_not_empty CHECK (
         error_message IS NULL OR btrim(error_message) <> ''
+    ),
+    CONSTRAINT ai_chat_run_generation_status_valid CHECK (
+        generation_status IN ('queued', 'generating', 'completed', 'failed', 'interrupted')
+    ),
+    CONSTRAINT ai_chat_run_generation_owner_not_empty CHECK (
+        generation_owner IS NULL OR btrim(generation_owner) <> ''
+    ),
+    CONSTRAINT ai_chat_run_generation_attempt_non_negative CHECK (
+        generation_attempt >= 0
+    ),
+    CONSTRAINT ai_chat_run_interruption_reason_not_empty CHECK (
+        interruption_reason IS NULL OR btrim(interruption_reason) <> ''
     ),
     CONSTRAINT ai_chat_run_user_message_unique UNIQUE (user_message_id),
     CONSTRAINT ai_chat_run_assistant_message_unique UNIQUE (assistant_message_id)

@@ -26,8 +26,8 @@ type chatService interface {
 	SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error)
 	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
+	StartMessageGeneration(ctx context.Context, prepared *PreparedMessageStream) error
 	PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error)
-	StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error) (*StreamDone, error)
 	ResumeMessageStream(ctx context.Context, prepared *PreparedResumeStream, onChunk func(StreamChunk) error) (*StreamDone, error)
 	AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error
 }
@@ -365,8 +365,23 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		"request_id", request.GetRequestID(r.Context()),
 	)
 
+	if err := h.service.StartMessageGeneration(r.Context(), prepared); err != nil {
+		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to start ai chat generation", err) {
+			h.logger.Error("failed to start ai chat generation", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+		}
+		return
+	}
+
+	resumePrepared := &PreparedResumeStream{
+		Conversation:     prepared.Conversation,
+		AssistantMessage: prepared.AssistantMessage,
+		Run:              prepared.Run,
+		AfterSequence:    0,
+		LastSequence:     prepared.LastSequence,
+	}
+
 	firstDeltaWritten := false
-	done, err := h.service.StreamMessage(r.Context(), prepared, func(chunk StreamChunk) error {
+	done, err := h.service.ResumeMessageStream(r.Context(), resumePrepared, func(chunk StreamChunk) error {
 		err := sse.write("delta", StreamEvent{
 			Type:     "delta",
 			Delta:    chunk.Delta,
@@ -387,7 +402,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 	if err != nil {
-		if errors.Is(err, ErrStreamAwaitingRecovery) {
+		if errors.Is(err, ErrStreamAwaitingRecovery) || errors.Is(err, ErrStreamDisconnected) || errors.Is(err, context.Canceled) {
 			return
 		}
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to generate ai chat response", err) {
@@ -481,7 +496,7 @@ func (h *Handler) ResumeMessageStream(w http.ResponseWriter, r *http.Request) {
 		})
 	})
 	if err != nil {
-		if errors.Is(err, ErrStreamAwaitingRecovery) {
+		if errors.Is(err, ErrStreamAwaitingRecovery) || errors.Is(err, ErrStreamDisconnected) || errors.Is(err, context.Canceled) {
 			return
 		}
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to resume ai chat response", err) {
