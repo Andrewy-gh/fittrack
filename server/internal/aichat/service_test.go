@@ -1130,6 +1130,54 @@ func TestServiceRecoverStreamingRun_InterruptsStalePartialRun(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestServiceRecoverStreamingRun_InterruptsRunWhenGenerationAttemptsExhausted(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
+	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
+	expiredLease := now.Add(-time.Second)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:                 51,
+			ConversationID:     41,
+			UserID:             "user-123",
+			AssistantMessageID: 61,
+			Model:              defaultModelName,
+			Status:             statusStreaming,
+			GenerationStatus:   generationStatusGenerating,
+			LeaseExpiresAt:     &expiredLease,
+			GenerationAttempt:  maxGenerationAttempts,
+		},
+		AssistantMessage: &ChatMessage{
+			ID:             61,
+			ConversationID: 41,
+			UserID:         "user-123",
+			Status:         statusStreaming,
+		},
+		Prompt: "new prompt",
+	}
+
+	runtime.On("Available").Return(true).Once()
+	repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
+	repo.On("InterruptRun", mock.Anything, prepared, "", interruptionReasonAttemptsExhausted, mock.AnythingOfType("time.Time")).Return(nil).Once()
+
+	err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
+		ConversationID: 41,
+		RunID:          51,
+		UserID:         "user-123",
+		Reason:         recoverReasonStreamReconnect,
+	})
+
+	require.NoError(t, err)
+	repo.AssertNotCalled(t, "ClaimRunGeneration", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertNotCalled(t, "StreamChat", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceRecoverStreamingRun_ReclaimsStaleClaimedRun(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)

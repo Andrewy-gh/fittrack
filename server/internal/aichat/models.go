@@ -33,8 +33,9 @@ var (
 )
 
 const (
-	streamInterruptedFailureMessage = "ai chat stream was interrupted before completion"
-	interruptionReasonStalePartial  = "stale_partial"
+	streamInterruptedFailureMessage     = "ai chat stream was interrupted before completion"
+	interruptionReasonStalePartial      = "stale_partial"
+	interruptionReasonAttemptsExhausted = "generation_attempts_exhausted"
 )
 
 type ValidateRequest struct {

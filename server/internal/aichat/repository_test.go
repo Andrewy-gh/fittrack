@@ -42,6 +42,19 @@ func TestTruncateForStorage_TruncatesWithoutBreakingUTF8(t *testing.T) {
 	}
 }
 
+func TestTextPtrToPg_PreservesNilAsNull(t *testing.T) {
+	nullText := textPtrToPg(nil)
+	if nullText.Valid {
+		t.Fatal("nil pointer should map to SQL NULL")
+	}
+
+	owner := "api:worker-1"
+	text := textPtrToPg(&owner)
+	if !text.Valid || text.String != owner {
+		t.Fatalf("owner pointer should map to valid text, got valid=%t value=%q", text.Valid, text.String)
+	}
+}
+
 func TestIsStreamingRunStale(t *testing.T) {
 	now := time.Date(2026, 3, 26, 18, 30, 0, 0, time.UTC)
 

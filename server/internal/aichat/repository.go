@@ -771,11 +771,15 @@ func (r *repository) InterruptRun(ctx context.Context, prepared *PreparedMessage
 	}
 
 	if _, err := qtx.UpdateAIChatRunInterrupted(ctx, db.UpdateAIChatRunInterruptedParams{
-		ID:                 prepared.Run.ID,
-		UserID:             prepared.Run.UserID,
-		ErrorMessage:       textToPg(errorText),
-		CompletedAt:        completedTS,
-		InterruptionReason: textToPg(reason),
+		ID:                               prepared.Run.ID,
+		UserID:                           prepared.Run.UserID,
+		ErrorMessage:                     textToPg(errorText),
+		CompletedAt:                      completedTS,
+		InterruptionReason:               textToPg(reason),
+		ExpectedGenerationStatus:         prepared.Run.GenerationStatus,
+		ExpectedGenerationOwner:          textPtrToPg(prepared.Run.GenerationOwner),
+		ExpectedGenerationLeaseExpiresAt: timePtrToPg(prepared.Run.LeaseExpiresAt),
+		ExpectedGenerationAttempt:        prepared.Run.GenerationAttempt,
 	}); err != nil {
 		return fmt.Errorf("interrupt ai chat run: %w", err)
 	}
@@ -1006,6 +1010,20 @@ func textToPg(value string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: value, Valid: true}
+}
+
+func textPtrToPg(value *string) pgtype.Text {
+	if value == nil {
+		return pgtype.Text{}
+	}
+	return textToPg(*value)
+}
+
+func timePtrToPg(value *time.Time) pgtype.Timestamptz {
+	if value == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: value.UTC(), Valid: true}
 }
 
 func textValue(value *string) string {

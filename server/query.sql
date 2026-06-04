@@ -1275,7 +1275,13 @@ SET status = 'failed',
     interrupted_at = $4,
     interruption_reason = $5,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND generation_status = sqlc.arg(expected_generation_status)
+  AND generation_owner IS NOT DISTINCT FROM sqlc.narg(expected_generation_owner)
+  AND generation_lease_expires_at IS NOT DISTINCT FROM sqlc.narg(expected_generation_lease_expires_at)
+  AND generation_attempt = sqlc.arg(expected_generation_attempt)
 RETURNING
     id,
     conversation_id,

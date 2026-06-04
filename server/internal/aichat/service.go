@@ -372,6 +372,15 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 			time.Now().UTC(),
 		)
 	}
+	if generationAttemptsExhausted(prepared.Run) {
+		return s.repo.InterruptRun(
+			context.WithoutCancel(ctx),
+			prepared,
+			strings.TrimSpace(prepared.AssistantMessage.Content),
+			interruptionReasonAttemptsExhausted,
+			time.Now().UTC(),
+		)
+	}
 
 	owner := newInngestRunOwner(prepared.Run.ID)
 	if err := s.repo.ClaimRunGeneration(ctx, prepared.Run, owner, now); err != nil {
@@ -678,6 +687,10 @@ func shouldRecoverRun(run *ChatRun, now time.Time) bool {
 	default:
 		return false
 	}
+}
+
+func generationAttemptsExhausted(run *ChatRun) bool {
+	return run != nil && run.GenerationAttempt >= maxGenerationAttempts
 }
 
 func shouldStopResumeAndRecover(run *ChatRun, now time.Time) bool {

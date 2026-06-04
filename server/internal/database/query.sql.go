@@ -2979,7 +2979,13 @@ SET status = 'failed',
     interrupted_at = $4,
     interruption_reason = $5,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND generation_status = $6
+  AND generation_owner IS NOT DISTINCT FROM $7
+  AND generation_lease_expires_at IS NOT DISTINCT FROM $8
+  AND generation_attempt = $9
 RETURNING
     id,
     conversation_id,
@@ -3005,11 +3011,15 @@ RETURNING
 `
 
 type UpdateAIChatRunInterruptedParams struct {
-	ID                 int32              `json:"id"`
-	UserID             string             `json:"user_id"`
-	ErrorMessage       pgtype.Text        `json:"error_message"`
-	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
-	InterruptionReason pgtype.Text        `json:"interruption_reason"`
+	ID                               int32              `json:"id"`
+	UserID                           string             `json:"user_id"`
+	ErrorMessage                     pgtype.Text        `json:"error_message"`
+	CompletedAt                      pgtype.Timestamptz `json:"completed_at"`
+	InterruptionReason               pgtype.Text        `json:"interruption_reason"`
+	ExpectedGenerationStatus         string             `json:"expected_generation_status"`
+	ExpectedGenerationOwner          pgtype.Text        `json:"expected_generation_owner"`
+	ExpectedGenerationLeaseExpiresAt pgtype.Timestamptz `json:"expected_generation_lease_expires_at"`
+	ExpectedGenerationAttempt        int32              `json:"expected_generation_attempt"`
 }
 
 func (q *Queries) UpdateAIChatRunInterrupted(ctx context.Context, arg UpdateAIChatRunInterruptedParams) (AiChatRun, error) {
@@ -3019,6 +3029,10 @@ func (q *Queries) UpdateAIChatRunInterrupted(ctx context.Context, arg UpdateAICh
 		arg.ErrorMessage,
 		arg.CompletedAt,
 		arg.InterruptionReason,
+		arg.ExpectedGenerationStatus,
+		arg.ExpectedGenerationOwner,
+		arg.ExpectedGenerationLeaseExpiresAt,
+		arg.ExpectedGenerationAttempt,
 	)
 	var i AiChatRun
 	err := row.Scan(
