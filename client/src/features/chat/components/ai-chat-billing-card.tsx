@@ -283,8 +283,8 @@ function BillingMessage({
   if (accessState === "payment-confirming") {
     return (
       <p className="text-sm text-muted-foreground">
-        Payment complete. We are confirming your AI chat access. Refresh access
-        if this takes more than a moment.
+        Payment complete. We are confirming your AI chat access and will keep
+        checking automatically.
       </p>
     );
   }
@@ -292,8 +292,8 @@ function BillingMessage({
   if (accessState === "activating") {
     return (
       <p className="text-sm text-muted-foreground">
-        Premium is active. We are finishing AI chat activation. Refresh access
-        if this takes more than a moment.
+        Premium is active. We are finishing AI chat activation and will keep
+        checking automatically.
       </p>
     );
   }

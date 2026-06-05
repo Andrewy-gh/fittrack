@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { NavigateFn } from "@tanstack/react-router";
 import {
@@ -58,6 +58,8 @@ export type AIChatBillingAccess = {
 
 const checkoutAccessRetryDelaysMs =
   import.meta.env.MODE === "test" ? [1, 1, 1, 1] : [1000, 2000, 4000, 8000];
+const checkoutAccessAutoRefreshDelayMs =
+  import.meta.env.MODE === "test" ? 25 : 5000;
 
 export type AIChatAccessState =
   | "checking"
@@ -134,6 +136,12 @@ export function useAIChatBillingAccess({
     onSuccess: (session) => redirectToBillingPortal(session.url),
     onError: (error) => showErrorToast(error, "Could not open billing"),
   });
+  const restartCheckoutAccessPolling = useCallback(() => {
+    setSettledCheckoutPollingView({ status: "idle" });
+    setShouldPollCheckoutAccess(true);
+    void billingQuery.refetch();
+    void featureAccessQuery.refetch();
+  }, [billingQuery.refetch, featureAccessQuery.refetch]);
 
   useEffect(() => {
     if (!checkout) {
@@ -223,6 +231,35 @@ export function useAIChatBillingAccess({
     Boolean(billingQuery.isFetching) ||
     Boolean(featureAccessQuery.isFetching);
 
+  useEffect(() => {
+    if (checkoutNotice !== "success" && accessView.state !== "activating") {
+      return;
+    }
+
+    if (
+      accessView.state !== "payment-confirming" &&
+      accessView.state !== "activating"
+    ) {
+      return;
+    }
+
+    if (isRefreshingAccess) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(
+      restartCheckoutAccessPolling,
+      checkoutAccessAutoRefreshDelayMs,
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    accessView.state,
+    checkoutNotice,
+    isRefreshingAccess,
+    restartCheckoutAccessPolling,
+  ]);
+
   return {
     billingStatus: accessView.billingStatus,
     checkoutNotice,
@@ -242,8 +279,8 @@ export function useAIChatBillingAccess({
         accessView.state === "payment-confirming" ||
         accessView.state === "checkout-activation-error"
       ) {
-        setSettledCheckoutPollingView({ status: "idle" });
-        setShouldPollCheckoutAccess(true);
+        restartCheckoutAccessPolling();
+        return;
       }
       void billingQuery.refetch();
       void featureAccessQuery.refetch();
