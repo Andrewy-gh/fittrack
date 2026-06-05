@@ -30,7 +30,10 @@ export function GuestUserButton() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="outline-none">
+      <DropdownMenuTrigger
+        aria-label="Guest user menu"
+        className="outline-none"
+      >
         <Avatar className="h-8.5 w-8.5">
           <AvatarFallback>
             <User {...iconProps} />
