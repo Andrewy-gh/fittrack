@@ -117,10 +117,7 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(
-      await screen.findByText("AI chat activation is still finishing."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Activating")).toBeInTheDocument();
+    expect(await screen.findByText("Activating")).toBeInTheDocument();
     expect(
       screen.queryByText("Checking your AI chat access..."),
     ).not.toBeInTheDocument();
@@ -177,12 +174,7 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(
-      await screen.findByText(
-        "Payment complete. We are confirming your AI chat access.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Confirming")).toBeInTheDocument();
+    expect(await screen.findByText("Confirming")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
@@ -241,9 +233,6 @@ describe("ChatRouteComponent", () => {
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText("AI chat activation needs another access refresh."),
-    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Refresh access" }));
 
@@ -286,7 +275,6 @@ describe("ChatRouteComponent", () => {
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
     ).toBeDisabled();
-    expect(screen.getByText("AI chat activation is still finishing."));
   });
 
   it("starts Checkout from the no-access trial CTA", async () => {

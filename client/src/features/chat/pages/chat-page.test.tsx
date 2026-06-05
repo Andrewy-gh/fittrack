@@ -125,12 +125,12 @@ describe("ChatRouteComponent", () => {
       category: "ux",
       outcome: "failure_toast_shown",
     });
+    expect(screen.getByText("What should we train today?")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "No messages yet. Start a new chat or send the first prompt.",
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
-    ).toBeInTheDocument();
-    expect(promptBox).toHaveValue("hello");
+    ).toHaveValue("hello");
   });
 
   it("keeps the prompt visible and shows the recovery failure when submit recovery fails before stream start", async () => {
@@ -185,9 +185,7 @@ describe("ChatRouteComponent", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          "No messages yet. Start a new chat or send the first prompt.",
-        ),
+        screen.getByText("What should we train today?"),
       ).toBeInTheDocument();
     });
 
@@ -239,9 +237,7 @@ describe("ChatRouteComponent", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          "No messages yet. Start a new chat or send the first prompt.",
-        ),
+        screen.getByText("What should we train today?"),
       ).toBeInTheDocument();
     });
 
@@ -306,11 +302,7 @@ describe("ChatRouteComponent", () => {
         ),
       ).toBeEnabled();
     });
-    expect(
-      screen.getByText(
-        "No messages yet. Start a new chat or send the first prompt.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("What should we train today?")).toBeInTheDocument();
     expect(mockShowErrorToast).not.toHaveBeenCalled();
     expect(mockReportTelemetry).toHaveBeenCalledWith({
       category: "recovery",
@@ -520,7 +512,7 @@ describe("ChatRouteComponent", () => {
     });
     expect(streamSignal?.aborted).toBe(false);
     expect(screen.getByText("hello")).toBeInTheDocument();
-    expect(screen.getByText("...")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-typing-indicator")).toBeInTheDocument();
 
     view.unmount();
   });

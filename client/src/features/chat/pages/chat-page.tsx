@@ -1,16 +1,20 @@
-import type { FormEvent } from "react";
+import { Plus } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import type {
   AIChatMessage,
   AIWorkoutDraft,
 } from "@/features/chat/api/ai-chat";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
 import { workoutDraftStorage } from "@/lib/local-storage";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AIChatBillingCard } from "../components/ai-chat-billing-card";
+import { ChatComposer } from "../components/chat-composer";
+import { ChatEmptyState } from "../components/chat-empty-state";
+import { ChatMessageActions } from "../components/chat-message-actions";
+import { ChatTypingIndicator } from "../components/chat-typing-indicator";
 import { ChatWorkoutDraftCard } from "../components/chat-workout-draft-card";
 import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
@@ -23,6 +27,11 @@ type ChatPageProps = {
   conversationIdSearch?: string;
   checkout?: ChatCheckoutSearch;
 };
+
+const COMPOSER_PLACEHOLDER =
+  "Ask about training, recovery, exercise choices, or FitTrack usage...";
+
+const EXAMPLE_PROMPTS = ["Build me a 45-min push day", "Plan leg day"];
 
 export function ChatPage({
   userId,
@@ -43,6 +52,7 @@ export function ChatPage({
     latestWorkoutDraftMessageId,
     createNewChat,
     submitPrompt,
+    submitPromptValue,
     saveLatestWorkoutDraft,
   } = useAIChatSession({
     conversationId,
@@ -76,21 +86,54 @@ export function ChatPage({
   }
   const currentUserId = userId;
 
+  const hasChatAccess = billingAccess.hasChatAccess;
+  const isComposerDisabled =
+    isSubmitting || billingAccess.isCheckingAccess || !hasChatAccess;
+
   async function handleNewChat() {
-    if (!billingAccess.hasChatAccess || billingAccess.isCheckingAccess) {
+    if (!hasChatAccess || billingAccess.isCheckingAccess) {
       return;
     }
 
     await createNewChat();
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!billingAccess.hasChatAccess || billingAccess.isCheckingAccess) {
+  async function handleSubmit() {
+    if (isComposerDisabled) {
       return;
     }
 
     await submitPrompt();
+    billingAccess.refreshAccess();
+  }
+
+  async function handleSelectExample(text: string) {
+    if (isComposerDisabled) {
+      return;
+    }
+
+    setPrompt(text);
+    await submitPromptValue(text);
+    billingAccess.refreshAccess();
+  }
+
+  async function handleRetry() {
+    if (isComposerDisabled) {
+      return;
+    }
+
+    let lastUserPrompt: string | undefined;
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].role === "user") {
+        lastUserPrompt = messages[index].content;
+        break;
+      }
+    }
+    if (!lastUserPrompt) {
+      return;
+    }
+
+    await submitPromptValue(lastUserPrompt);
     billingAccess.refreshAccess();
   }
 
@@ -125,166 +168,157 @@ export function ChatPage({
     conversation?.latest_workout_draft_status?.is_saved ?? false;
   const savedWorkoutId =
     conversation?.latest_workout_draft_status?.saved_workout_id;
-  const chatAccessMessage =
-    billingAccess.accessState === "payment-confirming"
-      ? "Payment complete. We are confirming your AI chat access."
-      : billingAccess.accessState === "activating"
-        ? "AI chat activation is still finishing."
-        : billingAccess.accessState === "checkout-activation-error"
-          ? "AI chat activation needs another access refresh."
-          : "Start or restore premium access to use AI chat.";
+
+  let lastAssistantMessageId: number | null = null;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === "assistant") {
+      lastAssistantMessageId = messages[index].id;
+      break;
+    }
+  }
+
+  const composer = (
+    <ChatComposer
+      value={prompt}
+      onChange={setPrompt}
+      onSubmit={handleSubmit}
+      disabled={isComposerDisabled}
+      isSubmitting={isSubmitting}
+      placeholder={COMPOSER_PLACEHOLDER}
+      autoFocus={messages.length === 0}
+    />
+  );
+
+  const showEmptyState =
+    !isLoadingConversation &&
+    !loadError &&
+    messages.length === 0 &&
+    !conversation?.latest_workout_draft;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <div>
-            <CardTitle>AI Chat</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Persisted chat with reopenable workout drafts and a direct handoff
-              into the workout form.
-            </p>
+    <div className="flex flex-col gap-4 pb-10">
+      <div className="mx-auto w-full max-w-3xl px-4 pt-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="sm:flex-1">
+            <AIChatBillingCard
+              status={billingAccess.billingStatus}
+              accessState={billingAccess.accessState}
+              isLoading={billingAccess.isBillingCardLoading}
+              isError={billingAccess.isBillingError}
+              isRefreshingAccess={billingAccess.isRefreshingAccess}
+              isCheckoutLoading={billingAccess.isCheckoutLoading}
+              isBillingPortalLoading={billingAccess.isBillingPortalLoading}
+              onStartCheckout={billingAccess.startCheckout}
+              onManageBilling={billingAccess.manageBilling}
+              onRefreshAccess={billingAccess.refreshAccess}
+            />
           </div>
           <Button
             type="button"
             variant="outline"
+            aria-label="New Chat"
             onClick={handleNewChat}
-            disabled={
-              billingAccess.isCheckingAccess || !billingAccess.hasChatAccess
-            }
+            disabled={billingAccess.isCheckingAccess || !hasChatAccess}
+            className="self-end sm:self-start"
           >
+            <Plus className="size-4" />
             New Chat
           </Button>
-        </CardHeader>
-      </Card>
+        </div>
+      </div>
 
       {billingAccess.checkoutNotice ? (
-        <CheckoutNotice checkout={billingAccess.checkoutNotice} />
+        <div className="mx-auto w-full max-w-3xl px-4">
+          <CheckoutNotice checkout={billingAccess.checkoutNotice} />
+        </div>
       ) : null}
 
-      <AIChatBillingCard
-        status={billingAccess.billingStatus}
-        accessState={billingAccess.accessState}
-        isLoading={billingAccess.isBillingCardLoading}
-        isError={billingAccess.isBillingError}
-        isRefreshingAccess={billingAccess.isRefreshingAccess}
-        isCheckoutLoading={billingAccess.isCheckoutLoading}
-        isBillingPortalLoading={billingAccess.isBillingPortalLoading}
-        onStartCheckout={billingAccess.startCheckout}
-        onManageBilling={billingAccess.manageBilling}
-        onRefreshAccess={billingAccess.refreshAccess}
-      />
-
-      <Card className="min-h-[32rem]">
-        <CardContent className="flex h-full flex-col gap-4 p-4">
-          {isLoadingConversation ? (
-            <div className="text-sm text-muted-foreground">
-              Loading conversation...
-            </div>
-          ) : loadError ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {loadError}
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-              No messages yet. Start a new chat or send the first prompt.
-            </div>
-          ) : (
-            <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-              {messages.map((message) => (
-                <MessageBubble
-                  key={`${message.id}-${message.updated_at}`}
-                  message={message}
-                  workoutDraft={
-                    message.id === latestWorkoutDraftMessageId
-                      ? conversation?.latest_workout_draft
-                      : undefined
-                  }
-                  onEditWorkoutDraft={() => {
-                    if (conversation?.latest_workout_draft) {
-                      handleEditInWorkoutForm(
-                        conversation.latest_workout_draft,
-                      );
+      <div className="mx-auto w-full max-w-3xl px-4">
+        {showEmptyState ? (
+          <ChatEmptyState
+            heading={
+              hasChatAccess
+                ? "What should we train today?"
+                : "Unlock your AI training partner"
+            }
+            examples={hasChatAccess ? EXAMPLE_PROMPTS : []}
+            onSelectExample={handleSelectExample}
+            composer={composer}
+            disabled={isComposerDisabled}
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            {loadError ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {loadError}
+              </div>
+            ) : isLoadingConversation && messages.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                Loading conversation...
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {messages.map((message) => (
+                  <MessageBubble
+                    key={`${message.id}-${message.updated_at}`}
+                    message={message}
+                    isLastAssistant={message.id === lastAssistantMessageId}
+                    onRetry={handleRetry}
+                    workoutDraft={
+                      message.id === latestWorkoutDraftMessageId
+                        ? conversation?.latest_workout_draft
+                        : undefined
                     }
-                  }}
-                  onSaveWorkoutDraft={() => {
-                    if (conversation?.latest_workout_draft) {
-                      void handleSaveWorkoutDraft();
+                    onEditWorkoutDraft={() => {
+                      if (conversation?.latest_workout_draft) {
+                        handleEditInWorkoutForm(
+                          conversation.latest_workout_draft,
+                        );
+                      }
+                    }}
+                    onSaveWorkoutDraft={() => {
+                      if (conversation?.latest_workout_draft) {
+                        void handleSaveWorkoutDraft();
+                      }
+                    }}
+                    onOpenSavedWorkout={
+                      savedWorkoutId
+                        ? () => handleOpenSavedWorkout(savedWorkoutId)
+                        : undefined
                     }
-                  }}
-                  onOpenSavedWorkout={
-                    savedWorkoutId
-                      ? () => handleOpenSavedWorkout(savedWorkoutId)
-                      : undefined
-                  }
-                  isSavingWorkoutDraft={isSavingWorkoutDraft}
-                  isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
-                  savedWorkoutId={savedWorkoutId}
-                />
-              ))}
-            </div>
-          )}
+                    isSavingWorkoutDraft={isSavingWorkoutDraft}
+                    isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
+                    savedWorkoutId={savedWorkoutId}
+                  />
+                ))}
+              </div>
+            )}
 
-          {conversation?.latest_workout_draft &&
-          latestWorkoutDraftMessageId === null ? (
-            <ChatWorkoutDraftCard
-              className="max-w-[85%]"
-              draft={conversation.latest_workout_draft}
-              isSaving={isSavingWorkoutDraft}
-              isSaved={isLatestWorkoutDraftSaved}
-              savedWorkoutId={savedWorkoutId}
-              onSave={() => void handleSaveWorkoutDraft()}
-              onEdit={() =>
-                handleEditInWorkoutForm(conversation.latest_workout_draft!)
-              }
-              onOpenSavedWorkout={
-                savedWorkoutId
-                  ? () => handleOpenSavedWorkout(savedWorkoutId)
-                  : undefined
-              }
-            />
-          ) : null}
-
-          <form
-            className="mt-auto flex flex-col gap-3"
-            onSubmit={handleSubmit}
-          >
-            <Textarea
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              placeholder="Ask about training, recovery, exercise choices, or FitTrack usage..."
-              rows={4}
-              disabled={
-                isSubmitting ||
-                billingAccess.isCheckingAccess ||
-                !billingAccess.hasChatAccess
-              }
-            />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                {billingAccess.isCheckingAccess
-                  ? "Checking AI chat access..."
-                  : billingAccess.hasChatAccess
-                    ? `Conversation ID: ${
-                        conversation?.id ?? conversationId ?? "not created yet"
-                      }`
-                    : chatAccessMessage}
-              </p>
-              <Button
-                type="submit"
-                disabled={
-                  isSubmitting ||
-                  !prompt.trim() ||
-                  billingAccess.isCheckingAccess ||
-                  !billingAccess.hasChatAccess
+            {conversation?.latest_workout_draft &&
+            latestWorkoutDraftMessageId === null ? (
+              <ChatWorkoutDraftCard
+                draft={conversation.latest_workout_draft}
+                isSaving={isSavingWorkoutDraft}
+                isSaved={isLatestWorkoutDraftSaved}
+                savedWorkoutId={savedWorkoutId}
+                onSave={() => void handleSaveWorkoutDraft()}
+                onEdit={() =>
+                  handleEditInWorkoutForm(conversation.latest_workout_draft!)
                 }
-              >
-                {isSubmitting ? "Streaming..." : "Send"}
-              </Button>
+                onOpenSavedWorkout={
+                  savedWorkoutId
+                    ? () => handleOpenSavedWorkout(savedWorkoutId)
+                    : undefined
+                }
+              />
+            ) : null}
+
+            <div className="bg-background pt-2 md:sticky md:bottom-4">
+              {composer}
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -309,6 +343,8 @@ function CheckoutNotice({ checkout }: { checkout: ChatCheckoutSearch }) {
 
 function MessageBubble({
   message,
+  isLastAssistant,
+  onRetry,
   workoutDraft,
   isSavingWorkoutDraft,
   isSavedWorkoutDraft,
@@ -318,6 +354,8 @@ function MessageBubble({
   onOpenSavedWorkout,
 }: {
   message: AIChatMessage;
+  isLastAssistant?: boolean;
+  onRetry?: () => void;
   workoutDraft?: AIWorkoutDraft;
   isSavingWorkoutDraft?: boolean;
   isSavedWorkoutDraft?: boolean;
@@ -327,44 +365,54 @@ function MessageBubble({
   onOpenSavedWorkout?: () => void;
 }) {
   const isUser = message.role === "user";
-  const statusLabel =
-    message.status === "failed"
-      ? "failed"
-      : message.status === "streaming"
-        ? "streaming"
-        : null;
+
+  if (isUser) {
+    return (
+      <div
+        data-testid={`chat-message-${message.id}`}
+        className="flex justify-end"
+      >
+        <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  const isStreaming = message.status === "streaming";
+  const isFailed = message.status === "failed";
+  const showActions =
+    !isStreaming && (message.content.trim().length > 0 || isFailed);
 
   return (
     <div
       data-testid={`chat-message-${message.id}`}
-      className={`flex max-w-[85%] flex-col gap-3 ${
-        isUser ? "ml-auto items-end" : "mr-auto items-start"
-      }`}
+      className="flex flex-col gap-2"
     >
-      <div
-        className={`w-full rounded-lg border px-4 py-3 text-sm ${
-          isUser
-            ? "border-primary/30 bg-primary/10"
-            : "border-border bg-background"
-        }`}
-      >
-        <div className="mb-2 flex items-center justify-between gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-          <span>{isUser ? "You" : "Assistant"}</span>
-          {statusLabel ? <span>{statusLabel}</span> : null}
-        </div>
-        <div className="whitespace-pre-wrap leading-relaxed">
-          {message.content || (message.status === "streaming" ? "..." : "")}
-        </div>
-        {message.error_message ? (
-          <div className="mt-2 text-xs text-destructive">
-            {message.error_message}
-          </div>
+      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+        {message.content}
+        {isStreaming ? (
+          <ChatTypingIndicator
+            className={message.content ? "ml-1" : undefined}
+          />
         ) : null}
       </div>
 
-      {!isUser && workoutDraft && onSaveWorkoutDraft && onEditWorkoutDraft ? (
+      {message.error_message ? (
+        <div className="text-xs text-destructive">{message.error_message}</div>
+      ) : null}
+
+      {showActions ? (
+        <ChatMessageActions
+          content={message.content}
+          canRetry={Boolean(isLastAssistant && onRetry)}
+          onRetry={onRetry}
+        />
+      ) : null}
+
+      {workoutDraft && onSaveWorkoutDraft && onEditWorkoutDraft ? (
         <ChatWorkoutDraftCard
-          className="w-full"
+          className={cn("mt-1 w-full")}
           draft={workoutDraft}
           isSaving={isSavingWorkoutDraft}
           isSaved={isSavedWorkoutDraft}
