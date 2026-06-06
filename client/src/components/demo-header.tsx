@@ -1,16 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Sun, Moon } from "lucide-react";
-import { useTheme } from "@/components/theme-provider";
-import { Button } from "@/components/ui/button";
+import { GuestUserButton } from "./guest-user-button";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 
 export function DemoHeader() {
-  const { theme, setTheme } = useTheme();
-
-  const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light");
-  };
-
   return (
     <>
       <header
@@ -32,16 +24,7 @@ export function DemoHeader() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-8 w-8"
-          >
-            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
-          </Button>
-        </div>
+        <GuestUserButton />
       </header>
 
       <MobileBottomNav
