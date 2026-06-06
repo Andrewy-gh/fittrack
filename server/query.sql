@@ -864,6 +864,13 @@ SELECT
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -887,6 +894,13 @@ SELECT
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -921,7 +935,19 @@ INSERT INTO ai_chat_stream_chunk (
     sequence,
     delta_text
 )
-VALUES ($1, $2, $3, $4)
+SELECT $1, $2, $3, $4
+WHERE (
+    NULLIF($5::text, '') IS NULL
+    OR EXISTS (
+        SELECT 1
+        FROM ai_chat_run
+        WHERE id = $1
+          AND user_id = $2
+          AND status = 'streaming'
+          AND generation_status = 'generating'
+          AND generation_owner = $5
+    )
+)
 RETURNING
     run_id,
     user_id,
@@ -976,6 +1002,13 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -1095,8 +1128,16 @@ SET status = 'completed',
     error_message = NULL,
     completed_at = $3,
     workout_draft = NULLIF($4::text, '')::jsonb,
+    generation_status = 'completed',
+    generation_owner = NULL,
+    generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL,
+    interrupted_at = NULL,
+    interruption_reason = NULL,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
+  AND user_id = $2
+  AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
     conversation_id,
@@ -1108,6 +1149,13 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
@@ -1120,13 +1168,27 @@ WHERE id = $1
   AND user_id = $2
   AND status = 'streaming';
 
--- name: MarkAIChatRunAwaitingRecovery :one
+-- name: ClaimAIChatRunGeneration :one
 UPDATE ai_chat_run
-SET error_message = $3,
+SET generation_status = 'generating',
+    generation_owner = $3,
+    generation_lease_expires_at = $4,
+    generation_heartbeat_at = $5,
+    generation_attempt = generation_attempt + 1,
+    error_message = NULL,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming'
+  AND generation_attempt < $6
+  AND (
+    generation_status = 'queued'
+    OR (
+      generation_status = 'generating'
+      AND generation_lease_expires_at IS NOT NULL
+      AND generation_lease_expires_at < $5
+    )
+  )
 RETURNING
     id,
     conversation_id,
@@ -1138,35 +1200,28 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,
     completed_at;
 
--- name: ClaimAIChatRunRecovery :one
+-- name: HeartbeatAIChatRunGeneration :execrows
 UPDATE ai_chat_run
-SET error_message = $5,
+SET generation_lease_expires_at = $3,
+    generation_heartbeat_at = $4,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
   AND status = 'streaming'
-  AND error_message = $3
-  AND updated_at = $4
-RETURNING
-    id,
-    conversation_id,
-    user_id,
-    user_message_id,
-    assistant_message_id,
-    model,
-    status,
-    request_id,
-    error_message,
-    workout_draft,
-    created_at,
-    updated_at,
-    started_at,
-    completed_at;
+  AND generation_status = 'generating'
+  AND generation_owner = $5;
 
 -- name: UpdateAIChatRunFailed :one
 UPDATE ai_chat_run
@@ -1174,8 +1229,16 @@ SET status = 'failed',
     error_message = $3,
     completed_at = $4,
     workout_draft = NULL,
+    generation_status = 'failed',
+    generation_owner = NULL,
+    generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL,
+    interrupted_at = NULL,
+    interruption_reason = NULL,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $2
+WHERE id = $1
+  AND user_id = $2
+  AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
     conversation_id,
@@ -1187,6 +1250,56 @@ RETURNING
     request_id,
     error_message,
     workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
+    created_at,
+    updated_at,
+    started_at,
+    completed_at;
+
+-- name: UpdateAIChatRunInterrupted :one
+UPDATE ai_chat_run
+SET status = 'failed',
+    error_message = $3,
+    completed_at = $4,
+    workout_draft = NULL,
+    generation_status = 'interrupted',
+    generation_owner = NULL,
+    generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL,
+    interrupted_at = $4,
+    interruption_reason = $5,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND user_id = $2
+  AND status = 'streaming'
+  AND generation_status = sqlc.arg(expected_generation_status)
+  AND generation_owner IS NOT DISTINCT FROM sqlc.narg(expected_generation_owner)
+  AND generation_lease_expires_at IS NOT DISTINCT FROM sqlc.narg(expected_generation_lease_expires_at)
+  AND generation_attempt = sqlc.arg(expected_generation_attempt)
+RETURNING
+    id,
+    conversation_id,
+    user_id,
+    user_message_id,
+    assistant_message_id,
+    model,
+    status,
+    request_id,
+    error_message,
+    workout_draft,
+    generation_status,
+    generation_owner,
+    generation_lease_expires_at,
+    generation_heartbeat_at,
+    generation_attempt,
+    interrupted_at,
+    interruption_reason,
     created_at,
     updated_at,
     started_at,

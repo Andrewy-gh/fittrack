@@ -109,6 +109,11 @@ func (m *mockChatService) PrepareMessageStream(ctx context.Context, conversation
 	return prepared, args.Error(1)
 }
 
+func (m *mockChatService) StartMessageGeneration(ctx context.Context, prepared *PreparedMessageStream) error {
+	args := m.Called(ctx, prepared)
+	return args.Error(0)
+}
+
 func (m *mockChatService) PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error) {
 	args := m.Called(ctx, conversationID, runID, afterSequence)
 	prepared, _ := args.Get(0).(*PreparedResumeStream)
@@ -531,7 +536,8 @@ func TestHandlerStreamMessage(t *testing.T) {
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
 		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
-		service.On("StreamMessage", mock.Anything, prepared, mock.Anything).Return(&StreamDone{
+		service.On("StartMessageGeneration", mock.Anything, prepared).Return(nil).Once()
+		service.On("ResumeMessageStream", mock.Anything, mock.AnythingOfType("*aichat.PreparedResumeStream"), mock.Anything).Return(&StreamDone{
 			ConversationID: 41,
 			RunID:          51,
 			MessageID:      61,
@@ -555,7 +561,7 @@ func TestHandlerStreamMessage(t *testing.T) {
 		assert.Contains(t, body, `"run_id":51`)
 		assert.Contains(t, body, `"message_id":61`)
 		assert.Contains(t, body, "event: delta")
-		assert.Contains(t, body, `"delta":"hello "`)
+		assert.Contains(t, body, `"delta":"replayed "`)
 		assert.Contains(t, body, "event: done")
 		assert.Contains(t, body, `"text":"hello world"`)
 		service.AssertExpectations(t)
@@ -567,7 +573,8 @@ func TestHandlerStreamMessage(t *testing.T) {
 		prepared := preparedStreamFixture()
 		workoutFocus := "pull"
 		service.On("PrepareMessageStream", mock.Anything, int32(41), "build workout", "req-123").Return(prepared, nil).Once()
-		service.On("StreamMessage", mock.Anything, prepared, mock.Anything).Return(&StreamDone{
+		service.On("StartMessageGeneration", mock.Anything, prepared).Return(nil).Once()
+		service.On("ResumeMessageStream", mock.Anything, mock.AnythingOfType("*aichat.PreparedResumeStream"), mock.Anything).Return(&StreamDone{
 			ConversationID: 41,
 			RunID:          51,
 			MessageID:      61,
@@ -605,7 +612,8 @@ func TestHandlerStreamMessage(t *testing.T) {
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
 		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
-		service.On("StreamMessage", mock.Anything, prepared, mock.Anything).Return((*StreamDone)(nil), errors.New("provider failed")).Once()
+		service.On("StartMessageGeneration", mock.Anything, prepared).Return(nil).Once()
+		service.On("ResumeMessageStream", mock.Anything, mock.AnythingOfType("*aichat.PreparedResumeStream"), mock.Anything).Return((*StreamDone)(nil), errors.New("provider failed")).Once()
 
 		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
 		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))

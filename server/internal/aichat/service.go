@@ -48,8 +48,6 @@ const (
 	recoverStatusQueued          = "queued"
 	recoverStatusNotNeeded       = "not_needed"
 	recoverReasonStreamReconnect = "stream_reconnect"
-	runAwaitingRecoveryMarker    = "ai chat stream interrupted and awaiting recovery handoff"
-	runRecoveryClaimedMarker     = "ai chat recovery claimed and in progress"
 )
 
 func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository, workouts workoutCreator) *Service {
@@ -240,7 +238,21 @@ func (s *Service) PrepareMessageStream(ctx context.Context, conversationID int32
 }
 
 func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error) (*StreamDone, error) {
-	return s.executePreparedRun(ctx, prepared, onChunk, true)
+	return s.executePreparedRun(ctx, prepared, onChunk)
+}
+
+func (s *Service) StartMessageGeneration(ctx context.Context, prepared *PreparedMessageStream) error {
+	owner := newAPIRunOwner()
+	now := time.Now().UTC()
+	if err := s.repo.ClaimRunGeneration(context.WithoutCancel(ctx), prepared.Run, owner, now); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrConversationBusy
+		}
+		return err
+	}
+
+	go s.runOwnedGeneration(context.WithoutCancel(ctx), prepared, owner)
+	return nil
 }
 
 func (s *Service) PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error) {
@@ -351,32 +363,96 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 	if !shouldRecoverRun(prepared.Run, now) {
 		return nil
 	}
-	if err := s.repo.ClaimRunRecovery(ctx, prepared.Run); err != nil {
+	if prepared.LastSequence > 0 || strings.TrimSpace(prepared.AssistantMessage.Content) != "" {
+		return s.repo.InterruptRun(
+			context.WithoutCancel(ctx),
+			prepared,
+			strings.TrimSpace(prepared.AssistantMessage.Content),
+			interruptionReasonStalePartial,
+			time.Now().UTC(),
+		)
+	}
+	if generationAttemptsExhausted(prepared.Run) {
+		return s.repo.InterruptRun(
+			context.WithoutCancel(ctx),
+			prepared,
+			strings.TrimSpace(prepared.AssistantMessage.Content),
+			interruptionReasonAttemptsExhausted,
+			time.Now().UTC(),
+		)
+	}
+
+	owner := newInngestRunOwner(prepared.Run.ID)
+	if err := s.repo.ClaimRunGeneration(ctx, prepared.Run, owner, now); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
 	}
 
-	_, err = s.executePreparedRun(ctx, prepared, nil, false)
-	if err == nil || prepared.Run == nil || prepared.Run.Status != statusStreaming {
-		return err
-	}
-
-	restoreErr := s.repo.MarkRunAwaitingRecovery(
-		context.WithoutCancel(ctx),
-		prepared,
-		strings.TrimSpace(prepared.AssistantMessage.Content),
-		time.Now().UTC(),
-	)
-	if restoreErr != nil {
-		return errors.Join(err, restoreErr)
-	}
-
+	_, err = s.executeOwnedRun(ctx, prepared, owner)
 	return err
 }
 
-func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error, allowRecovery bool) (*StreamDone, error) {
+func (s *Service) runOwnedGeneration(ctx context.Context, prepared *PreparedMessageStream, owner runOwner) {
+	if _, err := s.executeOwnedRun(ctx, prepared, owner); err != nil {
+		s.logger.Error("failed to complete owned ai chat generation",
+			"error", err,
+			"conversation_id", prepared.Conversation.ID,
+			"run_id", prepared.Run.ID,
+			"owner", owner.Value(),
+		)
+	}
+}
+
+func (s *Service) executeOwnedRun(ctx context.Context, prepared *PreparedMessageStream, owner runOwner) (*StreamDone, error) {
+	generationCtx, cancel := context.WithTimeout(ctx, chatGenerationTimeout)
+	defer cancel()
+
+	heartbeatDone := make(chan struct{})
+	go s.heartbeatRunGeneration(generationCtx, cancel, prepared, owner, heartbeatDone)
+
+	done, err := s.executePreparedRun(generationCtx, prepared, nil)
+	cancel()
+	<-heartbeatDone
+	return done, err
+}
+
+func (s *Service) heartbeatRunGeneration(ctx context.Context, cancel context.CancelFunc, prepared *PreparedMessageStream, owner runOwner, done chan<- struct{}) {
+	defer close(done)
+
+	ticker := time.NewTicker(generationHeartbeatInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			ok, err := s.repo.HeartbeatRunGeneration(context.WithoutCancel(ctx), prepared.Run, owner, now.UTC())
+			if err != nil {
+				s.logger.Error("failed to heartbeat ai chat generation",
+					"error", err,
+					"conversation_id", prepared.Conversation.ID,
+					"run_id", prepared.Run.ID,
+					"owner", owner.Value(),
+				)
+				continue
+			}
+			if !ok {
+				s.logger.Warn("ai chat generation lost ownership lease",
+					"conversation_id", prepared.Conversation.ID,
+					"run_id", prepared.Run.ID,
+					"owner", owner.Value(),
+				)
+				cancel()
+				return
+			}
+		}
+	}
+}
+
+func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMessageStream, onChunk func(StreamChunk) error) (*StreamDone, error) {
 	traceStartedAt := time.Now()
 	history := toRuntimeHistory(prepared.History)
 	var partial strings.Builder
@@ -417,12 +493,6 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		return nil
 	})
 	if err != nil {
-		if allowRecovery && errors.Is(err, ErrStreamDisconnected) {
-			if markErr := s.repo.MarkRunAwaitingRecovery(persistCtx, prepared, strings.TrimSpace(partial.String()), time.Now().UTC()); markErr != nil {
-				return nil, markErr
-			}
-			return nil, ErrStreamAwaitingRecovery
-		}
 		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
 			s.logger.Error("failed to persist ai chat run failure", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
@@ -605,28 +675,22 @@ func isClientSafeError(err error) bool {
 		errors.Is(err, ErrGenerationTimeout)
 }
 
-func isRunAwaitingRecovery(run *ChatRun) bool {
-	if run == nil || run.ErrorMessage == nil {
-		return false
-	}
-	return strings.TrimSpace(*run.ErrorMessage) == runAwaitingRecoveryMarker
-}
-
-func isRunRecoveryClaimed(run *ChatRun) bool {
-	if run == nil || run.ErrorMessage == nil {
-		return false
-	}
-	return strings.TrimSpace(*run.ErrorMessage) == runRecoveryClaimedMarker
-}
-
 func shouldRecoverRun(run *ChatRun, now time.Time) bool {
 	if run == nil || run.Status != statusStreaming {
 		return false
 	}
-	if isRunAwaitingRecovery(run) {
-		return true
+	switch run.GenerationStatus {
+	case generationStatusGenerating:
+		return run.LeaseExpiresAt != nil && now.UTC().After(run.LeaseExpiresAt.UTC())
+	case generationStatusQueued:
+		return isStreamingRunStale(run.UpdatedAt, now)
+	default:
+		return false
 	}
-	return isRunRecoveryClaimed(run) && isStreamingRunStale(run.UpdatedAt, now)
+}
+
+func generationAttemptsExhausted(run *ChatRun) bool {
+	return run != nil && run.GenerationAttempt >= maxGenerationAttempts
 }
 
 func shouldStopResumeAndRecover(run *ChatRun, now time.Time) bool {

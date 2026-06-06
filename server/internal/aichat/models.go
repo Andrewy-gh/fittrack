@@ -33,7 +33,9 @@ var (
 )
 
 const (
-	streamInterruptedFailureMessage = "ai chat stream was interrupted before completion"
+	streamInterruptedFailureMessage     = "ai chat stream was interrupted before completion"
+	interruptionReasonStalePartial      = "stale_partial"
+	interruptionReasonAttemptsExhausted = "generation_attempts_exhausted"
 )
 
 type ValidateRequest struct {
@@ -102,6 +104,13 @@ type ChatRun struct {
 	RequestID          *string                       `json:"request_id,omitempty"`
 	ErrorMessage       *string                       `json:"error_message,omitempty"`
 	WorkoutDraft       *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
+	GenerationStatus   string                        `json:"generation_status"`
+	GenerationOwner    *string                       `json:"generation_owner,omitempty"`
+	LeaseExpiresAt     *time.Time                    `json:"generation_lease_expires_at,omitempty"`
+	HeartbeatAt        *time.Time                    `json:"generation_heartbeat_at,omitempty"`
+	GenerationAttempt  int32                         `json:"generation_attempt"`
+	InterruptedAt      *time.Time                    `json:"interrupted_at,omitempty"`
+	InterruptionReason *string                       `json:"interruption_reason,omitempty"`
 	CreatedAt          time.Time                     `json:"created_at"`
 	UpdatedAt          time.Time                     `json:"updated_at"`
 	StartedAt          time.Time                     `json:"started_at"`

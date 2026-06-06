@@ -15,6 +15,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -132,6 +133,77 @@ func TestRepositoryCompleteRun_AllowsNilWorkoutDraft(t *testing.T) {
 	err = pool.QueryRow(ctx, "SELECT workout_draft FROM ai_chat_run WHERE id = $1 AND user_id = $2", run.ID, userID).Scan(&storedRunDraft)
 	require.NoError(t, err)
 	assert.Nil(t, storedRunDraft)
+}
+
+func TestRepositoryInterruptRun_RequiresLoadedGenerationSnapshot(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-interrupt-snapshot-user"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	exerciseRepo := exercise.NewRepository(logger, queries, pool)
+	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+
+	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "Keep generating while recovery races.", defaultModelName, "req-interrupt-snapshot")
+	require.NoError(t, err)
+
+	claimAt := time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC)
+	owner := newRunOwner(runOwnerKindAPI, "stale-owner")
+	err = repo.ClaimRunGeneration(ctx, prepared.Run, owner, claimAt)
+	require.NoError(t, err)
+
+	_, err = repo.AppendStreamChunk(ctx, prepared, "partial", "partial", claimAt.Add(time.Second))
+	require.NoError(t, err)
+
+	renewedLease := prepared.Run.LeaseExpiresAt.Add(generationLeaseDuration)
+	heartbeatAt := claimAt.Add(5 * time.Second)
+	_, err = pool.Exec(ctx, `
+		UPDATE ai_chat_run
+		SET generation_lease_expires_at = $1,
+		    generation_heartbeat_at = $2,
+		    updated_at = $2
+		WHERE id = $3 AND user_id = $4
+	`, renewedLease, heartbeatAt, prepared.Run.ID, userID)
+	require.NoError(t, err)
+
+	err = repo.InterruptRun(ctx, prepared, "partial", interruptionReasonStalePartial, claimAt.Add(10*time.Second))
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, pgx.ErrNoRows), "expected stale interrupt to miss the renewed run, got %v", err)
+
+	var runStatus, generationStatus string
+	err = pool.QueryRow(ctx, `
+		SELECT status, generation_status
+		FROM ai_chat_run
+		WHERE id = $1 AND user_id = $2
+	`, prepared.Run.ID, userID).Scan(&runStatus, &generationStatus)
+	require.NoError(t, err)
+	assert.Equal(t, statusStreaming, runStatus)
+	assert.Equal(t, generationStatusGenerating, generationStatus)
+
+	var messageStatus, content string
+	err = pool.QueryRow(ctx, `
+		SELECT status, content
+		FROM ai_chat_message
+		WHERE id = $1 AND user_id = $2
+	`, prepared.AssistantMessage.ID, userID).Scan(&messageStatus, &content)
+	require.NoError(t, err)
+	assert.Equal(t, statusStreaming, messageStatus)
+	assert.Equal(t, "partial", content)
 }
 
 func TestRepositoryCompleteRun_PersistsWorkoutDraftWithNullByteText(t *testing.T) {
@@ -401,6 +473,8 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-nil-draft-user")
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-null-byte-draft-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-interrupt-snapshot-user")
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-save-draft-race-user")
 		require.NoError(t, err)
