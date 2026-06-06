@@ -55,6 +55,21 @@ func TestTextPtrToPg_PreservesNilAsNull(t *testing.T) {
 	}
 }
 
+func TestNewInngestRunOwner_UniquePerRecoveryClaim(t *testing.T) {
+	first := newInngestRunOwner(51).Value()
+	second := newInngestRunOwner(51).Value()
+
+	if first == second {
+		t.Fatalf("recovery owners should be unique per claim, got %q", first)
+	}
+	if !strings.HasPrefix(first, "inngest:run-51-") {
+		t.Fatalf("recovery owner should include run id for traceability, got %q", first)
+	}
+	if !strings.HasPrefix(second, "inngest:run-51-") {
+		t.Fatalf("recovery owner should include run id for traceability, got %q", second)
+	}
+}
+
 func TestIsStreamingRunStale(t *testing.T) {
 	now := time.Date(2026, 3, 26, 18, 30, 0, 0, time.UTC)
 

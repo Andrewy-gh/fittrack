@@ -162,5 +162,13 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome: ExpectedNarrowScopeBeforeGenerate,
 			FollowUpAnswer:  "Focus on the workout only: beginner, no injuries, 35 minutes, full gym.",
 		},
+		{
+			ID:              "prompt-19",
+			Title:           "Machine Chest Hypertrophy Follow-Up",
+			Prompt:          "Hello I would like a chest workout for today. I have about an hour and a half with warm up included. Only machines and cables. Focusing on hypertrophy.",
+			Expectation:     "Should ask about injuries first, then generate a structured machine-and-cable chest draft after a short no-injuries answer without failing workout contract validation.",
+			ExpectedOutcome: ExpectedAskOnceThenGenerate,
+			FollowUpAnswer:  "Nope.",
+		},
 	}
 }

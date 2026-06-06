@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -36,7 +38,7 @@ func newAPIRunOwner() runOwner {
 }
 
 func newInngestRunOwner(runID int32) runOwner {
-	return newRunOwner(runOwnerKindInngest, fmt.Sprintf("run-%d", runID))
+	return newRunOwner(runOwnerKindInngest, fmt.Sprintf("run-%d-%s", runID, uuid.NewString()))
 }
 
 func newRunOwner(kind string, id string) runOwner {
