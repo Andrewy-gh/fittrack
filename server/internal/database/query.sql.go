@@ -379,17 +379,21 @@ INSERT INTO ai_chat_stream_chunk (
     sequence,
     delta_text
 )
-SELECT $1, $2, $3, $4
+SELECT
+    $1,
+    $2::varchar,
+    $3,
+    $4
 WHERE (
     NULLIF($5::text, '') IS NULL
     OR EXISTS (
         SELECT 1
         FROM ai_chat_run
         WHERE id = $1
-          AND user_id = $2
+          AND user_id = $2::varchar
           AND status = 'streaming'
           AND generation_status = 'generating'
-          AND generation_owner = $5
+          AND generation_owner = $5::varchar
     )
 )
 RETURNING
@@ -401,11 +405,11 @@ RETURNING
 `
 
 type CreateAIChatStreamChunkParams struct {
-	RunID     int32  `json:"run_id"`
-	UserID    string `json:"user_id"`
-	Sequence  int32  `json:"sequence"`
-	DeltaText string `json:"delta_text"`
-	Column5   string `json:"column_5"`
+	RunID           int32  `json:"run_id"`
+	UserID          string `json:"user_id"`
+	Sequence        int32  `json:"sequence"`
+	DeltaText       string `json:"delta_text"`
+	GenerationOwner string `json:"generation_owner"`
 }
 
 func (q *Queries) CreateAIChatStreamChunk(ctx context.Context, arg CreateAIChatStreamChunkParams) (AiChatStreamChunk, error) {
@@ -414,7 +418,7 @@ func (q *Queries) CreateAIChatStreamChunk(ctx context.Context, arg CreateAIChatS
 		arg.UserID,
 		arg.Sequence,
 		arg.DeltaText,
-		arg.Column5,
+		arg.GenerationOwner,
 	)
 	var i AiChatStreamChunk
 	err := row.Scan(

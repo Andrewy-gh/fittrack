@@ -935,17 +935,21 @@ INSERT INTO ai_chat_stream_chunk (
     sequence,
     delta_text
 )
-SELECT $1, $2, $3, $4
+SELECT
+    sqlc.arg(run_id),
+    sqlc.arg(user_id)::varchar,
+    sqlc.arg(sequence),
+    sqlc.arg(delta_text)
 WHERE (
-    NULLIF($5::text, '') IS NULL
+    NULLIF(sqlc.arg(generation_owner)::text, '') IS NULL
     OR EXISTS (
         SELECT 1
         FROM ai_chat_run
-        WHERE id = $1
-          AND user_id = $2
+        WHERE id = sqlc.arg(run_id)
+          AND user_id = sqlc.arg(user_id)::varchar
           AND status = 'streaming'
           AND generation_status = 'generating'
-          AND generation_owner = $5
+          AND generation_owner = sqlc.arg(generation_owner)::varchar
     )
 )
 RETURNING

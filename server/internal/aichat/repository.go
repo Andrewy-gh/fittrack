@@ -710,11 +710,11 @@ func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMe
 	qtx := r.queries.WithTx(tx)
 	nextSequence := prepared.LastSequence + 1
 	if _, err := qtx.CreateAIChatStreamChunk(ctx, db.CreateAIChatStreamChunkParams{
-		RunID:     prepared.Run.ID,
-		UserID:    prepared.Run.UserID,
-		Sequence:  nextSequence,
-		DeltaText: delta,
-		Column5:   textValue(prepared.Run.GenerationOwner),
+		RunID:           prepared.Run.ID,
+		UserID:          prepared.Run.UserID,
+		Sequence:        nextSequence,
+		DeltaText:       delta,
+		GenerationOwner: textValue(prepared.Run.GenerationOwner),
 	}); err != nil {
 		return 0, fmt.Errorf("create ai chat stream chunk: %w", err)
 	}
