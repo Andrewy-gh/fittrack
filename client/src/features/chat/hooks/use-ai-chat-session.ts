@@ -252,6 +252,31 @@ export function useAIChatSession({
     ],
   );
 
+  const submitPromptValue = useCallback(
+    (value: string) =>
+      submitPromptRequest({
+        conversationId,
+        prompt: value,
+        isSubmitting,
+        onConversationCreated,
+        loadConversation,
+        recoverConversation,
+        recordTelemetry,
+        refs,
+        setters,
+      }),
+    [
+      conversationId,
+      isSubmitting,
+      loadConversation,
+      onConversationCreated,
+      recordTelemetry,
+      recoverConversation,
+      refs,
+      setters,
+    ],
+  );
+
   const saveLatestWorkoutDraft = useCallback(
     () =>
       saveLatestWorkoutDraftRequest({
@@ -273,6 +298,7 @@ export function useAIChatSession({
     latestWorkoutDraftMessageId,
     createNewChat,
     submitPrompt,
+    submitPromptValue,
     saveLatestWorkoutDraft,
   };
 }
