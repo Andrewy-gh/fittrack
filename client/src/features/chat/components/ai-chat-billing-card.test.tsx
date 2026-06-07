@@ -113,7 +113,7 @@ describe("AIChatBillingCard", () => {
     expect(screen.getByText("Confirming")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Payment complete. We are confirming your AI chat access. Refresh access if this takes more than a moment.",
+        "Payment complete. We are confirming your AI chat access and will keep checking automatically.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -234,7 +234,7 @@ describe("AIChatBillingCard", () => {
     expect(screen.getByText("Activating")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Premium is active. We are finishing AI chat activation. Refresh access if this takes more than a moment.",
+        "Premium is active. We are finishing AI chat activation and will keep checking automatically.",
       ),
     ).toBeInTheDocument();
     expect(

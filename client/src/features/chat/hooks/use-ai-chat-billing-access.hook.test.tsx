@@ -124,6 +124,63 @@ describe("useAIChatBillingAccess checkout polling", () => {
     expect(result.current.isBillingError).toBe(false);
   });
 
+  it("keeps refreshing checkout access automatically while payment is confirming", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
+
+    const { result } = renderBillingAccessHook();
+
+    await waitFor(
+      () => {
+        expect(result.current.accessState).toBe("payment-confirming");
+      },
+      { interval: 1 },
+    );
+    const checkoutAttemptsBeforeRefresh =
+      mocks.mockGetCheckoutFeatureAccess.mock.calls.length;
+
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+      expect(
+        mocks.mockGetCheckoutFeatureAccess.mock.calls.length,
+      ).toBeGreaterThan(checkoutAttemptsBeforeRefresh);
+    });
+    expect(result.current.hasChatAccess).toBe(true);
+  });
+
+  it("keeps refreshing access automatically when premium billing is active but the feature grant is stale", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
+
+    const { result } = renderBillingAccessHook({ checkout: undefined });
+
+    await waitFor(
+      () => {
+        expect(result.current.accessState).toBe("activating");
+      },
+      { interval: 1 },
+    );
+    const accessAttemptsBeforeRefresh =
+      mocks.mockGetCheckoutFeatureAccess.mock.calls.length;
+
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+      expect(
+        mocks.mockGetCheckoutFeatureAccess.mock.calls.length,
+      ).toBeGreaterThan(accessAttemptsBeforeRefresh);
+    });
+    expect(result.current.hasChatAccess).toBe(true);
+  });
+
   it("restarts checkout polling when payment confirmation is refreshed", async () => {
     mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
     mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);

@@ -128,10 +128,19 @@ describe("ChatRouteComponent", () => {
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
 
+    const billingRefreshesBeforeClick =
+      mockRefetchBillingStatus.mock.calls.length;
+    const featureAccessRefreshesBeforeClick =
+      mockRefetchFeatureAccess.mock.calls.length;
+
     await user.click(screen.getByRole("button", { name: "Refresh access" }));
 
-    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
-    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
+    expect(mockRefetchBillingStatus.mock.calls.length).toBeGreaterThanOrEqual(
+      billingRefreshesBeforeClick + 1,
+    );
+    expect(mockRefetchFeatureAccess.mock.calls.length).toBeGreaterThanOrEqual(
+      featureAccessRefreshesBeforeClick + 1,
+    );
   });
 
   it("confirms payment without offering Checkout when the checkout poll has not received billing access yet", async () => {
@@ -178,10 +187,19 @@ describe("ChatRouteComponent", () => {
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
 
+    const billingRefreshesBeforeClick =
+      mockRefetchBillingStatus.mock.calls.length;
+    const featureAccessRefreshesBeforeClick =
+      mockRefetchFeatureAccess.mock.calls.length;
+
     await user.click(screen.getByRole("button", { name: "Refresh access" }));
 
-    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
-    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
+    expect(mockRefetchBillingStatus.mock.calls.length).toBeGreaterThanOrEqual(
+      billingRefreshesBeforeClick + 1,
+    );
+    expect(mockRefetchFeatureAccess.mock.calls.length).toBeGreaterThanOrEqual(
+      featureAccessRefreshesBeforeClick + 1,
+    );
     expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 
