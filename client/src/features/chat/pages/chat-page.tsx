@@ -20,12 +20,14 @@ import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
 
 type ChatCheckoutSearch = "success" | "cancelled";
+type ChatBillingSearch = "cancelled" | "portal-return";
 
 type ChatPageProps = {
   userId?: string;
   conversationId: number | null;
   conversationIdSearch?: string;
   checkout?: ChatCheckoutSearch;
+  billing?: ChatBillingSearch;
 };
 
 const COMPOSER_PLACEHOLDER =
@@ -38,6 +40,7 @@ export function ChatPage({
   conversationId,
   conversationIdSearch,
   checkout,
+  billing,
 }: ChatPageProps) {
   const navigate = useNavigate({ from: "/chat" });
   const {
@@ -66,6 +69,7 @@ export function ChatPage({
   const billingAccess = useAIChatBillingAccess({
     userId,
     checkout,
+    billing,
     conversationId: conversationIdSearch,
     navigate,
   });
@@ -208,8 +212,10 @@ export function ChatPage({
               isRefreshingAccess={billingAccess.isRefreshingAccess}
               isCheckoutLoading={billingAccess.isCheckoutLoading}
               isBillingPortalLoading={billingAccess.isBillingPortalLoading}
+              isCancelPlanLoading={billingAccess.isCancelPlanLoading}
               onStartCheckout={billingAccess.startCheckout}
               onManageBilling={billingAccess.manageBilling}
+              onCancelPlan={billingAccess.cancelPlan}
               onRefreshAccess={billingAccess.refreshAccess}
             />
           </div>
@@ -230,6 +236,11 @@ export function ChatPage({
       {billingAccess.checkoutNotice ? (
         <div className="mx-auto w-full max-w-3xl px-4">
           <CheckoutNotice checkout={billingAccess.checkoutNotice} />
+        </div>
+      ) : null}
+      {billingAccess.billingNotice ? (
+        <div className="mx-auto w-full max-w-3xl px-4">
+          <BillingReturnNotice billing={billingAccess.billingNotice} />
         </div>
       ) : null}
 
@@ -337,6 +348,24 @@ function CheckoutNotice({ checkout }: { checkout: ChatCheckoutSearch }) {
       {isSuccess
         ? "Checkout complete. We are refreshing your AI chat access."
         : "Checkout was cancelled. You can restart the trial when you are ready."}
+    </div>
+  );
+}
+
+function BillingReturnNotice({ billing }: { billing: ChatBillingSearch }) {
+  const isCancelled = billing === "cancelled";
+
+  return (
+    <div
+      className={`rounded-md border p-3 text-sm ${
+        isCancelled
+          ? "border-primary/30 bg-primary/5 text-foreground"
+          : "border-border bg-muted/40 text-muted-foreground"
+      }`}
+    >
+      {isCancelled
+        ? "Cancellation received. We are refreshing your AI chat billing status."
+        : "Returned from billing. We are refreshing your AI chat billing status."}
     </div>
   );
 }

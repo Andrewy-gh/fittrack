@@ -138,6 +138,53 @@ func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPor
 	return &CustomerPortalSessionResponse{URL: portalSession.URL}, nil
 }
 
+func (s *Service) CreateSubscriptionCancelPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error) {
+	if !s.configuredForPortal() {
+		return nil, ErrBillingNotConfigured
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	subscription, err := s.currentCancelableSubscription(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	stripe.Key = s.stripeSecretKey
+	customerID, err := s.existingStripeCustomer(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	portalSession, err := s.createPortalSession(&stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(customerID),
+		ReturnURL: stripe.String(s.appBaseURL + "/chat?billing=portal-return"),
+		FlowData: &stripe.BillingPortalSessionFlowDataParams{
+			Type: stripe.String(string(stripe.BillingPortalSessionFlowTypeSubscriptionCancel)),
+			AfterCompletion: &stripe.BillingPortalSessionFlowDataAfterCompletionParams{
+				Type: stripe.String(string(stripe.BillingPortalSessionFlowAfterCompletionTypeRedirect)),
+				Redirect: &stripe.BillingPortalSessionFlowDataAfterCompletionRedirectParams{
+					ReturnURL: stripe.String(s.appBaseURL + "/chat?billing=cancelled"),
+				},
+			},
+			SubscriptionCancel: &stripe.BillingPortalSessionFlowDataSubscriptionCancelParams{
+				Subscription: stripe.String(subscription.StripeSubscriptionID),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create stripe subscription cancellation portal session: %w", err)
+	}
+	if strings.TrimSpace(portalSession.URL) == "" {
+		return nil, fmt.Errorf("stripe subscription cancellation portal session did not include a hosted url")
+	}
+
+	return &CustomerPortalSessionResponse{URL: portalSession.URL}, nil
+}
+
 func (s *Service) CurrentStatus(ctx context.Context) (*StatusResponse, error) {
 	userID, err := currentUserID(ctx)
 	if err != nil {
@@ -335,6 +382,24 @@ func (s *Service) existingStripeCustomer(ctx context.Context, userID string) (st
 	}
 
 	return customerID, nil
+}
+
+func (s *Service) currentCancelableSubscription(ctx context.Context, userID string) (db.StripeSubscriptions, error) {
+	subscription, err := s.repo.GetCurrentSubscriptionByUserID(ctx, userID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return db.StripeSubscriptions{}, ErrBillingSubscriptionMissing
+	case err != nil:
+		return db.StripeSubscriptions{}, fmt.Errorf("get current billing subscription: %w", err)
+	}
+
+	if !s.subscriptionRowGrantsAccess(subscription) ||
+		!subscriptionAccessPeriodOpen(subscription, time.Now().UTC()) ||
+		subscription.CancelAtPeriodEnd {
+		return db.StripeSubscriptions{}, ErrBillingSubscriptionNotCancelable
+	}
+
+	return subscription, nil
 }
 
 func (s *Service) configuredForCheckout() bool {

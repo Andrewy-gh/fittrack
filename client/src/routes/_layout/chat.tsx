@@ -4,12 +4,14 @@ import { ChatPage } from "@/features/chat/pages/chat-page";
 type ChatSearch = {
   conversationId?: string;
   checkout?: "success" | "cancelled";
+  billing?: "cancelled" | "portal-return";
 };
 
 export const Route = createFileRoute("/_layout/chat")({
   validateSearch: (search): ChatSearch => ({
     conversationId: normalizeConversationSearchValue(search.conversationId),
     checkout: normalizeCheckoutSearchValue(search.checkout),
+    billing: normalizeBillingSearchValue(search.billing),
   }),
   component: RouteComponent,
 });
@@ -24,6 +26,7 @@ function RouteComponent() {
       conversationId={parseConversationId(search.conversationId)}
       conversationIdSearch={search.conversationId}
       checkout={search.checkout}
+      billing={search.billing}
     />
   );
 }
@@ -62,4 +65,10 @@ function normalizeCheckoutSearchValue(
   value: unknown,
 ): ChatSearch["checkout"] | undefined {
   return value === "success" || value === "cancelled" ? value : undefined;
+}
+
+function normalizeBillingSearchValue(
+  value: unknown,
+): ChatSearch["billing"] | undefined {
+  return value === "cancelled" || value === "portal-return" ? value : undefined;
 }

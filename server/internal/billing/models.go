@@ -18,12 +18,14 @@ const (
 )
 
 var (
-	ErrBillingNotConfigured     = errors.New("billing is not configured")
-	ErrBillingCustomerMissing   = errors.New("billing customer is missing")
-	ErrTrialPromptLimitExceeded = errors.New("ai chat trial prompt limit exceeded")
-	ErrStripeUserMissing        = errors.New("stripe payload is missing fittrack user metadata")
-	ErrStripeCustomerMissing    = errors.New("stripe payload is missing customer")
-	ErrUnsupportedStripeEvent   = errors.New("unsupported stripe webhook event")
+	ErrBillingNotConfigured             = errors.New("billing is not configured")
+	ErrBillingCustomerMissing           = errors.New("billing customer is missing")
+	ErrBillingSubscriptionMissing       = errors.New("billing subscription is missing")
+	ErrBillingSubscriptionNotCancelable = errors.New("billing subscription cannot be canceled")
+	ErrTrialPromptLimitExceeded         = errors.New("ai chat trial prompt limit exceeded")
+	ErrStripeUserMissing                = errors.New("stripe payload is missing fittrack user metadata")
+	ErrStripeCustomerMissing            = errors.New("stripe payload is missing customer")
+	ErrUnsupportedStripeEvent           = errors.New("unsupported stripe webhook event")
 )
 
 type CheckoutSessionResponse struct {

@@ -5,13 +5,16 @@ import {
   ChatRouteComponent,
   conversationDetail,
   mockBillingQueryResult,
+  mockBillingCancellationQueryResult,
   mockCheckoutAccessQueryResult,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
+  mockCreateBillingSubscriptionCancelPortalSession,
   mockFeatureAccessQueryResult,
   mockGetConversation,
   mockNavigate,
   mockRedirectToBillingCheckout,
+  mockRedirectToBillingPortal,
   mockRefetchBillingStatus,
   mockRefetchFeatureAccess,
   mockSearch,
@@ -275,6 +278,118 @@ describe("ChatRouteComponent", () => {
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
     ).toBeDisabled();
+  });
+
+  it("opens billing portal plan management for active subscribers", async () => {
+    const user = userEvent.setup();
+    mockBillingQueryResult.value = {
+      data: {
+        feature_key: "ai_chatbot",
+        has_access: true,
+        subscription: {
+          stripe_subscription_id: "sub_active",
+          status: "active",
+          cancel_at_period_end: false,
+        },
+      },
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchBillingStatus,
+    };
+    mockFeatureAccessQueryResult.value = {
+      data: [
+        {
+          feature_key: "ai_chatbot",
+        },
+      ],
+      isLoading: false,
+      isPending: false,
+      refetch: mockRefetchFeatureAccess,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Manage plan" }),
+    );
+
+    await waitFor(() => {
+      expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it("opens the Stripe cancellation flow for active subscribers", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Cancel plan" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        mockCreateBillingSubscriptionCancelPortalSession,
+      ).toHaveBeenCalledTimes(1);
+    });
+    expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
+      "https://billing.stripe.test/cancel-session",
+    );
+    expect(mockCreateBillingCustomerPortalSession).not.toHaveBeenCalled();
+    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it("shows a cancellation return notice and refreshes billing state", async () => {
+    mockSearch.billing = "cancelled";
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Cancellation received. We are refreshing your AI chat billing status.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "41" },
+      replace: true,
+    });
+  });
+
+  it("uses cancellation polling data after Stripe returns before the webhook has refreshed base billing", async () => {
+    mockSearch.billing = "cancelled";
+    mockBillingCancellationQueryResult.value = {
+      data: {
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: true,
+          subscription: {
+            stripe_subscription_id: "sub_active",
+            status: "active",
+            cancel_at_period_end: true,
+            current_period_end: "2026-06-10T12:00:00Z",
+          },
+        },
+        featureAccess: [{ feature_key: "ai_chatbot" }],
+      },
+      isFetching: false,
+      isError: false,
+      isSuccess: true,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("Access continues until Jun 10, 2026."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel plan" }),
+    ).not.toBeInTheDocument();
   });
 
   it("starts Checkout from the no-access trial CTA", async () => {
