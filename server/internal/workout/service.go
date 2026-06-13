@@ -333,29 +333,37 @@ func (ws *WorkoutService) parseWorkouts(workoutsJSON []byte) []WorkoutSummary {
 	return workouts
 }
 
-// Generic transform function that works with both request types
-func transformWorkoutRequest[T WorkoutRequestTransformable](logger *slog.Logger, request T, requireDate bool) (*ReformattedRequest, error) {
-	// Parse date
-	datePtr := request.GetDate()
-	if requireDate && datePtr == nil {
-		return nil, fmt.Errorf("date is required")
+func newCreateWorkoutDraft(request CreateWorkoutRequest) workoutRequestDraft {
+	return workoutRequestDraft{
+		Date:         request.Date,
+		Notes:        request.Notes,
+		WorkoutFocus: request.WorkoutFocus,
+		Exercises:    request.Exercises,
 	}
+}
 
-	var parsedDate time.Time
-	var err error
-	if datePtr != nil {
-		parsedDate, err = time.Parse("2006-01-02T15:04:05Z07:00", *datePtr)
-		if err != nil {
-			logger.Error("failed to parse date", "error", err)
-			return nil, fmt.Errorf("invalid date format: %w", err)
-		}
+func newUpdateWorkoutDraft(request UpdateWorkoutRequest) workoutRequestDraft {
+	return workoutRequestDraft{
+		Date:         request.Date,
+		Notes:        request.Notes,
+		WorkoutFocus: request.WorkoutFocus,
+		Exercises:    request.Exercises,
+	}
+}
+
+func transformWorkoutRequest(logger *slog.Logger, request workoutRequestDraft) (*ReformattedRequest, error) {
+	// Parse date
+	parsedDate, err := time.Parse("2006-01-02T15:04:05Z07:00", request.Date)
+	if err != nil {
+		logger.Error("failed to parse date", "error", err)
+		return nil, fmt.Errorf("invalid date format: %w", err)
 	}
 
 	// Create workout data
 	workout := WorkoutData{
 		Date:         parsedDate,
-		Notes:        request.GetNotes(),
-		WorkoutFocus: request.GetWorkoutFocus(),
+		Notes:        request.Notes,
+		WorkoutFocus: request.WorkoutFocus,
 	}
 
 	// Process exercises and sets
@@ -363,20 +371,20 @@ func transformWorkoutRequest[T WorkoutRequestTransformable](logger *slog.Logger,
 	var exercises []ExerciseData
 	var sets []SetData
 
-	for _, exercise := range request.GetExercises() {
-		if !exerciseMap[exercise.GetName()] {
-			exerciseMap[exercise.GetName()] = true
+	for _, exercise := range request.Exercises {
+		if !exerciseMap[exercise.Name] {
+			exerciseMap[exercise.Name] = true
 			exercises = append(exercises, ExerciseData{
-				Name: exercise.GetName(),
+				Name: exercise.Name,
 			})
 		}
 
-		for _, set := range exercise.GetSets() {
+		for _, set := range exercise.Sets {
 			sets = append(sets, SetData{
-				ExerciseName: exercise.GetName(),
-				Weight:       set.GetWeight(),
-				Reps:         set.GetReps(),
-				SetType:      set.GetSetType(),
+				ExerciseName: exercise.Name,
+				Weight:       set.Weight,
+				Reps:         set.Reps,
+				SetType:      set.SetType,
 			})
 		}
 	}
@@ -388,13 +396,12 @@ func transformWorkoutRequest[T WorkoutRequestTransformable](logger *slog.Logger,
 	}, nil
 }
 
-// Convenience wrappers
 func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error) {
-	return transformWorkoutRequest(ws.logger, request, false) // Date is required in struct, not optional
+	return transformWorkoutRequest(ws.logger, newCreateWorkoutDraft(request))
 }
 
 func (ws *WorkoutService) transformUpdateRequest(request UpdateWorkoutRequest) (*ReformattedRequest, error) {
-	return transformWorkoutRequest(ws.logger, request, false) // Date is optional for updates (partial updates allowed)
+	return transformWorkoutRequest(ws.logger, newUpdateWorkoutDraft(request))
 }
 
 // convertWorkoutWithSetsRows converts database rows to response type, handling pgtype.Numeric to float64 conversion

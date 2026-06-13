@@ -26,7 +26,7 @@ func NewTxSaver(logger *slog.Logger, exerciseRepo exercise.ExerciseRepository) T
 }
 
 func (s *txSaver) SaveWorkoutTx(ctx context.Context, qtx *db.Queries, requestBody CreateWorkoutRequest, userID string) (int32, error) {
-	reformatted, err := transformWorkoutRequest(s.logger, requestBody, false)
+	reformatted, err := transformWorkoutRequest(s.logger, newCreateWorkoutDraft(requestBody))
 	if err != nil {
 		return 0, fmt.Errorf("failed to transform request: %w", err)
 	}

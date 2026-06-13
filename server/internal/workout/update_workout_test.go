@@ -44,10 +44,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Updated workout notes"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "Updated Exercise",
-						Sets: []UpdateSet{
+						Sets: []SetInput{
 							{Weight: float64Ptr(225), Reps: 8, SetType: "working"},
 						},
 					},
@@ -68,10 +68,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Just updating notes"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -88,10 +88,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T15:30:00Z",
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -104,14 +104,14 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			expectedCode: http.StatusNoContent,
 		},
 		{
-			name:          "invalid workout ID - non-numeric",
-			workoutID:     "invalid",
-			requestBody:   UpdateWorkoutRequest{
+			name:      "invalid workout ID - non-numeric",
+			workoutID: "invalid",
+			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T10:00:00Z",
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -121,14 +121,14 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			expectedError: "Invalid workout ID",
 		},
 		{
-			name:          "missing workout ID",
-			workoutID:     "",
-			requestBody:   UpdateWorkoutRequest{
+			name:      "missing workout ID",
+			workoutID: "",
+			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T10:00:00Z",
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -151,10 +151,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
 				Date: "invalid-date-format",
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -169,10 +169,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr(string(make([]byte, 500))), // Exceeds 256 char limit
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -185,11 +185,11 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "validation error - exercise missing name",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
-				Date:      "2023-01-15T10:00:00Z",
-				Exercises: []UpdateExercise{
+				Date: "2023-01-15T10:00:00Z",
+				Exercises: []ExerciseInput{
 					{
 						// Missing Name field
-						Sets: []UpdateSet{
+						Sets: []SetInput{
 							{Reps: 10, SetType: "working"},
 						},
 					},
@@ -204,11 +204,11 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			name:      "validation error - set missing required fields",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
-				Date:      "2023-01-15T10:00:00Z",
-				Exercises: []UpdateExercise{
+				Date: "2023-01-15T10:00:00Z",
+				Exercises: []ExerciseInput{
 					{
 						Name: "Valid Exercise",
-						Sets: []UpdateSet{
+						Sets: []SetInput{
 							{
 								// Missing Reps and SetType
 							},
@@ -227,10 +227,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Updating non-existent workout"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -249,10 +249,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Valid update"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -266,15 +266,15 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			expectedError: "failed to update workout",
 		},
 		{
-			name:          "unauthenticated user",
-			workoutID:     "1",
-			requestBody:   UpdateWorkoutRequest{
+			name:      "unauthenticated user",
+			workoutID: "1",
+			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Unauthorized update"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -351,15 +351,15 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 	// Setup test data
 	userAID := "test-user-a"
 	userBID := "test-user-b"
-	
+
 	// Create test workout for User A
 	workoutID := setupTestWorkout(t, pool, userAID, "Original workout")
-	
+
 	// Initialize components with real database
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	validator := validator.New()
 	queries := db.New(pool)
-	
+
 	// Initialize repositories
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
 	workoutRepo := NewRepository(logger, queries, pool, exerciseRepo)
@@ -373,10 +373,10 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Updated notes via integration test"),
-			Exercises: []UpdateExercise{
+			Exercises: []ExerciseInput{
 				{
 					Name: "placeholder",
-					Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+					Sets: []SetInput{{Reps: 1, SetType: "working"}},
 				},
 			},
 		}
@@ -391,7 +391,7 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		handler.UpdateWorkout(w, req)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
-		
+
 		// Verify the update by checking the workout directly from database
 		// Since our test workout has no sets, GetWorkoutWithSets would return empty
 		// Let's create a workout with sets in this test, or verify via database directly
@@ -409,10 +409,10 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Malicious update attempt from User B"),
-			Exercises: []UpdateExercise{
+			Exercises: []ExerciseInput{
 				{
 					Name: "placeholder",
-					Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+					Sets: []SetInput{{Reps: 1, SetType: "working"}},
 				},
 			},
 		}
@@ -428,11 +428,11 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 
 		// Should fail due to RLS - workout not found for userB
 		assert.Equal(t, http.StatusNotFound, w.Code)
-		
+
 		// Double-check userA's workout was not modified
 		ctxA := setTestUserContext(context.Background(), t, pool, userAID)
 		ctxA = user.WithContext(ctxA, userAID)
-		
+
 		// Verify via direct database query that the workout was not modified
 		var actualNotes string
 		err := pool.QueryRow(ctxA, "SELECT notes FROM workout WHERE id = $1 AND user_id = $2",
@@ -449,10 +449,10 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Updated with new exercises"),
-			Exercises: []UpdateExercise{
+			Exercises: []ExerciseInput{
 				{
 					Name: "Bench Press",
-					Sets: []UpdateSet{
+					Sets: []SetInput{
 						{Weight: float64Ptr(135), Reps: 10, SetType: "warmup"},
 						{Weight: float64Ptr(185), Reps: 8, SetType: "working"},
 						{Weight: float64Ptr(225), Reps: 5, SetType: "working"},
@@ -460,7 +460,7 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 				},
 				{
 					Name: "Squats",
-					Sets: []UpdateSet{
+					Sets: []SetInput{
 						{Weight: float64Ptr(95), Reps: 10, SetType: "warmup"},
 						{Weight: float64Ptr(135), Reps: 8, SetType: "working"},
 					},
@@ -478,36 +478,36 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		handler.UpdateWorkout(w, req)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
-		
+
 		// Order columns are now automatically populated by the UpdateWorkout method
 		// No manual backfill needed since our implementation handles ordering
-		
+
 		// Verify the update by getting the workout and checking exercises and sets
 		getReq := httptest.NewRequest("GET", fmt.Sprintf("/api/workouts/%d", workoutID), nil)
 		getReq = getReq.WithContext(ctx)
 		getReq.SetPathValue("id", strconv.Itoa(int(workoutID)))
-		
+
 		getW := httptest.NewRecorder()
 		handler.GetWorkoutWithSets(getW, getReq)
-		
+
 		var workout []db.GetWorkoutWithSetsRow
 		err := json.Unmarshal(getW.Body.Bytes(), &workout)
 		assert.NoError(t, err)
-		
+
 		// Group sets by exercise
 		exerciseSets := make(map[string][]db.GetWorkoutWithSetsRow)
 		for _, row := range workout {
-		if row.ExerciseName != "" {
-			exerciseSets[row.ExerciseName] = append(
-				exerciseSets[row.ExerciseName], row)
+			if row.ExerciseName != "" {
+				exerciseSets[row.ExerciseName] = append(
+					exerciseSets[row.ExerciseName], row)
 			}
 		}
-		
+
 		// Check for Bench Press and its 3 sets
 		benchSets, hasBench := exerciseSets["Bench Press"]
 		assert.True(t, hasBench, "Bench Press exercise should exist")
 		assert.Len(t, benchSets, 3, "Bench Press should have 3 sets")
-		
+
 		// Check for Squats and its 2 sets
 		squatSets, hasSquats := exerciseSets["Squats"]
 		assert.True(t, hasSquats, "Squats exercise should exist")
