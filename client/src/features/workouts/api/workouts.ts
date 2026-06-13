@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { queryClient } from "@/lib/api/api";
 import {
   getExercisesQueryKey,
@@ -23,10 +24,17 @@ import type {
   WorkoutWorkoutWithSetsResponse,
 } from "@/client";
 import { sortByExerciseAndSetOrder } from "@/lib/utils";
+import {
+  deleteDemoWorkoutsByIdMutationWithMeta,
+  postDemoWorkoutsMutation,
+  putDemoWorkoutsByIdMutation,
+} from "@/lib/demo-data/query-options";
 
 export type WorkoutFocus = {
   name: string;
 };
+
+type WorkoutMutationUser = CurrentUser | CurrentInternalUser | null;
 
 // MARK: Get all
 export function workoutsQueryOptions() {
@@ -82,6 +90,13 @@ export function useSaveWorkoutMutation() {
   });
 }
 
+export function useSaveWorkoutForUserMutation(user: WorkoutMutationUser) {
+  const apiMutation = useSaveWorkoutMutation();
+  const demoMutation = useMutation(postDemoWorkoutsMutation());
+
+  return user ? apiMutation : demoMutation;
+}
+
 // MARK: Update
 export function useUpdateWorkoutMutation() {
   return useMutation({
@@ -96,6 +111,13 @@ export function useUpdateWorkoutMutation() {
       invalidateWorkoutAnalyticsQueries();
     },
   });
+}
+
+export function useUpdateWorkoutForUserMutation(user: WorkoutMutationUser) {
+  const apiMutation = useUpdateWorkoutMutation();
+  const demoMutation = useMutation(putDemoWorkoutsByIdMutation());
+
+  return user ? apiMutation : demoMutation;
 }
 
 // MARK: Delete
@@ -117,6 +139,13 @@ export function useDeleteWorkoutMutation() {
       invalidateWorkoutAnalyticsQueries();
     },
   });
+}
+
+export function useDeleteWorkoutForUserMutation(user: WorkoutMutationUser) {
+  const apiMutation = useDeleteWorkoutMutation();
+  const demoMutation = useMutation(deleteDemoWorkoutsByIdMutationWithMeta());
+
+  return user ? apiMutation : demoMutation;
 }
 
 // MARK: Utils

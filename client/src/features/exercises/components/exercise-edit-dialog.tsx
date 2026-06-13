@@ -9,16 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import {
-  patchExercisesByIdMutation,
-  getExercisesQueryKey,
-  getExercisesByIdQueryKey,
-} from "@/client/@tanstack/react-query.gen";
-import { patchDemoExercisesByIdMutation } from "@/lib/demo-data/query-options";
+import { useRenameExerciseMutation } from "@/features/exercises/api/exercises";
 import { isApiError, getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
-import { queryClient } from "@/lib/api/api";
 
 interface ExerciseEditDialogProps {
   isOpen: boolean;
@@ -39,31 +32,7 @@ export function ExerciseEditDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Override global error handler to prevent double toasts
-  // We handle errors manually in the catch block below
-  const authUpdateMutation = useMutation({
-    ...patchExercisesByIdMutation(),
-    onSuccess: (_, { path: { id } }) => {
-      queryClient.invalidateQueries({
-        queryKey: getExercisesQueryKey(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getExercisesByIdQueryKey({ path: { id } }),
-      });
-    },
-    onError: () => {
-      // Don't show toast - we handle errors manually
-    },
-  });
-
-  const demoUpdateMutation = useMutation({
-    ...patchDemoExercisesByIdMutation(),
-    onError: () => {
-      // Don't show toast - we handle errors manually
-    },
-  });
-
-  const updateMutation = isDemoMode ? demoUpdateMutation : authUpdateMutation;
+  const updateMutation = useRenameExerciseMutation(isDemoMode);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

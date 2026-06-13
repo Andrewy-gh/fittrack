@@ -1,11 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  useUpdateWorkoutMutation,
+  useUpdateWorkoutForUserMutation,
   type WorkoutFocus,
 } from "@/features/workouts/api/workouts";
-import { putDemoWorkoutsByIdMutation } from "@/lib/demo-data/query-options";
 import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
 import { Suspense } from "react";
 import { useAppForm } from "@/hooks/form";
@@ -96,9 +94,7 @@ export function EditWorkoutPage({
   const { addExercise, exerciseIndex, newExercise } = search;
   const navigate = useNavigate({ from: "/workouts/$workoutId/edit" });
 
-  const updateWorkoutApi = useUpdateWorkoutMutation();
-  const updateWorkoutDemo = useMutation(putDemoWorkoutsByIdMutation());
-  const updateWorkoutMutation = user ? updateWorkoutApi : updateWorkoutDemo;
+  const updateWorkoutMutation = useUpdateWorkoutForUserMutation(user);
 
   const form = useAppForm({
     defaultValues: workout,

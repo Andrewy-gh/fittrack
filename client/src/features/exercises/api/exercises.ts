@@ -12,6 +12,10 @@ import {
   getExercisesQueryKey,
   getExercisesByIdQueryKey,
 } from "@/client/@tanstack/react-query.gen";
+import {
+  deleteDemoExercisesByIdMutationWithMeta,
+  patchDemoExercisesByIdMutation,
+} from "@/lib/demo-data/query-options";
 
 export type DbExercise = Pick<ExerciseExerciseResponse, "id" | "name">;
 
@@ -44,6 +48,15 @@ export function exerciseMetricsHistoryQueryOptions(
   });
 }
 
+function invalidateExerciseDetail(id: number) {
+  queryClient.invalidateQueries({
+    queryKey: getExercisesQueryKey(),
+  });
+  queryClient.invalidateQueries({
+    queryKey: getExercisesByIdQueryKey({ path: { id } }),
+  });
+}
+
 export function useDeleteExerciseMutation() {
   return useMutation({
     ...deleteExercisesByIdMutation(),
@@ -59,18 +72,40 @@ export function useDeleteExerciseMutation() {
   });
 }
 
+export function useDeleteExerciseForModeMutation(isDemoMode: boolean) {
+  const apiMutation = useDeleteExerciseMutation();
+  const demoMutation = useMutation(deleteDemoExercisesByIdMutationWithMeta());
+
+  return isDemoMode ? demoMutation : apiMutation;
+}
+
 export function useUpdateExerciseMutation() {
   return useMutation({
     ...patchExercisesByIdMutation(),
     onSuccess: (_, { path: { id } }) => {
-      queryClient.invalidateQueries({
-        queryKey: getExercisesQueryKey(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getExercisesByIdQueryKey({ path: { id } }),
-      });
+      invalidateExerciseDetail(id);
     },
   });
+}
+
+export function useRenameExerciseMutation(isDemoMode: boolean) {
+  const apiMutation = useMutation({
+    ...patchExercisesByIdMutation(),
+    onSuccess: (_, { path: { id } }) => {
+      invalidateExerciseDetail(id);
+    },
+    onError: () => {
+      // The edit dialog renders duplicate-name errors inline and other errors as a toast.
+    },
+  });
+  const demoMutation = useMutation({
+    ...patchDemoExercisesByIdMutation(),
+    onError: () => {
+      // The edit dialog owns the user-facing error message.
+    },
+  });
+
+  return isDemoMode ? demoMutation : apiMutation;
 }
 
 export function useUpdateExerciseHistorical1RmMutation() {
