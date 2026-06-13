@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { toast } from "sonner";
@@ -9,7 +8,7 @@ import {
   formatExerciseGoalSummary,
   getExerciseGoal,
 } from "@/features/exercises/utils/exercise-goals";
-import { useSaveWorkoutMutation } from "@/features/workouts/api/workouts";
+import { useSaveWorkoutForUserMutation } from "@/features/workouts/api/workouts";
 import {
   getInitialValues,
   MOCK_VALUES,
@@ -19,7 +18,6 @@ import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-
 import { useAppForm } from "@/hooks/form";
 import { queryClient } from "@/lib/api/api";
 import { getWorkoutByIdQueryOptions } from "@/features/workouts/api/workout-query-options";
-import { postDemoWorkoutsMutation } from "@/lib/demo-data/query-options";
 import {
   type WorkoutDraftStorage,
   workoutDraftStorage,
@@ -42,9 +40,7 @@ export function useNewWorkoutFormWorkflow({
     number | null
   >(null);
 
-  const saveWorkoutApi = useSaveWorkoutMutation();
-  const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
-  const saveWorkout = user ? saveWorkoutApi : saveWorkoutDemo;
+  const saveWorkout = useSaveWorkoutForUserMutation(user);
   const form = useAppForm({
     defaultValues: getInitialValues(user?.id, draftStorage),
     listeners: {

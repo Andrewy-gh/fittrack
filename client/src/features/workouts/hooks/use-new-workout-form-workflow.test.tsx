@@ -21,12 +21,10 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useMutation: () => ({ mutateAsync: mockDemoMutateAsync }),
-}));
-
 vi.mock("@/features/workouts/api/workouts", () => ({
-  useSaveWorkoutMutation: () => ({ mutateAsync: mockApiMutateAsync }),
+  useSaveWorkoutForUserMutation: (user: unknown) => ({
+    mutateAsync: user ? mockApiMutateAsync : mockDemoMutateAsync,
+  }),
 }));
 
 vi.mock("@/lib/api/api", () => ({
@@ -39,10 +37,6 @@ vi.mock("@/features/workouts/api/workout-query-options", () => ({
   getWorkoutByIdQueryOptions: (_user: unknown, workoutId: number) => ({
     queryKey: ["workout", workoutId],
   }),
-}));
-
-vi.mock("@/lib/demo-data/query-options", () => ({
-  postDemoWorkoutsMutation: () => ({}),
 }));
 
 vi.mock("sonner", () => ({
