@@ -1,17 +1,17 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 
 import { ExerciseList } from "@/features/exercises/components/exercise-list";
-import { exercisesQueryOptions } from "@/features/exercises/api/exercises";
-import { getDemoExercisesQueryOptions } from "@/lib/demo-data/query-options";
+import { getExerciseListQueryOptions } from "@/features/exercises/api/exercise-query-options";
 
 type ExercisesPageProps = {
-  isDemoMode: boolean;
+  user: CurrentUser | CurrentInternalUser | null;
 };
 
-export function ExercisesPage({ isDemoMode }: ExercisesPageProps) {
-  const { data: exercises } = isDemoMode
-    ? useSuspenseQuery(getDemoExercisesQueryOptions())
-    : useSuspenseQuery(exercisesQueryOptions());
+export function ExercisesPage({ user }: ExercisesPageProps) {
+  const { data: exercises } = useSuspenseQuery(
+    getExerciseListQueryOptions(user),
+  );
 
   return <ExerciseList exercises={exercises} />;
 }

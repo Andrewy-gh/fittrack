@@ -7,7 +7,7 @@ import type { ExerciseRecentSetsResponse } from "@/client";
 import { formatDate } from "@/lib/utils";
 import { sortByExerciseAndSetOrder } from "@/lib/utils";
 import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
-import { getRecentSetsQueryOptions } from "@/lib/api/unified-query-options";
+import { getRecentExerciseSetsQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import {
   ErrorBoundary,
   InlineErrorFallback,
@@ -20,7 +20,7 @@ interface RecentSetsDisplayProps {
 
 function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
   const { data: recentSets } = useSuspenseQuery(
-    getRecentSetsQueryOptions(user, exerciseId),
+    getRecentExerciseSetsQueryOptions(user, exerciseId),
   );
 
   if (recentSets.length === 0) {

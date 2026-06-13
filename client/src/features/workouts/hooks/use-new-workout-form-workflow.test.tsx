@@ -35,7 +35,7 @@ vi.mock("@/lib/api/api", () => ({
   },
 }));
 
-vi.mock("@/lib/api/unified-query-options", () => ({
+vi.mock("@/features/workouts/api/workout-query-options", () => ({
   getWorkoutByIdQueryOptions: (_user: unknown, workoutId: number) => ({
     queryKey: ["workout", workoutId],
   }),

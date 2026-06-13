@@ -6,12 +6,12 @@ import {
   transformToWorkoutFormValues,
   type WorkoutFocus,
 } from "@/features/workouts/api/workouts";
+import { getExerciseListQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import {
-  getExercisesQueryOptions,
   getNewWorkoutContextQueryOptions,
   getWorkoutByIdQueryOptions,
   getWorkoutsFocusQueryOptions,
-} from "@/lib/api/unified-query-options";
+} from "@/features/workouts/api/workout-query-options";
 import { initializeDemoData } from "@/lib/demo-data/storage";
 import { EditWorkoutPage } from "@/features/workouts/pages/edit-workout-page";
 import {
@@ -32,7 +32,7 @@ export function preloadNewWorkoutRouteData({
 }: WorkoutRouteLoaderContext) {
   if (!user) initializeDemoData();
 
-  queryClient.ensureQueryData(getExercisesQueryOptions(user));
+  queryClient.ensureQueryData(getExerciseListQueryOptions(user));
   queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user));
   queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
 }
@@ -45,7 +45,7 @@ export function preloadEditWorkoutRouteData({
   if (!user) initializeDemoData();
 
   queryClient.ensureQueryData(getWorkoutByIdQueryOptions(user, workoutId));
-  queryClient.ensureQueryData(getExercisesQueryOptions(user));
+  queryClient.ensureQueryData(getExerciseListQueryOptions(user));
   queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
 
   return { workoutId };
@@ -63,7 +63,7 @@ export function NewWorkoutRouteComposition({
   search: WorkoutFormSearch;
 }) {
   const { data: exercisesResponse } = useSuspenseQuery(
-    getExercisesQueryOptions(user),
+    getExerciseListQueryOptions(user),
   );
   const { data: newWorkoutContext } = useSuspenseQuery(
     getNewWorkoutContextQueryOptions(user),
@@ -97,7 +97,9 @@ export function EditWorkoutRouteComposition({
   workoutId: number;
   search: WorkoutFormSearch;
 }) {
-  const { data: exercises } = useSuspenseQuery(getExercisesQueryOptions(user));
+  const { data: exercises } = useSuspenseQuery(
+    getExerciseListQueryOptions(user),
+  );
   const { data: workout } = useSuspenseQuery(
     getWorkoutByIdQueryOptions(user, workoutId),
   );

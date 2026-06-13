@@ -1,16 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { AnalyticsPage } from "@/features/analytics/pages/analytics-page";
-import { exercisesQueryOptions } from "@/features/exercises/api/exercises";
+import { getExerciseListQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import {
-  contributionDataQueryOptions,
-  workoutsFocusValuesQueryOptions,
-} from "@/features/workouts/api/workouts";
-import {
-  getDemoContributionDataQueryOptions,
-  getDemoExercisesQueryOptions,
-  getDemoWorkoutsFocusValuesQueryOptions,
-} from "@/lib/demo-data/query-options";
+  getWorkoutContributionQueryOptions,
+  getWorkoutsFocusQueryOptions,
+} from "@/features/workouts/api/workout-query-options";
 import { clearDemoData, initializeDemoData } from "@/lib/demo-data/storage";
 
 const analyticsSearchSchema = z.object({
@@ -25,20 +20,20 @@ export const Route = createFileRoute("/_layout/analytics")({
     if (user) {
       clearDemoData();
       await Promise.all([
-        context.queryClient.ensureQueryData(exercisesQueryOptions()),
-        context.queryClient.ensureQueryData(contributionDataQueryOptions()),
-        context.queryClient.ensureQueryData(workoutsFocusValuesQueryOptions()),
+        context.queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
+        context.queryClient.ensureQueryData(
+          getWorkoutContributionQueryOptions(user),
+        ),
+        context.queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
       ]);
     } else {
       initializeDemoData();
       await Promise.all([
-        context.queryClient.ensureQueryData(getDemoExercisesQueryOptions()),
+        context.queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
         context.queryClient.ensureQueryData(
-          getDemoContributionDataQueryOptions(),
+          getWorkoutContributionQueryOptions(user),
         ),
-        context.queryClient.ensureQueryData(
-          getDemoWorkoutsFocusValuesQueryOptions(),
-        ),
+        context.queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
       ]);
     }
   },
@@ -52,7 +47,7 @@ function RouteComponent() {
   return (
     <AnalyticsPage
       exerciseId={exerciseId}
-      isDemoMode={!user}
+      user={user}
     />
   );
 }

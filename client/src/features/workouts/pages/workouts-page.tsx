@@ -16,11 +16,8 @@ import {
 } from "@/components/ui/select";
 import { PaginationControl } from "@/components/ui/pagination-control";
 import { ArrowDownAz, ArrowUpAz, Clock, Plus } from "lucide-react";
-import {
-  workoutsQueryOptions,
-  contributionDataQueryOptions,
-} from "@/features/workouts/api/workouts";
-import { getDemoWorkoutsQueryOptions } from "@/lib/demo-data/query-options";
+import { contributionDataQueryOptions } from "@/features/workouts/api/workouts";
+import { getWorkoutListQueryOptions } from "@/features/workouts/api/workout-query-options";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { WorkoutSummaryCards } from "@/features/workouts/components/workout-summary-cards";
 import { WorkoutContributionGraph } from "@/features/workouts/components/workout-contribution-graph";
@@ -51,9 +48,7 @@ export function WorkoutsPage({
   const { focusArea, sortOrder, itemsPerPage, page } = search;
   const navigate = useNavigate({ from: "/workouts/" });
 
-  const { data: workouts } = user
-    ? useSuspenseQuery(workoutsQueryOptions())
-    : useSuspenseQuery(getDemoWorkoutsQueryOptions());
+  const { data: workouts } = useSuspenseQuery(getWorkoutListQueryOptions(user));
 
   const contributionQuery = useQuery({
     ...contributionDataQueryOptions(),

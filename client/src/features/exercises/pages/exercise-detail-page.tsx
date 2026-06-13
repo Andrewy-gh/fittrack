@@ -1,13 +1,13 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 
 import { ExerciseDetail } from "@/features/exercises/components/exercise-detail";
-import { exerciseByIdQueryOptions } from "@/features/exercises/api/exercises";
-import { getDemoExercisesByIdQueryOptions } from "@/lib/demo-data/query-options";
+import { getExerciseDetailQueryOptions } from "@/features/exercises/api/exercise-query-options";
 
 type ExerciseDetailPageProps = {
   exerciseId: number;
-  isDemoMode: boolean;
+  user: CurrentUser | CurrentInternalUser | null;
   sortOrder?: "asc" | "desc";
   itemsPerPage?: number;
   page?: number;
@@ -15,16 +15,16 @@ type ExerciseDetailPageProps = {
 
 export function ExerciseDetailPage({
   exerciseId,
-  isDemoMode,
+  user,
   sortOrder,
   itemsPerPage,
   page,
 }: ExerciseDetailPageProps) {
   const navigate = useNavigate({ from: "/exercises/$exerciseId" });
 
-  const { data: exerciseDetail } = isDemoMode
-    ? useSuspenseQuery(getDemoExercisesByIdQueryOptions(exerciseId))
-    : useSuspenseQuery(exerciseByIdQueryOptions(exerciseId));
+  const { data: exerciseDetail } = useSuspenseQuery(
+    getExerciseDetailQueryOptions(user, exerciseId),
+  );
 
   const normalizedSortOrder = sortOrder ?? "desc";
   const normalizedItemsPerPage = [10, 20, 50].includes(itemsPerPage ?? 10)
@@ -40,7 +40,7 @@ export function ExerciseDetailPage({
       exercise={exerciseDetail.exercise}
       exerciseSets={safeExerciseSets}
       exerciseId={exerciseId}
-      isDemoMode={isDemoMode}
+      isDemoMode={!user}
       sortOrder={normalizedSortOrder}
       itemsPerPage={normalizedItemsPerPage}
       page={page}

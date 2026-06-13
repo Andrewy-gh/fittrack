@@ -18,7 +18,7 @@ import { hasWorkoutDraftContent } from "@/features/workouts/components/form/work
 import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
 import { useAppForm } from "@/hooks/form";
 import { queryClient } from "@/lib/api/api";
-import { getWorkoutByIdQueryOptions } from "@/lib/api/unified-query-options";
+import { getWorkoutByIdQueryOptions } from "@/features/workouts/api/workout-query-options";
 import { postDemoWorkoutsMutation } from "@/lib/demo-data/query-options";
 import {
   type WorkoutDraftStorage,

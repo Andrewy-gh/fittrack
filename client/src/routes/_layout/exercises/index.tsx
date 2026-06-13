@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { exercisesQueryOptions } from "@/features/exercises/api/exercises";
+import { getExerciseListQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import { ExercisesPage } from "@/features/exercises/pages/exercises-page";
-import { getDemoExercisesQueryOptions } from "@/lib/demo-data/query-options";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
 
 export const Route = createFileRoute("/_layout/exercises/")({
@@ -11,11 +10,11 @@ export const Route = createFileRoute("/_layout/exercises/")({
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      context.queryClient.ensureQueryData(exercisesQueryOptions());
+      context.queryClient.ensureQueryData(getExerciseListQueryOptions(user));
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      context.queryClient.ensureQueryData(getDemoExercisesQueryOptions());
+      context.queryClient.ensureQueryData(getExerciseListQueryOptions(user));
     }
   },
   component: RouteComponent,
@@ -24,5 +23,5 @@ export const Route = createFileRoute("/_layout/exercises/")({
 function RouteComponent() {
   const { user } = Route.useRouteContext();
 
-  return <ExercisesPage isDemoMode={!user} />;
+  return <ExercisesPage user={user} />;
 }
