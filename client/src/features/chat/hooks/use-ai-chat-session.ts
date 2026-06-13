@@ -1,24 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  createAIChatConversation,
-  reportAIChatTelemetry,
-  type AIChatConversation,
-  type AIChatConversationDetail,
-  type AIChatMessage,
-  type AIChatTelemetryEvent,
+import type {
+  AIChatConversation,
+  AIChatMessage,
 } from "@/features/chat/api/ai-chat";
-import {
-  classifyLoadOutcome,
-  classifyRecoveryOutcome,
-} from "@/features/chat/utils/ai-chat-observability";
-import { showErrorToast } from "@/lib/errors";
-import {
-  loadConversation as loadConversationRequest,
-  recoverConversation as recoverConversationRequest,
-  recoverLoadedConversation,
-  resumeConversation as resumeConversationRequest,
-} from "../utils/chat-session-recovery";
-import { submitPrompt as submitPromptRequest } from "../utils/chat-session-submit";
+import { createAIChatSessionLifecycle } from "../utils/ai-chat-session-lifecycle";
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
@@ -51,6 +36,7 @@ export function useAIChatSession({
   const recoveryAbortRef = useRef<AbortController | null>(null);
   const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const onConversationCreatedRef = useRef(onConversationCreated);
 
   const refs = useMemo<ChatSessionRefs>(
     () => ({
@@ -77,204 +63,57 @@ export function useAIChatSession({
     [],
   );
 
-  const recordTelemetry = useCallback((event: AIChatTelemetryEvent) => {
-    void Promise.resolve(reportAIChatTelemetry(event)).catch((error) => {
-      if (import.meta.env.DEV) {
-        console.warn("Failed to record AI chat telemetry", error, event);
-      }
-    });
-  }, []);
+  useEffect(() => {
+    onConversationCreatedRef.current = onConversationCreated;
+  }, [onConversationCreated]);
 
-  const loadConversation = useCallback(
-    (id: number, opts?: { silent?: boolean }) =>
-      loadConversationRequest(id, opts, { refs, setters }),
-    [refs, setters],
+  const handleConversationCreated = useCallback(
+    (createdConversationId: number) =>
+      onConversationCreatedRef.current(createdConversationId),
+    [],
   );
 
-  const recoverConversation = useCallback(
-    (id: number, opts?: { silent?: boolean }) =>
-      recoverConversationRequest(id, opts, { refs, setters }),
-    [refs, setters],
+  const lifecycle = useMemo(
+    () =>
+      createAIChatSessionLifecycle({
+        refs,
+        setters,
+        onConversationCreated: handleConversationCreated,
+      }),
+    [handleConversationCreated, refs, setters],
   );
-
-  const resumeConversation = useCallback(
-    (detail: Parameters<typeof resumeConversationRequest>[0]) =>
-      resumeConversationRequest(detail, loadConversation, { refs, setters }),
-    [loadConversation, refs, setters],
-  );
-
-  const resetConversation = useCallback(() => {
-    loadAbortRef.current?.abort();
-    recoveryAbortRef.current?.abort();
-    resumeAbortRef.current?.abort();
-    streamAbortRef.current?.abort();
-    setConversation(null);
-    setMessages([]);
-    setLatestWorkoutDraftMessageId(null);
-    setLoadError(null);
-    setIsLoadingConversation(false);
-  }, []);
 
   useEffect(() => {
     if (!conversationId) {
-      resetConversation();
+      lifecycle.resetConversation();
       return;
     }
 
-    const activeConversationId = conversationId;
-    void loadConversationForRoute();
+    void lifecycle.loadRouteConversation(conversationId);
 
     return () => {
-      loadAbortRef.current?.abort();
-      recoveryAbortRef.current?.abort();
-      resumeAbortRef.current?.abort();
-      streamAbortRef.current?.abort();
+      lifecycle.abortActiveRequests();
     };
-
-    async function loadConversationForRoute() {
-      const loadResult = await loadConversation(activeConversationId);
-      recordTelemetry({
-        category: "load",
-        outcome: loadResult.detail
-          ? "load_completed"
-          : classifyLoadOutcome(loadResult.aborted),
-      });
-
-      if (loadResult.detail?.active_run) {
-        await resumeOrRecoverActiveRun(loadResult.detail);
-        return;
-      }
-
-      if (
-        loadResult.detail?.messages.some(
-          (message) => message.status === "streaming",
-        )
-      ) {
-        await recoverOpenedConversation(activeConversationId);
-      }
-    }
-
-    async function resumeOrRecoverActiveRun(detail: AIChatConversationDetail) {
-      const resumeResult = await resumeConversation(detail);
-      if (!resumeResult.aborted && resumeResult.detail) {
-        const resumeOutcome = classifyRecoveryOutcome({
-          messages: resumeResult.detail.messages,
-          aborted: false,
-          error: resumeResult.error,
-        });
-        recordTelemetry({
-          category: "recovery",
-          outcome: resumeOutcome,
-        });
-        if (
-          resumeOutcome !== "recovered_completed" &&
-          resumeOutcome !== "recovery_aborted"
-        ) {
-          const resumeError =
-            resumeResult.error ??
-            new Error("Failed to resume AI chat conversation");
-          recordTelemetry({
-            category: "ux",
-            outcome: "failure_toast_shown",
-          });
-          showErrorToast(resumeError, "Failed to recover AI chat conversation");
-        }
-        return;
-      }
-
-      if (resumeResult.aborted) {
-        recordTelemetry({
-          category: "recovery",
-          outcome: "recovery_aborted",
-        });
-        return;
-      }
-
-      await recoverOpenedConversation(activeConversationId);
-    }
-
-    async function recoverOpenedConversation(id: number) {
-      await recoverLoadedConversation({
-        id,
-        recoverConversation,
-        recordTelemetry,
-        setLoadError,
-      });
-    }
-  }, [
-    conversationId,
-    loadConversation,
-    recoverConversation,
-    recordTelemetry,
-    resetConversation,
-    resumeConversation,
-  ]);
-
-  const createNewChat = useCallback(async () => {
-    try {
-      const created = await createAIChatConversation();
-      streamAbortRef.current?.abort();
-      recoveryAbortRef.current?.abort();
-      loadAbortRef.current?.abort();
-      setConversation(created);
-      setMessages([]);
-      setLatestWorkoutDraftMessageId(null);
-      setLoadError(null);
-      await onConversationCreated(created.id);
-    } catch (error) {
-      showErrorToast(error, "Failed to create chat conversation");
-    }
-  }, [onConversationCreated]);
+  }, [conversationId, lifecycle]);
 
   const submitPrompt = useCallback(
     () =>
-      submitPromptRequest({
+      lifecycle.submitPrompt({
         conversationId,
         prompt,
         isSubmitting,
-        onConversationCreated,
-        loadConversation,
-        recoverConversation,
-        recordTelemetry,
-        refs,
-        setters,
       }),
-    [
-      conversationId,
-      isSubmitting,
-      loadConversation,
-      onConversationCreated,
-      prompt,
-      recordTelemetry,
-      recoverConversation,
-      refs,
-      setters,
-    ],
+    [conversationId, isSubmitting, lifecycle, prompt],
   );
 
   const submitPromptValue = useCallback(
     (value: string) =>
-      submitPromptRequest({
+      lifecycle.submitPrompt({
         conversationId,
         prompt: value,
         isSubmitting,
-        onConversationCreated,
-        loadConversation,
-        recoverConversation,
-        recordTelemetry,
-        refs,
-        setters,
       }),
-    [
-      conversationId,
-      isSubmitting,
-      loadConversation,
-      onConversationCreated,
-      recordTelemetry,
-      recoverConversation,
-      refs,
-      setters,
-    ],
+    [conversationId, isSubmitting, lifecycle],
   );
 
   const saveLatestWorkoutDraft = useCallback(
@@ -296,7 +135,7 @@ export function useAIChatSession({
     loadError,
     isSavingWorkoutDraft,
     latestWorkoutDraftMessageId,
-    createNewChat,
+    createNewChat: lifecycle.createNewChat,
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
