@@ -536,16 +536,17 @@ describe("ai chat api wrapper", () => {
       ),
     );
 
-    const response = await saveAIChatLatestWorkoutDraft(41);
+    const conversation = await saveAIChatLatestWorkoutDraft(41);
 
     expect(fetch).toHaveBeenCalledWith(expect.any(Request));
     expect(latestRequest().url).toContain(
       "/api/ai/conversations/41/latest-workout-draft/save",
     );
     expect(latestRequest().method).toBe("POST");
-    expect(response.workout_id).toBe(901);
-    expect(response.conversation.latest_workout_draft_status?.is_saved).toBe(
-      true,
+    expect(conversation.id).toBe(41);
+    expect(conversation.latest_workout_draft_status?.is_saved).toBe(true);
+    expect(conversation.latest_workout_draft_status?.saved_workout_id).toBe(
+      901,
     );
   });
 

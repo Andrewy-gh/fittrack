@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -30,17 +31,13 @@ type recoveryDispatcher interface {
 	EnqueueRunRecovery(ctx context.Context, request RunRecoveryRequest) error
 }
 
-type workoutCreator interface {
-	CreateWorkoutWithID(ctx context.Context, requestBody workout.CreateWorkoutRequest) (int32, error)
-}
-
 type Service struct {
-	logger        *slog.Logger
-	featureAccess featureAccessService
-	runtime       runtime
-	repo          Repository
-	recovery      recoveryDispatcher
-	workouts      workoutCreator
+	logger            *slog.Logger
+	featureAccess     featureAccessService
+	runtime           runtime
+	repo              Repository
+	recovery          recoveryDispatcher
+	workoutDraftSaver workout.TxSaver
 }
 
 const (
@@ -50,13 +47,13 @@ const (
 	recoverReasonStreamReconnect = "stream_reconnect"
 )
 
-func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository, workouts workoutCreator) *Service {
+func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime runtime, repo Repository, workoutDraftSaver workout.TxSaver) *Service {
 	return &Service{
-		logger:        logger,
-		featureAccess: featureAccess,
-		runtime:       runtime,
-		repo:          repo,
-		workouts:      workouts,
+		logger:            logger,
+		featureAccess:     featureAccess,
+		runtime:           runtime,
+		repo:              repo,
+		workoutDraftSaver: workoutDraftSaver,
 	}
 }
 
@@ -554,14 +551,30 @@ func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int
 		return nil, err
 	}
 
-	resp, err := s.repo.SaveLatestWorkoutDraft(ctx, conversationID, userID, time.Now().UTC())
+	saved, err := s.repo.SaveLatestWorkoutDraft(ctx, SaveLatestWorkoutDraftRequest{
+		ConversationID: conversationID,
+		UserID:         userID,
+		SavedAt:        time.Now().UTC(),
+		SaveWorkout:    s.saveWorkoutDraftTx,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, newConversationNotFound(conversationID)
 		}
 		return nil, err
 	}
-	return resp, nil
+
+	return &SaveLatestWorkoutDraftResponse{
+		Conversation: saved.Conversation,
+		WorkoutID:    saved.WorkoutID,
+	}, nil
+}
+
+func (s *Service) saveWorkoutDraftTx(ctx context.Context, qtx *db.Queries, draft workout.CreateWorkoutRequest, userID string) (int32, error) {
+	if s.workoutDraftSaver == nil {
+		return 0, errors.New("ai chat workout draft saver is unavailable")
+	}
+	return s.workoutDraftSaver.SaveWorkoutTx(ctx, qtx, draft, userID)
 }
 
 func (s *Service) AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error {

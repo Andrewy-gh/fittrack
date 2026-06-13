@@ -104,18 +104,15 @@ describe("ChatRouteComponent", () => {
       conversationDetail([], undefined, latestWorkoutDraft),
     );
     mockSaveLatestWorkoutDraft.mockResolvedValue({
-      conversation: {
-        id: 41,
-        created_at: "2026-03-26T17:00:00Z",
-        updated_at: "2026-03-26T17:05:00Z",
-        latest_workout_draft: latestWorkoutDraft,
-        latest_workout_draft_status: {
-          is_saved: true,
-          saved_workout_id: 88,
-          saved_at: "2026-04-21T12:05:00Z",
-        },
+      id: 41,
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:05:00Z",
+      latest_workout_draft: latestWorkoutDraft,
+      latest_workout_draft_status: {
+        is_saved: true,
+        saved_workout_id: 88,
+        saved_at: "2026-04-21T12:05:00Z",
       },
-      workout_id: 88,
     });
 
     render(<ChatRouteComponent />);
