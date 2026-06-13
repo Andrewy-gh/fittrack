@@ -24,7 +24,7 @@ import (
 
 func TestWorkoutFocus_CreateWorkout(t *testing.T) {
 	userID := "test-user-id"
-	
+
 	// Helper function for string pointers
 	stringPtr := func(s string) *string { return &s }
 
@@ -125,10 +125,10 @@ func TestWorkoutFocus_CreateWorkout(t *testing.T) {
 					},
 				},
 			},
-			setupMock:    func(m *MockWorkoutRepository) {},
-			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
-			expectedCode: http.StatusBadRequest,
-			expectJSON:   true,
+			setupMock:     func(m *MockWorkoutRepository) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
 			expectedError: "validation error occurred",
 		},
 	}
@@ -205,10 +205,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z",
 				WorkoutFocus: stringPtrHelper("Push Day"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -227,10 +227,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z",
 				WorkoutFocus: stringPtrHelper(""),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -248,10 +248,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z", // Date is required for validation
 				WorkoutFocus: stringPtrHelper("Leg Day"),
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -269,16 +269,16 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z",
 				WorkoutFocus: stringPtr(string(make([]byte, 300))), // Exceeds 256 char limit
-				Exercises: []UpdateExercise{
+				Exercises: []ExerciseInput{
 					{
 						Name: "placeholder",
-						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+						Sets: []SetInput{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
-			setupMock:    func(m *MockWorkoutRepository) {},
-			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
-			expectedCode: http.StatusBadRequest,
+			setupMock:     func(m *MockWorkoutRepository) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
 			expectedError: "validation error occurred",
 		},
 	}
@@ -382,13 +382,13 @@ func TestWorkoutFocus_Integration(t *testing.T) {
 		handler.CreateWorkout(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		// Verify that the workout was created successfully by checking the response
 		var result map[string]bool
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		assert.NoError(t, err)
 		assert.True(t, result["success"])
-		
+
 		// Verify the workout was created with the focus by querying the database directly
 		var actualFocus string
 		var actualFocusValid bool
@@ -436,10 +436,10 @@ func TestWorkoutFocus_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:         "2023-01-15T10:00:00Z", // Date is required
 			WorkoutFocus: stringPtrHelper("Leg Day Focus"),
-			Exercises: []UpdateExercise{
+			Exercises: []ExerciseInput{
 				{
 					Name: "placeholder",
-					Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
+					Sets: []SetInput{{Reps: 1, SetType: "working"}},
 				},
 			},
 		}
@@ -529,13 +529,13 @@ func stringPtrHelper(s string) *string {
 
 func setupTestDatabaseForWorkoutFocus(t *testing.T) (*pgxpool.Pool, func()) {
 	t.Helper()
-	
+
 	// Use the same setup as other integration tests
 	pool, cleanup := setupTestDatabase(t)
-	
+
 	// Setup specific test users if needed
 	setupSpecificTestUsersForFocus(t, pool)
-	
+
 	return pool, func() {
 		cleanupSpecificTestUsersForFocus(t, pool)
 		cleanup()
