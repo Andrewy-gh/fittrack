@@ -1,11 +1,5 @@
-import { useNavigate } from "@tanstack/react-router";
-import { Suspense, useMemo, useState, type ReactNode } from "react";
-import { useAppForm } from "@/hooks/form";
-import {
-  useSaveWorkoutMutation,
-  type WorkoutFocus,
-} from "@/features/workouts/api/workouts";
-import { useMutation } from "@tanstack/react-query";
+import { Suspense, type ReactNode } from "react";
+import { type WorkoutFocus } from "@/features/workouts/api/workouts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MiniChart } from "@/features/workouts/components/form/mini-chart";
@@ -17,26 +11,14 @@ import {
   workoutDraftStorage,
 } from "@/lib/local-storage";
 import { type DbExercise } from "@/features/exercises/api/exercises";
-import {
-  getInitialValues,
-  MOCK_VALUES,
-} from "@/features/workouts/components/form/form-options";
-import { postDemoWorkoutsMutation } from "@/lib/demo-data/query-options";
 import { toast } from "sonner";
-import { getWorkoutByIdQueryOptions } from "@/lib/api/unified-query-options";
 import { formatWeight } from "@/lib/utils";
 import {
   ErrorBoundary,
   FullScreenErrorFallback,
 } from "@/components/error-boundary";
-import { queryClient } from "@/lib/api/api";
 import { ExerciseContextPanel } from "@/features/workouts/components/form/exercise-context-panel";
 import { LastWorkoutNoteSection } from "@/features/workouts/components/last-workout-note-section";
-import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
-import {
-  formatExerciseGoalSummary,
-  getExerciseGoal,
-} from "@/features/exercises/utils/exercise-goals";
 import type { WorkoutNewWorkoutContextResponse } from "@/client";
 import {
   AlertDialog,
@@ -63,10 +45,7 @@ import {
   ExerciseSets,
 } from "@/features/workouts/components/form/exercise-screen";
 import { RecentSets } from "@/features/workouts/components/form/recent-sets-display";
-import {
-  hasWorkoutDraftContent,
-  shouldShowRecentFocusAreaCard,
-} from "@/features/workouts/components/form/workout-form-helpers";
+import { shouldShowRecentFocusAreaCard } from "@/features/workouts/components/form/workout-form-helpers";
 import {
   WorkoutExerciseCards,
   type WorkoutExerciseCard,
@@ -74,6 +53,7 @@ import {
   WorkoutMetadataFields,
 } from "@/features/workouts/components/form/workout-form-sections";
 import { useExerciseReorder } from "@/features/workouts/components/form/use-exercise-reorder";
+import { useNewWorkoutFormWorkflow } from "@/features/workouts/hooks/use-new-workout-form-workflow";
 
 function WorkoutExerciseSection({
   field,
@@ -146,92 +126,17 @@ export function NewWorkoutPage({
   draftStorage?: WorkoutDraftStorage;
 }) {
   const { addExercise, exerciseIndex, newExercise } = search;
-  const navigate = useNavigate({ from: "/workouts/new" });
-  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
-  const [pendingTemplateWorkoutId, setPendingTemplateWorkoutId] = useState<
-    number | null
-  >(null);
-
-  const saveWorkoutApi = useSaveWorkoutMutation();
-  const saveWorkoutDemo = useMutation(postDemoWorkoutsMutation());
-  const saveWorkout = user ? saveWorkoutApi : saveWorkoutDemo;
-  const form = useAppForm({
-    defaultValues: getInitialValues(user?.id, draftStorage),
-    listeners: {
-      onChange: ({ formApi }) => {
-        draftStorage.save(formApi.state.values, user?.id);
-      },
-    },
-    onSubmit: async ({ value }) => {
-      const trimmedValue = {
-        ...value,
-        notes: value.notes?.trim() || undefined,
-        workoutFocus: value.workoutFocus?.trim() || undefined,
-      };
-
-      await saveWorkout.mutateAsync(
-        { body: trimmedValue },
-        {
-          onSuccess: () => {
-            toast.success("Workout saved successfully");
-            draftStorage.clear(user?.id);
-            form.reset(MOCK_VALUES);
-            navigate({ search: {} });
-          },
-        },
-      );
-    },
+  const workoutForm = useNewWorkoutFormWorkflow({
+    user,
+    exercises,
+    newWorkoutContext,
+    draftStorage,
   });
-
-  // Helper to get exercise ID from exercises list
-  const getExerciseId = (exerciseName: string): number | null => {
-    const exercise = exercises.find((ex) => ex.name === exerciseName);
-    return exercise?.id || null;
-  };
-
-  const latestWorkoutNote = newWorkoutContext.latestWorkoutNote;
-  const focusAreaTemplates = useMemo(
-    () => newWorkoutContext.focusTemplates ?? [],
-    [newWorkoutContext.focusTemplates],
-  );
-
-  const loadWorkoutTemplate = async (workoutId: number) => {
-    const workoutToRepeat = await queryClient.fetchQuery(
-      getWorkoutByIdQueryOptions(user, workoutId),
-    );
-    const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat);
-
-    form.reset(nextDraft);
-    draftStorage.save(nextDraft, user?.id);
-    navigate({ search: {} });
-    toast.success("Loaded workout structure");
-  };
-
-  const handleRepeatWorkout = async (workoutId: number) => {
-    const hasDraft =
-      hasWorkoutDraftContent(form.state.values) ||
-      draftStorage.load(user?.id) !== null;
-    if (hasDraft) {
-      setPendingTemplateWorkoutId(workoutId);
-      return;
-    }
-
-    await loadWorkoutTemplate(workoutId);
-  };
-
-  const handleClearForm = () => {
-    draftStorage.clear(user?.id);
-    form.reset(MOCK_VALUES);
-    navigate({ search: {} });
-    setIsClearDialogOpen(false);
-  };
+  const { form, focusAreaTemplates, latestWorkoutNote } = workoutForm;
 
   const renderExerciseGoalSummary = (exercise: { name: string }) => {
-    const exerciseGoalSummary = formatExerciseGoalSummary(
-      getExerciseGoal({
-        exerciseId: getExerciseId(exercise.name),
-        exerciseName: exercise.name,
-      }),
+    const exerciseGoalSummary = workoutForm.getExerciseGoalSummary(
+      exercise.name,
     );
 
     if (!exerciseGoalSummary) {
@@ -252,7 +157,7 @@ export function NewWorkoutPage({
         fallback={
           <FullScreenErrorFallback
             message="Failed to load exercise selection"
-            onAction={() => navigate({ search: {} })}
+            onAction={workoutForm.clearSearch}
             actionLabel="Go Back"
           />
         }
@@ -267,12 +172,8 @@ export function NewWorkoutPage({
           <AddExerciseScreen
             form={form}
             exercises={exercises}
-            onAddExercise={(index, isNewExercise) =>
-              navigate({
-                search: { exerciseIndex: index, newExercise: isNewExercise },
-              })
-            }
-            onBack={() => navigate({ search: {} })}
+            onAddExercise={workoutForm.openExercise}
+            onBack={workoutForm.clearSearch}
           />
         </Suspense>
       </ErrorBoundary>
@@ -285,34 +186,19 @@ export function NewWorkoutPage({
     // Validate exercise index
     if (exerciseIndex < 0 || exerciseIndex >= exercises.length) {
       // Silently redirect to main
-      navigate({ search: {} });
+      workoutForm.clearSearch();
       return null;
     }
 
     const exerciseName = exercises[exerciseIndex]?.name;
-    const exerciseId = getExerciseId(exerciseName);
-
-    const handleExerciseBack = () => {
-      const currentExercise = form.state.values.exercises[exerciseIndex];
-      if (newExercise && currentExercise && currentExercise.sets.length === 0) {
-        form.removeFieldValue("exercises", exerciseIndex);
-      }
-      navigate({ search: {} });
-    };
-
-    const handleDiscardNewExercise = () => {
-      if (newExercise) {
-        form.removeFieldValue("exercises", exerciseIndex);
-      }
-      navigate({ search: {} });
-    };
+    const exerciseId = workoutForm.getExerciseId(exerciseName);
 
     return (
       <ErrorBoundary
         fallback={
           <FullScreenErrorFallback
             message="Failed to load exercise details"
-            onAction={() => navigate({ search: {} })}
+            onAction={workoutForm.clearSearch}
             actionLabel="Go Back"
           />
         }
@@ -329,7 +215,9 @@ export function NewWorkoutPage({
               <ExerciseHeader
                 form={form}
                 exerciseIndex={exerciseIndex}
-                onBack={handleExerciseBack}
+                onBack={() =>
+                  workoutForm.closeExercise(exerciseIndex, newExercise)
+                }
               />
             }
             contextPanel={
@@ -349,7 +237,9 @@ export function NewWorkoutPage({
                 form={form}
                 exerciseIndex={exerciseIndex}
                 isNewExercise={newExercise}
-                onDiscardNewExercise={handleDiscardNewExercise}
+                onDiscardNewExercise={() =>
+                  workoutForm.discardNewExercise(exerciseIndex, newExercise)
+                }
               />
             }
           />
@@ -383,7 +273,7 @@ export function NewWorkoutPage({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setIsClearDialogOpen(true)}
+                onClick={() => workoutForm.setIsClearDialogOpen(true)}
                 size="sm"
               >
                 <X className="w-3.5 h-3.5 mr-1.5" />
@@ -422,7 +312,7 @@ export function NewWorkoutPage({
                       </div>
                       <Select
                         onValueChange={(value) =>
-                          handleRepeatWorkout(Number(value))
+                          workoutForm.repeatWorkout(Number(value))
                         }
                       >
                         <SelectTrigger>
@@ -480,8 +370,8 @@ export function NewWorkoutPage({
           </form>
         </div>
         <AlertDialog
-          open={isClearDialogOpen}
-          onOpenChange={setIsClearDialogOpen}
+          open={workoutForm.isClearDialogOpen}
+          onOpenChange={workoutForm.setIsClearDialogOpen}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -493,17 +383,17 @@ export function NewWorkoutPage({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleClearForm}>
+              <AlertDialogAction onClick={workoutForm.clearForm}>
                 Clear draft
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         <AlertDialog
-          open={pendingTemplateWorkoutId !== null}
+          open={workoutForm.pendingTemplateWorkoutId !== null}
           onOpenChange={(open) => {
             if (!open) {
-              setPendingTemplateWorkoutId(null);
+              workoutForm.setPendingTemplateWorkoutId(null);
             }
           }}
         >
@@ -518,15 +408,7 @@ export function NewWorkoutPage({
             <AlertDialogFooter>
               <AlertDialogCancel>Keep current draft</AlertDialogCancel>
               <AlertDialogAction
-                onClick={async () => {
-                  if (pendingTemplateWorkoutId == null) {
-                    return;
-                  }
-
-                  const workoutId = pendingTemplateWorkoutId;
-                  setPendingTemplateWorkoutId(null);
-                  await loadWorkoutTemplate(workoutId);
-                }}
+                onClick={workoutForm.replaceDraftWithPendingTemplate}
               >
                 Replace draft
               </AlertDialogAction>
