@@ -40,8 +40,7 @@ func TestRepositoryCompleteRun_PersistsWorkoutDraftJSONB(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+	repo := NewRepository(logger, queries, pool)
 
 	conversation, err := repo.CreateConversation(ctx, userID)
 	require.NoError(t, err)
@@ -109,8 +108,7 @@ func TestRepositoryCompleteRun_AllowsNilWorkoutDraft(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+	repo := NewRepository(logger, queries, pool)
 
 	conversation, err := repo.CreateConversation(ctx, userID)
 	require.NoError(t, err)
@@ -153,8 +151,7 @@ func TestRepositoryInterruptRun_RequiresLoadedGenerationSnapshot(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+	repo := NewRepository(logger, queries, pool)
 
 	conversation, err := repo.CreateConversation(ctx, userID)
 	require.NoError(t, err)
@@ -224,8 +221,7 @@ func TestRepositoryCompleteRun_PersistsWorkoutDraftWithNullByteText(t *testing.T
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+	repo := NewRepository(logger, queries, pool)
 
 	conversation, err := repo.CreateConversation(ctx, userID)
 	require.NoError(t, err)
@@ -274,7 +270,8 @@ func TestRepositorySaveLatestWorkoutDraft_ConcurrentCallsCreateOneWorkout(t *tes
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo))
+	workoutSaver := workout.NewTxSaver(logger, exerciseRepo)
+	repo := NewRepository(logger, queries, pool)
 
 	conversation, err := repo.CreateConversation(ctx, userID)
 	require.NoError(t, err)
@@ -307,7 +304,12 @@ func TestRepositorySaveLatestWorkoutDraft_ConcurrentCallsCreateOneWorkout(t *tes
 		go func() {
 			defer wg.Done()
 			<-start
-			resp, saveErr := repo.SaveLatestWorkoutDraft(context.Background(), conversation.ID, userID, time.Now().UTC())
+			resp, saveErr := repo.SaveLatestWorkoutDraft(context.Background(), SaveLatestWorkoutDraftRequest{
+				ConversationID: conversation.ID,
+				UserID:         userID,
+				SavedAt:        time.Now().UTC(),
+				SaveWorkout:    workoutSaver.SaveWorkoutTx,
+			})
 			if saveErr != nil {
 				errs <- saveErr
 				return
@@ -358,8 +360,7 @@ func TestRepositoryPrepareMessageStream_TrialCapAllowsTwoStartsAndBlocksThird(t 
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo), 2)
+	repo := NewRepository(logger, queries, pool, 2)
 
 	conversation, err := repo.CreateConversation(ctx, userID)
 	require.NoError(t, err)
@@ -402,8 +403,7 @@ func TestRepositoryPrepareMessageStream_DoesNotConsumeTrialPromptWhenStartFails(
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	repo := NewRepository(logger, queries, pool, workout.NewTxSaver(logger, exerciseRepo), 2)
+	repo := NewRepository(logger, queries, pool, 2)
 
 	missing, err := repo.PrepareMessageStream(ctx, 999999, userID, "missing conversation", defaultModelName, "req-missing")
 	require.Error(t, err)

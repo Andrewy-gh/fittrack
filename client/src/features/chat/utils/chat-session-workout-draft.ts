@@ -19,8 +19,10 @@ export async function saveLatestWorkoutDraft({
 
   try {
     setters.setIsSavingWorkoutDraft(true);
-    const saved = await saveAIChatLatestWorkoutDraft(conversation.id);
-    setters.setConversation(saved.conversation);
+    const updatedConversation = await saveAIChatLatestWorkoutDraft(
+      conversation.id,
+    );
+    setters.setConversation(updatedConversation);
     toast.success("Workout saved successfully");
   } catch (error) {
     showErrorToast(error, "Failed to save workout");

@@ -18,11 +18,24 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type SaveWorkoutDraftTx func(ctx context.Context, qtx *db.Queries, draft workout.CreateWorkoutRequest, userID string) (int32, error)
+
+type SaveLatestWorkoutDraftRequest struct {
+	ConversationID int32
+	UserID         string
+	SavedAt        time.Time
+	SaveWorkout    SaveWorkoutDraftTx
+}
+
+type SavedLatestWorkoutDraft struct {
+	Conversation *Conversation
+	WorkoutID    int32
+}
+
 type Repository interface {
 	CreateConversation(ctx context.Context, userID string) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
-	SaveLatestWorkoutDraft(ctx context.Context, conversationID int32, userID string, savedAt time.Time) (*SaveLatestWorkoutDraftResponse, error)
-	MarkLatestWorkoutDraftSaved(ctx context.Context, conversationID int32, userID string, sourceRunID *int32, workoutID int32, savedAt time.Time) (*Conversation, error)
+	SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)
 	GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error)
 	GetLatestStreamSequence(ctx context.Context, runID int32, userID string) (int32, error)
@@ -42,13 +55,12 @@ type repository struct {
 	logger         *slog.Logger
 	queries        *db.Queries
 	pool           *pgxpool.Pool
-	workoutSaver   workout.TxSaver
 	trialPromptCap int32
 }
 
 const streamingRunStaleAfter = chatStreamTimeout + 15*time.Second
 
-func NewRepository(logger *slog.Logger, queries *db.Queries, pool *pgxpool.Pool, workoutSaver workout.TxSaver, trialPromptCap ...int) Repository {
+func NewRepository(logger *slog.Logger, queries *db.Queries, pool *pgxpool.Pool, trialPromptCap ...int) Repository {
 	var cap int32
 	if len(trialPromptCap) > 0 {
 		cap = int32(trialPromptCap[0])
@@ -57,7 +69,6 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, pool *pgxpool.Pool,
 		logger:         logger,
 		queries:        queries,
 		pool:           pool,
-		workoutSaver:   workoutSaver,
 		trialPromptCap: cap,
 	}
 }
@@ -105,9 +116,12 @@ func (r *repository) GetConversation(ctx context.Context, conversationID int32, 
 	return conversation, nil
 }
 
-func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32, userID string, savedAt time.Time) (*SaveLatestWorkoutDraftResponse, error) {
+func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	if request.SaveWorkout == nil {
+		return nil, errors.New("save latest ai chat workout draft requires a workout saver")
+	}
 
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -117,8 +131,8 @@ func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, conversationID 
 
 	qtx := r.queries.WithTx(tx)
 	row, err := qtx.GetAIChatConversationForUpdate(ctx, db.GetAIChatConversationForUpdateParams{
-		ID:     conversationID,
-		UserID: userID,
+		ID:     request.ConversationID,
+		UserID: request.UserID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -139,13 +153,13 @@ func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, conversationID 
 		if err := tx.Commit(ctx); err != nil {
 			return nil, fmt.Errorf("commit ai chat latest workout draft save transaction: %w", err)
 		}
-		return &SaveLatestWorkoutDraftResponse{
+		return &SavedLatestWorkoutDraft{
 			Conversation: conversation,
 			WorkoutID:    *status.SavedWorkoutID,
 		}, nil
 	}
 
-	workoutID, err := r.workoutSaver.SaveWorkoutTx(ctx, qtx, *conversation.LatestWorkoutDraft, userID)
+	workoutID, err := request.SaveWorkout(ctx, qtx, *conversation.LatestWorkoutDraft, request.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("save ai chat latest workout draft workout: %w", err)
 	}
@@ -156,15 +170,15 @@ func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, conversationID 
 	}
 
 	updatedRow, err := qtx.MarkAIChatConversationLatestWorkoutDraftSaved(ctx, db.MarkAIChatConversationLatestWorkoutDraftSavedParams{
-		ID:                            conversationID,
-		UserID:                        userID,
+		ID:                            request.ConversationID,
+		UserID:                        request.UserID,
 		LatestWorkoutDraftSourceRunID: int4PtrToPg(sourceRunID),
 		LatestWorkoutDraftSavedWorkoutID: pgtype.Int4{
 			Int32: workoutID,
 			Valid: true,
 		},
 		LatestWorkoutDraftSavedAt: pgtype.Timestamptz{
-			Time:  savedAt.UTC(),
+			Time:  request.SavedAt.UTC(),
 			Valid: true,
 		},
 	})
@@ -184,50 +198,10 @@ func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, conversationID 
 		return nil, err
 	}
 
-	return &SaveLatestWorkoutDraftResponse{
+	return &SavedLatestWorkoutDraft{
 		Conversation: updatedConversation,
 		WorkoutID:    workoutID,
 	}, nil
-}
-
-func (r *repository) MarkLatestWorkoutDraftSaved(ctx context.Context, conversationID int32, userID string, sourceRunID *int32, workoutID int32, savedAt time.Time) (*Conversation, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	sourceRun := pgtype.Int4{Valid: false}
-	if sourceRunID != nil {
-		sourceRun = pgtype.Int4{
-			Int32: *sourceRunID,
-			Valid: true,
-		}
-	}
-
-	row, err := r.queries.MarkAIChatConversationLatestWorkoutDraftSaved(ctx, db.MarkAIChatConversationLatestWorkoutDraftSavedParams{
-		ID:                            conversationID,
-		UserID:                        userID,
-		LatestWorkoutDraftSourceRunID: sourceRun,
-		LatestWorkoutDraftSavedWorkoutID: pgtype.Int4{
-			Int32: workoutID,
-			Valid: true,
-		},
-		LatestWorkoutDraftSavedAt: pgtype.Timestamptz{
-			Time:  savedAt.UTC(),
-			Valid: true,
-		},
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, err
-		}
-		return nil, fmt.Errorf("mark latest ai chat workout draft saved: %w", err)
-	}
-
-	conversation, err := mapConversation(row)
-	if err != nil {
-		return nil, err
-	}
-
-	return conversation, nil
 }
 
 func (r *repository) ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error) {

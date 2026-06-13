@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
+	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -75,16 +76,10 @@ func (m *mockRepository) GetConversation(ctx context.Context, conversationID int
 	return conversation, args.Error(1)
 }
 
-func (m *mockRepository) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32, userID string, savedAt time.Time) (*SaveLatestWorkoutDraftResponse, error) {
-	args := m.Called(ctx, conversationID, userID, savedAt)
-	resp, _ := args.Get(0).(*SaveLatestWorkoutDraftResponse)
+func (m *mockRepository) SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error) {
+	args := m.Called(ctx, request)
+	resp, _ := args.Get(0).(*SavedLatestWorkoutDraft)
 	return resp, args.Error(1)
-}
-
-func (m *mockRepository) MarkLatestWorkoutDraftSaved(ctx context.Context, conversationID int32, userID string, sourceRunID *int32, workoutID int32, savedAt time.Time) (*Conversation, error) {
-	args := m.Called(ctx, conversationID, userID, sourceRunID, workoutID, savedAt)
-	conversation, _ := args.Get(0).(*Conversation)
-	return conversation, args.Error(1)
 }
 
 func (m *mockRepository) ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error) {
@@ -178,12 +173,12 @@ func (m *mockPremiumAccessService) EnsureAIChatPromptAllowed(ctx context.Context
 	return args.Error(0)
 }
 
-type mockWorkoutCreator struct {
+type mockWorkoutDraftSaver struct {
 	mock.Mock
 }
 
-func (m *mockWorkoutCreator) CreateWorkoutWithID(ctx context.Context, requestBody workout.CreateWorkoutRequest) (int32, error) {
-	args := m.Called(ctx, requestBody)
+func (m *mockWorkoutDraftSaver) SaveWorkoutTx(ctx context.Context, qtx *db.Queries, requestBody workout.CreateWorkoutRequest, userID string) (int32, error) {
+	args := m.Called(ctx, qtx, requestBody, userID)
 	return args.Get(0).(int32), args.Error(1)
 }
 
@@ -458,32 +453,49 @@ func TestServiceGetConversation_IncludesLatestWorkoutDraft(t *testing.T) {
 func TestServiceSaveLatestWorkoutDraft(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	t.Run("delegates the draft save to the repository transaction", func(t *testing.T) {
+	t.Run("saves the latest draft through the repository transaction boundary", func(t *testing.T) {
 		featureAccess := new(mockFeatureAccessService)
 		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, nil, repo, nil)
+		workoutSaver := new(mockWorkoutDraftSaver)
+		service := NewService(logger, featureAccess, nil, repo, workoutSaver)
 		ctx := user.WithContext(context.Background(), "user-123")
 		savedWorkoutID := int32(88)
-		savedAt := time.Date(2026, 4, 21, 17, 30, 0, 0, time.UTC)
+		expectedSavedAt := time.Date(2026, 4, 21, 17, 30, 0, 0, time.UTC)
+		draft := workout.CreateWorkoutRequest{
+			Date: "2026-04-21T12:00:00Z",
+			Exercises: []workout.ExerciseInput{
+				{
+					Name: "Chest Supported Row",
+					Sets: []workout.SetInput{
+						{Reps: 10, SetType: "working"},
+					},
+				},
+			},
+		}
 
 		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-		repo.On(
-			"SaveLatestWorkoutDraft",
-			mock.Anything,
-			int32(41),
-			"user-123",
-			mock.AnythingOfType("time.Time"),
-		).Run(func(args mock.Arguments) {
-			actualSavedAt := args.Get(3).(time.Time)
+		workoutSaver.On("SaveWorkoutTx", mock.Anything, (*db.Queries)(nil), draft, "user-123").Return(savedWorkoutID, nil).Once()
+		repo.On("SaveLatestWorkoutDraft", mock.Anything, mock.MatchedBy(func(request SaveLatestWorkoutDraftRequest) bool {
+			return request.ConversationID == 41 &&
+				request.UserID == "user-123" &&
+				!request.SavedAt.IsZero() &&
+				request.SaveWorkout != nil
+		})).Run(func(args mock.Arguments) {
+			request := args.Get(1).(SaveLatestWorkoutDraftRequest)
+			actualSavedAt := request.SavedAt
 			assert.WithinDuration(t, time.Now().UTC(), actualSavedAt, 5*time.Second)
-		}).Return(&SaveLatestWorkoutDraftResponse{
+
+			workoutID, err := request.SaveWorkout(context.Background(), nil, draft, "user-123")
+			require.NoError(t, err)
+			assert.Equal(t, savedWorkoutID, workoutID)
+		}).Return(&SavedLatestWorkoutDraft{
 			WorkoutID: savedWorkoutID,
 			Conversation: &Conversation{
 				ID: 41,
 				LatestWorkoutDraftStatus: &LatestWorkoutDraftStatus{
 					IsSaved:        true,
 					SavedWorkoutID: &savedWorkoutID,
-					SavedAt:        &savedAt,
+					SavedAt:        &expectedSavedAt,
 				},
 			},
 		}, nil).Once()
@@ -498,6 +510,7 @@ func TestServiceSaveLatestWorkoutDraft(t *testing.T) {
 		assert.True(t, resp.Conversation.LatestWorkoutDraftStatus.IsSaved)
 		assert.Equal(t, &savedWorkoutID, resp.Conversation.LatestWorkoutDraftStatus.SavedWorkoutID)
 		featureAccess.AssertExpectations(t)
+		workoutSaver.AssertExpectations(t)
 		repo.AssertExpectations(t)
 	})
 
@@ -509,7 +522,9 @@ func TestServiceSaveLatestWorkoutDraft(t *testing.T) {
 		savedWorkoutID := int32(88)
 
 		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-		repo.On("SaveLatestWorkoutDraft", mock.Anything, int32(41), "user-123", mock.AnythingOfType("time.Time")).Return(&SaveLatestWorkoutDraftResponse{
+		repo.On("SaveLatestWorkoutDraft", mock.Anything, mock.MatchedBy(func(request SaveLatestWorkoutDraftRequest) bool {
+			return request.ConversationID == 41 && request.UserID == "user-123" && request.SaveWorkout != nil
+		})).Return(&SavedLatestWorkoutDraft{
 			WorkoutID: savedWorkoutID,
 			Conversation: &Conversation{
 				ID: 41,
@@ -536,7 +551,9 @@ func TestServiceSaveLatestWorkoutDraft(t *testing.T) {
 		ctx := user.WithContext(context.Background(), "user-123")
 
 		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-		repo.On("SaveLatestWorkoutDraft", mock.Anything, int32(41), "user-123", mock.AnythingOfType("time.Time")).Return((*SaveLatestWorkoutDraftResponse)(nil), ErrLatestWorkoutDraftUnavailable).Once()
+		repo.On("SaveLatestWorkoutDraft", mock.Anything, mock.MatchedBy(func(request SaveLatestWorkoutDraftRequest) bool {
+			return request.ConversationID == 41 && request.UserID == "user-123" && request.SaveWorkout != nil
+		})).Return((*SavedLatestWorkoutDraft)(nil), ErrLatestWorkoutDraftUnavailable).Once()
 
 		resp, err := service.SaveLatestWorkoutDraft(ctx, 41)
 

@@ -236,14 +236,14 @@ export async function requestAIChatMessageRecovery(
 export async function saveAIChatLatestWorkoutDraft(
   conversationId: number,
   options: ConversationRequestOptions = {},
-): Promise<AISaveLatestWorkoutDraftResponse> {
+): Promise<AIChatConversation> {
   const response = await postAiConversationsByIdLatestWorkoutDraftSave({
     path: { id: conversationId },
     signal: options.signal,
     throwOnError: true,
   });
 
-  return response.data as AISaveLatestWorkoutDraftResponse;
+  return (response.data as AISaveLatestWorkoutDraftResponse).conversation;
 }
 
 export async function streamAIChatMessage(
