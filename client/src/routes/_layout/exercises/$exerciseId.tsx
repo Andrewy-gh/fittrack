@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { exerciseByIdQueryOptions } from "@/features/exercises/api/exercises";
+import { getExerciseDetailQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import { ExerciseDetailPage } from "@/features/exercises/pages/exercise-detail-page";
-import { getDemoExercisesByIdQueryOptions } from "@/lib/demo-data/query-options";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
 
 const exerciseSearchSchema = z.object({
@@ -29,12 +28,14 @@ export const Route = createFileRoute("/_layout/exercises/$exerciseId")({
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      context.queryClient.ensureQueryData(exerciseByIdQueryOptions(exerciseId));
+      context.queryClient.ensureQueryData(
+        getExerciseDetailQueryOptions(user, exerciseId),
+      );
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
       context.queryClient.ensureQueryData(
-        getDemoExercisesByIdQueryOptions(exerciseId),
+        getExerciseDetailQueryOptions(user, exerciseId),
       );
     }
 
@@ -51,7 +52,7 @@ function RouteComponent() {
   return (
     <ExerciseDetailPage
       exerciseId={exerciseId}
-      isDemoMode={!user}
+      user={user}
       sortOrder={sortOrder}
       itemsPerPage={itemsPerPage}
       page={page}

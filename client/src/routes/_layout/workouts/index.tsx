@@ -1,11 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import {
-  contributionDataQueryOptions,
-  workoutsQueryOptions,
-} from "@/features/workouts/api/workouts";
+import { contributionDataQueryOptions } from "@/features/workouts/api/workouts";
+import { getWorkoutListQueryOptions } from "@/features/workouts/api/workout-query-options";
 import { WorkoutsPage } from "@/features/workouts/pages/workouts-page";
-import { getDemoWorkoutsQueryOptions } from "@/lib/demo-data/query-options";
 import { clearDemoData, initializeDemoData } from "@/lib/demo-data/storage";
 
 const workoutsSearchSchema = z.object({
@@ -22,11 +19,11 @@ export const Route = createFileRoute("/_layout/workouts/")({
 
     if (user) {
       clearDemoData();
-      context.queryClient.ensureQueryData(workoutsQueryOptions());
+      context.queryClient.ensureQueryData(getWorkoutListQueryOptions(user));
       context.queryClient.ensureQueryData(contributionDataQueryOptions());
     } else {
       initializeDemoData();
-      context.queryClient.ensureQueryData(getDemoWorkoutsQueryOptions());
+      context.queryClient.ensureQueryData(getWorkoutListQueryOptions(user));
     }
   },
   component: RouteComponent,

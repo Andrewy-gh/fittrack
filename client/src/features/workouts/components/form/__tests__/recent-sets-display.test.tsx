@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { RecentSets } from "../recent-sets-display";
 import * as ReactQuery from "@tanstack/react-query";
-import * as unifiedQueryOptions from "@/lib/api/unified-query-options";
+import * as exerciseQueryOptions from "@/features/exercises/api/exercise-query-options";
 
 // Mock dependencies
 vi.mock("@tanstack/react-query", async () => {
@@ -59,11 +59,13 @@ vi.mock("lucide-react", () => ({
   ChevronRight: () => <span data-testid="chevron">→</span>,
 }));
 
-vi.mock("@/lib/api/unified-query-options", async () => {
-  const actual = await vi.importActual("@/lib/api/unified-query-options");
+vi.mock("@/features/exercises/api/exercise-query-options", async () => {
+  const actual = await vi.importActual(
+    "@/features/exercises/api/exercise-query-options",
+  );
   return {
     ...actual,
-    getRecentSetsQueryOptions: vi.fn(),
+    getRecentExerciseSetsQueryOptions: vi.fn(),
   };
 });
 
@@ -121,9 +123,9 @@ describe("RecentSets", () => {
         queryKey: ["demo_recentSets", 1],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: mockRecentSets,
       } as any);
@@ -144,7 +146,7 @@ describe("RecentSets", () => {
       expect(screen.getByText("145 lbs")).toBeInTheDocument();
       expect(screen.getByText("8 reps")).toBeInTheDocument();
       expect(
-        unifiedQueryOptions.getRecentSetsQueryOptions,
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
       ).toHaveBeenCalledWith(null, 1);
     });
 
@@ -153,9 +155,9 @@ describe("RecentSets", () => {
         queryKey: ["demo_recentSets", 1],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: [],
       } as any);
@@ -195,9 +197,9 @@ describe("RecentSets", () => {
         queryKey: ["recentSets", 2],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: mockRecentSets,
       } as any);
@@ -217,7 +219,7 @@ describe("RecentSets", () => {
       expect(screen.getByText("225 lbs")).toBeInTheDocument();
       expect(screen.getByText("12 reps")).toBeInTheDocument();
       expect(
-        unifiedQueryOptions.getRecentSetsQueryOptions,
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
       ).toHaveBeenCalledWith(mockUser, 2);
     });
 
@@ -227,9 +229,9 @@ describe("RecentSets", () => {
         queryKey: ["recentSets", 2],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: [],
       } as any);
@@ -251,14 +253,14 @@ describe("RecentSets", () => {
   });
 
   describe("uses correct query options based on user state", () => {
-    it("calls getRecentSetsQueryOptions with correct parameters for demo user", async () => {
+    it("calls getRecentExerciseSetsQueryOptions with correct parameters for demo user", async () => {
       const mockQueryOptions = {
         queryKey: ["demo_recentSets", 5],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: [],
       } as any);
@@ -272,7 +274,7 @@ describe("RecentSets", () => {
 
       await waitFor(() => {
         expect(
-          unifiedQueryOptions.getRecentSetsQueryOptions,
+          exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
         ).toHaveBeenCalledWith(null, 5);
       });
 
@@ -281,15 +283,15 @@ describe("RecentSets", () => {
       );
     });
 
-    it("calls getRecentSetsQueryOptions with correct parameters for authenticated user", async () => {
+    it("calls getRecentExerciseSetsQueryOptions with correct parameters for authenticated user", async () => {
       const mockUser = { id: "user456" } as any;
       const mockQueryOptions = {
         queryKey: ["recentSets", 5],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: [],
       } as any);
@@ -303,7 +305,7 @@ describe("RecentSets", () => {
 
       await waitFor(() => {
         expect(
-          unifiedQueryOptions.getRecentSetsQueryOptions,
+          exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
         ).toHaveBeenCalledWith(mockUser, 5);
       });
 
@@ -331,9 +333,9 @@ describe("RecentSets", () => {
         queryKey: ["recentSets", 1],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: mockRecentSets,
       } as any);
@@ -386,9 +388,9 @@ describe("RecentSets", () => {
         queryKey: ["recentSets", 1],
         queryFn: vi.fn(),
       };
-      vi.mocked(unifiedQueryOptions.getRecentSetsQueryOptions).mockReturnValue(
-        mockQueryOptions as any,
-      );
+      vi.mocked(
+        exerciseQueryOptions.getRecentExerciseSetsQueryOptions,
+      ).mockReturnValue(mockQueryOptions as any);
       vi.mocked(ReactQuery.useSuspenseQuery).mockReturnValue({
         data: mockRecentSets,
       } as any);

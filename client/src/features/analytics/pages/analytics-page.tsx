@@ -1,72 +1,44 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 
 import { AnalyticsDashboard } from "@/features/analytics/components/analytics-dashboard";
 import {
-  exerciseByIdQueryOptions,
-  exercisesQueryOptions,
-} from "@/features/exercises/api/exercises";
+  getExerciseDetailQueryOptions,
+  getExerciseListQueryOptions,
+} from "@/features/exercises/api/exercise-query-options";
 import {
-  contributionDataQueryOptions,
-  workoutsFocusValuesQueryOptions,
-} from "@/features/workouts/api/workouts";
-import {
-  getDemoContributionDataQueryOptions,
-  getDemoExercisesByIdQueryOptions,
-  getDemoExercisesQueryOptions,
-  getDemoWorkoutsFocusValuesQueryOptions,
-} from "@/lib/demo-data/query-options";
+  getWorkoutContributionQueryOptions,
+  getWorkoutsFocusQueryOptions,
+} from "@/features/workouts/api/workout-query-options";
 
 type AnalyticsPageProps = {
   exerciseId?: number;
-  isDemoMode: boolean;
+  user: CurrentUser | CurrentInternalUser | null;
 };
 
-export function AnalyticsPage({ exerciseId, isDemoMode }: AnalyticsPageProps) {
+export function AnalyticsPage({ exerciseId, user }: AnalyticsPageProps) {
   const navigate = useNavigate({ from: "/analytics" });
+  const isDemoMode = !user;
 
-  const { data: exercises } = isDemoMode
-    ? useSuspenseQuery(getDemoExercisesQueryOptions())
-    : useSuspenseQuery(exercisesQueryOptions());
+  const { data: exercises } = useSuspenseQuery(
+    getExerciseListQueryOptions(user),
+  );
 
   const selectedExerciseId =
     exerciseId && exercises.some((exercise) => exercise.id === exerciseId)
       ? exerciseId
       : exercises[0]?.id;
 
-  const exerciseDetailQuery = isDemoMode
-    ? useQuery({
-        ...getDemoExercisesByIdQueryOptions(selectedExerciseId ?? 0),
-        enabled: Boolean(selectedExerciseId),
-      })
-    : useQuery({
-        ...exerciseByIdQueryOptions(selectedExerciseId ?? 0),
-        enabled: Boolean(selectedExerciseId),
-      });
-
-  const authedContributionQuery = useQuery({
-    ...contributionDataQueryOptions(),
-    enabled: !isDemoMode,
-  });
-  const demoContributionQuery = useQuery({
-    ...getDemoContributionDataQueryOptions(),
-    enabled: isDemoMode,
-  });
-  const authedFocusValuesQuery = useQuery({
-    ...workoutsFocusValuesQueryOptions(),
-    enabled: !isDemoMode,
-  });
-  const demoFocusValuesQuery = useQuery({
-    ...getDemoWorkoutsFocusValuesQueryOptions(),
-    enabled: isDemoMode,
+  const exerciseDetailQuery = useQuery({
+    ...getExerciseDetailQueryOptions(user, selectedExerciseId ?? 0),
+    enabled: Boolean(selectedExerciseId),
   });
 
-  const workoutContributionData = isDemoMode
-    ? demoContributionQuery.data
-    : authedContributionQuery.data;
-  const workoutFocusValues = isDemoMode
-    ? (demoFocusValuesQuery.data ?? [])
-    : (authedFocusValuesQuery.data ?? []);
+  const workoutContributionQuery = useQuery(
+    getWorkoutContributionQueryOptions(user),
+  );
+  const workoutFocusValuesQuery = useQuery(getWorkoutsFocusQueryOptions(user));
 
   return (
     <AnalyticsDashboard
@@ -79,8 +51,8 @@ export function AnalyticsPage({ exerciseId, isDemoMode }: AnalyticsPageProps) {
       isLoadingDetails={exerciseDetailQuery.isLoading}
       exerciseSets={exerciseDetailQuery.data?.sets}
       isDemoMode={isDemoMode}
-      workoutContributionData={workoutContributionData}
-      workoutFocusValues={workoutFocusValues}
+      workoutContributionData={workoutContributionQuery.data}
+      workoutFocusValues={workoutFocusValuesQuery.data ?? []}
     />
   );
 }

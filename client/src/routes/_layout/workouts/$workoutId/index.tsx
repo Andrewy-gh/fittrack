@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { workoutQueryOptions } from "@/features/workouts/api/workouts";
+import { getWorkoutByIdQueryOptions } from "@/features/workouts/api/workout-query-options";
 import { WorkoutDetailEditable } from "@/features/workouts/components/workout-detail";
-import { getDemoWorkoutsByIdQueryOptions } from "@/lib/demo-data/query-options";
 import { clearDemoData, initializeDemoData } from "@/lib/demo-data/storage";
 
 export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
@@ -21,11 +20,13 @@ export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
 
     if (user) {
       clearDemoData();
-      context.queryClient.ensureQueryData(workoutQueryOptions(workoutId));
+      context.queryClient.ensureQueryData(
+        getWorkoutByIdQueryOptions(user, workoutId),
+      );
     } else {
       initializeDemoData();
       context.queryClient.ensureQueryData(
-        getDemoWorkoutsByIdQueryOptions(workoutId),
+        getWorkoutByIdQueryOptions(user, workoutId),
       );
     }
 
@@ -38,9 +39,9 @@ function RouteComponent() {
   const { workoutId } = Route.useLoaderData();
   const { user } = Route.useRouteContext();
 
-  const { data: workout } = user
-    ? useSuspenseQuery(workoutQueryOptions(workoutId))
-    : useSuspenseQuery(getDemoWorkoutsByIdQueryOptions(workoutId));
+  const { data: workout } = useSuspenseQuery(
+    getWorkoutByIdQueryOptions(user, workoutId),
+  );
 
   return <WorkoutDetailEditable workout={workout} />;
 }
