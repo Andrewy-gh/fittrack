@@ -344,13 +344,13 @@ describe("AIChatBillingCard", () => {
         stripe_subscription_id: "sub_cancel_at",
         status: "active",
         cancel_at_period_end: false,
-        cancel_at: "2026-07-10T03:39:36Z",
-        current_period_end: "2026-07-10T03:39:36Z",
+        cancel_at: "2026-07-10T12:00:00Z",
+        current_period_end: "2026-07-10T12:00:00Z",
       },
     });
 
     expect(
-      screen.getByText("Access continues until Jul 9, 2026."),
+      screen.getByText("Access continues until Jul 10, 2026."),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Cancel plan" }),

@@ -349,8 +349,8 @@ describe("useAIChatBillingAccess checkout polling", () => {
       subscription: {
         ...activeBillingStatus.subscription!,
         cancel_at_period_end: false,
-        cancel_at: "2026-07-10T03:39:36Z",
-        current_period_end: "2026-07-10T03:39:36Z",
+        cancel_at: "2026-07-10T12:00:00Z",
+        current_period_end: "2026-07-10T12:00:00Z",
       },
     });
     mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
@@ -362,7 +362,7 @@ describe("useAIChatBillingAccess checkout polling", () => {
 
     await waitFor(() => {
       expect(result.current.billingStatus?.subscription?.cancel_at).toBe(
-        "2026-07-10T03:39:36Z",
+        "2026-07-10T12:00:00Z",
       );
     });
     expect(mocks.mockGetCheckoutBillingStatus).toHaveBeenCalledTimes(1);
