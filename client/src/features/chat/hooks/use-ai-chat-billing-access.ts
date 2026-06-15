@@ -622,6 +622,7 @@ function isBillingCancellationReflected(
   return (
     !subscription ||
     subscription.cancel_at_period_end ||
+    Boolean(subscription.cancel_at) ||
     subscription.status === "canceled"
   );
 }

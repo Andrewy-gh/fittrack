@@ -496,7 +496,7 @@ function isBlockedStatus(status: BillingSubscriptionStatus): boolean {
 
 function isCancelableSubscription(subscription: BillingSubscription): boolean {
   return (
-    !subscription.cancel_at_period_end &&
+    !isSubscriptionCancellationScheduled(subscription) &&
     (subscription.status === "trialing" || subscription.status === "active")
   );
 }
@@ -520,11 +520,22 @@ function blockedStatusMessage(status?: BillingSubscriptionStatus): string {
 function getCancellationMessage(
   subscription?: BillingSubscription,
 ): string | null {
-  if (!subscription?.cancel_at_period_end || !subscription.current_period_end) {
+  if (!subscription || !isSubscriptionCancellationScheduled(subscription)) {
     return null;
   }
 
-  return `Access continues until ${formatBillingDate(subscription.current_period_end)}.`;
+  const accessEnd = subscription.cancel_at ?? subscription.current_period_end;
+  if (!accessEnd) {
+    return "Access continues until the end of the current billing period.";
+  }
+
+  return `Access continues until ${formatBillingDate(accessEnd)}.`;
+}
+
+function isSubscriptionCancellationScheduled(
+  subscription: BillingSubscription,
+): boolean {
+  return subscription.cancel_at_period_end || Boolean(subscription.cancel_at);
 }
 
 function formatBillingDate(value: string): string {

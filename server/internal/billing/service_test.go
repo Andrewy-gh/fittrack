@@ -221,6 +221,7 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 		status     string
 		priceID    string
 		canceling  bool
+		cancelAt   *time.Time
 		periodEnd  time.Time
 		wantAccess bool
 	}{
@@ -236,6 +237,14 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 			status:     "active",
 			priceID:    "price_premium",
 			canceling:  true,
+			periodEnd:  now.Add(24 * time.Hour),
+			wantAccess: true,
+		},
+		{
+			name:       "scheduled cancel_at keeps access until period end",
+			status:     "active",
+			priceID:    "price_premium",
+			cancelAt:   timePtr(now.Add(24 * time.Hour)),
 			periodEnd:  now.Add(24 * time.Hour),
 			wantAccess: true,
 		},
@@ -282,6 +291,7 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 				StripePriceID:        textToPg(tt.priceID),
 				Status:               tt.status,
 				CancelAtPeriodEnd:    tt.canceling,
+				CancelAt:             timePtrToPg(tt.cancelAt),
 				CurrentPeriodEnd:     pgtype.Timestamptz{Time: tt.periodEnd, Valid: true},
 			}, nil).Once()
 
@@ -291,6 +301,10 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 			assert.Equal(t, tt.wantAccess, resp.HasAccess)
 			require.NotNil(t, resp.Subscription)
 			assert.Equal(t, tt.canceling, resp.Subscription.CancelAtPeriodEnd)
+			if tt.cancelAt != nil {
+				require.NotNil(t, resp.Subscription.CancelAt)
+				assert.Equal(t, tt.cancelAt.UTC(), resp.Subscription.CancelAt.UTC())
+			}
 			repo.AssertExpectations(t)
 		})
 	}
@@ -425,5 +439,9 @@ func subscriptionEventPayloadWithPrice(t *testing.T, subscriptionID string, stat
 }
 
 func stringPtr(value string) *string {
+	return &value
+}
+
+func timePtr(value time.Time) *time.Time {
 	return &value
 }

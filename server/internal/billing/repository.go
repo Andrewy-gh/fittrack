@@ -126,6 +126,7 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 		StripeEventCreatedAt: timePtrToPg(snapshot.StripeEventCreatedAt),
 		Status:               snapshot.Status,
 		CancelAtPeriodEnd:    snapshot.CancelAtPeriodEnd,
+		CancelAt:             timePtrToPg(snapshot.CancelAt),
 		CurrentPeriodStart:   timePtrToPg(snapshot.CurrentPeriodStart),
 		CurrentPeriodEnd:     timePtrToPg(snapshot.CurrentPeriodEnd),
 		TrialStart:           timePtrToPg(snapshot.TrialStart),

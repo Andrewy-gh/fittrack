@@ -395,7 +395,7 @@ func (s *Service) currentCancelableSubscription(ctx context.Context, userID stri
 
 	if !s.subscriptionRowGrantsAccess(subscription) ||
 		!subscriptionAccessPeriodOpen(subscription, time.Now().UTC()) ||
-		subscription.CancelAtPeriodEnd {
+		subscriptionCancelScheduled(subscription) {
 		return db.StripeSubscriptions{}, ErrBillingSubscriptionNotCancelable
 	}
 
@@ -439,6 +439,7 @@ func subscriptionSnapshot(subscription stripe.Subscription) StripeSubscriptionSn
 		StripePriceID:        priceID,
 		Status:               string(subscription.Status),
 		CancelAtPeriodEnd:    subscription.CancelAtPeriodEnd,
+		CancelAt:             unixPtr(subscription.CancelAt),
 		CurrentPeriodStart:   currentPeriodStart,
 		CurrentPeriodEnd:     currentPeriodEnd,
 		TrialStart:           unixPtr(subscription.TrialStart),
@@ -485,9 +486,14 @@ func subscriptionView(row db.StripeSubscriptions) *SubscriptionView {
 		StripeSubscriptionID: row.StripeSubscriptionID,
 		Status:               row.Status,
 		CancelAtPeriodEnd:    row.CancelAtPeriodEnd,
+		CancelAt:             timePtrFromPg(row.CancelAt),
 		CurrentPeriodEnd:     timePtrFromPg(row.CurrentPeriodEnd),
 		TrialEnd:             timePtrFromPg(row.TrialEnd),
 	}
+}
+
+func subscriptionCancelScheduled(subscription db.StripeSubscriptions) bool {
+	return subscription.CancelAtPeriodEnd || subscription.CancelAt.Valid
 }
 
 func unixPtr(value int64) *time.Time {

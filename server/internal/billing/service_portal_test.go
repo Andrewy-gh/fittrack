@@ -5,10 +5,12 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -153,6 +155,33 @@ func TestServiceCreateSubscriptionCancelPortalSession_AlreadyCanceling(t *testin
 		StripePriceID:        textToPg("price_premium"),
 		Status:               subscriptionStatusActive,
 		CancelAtPeriodEnd:    true,
+	}, nil).Once()
+	service.createPortalSession = func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		t.Fatal("portal session should not open for a subscription already set to cancel")
+		return nil, nil
+	}
+
+	resp, err := service.CreateSubscriptionCancelPortalSession(ctx)
+
+	require.ErrorIs(t, err, ErrBillingSubscriptionNotCancelable)
+	assert.Nil(t, resp)
+	repo.AssertExpectations(t)
+	repo.AssertNotCalled(t, "GetStripeCustomerByUserID", mock.Anything, mock.Anything)
+}
+
+func TestServiceCreateSubscriptionCancelPortalSession_AlreadyCancelingWithCancelAt(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		StripePriceID:        textToPg("price_premium"),
+		Status:               subscriptionStatusActive,
+		CancelAt:             pgtype.Timestamptz{Time: time.Now().UTC().Add(24 * time.Hour), Valid: true},
 	}, nil).Once()
 	service.createPortalSession = func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
 		t.Fatal("portal session should not open for a subscription already set to cancel")

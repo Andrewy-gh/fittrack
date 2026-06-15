@@ -911,6 +911,7 @@ SELECT
     stripe_event_created_at,
     status,
     cancel_at_period_end,
+    cancel_at,
     current_period_start,
     current_period_end,
     trial_start,
@@ -937,6 +938,7 @@ func (q *Queries) GetCurrentStripeSubscriptionByUserID(ctx context.Context, user
 		&i.StripeEventCreatedAt,
 		&i.Status,
 		&i.CancelAtPeriodEnd,
+		&i.CancelAt,
 		&i.CurrentPeriodStart,
 		&i.CurrentPeriodEnd,
 		&i.TrialStart,
@@ -3235,6 +3237,7 @@ INSERT INTO stripe_subscriptions (
     stripe_event_created_at,
     status,
     cancel_at_period_end,
+    cancel_at,
     current_period_start,
     current_period_end,
     trial_start,
@@ -3251,7 +3254,8 @@ VALUES (
     $8,
     $9,
     $10,
-    $11
+    $11,
+    $12
 )
 ON CONFLICT (stripe_subscription_id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
@@ -3260,6 +3264,7 @@ SET user_id = EXCLUDED.user_id,
     stripe_event_created_at = EXCLUDED.stripe_event_created_at,
     status = EXCLUDED.status,
     cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+    cancel_at = EXCLUDED.cancel_at,
     current_period_start = EXCLUDED.current_period_start,
     current_period_end = EXCLUDED.current_period_end,
     trial_start = EXCLUDED.trial_start,
@@ -3281,6 +3286,7 @@ RETURNING
     stripe_event_created_at,
     status,
     cancel_at_period_end,
+    cancel_at,
     current_period_start,
     current_period_end,
     trial_start,
@@ -3297,6 +3303,7 @@ type UpsertStripeSubscriptionParams struct {
 	StripeEventCreatedAt pgtype.Timestamptz `json:"stripe_event_created_at"`
 	Status               string             `json:"status"`
 	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	CancelAt             pgtype.Timestamptz `json:"cancel_at"`
 	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
 	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
 	TrialStart           pgtype.Timestamptz `json:"trial_start"`
@@ -3312,6 +3319,7 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 		arg.StripeEventCreatedAt,
 		arg.Status,
 		arg.CancelAtPeriodEnd,
+		arg.CancelAt,
 		arg.CurrentPeriodStart,
 		arg.CurrentPeriodEnd,
 		arg.TrialStart,
@@ -3326,6 +3334,7 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 		&i.StripeEventCreatedAt,
 		&i.Status,
 		&i.CancelAtPeriodEnd,
+		&i.CancelAt,
 		&i.CurrentPeriodStart,
 		&i.CurrentPeriodEnd,
 		&i.TrialStart,

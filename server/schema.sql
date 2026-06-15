@@ -44,6 +44,7 @@ CREATE TABLE stripe_subscriptions (
     stripe_event_created_at TIMESTAMPTZ NOT NULL,
     status VARCHAR(64) NOT NULL,
     cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
+    cancel_at TIMESTAMPTZ,
     current_period_start TIMESTAMPTZ,
     current_period_end TIMESTAMPTZ,
     trial_start TIMESTAMPTZ,
