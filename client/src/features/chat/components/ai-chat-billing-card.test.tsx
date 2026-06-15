@@ -357,6 +357,27 @@ describe("AIChatBillingCard", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("uses the earlier access end when scheduled cancellation dates differ", () => {
+    renderCard({
+      feature_key: "ai_chatbot",
+      has_access: true,
+      subscription: {
+        stripe_subscription_id: "sub_cancel_at_after_period",
+        status: "active",
+        cancel_at_period_end: false,
+        cancel_at: "2026-07-10T03:39:36Z",
+        current_period_end: "2026-06-30T12:00:00Z",
+      },
+    });
+
+    expect(
+      screen.getByText("Access continues until Jun 30, 2026."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel plan" }),
+    ).not.toBeInTheDocument();
+  });
+
   it.each([
     ["past_due", "AI chat is paused until the payment issue is resolved."],
     ["unpaid", "AI chat is paused until the payment issue is resolved."],
