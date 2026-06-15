@@ -395,7 +395,7 @@ func (s *Service) currentCancelableSubscription(ctx context.Context, userID stri
 
 	if !s.subscriptionRowGrantsAccess(subscription) ||
 		!subscriptionAccessPeriodOpen(subscription, time.Now().UTC()) ||
-		subscription.CancelAtPeriodEnd {
+		subscriptionCancelScheduled(subscription) {
 		return db.StripeSubscriptions{}, ErrBillingSubscriptionNotCancelable
 	}
 
@@ -439,6 +439,7 @@ func subscriptionSnapshot(subscription stripe.Subscription) StripeSubscriptionSn
 		StripePriceID:        priceID,
 		Status:               string(subscription.Status),
 		CancelAtPeriodEnd:    subscription.CancelAtPeriodEnd,
+		CancelAt:             unixPtr(subscription.CancelAt),
 		CurrentPeriodStart:   currentPeriodStart,
 		CurrentPeriodEnd:     currentPeriodEnd,
 		TrialStart:           unixPtr(subscription.TrialStart),
@@ -466,7 +467,12 @@ func validateSnapshot(snapshot StripeSubscriptionSnapshot) error {
 }
 
 func (s *Service) snapshotGrantsAccess(snapshot StripeSubscriptionSnapshot) bool {
-	return statusAllowsAccess(snapshot.Status) && strings.TrimSpace(snapshot.StripePriceID) == s.premiumPriceID
+	if !statusAllowsAccess(snapshot.Status) || strings.TrimSpace(snapshot.StripePriceID) != s.premiumPriceID {
+		return false
+	}
+
+	accessEnd := subscriptionAccessEnd(snapshot.CancelAt, snapshot.CurrentPeriodEnd)
+	return accessEnd == nil || accessEnd.After(time.Now().UTC())
 }
 
 func (s *Service) subscriptionRowGrantsAccess(subscription db.StripeSubscriptions) bool {
@@ -474,10 +480,35 @@ func (s *Service) subscriptionRowGrantsAccess(subscription db.StripeSubscription
 }
 
 func subscriptionAccessPeriodOpen(subscription db.StripeSubscriptions, now time.Time) bool {
-	if subscription.CurrentPeriodEnd.Valid && !subscription.CurrentPeriodEnd.Time.After(now) {
+	accessEnd := subscriptionAccessEnd(
+		timePtrFromPg(subscription.CancelAt),
+		timePtrFromPg(subscription.CurrentPeriodEnd),
+	)
+	if accessEnd != nil && !accessEnd.After(now) {
 		return false
 	}
 	return true
+}
+
+func subscriptionAccessEnd(cancelAt *time.Time, currentPeriodEnd *time.Time) *time.Time {
+	switch {
+	case cancelAt == nil || cancelAt.IsZero():
+		return normalizedTimePtr(currentPeriodEnd)
+	case currentPeriodEnd == nil || currentPeriodEnd.IsZero():
+		return normalizedTimePtr(cancelAt)
+	case cancelAt.Before(*currentPeriodEnd):
+		return normalizedTimePtr(cancelAt)
+	default:
+		return normalizedTimePtr(currentPeriodEnd)
+	}
+}
+
+func normalizedTimePtr(value *time.Time) *time.Time {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	t := value.UTC()
+	return &t
 }
 
 func subscriptionView(row db.StripeSubscriptions) *SubscriptionView {
@@ -485,9 +516,14 @@ func subscriptionView(row db.StripeSubscriptions) *SubscriptionView {
 		StripeSubscriptionID: row.StripeSubscriptionID,
 		Status:               row.Status,
 		CancelAtPeriodEnd:    row.CancelAtPeriodEnd,
+		CancelAt:             timePtrFromPg(row.CancelAt),
 		CurrentPeriodEnd:     timePtrFromPg(row.CurrentPeriodEnd),
 		TrialEnd:             timePtrFromPg(row.TrialEnd),
 	}
+}
+
+func subscriptionCancelScheduled(subscription db.StripeSubscriptions) bool {
+	return subscription.CancelAtPeriodEnd || subscription.CancelAt.Valid
 }
 
 func unixPtr(value int64) *time.Time {

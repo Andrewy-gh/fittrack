@@ -392,6 +392,39 @@ describe("ChatRouteComponent", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("uses cancel_at polling data after Stripe returns from scheduled cancellation", async () => {
+    mockSearch.billing = "cancelled";
+    mockBillingCancellationQueryResult.value = {
+      data: {
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: true,
+          subscription: {
+            stripe_subscription_id: "sub_active",
+            status: "active",
+            cancel_at_period_end: false,
+            cancel_at: "2026-07-10T12:00:00Z",
+            current_period_end: "2026-07-10T12:00:00Z",
+          },
+        },
+        featureAccess: [{ feature_key: "ai_chatbot" }],
+      },
+      isFetching: false,
+      isError: false,
+      isSuccess: true,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("Access continues until Jul 10, 2026."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel plan" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("starts Checkout from the no-access trial CTA", async () => {
     const user = userEvent.setup();
     mockBillingQueryResult.value = {

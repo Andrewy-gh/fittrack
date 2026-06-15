@@ -47,6 +47,7 @@ type SubscriptionView struct {
 	StripeSubscriptionID string     `json:"stripe_subscription_id"`
 	Status               string     `json:"status"`
 	CancelAtPeriodEnd    bool       `json:"cancel_at_period_end"`
+	CancelAt             *time.Time `json:"cancel_at,omitempty"`
 	CurrentPeriodEnd     *time.Time `json:"current_period_end,omitempty"`
 	TrialEnd             *time.Time `json:"trial_end,omitempty"`
 }
@@ -64,6 +65,7 @@ type StripeSubscriptionSnapshot struct {
 	StripeEventCreatedAt *time.Time
 	Status               string
 	CancelAtPeriodEnd    bool
+	CancelAt             *time.Time
 	CurrentPeriodStart   *time.Time
 	CurrentPeriodEnd     *time.Time
 	TrialStart           *time.Time

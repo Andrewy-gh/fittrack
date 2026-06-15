@@ -114,6 +114,7 @@ type StripeSubscriptions struct {
 	StripeEventCreatedAt pgtype.Timestamptz `json:"stripe_event_created_at"`
 	Status               string             `json:"status"`
 	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	CancelAt             pgtype.Timestamptz `json:"cancel_at"`
 	CurrentPeriodStart   pgtype.Timestamptz `json:"current_period_start"`
 	CurrentPeriodEnd     pgtype.Timestamptz `json:"current_period_end"`
 	TrialStart           pgtype.Timestamptz `json:"trial_start"`

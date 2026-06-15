@@ -7,6 +7,7 @@ FitTrack uses Stripe subscriptions to grant premium access to the AI chat featur
 - The paid feature key is `ai_chatbot`.
 - Checkout creates a Stripe subscription with a 7-day trial.
 - `trialing` and `active` subscriptions grant access when the subscription is for `STRIPE_PREMIUM_PRICE_ID` and the current billing period has not ended.
+- Scheduled cancellation keeps access until the subscription's `cancel_at` or current period end timestamp.
 - Trialing subscriptions consume AI chat prompts against `AI_CHAT_TRIAL_PROMPT_CAP`.
 - `past_due`, `unpaid`, `canceled`, `incomplete`, and `incomplete_expired` subscriptions do not grant access.
 - Checkout redirects users back to `/chat?checkout=success` or `/chat?checkout=cancelled`.

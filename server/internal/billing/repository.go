@@ -126,6 +126,7 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 		StripeEventCreatedAt: timePtrToPg(snapshot.StripeEventCreatedAt),
 		Status:               snapshot.Status,
 		CancelAtPeriodEnd:    snapshot.CancelAtPeriodEnd,
+		CancelAt:             timePtrToPg(snapshot.CancelAt),
 		CurrentPeriodStart:   timePtrToPg(snapshot.CurrentPeriodStart),
 		CurrentPeriodEnd:     timePtrToPg(snapshot.CurrentPeriodEnd),
 		TrialStart:           timePtrToPg(snapshot.TrialStart),
@@ -153,7 +154,7 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 			FeatureKey:      FeatureKeyAIChatbot,
 			SourceReference: textToPg(snapshot.StripeSubscriptionID),
 			Note:            textToPg("FitTrack premium AI chat"),
-			ExpiresAt:       timePtrToPg(snapshot.CurrentPeriodEnd),
+			ExpiresAt:       timePtrToPg(subscriptionAccessEnd(snapshot.CancelAt, snapshot.CurrentPeriodEnd)),
 		}); err != nil {
 			return db.StripeSubscriptions{}, fmt.Errorf("grant stripe feature access: %w", err)
 		}

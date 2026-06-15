@@ -78,7 +78,7 @@ func TestServiceHandleWebhook_SubscriptionUpdatedPersistsSnapshotAndEventID(t *t
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := new(mockRepository)
 	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
-	now := time.Date(2026, 5, 18, 16, 0, 0, 0, time.UTC)
+	now := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
 	eventCreatedAt := now.Add(time.Minute)
 	periodEnd := now.Add(30 * 24 * time.Hour)
 	raw := subscriptionEventPayload(t, "sub_123", "trialing", false, now, periodEnd)
@@ -113,6 +113,51 @@ func TestServiceHandleWebhook_SubscriptionUpdatedPersistsSnapshotAndEventID(t *t
 	repo.On("HasProcessedWebhookEvent", mock.Anything, "evt_123").Return(false, nil).Once()
 	repo.On("UpsertSubscriptionFromWebhook", mock.Anything, expectedSnapshot).Return(db.StripeSubscriptions{}, nil).Once()
 	repo.On("MarkWebhookEventProcessed", mock.Anything, "evt_123", "customer.subscription.updated").Return(nil).Once()
+
+	err := service.HandleWebhook(context.Background(), []byte("payload"), "sig")
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceHandleWebhook_DoesNotGrantAccessAfterAccessEnd(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	now := time.Now().UTC().Truncate(time.Second)
+	periodStart := now.Add(-48 * time.Hour)
+	cancelAt := now.Add(-time.Hour)
+	periodEnd := now.Add(24 * time.Hour)
+	eventCreatedAt := now
+	raw := subscriptionEventPayloadWithCancelAt(t, "sub_cancel_expired", "active", cancelAt, periodStart, periodEnd)
+
+	service.constructEvent = func(payload []byte, header string, secret string) (stripe.Event, error) {
+		return stripe.Event{
+			ID:      "evt_cancel_expired",
+			Type:    "customer.subscription.updated",
+			Created: eventCreatedAt.Unix(),
+			Data:    &stripe.EventData{Raw: raw},
+		}, nil
+	}
+
+	expectedSnapshot := StripeSubscriptionSnapshot{
+		StripeSubscriptionID: "sub_cancel_expired",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		StripePriceID:        "price_premium",
+		StripeEventCreatedAt: &eventCreatedAt,
+		Status:               "active",
+		CancelAt:             &cancelAt,
+		CurrentPeriodStart:   &periodStart,
+		CurrentPeriodEnd:     &periodEnd,
+		TrialStart:           &periodStart,
+		TrialEnd:             &periodEnd,
+		GrantAIChatAccess:    false,
+	}
+
+	repo.On("HasProcessedWebhookEvent", mock.Anything, "evt_cancel_expired").Return(false, nil).Once()
+	repo.On("UpsertSubscriptionFromWebhook", mock.Anything, expectedSnapshot).Return(db.StripeSubscriptions{}, nil).Once()
+	repo.On("MarkWebhookEventProcessed", mock.Anything, "evt_cancel_expired", "customer.subscription.updated").Return(nil).Once()
 
 	err := service.HandleWebhook(context.Background(), []byte("payload"), "sig")
 
@@ -221,6 +266,7 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 		status     string
 		priceID    string
 		canceling  bool
+		cancelAt   *time.Time
 		periodEnd  time.Time
 		wantAccess bool
 	}{
@@ -238,6 +284,30 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 			canceling:  true,
 			periodEnd:  now.Add(24 * time.Hour),
 			wantAccess: true,
+		},
+		{
+			name:       "scheduled cancel_at keeps access until cancel_at",
+			status:     "active",
+			priceID:    "price_premium",
+			cancelAt:   timePtr(now.Add(24 * time.Hour)),
+			periodEnd:  now.Add(24 * time.Hour),
+			wantAccess: true,
+		},
+		{
+			name:       "expired scheduled cancel_at blocks before later period end",
+			status:     "active",
+			priceID:    "price_premium",
+			cancelAt:   timePtr(now.Add(-time.Hour)),
+			periodEnd:  now.Add(24 * time.Hour),
+			wantAccess: false,
+		},
+		{
+			name:       "expired period end blocks before later cancel_at",
+			status:     "active",
+			priceID:    "price_premium",
+			cancelAt:   timePtr(now.Add(24 * time.Hour)),
+			periodEnd:  now.Add(-time.Hour),
+			wantAccess: false,
 		},
 		{
 			name:       "ended cancellation blocks after period end",
@@ -282,6 +352,7 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 				StripePriceID:        textToPg(tt.priceID),
 				Status:               tt.status,
 				CancelAtPeriodEnd:    tt.canceling,
+				CancelAt:             timePtrToPg(tt.cancelAt),
 				CurrentPeriodEnd:     pgtype.Timestamptz{Time: tt.periodEnd, Valid: true},
 			}, nil).Once()
 
@@ -291,6 +362,10 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 			assert.Equal(t, tt.wantAccess, resp.HasAccess)
 			require.NotNil(t, resp.Subscription)
 			assert.Equal(t, tt.canceling, resp.Subscription.CancelAtPeriodEnd)
+			if tt.cancelAt != nil {
+				require.NotNil(t, resp.Subscription.CancelAt)
+				assert.Equal(t, tt.cancelAt.UTC(), resp.Subscription.CancelAt.UTC())
+			}
 			repo.AssertExpectations(t)
 		})
 	}
@@ -424,6 +499,22 @@ func subscriptionEventPayloadWithPrice(t *testing.T, subscriptionID string, stat
 	return raw
 }
 
+func subscriptionEventPayloadWithCancelAt(t *testing.T, subscriptionID string, status string, cancelAt time.Time, periodStart time.Time, periodEnd time.Time) []byte {
+	t.Helper()
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(subscriptionEventPayload(t, subscriptionID, status, false, periodStart, periodEnd), &payload))
+	payload["cancel_at"] = cancelAt.Unix()
+
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	return raw
+}
+
 func stringPtr(value string) *string {
+	return &value
+}
+
+func timePtr(value time.Time) *time.Time {
 	return &value
 }
