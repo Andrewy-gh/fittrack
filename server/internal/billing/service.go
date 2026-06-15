@@ -467,7 +467,12 @@ func validateSnapshot(snapshot StripeSubscriptionSnapshot) error {
 }
 
 func (s *Service) snapshotGrantsAccess(snapshot StripeSubscriptionSnapshot) bool {
-	return statusAllowsAccess(snapshot.Status) && strings.TrimSpace(snapshot.StripePriceID) == s.premiumPriceID
+	if !statusAllowsAccess(snapshot.Status) || strings.TrimSpace(snapshot.StripePriceID) != s.premiumPriceID {
+		return false
+	}
+
+	accessEnd := subscriptionAccessEnd(snapshot.CancelAt, snapshot.CurrentPeriodEnd)
+	return accessEnd == nil || accessEnd.After(time.Now().UTC())
 }
 
 func (s *Service) subscriptionRowGrantsAccess(subscription db.StripeSubscriptions) bool {
