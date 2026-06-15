@@ -475,10 +475,35 @@ func (s *Service) subscriptionRowGrantsAccess(subscription db.StripeSubscription
 }
 
 func subscriptionAccessPeriodOpen(subscription db.StripeSubscriptions, now time.Time) bool {
-	if subscription.CurrentPeriodEnd.Valid && !subscription.CurrentPeriodEnd.Time.After(now) {
+	accessEnd := subscriptionAccessEnd(
+		timePtrFromPg(subscription.CancelAt),
+		timePtrFromPg(subscription.CurrentPeriodEnd),
+	)
+	if accessEnd != nil && !accessEnd.After(now) {
 		return false
 	}
 	return true
+}
+
+func subscriptionAccessEnd(cancelAt *time.Time, currentPeriodEnd *time.Time) *time.Time {
+	switch {
+	case cancelAt == nil || cancelAt.IsZero():
+		return normalizedTimePtr(currentPeriodEnd)
+	case currentPeriodEnd == nil || currentPeriodEnd.IsZero():
+		return normalizedTimePtr(cancelAt)
+	case cancelAt.Before(*currentPeriodEnd):
+		return normalizedTimePtr(cancelAt)
+	default:
+		return normalizedTimePtr(currentPeriodEnd)
+	}
+}
+
+func normalizedTimePtr(value *time.Time) *time.Time {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	t := value.UTC()
+	return &t
 }
 
 func subscriptionView(row db.StripeSubscriptions) *SubscriptionView {

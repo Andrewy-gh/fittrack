@@ -76,6 +76,50 @@ func TestRepositoryUpsertSubscriptionFromWebhook_SourceScopedFeatureAccess(t *te
 	assert.Equal(t, int64(1), revokedStripeGrantCount(t, pool, userID, subscriptionID))
 }
 
+func TestRepositoryUpsertSubscriptionFromWebhook_GrantExpiresAtCancelAtWhenEarlier(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed billing integration test without DATABASE_URL")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	require.NoError(t, err)
+	defer pool.Close()
+	require.NoError(t, pool.Ping(ctx))
+
+	userID := "billing-cancel-at-expiry-user"
+	subscriptionID := "sub_cancel_at_expiry"
+	customerID := "cus_cancel_at_expiry"
+	cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+	defer cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+	seedBillingUser(t, pool, userID)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	periodStart := time.Now().UTC().Add(-time.Hour)
+	cancelAt := periodStart.Add(24 * time.Hour)
+	periodEnd := periodStart.Add(30 * 24 * time.Hour)
+	eventCreatedAt := periodStart.Add(time.Minute)
+
+	_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
+		StripeSubscriptionID: subscriptionID,
+		UserID:               userID,
+		StripeCustomerID:     customerID,
+		StripePriceID:        "price_premium",
+		StripeEventCreatedAt: &eventCreatedAt,
+		Status:               subscriptionStatusActive,
+		CancelAt:             &cancelAt,
+		CurrentPeriodStart:   &periodStart,
+		CurrentPeriodEnd:     &periodEnd,
+		GrantAIChatAccess:    true,
+	})
+	require.NoError(t, err)
+
+	assert.WithinDuration(t, cancelAt, stripeGrantExpiresAt(t, pool, userID, subscriptionID), time.Second)
+}
+
 func TestRepositoryUpsertSubscriptionFromWebhook_IgnoresOlderGrantingEvents(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -426,6 +470,26 @@ func currentStripeSubscriptionStatus(t *testing.T, pool *pgxpool.Pool, userID st
 	})
 
 	return status
+}
+
+func stripeGrantExpiresAt(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) time.Time {
+	t.Helper()
+
+	var expiresAt time.Time
+	withBillingTestUser(t, pool, userID, func(tx pgx.Tx) {
+		err := tx.QueryRow(context.Background(), `
+			SELECT expires_at
+			FROM user_feature_access
+			WHERE user_id = $1
+			  AND feature_key = 'ai_chatbot'
+			  AND source = 'stripe'
+			  AND source_reference = $2
+			  AND revoked_at IS NULL
+		`, userID, subscriptionID).Scan(&expiresAt)
+		require.NoError(t, err)
+	})
+
+	return expiresAt.UTC()
 }
 
 func cleanupBillingSourceScopeTest(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string, customerID string) {
