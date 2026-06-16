@@ -361,10 +361,13 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantAccess, resp.HasAccess)
 			require.NotNil(t, resp.Subscription)
-			assert.Equal(t, tt.canceling, resp.Subscription.CancelAtPeriodEnd)
-			if tt.cancelAt != nil {
-				require.NotNil(t, resp.Subscription.CancelAt)
-				assert.Equal(t, tt.cancelAt.UTC(), resp.Subscription.CancelAt.UTC())
+			assert.Equal(t, tt.canceling || tt.cancelAt != nil, resp.Subscription.CancellationScheduled)
+			if tt.cancelAt != nil && tt.cancelAt.Before(tt.periodEnd) {
+				require.NotNil(t, resp.Subscription.AccessEndsAt)
+				assert.Equal(t, tt.cancelAt.UTC(), resp.Subscription.AccessEndsAt.UTC())
+			} else {
+				require.NotNil(t, resp.Subscription.AccessEndsAt)
+				assert.Equal(t, tt.periodEnd.UTC(), resp.Subscription.AccessEndsAt.UTC())
 			}
 			repo.AssertExpectations(t)
 		})

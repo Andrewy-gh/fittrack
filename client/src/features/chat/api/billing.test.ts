@@ -61,7 +61,7 @@ describe("billing api wrapper", () => {
           subscription: {
             stripe_subscription_id: "sub_123",
             status: "trialing",
-            cancel_at_period_end: false,
+            cancellation_scheduled: false,
           },
           trial_usage: {
             used: 3,

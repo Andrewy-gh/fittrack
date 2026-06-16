@@ -44,12 +44,11 @@ type StatusResponse struct {
 }
 
 type SubscriptionView struct {
-	StripeSubscriptionID string     `json:"stripe_subscription_id"`
-	Status               string     `json:"status"`
-	CancelAtPeriodEnd    bool       `json:"cancel_at_period_end"`
-	CancelAt             *time.Time `json:"cancel_at,omitempty"`
-	CurrentPeriodEnd     *time.Time `json:"current_period_end,omitempty"`
-	TrialEnd             *time.Time `json:"trial_end,omitempty"`
+	StripeSubscriptionID  string     `json:"stripe_subscription_id"`
+	Status                string     `json:"status"`
+	CancellationScheduled bool       `json:"cancellation_scheduled"`
+	AccessEndsAt          *time.Time `json:"access_ends_at,omitempty"`
+	TrialEnd              *time.Time `json:"trial_end,omitempty"`
 }
 
 type TrialUsageView struct {

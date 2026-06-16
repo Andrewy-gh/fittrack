@@ -58,7 +58,7 @@ describe("ChatRouteComponent", () => {
           subscription: {
             stripe_subscription_id: "sub_123",
             status: "active",
-            cancel_at_period_end: false,
+            cancellation_scheduled: false,
           },
         },
         featureAccess: [{ feature_key: "ai_chatbot" }],
@@ -107,7 +107,7 @@ describe("ChatRouteComponent", () => {
           subscription: {
             stripe_subscription_id: "sub_active",
             status: "active",
-            cancel_at_period_end: false,
+            cancellation_scheduled: false,
           },
         },
         featureAccess: [],
@@ -252,7 +252,7 @@ describe("ChatRouteComponent", () => {
         subscription: {
           stripe_subscription_id: "sub_active",
           status: "active",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       },
       isLoading: false,
@@ -289,7 +289,7 @@ describe("ChatRouteComponent", () => {
         subscription: {
           stripe_subscription_id: "sub_active",
           status: "active",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       },
       isLoading: false,
@@ -370,8 +370,8 @@ describe("ChatRouteComponent", () => {
           subscription: {
             stripe_subscription_id: "sub_active",
             status: "active",
-            cancel_at_period_end: true,
-            current_period_end: "2026-06-10T12:00:00Z",
+            cancellation_scheduled: true,
+            access_ends_at: "2026-06-10T12:00:00Z",
           },
         },
         featureAccess: [{ feature_key: "ai_chatbot" }],
@@ -392,7 +392,7 @@ describe("ChatRouteComponent", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses cancel_at polling data after Stripe returns from scheduled cancellation", async () => {
+  it("uses access-end polling data after Stripe returns from scheduled cancellation", async () => {
     mockSearch.billing = "cancelled";
     mockBillingCancellationQueryResult.value = {
       data: {
@@ -402,9 +402,8 @@ describe("ChatRouteComponent", () => {
           subscription: {
             stripe_subscription_id: "sub_active",
             status: "active",
-            cancel_at_period_end: false,
-            cancel_at: "2026-07-10T12:00:00Z",
-            current_period_end: "2026-07-10T12:00:00Z",
+            cancellation_scheduled: true,
+            access_ends_at: "2026-07-10T12:00:00Z",
           },
         },
         featureAccess: [{ feature_key: "ai_chatbot" }],
@@ -541,7 +540,7 @@ describe("ChatRouteComponent", () => {
         subscription: {
           stripe_subscription_id: "sub_past_due",
           status: "past_due",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       },
       isLoading: false,

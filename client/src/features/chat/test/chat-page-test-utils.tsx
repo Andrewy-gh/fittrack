@@ -217,7 +217,7 @@ export function resetChatRouteMocks() {
       subscription: {
         stripe_subscription_id: "sub_123",
         status: "active",
-        cancel_at_period_end: false,
+        cancellation_scheduled: false,
       },
     },
     isLoading: false,

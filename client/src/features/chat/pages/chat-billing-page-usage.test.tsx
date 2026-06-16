@@ -23,7 +23,7 @@ describe("ChatRouteComponent billing usage", () => {
         subscription: {
           stripe_subscription_id: "sub_trial",
           status: "trialing",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
         trial_usage: {
           used: 1,

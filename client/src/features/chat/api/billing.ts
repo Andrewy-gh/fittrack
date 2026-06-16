@@ -15,9 +15,8 @@ export type BillingSubscriptionStatus =
 export type BillingSubscription = {
   stripe_subscription_id: string;
   status: BillingSubscriptionStatus;
-  cancel_at_period_end: boolean;
-  cancel_at?: string;
-  current_period_end?: string;
+  cancellation_scheduled: boolean;
+  access_ends_at?: string;
   trial_end?: string;
 };
 

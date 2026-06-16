@@ -33,7 +33,7 @@ describe("resolveAIChatAccessView", () => {
         subscription: {
           stripe_subscription_id: "sub_active",
           status: "active",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       },
       featureAccess: [],
@@ -65,7 +65,7 @@ describe("resolveAIChatAccessView", () => {
           subscription: {
             stripe_subscription_id: "sub_active",
             status: "active",
-            cancel_at_period_end: false,
+            cancellation_scheduled: false,
           },
         },
         featureAccess: [],

@@ -520,53 +520,21 @@ function blockedStatusMessage(status?: BillingSubscriptionStatus): string {
 function getCancellationMessage(
   subscription?: BillingSubscription,
 ): string | null {
-  if (!subscription || !isSubscriptionCancellationScheduled(subscription)) {
+  if (!subscription || !subscription.cancellation_scheduled) {
     return null;
   }
 
-  const accessEnd = getScheduledCancellationAccessEnd(subscription);
-  if (!accessEnd) {
+  if (!subscription.access_ends_at) {
     return "Access continues until the end of the current billing period.";
   }
 
-  return `Access continues until ${formatBillingDate(accessEnd)}.`;
-}
-
-function getScheduledCancellationAccessEnd(
-  subscription: BillingSubscription,
-): string | undefined {
-  const candidates = [
-    subscription.cancel_at,
-    subscription.current_period_end,
-  ].filter((value): value is string => Boolean(value));
-
-  return candidates.reduce<string | undefined>((earliest, candidate) => {
-    if (!earliest) {
-      return candidate;
-    }
-
-    const earliestTime = parseBillingTime(earliest);
-    const candidateTime = parseBillingTime(candidate);
-    if (earliestTime === null) {
-      return candidateTime === null ? earliest : candidate;
-    }
-    if (candidateTime === null) {
-      return earliest;
-    }
-
-    return candidateTime < earliestTime ? candidate : earliest;
-  }, undefined);
-}
-
-function parseBillingTime(value: string): number | null {
-  const time = Date.parse(value);
-  return Number.isNaN(time) ? null : time;
+  return `Access continues until ${formatBillingDate(subscription.access_ends_at)}.`;
 }
 
 function isSubscriptionCancellationScheduled(
   subscription: BillingSubscription,
 ): boolean {
-  return subscription.cancel_at_period_end || Boolean(subscription.cancel_at);
+  return subscription.cancellation_scheduled;
 }
 
 function formatBillingDate(value: string): string {
