@@ -93,3 +93,4 @@ curl -H "x-stack-access-token: $STACK_ACCESS_TOKEN" \
 - Subscription events older than the stored `stripe_event_created_at` are ignored so stale Stripe retries cannot roll back newer access state.
 - Access is only granted for the configured premium price ID; subscriptions for another price are stored but do not unlock AI chat.
 - If support needs to inspect a user's state, check the Stripe customer mapping first, then the latest `stripe_subscriptions` row and feature access source reference.
+- When a change adds a stored Stripe snapshot field, decide whether existing subscriptions need a one-time backfill. Replaying an already-processed webhook event may be skipped by idempotency; see [Production Triage](production-triage.md#stripe-backfills) for the safe dry-run-first workflow.

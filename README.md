@@ -47,6 +47,7 @@ See [API Type Workflow](docs/development.md#api-type-workflow) for the full type
 
 - [Development Guide](docs/development.md) - setup, commands, generated API types, and local E2E chat flow
 - [Environment Reference](docs/environment.md) - local, test, preview, and production variables
+- [Production Triage](docs/production-triage.md) - deploy, health, logs, and user billing checks
 - [Stripe Billing](docs/stripe-billing.md) - checkout, webhook, subscription access, and trial prompt behavior
 - [Backend Setup](server/README.md) - detailed backend development guide
 - [Frontend Setup](client/README.md) - React/TanStack development guide
