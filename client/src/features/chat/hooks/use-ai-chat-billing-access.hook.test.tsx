@@ -71,7 +71,7 @@ const activeBillingStatus: BillingStatusResponse = {
   subscription: {
     stripe_subscription_id: "sub_active",
     status: "active",
-    cancel_at_period_end: false,
+    cancellation_scheduled: false,
   },
 };
 
@@ -322,8 +322,8 @@ describe("useAIChatBillingAccess checkout polling", () => {
         ...activeBillingStatus,
         subscription: {
           ...activeBillingStatus.subscription!,
-          cancel_at_period_end: true,
-          current_period_end: "2026-06-10T12:00:00Z",
+          cancellation_scheduled: true,
+          access_ends_at: "2026-06-10T12:00:00Z",
         },
       });
     mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
@@ -335,22 +335,21 @@ describe("useAIChatBillingAccess checkout polling", () => {
 
     await waitFor(() => {
       expect(
-        result.current.billingStatus?.subscription?.cancel_at_period_end,
+        result.current.billingStatus?.subscription?.cancellation_scheduled,
       ).toBe(true);
     });
     expect(mocks.mockGetCheckoutBillingStatus).toHaveBeenCalledTimes(2);
   });
 
-  it("treats cancel_at as reflected cancellation on portal return", async () => {
+  it("treats scheduled cancellation as reflected on portal return", async () => {
     mocks.mockGetBaseBillingStatus.mockResolvedValue(activeBillingStatus);
     mocks.mockGetBaseFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
     mocks.mockGetCheckoutBillingStatus.mockResolvedValue({
       ...activeBillingStatus,
       subscription: {
         ...activeBillingStatus.subscription!,
-        cancel_at_period_end: false,
-        cancel_at: "2026-07-10T12:00:00Z",
-        current_period_end: "2026-07-10T12:00:00Z",
+        cancellation_scheduled: true,
+        access_ends_at: "2026-07-10T12:00:00Z",
       },
     });
     mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
@@ -361,7 +360,7 @@ describe("useAIChatBillingAccess checkout polling", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.billingStatus?.subscription?.cancel_at).toBe(
+      expect(result.current.billingStatus?.subscription?.access_ends_at).toBe(
         "2026-07-10T12:00:00Z",
       );
     });

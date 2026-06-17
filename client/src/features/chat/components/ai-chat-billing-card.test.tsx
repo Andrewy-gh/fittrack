@@ -138,7 +138,7 @@ describe("AIChatBillingCard", () => {
       subscription: {
         stripe_subscription_id: "sub_trial",
         status: "trialing",
-        cancel_at_period_end: false,
+        cancellation_scheduled: false,
       },
       trial_usage: {
         used: 12,
@@ -171,7 +171,7 @@ describe("AIChatBillingCard", () => {
       subscription: {
         stripe_subscription_id: "sub_active",
         status: "active",
-        cancel_at_period_end: false,
+        cancellation_scheduled: false,
       },
     });
 
@@ -198,7 +198,7 @@ describe("AIChatBillingCard", () => {
       subscription: {
         stripe_subscription_id: "sub_active",
         status: "active",
-        cancel_at_period_end: false,
+        cancellation_scheduled: false,
       },
     } satisfies BillingStatusResponse;
     const props = {
@@ -261,7 +261,7 @@ describe("AIChatBillingCard", () => {
         subscription: {
           stripe_subscription_id: "sub_past_due",
           status: "past_due",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       },
       { accessState: "ready" },
@@ -294,7 +294,7 @@ describe("AIChatBillingCard", () => {
         subscription: {
           stripe_subscription_id: "sub_active",
           status: "active",
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       },
       { accessState: "activating" },
@@ -323,8 +323,8 @@ describe("AIChatBillingCard", () => {
       subscription: {
         stripe_subscription_id: "sub_cancel_later",
         status: "active",
-        cancel_at_period_end: true,
-        current_period_end: "2026-05-30T12:00:00Z",
+        cancellation_scheduled: true,
+        access_ends_at: "2026-05-30T12:00:00Z",
       },
     });
 
@@ -336,16 +336,15 @@ describe("AIChatBillingCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows scheduled cancellation access messaging from cancel_at", () => {
+  it("shows scheduled cancellation access messaging from access end", () => {
     renderCard({
       feature_key: "ai_chatbot",
       has_access: true,
       subscription: {
         stripe_subscription_id: "sub_cancel_at",
         status: "active",
-        cancel_at_period_end: false,
-        cancel_at: "2026-07-10T12:00:00Z",
-        current_period_end: "2026-07-10T12:00:00Z",
+        cancellation_scheduled: true,
+        access_ends_at: "2026-07-10T12:00:00Z",
       },
     });
 
@@ -364,9 +363,8 @@ describe("AIChatBillingCard", () => {
       subscription: {
         stripe_subscription_id: "sub_cancel_at_after_period",
         status: "active",
-        cancel_at_period_end: false,
-        cancel_at: "2026-07-10T03:39:36Z",
-        current_period_end: "2026-06-30T12:00:00Z",
+        cancellation_scheduled: true,
+        access_ends_at: "2026-06-30T12:00:00Z",
       },
     });
 
@@ -391,7 +389,7 @@ describe("AIChatBillingCard", () => {
         subscription: {
           stripe_subscription_id: `sub_${subscriptionStatus}`,
           status: subscriptionStatus,
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       });
 
@@ -418,7 +416,7 @@ describe("AIChatBillingCard", () => {
         subscription: {
           stripe_subscription_id: `sub_${subscriptionStatus}`,
           status: subscriptionStatus,
-          cancel_at_period_end: false,
+          cancellation_scheduled: false,
         },
       });
 

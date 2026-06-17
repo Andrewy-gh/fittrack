@@ -513,12 +513,14 @@ func normalizedTimePtr(value *time.Time) *time.Time {
 
 func subscriptionView(row db.StripeSubscriptions) *SubscriptionView {
 	return &SubscriptionView{
-		StripeSubscriptionID: row.StripeSubscriptionID,
-		Status:               row.Status,
-		CancelAtPeriodEnd:    row.CancelAtPeriodEnd,
-		CancelAt:             timePtrFromPg(row.CancelAt),
-		CurrentPeriodEnd:     timePtrFromPg(row.CurrentPeriodEnd),
-		TrialEnd:             timePtrFromPg(row.TrialEnd),
+		StripeSubscriptionID:  row.StripeSubscriptionID,
+		Status:                row.Status,
+		CancellationScheduled: subscriptionCancelScheduled(row),
+		AccessEndsAt: subscriptionAccessEnd(
+			timePtrFromPg(row.CancelAt),
+			timePtrFromPg(row.CurrentPeriodEnd),
+		),
+		TrialEnd: timePtrFromPg(row.TrialEnd),
 	}
 }
 
