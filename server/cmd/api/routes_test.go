@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
@@ -19,6 +20,8 @@ import (
 )
 
 type routeBillingService struct{}
+
+type routeAccountService struct{}
 
 func (routeBillingService) CreateCheckoutSession(context.Context) (*billing.CheckoutSessionResponse, error) {
 	return &billing.CheckoutSessionResponse{URL: "https://checkout.stripe.test/session"}, nil
@@ -37,6 +40,10 @@ func (routeBillingService) CurrentStatus(context.Context) (*billing.StatusRespon
 }
 
 func (routeBillingService) HandleWebhook(context.Context, []byte, string) error {
+	return nil
+}
+
+func (routeAccountService) DeleteCurrentUser(context.Context) error {
 	return nil
 }
 
@@ -62,7 +69,7 @@ func TestRoutes_AllowsInngestHandlerAlongsideStaticFallback(t *testing.T) {
 		}
 	}()
 
-	_ = api.routes(wh, eh, fh, hh, ah, nil, nil)
+	_ = api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
 }
 
 func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
@@ -87,7 +94,7 @@ func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
 	hh := health.NewHandler(logger, nil)
 	ah := aichat.NewHandler(logger, nil)
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPut, "/inngest", nil)
 	rr := httptest.NewRecorder()
 
@@ -115,7 +122,7 @@ func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
 	hh := health.NewHandler(logger, nil)
 	ah := aichat.NewHandler(logger, nil)
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
 
 	for _, path := range []string{"/api/ai/chat/validate", "/api/ai/chat/validate/stream"} {
 		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"prompt":"prove the slice"}`))
@@ -144,7 +151,7 @@ func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
 	ah := aichat.NewHandler(logger, nil)
 	bh := billing.NewHandler(logger, routeBillingService{})
 
-	mux := api.routes(wh, eh, fh, hh, ah, bh, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session", nil)
 	rr := httptest.NewRecorder()
 
@@ -173,7 +180,7 @@ func TestRoutes_RegistersBillingSubscriptionCancelPortalSession(t *testing.T) {
 	ah := aichat.NewHandler(logger, nil)
 	bh := billing.NewHandler(logger, routeBillingService{})
 
-	mux := api.routes(wh, eh, fh, hh, ah, bh, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/billing/subscription-cancel-portal-session", nil)
 	rr := httptest.NewRecorder()
 
@@ -184,5 +191,31 @@ func TestRoutes_RegistersBillingSubscriptionCancelPortalSession(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), "https://billing.stripe.test/cancel-session") {
 		t.Fatalf("expected billing cancel portal URL response, got %s", rr.Body.String())
+	}
+}
+
+func TestRoutes_RegistersAccountDeletion(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg:    &config.Config{},
+		pool:   nil,
+	}
+
+	wh := &workout.WorkoutHandler{}
+	eh := &exercise.ExerciseHandler{}
+	fh := &featureaccess.Handler{}
+	hh := health.NewHandler(logger, nil)
+	ah := aichat.NewHandler(logger, nil)
+	accountHandler := account.NewHandler(logger, routeAccountService{})
+
+	mux := api.routes(wh, eh, fh, hh, ah, nil, accountHandler, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/account", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusNoContent, rr.Code, rr.Body.String())
 	}
 }

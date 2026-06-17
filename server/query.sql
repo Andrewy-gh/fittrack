@@ -443,6 +443,10 @@ INSERT INTO users (user_id)
 VALUES ($1)
 RETURNING id;
 
+-- name: DeleteUser :exec
+DELETE FROM users
+WHERE user_id = $1;
+
 -- Feature access queries
 -- name: ListActiveFeatureAccess :many
 SELECT

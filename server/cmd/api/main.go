@@ -31,6 +31,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/auth"
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
@@ -151,6 +152,7 @@ func main() {
 	// Initialize repositories
 	exerciseRepo := exercise.NewRepository(logger, queries, pool)
 	featureAccessRepo := featureaccess.NewRepository(logger, queries)
+	accountRepo := account.NewRepository(logger, queries)
 	billingRepo := billing.NewRepository(logger, queries, pool)
 	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
 	userRepo := user.NewRepository(logger, queries, pool)
@@ -169,6 +171,7 @@ func main() {
 		cfg.AppBaseURL,
 		cfg.AIChatTrialPromptCap,
 	)
+	accountService := account.NewService(logger, accountRepo, billingService)
 	userService := user.NewService(logger, userRepo)
 	aiChatRepo := aichat.NewRepository(logger, queries, pool, cfg.AIChatTrialPromptCap)
 	aiChatRuntime := aichat.NewGenkitRuntime(ctx)
@@ -192,6 +195,7 @@ func main() {
 	workoutHandler := workout.NewHandler(logger, validator, workoutService)
 	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
 	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
+	accountHandler := account.NewHandler(logger, accountService)
 	billingHandler := billing.NewHandler(logger, billingService)
 	healthHandler := health.NewHandler(logger, pool)
 	aiChatHandler := aichat.NewHandler(logger, aiChatService)
@@ -232,7 +236,7 @@ func main() {
 			UserID:  cfg.LocalE2EAuthUserID,
 		})
 	}
-	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, billingHandler, e2eAuthHandler)
+	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, billingHandler, accountHandler, e2eAuthHandler)
 
 	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RequestLog → Metrics → Authentication → RateLimit
 	var handler http.Handler = router
