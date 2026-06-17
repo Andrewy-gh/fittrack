@@ -13,6 +13,7 @@ import {
   mockGetConversation,
   mockNavigate,
   mockRedirectToBillingCheckout,
+  mockRedirectToBillingPortal,
   mockRefetchBillingStatus,
   mockRefetchFeatureAccess,
   mockSearch,
@@ -315,6 +316,9 @@ describe("ChatRouteComponent", () => {
     await waitFor(() => {
       expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
     });
+    expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
+      "https://billing.stripe.test/session",
+    );
     expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 
@@ -334,6 +338,55 @@ describe("ChatRouteComponent", () => {
       search: { conversationId: "41" },
       replace: true,
     });
+  });
+
+  it("shows a billing return notice and refreshes billing state", async () => {
+    mockSearch.billing = "portal-return";
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Returned from billing. We are refreshing your AI chat billing status.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
+    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "41" },
+      replace: true,
+    });
+  });
+
+  it("uses cancellation polling data after returning from billing management", async () => {
+    mockSearch.billing = "portal-return";
+    mockBillingCancellationQueryResult.value = {
+      data: {
+        billingStatus: {
+          feature_key: "ai_chatbot",
+          has_access: true,
+          subscription: {
+            stripe_subscription_id: "sub_active",
+            status: "active",
+            cancel_at_period_end: true,
+            current_period_end: "2026-06-10T12:00:00Z",
+          },
+        },
+        featureAccess: [{ feature_key: "ai_chatbot" }],
+      },
+      isFetching: false,
+      isError: false,
+      isSuccess: true,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText("Access continues until Jun 10, 2026."),
+    ).toBeInTheDocument();
   });
 
   it("uses cancellation polling data after Stripe returns before the webhook has refreshed base billing", async () => {

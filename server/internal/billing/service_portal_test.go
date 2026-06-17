@@ -31,7 +31,7 @@ func TestServiceCreateCustomerPortalSession(t *testing.T) {
 		require.NotNil(t, params.Customer)
 		require.NotNil(t, params.ReturnURL)
 		assert.Equal(t, "cus_123", *params.Customer)
-		assert.Equal(t, "http://localhost:5173/chat", *params.ReturnURL)
+		assert.Equal(t, "http://localhost:5173/chat?billing=portal-return", *params.ReturnURL)
 		return &stripe.BillingPortalSession{URL: "https://billing.stripe.test/session"}, nil
 	}
 

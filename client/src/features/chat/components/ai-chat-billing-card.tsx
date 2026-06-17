@@ -531,7 +531,7 @@ function parseBillingTime(value: string): number | null {
   return Number.isNaN(time) ? null : time;
 }
 
-function isSubscriptionCancellationScheduled(
+export function isSubscriptionCancellationScheduled(
   subscription: BillingSubscription,
 ): boolean {
   return subscription.cancel_at_period_end || Boolean(subscription.cancel_at);

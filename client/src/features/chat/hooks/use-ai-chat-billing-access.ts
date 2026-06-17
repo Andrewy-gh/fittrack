@@ -112,7 +112,7 @@ export function useAIChatBillingAccess({
     checkout === "success",
   );
   const [shouldPollBillingCancellation, setShouldPollBillingCancellation] =
-    useState(billing === "cancelled");
+    useState(billing === "cancelled" || billing === "portal-return");
   const [settledCheckoutPollingView, setSettledCheckoutPollingView] =
     useState<CheckoutAccessPollingView>({ status: "idle" });
   const isSignedIn = Boolean(userId);
@@ -204,9 +204,8 @@ export function useAIChatBillingAccess({
     }
 
     setBillingNotice(billing);
-    if (billing === "cancelled") {
-      setShouldPollBillingCancellation(true);
-    } else {
+    setShouldPollBillingCancellation(true);
+    if (billing === "portal-return") {
       void billingQuery.refetch();
       void featureAccessQuery.refetch();
     }

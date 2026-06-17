@@ -126,7 +126,7 @@ func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPor
 
 	portalSession, err := s.createPortalSession(&stripe.BillingPortalSessionParams{
 		Customer:  stripe.String(customerID),
-		ReturnURL: stripe.String(s.appBaseURL + "/chat"),
+		ReturnURL: stripe.String(s.appBaseURL + "/chat?billing=portal-return"),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create stripe billing portal session: %w", err)
