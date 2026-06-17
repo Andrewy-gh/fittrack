@@ -10,7 +10,10 @@ import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workou
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { AIChatBillingCard } from "../components/ai-chat-billing-card";
+import {
+  AIChatBillingActions,
+  AIChatBillingCard,
+} from "../components/ai-chat-billing-card";
 import { ChatComposer } from "../components/chat-composer";
 import { ChatEmptyState } from "../components/chat-empty-state";
 import { ChatMessageActions } from "../components/chat-message-actions";
@@ -209,27 +212,33 @@ export function ChatPage({
               accessState={billingAccess.accessState}
               isLoading={billingAccess.isBillingCardLoading}
               isError={billingAccess.isBillingError}
+            />
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start">
+            <AIChatBillingActions
+              status={billingAccess.billingStatus}
+              accessState={billingAccess.accessState}
+              isLoading={billingAccess.isBillingCardLoading}
+              isError={billingAccess.isBillingError}
               isRefreshingAccess={billingAccess.isRefreshingAccess}
               isCheckoutLoading={billingAccess.isCheckoutLoading}
               isBillingPortalLoading={billingAccess.isBillingPortalLoading}
-              isCancelPlanLoading={billingAccess.isCancelPlanLoading}
               onStartCheckout={billingAccess.startCheckout}
               onManageBilling={billingAccess.manageBilling}
-              onCancelPlan={billingAccess.cancelPlan}
               onRefreshAccess={billingAccess.refreshAccess}
             />
+            <Button
+              type="button"
+              variant="outline"
+              aria-label="New Chat"
+              onClick={handleNewChat}
+              disabled={billingAccess.isCheckingAccess || !hasChatAccess}
+              className="w-full sm:w-auto"
+            >
+              <Plus className="size-4" />
+              New Chat
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            aria-label="New Chat"
-            onClick={handleNewChat}
-            disabled={billingAccess.isCheckingAccess || !hasChatAccess}
-            className="self-end sm:self-start"
-          >
-            <Plus className="size-4" />
-            New Chat
-          </Button>
         </div>
       </div>
 

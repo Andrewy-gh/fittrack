@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import type {
   BillingStatusResponse,
   BillingSubscription,
@@ -20,13 +19,18 @@ type AIChatBillingCardProps = {
   accessState: AIChatBillingCardAccessState;
   isLoading?: boolean;
   isError?: boolean;
+};
+
+type AIChatBillingActionsProps = {
+  status?: BillingStatusResponse;
+  accessState: AIChatBillingCardAccessState;
+  isLoading?: boolean;
+  isError?: boolean;
   isRefreshingAccess?: boolean;
   isCheckoutLoading?: boolean;
   isBillingPortalLoading?: boolean;
-  isCancelPlanLoading?: boolean;
   onStartCheckout: () => void;
   onManageBilling: () => void;
-  onCancelPlan: () => void;
   onRefreshAccess: () => void;
 };
 
@@ -61,14 +65,6 @@ export function AIChatBillingCard({
   accessState,
   isLoading = false,
   isError = false,
-  isRefreshingAccess = false,
-  isCheckoutLoading = false,
-  isBillingPortalLoading = false,
-  isCancelPlanLoading = false,
-  onStartCheckout,
-  onManageBilling,
-  onCancelPlan,
-  onRefreshAccess,
 }: AIChatBillingCardProps) {
   const subscription = status?.subscription;
   const isTrialing = status?.has_access && subscription?.status === "trialing";
@@ -78,102 +74,86 @@ export function AIChatBillingCard({
     subscription?.status !== undefined &&
     isBlockedStatus(subscription.status);
   const hasChatAccess = accessState === "ready";
+
+  return (
+    <section className="space-y-2 px-4 py-4">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">AI Chat</h2>
+          <BillingStatusBadge
+            isLoading={isLoading}
+            isError={isError}
+            status={status}
+            accessState={accessState}
+          />
+        </div>
+      </div>
+
+      <BillingMessage
+        status={status}
+        isLoading={isLoading}
+        isError={isError}
+        isBlocked={isBlocked}
+        isTrialing={Boolean(isTrialing)}
+        isActive={Boolean(isActive)}
+        accessState={accessState}
+        hasChatAccess={hasChatAccess}
+      />
+    </section>
+  );
+}
+
+export function AIChatBillingActions({
+  status,
+  accessState,
+  isLoading = false,
+  isError = false,
+  isRefreshingAccess = false,
+  isCheckoutLoading = false,
+  isBillingPortalLoading = false,
+  onStartCheckout,
+  onManageBilling,
+  onRefreshAccess,
+}: AIChatBillingActionsProps) {
   const billingAction = getBillingAction(status, accessState);
   const shouldShowBillingAction =
     !isLoading &&
     billingAction &&
     (!isError || billingAction === "refresh") &&
     (accessState !== "ready" || billingAction === "portal");
-  const shouldShowCancelPlan =
-    !isLoading &&
-    !isError &&
-    accessState === "ready" &&
-    (subscription ? isCancelableSubscription(subscription) : false);
   const isActionLoading = getActionLoadingState({
     billingAction,
     isBillingPortalLoading,
     isCheckoutLoading,
     isRefreshingAccess,
   });
-  const isPortalActionLoading =
-    (billingAction === "portal" && isActionLoading) || isCancelPlanLoading;
+
+  if (!shouldShowBillingAction) {
+    return null;
+  }
 
   return (
-    <Card className="rounded-lg">
-      <CardContent className="space-y-4 px-4 py-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-semibold tracking-tight">
-                Premium AI Chat
-              </h2>
-              <BillingStatusBadge
-                isLoading={isLoading}
-                isError={isError}
-                status={status}
-                accessState={accessState}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              AI chat is a premium FitTrack feature on one monthly plan.
-            </p>
-          </div>
-
-          {shouldShowBillingAction || shouldShowCancelPlan ? (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              {shouldShowBillingAction ? (
-                <Button
-                  type="button"
-                  className="w-full sm:w-auto"
-                  onClick={
-                    billingAction === "portal"
-                      ? onManageBilling
-                      : billingAction === "refresh"
-                        ? onRefreshAccess
-                        : onStartCheckout
-                  }
-                  disabled={isActionLoading || isCancelPlanLoading || isLoading}
-                >
-                  {billingAction === "refresh" ? (
-                    <RefreshCw className="size-4" />
-                  ) : (
-                    <CreditCard className="size-4" />
-                  )}
-                  {isActionLoading
-                    ? billingActionLoadingLabel(billingAction)
-                    : billingActionLabel(status, billingAction)}
-                </Button>
-              ) : null}
-              {shouldShowCancelPlan ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto"
-                  onClick={onCancelPlan}
-                  disabled={isPortalActionLoading}
-                >
-                  <CreditCard className="size-4" />
-                  {isCancelPlanLoading
-                    ? "Opening cancellation..."
-                    : "Cancel plan"}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        <BillingMessage
-          status={status}
-          isLoading={isLoading}
-          isError={isError}
-          isBlocked={isBlocked}
-          isTrialing={Boolean(isTrialing)}
-          isActive={Boolean(isActive)}
-          accessState={accessState}
-          hasChatAccess={hasChatAccess}
-        />
-      </CardContent>
-    </Card>
+    <Button
+      type="button"
+      className="w-full sm:w-auto"
+      onClick={
+        billingAction === "portal"
+          ? onManageBilling
+          : billingAction === "refresh"
+            ? onRefreshAccess
+            : onStartCheckout
+      }
+      disabled={isActionLoading || isLoading}
+    >
+      {billingAction === "refresh" ? (
+        <RefreshCw className="size-4" />
+      ) : (
+        <CreditCard className="size-4" />
+      )}
+      {isActionLoading
+        ? billingActionLoadingLabel(billingAction)
+        : billingActionLabel(status, billingAction)}
+    </Button>
   );
 }
 
@@ -300,7 +280,7 @@ function BillingMessage({
 
     return (
       <p className="text-sm text-muted-foreground">
-        We could not confirm billing status. Refresh the page or try again soon.
+        Could not confirm billing.
       </p>
     );
   }
@@ -308,7 +288,7 @@ function BillingMessage({
   if (!status) {
     return (
       <p className="text-sm text-muted-foreground">
-        Start a 7-day card-required trial to unlock AI chat.
+        Start a trial to use AI chat.
       </p>
     );
   }
@@ -318,61 +298,59 @@ function BillingMessage({
   if (accessState === "payment-confirming") {
     return (
       <p className="text-sm text-muted-foreground">
-        Payment complete. We are confirming your AI chat access and will keep
-        checking automatically.
+        Checking access after payment.
       </p>
     );
   }
 
   if (accessState === "activating") {
     return (
-      <p className="text-sm text-muted-foreground">
-        Premium is active. We are finishing AI chat activation and will keep
-        checking automatically.
-      </p>
+      <p className="text-sm text-muted-foreground">Finishing activation.</p>
     );
   }
 
   if (hasChatAccess && !isTrialing && !isActive) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {billingPortalStatuses.has(status.subscription?.status ?? "active")
-          ? "AI chat access is active for this account. Billing still needs attention."
-          : "AI chat access is active for this account."}
-      </p>
-    );
+    if (billingPortalStatuses.has(status.subscription?.status ?? "active")) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Update billing to keep chat available.
+        </p>
+      );
+    }
+
+    return null;
   }
 
   if (isTrialing) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Your 7-day trial is active.
-        </p>
-        {status.trial_usage ? (
-          <p className="text-sm font-medium">
-            {status.trial_usage.used} of {status.trial_usage.limit} trial
-            prompts used
-          </p>
-        ) : null}
-        {cancellationMessage ? (
-          <p className="text-sm text-muted-foreground">{cancellationMessage}</p>
-        ) : null}
-      </div>
-    );
+    if (status.trial_usage || cancellationMessage) {
+      return (
+        <div className="space-y-2">
+          {status.trial_usage ? (
+            <p className="text-sm font-medium">
+              {status.trial_usage.used} of {status.trial_usage.limit} trial
+              prompts used
+            </p>
+          ) : null}
+          {cancellationMessage ? (
+            <p className="text-sm text-muted-foreground">
+              {cancellationMessage}
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    return null;
   }
 
   if (isActive) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Premium is active. AI chat is available.
-        </p>
-        {cancellationMessage ? (
-          <p className="text-sm text-muted-foreground">{cancellationMessage}</p>
-        ) : null}
-      </div>
-    );
+    if (cancellationMessage) {
+      return (
+        <p className="text-sm text-muted-foreground">{cancellationMessage}</p>
+      );
+    }
+
+    return null;
   }
 
   if (isBlocked) {
@@ -391,8 +369,7 @@ function BillingMessage({
 
   return (
     <p className="text-sm text-muted-foreground">
-      Start a 7-day card-required trial to unlock AI chat. The trial includes 30
-      AI prompts.
+      Start a trial to use AI chat. The trial includes 30 AI prompts.
     </p>
   );
 }
@@ -431,9 +408,7 @@ function billingActionLabel(
   }
 
   if (action === "portal") {
-    return billingPortalStatuses.has(status?.subscription?.status ?? "active")
-      ? "Update billing"
-      : "Manage plan";
+    return "Manage plan";
   }
 
   if (!status?.subscription) {
@@ -491,13 +466,6 @@ function getActionLoadingState({
 function isBlockedStatus(status: BillingSubscriptionStatus): boolean {
   return (
     checkoutBlockedStatuses.has(status) || billingPortalStatuses.has(status)
-  );
-}
-
-function isCancelableSubscription(subscription: BillingSubscription): boolean {
-  return (
-    !isSubscriptionCancellationScheduled(subscription) &&
-    (subscription.status === "trialing" || subscription.status === "active")
   );
 }
 

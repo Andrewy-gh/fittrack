@@ -5,7 +5,6 @@ import {
   billingStatusQueryOptions,
   createBillingCheckoutSession,
   createBillingCustomerPortalSession,
-  createBillingSubscriptionCancelPortalSession,
   getBillingStatus,
   redirectToBillingCheckout,
   redirectToBillingPortal,
@@ -55,10 +54,8 @@ export type AIChatBillingAccess = {
   isRefreshingAccess: boolean;
   isCheckoutLoading: boolean;
   isBillingPortalLoading: boolean;
-  isCancelPlanLoading: boolean;
   startCheckout: () => void;
   manageBilling: () => void;
-  cancelPlan: () => void;
   refreshAccess: () => void;
 };
 
@@ -176,11 +173,6 @@ export function useAIChatBillingAccess({
     mutationFn: createBillingCustomerPortalSession,
     onSuccess: (session) => redirectToBillingPortal(session.url),
     onError: (error) => showErrorToast(error, "Could not open billing"),
-  });
-  const subscriptionCancelMutation = useMutation({
-    mutationFn: createBillingSubscriptionCancelPortalSession,
-    onSuccess: (session) => redirectToBillingPortal(session.url),
-    onError: (error) => showErrorToast(error, "Could not open cancellation"),
   });
   const restartCheckoutAccessPolling = useCallback(() => {
     setSettledCheckoutPollingView({ status: "idle" });
@@ -364,10 +356,8 @@ export function useAIChatBillingAccess({
     isRefreshingAccess,
     isCheckoutLoading: checkoutMutation.isPending,
     isBillingPortalLoading: billingPortalMutation.isPending,
-    isCancelPlanLoading: subscriptionCancelMutation.isPending,
     startCheckout: () => checkoutMutation.mutate(),
     manageBilling: () => billingPortalMutation.mutate(),
-    cancelPlan: () => subscriptionCancelMutation.mutate(),
     refreshAccess: () => {
       if (
         accessView.state === "activating" ||

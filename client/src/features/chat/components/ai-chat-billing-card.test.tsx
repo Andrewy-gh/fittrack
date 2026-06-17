@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { BillingStatusResponse } from "@/features/chat/api/billing";
 import {
+  AIChatBillingActions,
   AIChatBillingCard,
   type AIChatBillingCardAccessState,
 } from "./ai-chat-billing-card";
@@ -13,22 +14,26 @@ function renderCard(
 ) {
   const onStartCheckout = vi.fn();
   const onManageBilling = vi.fn();
-  const onCancelPlan = vi.fn();
   const onRefreshAccess = vi.fn();
+  const accessState =
+    options.accessState ?? (status?.has_access ? "ready" : "blocked");
   render(
-    <AIChatBillingCard
-      status={status}
-      accessState={
-        options.accessState ?? (status?.has_access ? "ready" : "blocked")
-      }
-      onStartCheckout={onStartCheckout}
-      onManageBilling={onManageBilling}
-      onCancelPlan={onCancelPlan}
-      onRefreshAccess={onRefreshAccess}
-    />,
+    <>
+      <AIChatBillingCard
+        status={status}
+        accessState={accessState}
+      />
+      <AIChatBillingActions
+        status={status}
+        accessState={accessState}
+        onStartCheckout={onStartCheckout}
+        onManageBilling={onManageBilling}
+        onRefreshAccess={onRefreshAccess}
+      />
+    </>,
   );
 
-  return { onStartCheckout, onManageBilling, onCancelPlan, onRefreshAccess };
+  return { onStartCheckout, onManageBilling, onRefreshAccess };
 }
 
 describe("AIChatBillingCard", () => {
@@ -48,22 +53,23 @@ describe("AIChatBillingCard", () => {
 
   it("does not show Checkout when billing status cannot be confirmed", () => {
     render(
-      <AIChatBillingCard
-        isError
-        accessState="billing-error"
-        onStartCheckout={vi.fn()}
-        onManageBilling={vi.fn()}
-        onCancelPlan={vi.fn()}
-        onRefreshAccess={vi.fn()}
-      />,
+      <>
+        <AIChatBillingCard
+          isError
+          accessState="billing-error"
+        />
+        <AIChatBillingActions
+          isError
+          accessState="billing-error"
+          onStartCheckout={vi.fn()}
+          onManageBilling={vi.fn()}
+          onRefreshAccess={vi.fn()}
+        />
+      </>,
     );
 
     expect(screen.getByText("Unavailable")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "We could not confirm billing status. Refresh the page or try again soon.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Could not confirm billing.")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
@@ -74,18 +80,27 @@ describe("AIChatBillingCard", () => {
     const onStartCheckout = vi.fn();
     const onRefreshAccess = vi.fn();
     render(
-      <AIChatBillingCard
-        isError
-        accessState="checkout-activation-error"
-        status={{
-          feature_key: "ai_chatbot",
-          has_access: false,
-        }}
-        onStartCheckout={onStartCheckout}
-        onManageBilling={vi.fn()}
-        onCancelPlan={vi.fn()}
-        onRefreshAccess={onRefreshAccess}
-      />,
+      <>
+        <AIChatBillingCard
+          isError
+          accessState="checkout-activation-error"
+          status={{
+            feature_key: "ai_chatbot",
+            has_access: false,
+          }}
+        />
+        <AIChatBillingActions
+          isError
+          accessState="checkout-activation-error"
+          status={{
+            feature_key: "ai_chatbot",
+            has_access: false,
+          }}
+          onStartCheckout={onStartCheckout}
+          onManageBilling={vi.fn()}
+          onRefreshAccess={onRefreshAccess}
+        />
+      </>,
     );
 
     expect(screen.getByText("Unavailable")).toBeInTheDocument();
@@ -116,9 +131,7 @@ describe("AIChatBillingCard", () => {
 
     expect(screen.getByText("Confirming")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Payment complete. We are confirming your AI chat access and will keep checking automatically.",
-      ),
+      screen.getByText("Checking access after payment."),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
@@ -132,7 +145,7 @@ describe("AIChatBillingCard", () => {
 
   it("opens plan management while trialing", async () => {
     const user = userEvent.setup();
-    const { onManageBilling, onCancelPlan, onStartCheckout } = renderCard({
+    const { onManageBilling, onStartCheckout } = renderCard({
       feature_key: "ai_chatbot",
       has_access: true,
       subscription: {
@@ -149,23 +162,24 @@ describe("AIChatBillingCard", () => {
     expect(screen.getByText("Trial")).toBeInTheDocument();
     expect(screen.getByText("12 of 30 trial prompts used")).toBeInTheDocument();
     expect(
+      screen.queryByText("Your 7-day trial is active."),
+    ).not.toBeInTheDocument();
+    expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel plan" }),
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Manage plan" }));
 
     expect(onManageBilling).toHaveBeenCalledTimes(1);
-    expect(onCancelPlan).not.toHaveBeenCalled();
     expect(onStartCheckout).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: "Cancel plan" }));
-
-    expect(onCancelPlan).toHaveBeenCalledTimes(1);
   });
 
-  it("opens plan management when premium is active", async () => {
+  it("opens plan management when premium is active without extra success copy", async () => {
     const user = userEvent.setup();
-    const { onManageBilling, onCancelPlan, onStartCheckout } = renderCard({
+    const { onManageBilling, onStartCheckout } = renderCard({
       feature_key: "ai_chatbot",
       has_access: true,
       subscription: {
@@ -177,21 +191,19 @@ describe("AIChatBillingCard", () => {
 
     expect(screen.getByText("Premium")).toBeInTheDocument();
     expect(
-      screen.getByText("Premium is active. AI chat is available."),
-    ).toBeInTheDocument();
+      screen.queryByText("Premium is active. AI chat is available."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel plan" }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Manage plan" }));
 
     expect(onManageBilling).toHaveBeenCalledTimes(1);
-    expect(onCancelPlan).not.toHaveBeenCalled();
     expect(onStartCheckout).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: "Cancel plan" }));
-
-    expect(onCancelPlan).toHaveBeenCalledTimes(1);
   });
 
-  it("disables both portal actions while either active plan action is opening", () => {
+  it("disables plan management while the portal is opening", () => {
     const activeStatus = {
       feature_key: "ai_chatbot",
       has_access: true,
@@ -206,11 +218,10 @@ describe("AIChatBillingCard", () => {
       accessState: "ready" as const,
       onStartCheckout: vi.fn(),
       onManageBilling: vi.fn(),
-      onCancelPlan: vi.fn(),
       onRefreshAccess: vi.fn(),
     };
-    const { rerender } = render(
-      <AIChatBillingCard
+    render(
+      <AIChatBillingActions
         {...props}
         isBillingPortalLoading
       />,
@@ -219,19 +230,9 @@ describe("AIChatBillingCard", () => {
     expect(
       screen.getByRole("button", { name: "Opening billing..." }),
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Cancel plan" })).toBeDisabled();
-
-    rerender(
-      <AIChatBillingCard
-        {...props}
-        isCancelPlanLoading
-      />,
-    );
-
-    expect(screen.getByRole("button", { name: "Manage plan" })).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Opening cancellation..." }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "Cancel plan" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows active access without Checkout when access comes from a non-Stripe grant", () => {
@@ -245,8 +246,8 @@ describe("AIChatBillingCard", () => {
 
     expect(screen.getByText("Access active")).toBeInTheDocument();
     expect(
-      screen.getByText("AI chat access is active for this account."),
-    ).toBeInTheDocument();
+      screen.queryByText("AI chat access is active for this account."),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
@@ -269,9 +270,7 @@ describe("AIChatBillingCard", () => {
 
     expect(screen.getByText("Access active")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "AI chat access is active for this account. Billing still needs attention.",
-      ),
+      screen.getByText("Update billing to keep chat available."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -279,7 +278,7 @@ describe("AIChatBillingCard", () => {
       ),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Update billing" }));
+    await user.click(screen.getByRole("button", { name: "Manage plan" }));
 
     expect(onManageBilling).toHaveBeenCalledTimes(1);
     expect(onStartCheckout).not.toHaveBeenCalled();
@@ -301,11 +300,7 @@ describe("AIChatBillingCard", () => {
     );
 
     expect(screen.getByText("Activating")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Premium is active. We are finishing AI chat activation and will keep checking automatically.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Finishing activation.")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
@@ -397,7 +392,7 @@ describe("AIChatBillingCard", () => {
 
       expect(screen.getByText("Action needed")).toBeInTheDocument();
       expect(screen.getByText(message)).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "Update billing" }));
+      await user.click(screen.getByRole("button", { name: "Manage plan" }));
 
       expect(onManageBilling).toHaveBeenCalledTimes(1);
       expect(onStartCheckout).not.toHaveBeenCalled();

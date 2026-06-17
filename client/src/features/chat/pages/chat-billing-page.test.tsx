@@ -9,12 +9,10 @@ import {
   mockCheckoutAccessQueryResult,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
-  mockCreateBillingSubscriptionCancelPortalSession,
   mockFeatureAccessQueryResult,
   mockGetConversation,
   mockNavigate,
   mockRedirectToBillingCheckout,
-  mockRedirectToBillingPortal,
   mockRefetchBillingStatus,
   mockRefetchFeatureAccess,
   mockSearch,
@@ -320,28 +318,6 @@ describe("ChatRouteComponent", () => {
     expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 
-  it("opens the Stripe cancellation flow for active subscribers", async () => {
-    const user = userEvent.setup();
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    render(<ChatRouteComponent />);
-
-    await user.click(
-      await screen.findByRole("button", { name: "Cancel plan" }),
-    );
-
-    await waitFor(() => {
-      expect(
-        mockCreateBillingSubscriptionCancelPortalSession,
-      ).toHaveBeenCalledTimes(1);
-    });
-    expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
-      "https://billing.stripe.test/cancel-session",
-    );
-    expect(mockCreateBillingCustomerPortalSession).not.toHaveBeenCalled();
-    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
-  });
-
   it("shows a cancellation return notice and refreshes billing state", async () => {
     mockSearch.billing = "cancelled";
     mockGetConversation.mockResolvedValue(conversationDetail([]));
@@ -570,9 +546,7 @@ describe("ChatRouteComponent", () => {
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     expect(screen.getByText("Access active")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "AI chat access is active for this account. Billing still needs attention.",
-      ),
+      screen.getByText("Update billing to keep chat available."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -583,7 +557,7 @@ describe("ChatRouteComponent", () => {
       screen.queryByText("Start or restore premium access to use AI chat."),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Update billing" }));
+    await user.click(screen.getByRole("button", { name: "Manage plan" }));
 
     await waitFor(() => {
       expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
