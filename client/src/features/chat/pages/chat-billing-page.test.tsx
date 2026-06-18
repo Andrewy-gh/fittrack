@@ -9,7 +9,6 @@ import {
   mockCheckoutAccessQueryResult,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
-  mockCreateBillingSubscriptionCancelPortalSession,
   mockFeatureAccessQueryResult,
   mockGetConversation,
   mockNavigate,
@@ -317,28 +316,9 @@ describe("ChatRouteComponent", () => {
     await waitFor(() => {
       expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
     });
-    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
-  });
-
-  it("opens the Stripe cancellation flow for active subscribers", async () => {
-    const user = userEvent.setup();
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    render(<ChatRouteComponent />);
-
-    await user.click(
-      await screen.findByRole("button", { name: "Cancel plan" }),
-    );
-
-    await waitFor(() => {
-      expect(
-        mockCreateBillingSubscriptionCancelPortalSession,
-      ).toHaveBeenCalledTimes(1);
-    });
     expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
-      "https://billing.stripe.test/cancel-session",
+      "https://billing.stripe.test/session",
     );
-    expect(mockCreateBillingCustomerPortalSession).not.toHaveBeenCalled();
     expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 
@@ -358,6 +338,51 @@ describe("ChatRouteComponent", () => {
       search: { conversationId: "41" },
       replace: true,
     });
+  });
+
+  it("shows a billing return notice and refreshes billing state", async () => {
+    mockSearch.billing = "portal-return";
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Returned from billing. We are refreshing your AI chat billing status.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
+    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "41" },
+      replace: true,
+    });
+  });
+
+  it("keeps active access ready after returning from billing management", async () => {
+    mockSearch.billing = "portal-return";
+    mockBillingCancellationQueryResult.value = {
+      data: undefined,
+      error: null,
+      isFetching: true,
+      isError: false,
+      isSuccess: false,
+    };
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByText(
+        "Returned from billing. We are refreshing your AI chat billing status.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Premium")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Chat" })).toBeEnabled();
+    expect(
+      screen.queryByText("Access continues until Jun 10, 2026."),
+    ).not.toBeInTheDocument();
   });
 
   it("uses cancellation polling data after Stripe returns before the webhook has refreshed base billing", async () => {
@@ -569,9 +594,7 @@ describe("ChatRouteComponent", () => {
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     expect(screen.getByText("Access active")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "AI chat access is active for this account. Billing still needs attention.",
-      ),
+      screen.getByText("Update billing to keep chat available."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -582,7 +605,7 @@ describe("ChatRouteComponent", () => {
       screen.queryByText("Start or restore premium access to use AI chat."),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Update billing" }));
+    await user.click(screen.getByRole("button", { name: "Manage plan" }));
 
     await waitFor(() => {
       expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);

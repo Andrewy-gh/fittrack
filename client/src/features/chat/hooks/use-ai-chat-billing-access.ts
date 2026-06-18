@@ -5,7 +5,6 @@ import {
   billingStatusQueryOptions,
   createBillingCheckoutSession,
   createBillingCustomerPortalSession,
-  createBillingSubscriptionCancelPortalSession,
   getBillingStatus,
   redirectToBillingCheckout,
   redirectToBillingPortal,
@@ -55,10 +54,8 @@ export type AIChatBillingAccess = {
   isRefreshingAccess: boolean;
   isCheckoutLoading: boolean;
   isBillingPortalLoading: boolean;
-  isCancelPlanLoading: boolean;
   startCheckout: () => void;
   manageBilling: () => void;
-  cancelPlan: () => void;
   refreshAccess: () => void;
 };
 
@@ -115,7 +112,7 @@ export function useAIChatBillingAccess({
     checkout === "success",
   );
   const [shouldPollBillingCancellation, setShouldPollBillingCancellation] =
-    useState(billing === "cancelled");
+    useState(billing === "cancelled" || billing === "portal-return");
   const [settledCheckoutPollingView, setSettledCheckoutPollingView] =
     useState<CheckoutAccessPollingView>({ status: "idle" });
   const isSignedIn = Boolean(userId);
@@ -177,11 +174,6 @@ export function useAIChatBillingAccess({
     onSuccess: (session) => redirectToBillingPortal(session.url),
     onError: (error) => showErrorToast(error, "Could not open billing"),
   });
-  const subscriptionCancelMutation = useMutation({
-    mutationFn: createBillingSubscriptionCancelPortalSession,
-    onSuccess: (session) => redirectToBillingPortal(session.url),
-    onError: (error) => showErrorToast(error, "Could not open cancellation"),
-  });
   const restartCheckoutAccessPolling = useCallback(() => {
     setSettledCheckoutPollingView({ status: "idle" });
     setShouldPollCheckoutAccess(true);
@@ -212,9 +204,8 @@ export function useAIChatBillingAccess({
     }
 
     setBillingNotice(billing);
-    if (billing === "cancelled") {
-      setShouldPollBillingCancellation(true);
-    } else {
+    setShouldPollBillingCancellation(true);
+    if (billing === "portal-return") {
       void billingQuery.refetch();
       void featureAccessQuery.refetch();
     }
@@ -293,6 +284,8 @@ export function useAIChatBillingAccess({
     error: billingCancellationQuery.error,
     isError: billingCancellationQuery.isError,
   });
+  const isBlockingBillingCancellationRefresh =
+    billingNotice === "cancelled" && billingCancellationQuery.isFetching;
   const errorSource = getAIChatAccessErrorSource({
     isBillingError: billingQuery.isError || featureAccessQuery.isError,
     checkoutPollingView,
@@ -314,7 +307,7 @@ export function useAIChatBillingAccess({
       featureAccessQuery.isLoading ||
       featureAccessQuery.isPending ||
       checkoutPollingView.status === "polling" ||
-      billingCancellationQuery.isFetching,
+      isBlockingBillingCancellationRefresh,
     errorSource,
   });
   const isRefreshingAccess =
@@ -364,10 +357,8 @@ export function useAIChatBillingAccess({
     isRefreshingAccess,
     isCheckoutLoading: checkoutMutation.isPending,
     isBillingPortalLoading: billingPortalMutation.isPending,
-    isCancelPlanLoading: subscriptionCancelMutation.isPending,
     startCheckout: () => checkoutMutation.mutate(),
     manageBilling: () => billingPortalMutation.mutate(),
-    cancelPlan: () => subscriptionCancelMutation.mutate(),
     refreshAccess: () => {
       if (
         accessView.state === "activating" ||
