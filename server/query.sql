@@ -443,7 +443,7 @@ INSERT INTO users (user_id)
 VALUES ($1)
 RETURNING id;
 
--- name: DeleteUser :exec
+-- name: DeleteUser :execrows
 DELETE FROM users
 WHERE user_id = $1;
 

@@ -550,14 +550,17 @@ func (q *Queries) DeleteSetsByWorkoutAndExercise(ctx context.Context, arg Delete
 	return err
 }
 
-const deleteUser = `-- name: DeleteUser :exec
+const deleteUser = `-- name: DeleteUser :execrows
 DELETE FROM users
 WHERE user_id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, deleteUser, userID)
-	return err
+func (q *Queries) DeleteUser(ctx context.Context, userID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteWorkout = `-- name: DeleteWorkout :exec

@@ -16,7 +16,7 @@ type Service struct {
 }
 
 type BillingCanceler interface {
-	CancelCurrentSubscriptionRenewal(ctx context.Context) error
+	CancelCurrentSubscriptionImmediately(ctx context.Context) error
 }
 
 func NewService(logger *slog.Logger, repo Repository, billing BillingCanceler) *Service {
@@ -34,8 +34,8 @@ func (s *Service) DeleteCurrentUser(ctx context.Context) error {
 	}
 
 	if s.billing != nil {
-		if err := s.billing.CancelCurrentSubscriptionRenewal(ctx); err != nil {
-			return fmt.Errorf("cancel subscription renewal before account deletion: %w", err)
+		if err := s.billing.CancelCurrentSubscriptionImmediately(ctx); err != nil {
+			return fmt.Errorf("cancel subscription before account deletion: %w", err)
 		}
 	}
 

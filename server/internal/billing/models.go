@@ -26,6 +26,7 @@ var (
 	ErrStripeUserMissing                = errors.New("stripe payload is missing fittrack user metadata")
 	ErrStripeCustomerMissing            = errors.New("stripe payload is missing customer")
 	ErrUnsupportedStripeEvent           = errors.New("unsupported stripe webhook event")
+	ErrBillingAccountDeleted            = errors.New("billing account was deleted")
 )
 
 type CheckoutSessionResponse struct {

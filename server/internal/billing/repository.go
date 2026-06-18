@@ -111,6 +111,15 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 	}
 
 	qtx := r.queries.WithTx(tx)
+	_, err = qtx.GetUserByUserID(ctx, snapshot.UserID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		r.logger.Info("ignored stripe subscription event for deleted user", "user_id", snapshot.UserID, "stripe_subscription_id", snapshot.StripeSubscriptionID)
+		return db.StripeSubscriptions{}, ErrBillingAccountDeleted
+	}
+	if err != nil {
+		return db.StripeSubscriptions{}, fmt.Errorf("get user for stripe subscription: %w", err)
+	}
+
 	if _, err := qtx.UpsertStripeCustomer(ctx, db.UpsertStripeCustomerParams{
 		UserID:           snapshot.UserID,
 		StripeCustomerID: snapshot.StripeCustomerID,

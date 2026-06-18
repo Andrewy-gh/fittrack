@@ -34,6 +34,7 @@ type Service struct {
 	createCheckoutSession func(*stripe.CheckoutSessionParams) (*stripe.CheckoutSession, error)
 	createPortalSession   func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error)
 	updateSubscription    func(string, *stripe.SubscriptionParams) (*stripe.Subscription, error)
+	cancelSubscription    func(string, *stripe.SubscriptionCancelParams) (*stripe.Subscription, error)
 	constructEvent        func([]byte, string, string) (stripe.Event, error)
 }
 
@@ -50,6 +51,7 @@ func NewService(logger *slog.Logger, repo Repository, stripeSecretKey string, we
 		createCheckoutSession: session.New,
 		createPortalSession:   portalsession.New,
 		updateSubscription:    stripesubscription.Update,
+		cancelSubscription:    stripesubscription.Cancel,
 		constructEvent: func(payload []byte, header string, secret string) (stripe.Event, error) {
 			return webhook.ConstructEventWithOptions(payload, header, secret, webhook.ConstructEventOptions{
 				IgnoreAPIVersionMismatch: true,
@@ -255,6 +257,35 @@ func (s *Service) CancelCurrentSubscriptionRenewal(ctx context.Context) error {
 	return nil
 }
 
+func (s *Service) CancelCurrentSubscriptionImmediately(ctx context.Context) error {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	subscription, err := s.repo.GetCurrentSubscriptionByUserID(ctx, userID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	case err != nil:
+		return fmt.Errorf("get current billing subscription: %w", err)
+	}
+
+	if !statusAllowsAccess(subscription.Status) {
+		return nil
+	}
+	if strings.TrimSpace(s.stripeSecretKey) == "" {
+		return ErrBillingNotConfigured
+	}
+
+	stripe.Key = s.stripeSecretKey
+	_, err = s.cancelSubscription(subscription.StripeSubscriptionID, &stripe.SubscriptionCancelParams{})
+	if err != nil {
+		return fmt.Errorf("cancel stripe subscription: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) EnsureAIChatPromptAllowed(ctx context.Context) error {
 	userID, err := currentUserID(ctx)
 	if err != nil {
@@ -316,6 +347,10 @@ func (s *Service) ApplySubscriptionSnapshot(ctx context.Context, snapshot Stripe
 		return err
 	}
 	_, err := s.repo.UpsertSubscriptionFromWebhook(ctx, snapshot)
+	if errors.Is(err, ErrBillingAccountDeleted) {
+		s.logger.Info("acknowledged stripe subscription event for deleted account", "user_id", snapshot.UserID, "stripe_subscription_id", snapshot.StripeSubscriptionID)
+		return nil
+	}
 	return err
 }
 
@@ -346,6 +381,10 @@ func (s *Service) applySubscriptionEvent(ctx context.Context, subscription strip
 	snapshot.StripeEventCreatedAt = eventCreatedAt
 	if snapshot.UserID == "" && snapshot.StripeCustomerID != "" {
 		customerRow, err := s.repo.GetStripeCustomerByCustomerID(ctx, snapshot.StripeCustomerID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			s.logger.Info("ignoring stripe subscription event for deleted or unknown customer", "stripe_customer_id", snapshot.StripeCustomerID, "stripe_subscription_id", snapshot.StripeSubscriptionID)
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("find user for stripe customer: %w", err)
 		}

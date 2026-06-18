@@ -27,12 +27,12 @@ type stubBillingCanceler struct {
 	called bool
 }
 
-func (s *stubBillingCanceler) CancelCurrentSubscriptionRenewal(ctx context.Context) error {
+func (s *stubBillingCanceler) CancelCurrentSubscriptionImmediately(ctx context.Context) error {
 	s.called = true
 	return s.err
 }
 
-func TestServiceDeleteCurrentUser_CancelsSubscriptionRenewalBeforeDeleting(t *testing.T) {
+func TestServiceDeleteCurrentUser_CancelsSubscriptionImmediatelyBeforeDeleting(t *testing.T) {
 	repo := &stubRepository{}
 	billing := &stubBillingCanceler{}
 	service := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo, billing)
@@ -65,6 +65,16 @@ func TestServiceDeleteCurrentUser_ReturnsDeleteFailure(t *testing.T) {
 	err := service.DeleteCurrentUser(ctx)
 
 	require.ErrorIs(t, err, expectedErr)
+}
+
+func TestServiceDeleteCurrentUser_ReturnsZeroRowDeleteFailure(t *testing.T) {
+	repo := &stubRepository{deleteErr: ErrUserNotDeleted}
+	service := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo, nil)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	err := service.DeleteCurrentUser(ctx)
+
+	require.ErrorIs(t, err, ErrUserNotDeleted)
 }
 
 func TestServiceDeleteCurrentUser_DoesNotDeleteWhenSubscriptionCancellationFails(t *testing.T) {

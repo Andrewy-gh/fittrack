@@ -252,6 +252,52 @@ func TestServiceCancelCurrentSubscriptionRenewal_NotConfiguredWhenCancellationRe
 	repo.AssertExpectations(t)
 }
 
+func TestServiceCancelCurrentSubscriptionImmediately_CancelsActiveSubscription(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		Status:               subscriptionStatusActive,
+	}, nil).Once()
+	service.cancelSubscription = func(id string, params *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+		assert.Equal(t, "sub_123", id)
+		require.NotNil(t, params)
+		return &stripe.Subscription{ID: id, Status: stripe.SubscriptionStatusCanceled}, nil
+	}
+
+	err := service.CancelCurrentSubscriptionImmediately(ctx)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionImmediately_StripeFailureBlocksAccountDeletion(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		Status:               subscriptionStatusActive,
+	}, nil).Once()
+	service.cancelSubscription = func(id string, params *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+		return nil, assert.AnError
+	}
+
+	err := service.CancelCurrentSubscriptionImmediately(ctx)
+
+	require.ErrorIs(t, err, assert.AnError)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceCreateSubscriptionCancelPortalSession_AlreadyCanceling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := new(mockRepository)
