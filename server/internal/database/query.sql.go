@@ -3287,7 +3287,7 @@ WHERE stripe_subscriptions.stripe_event_created_at < EXCLUDED.stripe_event_creat
    OR (
        stripe_subscriptions.stripe_event_created_at = EXCLUDED.stripe_event_created_at
        AND NOT (
-           stripe_subscriptions.status IN ('past_due', 'unpaid', 'canceled', 'incomplete', 'incomplete_expired')
+           stripe_subscriptions.status IN ('past_due', 'unpaid', 'canceled', 'incomplete', 'incomplete_expired', 'paused')
            AND EXCLUDED.status IN ('trialing', 'active')
        )
    )

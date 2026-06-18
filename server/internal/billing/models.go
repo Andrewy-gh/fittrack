@@ -15,6 +15,7 @@ const (
 	subscriptionStatusCanceled          = "canceled"
 	subscriptionStatusIncomplete        = "incomplete"
 	subscriptionStatusIncompleteExpired = "incomplete_expired"
+	subscriptionStatusPaused            = "paused"
 )
 
 var (
@@ -75,6 +76,23 @@ type StripeSubscriptionSnapshot struct {
 
 func statusAllowsAccess(status string) bool {
 	return status == subscriptionStatusTrialing || status == subscriptionStatusActive
+}
+
+func statusCanBeCanceledImmediately(status string) bool {
+	switch status {
+	case subscriptionStatusTrialing,
+		subscriptionStatusActive,
+		subscriptionStatusPastDue,
+		subscriptionStatusIncomplete,
+		subscriptionStatusPaused:
+		return true
+	case subscriptionStatusCanceled,
+		subscriptionStatusIncompleteExpired,
+		subscriptionStatusUnpaid:
+		return false
+	default:
+		return false
+	}
 }
 
 func statusConsumesTrialPrompts(status string) bool {

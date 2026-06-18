@@ -271,7 +271,7 @@ func (s *Service) CancelCurrentSubscriptionImmediately(ctx context.Context) erro
 		return fmt.Errorf("get current billing subscription: %w", err)
 	}
 
-	if !statusAllowsAccess(subscription.Status) {
+	if !statusCanBeCanceledImmediately(subscription.Status) {
 		return nil
 	}
 	if strings.TrimSpace(s.stripeSecretKey) == "" {
@@ -407,6 +407,10 @@ func (s *Service) recordCheckoutCustomer(ctx context.Context, checkoutSession st
 	}
 
 	_, err := s.repo.UpsertStripeCustomer(ctx, userID, checkoutSession.Customer.ID)
+	if errors.Is(err, ErrBillingAccountDeleted) {
+		s.logger.Info("acknowledged checkout event for deleted account", "user_id", userID, "stripe_customer_id", checkoutSession.Customer.ID)
+		return nil
+	}
 	return err
 }
 

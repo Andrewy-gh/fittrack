@@ -329,6 +329,34 @@ func TestServiceHandleWebhook_AcknowledgesDeletedAccountSubscriptionEventWithUse
 	repo.AssertExpectations(t)
 }
 
+func TestServiceHandleWebhook_AcknowledgesDeletedAccountCheckoutEvent(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+
+	service.constructEvent = func(payload []byte, header string, secret string) (stripe.Event, error) {
+		return stripe.Event{
+			ID:   "evt_deleted_account_checkout",
+			Type: "checkout.session.completed",
+			Data: &stripe.EventData{Raw: []byte(`{
+				"id": "cs_deleted",
+				"object": "checkout.session",
+				"client_reference_id": "user-123",
+				"customer": "cus_123"
+			}`)},
+		}, nil
+	}
+
+	repo.On("HasProcessedWebhookEvent", mock.Anything, "evt_deleted_account_checkout").Return(false, nil).Once()
+	repo.On("UpsertStripeCustomer", mock.Anything, "user-123", "cus_123").Return(db.StripeCustomers{}, ErrBillingAccountDeleted).Once()
+	repo.On("MarkWebhookEventProcessed", mock.Anything, "evt_deleted_account_checkout", "checkout.session.completed").Return(nil).Once()
+
+	err := service.HandleWebhook(context.Background(), []byte("payload"), "sig")
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	now := time.Now().UTC()
