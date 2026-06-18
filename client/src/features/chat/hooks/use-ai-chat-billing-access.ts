@@ -284,6 +284,8 @@ export function useAIChatBillingAccess({
     error: billingCancellationQuery.error,
     isError: billingCancellationQuery.isError,
   });
+  const isBlockingBillingCancellationRefresh =
+    billingNotice === "cancelled" && billingCancellationQuery.isFetching;
   const errorSource = getAIChatAccessErrorSource({
     isBillingError: billingQuery.isError || featureAccessQuery.isError,
     checkoutPollingView,
@@ -305,7 +307,7 @@ export function useAIChatBillingAccess({
       featureAccessQuery.isLoading ||
       featureAccessQuery.isPending ||
       checkoutPollingView.status === "polling" ||
-      billingCancellationQuery.isFetching,
+      isBlockingBillingCancellationRefresh,
     errorSource,
   });
   const isRefreshingAccess =

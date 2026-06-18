@@ -367,12 +367,32 @@ describe("useAIChatBillingAccess checkout polling", () => {
     });
     expect(mocks.mockGetCheckoutBillingStatus).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps active access ready after a non-cancellation portal return", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    const { result } = renderBillingAccessHook({
+      checkout: undefined,
+      billing: "portal-return",
+    });
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+    });
+    expect(result.current.hasChatAccess).toBe(true);
+    expect(mocks.mockGetCheckoutBillingStatus).toHaveBeenCalled();
+    expect(mocks.mockGetBaseBillingStatus).toHaveBeenCalled();
+    expect(mocks.mockGetBaseFeatureAccess).toHaveBeenCalled();
+  });
 });
 
 function renderBillingAccessHook(
   options: {
     checkout?: "success";
-    billing?: "cancelled";
+    billing?: "cancelled" | "portal-return";
   } = { checkout: "success" },
 ) {
   const navigate = vi.fn();
