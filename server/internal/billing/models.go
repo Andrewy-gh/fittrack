@@ -15,6 +15,7 @@ const (
 	subscriptionStatusCanceled          = "canceled"
 	subscriptionStatusIncomplete        = "incomplete"
 	subscriptionStatusIncompleteExpired = "incomplete_expired"
+	subscriptionStatusPaused            = "paused"
 )
 
 var (
@@ -26,6 +27,7 @@ var (
 	ErrStripeUserMissing                = errors.New("stripe payload is missing fittrack user metadata")
 	ErrStripeCustomerMissing            = errors.New("stripe payload is missing customer")
 	ErrUnsupportedStripeEvent           = errors.New("unsupported stripe webhook event")
+	ErrBillingAccountDeleted            = errors.New("billing account was deleted")
 )
 
 type CheckoutSessionResponse struct {
@@ -74,6 +76,23 @@ type StripeSubscriptionSnapshot struct {
 
 func statusAllowsAccess(status string) bool {
 	return status == subscriptionStatusTrialing || status == subscriptionStatusActive
+}
+
+func statusCanBeCanceledImmediately(status string) bool {
+	switch status {
+	case subscriptionStatusTrialing,
+		subscriptionStatusActive,
+		subscriptionStatusPastDue,
+		subscriptionStatusIncomplete,
+		subscriptionStatusPaused:
+		return true
+	case subscriptionStatusCanceled,
+		subscriptionStatusIncompleteExpired,
+		subscriptionStatusUnpaid:
+		return false
+	default:
+		return false
+	}
 }
 
 func statusConsumesTrialPrompts(status string) bool {

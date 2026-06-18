@@ -550,6 +550,19 @@ func (q *Queries) DeleteSetsByWorkoutAndExercise(ctx context.Context, arg Delete
 	return err
 }
 
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, userID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteWorkout = `-- name: DeleteWorkout :exec
 DELETE FROM workout 
 WHERE id = $1 
@@ -3274,7 +3287,7 @@ WHERE stripe_subscriptions.stripe_event_created_at < EXCLUDED.stripe_event_creat
    OR (
        stripe_subscriptions.stripe_event_created_at = EXCLUDED.stripe_event_created_at
        AND NOT (
-           stripe_subscriptions.status IN ('past_due', 'unpaid', 'canceled', 'incomplete', 'incomplete_expired')
+           stripe_subscriptions.status IN ('past_due', 'unpaid', 'canceled', 'incomplete', 'incomplete_expired', 'paused')
            AND EXCLUDED.status IN ('trialing', 'active')
        )
    )

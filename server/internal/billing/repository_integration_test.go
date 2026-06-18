@@ -267,45 +267,63 @@ func TestRepositoryUpsertSubscriptionFromWebhook_SameSecondRevocationBeatsGranti
 	defer pool.Close()
 	require.NoError(t, pool.Ping(ctx))
 
-	userID := "billing-same-second-revoke-user"
-	subscriptionID := "sub_same_second_revoke"
-	customerID := "cus_same_second_revoke"
-	cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
-	defer cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
-	seedBillingUser(t, pool, userID)
+	tests := []struct {
+		name   string
+		status string
+	}{
+		{
+			name:   "canceled",
+			status: subscriptionStatusCanceled,
+		},
+		{
+			name:   "paused",
+			status: subscriptionStatusPaused,
+		},
+	}
 
-	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
-	periodStart := time.Now().UTC().Add(-time.Hour)
-	periodEnd := periodStart.Add(30 * 24 * time.Hour)
-	eventCreatedAt := periodStart.Add(time.Minute).Truncate(time.Second)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userID := "billing-same-second-revoke-" + tt.status
+			subscriptionID := "sub_same_second_revoke_" + tt.status
+			customerID := "cus_same_second_revoke_" + tt.status
+			cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+			defer cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+			seedBillingUser(t, pool, userID)
 
-	_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
-		StripeSubscriptionID: subscriptionID,
-		UserID:               userID,
-		StripeCustomerID:     customerID,
-		StripePriceID:        "price_premium",
-		StripeEventCreatedAt: &eventCreatedAt,
-		Status:               subscriptionStatusCanceled,
-		CurrentPeriodStart:   &periodStart,
-		CurrentPeriodEnd:     &periodEnd,
-	})
-	require.NoError(t, err)
+			repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+			periodStart := time.Now().UTC().Add(-time.Hour)
+			periodEnd := periodStart.Add(30 * 24 * time.Hour)
+			eventCreatedAt := periodStart.Add(time.Minute).Truncate(time.Second)
 
-	_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
-		StripeSubscriptionID: subscriptionID,
-		UserID:               userID,
-		StripeCustomerID:     customerID,
-		StripePriceID:        "price_premium",
-		StripeEventCreatedAt: &eventCreatedAt,
-		Status:               subscriptionStatusActive,
-		CurrentPeriodStart:   &periodStart,
-		CurrentPeriodEnd:     &periodEnd,
-		GrantAIChatAccess:    true,
-	})
-	require.NoError(t, err)
+			_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
+				StripeSubscriptionID: subscriptionID,
+				UserID:               userID,
+				StripeCustomerID:     customerID,
+				StripePriceID:        "price_premium",
+				StripeEventCreatedAt: &eventCreatedAt,
+				Status:               tt.status,
+				CurrentPeriodStart:   &periodStart,
+				CurrentPeriodEnd:     &periodEnd,
+			})
+			require.NoError(t, err)
 
-	assert.Empty(t, activeAIChatSources(t, pool, userID))
-	assert.Equal(t, subscriptionStatusCanceled, currentStripeSubscriptionStatus(t, pool, userID, subscriptionID))
+			_, err = repo.UpsertSubscriptionFromWebhook(ctx, StripeSubscriptionSnapshot{
+				StripeSubscriptionID: subscriptionID,
+				UserID:               userID,
+				StripeCustomerID:     customerID,
+				StripePriceID:        "price_premium",
+				StripeEventCreatedAt: &eventCreatedAt,
+				Status:               subscriptionStatusActive,
+				CurrentPeriodStart:   &periodStart,
+				CurrentPeriodEnd:     &periodEnd,
+				GrantAIChatAccess:    true,
+			})
+			require.NoError(t, err)
+
+			assert.Empty(t, activeAIChatSources(t, pool, userID))
+			assert.Equal(t, tt.status, currentStripeSubscriptionStatus(t, pool, userID, subscriptionID))
+		})
+	}
 }
 
 func TestRepositoryUpsertSubscriptionFromWebhook_DoesNotGrantWithoutPremiumPrice(t *testing.T) {

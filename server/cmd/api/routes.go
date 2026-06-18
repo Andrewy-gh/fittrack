@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
@@ -17,7 +18,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, bh *billing.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
+func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, bh *billing.Handler, accountHandler *account.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health endpoints (no authentication required)
@@ -49,6 +50,9 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/workouts/contribution-data", wh.GetContributionData)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
 	mux.HandleFunc("GET /api/features/access", fh.ListActiveFeatureAccess)
+	if accountHandler != nil {
+		mux.HandleFunc("DELETE /api/account", accountHandler.DeleteAccount)
+	}
 	if bh != nil {
 		mux.HandleFunc("POST /api/billing/checkout-session", bh.CreateCheckoutSession)
 		mux.HandleFunc("POST /api/billing/customer-portal-session", bh.CreateCustomerPortalSession)

@@ -74,7 +74,17 @@ func (r *repository) UpsertStripeCustomer(ctx context.Context, userID string, st
 		return db.StripeCustomers{}, err
 	}
 
-	row, err := r.queries.WithTx(tx).UpsertStripeCustomer(ctx, db.UpsertStripeCustomerParams{
+	qtx := r.queries.WithTx(tx)
+	_, err = qtx.GetUserByUserID(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		r.logger.Info("ignored stripe customer event for deleted user", "user_id", userID, "stripe_customer_id", stripeCustomerID)
+		return db.StripeCustomers{}, ErrBillingAccountDeleted
+	}
+	if err != nil {
+		return db.StripeCustomers{}, fmt.Errorf("get user for stripe customer: %w", err)
+	}
+
+	row, err := qtx.UpsertStripeCustomer(ctx, db.UpsertStripeCustomerParams{
 		UserID:           userID,
 		StripeCustomerID: stripeCustomerID,
 	})
@@ -111,6 +121,15 @@ func (r *repository) UpsertSubscriptionFromWebhook(ctx context.Context, snapshot
 	}
 
 	qtx := r.queries.WithTx(tx)
+	_, err = qtx.GetUserByUserID(ctx, snapshot.UserID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		r.logger.Info("ignored stripe subscription event for deleted user", "user_id", snapshot.UserID, "stripe_subscription_id", snapshot.StripeSubscriptionID)
+		return db.StripeSubscriptions{}, ErrBillingAccountDeleted
+	}
+	if err != nil {
+		return db.StripeSubscriptions{}, fmt.Errorf("get user for stripe subscription: %w", err)
+	}
+
 	if _, err := qtx.UpsertStripeCustomer(ctx, db.UpsertStripeCustomerParams{
 		UserID:           snapshot.UserID,
 		StripeCustomerID: snapshot.StripeCustomerID,

@@ -142,6 +142,225 @@ func TestServiceCreateSubscriptionCancelPortalSession_MissingSubscription(t *tes
 	repo.AssertNotCalled(t, "GetStripeCustomerByUserID", mock.Anything, mock.Anything)
 }
 
+func TestServiceCancelCurrentSubscriptionRenewal_SchedulesPeriodEndCancellation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		Status:               subscriptionStatusActive,
+	}, nil).Once()
+	service.updateSubscription = func(id string, params *stripe.SubscriptionParams) (*stripe.Subscription, error) {
+		assert.Equal(t, "sub_123", id)
+		require.NotNil(t, params.CancelAtPeriodEnd)
+		assert.True(t, *params.CancelAtPeriodEnd)
+		return &stripe.Subscription{ID: id}, nil
+	}
+
+	err := service.CancelCurrentSubscriptionRenewal(ctx)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionRenewal_NoSubscriptionNoops(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{}, pgx.ErrNoRows).Once()
+	service.updateSubscription = func(string, *stripe.SubscriptionParams) (*stripe.Subscription, error) {
+		t.Fatal("missing subscriptions should not call Stripe")
+		return nil, nil
+	}
+
+	err := service.CancelCurrentSubscriptionRenewal(ctx)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionRenewal_AlreadyCancelingNoops(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		Status:               subscriptionStatusActive,
+		CancelAtPeriodEnd:    true,
+	}, nil).Once()
+	service.updateSubscription = func(string, *stripe.SubscriptionParams) (*stripe.Subscription, error) {
+		t.Fatal("already canceling subscriptions should not call Stripe")
+		return nil, nil
+	}
+
+	err := service.CancelCurrentSubscriptionRenewal(ctx)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionRenewal_InactiveSubscriptionNoops(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		Status:               subscriptionStatusCanceled,
+	}, nil).Once()
+	service.updateSubscription = func(string, *stripe.SubscriptionParams) (*stripe.Subscription, error) {
+		t.Fatal("inactive subscriptions should not call Stripe")
+		return nil, nil
+	}
+
+	err := service.CancelCurrentSubscriptionRenewal(ctx)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionRenewal_NotConfiguredWhenCancellationRequired(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		Status:               subscriptionStatusTrialing,
+	}, nil).Once()
+	service.updateSubscription = func(string, *stripe.SubscriptionParams) (*stripe.Subscription, error) {
+		t.Fatal("unconfigured billing should not call Stripe")
+		return nil, nil
+	}
+
+	err := service.CancelCurrentSubscriptionRenewal(ctx)
+
+	require.ErrorIs(t, err, ErrBillingNotConfigured)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionImmediately_CancelsActiveSubscription(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		Status:               subscriptionStatusActive,
+	}, nil).Once()
+	service.cancelSubscription = func(id string, params *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+		assert.Equal(t, "sub_123", id)
+		require.NotNil(t, params)
+		return &stripe.Subscription{ID: id, Status: stripe.SubscriptionStatusCanceled}, nil
+	}
+
+	err := service.CancelCurrentSubscriptionImmediately(ctx)
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCancelCurrentSubscriptionImmediately_CancelsRecoverableSubscription(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	for _, status := range []string{
+		subscriptionStatusPastDue,
+		subscriptionStatusIncomplete,
+		subscriptionStatusPaused,
+	} {
+		t.Run(status, func(t *testing.T) {
+			repo := new(mockRepository)
+			service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+			ctx := user.WithContext(context.Background(), "user-123")
+
+			repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+				StripeSubscriptionID: "sub_cancelable",
+				UserID:               "user-123",
+				StripeCustomerID:     "cus_123",
+				Status:               status,
+			}, nil).Once()
+			service.cancelSubscription = func(id string, params *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+				assert.Equal(t, "sub_cancelable", id)
+				require.NotNil(t, params)
+				return &stripe.Subscription{ID: id, Status: stripe.SubscriptionStatusCanceled}, nil
+			}
+
+			err := service.CancelCurrentSubscriptionImmediately(ctx)
+
+			require.NoError(t, err)
+			repo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestServiceCancelCurrentSubscriptionImmediately_NonBillableSubscriptionNoops(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	for _, status := range []string{
+		subscriptionStatusCanceled,
+		subscriptionStatusIncompleteExpired,
+		subscriptionStatusUnpaid,
+	} {
+		t.Run(status, func(t *testing.T) {
+			repo := new(mockRepository)
+			service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+			ctx := user.WithContext(context.Background(), "user-123")
+
+			repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+				StripeSubscriptionID: "sub_non_billable",
+				UserID:               "user-123",
+				StripeCustomerID:     "cus_123",
+				Status:               status,
+			}, nil).Once()
+			service.cancelSubscription = func(string, *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+				t.Fatal("non-billable subscriptions should not call Stripe")
+				return nil, nil
+			}
+
+			err := service.CancelCurrentSubscriptionImmediately(ctx)
+
+			require.NoError(t, err)
+			repo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestServiceCancelCurrentSubscriptionImmediately_StripeFailureBlocksAccountDeletion(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
+		StripeSubscriptionID: "sub_123",
+		UserID:               "user-123",
+		StripeCustomerID:     "cus_123",
+		Status:               subscriptionStatusActive,
+	}, nil).Once()
+	service.cancelSubscription = func(id string, params *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+		return nil, assert.AnError
+	}
+
+	err := service.CancelCurrentSubscriptionImmediately(ctx)
+
+	require.ErrorIs(t, err, assert.AnError)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceCreateSubscriptionCancelPortalSession_AlreadyCanceling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := new(mockRepository)
