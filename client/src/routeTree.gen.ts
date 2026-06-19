@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HandlerSplatRouteImport } from './routes/handler.$'
@@ -21,6 +22,11 @@ import { Route as LayoutExercisesExerciseIdRouteImport } from './routes/_layout/
 import { Route as LayoutWorkoutsWorkoutIdIndexRouteImport } from './routes/_layout/workouts/$workoutId/index'
 import { Route as LayoutWorkoutsWorkoutIdEditRouteImport } from './routes/_layout/workouts/$workoutId/edit'
 
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
@@ -81,6 +87,7 @@ const LayoutWorkoutsWorkoutIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/analytics': typeof LayoutAnalyticsRoute
   '/chat': typeof LayoutChatRoute
   '/handler/$': typeof HandlerSplatRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/analytics': typeof LayoutAnalyticsRoute
   '/chat': typeof LayoutChatRoute
   '/handler/$': typeof HandlerSplatRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/_layout/analytics': typeof LayoutAnalyticsRoute
   '/_layout/chat': typeof LayoutChatRoute
   '/handler/$': typeof HandlerSplatRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/privacy'
     | '/analytics'
     | '/chat'
     | '/handler/$'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/privacy'
     | '/analytics'
     | '/chat'
     | '/handler/$'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_layout'
+    | '/privacy'
     | '/_layout/analytics'
     | '/_layout/chat'
     | '/handler/$'
@@ -160,11 +172,19 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   HandlerSplatRoute: typeof HandlerSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layout': {
       id: '/_layout'
       path: ''
@@ -273,6 +293,7 @@ const LayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   HandlerSplatRoute: HandlerSplatRoute,
 }
 export const routeTree = rootRouteImport
