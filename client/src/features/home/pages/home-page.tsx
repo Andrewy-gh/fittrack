@@ -401,6 +401,26 @@ export function HomePage({
           </div>
         </div>
       </section>
+
+      <footer className="border-t border-border px-6 py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>FitTrack</span>
+          <div className="flex gap-4">
+            <Link
+              to="/privacy"
+              className="hover:text-foreground"
+            >
+              Privacy Policy
+            </Link>
+            <a
+              href="mailto:support@fittrack.andrewy.me"
+              className="hover:text-foreground"
+            >
+              Support
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

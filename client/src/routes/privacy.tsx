@@ -1,0 +1,100 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  getPolicySections,
+  effectiveDate,
+} from "@/features/privacy/privacy-content";
+
+export const Route = createFileRoute("/privacy")({
+  component: PrivacyPage,
+});
+
+function PrivacyPage() {
+  const sections = getPolicySections();
+
+  return (
+    <main className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background/90 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-bold tracking-wide text-foreground"
+          >
+            <img
+              src="/favicon.svg"
+              alt=""
+              aria-hidden="true"
+              className="h-6 w-6 rounded-sm"
+            />
+            FITTRACK
+          </Link>
+          <Link
+            to="/"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Home
+          </Link>
+        </div>
+      </header>
+
+      <section className="px-6 py-14">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-12 max-w-3xl space-y-4">
+            <Badge className="bg-primary/15 px-4 py-2 text-primary">
+              <ShieldCheck className="mr-1 h-4 w-4" />
+              Effective {effectiveDate}
+            </Badge>
+            <h1 className="text-4xl font-bold leading-tight tracking-wide text-foreground md:text-6xl">
+              Privacy Policy
+            </h1>
+            <p className="text-lg leading-8 text-muted-foreground">
+              This Privacy Policy explains how FitTrack collects, uses, shares,
+              and protects information when you use the FitTrack website, app,
+              workout tracking features, AI chat, and billing flows.
+            </p>
+          </div>
+
+          <div className="grid gap-10 lg:grid-cols-[16rem_1fr] lg:gap-16">
+            <aside className="hidden lg:block">
+              <nav className="sticky top-8">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  On this page
+                </p>
+                <ul className="space-y-1 border-l border-border">
+                  {sections.map((section) => (
+                    <li key={section.id}>
+                      <a
+                        href={`#${section.id}`}
+                        className="-ml-px block border-l border-transparent py-1.5 pl-4 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                      >
+                        {section.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </aside>
+
+            <div className="min-w-0 space-y-10">
+              {sections.map((section) => (
+                <section
+                  key={section.id}
+                  id={section.id}
+                  className="scroll-mt-8 border-t border-border pt-8 first:border-t-0 first:pt-0"
+                >
+                  <h2 className="mb-4 text-2xl font-bold tracking-wide text-foreground">
+                    {section.title}
+                  </h2>
+                  <div className="space-y-4 leading-7 text-muted-foreground">
+                    {section.content}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
