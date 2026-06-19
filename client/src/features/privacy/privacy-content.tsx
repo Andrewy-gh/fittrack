@@ -246,7 +246,11 @@ export function getPolicySections(): {
           <p>
             You can update or delete workouts, exercises, and other app data
             through FitTrack features where those controls are available. You
-            can delete your FitTrack account in the app.
+            can request deletion of your FitTrack account by contacting{" "}
+            <PolicyLink href={`mailto:${privacyEmail}`}>
+              {privacyEmail}
+            </PolicyLink>
+            .
           </p>
           <p>
             If you want a copy of your data, request it at{" "}
