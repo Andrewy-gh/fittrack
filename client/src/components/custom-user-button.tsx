@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Sun, Moon, Dumbbell } from "lucide-react";
+import { LogOut, Sun, Moon, Dumbbell, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import React from "react";
 import { useUser } from "@stackframe/react";
@@ -51,7 +51,10 @@ export function CustomUserButton() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="outline-none">
+      <DropdownMenuTrigger
+        className="outline-none"
+        aria-label="Open account menu"
+      >
         {/* Button shows only the avatar */}
         <Avatar className="h-8.5 w-8.5">
           {user.profileImageUrl && (
@@ -122,6 +125,16 @@ export function CustomUserButton() {
           >
             <Dumbbell {...iconProps} />
             <Typography>Workouts</Typography>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link
+            to="/settings"
+            className="flex gap-2 items-center"
+          >
+            <Settings {...iconProps} />
+            <Typography>Settings</Typography>
           </Link>
         </DropdownMenuItem>
 
