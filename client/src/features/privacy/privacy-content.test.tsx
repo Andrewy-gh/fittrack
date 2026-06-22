@@ -13,7 +13,9 @@ describe("privacy policy account deletion copy", () => {
     render(<>{choicesSection?.content}</>);
 
     expect(
-      screen.getByText(/You can delete your FitTrack account in Account settings/i),
+      screen.getByText(
+        /You can delete your FitTrack account in Account settings/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText((_, element) =>

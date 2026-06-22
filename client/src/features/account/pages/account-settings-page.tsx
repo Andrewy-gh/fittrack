@@ -118,8 +118,8 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
               }
             />
             <span>
-              I understand this deletes my FitTrack app data and signs me out
-              on this device.
+              I understand this deletes my FitTrack app data and signs me out on
+              this device.
             </span>
           </label>
 

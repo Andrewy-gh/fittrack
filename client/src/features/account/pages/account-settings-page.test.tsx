@@ -4,13 +4,11 @@ import type { CurrentUser } from "@stackframe/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
-const {
-  mockCreateBillingCustomerPortalSession,
-  mockRedirectToBillingPortal,
-} = vi.hoisted(() => ({
-  mockCreateBillingCustomerPortalSession: vi.fn(),
-  mockRedirectToBillingPortal: vi.fn(),
-}));
+const { mockCreateBillingCustomerPortalSession, mockRedirectToBillingPortal } =
+  vi.hoisted(() => ({
+    mockCreateBillingCustomerPortalSession: vi.fn(),
+    mockRedirectToBillingPortal: vi.fn(),
+  }));
 const { mockDeleteAccount } = vi.hoisted(() => ({
   mockDeleteAccount: vi.fn(),
 }));
@@ -85,7 +83,9 @@ describe("AccountSettingsPage", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      deletion.getByText(/contact privacy@fittrack\.andrewy\.me before deleting/i),
+      deletion.getByText(
+        /contact privacy@fittrack\.andrewy\.me before deleting/i,
+      ),
     ).toBeInTheDocument();
 
     const deleteButton = deletion.getByRole("button", {
@@ -157,7 +157,9 @@ describe("AccountSettingsPage", () => {
     await user.click(deletion.getByRole("button", { name: "Delete account" }));
 
     expect(
-      await deletion.findByText("Could not delete your account. Please try again."),
+      await deletion.findByText(
+        "Could not delete your account. Please try again.",
+      ),
     ).toBeInTheDocument();
     expect(mockClearCurrentDeviceAccountState).not.toHaveBeenCalled();
     expect(testUserSignOut).not.toHaveBeenCalled();
