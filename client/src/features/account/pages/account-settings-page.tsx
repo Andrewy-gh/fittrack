@@ -23,6 +23,7 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isAccountDeleted, setIsAccountDeleted] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function handleManageBilling() {
@@ -49,13 +50,45 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
 
     try {
       await deleteAccount();
-      clearCurrentDeviceAccountState(user.id);
-      await user.signOut();
-      await navigate({ to: "/" });
     } catch {
       setDeleteError("Could not delete your account. Please try again.");
       setIsDeletingAccount(false);
+      return;
     }
+
+    setIsAccountDeleted(true);
+
+    let didFinishCurrentDeviceExit = true;
+
+    try {
+      clearCurrentDeviceAccountState(user.id);
+    } catch {
+      didFinishCurrentDeviceExit = false;
+    }
+
+    try {
+      await user.signOut();
+    } catch {
+      didFinishCurrentDeviceExit = false;
+    }
+
+    if (!didFinishCurrentDeviceExit) {
+      setDeleteError(
+        "Your account was deleted, but FitTrack could not finish signing you out on this device. Refresh the page if you still see account details.",
+      );
+      setIsDeletingAccount(false);
+      return;
+    }
+
+    try {
+      await navigate({ to: "/" });
+    } catch {
+      setDeleteError(
+        "Your account was deleted, but FitTrack could not finish signing you out on this device. Refresh the page if you still see account details.",
+      );
+    }
+
+    setIsDeletingAccount(false);
   }
 
   return (
@@ -127,10 +160,16 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
             type="button"
             variant="destructive"
             onClick={handleDeleteAccount}
-            disabled={!isDeletionConfirmed || isDeletingAccount}
+            disabled={
+              !isDeletionConfirmed || isDeletingAccount || isAccountDeleted
+            }
           >
             <Trash2 className="size-4" />
-            {isDeletingAccount ? "Deleting account..." : "Delete account"}
+            {isAccountDeleted
+              ? "Account deleted"
+              : isDeletingAccount
+                ? "Deleting account..."
+                : "Delete account"}
           </Button>
           {deleteError ? (
             <p className="text-sm text-destructive">{deleteError}</p>

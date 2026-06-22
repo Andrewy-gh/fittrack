@@ -138,6 +138,40 @@ describe("AccountSettingsPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
+  it("does not report a deletion failure when post-delete sign-out fails", async () => {
+    const user = userEvent.setup();
+    testUserSignOut.mockRejectedValueOnce(new Error("sign out failed"));
+
+    render(<AccountSettingsPage user={testUser} />);
+
+    const deletionSection = screen
+      .getByRole("heading", { name: "Delete account" })
+      .closest("section");
+    const deletion = within(deletionSection as HTMLElement);
+
+    await user.click(
+      deletion.getByRole("checkbox", {
+        name: /I understand this deletes my FitTrack app data/i,
+      }),
+    );
+    await user.click(deletion.getByRole("button", { name: "Delete account" }));
+
+    expect(mockDeleteAccount).toHaveBeenCalledOnce();
+    expect(mockClearCurrentDeviceAccountState).toHaveBeenCalledWith("user-123");
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(
+      deletion.queryByText("Could not delete your account. Please try again."),
+    ).not.toBeInTheDocument();
+    expect(
+      await deletion.findByText(
+        "Your account was deleted, but FitTrack could not finish signing you out on this device. Refresh the page if you still see account details.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      deletion.getByRole("button", { name: "Account deleted" }),
+    ).toBeDisabled();
+  });
+
   it("keeps local app state and the signed-in session when account deletion fails", async () => {
     const user = userEvent.setup();
     mockDeleteAccount.mockRejectedValueOnce(new Error("delete failed"));
