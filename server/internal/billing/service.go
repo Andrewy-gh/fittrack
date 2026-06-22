@@ -38,6 +38,13 @@ type Service struct {
 	constructEvent        func([]byte, string, string) (stripe.Event, error)
 }
 
+type PortalReturnDestination string
+
+const (
+	PortalReturnChat     PortalReturnDestination = "chat"
+	PortalReturnSettings PortalReturnDestination = "settings"
+)
+
 func NewService(logger *slog.Logger, repo Repository, stripeSecretKey string, webhookSecret string, premiumPriceID string, appBaseURL string, trialPromptCap int) *Service {
 	return &Service{
 		logger:                logger,
@@ -113,7 +120,7 @@ func (s *Service) CreateCheckoutSession(ctx context.Context) (*CheckoutSessionRe
 	return &CheckoutSessionResponse{URL: checkoutSession.URL}, nil
 }
 
-func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error) {
+func (s *Service) CreateCustomerPortalSession(ctx context.Context, destination PortalReturnDestination) (*CustomerPortalSessionResponse, error) {
 	if !s.configuredForPortal() {
 		return nil, ErrBillingNotConfigured
 	}
@@ -131,7 +138,7 @@ func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPor
 
 	portalSession, err := s.createPortalSession(&stripe.BillingPortalSessionParams{
 		Customer:  stripe.String(customerID),
-		ReturnURL: stripe.String(s.appBaseURL + "/chat?billing=portal-return"),
+		ReturnURL: stripe.String(s.portalReturnURL(destination)),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create stripe billing portal session: %w", err)
@@ -141,6 +148,13 @@ func (s *Service) CreateCustomerPortalSession(ctx context.Context) (*CustomerPor
 	}
 
 	return &CustomerPortalSessionResponse{URL: portalSession.URL}, nil
+}
+
+func (s *Service) portalReturnURL(destination PortalReturnDestination) string {
+	if destination == PortalReturnSettings {
+		return s.appBaseURL + "/settings"
+	}
+	return s.appBaseURL + "/chat?billing=portal-return"
 }
 
 func (s *Service) CreateSubscriptionCancelPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error) {

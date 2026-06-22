@@ -31,7 +31,7 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
     setBillingError(null);
 
     try {
-      const session = await createBillingCustomerPortalSession();
+      const session = await createBillingCustomerPortalSession("settings");
       redirectToBillingPortal(session.url);
     } catch {
       setBillingError("Could not open billing. Please try again.");

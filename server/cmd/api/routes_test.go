@@ -27,7 +27,7 @@ func (routeBillingService) CreateCheckoutSession(context.Context) (*billing.Chec
 	return &billing.CheckoutSessionResponse{URL: "https://checkout.stripe.test/session"}, nil
 }
 
-func (routeBillingService) CreateCustomerPortalSession(context.Context) (*billing.CustomerPortalSessionResponse, error) {
+func (routeBillingService) CreateCustomerPortalSession(context.Context, billing.PortalReturnDestination) (*billing.CustomerPortalSessionResponse, error) {
 	return &billing.CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
 }
 

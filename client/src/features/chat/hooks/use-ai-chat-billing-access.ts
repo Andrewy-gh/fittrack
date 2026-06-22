@@ -170,7 +170,7 @@ export function useAIChatBillingAccess({
     onError: (error) => showErrorToast(error, "Could not open Checkout"),
   });
   const billingPortalMutation = useMutation({
-    mutationFn: createBillingCustomerPortalSession,
+    mutationFn: () => createBillingCustomerPortalSession(),
     onSuccess: (session) => redirectToBillingPortal(session.url),
     onError: (error) => showErrorToast(error, "Could not open billing"),
   });

@@ -14,7 +14,7 @@ import (
 
 type stubBillingService struct {
 	createCheckoutSession                 func(context.Context) (*CheckoutSessionResponse, error)
-	createCustomerPortalSession           func(context.Context) (*CustomerPortalSessionResponse, error)
+	createCustomerPortalSession           func(context.Context, PortalReturnDestination) (*CustomerPortalSessionResponse, error)
 	createSubscriptionCancelPortalSession func(context.Context) (*CustomerPortalSessionResponse, error)
 	currentStatus                         func(context.Context) (*StatusResponse, error)
 	handleWebhook                         func(context.Context, []byte, string) error
@@ -27,9 +27,9 @@ func (s stubBillingService) CreateCheckoutSession(ctx context.Context) (*Checkou
 	return &CheckoutSessionResponse{URL: "https://checkout.stripe.test/session"}, nil
 }
 
-func (s stubBillingService) CreateCustomerPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error) {
+func (s stubBillingService) CreateCustomerPortalSession(ctx context.Context, destination PortalReturnDestination) (*CustomerPortalSessionResponse, error) {
 	if s.createCustomerPortalSession != nil {
-		return s.createCustomerPortalSession(ctx)
+		return s.createCustomerPortalSession(ctx, destination)
 	}
 	return &CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
 }
@@ -56,8 +56,29 @@ func (s stubBillingService) HandleWebhook(ctx context.Context, payload []byte, s
 }
 
 func TestHandlerCreateCustomerPortalSession_ReturnsPortalURL(t *testing.T) {
-	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{})
+	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
+		createCustomerPortalSession: func(_ context.Context, destination PortalReturnDestination) (*CustomerPortalSessionResponse, error) {
+			assert.Equal(t, PortalReturnChat, destination)
+			return &CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
+		},
+	})
 	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session", nil)
+	rr := httptest.NewRecorder()
+
+	handler.CreateCustomerPortalSession(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.JSONEq(t, `{"url":"https://billing.stripe.test/session"}`, rr.Body.String())
+}
+
+func TestHandlerCreateCustomerPortalSession_UsesSettingsReturnDestination(t *testing.T) {
+	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
+		createCustomerPortalSession: func(_ context.Context, destination PortalReturnDestination) (*CustomerPortalSessionResponse, error) {
+			assert.Equal(t, PortalReturnSettings, destination)
+			return &CustomerPortalSessionResponse{URL: "https://billing.stripe.test/session"}, nil
+		},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session?return_to=settings", nil)
 	rr := httptest.NewRecorder()
 
 	handler.CreateCustomerPortalSession(rr, req)
@@ -68,7 +89,7 @@ func TestHandlerCreateCustomerPortalSession_ReturnsPortalURL(t *testing.T) {
 
 func TestHandlerCreateCustomerPortalSession_NotConfiguredReturns503(t *testing.T) {
 	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
-		createCustomerPortalSession: func(context.Context) (*CustomerPortalSessionResponse, error) {
+		createCustomerPortalSession: func(context.Context, PortalReturnDestination) (*CustomerPortalSessionResponse, error) {
 			return nil, ErrBillingNotConfigured
 		},
 	})
@@ -83,7 +104,7 @@ func TestHandlerCreateCustomerPortalSession_NotConfiguredReturns503(t *testing.T
 
 func TestHandlerCreateCustomerPortalSession_MissingCustomerReturns404(t *testing.T) {
 	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
-		createCustomerPortalSession: func(context.Context) (*CustomerPortalSessionResponse, error) {
+		createCustomerPortalSession: func(context.Context, PortalReturnDestination) (*CustomerPortalSessionResponse, error) {
 			return nil, ErrBillingCustomerMissing
 		},
 	})

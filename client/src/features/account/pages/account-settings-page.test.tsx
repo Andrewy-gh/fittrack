@@ -109,7 +109,9 @@ describe("AccountSettingsPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Manage billing" }));
 
-    expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledOnce();
+    expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledWith(
+      "settings",
+    );
     expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
       "https://billing.stripe.test/session",
     );
