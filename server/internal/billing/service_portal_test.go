@@ -35,7 +35,31 @@ func TestServiceCreateCustomerPortalSession(t *testing.T) {
 		return &stripe.BillingPortalSession{URL: "https://billing.stripe.test/session"}, nil
 	}
 
-	resp, err := service.CreateCustomerPortalSession(ctx)
+	resp, err := service.CreateCustomerPortalSession(ctx, PortalReturnChat)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "https://billing.stripe.test/session", resp.URL)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceCreateCustomerPortalSession_SettingsReturnDestination(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	repo.On("GetStripeCustomerByUserID", mock.Anything, "user-123").Return(db.StripeCustomers{
+		UserID:           "user-123",
+		StripeCustomerID: "cus_123",
+	}, nil).Once()
+	service.createPortalSession = func(params *stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		require.NotNil(t, params.ReturnURL)
+		assert.Equal(t, "http://localhost:5173/settings", *params.ReturnURL)
+		return &stripe.BillingPortalSession{URL: "https://billing.stripe.test/session"}, nil
+	}
+
+	resp, err := service.CreateCustomerPortalSession(ctx, PortalReturnSettings)
 
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -49,7 +73,7 @@ func TestServiceCreateCustomerPortalSession_NotConfigured(t *testing.T) {
 	service := NewService(logger, repo, "", "whsec_123", "price_premium", "http://localhost:5173", 30)
 	ctx := user.WithContext(context.Background(), "user-123")
 
-	resp, err := service.CreateCustomerPortalSession(ctx)
+	resp, err := service.CreateCustomerPortalSession(ctx, PortalReturnChat)
 
 	require.ErrorIs(t, err, ErrBillingNotConfigured)
 	assert.Nil(t, resp)
@@ -72,7 +96,7 @@ func TestServiceCreateCustomerPortalSession_MissingCustomerDoesNotCreateStripeCu
 		return nil, nil
 	}
 
-	resp, err := service.CreateCustomerPortalSession(ctx)
+	resp, err := service.CreateCustomerPortalSession(ctx, PortalReturnChat)
 
 	require.ErrorIs(t, err, ErrBillingCustomerMissing)
 	assert.Nil(t, resp)

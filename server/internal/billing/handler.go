@@ -15,7 +15,7 @@ const maxWebhookPayloadBytes = 1 << 20
 
 type billingService interface {
 	CreateCheckoutSession(ctx context.Context) (*CheckoutSessionResponse, error)
-	CreateCustomerPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error)
+	CreateCustomerPortalSession(ctx context.Context, destination PortalReturnDestination) (*CustomerPortalSessionResponse, error)
 	CreateSubscriptionCancelPortalSession(ctx context.Context) (*CustomerPortalSessionResponse, error)
 	CurrentStatus(ctx context.Context) (*StatusResponse, error)
 	HandleWebhook(ctx context.Context, payload []byte, signatureHeader string) error
@@ -46,7 +46,7 @@ func (h *Handler) CreateCheckoutSession(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) CreateCustomerPortalSession(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.service.CreateCustomerPortalSession(r.Context())
+	resp, err := h.service.CreateCustomerPortalSession(r.Context(), parsePortalReturnDestination(r))
 	if err != nil {
 		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to create billing portal session")
 		return
@@ -55,6 +55,13 @@ func (h *Handler) CreateCustomerPortalSession(w http.ResponseWriter, r *http.Req
 	if err := response.JSON(w, http.StatusOK, resp); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 	}
+}
+
+func parsePortalReturnDestination(r *http.Request) PortalReturnDestination {
+	if r.URL.Query().Get("return_to") == string(PortalReturnSettings) {
+		return PortalReturnSettings
+	}
+	return PortalReturnChat
 }
 
 func (h *Handler) CreateSubscriptionCancelPortalSession(w http.ResponseWriter, r *http.Request) {

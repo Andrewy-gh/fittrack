@@ -133,6 +133,29 @@ describe("billing api wrapper", () => {
     expect(session.url).toBe("https://billing.stripe.test/session");
   });
 
+  it("requests a settings return path for account settings billing sessions", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          url: "https://billing.stripe.test/session",
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    await createBillingCustomerPortalSession("settings");
+
+    expect(latestRequest().url).toContain(
+      "/api/billing/customer-portal-session?return_to=settings",
+    );
+    expect(latestRequest().method).toBe("POST");
+  });
+
   it("creates a Stripe-hosted subscription cancellation portal session", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

@@ -279,8 +279,7 @@ describe("ChatRouteComponent", () => {
     ).toBeDisabled();
   });
 
-  it("opens billing portal plan management for active subscribers", async () => {
-    const user = userEvent.setup();
+  it("keeps ordinary billing management out of AI chat for active subscribers", async () => {
     mockBillingQueryResult.value = {
       data: {
         feature_key: "ai_chatbot",
@@ -309,16 +308,13 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    await user.click(
-      await screen.findByRole("button", { name: "Manage plan" }),
-    );
+    expect(await screen.findByText("Premium")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Manage plan" }),
+    ).not.toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
-    });
-    expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
-      "https://billing.stripe.test/session",
-    );
+    expect(mockCreateBillingCustomerPortalSession).not.toHaveBeenCalled();
+    expect(mockRedirectToBillingPortal).not.toHaveBeenCalled();
     expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 

@@ -52,6 +52,8 @@ type BillingCustomerPortalSessionResponses = {
   200: BillingCustomerPortalSessionResponse;
 };
 
+type BillingPortalReturnDestination = "chat" | "settings";
+
 export function billingStatusQueryOptions(userId?: string) {
   return queryOptions({
     queryKey: ["billing", "ai-chatbot", "status", userId],
@@ -86,13 +88,18 @@ export async function createBillingCheckoutSession(): Promise<BillingCheckoutSes
   return response.data;
 }
 
-export async function createBillingCustomerPortalSession(): Promise<BillingCustomerPortalSessionResponse> {
+export async function createBillingCustomerPortalSession(
+  destination: BillingPortalReturnDestination = "chat",
+): Promise<BillingCustomerPortalSessionResponse> {
   const response = await client.post<
     BillingCustomerPortalSessionResponses,
     ApiError,
     true
   >({
-    url: "/billing/customer-portal-session",
+    url:
+      destination === "settings"
+        ? "/billing/customer-portal-session?return_to=settings"
+        : "/billing/customer-portal-session",
     throwOnError: true,
   });
 

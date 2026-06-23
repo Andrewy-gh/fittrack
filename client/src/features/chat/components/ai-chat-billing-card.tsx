@@ -120,7 +120,8 @@ export function AIChatBillingActions({
     !isLoading &&
     billingAction &&
     (!isError || billingAction === "refresh") &&
-    (accessState !== "ready" || billingAction === "portal");
+    (accessState !== "ready" ||
+      shouldShowReadyBillingIssueAction(status, billingAction));
   const isActionLoading = getActionLoadingState({
     billingAction,
     isBillingPortalLoading,
@@ -436,6 +437,17 @@ function billingActionLoadingLabel(action: BillingAction): string {
     case "checkout":
       return "Opening Checkout...";
   }
+}
+
+function shouldShowReadyBillingIssueAction(
+  status: BillingStatusResponse | undefined,
+  action: BillingAction,
+): boolean {
+  return (
+    action === "portal" &&
+    status?.has_access === false &&
+    billingPortalStatuses.has(status.subscription?.status ?? "active")
+  );
 }
 
 function getActionLoadingState({
