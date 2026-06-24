@@ -6,8 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
@@ -218,4 +221,93 @@ func TestRoutes_RegistersAccountDeletion(t *testing.T) {
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("expected status %d, got %d with body %s", http.StatusNoContent, rr.Code, rr.Body.String())
 	}
+}
+
+func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
+	writeStaticTestFile(t, "index.html", "<!doctype html>")
+	writeStaticTestFile(t, "sw.js", "self.skipWaiting()")
+	writeStaticTestFile(t, "manifest.webmanifest", "{}")
+	writeStaticTestFile(t, filepath.Join("assets", "index-abc123.js"), "console.log('ok')")
+
+	api := &api{}
+	handler := api.handleStaticFiles()
+
+	tests := []struct {
+		name       string
+		path       string
+		accept     string
+		wantStatus int
+		wantCache  string
+	}{
+		{
+			name:       "app shell fallback is revalidated",
+			path:       "/workouts",
+			accept:     "text/html",
+			wantStatus: http.StatusOK,
+			wantCache:  "no-cache",
+		},
+		{
+			name:       "service worker is revalidated",
+			path:       "/sw.js",
+			wantStatus: http.StatusOK,
+			wantCache:  "no-cache",
+		},
+		{
+			name:       "manifest is revalidated",
+			path:       "/manifest.webmanifest",
+			wantStatus: http.StatusOK,
+			wantCache:  "no-cache",
+		},
+		{
+			name:       "hashed assets are immutable",
+			path:       "/assets/index-abc123.js",
+			wantStatus: http.StatusOK,
+			wantCache:  "public, max-age=31536000, immutable",
+		},
+		{
+			name:       "missing old assets are still not rewritten to html",
+			path:       "/assets/missing-old-build.js",
+			wantStatus: http.StatusNotFound,
+			wantCache:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			if tt.accept != "" {
+				req.Header.Set("Accept", tt.accept)
+			}
+			rr := httptest.NewRecorder()
+
+			handler.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantStatus, rr.Code, rr.Body.String())
+			}
+			if got := rr.Header().Get("Cache-Control"); got != tt.wantCache {
+				t.Fatalf("expected Cache-Control %q, got %q", tt.wantCache, got)
+			}
+		})
+	}
+}
+
+func writeStaticTestFile(t *testing.T, relativePath string, contents string) {
+	t.Helper()
+
+	path := filepath.Join("dist", relativePath)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("create static test directory: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("write static test file: %v", err)
+	}
+	t.Cleanup(func() {
+		for range 10 {
+			if err := os.RemoveAll("dist"); err == nil || os.IsNotExist(err) {
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	})
 }

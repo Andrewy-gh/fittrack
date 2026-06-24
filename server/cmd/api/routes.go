@@ -95,6 +95,7 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := http.Dir("./dist").Open(r.URL.Path)
 		if err == nil {
+			setStaticCacheHeader(w, r.URL.Path)
 			fs.ServeHTTP(w, r)
 			return
 		}
@@ -110,10 +111,22 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 		// SPA fallback only for browser navigation requests.
 		accept := r.Header.Get("Accept")
 		if r.Method == http.MethodGet && strings.Contains(accept, "text/html") {
+			setStaticCacheHeader(w, "/index.html")
 			http.ServeFile(w, r, "./dist/index.html")
 			return
 		}
 
 		http.NotFound(w, r)
+	}
+}
+
+func setStaticCacheHeader(w http.ResponseWriter, requestPath string) {
+	switch {
+	case requestPath == "/" || requestPath == "/index.html" || requestPath == "/sw.js" || requestPath == "/manifest.webmanifest" || requestPath == "/manifest.json":
+		w.Header().Set("Cache-Control", "no-cache")
+	case strings.HasPrefix(requestPath, "/assets/"):
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	default:
+		w.Header().Set("Cache-Control", "public, max-age=3600")
 	}
 }
