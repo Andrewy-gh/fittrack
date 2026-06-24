@@ -1,13 +1,6 @@
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  Menu,
-  X,
-  Home,
-  Dumbbell,
-  Activity,
-  ChartColumn,
-  Bot,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,32 +11,21 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { AccountSlot } from "@/components/nav/account-slot";
+import { isActivePath } from "@/components/nav/use-active-path";
+import { navItems } from "@/components/nav/nav-items";
 import { cn } from "@/lib/utils";
 
-interface MobileNavDrawerProps {
-  includeChat?: boolean;
+interface NavSideDrawerProps {
+  user: CurrentUser | CurrentInternalUser | null;
   children?: ReactNode;
 }
 
-const baseLinks = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/workouts", label: "Workouts", icon: Dumbbell },
-  { to: "/exercises", label: "Exercises", icon: Activity },
-  { to: "/analytics", label: "Analytics", icon: ChartColumn },
-] as const;
-
-export function MobileNavDrawer({
-  includeChat = false,
-  children,
-}: MobileNavDrawerProps) {
+export function NavSideDrawer({ user, children }: NavSideDrawerProps) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-
-  const links = includeChat
-    ? [...baseLinks, { to: "/chat", label: "AI Chat", icon: Bot }]
-    : baseLinks;
 
   return (
     <Drawer
@@ -81,12 +63,12 @@ export function MobileNavDrawer({
           </div>
         </DrawerHeader>
 
-        <nav className="flex flex-col p-3">
-          {links.map(({ to, label, icon: Icon }) => {
-            const active =
-              to === "/"
-                ? pathname === "/"
-                : pathname === to || pathname.startsWith(`${to}/`);
+        <nav
+          aria-label="Main navigation"
+          className="flex flex-col p-3"
+        >
+          {navItems.map(({ to, label, icon: Icon }) => {
+            const active = isActivePath(pathname, to);
 
             return (
               <DrawerClose
@@ -95,6 +77,7 @@ export function MobileNavDrawer({
               >
                 <Link
                   to={to}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                     active
@@ -109,6 +92,13 @@ export function MobileNavDrawer({
             );
           })}
         </nav>
+
+        <div className="mt-auto flex items-center justify-between border-t p-4">
+          <span className="text-sm font-medium text-muted-foreground">
+            Account
+          </span>
+          <AccountSlot user={user} />
+        </div>
       </DrawerContent>
     </Drawer>
   );

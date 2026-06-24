@@ -1,9 +1,26 @@
 import { useEffect, useState } from "react";
+import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { Button } from "@/components/ui/button";
+import type { DisplayMode } from "@/hooks/use-display-mode";
 
-const DISMISS_KEY = "fittrack:pwa-install-prompt:v1";
+export const PWA_INSTALL_PROMPT_DISMISS_KEY = "fittrack:pwa-install-prompt:v1";
 
 type DevicePlatform = "ios" | "android" | "other";
+type PromptUser = CurrentUser | CurrentInternalUser | null;
+
+interface PwaInstallPromptProps {
+  displayMode: DisplayMode;
+  pathname: string;
+  user: PromptUser;
+}
+
+const PROMPT_ROUTES = ["/workouts", "/exercises", "/analytics", "/chat"];
+
+export function isPwaInstallPromptRoute(pathname: string): boolean {
+  return PROMPT_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
 
 function getPlatform(): DevicePlatform {
   const ua = navigator.userAgent.toLowerCase();
@@ -14,15 +31,6 @@ function getPlatform(): DevicePlatform {
     return "android";
   }
   return "other";
-}
-
-function isStandalone(): boolean {
-  if (window.matchMedia("(display-mode: standalone)").matches) {
-    return true;
-  }
-  const iosStandalone = (navigator as Navigator & { standalone?: boolean })
-    .standalone;
-  return iosStandalone === true;
 }
 
 function isMobileTouch(platform: DevicePlatform): boolean {
@@ -53,9 +61,24 @@ function getCopy(platform: DevicePlatform): { title: string; body: string } {
   };
 }
 
-export function PwaInstallPrompt() {
+function hasDurableDismissal(): boolean {
+  try {
+    return localStorage.getItem(PWA_INSTALL_PROMPT_DISMISS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function PwaInstallPrompt({
+  displayMode,
+  pathname,
+  user,
+}: PwaInstallPromptProps) {
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<DevicePlatform>("other");
+  const [durablyDismissed, setDurablyDismissed] = useState(hasDurableDismissal);
+  const [shownForUserId, setShownForUserId] = useState<string | null>(null);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -83,38 +106,50 @@ export function PwaInstallPrompt() {
     }
     window.addEventListener("resize", updateHeaderHeight);
 
-    const nextPlatform = getPlatform();
-    if (isStandalone() || !isMobileTouch(nextPlatform)) {
-      if (observer) {
-        observer.disconnect();
-      }
-      window.removeEventListener("resize", updateHeaderHeight);
-      return;
-    }
-
-    try {
-      if (localStorage.getItem(DISMISS_KEY) === "1") {
-        return;
-      }
-    } catch {
-      // Ignore storage errors; still show prompt once per load.
-    }
-
-    setPlatform(nextPlatform);
-    setVisible(true);
-
     return () => {
       if (observer) {
         observer.disconnect();
       }
       window.removeEventListener("resize", updateHeaderHeight);
     };
-  }, []);
+  }, [displayMode, pathname]);
+
+  useEffect(() => {
+    if (!userId) {
+      setShownForUserId(null);
+      setVisible(false);
+      return;
+    }
+
+    const dismissed = hasDurableDismissal();
+    setDurablyDismissed(dismissed);
+
+    const nextPlatform = getPlatform();
+    const eligible =
+      displayMode === "web" &&
+      isPwaInstallPromptRoute(pathname) &&
+      !dismissed &&
+      isMobileTouch(nextPlatform);
+
+    if (!eligible) {
+      setVisible(false);
+      return;
+    }
+
+    if (shownForUserId === userId) {
+      return;
+    }
+
+    setPlatform(nextPlatform);
+    setVisible(true);
+    setShownForUserId(userId);
+  }, [displayMode, durablyDismissed, pathname, shownForUserId, userId]);
 
   const dismiss = () => {
     setVisible(false);
     try {
-      localStorage.setItem(DISMISS_KEY, "1");
+      localStorage.setItem(PWA_INSTALL_PROMPT_DISMISS_KEY, "1");
+      setDurablyDismissed(true);
     } catch {
       // Ignore storage errors; dismissal will be session-only.
     }

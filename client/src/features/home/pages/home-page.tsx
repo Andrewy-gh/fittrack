@@ -16,14 +16,17 @@ import {
   Zap,
 } from "lucide-react";
 import { type CurrentInternalUser, type CurrentUser } from "@stackframe/react";
-import { CustomUserButton } from "@/components/custom-user-button";
-import { GuestUserButton } from "@/components/guest-user-button";
+import { AppBottomBar } from "@/components/nav/app-bottom-bar";
+import { LandingTopBar } from "@/components/nav/landing-top-bar";
+import { useDisplayMode } from "@/hooks/use-display-mode";
 
 export function HomePage({
   user,
 }: {
   user: CurrentUser | CurrentInternalUser | null;
 }) {
+  const displayMode = useDisplayMode();
+
   const features = [
     {
       icon: Zap,
@@ -57,25 +60,18 @@ export function HomePage({
     "Bring the last workout note back into view when you start logging again.",
     "Review workout history and exercise progress without digging through old sessions.",
   ];
+  const showPwaGuestBottomBar = displayMode === "pwa" && !user;
 
   return (
-    <div className="min-h-screen">
-      <nav className="border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-2 py-4">
-          <div className="flex items-center gap-2">
-            <img
-              src="/favicon.svg"
-              alt=""
-              aria-hidden="true"
-              className="h-6 w-6 rounded-sm"
-            />
-            <span className="text-xl font-bold tracking-wide text-foreground">
-              FITTRACK
-            </span>
-          </div>
-          {user ? <CustomUserButton /> : <GuestUserButton />}
-        </div>
-      </nav>
+    <div
+      className={
+        showPwaGuestBottomBar
+          ? "min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))]"
+          : "min-h-screen"
+      }
+    >
+      <LandingTopBar user={user} />
+      {showPwaGuestBottomBar ? <AppBottomBar user={user} /> : null}
 
       <section className="px-6 pb-16 pt-24">
         <div className="mx-auto max-w-7xl">
