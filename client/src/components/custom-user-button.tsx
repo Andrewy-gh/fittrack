@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Sun, Moon, Dumbbell, Settings } from "lucide-react";
+import { LogOut, Sun, Moon, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import React from "react";
 import { useUser } from "@stackframe/react";
@@ -115,17 +115,6 @@ export function CustomUserButton() {
             )}
             <Typography>{theme === "light" ? "Dark" : "Light"}</Typography>
           </div>
-        </DropdownMenuItem>
-
-        {/* Workouts */}
-        <DropdownMenuItem asChild>
-          <Link
-            to="/workouts"
-            className="flex gap-2 items-center"
-          >
-            <Dumbbell {...iconProps} />
-            <Typography>Workouts</Typography>
-          </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>

@@ -57,5 +57,8 @@ describe("CustomUserButton", () => {
     expect(
       await screen.findByRole("menuitem", { name: /settings/i }),
     ).toHaveAttribute("href", "/settings");
+    expect(
+      screen.queryByRole("menuitem", { name: /workouts/i }),
+    ).not.toBeInTheDocument();
   });
 });
