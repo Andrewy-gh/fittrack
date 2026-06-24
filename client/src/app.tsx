@@ -6,7 +6,6 @@ import "./lib/api/client-config.ts";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ReloadPrompt } from "./components/reload-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 
 export function App({
@@ -22,7 +21,6 @@ export function App({
       />
       <ReactQueryDevtools initialIsOpen={false} />
       <ReloadPrompt />
-      <PwaInstallPrompt />
       <Toaster position="bottom-right" />
     </QueryClientProvider>
   );
