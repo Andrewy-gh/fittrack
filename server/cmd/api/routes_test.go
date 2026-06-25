@@ -139,6 +139,34 @@ func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
 	}
 }
 
+func TestRoutes_ProtectsPublicMetricsWhenCredentialsConfigured(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{
+		logger: logger,
+		cfg: &config.Config{
+			MetricsUsername: "metrics-user",
+			MetricsPassword: "metrics-password",
+		},
+		pool: nil,
+	}
+
+	wh := &workout.WorkoutHandler{}
+	eh := &exercise.ExerciseHandler{}
+	fh := &featureaccess.Handler{}
+	hh := health.NewHandler(logger, nil)
+	ah := aichat.NewHandler(logger, nil)
+
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+	}
+}
+
 func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	api := &api{

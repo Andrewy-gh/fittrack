@@ -77,6 +77,19 @@ func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 	}
 }
 
+func newMetricsServer(cfg *config.Config, handler http.Handler) *http.Server {
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", handler)
+
+	return &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.MetricsPort),
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+}
+
 func main() {
 	// Load and validate configuration
 	cfg, err := config.Load()
@@ -110,6 +123,7 @@ func main() {
 	logger.Info("starting application",
 		"environment", cfg.Environment,
 		"port", cfg.Port,
+		"metrics_port", cfg.MetricsPort,
 		"log_level", cfg.LogLevel,
 		"db_max_conns", cfg.DBMaxConns,
 		"rate_limit_rpm", cfg.RateLimitRPM,
@@ -250,16 +264,21 @@ func main() {
 
 	// Configure HTTP server with timeouts
 	srv := newHTTPServer(cfg, handler)
+	metricsSrv := newMetricsServer(cfg, api.metricsHandler())
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 	// Start server in a goroutine
-	serverErrors := make(chan error, 1)
+	serverErrors := make(chan error, 2)
 	go func() {
 		logger.Info("starting server", "addr", srv.Addr)
 		serverErrors <- srv.ListenAndServe()
+	}()
+	go func() {
+		logger.Info("starting metrics server", "addr", metricsSrv.Addr)
+		serverErrors <- metricsSrv.ListenAndServe()
 	}()
 
 	// Block until we receive a signal or server error
@@ -281,6 +300,11 @@ func main() {
 		// Attempt graceful shutdown
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			logger.Error("forced shutdown", "error", err)
+			pool.Close()
+			os.Exit(1)
+		}
+		if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
+			logger.Error("forced metrics shutdown", "error", err)
 			pool.Close()
 			os.Exit(1)
 		}

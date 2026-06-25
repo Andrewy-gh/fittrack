@@ -102,6 +102,10 @@ func TestLoad_DefaultValues(t *testing.T) {
 		t.Errorf("expected default Port to be 8080, got: %d", cfg.Port)
 	}
 
+	if cfg.MetricsPort != 9091 {
+		t.Errorf("expected default MetricsPort to be 9091, got: %d", cfg.MetricsPort)
+	}
+
 	if cfg.LogLevel != "info" {
 		t.Errorf("expected default LogLevel to be 'info', got: %s", cfg.LogLevel)
 	}
@@ -127,6 +131,7 @@ func TestLoad_CustomValues(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
 	os.Setenv("PROJECT_ID", "test-project-123")
 	os.Setenv("PORT", "9000")
+	os.Setenv("METRICS_PORT", "9092")
 	os.Setenv("LOG_LEVEL", "debug")
 	os.Setenv("ENVIRONMENT", "production")
 	os.Setenv("RATE_LIMIT_RPM", "200")
@@ -139,6 +144,10 @@ func TestLoad_CustomValues(t *testing.T) {
 
 	if cfg.Port != 9000 {
 		t.Errorf("expected Port to be 9000, got: %d", cfg.Port)
+	}
+
+	if cfg.MetricsPort != 9092 {
+		t.Errorf("expected MetricsPort to be 9092, got: %d", cfg.MetricsPort)
 	}
 
 	if cfg.LogLevel != "debug" {
@@ -435,6 +444,7 @@ func TestLoad_InvalidIntegerValues(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
 	os.Setenv("PROJECT_ID", "test-project-123")
 	os.Setenv("PORT", "not-a-number")
+	os.Setenv("METRICS_PORT", "also-not-a-number")
 	os.Setenv("RATE_LIMIT_RPM", "invalid")
 	defer cleanupEnv()
 
@@ -448,6 +458,10 @@ func TestLoad_InvalidIntegerValues(t *testing.T) {
 		t.Errorf("expected Port to be default (8080), got: %d", cfg.Port)
 	}
 
+	if cfg.MetricsPort != 9091 {
+		t.Errorf("expected MetricsPort to be default (9091), got: %d", cfg.MetricsPort)
+	}
+
 	if cfg.RateLimitRPM != 100 {
 		t.Errorf("expected RateLimitRPM to be default (100), got: %d", cfg.RateLimitRPM)
 	}
@@ -456,6 +470,9 @@ func TestLoad_InvalidIntegerValues(t *testing.T) {
 	logOutput := buf.String()
 	if !bytes.Contains([]byte(logOutput), []byte("PORT")) {
 		t.Error("expected log to contain 'PORT'")
+	}
+	if !bytes.Contains([]byte(logOutput), []byte("METRICS_PORT")) {
+		t.Error("expected log to contain 'METRICS_PORT'")
 	}
 	if !bytes.Contains([]byte(logOutput), []byte("RATE_LIMIT_RPM")) {
 		t.Error("expected log to contain 'RATE_LIMIT_RPM'")
@@ -467,6 +484,7 @@ func cleanupEnv() {
 	os.Unsetenv("DATABASE_URL")
 	os.Unsetenv("PROJECT_ID")
 	os.Unsetenv("PORT")
+	os.Unsetenv("METRICS_PORT")
 	os.Unsetenv("LOG_LEVEL")
 	os.Unsetenv("ENVIRONMENT")
 	os.Unsetenv("RATE_LIMIT_RPM")
@@ -476,6 +494,8 @@ func cleanupEnv() {
 	os.Unsetenv("DB_MAX_CONN_IDLE")
 	os.Unsetenv("DB_MAX_CONN_LIFE")
 	os.Unsetenv("DB_HEALTHCHECK")
+	os.Unsetenv("METRICS_USERNAME")
+	os.Unsetenv("METRICS_PASSWORD")
 	os.Unsetenv("INNGEST_EVENT_KEY")
 	os.Unsetenv("INNGEST_SIGNING_KEY")
 	os.Unsetenv("E2E_LOCAL_AUTH_ENABLED")

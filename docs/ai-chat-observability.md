@@ -2,6 +2,8 @@
 
 This repo records client-observed AI chat outcomes into Prometheus via `ai_chat_client_outcomes_total{category,outcome,stage,cohort}`.
 
+Fly scrapes Prometheus metrics from the internal metrics listener on `METRICS_PORT`, which defaults to `9091`. The public `GET /metrics` endpoint remains Basic Auth protected when `METRICS_USERNAME` and `METRICS_PASSWORD` are configured.
+
 Outcome taxonomy:
 
 - `stream`: `completed`, `server_error`, `transport_ended_pre_terminal`, `client_aborted`
@@ -65,6 +67,26 @@ Beta vs non-beta comparison:
 
 ```promql
 sum by (cohort, outcome) (rate(ai_chat_client_outcomes_total{category="stream"}[15m]))
+```
+
+## Fly Scrape Verification
+
+After deploy, verify Fly is configured to scrape the internal listener:
+
+```sh
+flyctl config show -a fittrack --toml
+```
+
+Confirm the public metrics endpoint still requires credentials when metrics auth is configured:
+
+```sh
+curl -i https://fittrack.fly.dev/metrics
+```
+
+The unauthenticated public request should return `401 Unauthorized`; Fly scrapes the internal `9091` listener instead. After sending a test AI chat telemetry event, query Fly/Grafana for:
+
+```promql
+ai_chat_client_outcomes_total
 ```
 
 ## Alerting Rules
