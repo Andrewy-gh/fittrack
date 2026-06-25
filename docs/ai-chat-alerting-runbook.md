@@ -98,6 +98,19 @@ mimirtool rules print \
 
 In Grafana Cloud, open Alerting, then Alert rules, and confirm the `ai_chat_rollout` namespace shows the four AI chat rollout alerts.
 
+## Import Dashboard
+
+The repo-owned dashboard file is `ops/grafana-cloud/ai-chat-observability-dashboard.json`. It uses a Grafana datasource variable named `DS_PROMETHEUS`, so the exported JSON does not contain stack IDs, URLs, tokens, or other Grafana Cloud secrets.
+
+To import it:
+
+1. In Grafana Cloud, open Dashboards, then New, then Import.
+2. Upload `ops/grafana-cloud/ai-chat-observability-dashboard.json` or paste its JSON.
+3. When Grafana asks for `DS_PROMETHEUS`, choose the Grafana Cloud Metrics datasource for the FitTrack stack.
+4. Open the imported `AI Chat Observability` dashboard.
+5. In Explore, query `ai_chat_client_outcomes_total` and confirm the result includes `category`, `outcome`, `stage`, and `cohort` labels.
+6. Compare the dashboard's beta panels with the Explore result over the same time range. Empty panels are acceptable before fresh beta AI chat traffic exists; query errors or missing labels mean the datasource or scrape path needs investigation before widening rollout.
+
 ## Notification Routing
 
 These rules label page-worthy alerts with `severity="page"`. Configure notification routing in Grafana Cloud Alerting so that this label reaches the intended on-call contact point.

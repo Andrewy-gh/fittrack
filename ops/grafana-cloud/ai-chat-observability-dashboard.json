@@ -1,0 +1,497 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "Server-side stream failures divided by all beta stream outcomes. Client aborts stay in the denominator so this tracks real stream health without paging on navigation.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.02
+              },
+              {
+                "color": "red",
+                "value": 0.03
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=\"server_error\",cohort=\"beta\"}[15m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=~\"completed|server_error|transport_ended_pre_terminal|client_aborted\",cohort=\"beta\"}[15m])), 0.001)",
+          "legendFormat": "server_error / all beta streams",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "True stream failure rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "User-driven or navigation-driven stream aborts divided by all beta stream outcomes. This should explain churn without being treated as a server failure.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=\"client_aborted\",cohort=\"beta\"}[15m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=~\"completed|server_error|transport_ended_pre_terminal|client_aborted\",cohort=\"beta\"}[15m])), 0.001)",
+          "legendFormat": "client_aborted / all beta streams",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Client abort rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "Recovered beta streams divided by completed, failed, and timed-out recovery attempts. Aborted recovery attempts are excluded so user navigation does not depress the rollout gate.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.8
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"recovery\",outcome=\"recovered_completed\",cohort=\"beta\"}[30m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"recovery\",outcome=~\"recovered_completed|recovered_failed|recovery_timeout\",cohort=\"beta\"}[30m])), 0.001)",
+          "legendFormat": "recovered_completed / recovery attempts",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Recovery success rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "Beta streams that ended before the first start event, divided by all beta stream outcomes.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=\"transport_ended_pre_terminal\",stage=\"pre_start\",cohort=\"beta\"}[15m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=~\"completed|server_error|transport_ended_pre_terminal|client_aborted\",cohort=\"beta\"}[15m])), 0.001)",
+          "legendFormat": "pre_start disconnect / all beta streams",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pre-start disconnect rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "Timed-out recovery attempts divided by completed, failed, and timed-out beta recovery attempts.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"recovery\",outcome=\"recovery_timeout\",cohort=\"beta\"}[30m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"recovery\",outcome=~\"recovered_completed|recovered_failed|recovery_timeout\",cohort=\"beta\"}[30m])), 0.001)",
+          "legendFormat": "recovery_timeout / recovery attempts",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Recovery timeout rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "Client-visible failure toasts divided by all beta stream outcomes. This tracks user-visible pain separately from server-side failure semantics.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"ux\",outcome=\"failure_toast_shown\",cohort=\"beta\"}[15m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"stream\",outcome=~\"completed|server_error|transport_ended_pre_terminal|client_aborted\",cohort=\"beta\"}[15m])), 0.001)",
+          "legendFormat": "failure_toast_shown / all beta streams",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Client-visible error toast rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
+      "description": "Stream outcome rates grouped by cohort and outcome so beta behavior can be compared with non-beta traffic.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "decimals": 3,
+          "mappings": [],
+          "min": 0,
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum by (cohort, outcome) (rate(ai_chat_client_outcomes_total{category=\"stream\"}[15m]))",
+          "legendFormat": "{{cohort}} {{outcome}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Beta vs non-beta stream outcomes",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["ai-chat", "rollout", "grafana-cloud"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Prometheus datasource",
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "AI Chat Observability",
+  "uid": "ai-chat-observability",
+  "version": 1,
+  "weekStart": ""
+}
