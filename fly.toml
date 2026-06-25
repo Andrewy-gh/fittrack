@@ -8,6 +8,10 @@ primary_region = 'ewr'
 
 [build]
 
+[metrics]
+  port = 9091
+  path = "/metrics"
+
 [http_service]
   internal_port = 8080
   force_https = true

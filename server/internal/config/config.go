@@ -18,6 +18,7 @@ type Config struct {
 
 	// Optional fields with defaults
 	Port           int    `validate:"omitempty,min=1,max=65535"`
+	MetricsPort    int    `validate:"omitempty,min=1,max=65535"`
 	LogLevel       string `validate:"omitempty,oneof=debug info warn error"`
 	Environment    string `validate:"omitempty,oneof=development staging production"`
 	RateLimitRPM   int    `validate:"omitempty,min=1"`
@@ -58,6 +59,7 @@ func Load() (*Config, error) {
 		DatabaseURL:         os.Getenv("DATABASE_URL"),
 		ProjectID:           os.Getenv("PROJECT_ID"),
 		Port:                getEnvInt("PORT", 8080),
+		MetricsPort:         getEnvInt("METRICS_PORT", 9091),
 		LogLevel:            getEnvString("LOG_LEVEL", "info"),
 		Environment:         getEnvString("ENVIRONMENT", "development"),
 		RateLimitRPM:        getEnvInt("RATE_LIMIT_RPM", 100),
