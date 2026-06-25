@@ -91,6 +91,8 @@ ai_chat_client_outcomes_total
 
 ## Alerting Rules
 
+Use [AI Chat Alerting Runbook](ai-chat-alerting-runbook.md) to load and verify the Grafana Cloud Metrics/Mimir rule artifact in `ops/grafana-cloud/ai-chat-alerts.mimir.yml`.
+
 Page on:
 
 - rising `stream=server_error`
