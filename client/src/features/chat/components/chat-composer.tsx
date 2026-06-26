@@ -80,7 +80,7 @@ export function ChatComposer({
           autoFocus={autoFocus}
           rows={1}
           className={cn(
-            "max-h-40 min-h-[1.5rem] flex-1 resize-none bg-transparent py-1 text-sm leading-6",
+            "max-h-40 min-h-[1.5rem] flex-1 resize-none bg-transparent py-1 text-base leading-6 md:text-sm",
             "outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed",
           )}
         />
