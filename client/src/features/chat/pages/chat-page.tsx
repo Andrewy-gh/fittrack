@@ -16,6 +16,7 @@ import {
 } from "../components/ai-chat-billing-card";
 import { ChatComposer } from "../components/chat-composer";
 import { ChatEmptyState } from "../components/chat-empty-state";
+import { ChatHistoryEntry } from "../components/chat-history-entry";
 import { ChatMessageActions } from "../components/chat-message-actions";
 import { ChatTypingIndicator } from "../components/chat-typing-indicator";
 import { ChatWorkoutDraftCard } from "../components/chat-workout-draft-card";
@@ -103,6 +104,13 @@ export function ChatPage({
     }
 
     await createNewChat();
+  }
+
+  function handleResumeConversation(selectedConversationId: number) {
+    void navigate({
+      to: "/chat",
+      search: { conversationId: String(selectedConversationId) },
+    });
   }
 
   async function handleSubmit() {
@@ -201,6 +209,19 @@ export function ChatPage({
     !loadError &&
     messages.length === 0 &&
     !conversation?.latest_workout_draft;
+  const emptyState = (
+    <ChatEmptyState
+      heading={
+        hasChatAccess
+          ? "What should we train today?"
+          : "Unlock your AI training partner"
+      }
+      examples={hasChatAccess ? EXAMPLE_PROMPTS : []}
+      onSelectExample={handleSelectExample}
+      composer={composer}
+      disabled={isComposerDisabled}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-4 pb-10">
@@ -254,18 +275,16 @@ export function ChatPage({
       ) : null}
 
       <div className="mx-auto w-full max-w-3xl px-4">
-        {showEmptyState ? (
-          <ChatEmptyState
-            heading={
-              hasChatAccess
-                ? "What should we train today?"
-                : "Unlock your AI training partner"
-            }
-            examples={hasChatAccess ? EXAMPLE_PROMPTS : []}
-            onSelectExample={handleSelectExample}
-            composer={composer}
-            disabled={isComposerDisabled}
+        {!conversationId && showEmptyState ? (
+          <ChatHistoryEntry
+            userId={currentUserId}
+            fallback={emptyState}
+            onResumeConversation={handleResumeConversation}
+            onNewChat={() => void handleNewChat()}
+            isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
           />
+        ) : showEmptyState ? (
+          emptyState
         ) : (
           <div className="flex flex-col gap-6">
             {loadError ? (

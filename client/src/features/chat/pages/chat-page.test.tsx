@@ -7,6 +7,8 @@ import {
   deferredPromise,
   mockCreateConversation,
   mockGetConversation,
+  mockListConversations,
+  mockNavigate,
   mockPollConversation,
   mockReportTelemetry,
   mockRequestRecovery,
@@ -18,6 +20,67 @@ import {
 
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
+
+  it("shows recent chats when entering without a conversation id", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockListConversations.mockResolvedValue([
+      {
+        id: 72,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Recent chats")).toBeInTheDocument();
+    expect(screen.getByText("Leg day plan")).toBeInTheDocument();
+    expect(
+      screen.queryByText("What should we train today?"),
+    ).not.toBeInTheDocument();
+    expect(mockGetConversation).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /Leg day plan/ }));
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "72" },
+    });
+  });
+
+  it("keeps explicit New Chat available when recent chats exist", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockListConversations.mockResolvedValue([
+      {
+        id: 72,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+    mockCreateConversation.mockResolvedValue({
+      id: 73,
+      created_at: "2026-06-26T17:00:00Z",
+      updated_at: "2026-06-26T17:00:00Z",
+    });
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Recent chats")).toBeInTheDocument();
+    const newChatButtons = screen.getAllByRole("button", { name: "New Chat" });
+    await user.click(newChatButtons.at(-1)!);
+
+    expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "73" },
+    });
+  });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
     const user = userEvent.setup();

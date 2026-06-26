@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockCreateConversation: vi.fn(),
   mockGetConversation: vi.fn(),
+  mockListConversations: vi.fn(),
   mockPollConversation: vi.fn(),
   mockResumeStream: vi.fn(),
   mockReportTelemetry: vi.fn(),
@@ -45,6 +46,7 @@ export const {
   mockNavigate,
   mockCreateConversation,
   mockGetConversation,
+  mockListConversations,
   mockPollConversation,
   mockResumeStream,
   mockReportTelemetry,
@@ -84,6 +86,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/features/chat/api/ai-chat", () => ({
   createAIChatConversation: mockCreateConversation,
   getAIChatConversation: mockGetConversation,
+  listAIChatConversations: mockListConversations,
   pollAIChatConversationUntilSettled: mockPollConversation,
   resumeAIChatMessageStream: mockResumeStream,
   reportAIChatTelemetry: mockReportTelemetry,
@@ -181,6 +184,7 @@ export function resetChatRouteMocks() {
   mockNavigate.mockReset();
   mockCreateConversation.mockReset();
   mockGetConversation.mockReset();
+  mockListConversations.mockReset();
   mockPollConversation.mockReset();
   mockResumeStream.mockReset();
   mockReportTelemetry.mockReset();
@@ -303,6 +307,7 @@ export function resetChatRouteMocks() {
     }),
   );
   mockReportTelemetry.mockResolvedValue(undefined);
+  mockListConversations.mockResolvedValue([]);
   mockResumeStream.mockResolvedValue({
     doneEvent: {
       type: "done",

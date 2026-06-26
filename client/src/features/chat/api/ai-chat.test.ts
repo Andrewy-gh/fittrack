@@ -24,6 +24,7 @@ vi.mock("@/lib/local-dev-auth", () => ({
 import "@/lib/api/client-config";
 import {
   createAIChatConversation,
+  listAIChatConversations,
   pollAIChatConversationUntilSettled,
   reportAIChatTelemetry,
   resumeAIChatMessageStream,
@@ -598,5 +599,38 @@ describe("ai chat api wrapper", () => {
     expect(fetch).toHaveBeenCalledWith(expect.any(Request));
     expect(latestRequest().url).toContain("/api/ai/conversations");
     expect(latestRequest().method).toBe("POST");
+  });
+
+  it("lists recent conversations through the generated client", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: 72,
+            title: "Leg day plan",
+            created_at: "2026-06-25T17:00:00Z",
+            updated_at: "2026-06-25T17:05:00Z",
+            last_message_at: "2026-06-25T17:05:00Z",
+          },
+        ]),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    const conversations = await listAIChatConversations();
+
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0]).toMatchObject({
+      id: 72,
+      title: "Leg day plan",
+    });
+    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
+    expect(latestRequest().url).toContain("/api/ai/conversations");
+    expect(latestRequest().method).toBe("GET");
   });
 });

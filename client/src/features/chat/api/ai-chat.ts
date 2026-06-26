@@ -1,4 +1,5 @@
 import {
+  getAiConversations,
   getAiConversationsById,
   postAiChatTelemetry,
   postAiConversations,
@@ -20,6 +21,11 @@ export type AIChatConversation = {
   updated_at: string;
   last_message_at?: string;
 };
+
+export type AIChatConversationSummary = Pick<
+  AIChatConversation,
+  "id" | "title" | "created_at" | "updated_at" | "last_message_at"
+>;
 
 export type AIWorkoutDraftStatus = {
   source_run_id?: number;
@@ -195,6 +201,17 @@ export async function createAIChatConversation(): Promise<AIChatConversation> {
   });
 
   return response.data as AIChatConversation;
+}
+
+export async function listAIChatConversations(
+  options: ConversationRequestOptions = {},
+): Promise<AIChatConversationSummary[]> {
+  const response = await getAiConversations({
+    signal: options.signal,
+    throwOnError: true,
+  });
+
+  return response.data as AIChatConversationSummary[];
 }
 
 export async function reportAIChatTelemetry(
