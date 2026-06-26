@@ -401,6 +401,77 @@
         "type": "prometheus",
         "uid": "$DS_PROMETHEUS"
       },
+      "description": "Persisted conversation load failures divided by completed and failed beta load outcomes. Stale aborted loads are excluded so refreshes or superseded loads do not inflate the rollout gate.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.03
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ai_chat_client_outcomes_total{category=\"load\",outcome=\"load_failed\",cohort=\"beta\"}[15m])) / clamp_min(sum(rate(ai_chat_client_outcomes_total{category=\"load\",outcome=~\"load_completed|load_failed\",cohort=\"beta\"}[15m])), 0.001)",
+          "legendFormat": "load_failed / completed or failed beta loads",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Conversation load failure rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "$DS_PROMETHEUS"
+      },
       "description": "Stream outcome rates grouped by cohort and outcome so beta behavior can be compared with non-beta traffic.",
       "fieldConfig": {
         "defaults": {
@@ -431,9 +502,9 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 24
       },
-      "id": 7,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": ["lastNotNull"],
