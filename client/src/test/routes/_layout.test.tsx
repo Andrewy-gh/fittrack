@@ -77,14 +77,18 @@ describe("LayoutComponent", () => {
     expect(container.firstElementChild).not.toHaveClass(
       "pb-[calc(5rem+env(safe-area-inset-bottom))]",
     );
+    expect(container.firstElementChild).not.toHaveClass(
+      "pt-[env(safe-area-inset-top)]",
+    );
   });
 
-  it("reserves bottom-nav space for PWA sessions only", () => {
+  it("reserves safe-area space for PWA sessions only", () => {
     displayModeMock.displayMode = "pwa";
 
     const { container } = render(<LayoutComponent />);
 
     expect(container.firstElementChild).toHaveClass(
+      "pt-[env(safe-area-inset-top)]",
       "pb-[calc(5rem+env(safe-area-inset-bottom))]",
     );
   });

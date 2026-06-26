@@ -22,7 +22,7 @@ export function LayoutComponent() {
     <div
       className={
         displayMode === "pwa"
-          ? "pb-[calc(5rem+env(safe-area-inset-bottom))]"
+          ? "pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]"
           : undefined
       }
     >
