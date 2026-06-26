@@ -363,21 +363,25 @@ func TestRepositoryListConversations_OrdersByRecentActivityAndScopesToUser(t *te
 	repo := NewRepository(logger, queries, pool)
 	now := time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC)
 
-	nullLastMessageID := insertAIChatRepositoryTestConversation(t, pool, userID, "Updated but no messages", now, now.Add(3*time.Hour), nil)
+	newEmptyConversationID := insertAIChatRepositoryTestConversation(t, pool, userID, "Updated but no messages", now, now.Add(3*time.Hour), nil)
 	olderActivityID := insertAIChatRepositoryTestConversation(t, pool, userID, "Older activity", now, now.Add(30*time.Minute), ptrTime(now.Add(30*time.Minute)))
+	sameMessageOlderUpdateID := insertAIChatRepositoryTestConversation(t, pool, userID, "Same message, older update", now, now.Add(40*time.Minute), ptrTime(now.Add(45*time.Minute)))
+	sameMessageNewerUpdateID := insertAIChatRepositoryTestConversation(t, pool, userID, "Same message, newer update", now, now.Add(50*time.Minute), ptrTime(now.Add(45*time.Minute)))
 	newestActivityID := insertAIChatRepositoryTestConversation(t, pool, userID, "Newest activity", now, now.Add(time.Hour), ptrTime(now.Add(time.Hour)))
 	insertAIChatRepositoryTestConversation(t, pool, otherUserID, "Other user's chat", now, now.Add(2*time.Hour), ptrTime(now.Add(2*time.Hour)))
 
 	conversations, err := repo.ListConversations(ctx, userID, 50)
 
 	require.NoError(t, err)
-	require.Len(t, conversations, 3)
-	assert.Equal(t, []int32{newestActivityID, olderActivityID, nullLastMessageID}, []int32{
+	require.Len(t, conversations, 5)
+	assert.Equal(t, []int32{newEmptyConversationID, newestActivityID, sameMessageNewerUpdateID, sameMessageOlderUpdateID, olderActivityID}, []int32{
 		conversations[0].ID,
 		conversations[1].ID,
 		conversations[2].ID,
+		conversations[3].ID,
+		conversations[4].ID,
 	})
-	assert.Nil(t, conversations[2].LastMessageAt)
+	assert.Nil(t, conversations[0].LastMessageAt)
 }
 
 func TestRepositoryListConversations_AppliesLimit(t *testing.T) {

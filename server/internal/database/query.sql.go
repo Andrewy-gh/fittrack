@@ -2091,7 +2091,7 @@ SELECT
     last_message_at
 FROM ai_chat_conversation
 WHERE user_id = $1
-ORDER BY last_message_at DESC NULLS LAST, updated_at DESC
+ORDER BY COALESCE(last_message_at, updated_at) DESC, updated_at DESC, id DESC
 LIMIT $2
 `
 
