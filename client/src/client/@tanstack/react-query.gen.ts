@@ -10,6 +10,7 @@ import { client } from "../client.gen";
 import {
   deleteExercisesById,
   deleteWorkoutsById,
+  getAiConversations,
   getAiConversationsById,
   getExercises,
   getExercisesById,
@@ -43,6 +44,9 @@ import type {
   GetAiConversationsByIdData,
   GetAiConversationsByIdError,
   GetAiConversationsByIdResponse,
+  GetAiConversationsData,
+  GetAiConversationsError,
+  GetAiConversationsResponse,
   GetExercisesByIdData,
   GetExercisesByIdError,
   GetExercisesByIdMetricsHistoryData,
@@ -164,35 +168,6 @@ export const postAiChatValidateMutation = (
   return mutationOptions;
 };
 
-/**
- * Create AI chat conversation
- *
- * Creates an empty persisted AI chat conversation for the authenticated user.
- */
-export const postAiConversationsMutation = (
-  options?: Partial<Options<PostAiConversationsData>>,
-): UseMutationOptions<
-  PostAiConversationsResponse,
-  PostAiConversationsError,
-  Options<PostAiConversationsData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    PostAiConversationsResponse,
-    PostAiConversationsError,
-    Options<PostAiConversationsData>
-  > = {
-    mutationFn: async (fnOptions) => {
-      const { data } = await postAiConversations({
-        ...options,
-        ...fnOptions,
-        throwOnError: true,
-      });
-      return data;
-    },
-  };
-  return mutationOptions;
-};
-
 export type QueryKey<TOptions extends Options> = [
   Pick<TOptions, "baseUrl" | "body" | "headers" | "path" | "query"> & {
     _id: string;
@@ -231,6 +206,65 @@ const createQueryKey = <TOptions extends Options>(
     params.query = options.query;
   }
   return [params];
+};
+
+export const getAiConversationsQueryKey = (
+  options?: Options<GetAiConversationsData>,
+) => createQueryKey("getAiConversations", options, false, ["ai-chat"]);
+
+/**
+ * List AI chat conversations
+ *
+ * Returns lightweight AI chat conversation summaries for the authenticated user, newest activity first.
+ */
+export const getAiConversationsQueryOptions = (
+  options?: Options<GetAiConversationsData>,
+) =>
+  queryOptions<
+    GetAiConversationsResponse,
+    GetAiConversationsError,
+    GetAiConversationsResponse,
+    ReturnType<typeof getAiConversationsQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAiConversations({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAiConversationsQueryKey(options),
+  });
+
+/**
+ * Create AI chat conversation
+ *
+ * Creates an empty persisted AI chat conversation for the authenticated user.
+ */
+export const postAiConversationsMutation = (
+  options?: Partial<Options<PostAiConversationsData>>,
+): UseMutationOptions<
+  PostAiConversationsResponse,
+  PostAiConversationsError,
+  Options<PostAiConversationsData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiConversationsResponse,
+    PostAiConversationsError,
+    Options<PostAiConversationsData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await postAiConversations({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
 };
 
 export const getAiConversationsByIdQueryKey = (

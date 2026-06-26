@@ -111,6 +111,27 @@ export const aichat_ConversationRunViewSchema = {
   },
 } as const;
 
+export const aichat_ConversationSummarySchema = {
+  type: "object",
+  properties: {
+    created_at: {
+      type: "string",
+    },
+    id: {
+      type: "integer",
+    },
+    last_message_at: {
+      type: "string",
+    },
+    title: {
+      type: "string",
+    },
+    updated_at: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const aichat_LatestWorkoutDraftStatusSchema = {
   type: "object",
   properties: {

@@ -69,6 +69,19 @@ definitions:
       status:
         type: string
     type: object
+  aichat.ConversationSummary:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      last_message_at:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
   aichat.LatestWorkoutDraftStatus:
     properties:
       is_saved:
@@ -856,6 +869,35 @@ paths:
       tags:
       - ai-chat
   /ai/conversations:
+    get:
+      description: Returns lightweight AI chat conversation summaries for the authenticated
+        user, newest activity first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/aichat.ConversationSummary'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: List AI chat conversations
+      tags:
+      - ai-chat
     post:
       description: Creates an empty persisted AI chat conversation for the authenticated
         user.

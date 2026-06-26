@@ -45,6 +45,14 @@ export type AichatConversationRunView = {
   status?: string;
 };
 
+export type AichatConversationSummary = {
+  created_at?: string;
+  id?: number;
+  last_message_at?: string;
+  title?: string;
+  updated_at?: string;
+};
+
 export type AichatLatestWorkoutDraftStatus = {
   is_saved?: boolean;
   saved_at?: string;
@@ -459,6 +467,41 @@ export type PostAiChatValidateStreamResponses = {
 
 export type PostAiChatValidateStreamResponse =
   PostAiChatValidateStreamResponses[keyof PostAiChatValidateStreamResponses];
+
+export type GetAiConversationsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/ai/conversations";
+};
+
+export type GetAiConversationsErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Forbidden
+   */
+  403: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+};
+
+export type GetAiConversationsError =
+  GetAiConversationsErrors[keyof GetAiConversationsErrors];
+
+export type GetAiConversationsResponses = {
+  /**
+   * OK
+   */
+  200: Array<AichatConversationSummary>;
+};
+
+export type GetAiConversationsResponse =
+  GetAiConversationsResponses[keyof GetAiConversationsResponses];
 
 export type PostAiConversationsData = {
   body?: never;

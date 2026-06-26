@@ -2081,6 +2081,61 @@ func (q *Queries) HeartbeatAIChatRunGeneration(ctx context.Context, arg Heartbea
 	return result.RowsAffected(), nil
 }
 
+const listAIChatConversationsByUser = `-- name: ListAIChatConversationsByUser :many
+SELECT
+    id,
+    user_id,
+    title,
+    created_at,
+    updated_at,
+    last_message_at
+FROM ai_chat_conversation
+WHERE user_id = $1
+ORDER BY last_message_at DESC NULLS LAST, updated_at DESC
+LIMIT $2
+`
+
+type ListAIChatConversationsByUserParams struct {
+	UserID string `json:"user_id"`
+	Limit  int32  `json:"limit"`
+}
+
+type ListAIChatConversationsByUserRow struct {
+	ID            int32              `json:"id"`
+	UserID        string             `json:"user_id"`
+	Title         pgtype.Text        `json:"title"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	LastMessageAt pgtype.Timestamptz `json:"last_message_at"`
+}
+
+func (q *Queries) ListAIChatConversationsByUser(ctx context.Context, arg ListAIChatConversationsByUserParams) ([]ListAIChatConversationsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listAIChatConversationsByUser, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAIChatConversationsByUserRow
+	for rows.Next() {
+		var i ListAIChatConversationsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.LastMessageAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAIChatMessagesByConversation = `-- name: ListAIChatMessagesByConversation :many
 SELECT
     id,

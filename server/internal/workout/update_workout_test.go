@@ -44,10 +44,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Updated workout notes"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "Updated Exercise",
-						Sets: []SetInput{
+						Sets: []UpdateSet{
 							{Weight: float64Ptr(225), Reps: 8, SetType: "working"},
 						},
 					},
@@ -68,10 +68,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Just updating notes"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -88,10 +88,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T15:30:00Z",
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -108,10 +108,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "invalid",
 			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T10:00:00Z",
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -125,10 +125,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "",
 			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T10:00:00Z",
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -151,10 +151,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
 				Date: "invalid-date-format",
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -169,10 +169,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr(string(make([]byte, 500))), // Exceeds 256 char limit
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -186,10 +186,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T10:00:00Z",
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						// Missing Name field
-						Sets: []SetInput{
+						Sets: []UpdateSet{
 							{Reps: 10, SetType: "working"},
 						},
 					},
@@ -205,10 +205,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{
 				Date: "2023-01-15T10:00:00Z",
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "Valid Exercise",
-						Sets: []SetInput{
+						Sets: []UpdateSet{
 							{
 								// Missing Reps and SetType
 							},
@@ -227,10 +227,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Updating non-existent workout"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -249,10 +249,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Valid update"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -271,10 +271,10 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:  "2023-01-15T10:00:00Z",
 				Notes: stringPtr("Unauthorized update"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -373,10 +373,10 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Updated notes via integration test"),
-			Exercises: []ExerciseInput{
+			Exercises: []UpdateExercise{
 				{
 					Name: "placeholder",
-					Sets: []SetInput{{Reps: 1, SetType: "working"}},
+					Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 				},
 			},
 		}
@@ -409,10 +409,10 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Malicious update attempt from User B"),
-			Exercises: []ExerciseInput{
+			Exercises: []UpdateExercise{
 				{
 					Name: "placeholder",
-					Sets: []SetInput{{Reps: 1, SetType: "working"}},
+					Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 				},
 			},
 		}
@@ -449,10 +449,10 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:  "2023-01-15T10:00:00Z",
 			Notes: stringPtr("Updated with new exercises"),
-			Exercises: []ExerciseInput{
+			Exercises: []UpdateExercise{
 				{
 					Name: "Bench Press",
-					Sets: []SetInput{
+					Sets: []UpdateSet{
 						{Weight: float64Ptr(135), Reps: 10, SetType: "warmup"},
 						{Weight: float64Ptr(185), Reps: 8, SetType: "working"},
 						{Weight: float64Ptr(225), Reps: 5, SetType: "working"},
@@ -460,7 +460,7 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 				},
 				{
 					Name: "Squats",
-					Sets: []SetInput{
+					Sets: []UpdateSet{
 						{Weight: float64Ptr(95), Reps: 10, SetType: "warmup"},
 						{Weight: float64Ptr(135), Reps: 8, SetType: "working"},
 					},

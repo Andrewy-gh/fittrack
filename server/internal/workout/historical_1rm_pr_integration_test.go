@@ -71,10 +71,10 @@ func TestWorkout_Historical1RM_PR_Lifecycle_Integration(t *testing.T) {
 	updateReq := UpdateWorkoutRequest{
 		Date:  "2026-02-10T10:00:00Z",
 		Notes: stringPtr("PR reduced"),
-		Exercises: []ExerciseInput{
+		Exercises: []UpdateExercise{
 			{
 				Name: "Bench Press",
-				Sets: []SetInput{
+				Sets: []UpdateSet{
 					{Weight: float64Ptr(100), Reps: 1, SetType: "working"}, // e1rm ~= 103.33
 				},
 			},

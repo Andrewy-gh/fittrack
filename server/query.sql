@@ -830,6 +830,19 @@ FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2
 FOR UPDATE;
 
+-- name: ListAIChatConversationsByUser :many
+SELECT
+    id,
+    user_id,
+    title,
+    created_at,
+    updated_at,
+    last_message_at
+FROM ai_chat_conversation
+WHERE user_id = $1
+ORDER BY last_message_at DESC NULLS LAST, updated_at DESC
+LIMIT $2;
+
 -- name: ListAIChatMessagesByConversation :many
 SELECT
     id,

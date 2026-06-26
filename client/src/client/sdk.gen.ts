@@ -16,6 +16,9 @@ import type {
   GetAiConversationsByIdMessagesStreamResumeResponse,
   GetAiConversationsByIdMessagesStreamResumeResponses,
   GetAiConversationsByIdResponses,
+  GetAiConversationsData,
+  GetAiConversationsErrors,
+  GetAiConversationsResponses,
   GetExercisesByIdData,
   GetExercisesByIdErrors,
   GetExercisesByIdMetricsHistoryData,
@@ -177,6 +180,24 @@ export const postAiChatValidateStream = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+
+/**
+ * List AI chat conversations
+ *
+ * Returns lightweight AI chat conversation summaries for the authenticated user, newest activity first.
+ */
+export const getAiConversations = <ThrowOnError extends boolean = false>(
+  options?: Options<GetAiConversationsData, ThrowOnError>,
+) =>
+  (options?.client ?? client).get<
+    GetAiConversationsResponses,
+    GetAiConversationsErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/ai/conversations",
+    ...options,
   });
 
 /**

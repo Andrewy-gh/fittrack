@@ -25,11 +25,33 @@ type SetInput struct {
 	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
 }
 
+type UpdateExercise struct {
+	Name string      `json:"name" validate:"required,min=1,max=256"`
+	Sets []UpdateSet `json:"sets" validate:"required,min=1,dive"`
+}
+
+type UpdateSet struct {
+	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9"`
+	Reps    int      `json:"reps" validate:"required,gte=1"`
+	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
+}
+
+type exerciseRequestDraft struct {
+	Name string
+	Sets []setRequestDraft
+}
+
+type setRequestDraft struct {
+	Weight  *float64
+	Reps    int
+	SetType string
+}
+
 type workoutRequestDraft struct {
 	Date         string
 	Notes        *string
 	WorkoutFocus *string
-	Exercises    []ExerciseInput
+	Exercises    []exerciseRequestDraft
 }
 
 // PostgreSQL-specific types
@@ -86,10 +108,10 @@ type ReformattedRequest struct {
 // UPDATE endpoint types for PUT /api/workouts/{id}
 // Returns 204 No Content on success
 type UpdateWorkoutRequest struct {
-	Date         string          `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes        *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
-	WorkoutFocus *string         `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
-	Exercises    []ExerciseInput `json:"exercises" validate:"required,min=1,dive"`
+	Date         string           `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
+	Notes        *string          `json:"notes,omitempty" validate:"omitempty,max=256"`
+	WorkoutFocus *string          `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
+	Exercises    []UpdateExercise `json:"exercises" validate:"required,min=1,dive"`
 }
 
 // Contribution Graph types for GET /api/workouts/contribution-data

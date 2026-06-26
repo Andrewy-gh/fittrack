@@ -338,7 +338,7 @@ func newCreateWorkoutDraft(request CreateWorkoutRequest) workoutRequestDraft {
 		Date:         request.Date,
 		Notes:        request.Notes,
 		WorkoutFocus: request.WorkoutFocus,
-		Exercises:    request.Exercises,
+		Exercises:    exerciseInputsToDraft(request.Exercises),
 	}
 }
 
@@ -347,8 +347,46 @@ func newUpdateWorkoutDraft(request UpdateWorkoutRequest) workoutRequestDraft {
 		Date:         request.Date,
 		Notes:        request.Notes,
 		WorkoutFocus: request.WorkoutFocus,
-		Exercises:    request.Exercises,
+		Exercises:    updateExercisesToDraft(request.Exercises),
 	}
+}
+
+func exerciseInputsToDraft(exercises []ExerciseInput) []exerciseRequestDraft {
+	draftExercises := make([]exerciseRequestDraft, 0, len(exercises))
+	for _, exercise := range exercises {
+		draftSets := make([]setRequestDraft, 0, len(exercise.Sets))
+		for _, set := range exercise.Sets {
+			draftSets = append(draftSets, setRequestDraft{
+				Weight:  set.Weight,
+				Reps:    set.Reps,
+				SetType: set.SetType,
+			})
+		}
+		draftExercises = append(draftExercises, exerciseRequestDraft{
+			Name: exercise.Name,
+			Sets: draftSets,
+		})
+	}
+	return draftExercises
+}
+
+func updateExercisesToDraft(exercises []UpdateExercise) []exerciseRequestDraft {
+	draftExercises := make([]exerciseRequestDraft, 0, len(exercises))
+	for _, exercise := range exercises {
+		draftSets := make([]setRequestDraft, 0, len(exercise.Sets))
+		for _, set := range exercise.Sets {
+			draftSets = append(draftSets, setRequestDraft{
+				Weight:  set.Weight,
+				Reps:    set.Reps,
+				SetType: set.SetType,
+			})
+		}
+		draftExercises = append(draftExercises, exerciseRequestDraft{
+			Name: exercise.Name,
+			Sets: draftSets,
+		})
+	}
+	return draftExercises
 }
 
 func transformWorkoutRequest(logger *slog.Logger, request workoutRequestDraft) (*ReformattedRequest, error) {
