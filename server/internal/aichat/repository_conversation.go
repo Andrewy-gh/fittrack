@@ -31,6 +31,30 @@ func (r *repository) CreateConversation(ctx context.Context, userID string) (*Co
 	return conversation, nil
 }
 
+func (r *repository) ListConversations(ctx context.Context, userID string, limit int32) ([]ConversationSummary, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	rows, err := r.queries.ListAIChatConversationsByUser(ctx, db.ListAIChatConversationsByUserParams{
+		UserID: userID,
+		Limit:  limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list ai chat conversations: %w", err)
+	}
+
+	conversations := make([]ConversationSummary, 0, len(rows))
+	for _, row := range rows {
+		conversation, err := mapConversationSummary(row)
+		if err != nil {
+			return nil, err
+		}
+		conversations = append(conversations, *conversation)
+	}
+
+	return conversations, nil
+}
+
 func (r *repository) GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

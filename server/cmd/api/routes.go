@@ -60,6 +60,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("PATCH /api/exercises/{id}/historical-1rm", eh.UpdateExerciseHistorical1RM)
 	mux.HandleFunc("DELETE /api/exercises/{id}", eh.DeleteExercise)
 	mux.HandleFunc("POST /api/ai/conversations", ah.CreateConversation)
+	mux.HandleFunc("GET /api/ai/conversations", ah.ListConversations)
 	mux.HandleFunc("GET /api/ai/conversations/{id}", ah.GetConversation)
 	mux.HandleFunc("POST /api/ai/conversations/{id}/latest-workout-draft/save", ah.SaveLatestWorkoutDraft)
 	mux.HandleFunc("POST /api/ai/conversations/{id}/messages/stream", ah.StreamMessage)

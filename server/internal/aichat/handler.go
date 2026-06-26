@@ -18,6 +18,7 @@ type chatService interface {
 	CurrentUserHasFeatureAccess(ctx context.Context) (bool, error)
 	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	CreateConversation(ctx context.Context) (*Conversation, error)
+	ListConversations(ctx context.Context) ([]ConversationSummary, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
 	SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error)
 	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
@@ -153,6 +154,29 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := response.JSON(w, http.StatusCreated, conversation); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
+}
+
+// ListConversations godoc
+// @Summary List AI chat conversations
+// @Description Returns lightweight AI chat conversation summaries for the authenticated user, newest activity first.
+// @Tags ai-chat
+// @Produce json
+// @Security StackAuth
+// @Success 200 {array} aichat.ConversationSummary
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations [get]
+func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
+	conversations, err := h.service.ListConversations(r.Context())
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to list ai chat conversations")
+		return
+	}
+
+	if err := response.JSON(w, http.StatusOK, conversations); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 	}
 }

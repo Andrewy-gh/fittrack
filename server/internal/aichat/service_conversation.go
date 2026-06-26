@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const conversationListLimit int32 = 50
+
 func (s *Service) Validate(ctx context.Context, prompt string) (*ValidateResponse, error) {
 	if err := s.ensureAllowed(ctx); err != nil {
 		return nil, err
@@ -56,6 +58,19 @@ func (s *Service) CreateConversation(ctx context.Context) (*Conversation, error)
 	}
 
 	return s.repo.CreateConversation(ctx, userID)
+}
+
+func (s *Service) ListConversations(ctx context.Context) ([]ConversationSummary, error) {
+	if err := s.ensureFeatureAccess(ctx); err != nil {
+		return nil, err
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repo.ListConversations(ctx, userID, conversationListLimit)
 }
 
 func (s *Service) GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error) {

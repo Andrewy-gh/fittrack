@@ -205,10 +205,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z",
 				WorkoutFocus: stringPtrHelper("Push Day"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -227,10 +227,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z",
 				WorkoutFocus: stringPtrHelper(""),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -248,10 +248,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z", // Date is required for validation
 				WorkoutFocus: stringPtrHelper("Leg Day"),
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -269,10 +269,10 @@ func TestWorkoutFocus_UpdateWorkout(t *testing.T) {
 			requestBody: UpdateWorkoutRequest{
 				Date:         "2023-01-15T10:00:00Z",
 				WorkoutFocus: stringPtr(string(make([]byte, 300))), // Exceeds 256 char limit
-				Exercises: []ExerciseInput{
+				Exercises: []UpdateExercise{
 					{
 						Name: "placeholder",
-						Sets: []SetInput{{Reps: 1, SetType: "working"}},
+						Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 					},
 				},
 			},
@@ -436,10 +436,10 @@ func TestWorkoutFocus_Integration(t *testing.T) {
 		updateReq := UpdateWorkoutRequest{
 			Date:         "2023-01-15T10:00:00Z", // Date is required
 			WorkoutFocus: stringPtrHelper("Leg Day Focus"),
-			Exercises: []ExerciseInput{
+			Exercises: []UpdateExercise{
 				{
 					Name: "placeholder",
-					Sets: []SetInput{{Reps: 1, SetType: "working"}},
+					Sets: []UpdateSet{{Reps: 1, SetType: "working"}},
 				},
 			},
 		}

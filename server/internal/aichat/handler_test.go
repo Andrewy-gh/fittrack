@@ -85,6 +85,12 @@ func (m *mockChatService) CreateConversation(ctx context.Context) (*Conversation
 	return conversation, args.Error(1)
 }
 
+func (m *mockChatService) ListConversations(ctx context.Context) ([]ConversationSummary, error) {
+	args := m.Called(ctx)
+	conversations, _ := args.Get(0).([]ConversationSummary)
+	return conversations, args.Error(1)
+}
+
 func (m *mockChatService) GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error) {
 	args := m.Called(ctx, conversationID)
 	detail, _ := args.Get(0).(*ConversationDetail)
@@ -320,6 +326,37 @@ func TestHandlerCreateConversation(t *testing.T) {
 	var conversation Conversation
 	require.NoError(t, json.NewDecoder(rr.Body).Decode(&conversation))
 	assert.Equal(t, int32(41), conversation.ID)
+	service.AssertExpectations(t)
+}
+
+func TestHandlerListConversations(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	service := new(mockChatService)
+	handler := NewHandler(logger, service)
+	now := time.Date(2026, 3, 26, 17, 0, 0, 0, time.UTC)
+	lastMessageAt := now.Add(5 * time.Minute)
+	title := "Heavy squat ideas"
+	service.On("ListConversations", mock.Anything).Return([]ConversationSummary{
+		{
+			ID:            41,
+			Title:         &title,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+			LastMessageAt: &lastMessageAt,
+		},
+	}, nil).Once()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ListConversations(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	assert.Contains(t, rr.Body.String(), `"id":41`)
+	assert.Contains(t, rr.Body.String(), `"title":"Heavy squat ideas"`)
+	assert.Contains(t, rr.Body.String(), `"last_message_at":"2026-03-26T17:05:00Z"`)
+	assert.NotContains(t, rr.Body.String(), `"messages"`)
+	assert.NotContains(t, rr.Body.String(), `"latest_workout_draft"`)
 	service.AssertExpectations(t)
 }
 

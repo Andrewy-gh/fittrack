@@ -76,6 +76,12 @@ func (m *mockRepository) GetConversation(ctx context.Context, conversationID int
 	return conversation, args.Error(1)
 }
 
+func (m *mockRepository) ListConversations(ctx context.Context, userID string, limit int32) ([]ConversationSummary, error) {
+	args := m.Called(ctx, userID, limit)
+	conversations, _ := args.Get(0).([]ConversationSummary)
+	return conversations, args.Error(1)
+}
+
 func (m *mockRepository) SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error) {
 	args := m.Called(ctx, request)
 	resp, _ := args.Get(0).(*SavedLatestWorkoutDraft)
@@ -308,6 +314,34 @@ func TestServiceCreateConversation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, conversation)
 	assert.Equal(t, int32(41), conversation.ID)
+	runtime.AssertNotCalled(t, "Available")
+	featureAccess.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceListConversations_AllowsReadWithoutRuntime(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
+	ctx := user.WithContext(context.Background(), "user-123")
+	now := time.Date(2026, 3, 26, 17, 20, 0, 0, time.UTC)
+
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	repo.On("ListConversations", mock.Anything, "user-123", conversationListLimit).Return([]ConversationSummary{
+		{
+			ID:        41,
+			CreatedAt: now,
+			UpdatedAt: now,
+		},
+	}, nil).Once()
+
+	conversations, err := service.ListConversations(ctx)
+
+	require.NoError(t, err)
+	require.Len(t, conversations, 1)
+	assert.Equal(t, int32(41), conversations[0].ID)
 	runtime.AssertNotCalled(t, "Available")
 	featureAccess.AssertExpectations(t)
 	repo.AssertExpectations(t)

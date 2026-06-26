@@ -340,6 +340,88 @@ func TestRepositorySaveLatestWorkoutDraft_ConcurrentCallsCreateOneWorkout(t *tes
 	assert.Equal(t, 1, workoutCount)
 }
 
+func TestRepositoryListConversations_OrdersByRecentActivityAndScopesToUser(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-list-conversations-user"
+	const otherUserID = "aichat-list-conversations-other-user"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+	seedAIChatRepositoryTestUser(t, pool, otherUserID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	repo := NewRepository(logger, queries, pool)
+	now := time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC)
+
+	newEmptyConversationID := insertAIChatRepositoryTestConversation(t, pool, userID, "Updated but no messages", now, now.Add(3*time.Hour), nil)
+	olderActivityID := insertAIChatRepositoryTestConversation(t, pool, userID, "Older activity", now, now.Add(30*time.Minute), ptrTime(now.Add(30*time.Minute)))
+	sameMessageOlderUpdateID := insertAIChatRepositoryTestConversation(t, pool, userID, "Same message, older update", now, now.Add(40*time.Minute), ptrTime(now.Add(45*time.Minute)))
+	sameMessageNewerUpdateID := insertAIChatRepositoryTestConversation(t, pool, userID, "Same message, newer update", now, now.Add(50*time.Minute), ptrTime(now.Add(45*time.Minute)))
+	newestActivityID := insertAIChatRepositoryTestConversation(t, pool, userID, "Newest activity", now, now.Add(time.Hour), ptrTime(now.Add(time.Hour)))
+	insertAIChatRepositoryTestConversation(t, pool, otherUserID, "Other user's chat", now, now.Add(2*time.Hour), ptrTime(now.Add(2*time.Hour)))
+
+	conversations, err := repo.ListConversations(ctx, userID, 50)
+
+	require.NoError(t, err)
+	require.Len(t, conversations, 5)
+	assert.Equal(t, []int32{newEmptyConversationID, newestActivityID, sameMessageNewerUpdateID, sameMessageOlderUpdateID, olderActivityID}, []int32{
+		conversations[0].ID,
+		conversations[1].ID,
+		conversations[2].ID,
+		conversations[3].ID,
+		conversations[4].ID,
+	})
+	assert.Nil(t, conversations[0].LastMessageAt)
+}
+
+func TestRepositoryListConversations_AppliesLimit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-list-conversations-limit-user"
+
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	repo := NewRepository(logger, queries, pool)
+	now := time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC)
+	var oldestIDs []int32
+	for i := 0; i < 52; i++ {
+		lastMessageAt := now.Add(time.Duration(i) * time.Minute)
+		id := insertAIChatRepositoryTestConversation(t, pool, userID, "Limited chat", now, lastMessageAt, &lastMessageAt)
+		if i < 2 {
+			oldestIDs = append(oldestIDs, id)
+		}
+	}
+
+	conversations, err := repo.ListConversations(ctx, userID, 50)
+
+	require.NoError(t, err)
+	require.Len(t, conversations, 50)
+	for _, conversation := range conversations {
+		assert.NotContains(t, oldestIDs, conversation.ID)
+	}
+}
+
 func TestRepositoryPrepareMessageStream_TrialCapAllowsTwoStartsAndBlocksThird(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping database-backed AI chat repository test in short mode")
@@ -478,6 +560,12 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-save-draft-race-user")
 		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-list-conversations-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-list-conversations-other-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-list-conversations-limit-user")
+		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-cap-user")
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-failed-start-user")
@@ -499,6 +587,24 @@ func seedAIChatRepositoryTestUser(t *testing.T, pool *pgxpool.Pool, userID strin
 
 	_, err := pool.Exec(context.Background(), "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID)
 	require.NoError(t, err)
+}
+
+func insertAIChatRepositoryTestConversation(t *testing.T, pool *pgxpool.Pool, userID string, title string, createdAt time.Time, updatedAt time.Time, lastMessageAt *time.Time) int32 {
+	t.Helper()
+
+	var id int32
+	err := pool.QueryRow(context.Background(), `
+		INSERT INTO ai_chat_conversation (user_id, title, created_at, updated_at, last_message_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`, userID, title, createdAt, updatedAt, lastMessageAt).Scan(&id)
+	require.NoError(t, err)
+
+	return id
+}
+
+func ptrTime(value time.Time) *time.Time {
+	return &value
 }
 
 func seedAIChatRepositoryTestTrialSubscription(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) {

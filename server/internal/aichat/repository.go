@@ -26,6 +26,7 @@ type SavedLatestWorkoutDraft struct {
 
 type Repository interface {
 	CreateConversation(ctx context.Context, userID string) (*Conversation, error)
+	ListConversations(ctx context.Context, userID string, limit int32) ([]ConversationSummary, error)
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
 	SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)

@@ -107,6 +107,29 @@ func mapConversation(row db.AiChatConversation) (*Conversation, error) {
 	}, nil
 }
 
+func mapConversationSummary(row db.ListAIChatConversationsByUserRow) (*ConversationSummary, error) {
+	createdAt, err := timeFromPg(row.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	updatedAt, err := timeFromPg(row.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	lastMessageAt, err := timePtrFromPg(row.LastMessageAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ConversationSummary{
+		ID:            row.ID,
+		Title:         textPtr(row.Title),
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+		LastMessageAt: lastMessageAt,
+	}, nil
+}
+
 func mapMessage(row db.AiChatMessage) (*ChatMessage, error) {
 	createdAt, err := timeFromPg(row.CreatedAt)
 	if err != nil {

@@ -217,6 +217,50 @@ const docTemplate = `{
             }
         },
         "/ai/conversations": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Returns lightweight AI chat conversation summaries for the authenticated user, newest activity first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ai-chat"
+                ],
+                "summary": "List AI chat conversations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/aichat.ConversationSummary"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1706,6 +1750,26 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "aichat.ConversationSummary": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_message_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }

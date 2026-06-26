@@ -73,6 +73,14 @@ type Conversation struct {
 	LastMessageAt            *time.Time                    `json:"last_message_at,omitempty"`
 }
 
+type ConversationSummary struct {
+	ID            int32      `json:"id"`
+	Title         *string    `json:"title,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	LastMessageAt *time.Time `json:"last_message_at,omitempty"`
+}
+
 type LatestWorkoutDraftStatus struct {
 	SourceRunID    *int32     `json:"source_run_id,omitempty"`
 	IsSaved        bool       `json:"is_saved"`
