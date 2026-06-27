@@ -95,6 +95,7 @@ export function ChatPage({
         to: "/chat",
         search: { conversationId: String(createdConversationId) },
       });
+      await historyEntry.refreshConversations();
     },
   });
   const billingAccess = useAIChatBillingAccess({

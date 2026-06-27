@@ -16,8 +16,6 @@ import {
 import type { AIChatConversationSummary } from "@/features/chat/api/ai-chat";
 import { cn } from "@/lib/utils";
 
-const MAX_VISIBLE_RECENT_CHATS = 8;
-
 type ChatHistoryEntryProps = {
   conversations: AIChatConversationSummary[];
   activeConversationId: number | null;
@@ -223,7 +221,7 @@ function HistoryList({
 
   return (
     <div className="flex flex-col gap-1">
-      {conversations.slice(0, MAX_VISIBLE_RECENT_CHATS).map((conversation) => {
+      {conversations.map((conversation) => {
         const isActive = conversation.id === activeConversationId;
 
         return (

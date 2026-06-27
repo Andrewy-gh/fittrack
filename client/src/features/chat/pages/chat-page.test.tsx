@@ -49,18 +49,91 @@ describe("ChatRouteComponent", () => {
     expect(mockGetConversation).not.toHaveBeenCalled();
   });
 
+  it("does not auto-open stale history after the signed-in user changes", async () => {
+    mockSearch.conversationId = undefined;
+    let resolveNextHistory!: (value: Array<Record<string, unknown>>) => void;
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 72,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ])
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveNextHistory = resolve;
+        }),
+      );
+
+    const view = render(<ChatRouteComponent userId="user-123" />);
+
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "72" },
+        replace: true,
+      });
+    });
+
+    mockNavigate.mockClear();
+    view.rerender(<ChatRouteComponent userId="user-456" />);
+
+    expect(screen.queryByText("Leg day plan")).not.toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    resolveNextHistory([
+      {
+        id: 88,
+        title: "Back day plan",
+        created_at: "2026-06-26T17:00:00Z",
+        updated_at: "2026-06-26T17:05:00Z",
+        last_message_at: "2026-06-26T17:05:00Z",
+      },
+    ]);
+
+    expect(await screen.findByText("Back day plan")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "88" },
+        replace: true,
+      });
+    });
+  });
+
   it("keeps explicit New Chat available from chat history", async () => {
     const user = userEvent.setup();
     mockGetConversation.mockResolvedValue(conversationDetail([]));
-    mockListConversations.mockResolvedValue([
-      {
-        id: 41,
-        title: "Leg day plan",
-        created_at: "2026-06-25T17:00:00Z",
-        updated_at: "2026-06-25T17:05:00Z",
-        last_message_at: "2026-06-25T17:05:00Z",
-      },
-    ]);
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 73,
+          title: "Fresh chat",
+          created_at: "2026-06-26T17:00:00Z",
+          updated_at: "2026-06-26T17:00:00Z",
+          last_message_at: "2026-06-26T17:00:00Z",
+        },
+        {
+          id: 41,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ]);
     mockCreateConversation.mockResolvedValue({
       id: 73,
       created_at: "2026-06-26T17:00:00Z",
@@ -78,6 +151,25 @@ describe("ChatRouteComponent", () => {
       to: "/chat",
       search: { conversationId: "73" },
     });
+    expect(await screen.findByText("Fresh chat")).toBeInTheDocument();
+    expect(mockListConversations).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows every recent chat returned by the history endpoint", async () => {
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue(
+      Array.from({ length: 10 }, (_, index) => ({
+        id: index + 1,
+        title: `Recent chat ${index + 1}`,
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      })),
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Recent chat 10")).toBeInTheDocument();
   });
 
   it("lets desktop users collapse and expand chat history", async () => {
