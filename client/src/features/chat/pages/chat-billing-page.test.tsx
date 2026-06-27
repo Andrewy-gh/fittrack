@@ -375,7 +375,11 @@ describe("ChatRouteComponent", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Premium")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Chat" })).toBeEnabled();
+    expect(
+      screen
+        .getAllByRole("button", { name: "New Chat" })
+        .some((button) => !button.hasAttribute("disabled")),
+    ).toBe(true);
     expect(
       screen.queryByText("Access continues until Jun 10, 2026."),
     ).not.toBeInTheDocument();

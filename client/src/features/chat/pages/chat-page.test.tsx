@@ -21,8 +21,7 @@ import {
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
 
-  it("shows recent chats when entering without a conversation id", async () => {
-    const user = userEvent.setup();
+  it("opens the newest recent chat when entering without a conversation id", async () => {
     mockSearch.conversationId = undefined;
     mockListConversations.mockResolvedValue([
       {
@@ -36,27 +35,26 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Recent chats")).toBeInTheDocument();
-    expect(screen.getByText("Leg day plan")).toBeInTheDocument();
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "72" },
+        replace: true,
+      });
+    });
     expect(
       screen.queryByText("What should we train today?"),
     ).not.toBeInTheDocument();
     expect(mockGetConversation).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: /Leg day plan/ }));
-
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/chat",
-      search: { conversationId: "72" },
-    });
   });
 
-  it("keeps explicit New Chat available when recent chats exist", async () => {
+  it("keeps explicit New Chat available from chat history", async () => {
     const user = userEvent.setup();
-    mockSearch.conversationId = undefined;
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
     mockListConversations.mockResolvedValue([
       {
-        id: 72,
+        id: 41,
         title: "Leg day plan",
         created_at: "2026-06-25T17:00:00Z",
         updated_at: "2026-06-25T17:05:00Z",
@@ -71,7 +69,7 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Recent chats")).toBeInTheDocument();
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
     const newChatButtons = screen.getAllByRole("button", { name: "New Chat" });
     await user.click(newChatButtons.at(-1)!);
 
@@ -80,6 +78,30 @@ describe("ChatRouteComponent", () => {
       to: "/chat",
       search: { conversationId: "73" },
     });
+  });
+
+  it("lets desktop users collapse and expand chat history", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 41,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Collapse chat history" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Expand chat history" }),
+    ).toBeInTheDocument();
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
@@ -565,7 +587,7 @@ describe("ChatRouteComponent", () => {
       expect(mockStreamMessage).toHaveBeenCalledTimes(1);
     });
 
-    await user.click(screen.getByRole("button", { name: "New Chat" }));
+    await user.click(screen.getAllByRole("button", { name: "New Chat" })[0]);
 
     await waitFor(() => {
       expect(mockShowErrorToast).toHaveBeenCalledWith(
