@@ -190,9 +190,10 @@ describe("ChatRouteComponent", () => {
     const expandedHistory = await screen.findByLabelText("Chat history");
     expect(expandedHistory).toHaveClass("lg:fixed", "lg:left-0");
     expect(screen.getByTestId("chat-page-layout")).toHaveClass(
-      "lg:pl-76",
-      "lg:mx-0",
+      "lg:ml-72",
+      "lg:max-w-none",
     );
+    expect(screen.getByTestId("chat-main-pane")).toHaveClass("lg:max-w-5xl");
 
     await user.click(
       screen.getByRole("button", { name: "Collapse chat history" }),
@@ -207,6 +208,7 @@ describe("ChatRouteComponent", () => {
       "mx-auto",
       "max-w-3xl",
     );
+    expect(screen.getByTestId("chat-main-pane")).toHaveClass("lg:max-w-3xl");
     expect(
       within(collapsedHistory)
         .getAllByRole("button")

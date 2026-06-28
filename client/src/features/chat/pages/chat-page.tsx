@@ -322,7 +322,7 @@ export function ChatPage({
           "w-full px-4",
           historyEntry.isCollapsed
             ? "mx-auto max-w-3xl"
-            : "mx-auto max-w-6xl lg:mx-0 lg:max-w-none lg:pl-76 lg:pr-4",
+            : "mx-auto max-w-6xl lg:ml-72 lg:mr-0 lg:max-w-none lg:px-8",
         )}
       >
         <ChatHistoryEntry
@@ -341,7 +341,15 @@ export function ChatPage({
           isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
         />
 
-        <div className="min-w-0 lg:max-w-3xl">
+        <div
+          data-testid="chat-main-pane"
+          className={cn(
+            "min-w-0",
+            historyEntry.isCollapsed
+              ? "w-full lg:max-w-3xl"
+              : "w-full lg:max-w-5xl",
+          )}
+        >
           {historyEntry.isPreparingEntry ||
           historyEntry.isAutoOpeningRecentChat ? (
             <div className="text-sm text-muted-foreground">
