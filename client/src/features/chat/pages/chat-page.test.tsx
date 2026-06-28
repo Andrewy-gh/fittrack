@@ -189,6 +189,10 @@ describe("ChatRouteComponent", () => {
 
     const expandedHistory = await screen.findByLabelText("Chat history");
     expect(expandedHistory).toHaveClass("lg:fixed", "lg:left-0");
+    expect(screen.getByTestId("chat-page-layout")).toHaveClass(
+      "lg:pl-76",
+      "lg:mx-0",
+    );
 
     await user.click(
       screen.getByRole("button", { name: "Collapse chat history" }),
@@ -199,6 +203,10 @@ describe("ChatRouteComponent", () => {
     ).toBeInTheDocument();
     const collapsedHistory = screen.getByLabelText("Collapsed chat history");
     expect(collapsedHistory).toHaveClass("lg:fixed", "lg:left-0");
+    expect(screen.getByTestId("chat-page-layout")).toHaveClass(
+      "mx-auto",
+      "max-w-3xl",
+    );
     expect(
       within(collapsedHistory)
         .getAllByRole("button")
@@ -226,6 +234,29 @@ describe("ChatRouteComponent", () => {
     expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
     expect(screen.queryByText("Access active")).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "New Chat" })).toHaveLength(1);
+  });
+
+  it("adds top padding when showing an existing conversation", async () => {
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "user",
+          content: "Hello anybody there?",
+          status: "completed",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:00Z",
+          completed_at: "2026-03-26T17:00:00Z",
+        },
+      ]),
+    );
+    mockListConversations.mockResolvedValue([]);
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Hello anybody there?")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-conversation-body")).toHaveClass("pt-4");
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {

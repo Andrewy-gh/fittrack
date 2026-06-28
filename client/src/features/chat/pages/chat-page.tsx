@@ -317,11 +317,12 @@ export function ChatPage({
       ) : null}
 
       <div
+        data-testid="chat-page-layout"
         className={cn(
-          "mx-auto w-full px-4",
+          "w-full px-4",
           historyEntry.isCollapsed
-            ? "max-w-3xl"
-            : "max-w-6xl lg:grid lg:grid-cols-[18rem_minmax(0,48rem)] lg:items-start lg:gap-4",
+            ? "mx-auto max-w-3xl"
+            : "mx-auto max-w-6xl lg:mx-0 lg:max-w-none lg:pl-76 lg:pr-4",
         )}
       >
         <ChatHistoryEntry
@@ -356,7 +357,10 @@ export function ChatPage({
           ) : showEmptyState ? (
             emptyState
           ) : (
-            <div className="flex flex-col gap-6">
+            <div
+              data-testid="chat-conversation-body"
+              className="flex flex-col gap-6 pt-4"
+            >
               {loadError ? (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                   {loadError}
