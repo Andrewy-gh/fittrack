@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -194,6 +194,15 @@ describe("ChatRouteComponent", () => {
     expect(
       screen.getByRole("button", { name: "Expand chat history" }),
     ).toBeInTheDocument();
+    const collapsedHistory = screen.getByLabelText("Collapsed chat history");
+    expect(
+      within(collapsedHistory)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Expand chat history", "New Chat"]);
+    expect(
+      screen.queryByLabelText("Collapse chat history"),
+    ).not.toBeInTheDocument();
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {

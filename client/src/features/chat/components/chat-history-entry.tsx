@@ -4,6 +4,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  SquarePen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,7 +116,10 @@ function DesktopHistoryPanel({
 }: Omit<ChatHistoryEntryProps, "isMobileOpen" | "onMobileOpenChange">) {
   if (isCollapsed) {
     return (
-      <aside className="hidden h-fit flex-col items-center gap-2 rounded-lg border bg-background p-2 lg:sticky lg:top-20 lg:flex">
+      <aside
+        aria-label="Collapsed chat history"
+        className="hidden min-h-[calc(100vh-8rem)] w-13 flex-col items-center gap-2 border-r bg-background px-2 py-3 lg:sticky lg:top-0 lg:flex"
+      >
         <Button
           type="button"
           variant="ghost"
@@ -133,7 +137,7 @@ function DesktopHistoryPanel({
           onClick={onNewChat}
           disabled={isNewChatDisabled}
         >
-          <Plus className="size-4" />
+          <SquarePen className="size-4" />
         </Button>
       </aside>
     );
