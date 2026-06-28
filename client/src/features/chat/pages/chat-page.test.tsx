@@ -187,8 +187,11 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
+    const expandedHistory = await screen.findByLabelText("Chat history");
+    expect(expandedHistory).toHaveClass("lg:fixed", "lg:left-0");
+
     await user.click(
-      await screen.findByRole("button", { name: "Collapse chat history" }),
+      screen.getByRole("button", { name: "Collapse chat history" }),
     );
 
     expect(
