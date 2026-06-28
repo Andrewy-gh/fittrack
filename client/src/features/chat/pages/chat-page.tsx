@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { History, Plus } from "lucide-react";
+import { History } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,6 +125,7 @@ export function ChatPage({
   const hasChatAccess = billingAccess.hasChatAccess;
   const isComposerDisabled =
     isSubmitting || billingAccess.isCheckingAccess || !hasChatAccess;
+  const showBillingAccessPanel = billingAccess.accessState !== "ready";
 
   async function handleNewChat() {
     if (!hasChatAccess || billingAccess.isCheckingAccess) {
@@ -250,53 +251,59 @@ export function ChatPage({
 
   return (
     <div className="flex flex-col gap-4 pb-10">
-      <div className="mx-auto w-full max-w-6xl px-4 pt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="sm:flex-1">
-            <AIChatBillingCard
-              status={billingAccess.billingStatus}
-              accessState={billingAccess.accessState}
-              isLoading={billingAccess.isBillingCardLoading}
-              isError={billingAccess.isBillingError}
-            />
+      {showBillingAccessPanel ? (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="sm:flex-1">
+              <AIChatBillingCard
+                status={billingAccess.billingStatus}
+                accessState={billingAccess.accessState}
+                isLoading={billingAccess.isBillingCardLoading}
+                isError={billingAccess.isBillingError}
+              />
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start">
+              <AIChatBillingActions
+                status={billingAccess.billingStatus}
+                accessState={billingAccess.accessState}
+                isLoading={billingAccess.isBillingCardLoading}
+                isError={billingAccess.isBillingError}
+                isRefreshingAccess={billingAccess.isRefreshingAccess}
+                isCheckoutLoading={billingAccess.isCheckoutLoading}
+                isBillingPortalLoading={billingAccess.isBillingPortalLoading}
+                onStartCheckout={billingAccess.startCheckout}
+                onManageBilling={billingAccess.manageBilling}
+                onRefreshAccess={billingAccess.refreshAccess}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                aria-label="Open chat history"
+                onClick={() => historyEntry.setIsMobileOpen(true)}
+                className="w-full lg:hidden"
+              >
+                <History className="size-4" />
+                History
+              </Button>
+            </div>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start">
-            <AIChatBillingActions
-              status={billingAccess.billingStatus}
-              accessState={billingAccess.accessState}
-              isLoading={billingAccess.isBillingCardLoading}
-              isError={billingAccess.isBillingError}
-              isRefreshingAccess={billingAccess.isRefreshingAccess}
-              isCheckoutLoading={billingAccess.isCheckoutLoading}
-              isBillingPortalLoading={billingAccess.isBillingPortalLoading}
-              onStartCheckout={billingAccess.startCheckout}
-              onManageBilling={billingAccess.manageBilling}
-              onRefreshAccess={billingAccess.refreshAccess}
-            />
+        </div>
+      ) : (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-4 lg:hidden">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start sm:justify-end">
             <Button
               type="button"
               variant="outline"
               aria-label="Open chat history"
               onClick={() => historyEntry.setIsMobileOpen(true)}
-              className="w-full lg:hidden"
+              className="w-full"
             >
               <History className="size-4" />
               History
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              aria-label="New Chat"
-              onClick={handleNewChat}
-              disabled={billingAccess.isCheckingAccess || !hasChatAccess}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="size-4" />
-              New Chat
-            </Button>
           </div>
         </div>
-      </div>
+      )}
 
       {billingAccess.checkoutNotice ? (
         <div className="mx-auto w-full max-w-6xl px-4">
@@ -311,8 +318,10 @@ export function ChatPage({
 
       <div
         className={cn(
-          "mx-auto grid w-full max-w-6xl gap-4 px-4 lg:grid-cols-[18rem_minmax(0,48rem)] lg:items-start",
-          historyEntry.isCollapsed && "lg:grid-cols-[3.25rem_minmax(0,48rem)]",
+          "mx-auto w-full px-4",
+          historyEntry.isCollapsed
+            ? "max-w-3xl"
+            : "max-w-6xl lg:grid lg:grid-cols-[18rem_minmax(0,48rem)] lg:items-start lg:gap-4",
         )}
       >
         <ChatHistoryEntry

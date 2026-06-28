@@ -195,6 +195,7 @@ describe("ChatRouteComponent", () => {
       screen.getByRole("button", { name: "Expand chat history" }),
     ).toBeInTheDocument();
     const collapsedHistory = screen.getByLabelText("Collapsed chat history");
+    expect(collapsedHistory).toHaveClass("lg:fixed", "lg:left-0");
     expect(
       within(collapsedHistory)
         .getAllByRole("button")
@@ -203,6 +204,25 @@ describe("ChatRouteComponent", () => {
     expect(
       screen.queryByLabelText("Collapse chat history"),
     ).not.toBeInTheDocument();
+  });
+
+  it("omits ready access chrome from the chat page", async () => {
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 41,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
+    expect(screen.queryByText("Access active")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "New Chat" })).toHaveLength(1);
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {

@@ -118,7 +118,7 @@ function DesktopHistoryPanel({
     return (
       <aside
         aria-label="Collapsed chat history"
-        className="hidden min-h-[calc(100vh-8rem)] w-13 flex-col items-center gap-2 border-r bg-background px-2 py-3 lg:sticky lg:top-0 lg:flex"
+        className="hidden w-12 flex-col items-center gap-2 border-r bg-background px-2 py-3 lg:fixed lg:bottom-0 lg:left-0 lg:top-[3.25rem] lg:z-20 lg:flex"
       >
         <Button
           type="button"
