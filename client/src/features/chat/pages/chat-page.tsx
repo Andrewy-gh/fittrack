@@ -1,4 +1,5 @@
-import { Plus } from "lucide-react";
+import { useCallback } from "react";
+import { History } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { ChatTypingIndicator } from "../components/chat-typing-indicator";
 import { ChatWorkoutDraftCard } from "../components/chat-workout-draft-card";
 import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
+import { useChatHistoryEntry } from "../hooks/use-chat-history-entry";
 
 type ChatCheckoutSearch = "success" | "cancelled";
 type ChatBillingSearch = "cancelled" | "portal-return";
@@ -47,6 +49,31 @@ export function ChatPage({
   billing,
 }: ChatPageProps) {
   const navigate = useNavigate({ from: "/chat" });
+  const openConversation = useCallback(
+    (
+      selectedConversationId: number,
+      options: {
+        replace?: boolean;
+      } = {},
+    ) => {
+      const target = {
+        to: "/chat",
+        search: { conversationId: String(selectedConversationId) },
+      } as const;
+
+      void navigate(
+        options.replace === undefined
+          ? target
+          : { ...target, replace: options.replace },
+      );
+    },
+    [navigate],
+  );
+  const historyEntry = useChatHistoryEntry({
+    userId,
+    conversationId,
+    onOpenConversation: openConversation,
+  });
   const {
     conversation,
     messages,
@@ -68,6 +95,7 @@ export function ChatPage({
         to: "/chat",
         search: { conversationId: String(createdConversationId) },
       });
+      await historyEntry.refreshConversations();
     },
   });
   const billingAccess = useAIChatBillingAccess({
@@ -97,6 +125,7 @@ export function ChatPage({
   const hasChatAccess = billingAccess.hasChatAccess;
   const isComposerDisabled =
     isSubmitting || billingAccess.isCheckingAccess || !hasChatAccess;
+  const showBillingAccessPanel = billingAccess.accessState !== "ready";
 
   async function handleNewChat() {
     if (!hasChatAccess || billingAccess.isCheckingAccess) {
@@ -107,10 +136,7 @@ export function ChatPage({
   }
 
   function handleResumeConversation(selectedConversationId: number) {
-    void navigate({
-      to: "/chat",
-      search: { conversationId: String(selectedConversationId) },
-    });
+    openConversation(selectedConversationId);
   }
 
   async function handleSubmit() {
@@ -119,6 +145,7 @@ export function ChatPage({
     }
 
     await submitPrompt();
+    void historyEntry.refreshConversations();
     billingAccess.refreshAccess();
   }
 
@@ -129,6 +156,7 @@ export function ChatPage({
 
     setPrompt(text);
     await submitPromptValue(text);
+    void historyEntry.refreshConversations();
     billingAccess.refreshAccess();
   }
 
@@ -149,6 +177,7 @@ export function ChatPage({
     }
 
     await submitPromptValue(lastUserPrompt);
+    void historyEntry.refreshConversations();
     billingAccess.refreshAccess();
   }
 
@@ -225,138 +254,187 @@ export function ChatPage({
 
   return (
     <div className="flex flex-col gap-4 pb-10">
-      <div className="mx-auto w-full max-w-3xl px-4 pt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="sm:flex-1">
-            <AIChatBillingCard
-              status={billingAccess.billingStatus}
-              accessState={billingAccess.accessState}
-              isLoading={billingAccess.isBillingCardLoading}
-              isError={billingAccess.isBillingError}
-            />
+      {showBillingAccessPanel ? (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="sm:flex-1">
+              <AIChatBillingCard
+                status={billingAccess.billingStatus}
+                accessState={billingAccess.accessState}
+                isLoading={billingAccess.isBillingCardLoading}
+                isError={billingAccess.isBillingError}
+              />
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start">
+              <AIChatBillingActions
+                status={billingAccess.billingStatus}
+                accessState={billingAccess.accessState}
+                isLoading={billingAccess.isBillingCardLoading}
+                isError={billingAccess.isBillingError}
+                isRefreshingAccess={billingAccess.isRefreshingAccess}
+                isCheckoutLoading={billingAccess.isCheckoutLoading}
+                isBillingPortalLoading={billingAccess.isBillingPortalLoading}
+                onStartCheckout={billingAccess.startCheckout}
+                onManageBilling={billingAccess.manageBilling}
+                onRefreshAccess={billingAccess.refreshAccess}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                aria-label="Open chat history"
+                onClick={() => historyEntry.setIsMobileOpen(true)}
+                className="w-full lg:hidden"
+              >
+                <History className="size-4" />
+                History
+              </Button>
+            </div>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start">
-            <AIChatBillingActions
-              status={billingAccess.billingStatus}
-              accessState={billingAccess.accessState}
-              isLoading={billingAccess.isBillingCardLoading}
-              isError={billingAccess.isBillingError}
-              isRefreshingAccess={billingAccess.isRefreshingAccess}
-              isCheckoutLoading={billingAccess.isCheckoutLoading}
-              isBillingPortalLoading={billingAccess.isBillingPortalLoading}
-              onStartCheckout={billingAccess.startCheckout}
-              onManageBilling={billingAccess.manageBilling}
-              onRefreshAccess={billingAccess.refreshAccess}
-            />
+        </div>
+      ) : (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-4 lg:hidden">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start sm:justify-end">
             <Button
               type="button"
               variant="outline"
-              aria-label="New Chat"
-              onClick={handleNewChat}
-              disabled={billingAccess.isCheckingAccess || !hasChatAccess}
-              className="w-full sm:w-auto"
+              aria-label="Open chat history"
+              onClick={() => historyEntry.setIsMobileOpen(true)}
+              className="w-full"
             >
-              <Plus className="size-4" />
-              New Chat
+              <History className="size-4" />
+              History
             </Button>
           </div>
         </div>
-      </div>
+      )}
 
       {billingAccess.checkoutNotice ? (
-        <div className="mx-auto w-full max-w-3xl px-4">
+        <div className="mx-auto w-full max-w-6xl px-4">
           <CheckoutNotice checkout={billingAccess.checkoutNotice} />
         </div>
       ) : null}
       {billingAccess.billingNotice ? (
-        <div className="mx-auto w-full max-w-3xl px-4">
+        <div className="mx-auto w-full max-w-6xl px-4">
           <BillingReturnNotice billing={billingAccess.billingNotice} />
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-3xl px-4">
-        {!conversationId && showEmptyState ? (
-          <ChatHistoryEntry
-            userId={currentUserId}
-            fallback={emptyState}
-            onResumeConversation={handleResumeConversation}
-            onNewChat={() => void handleNewChat()}
-            isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
-          />
-        ) : showEmptyState ? (
-          emptyState
-        ) : (
-          <div className="flex flex-col gap-6">
-            {loadError ? (
-              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                {loadError}
-              </div>
-            ) : isLoadingConversation && messages.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                Loading conversation...
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6">
-                {messages.map((message) => (
-                  <MessageBubble
-                    key={`${message.id}-${message.updated_at}`}
-                    message={message}
-                    isLastAssistant={message.id === lastAssistantMessageId}
-                    onRetry={handleRetry}
-                    workoutDraft={
-                      message.id === latestWorkoutDraftMessageId
-                        ? conversation?.latest_workout_draft
-                        : undefined
-                    }
-                    onEditWorkoutDraft={() => {
-                      if (conversation?.latest_workout_draft) {
-                        handleEditInWorkoutForm(
-                          conversation.latest_workout_draft,
-                        );
-                      }
-                    }}
-                    onSaveWorkoutDraft={() => {
-                      if (conversation?.latest_workout_draft) {
-                        void handleSaveWorkoutDraft();
-                      }
-                    }}
-                    onOpenSavedWorkout={
-                      savedWorkoutId
-                        ? () => handleOpenSavedWorkout(savedWorkoutId)
-                        : undefined
-                    }
-                    isSavingWorkoutDraft={isSavingWorkoutDraft}
-                    isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
-                    savedWorkoutId={savedWorkoutId}
-                  />
-                ))}
-              </div>
-            )}
+      {/* Symmetric gutter (history rail width + 2rem, see --spacing-chat-gutter)
+          keeps the reading column centered in the viewport and clear of the rail. */}
+      <div
+        data-testid="chat-page-layout"
+        className="w-full px-4 lg:px-chat-gutter"
+      >
+        <ChatHistoryEntry
+          conversations={historyEntry.conversations}
+          activeConversationId={conversationId}
+          isLoading={historyEntry.isLoading}
+          error={historyEntry.error}
+          isCollapsed={historyEntry.isCollapsed}
+          isMobileOpen={historyEntry.isMobileOpen}
+          onMobileOpenChange={historyEntry.setIsMobileOpen}
+          onToggleCollapsed={() =>
+            historyEntry.setIsCollapsed((value) => !value)
+          }
+          onResumeConversation={handleResumeConversation}
+          onNewChat={() => void handleNewChat()}
+          isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
+        />
 
-            {conversation?.latest_workout_draft &&
-            latestWorkoutDraftMessageId === null ? (
-              <ChatWorkoutDraftCard
-                draft={conversation.latest_workout_draft}
-                isSaving={isSavingWorkoutDraft}
-                isSaved={isLatestWorkoutDraftSaved}
-                savedWorkoutId={savedWorkoutId}
-                onSave={() => void handleSaveWorkoutDraft()}
-                onEdit={() =>
-                  handleEditInWorkoutForm(conversation.latest_workout_draft!)
-                }
-                onOpenSavedWorkout={
-                  savedWorkoutId
-                    ? () => handleOpenSavedWorkout(savedWorkoutId)
-                    : undefined
-                }
-              />
-            ) : null}
-
-            <div className="bg-background pt-2 md:sticky md:bottom-4">
-              {composer}
+        <div
+          data-testid="chat-main-pane"
+          className="mx-auto w-full min-w-0 max-w-3xl"
+        >
+          {historyEntry.isPreparingEntry ||
+          historyEntry.isAutoOpeningRecentChat ? (
+            <div className="text-sm text-muted-foreground">
+              Opening latest chat...
             </div>
-          </div>
-        )}
+          ) : historyEntry.error && !conversationId ? (
+            <div className="flex flex-col gap-4">
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                {historyEntry.error}
+              </div>
+              {emptyState}
+            </div>
+          ) : showEmptyState ? (
+            emptyState
+          ) : (
+            <div
+              data-testid="chat-conversation-body"
+              className="flex flex-col gap-6 pt-4"
+            >
+              {loadError ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  {loadError}
+                </div>
+              ) : isLoadingConversation && messages.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading conversation...
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {messages.map((message) => (
+                    <MessageBubble
+                      key={`${message.id}-${message.updated_at}`}
+                      message={message}
+                      isLastAssistant={message.id === lastAssistantMessageId}
+                      onRetry={handleRetry}
+                      workoutDraft={
+                        message.id === latestWorkoutDraftMessageId
+                          ? conversation?.latest_workout_draft
+                          : undefined
+                      }
+                      onEditWorkoutDraft={() => {
+                        if (conversation?.latest_workout_draft) {
+                          handleEditInWorkoutForm(
+                            conversation.latest_workout_draft,
+                          );
+                        }
+                      }}
+                      onSaveWorkoutDraft={() => {
+                        if (conversation?.latest_workout_draft) {
+                          void handleSaveWorkoutDraft();
+                        }
+                      }}
+                      onOpenSavedWorkout={
+                        savedWorkoutId
+                          ? () => handleOpenSavedWorkout(savedWorkoutId)
+                          : undefined
+                      }
+                      isSavingWorkoutDraft={isSavingWorkoutDraft}
+                      isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
+                      savedWorkoutId={savedWorkoutId}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {conversation?.latest_workout_draft &&
+              latestWorkoutDraftMessageId === null ? (
+                <ChatWorkoutDraftCard
+                  draft={conversation.latest_workout_draft}
+                  isSaving={isSavingWorkoutDraft}
+                  isSaved={isLatestWorkoutDraftSaved}
+                  savedWorkoutId={savedWorkoutId}
+                  onSave={() => void handleSaveWorkoutDraft()}
+                  onEdit={() =>
+                    handleEditInWorkoutForm(conversation.latest_workout_draft!)
+                  }
+                  onOpenSavedWorkout={
+                    savedWorkoutId
+                      ? () => handleOpenSavedWorkout(savedWorkoutId)
+                      : undefined
+                  }
+                />
+              ) : null}
+
+              <div className="bg-background pt-2 md:sticky md:bottom-4">
+                {composer}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -75,7 +75,10 @@ describe("ChatRouteComponent", () => {
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
     ).toBeEnabled();
-    expect(screen.getByText("Premium")).toBeInTheDocument();
+    expect(screen.queryByText("Premium")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start 7-day trial" }),
+    ).not.toBeInTheDocument();
     expect(mockRefetchFeatureAccess).not.toHaveBeenCalled();
     expect(mockRefetchBillingStatus).not.toHaveBeenCalled();
   });
@@ -308,7 +311,12 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Premium")).toBeInTheDocument();
+    expect(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeEnabled();
+    expect(screen.queryByText("Premium")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Manage plan" }),
     ).not.toBeInTheDocument();
@@ -374,8 +382,12 @@ describe("ChatRouteComponent", () => {
         "Returned from billing. We are refreshing your AI chat billing status.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Premium")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Chat" })).toBeEnabled();
+    expect(screen.queryByText("Premium")).not.toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("button", { name: "New Chat" })
+        .some((button) => !button.hasAttribute("disabled")),
+    ).toBe(true);
     expect(
       screen.queryByText("Access continues until Jun 10, 2026."),
     ).not.toBeInTheDocument();
@@ -406,8 +418,13 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     expect(
-      await screen.findByText("Access continues until Jun 10, 2026."),
+      await screen.findByText(
+        "Cancellation received. We are refreshing your AI chat billing status.",
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Access continues until Jun 10, 2026."),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Cancel plan" }),
     ).not.toBeInTheDocument();
@@ -438,8 +455,13 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     expect(
-      await screen.findByText("Access continues until Jul 10, 2026."),
+      await screen.findByText(
+        "Cancellation received. We are refreshing your AI chat billing status.",
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Access continues until Jul 10, 2026."),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Cancel plan" }),
     ).not.toBeInTheDocument();
@@ -549,11 +571,10 @@ describe("ChatRouteComponent", () => {
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Access active")).toBeInTheDocument();
+    expect(screen.queryByText("Access active")).not.toBeInTheDocument();
   });
 
-  it("keeps chat enabled when a manual feature grant overrides blocked Stripe billing", async () => {
-    const user = userEvent.setup();
+  it("keeps chat enabled without billing chrome when a manual feature grant overrides blocked Stripe billing", async () => {
     mockBillingQueryResult.value = {
       data: {
         feature_key: "ai_chatbot",
@@ -588,10 +609,10 @@ describe("ChatRouteComponent", () => {
       ),
     ).toBeEnabled();
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
-    expect(screen.getByText("Access active")).toBeInTheDocument();
+    expect(screen.queryByText("Access active")).not.toBeInTheDocument();
     expect(
-      screen.getByText("Update billing to keep chat available."),
-    ).toBeInTheDocument();
+      screen.queryByText("Update billing to keep chat available."),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText(
         "AI chat is paused until the payment issue is resolved.",
@@ -600,12 +621,10 @@ describe("ChatRouteComponent", () => {
     expect(
       screen.queryByText("Start or restore premium access to use AI chat."),
     ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Manage plan" }));
-
-    await waitFor(() => {
-      expect(mockCreateBillingCustomerPortalSession).toHaveBeenCalledTimes(1);
-    });
+    expect(
+      screen.queryByRole("button", { name: "Manage plan" }),
+    ).not.toBeInTheDocument();
+    expect(mockCreateBillingCustomerPortalSession).not.toHaveBeenCalled();
     expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 });

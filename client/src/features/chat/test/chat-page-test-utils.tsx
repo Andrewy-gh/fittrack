@@ -132,10 +132,14 @@ vi.mock("sonner", () => ({
 
 const { ChatPage } = await import("@/features/chat/pages/chat-page");
 
-export function ChatRouteComponent() {
+export function ChatRouteComponent({
+  userId = "user-123",
+}: {
+  userId?: string;
+} = {}) {
   return (
     <ChatPage
-      userId="user-123"
+      userId={userId}
       conversationId={parseConversationId(mockSearch.conversationId)}
       conversationIdSearch={mockSearch.conversationId}
       checkout={mockSearch.checkout}

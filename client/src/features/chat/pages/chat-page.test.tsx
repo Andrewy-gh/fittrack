@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -21,8 +21,7 @@ import {
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
 
-  it("shows recent chats when entering without a conversation id", async () => {
-    const user = userEvent.setup();
+  it("opens the newest recent chat when entering without a conversation id", async () => {
     mockSearch.conversationId = undefined;
     mockListConversations.mockResolvedValue([
       {
@@ -36,33 +35,105 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Recent chats")).toBeInTheDocument();
-    expect(screen.getByText("Leg day plan")).toBeInTheDocument();
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "72" },
+        replace: true,
+      });
+    });
     expect(
       screen.queryByText("What should we train today?"),
     ).not.toBeInTheDocument();
     expect(mockGetConversation).not.toHaveBeenCalled();
+  });
 
-    await user.click(screen.getByRole("button", { name: /Leg day plan/ }));
+  it("does not auto-open stale history after the signed-in user changes", async () => {
+    mockSearch.conversationId = undefined;
+    let resolveNextHistory!: (value: Array<Record<string, unknown>>) => void;
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 72,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ])
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveNextHistory = resolve;
+        }),
+      );
 
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/chat",
-      search: { conversationId: "72" },
+    const view = render(<ChatRouteComponent userId="user-123" />);
+
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "72" },
+        replace: true,
+      });
+    });
+
+    mockNavigate.mockClear();
+    view.rerender(<ChatRouteComponent userId="user-456" />);
+
+    expect(screen.queryByText("Leg day plan")).not.toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    resolveNextHistory([
+      {
+        id: 88,
+        title: "Back day plan",
+        created_at: "2026-06-26T17:00:00Z",
+        updated_at: "2026-06-26T17:05:00Z",
+        last_message_at: "2026-06-26T17:05:00Z",
+      },
+    ]);
+
+    expect(await screen.findByText("Back day plan")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "88" },
+        replace: true,
+      });
     });
   });
 
-  it("keeps explicit New Chat available when recent chats exist", async () => {
+  it("keeps explicit New Chat available from chat history", async () => {
     const user = userEvent.setup();
-    mockSearch.conversationId = undefined;
-    mockListConversations.mockResolvedValue([
-      {
-        id: 72,
-        title: "Leg day plan",
-        created_at: "2026-06-25T17:00:00Z",
-        updated_at: "2026-06-25T17:05:00Z",
-        last_message_at: "2026-06-25T17:05:00Z",
-      },
-    ]);
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 73,
+          title: "Fresh chat",
+          created_at: "2026-06-26T17:00:00Z",
+          updated_at: "2026-06-26T17:00:00Z",
+          last_message_at: "2026-06-26T17:00:00Z",
+        },
+        {
+          id: 41,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ]);
     mockCreateConversation.mockResolvedValue({
       id: 73,
       created_at: "2026-06-26T17:00:00Z",
@@ -71,7 +142,7 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Recent chats")).toBeInTheDocument();
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
     const newChatButtons = screen.getAllByRole("button", { name: "New Chat" });
     await user.click(newChatButtons.at(-1)!);
 
@@ -80,6 +151,205 @@ describe("ChatRouteComponent", () => {
       to: "/chat",
       search: { conversationId: "73" },
     });
+    expect(await screen.findByText("Fresh chat")).toBeInTheDocument();
+    expect(mockListConversations).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes chat history after the first prompt creates a conversation", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockListConversations
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 73,
+          created_at: "2026-06-26T17:00:00Z",
+          updated_at: "2026-06-26T17:00:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 73,
+          title: "What should we train",
+          created_at: "2026-06-26T17:00:00Z",
+          updated_at: "2026-06-26T17:05:00Z",
+          last_message_at: "2026-06-26T17:05:00Z",
+        },
+      ]);
+    mockCreateConversation.mockResolvedValue({
+      id: 73,
+      created_at: "2026-06-26T17:00:00Z",
+      updated_at: "2026-06-26T17:00:00Z",
+    });
+    mockGetConversation.mockResolvedValue({
+      conversation: {
+        id: 73,
+        title: "What should we train",
+        created_at: "2026-06-26T17:00:00Z",
+        updated_at: "2026-06-26T17:05:00Z",
+        last_message_at: "2026-06-26T17:05:00Z",
+      },
+      messages: [],
+    });
+    mockStreamMessage.mockImplementation(
+      async (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+          onDone?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          message_id: 72,
+        });
+        options?.onDone?.({
+          type: "done",
+          message_id: 72,
+          text: "Start with squats.",
+        });
+
+        return {
+          doneEvent: {
+            type: "done",
+            message_id: 72,
+            text: "Start with squats.",
+          },
+          endedWithError: false,
+        };
+      },
+    );
+
+    render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "What should we train?",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "73" },
+    });
+    expect(await screen.findByText("What should we train")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockListConversations).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it("shows every recent chat returned by the history endpoint", async () => {
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue(
+      Array.from({ length: 50 }, (_, index) => ({
+        id: index + 1,
+        title: `Recent chat ${index + 1}`,
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      })),
+    );
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Recent chat 50")).toBeInTheDocument();
+  });
+
+  it("lets desktop users collapse and expand chat history", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 41,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+
+    const expandedHistory = await screen.findByLabelText("Chat history");
+    expect(expandedHistory).toHaveClass("lg:fixed", "lg:left-0");
+    expect(screen.getByTestId("chat-page-layout")).toHaveClass(
+      "lg:px-chat-gutter",
+    );
+    expect(screen.getByTestId("chat-main-pane")).toHaveClass(
+      "mx-auto",
+      "max-w-3xl",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Collapse chat history" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Expand chat history" }),
+    ).toBeInTheDocument();
+    const collapsedHistory = screen.getByLabelText("Collapsed chat history");
+    expect(collapsedHistory).toHaveClass("lg:fixed", "lg:left-0");
+    expect(screen.getByTestId("chat-page-layout")).toHaveClass(
+      "lg:px-chat-gutter",
+    );
+    expect(screen.getByTestId("chat-main-pane")).toHaveClass(
+      "mx-auto",
+      "max-w-3xl",
+    );
+    expect(
+      within(collapsedHistory)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Expand chat history", "New Chat"]);
+    expect(
+      screen.queryByLabelText("Collapse chat history"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("omits ready access chrome from the chat page", async () => {
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 41,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
+    expect(screen.queryByText("Access active")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "New Chat" })).toHaveLength(1);
+  });
+
+  it("adds top padding when showing an existing conversation", async () => {
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "user",
+          content: "Hello anybody there?",
+          status: "completed",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:00Z",
+          completed_at: "2026-03-26T17:00:00Z",
+        },
+      ]),
+    );
+    mockListConversations.mockResolvedValue([]);
+
+    render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Hello anybody there?")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-conversation-body")).toHaveClass("pt-4");
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
@@ -565,7 +835,7 @@ describe("ChatRouteComponent", () => {
       expect(mockStreamMessage).toHaveBeenCalledTimes(1);
     });
 
-    await user.click(screen.getByRole("button", { name: "New Chat" }));
+    await user.click(screen.getAllByRole("button", { name: "New Chat" })[0]);
 
     await waitFor(() => {
       expect(mockShowErrorToast).toHaveBeenCalledWith(

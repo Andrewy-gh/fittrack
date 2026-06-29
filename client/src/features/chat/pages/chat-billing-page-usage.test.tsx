@@ -93,8 +93,13 @@ describe("ChatRouteComponent billing usage", () => {
     render(<ChatRouteComponent />);
 
     expect(
-      await screen.findByText("1 of 30 trial prompts used"),
-    ).toBeInTheDocument();
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeEnabled();
+    expect(
+      screen.queryByText("1 of 30 trial prompts used"),
+    ).not.toBeInTheDocument();
     await user.type(
       screen.getByPlaceholderText(
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
