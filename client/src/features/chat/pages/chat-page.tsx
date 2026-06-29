@@ -20,7 +20,10 @@ import { ChatEmptyState } from "../components/chat-empty-state";
 import { ChatHistoryEntry } from "../components/chat-history-entry";
 import { ChatMessageActions } from "../components/chat-message-actions";
 import { ChatTypingIndicator } from "../components/chat-typing-indicator";
-import { ChatWorkoutDraftCard } from "../components/chat-workout-draft-card";
+import {
+  ChatWorkoutDraftCard,
+  type ChatWorkoutDraftSaveState,
+} from "../components/chat-workout-draft-card";
 import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
 import { useChatHistoryEntry } from "../hooks/use-chat-history-entry";
@@ -212,6 +215,13 @@ export function ChatPage({
     conversation?.latest_workout_draft_status?.is_saved ?? false;
   const savedWorkoutId =
     conversation?.latest_workout_draft_status?.saved_workout_id;
+  const workoutDraftSaveState = getWorkoutDraftSaveState({
+    isSaving: isSavingWorkoutDraft,
+    isSaved: isLatestWorkoutDraftSaved,
+    savedWorkoutId,
+    onOpenSavedWorkout: handleOpenSavedWorkout,
+  });
+  const latestWorkoutDraft = conversation?.latest_workout_draft;
 
   let lastAssistantMessageId: number | null = null;
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -393,39 +403,22 @@ export function ChatPage({
                         }
                       }}
                       onSaveWorkoutDraft={() => {
-                        if (conversation?.latest_workout_draft) {
+                        if (latestWorkoutDraft) {
                           void handleSaveWorkoutDraft();
                         }
                       }}
-                      onOpenSavedWorkout={
-                        savedWorkoutId
-                          ? () => handleOpenSavedWorkout(savedWorkoutId)
-                          : undefined
-                      }
-                      isSavingWorkoutDraft={isSavingWorkoutDraft}
-                      isSavedWorkoutDraft={isLatestWorkoutDraftSaved}
-                      savedWorkoutId={savedWorkoutId}
+                      workoutDraftSaveState={workoutDraftSaveState}
                     />
                   ))}
                 </div>
               )}
 
-              {conversation?.latest_workout_draft &&
-              latestWorkoutDraftMessageId === null ? (
+              {latestWorkoutDraft && latestWorkoutDraftMessageId === null ? (
                 <ChatWorkoutDraftCard
-                  draft={conversation.latest_workout_draft}
-                  isSaving={isSavingWorkoutDraft}
-                  isSaved={isLatestWorkoutDraftSaved}
-                  savedWorkoutId={savedWorkoutId}
+                  draft={latestWorkoutDraft}
+                  saveState={workoutDraftSaveState}
                   onSave={() => void handleSaveWorkoutDraft()}
-                  onEdit={() =>
-                    handleEditInWorkoutForm(conversation.latest_workout_draft!)
-                  }
-                  onOpenSavedWorkout={
-                    savedWorkoutId
-                      ? () => handleOpenSavedWorkout(savedWorkoutId)
-                      : undefined
-                  }
+                  onEdit={() => handleEditInWorkoutForm(latestWorkoutDraft)}
                 />
               ) : null}
 
@@ -481,23 +474,17 @@ function MessageBubble({
   isLastAssistant,
   onRetry,
   workoutDraft,
-  isSavingWorkoutDraft,
-  isSavedWorkoutDraft,
-  savedWorkoutId,
+  workoutDraftSaveState,
   onSaveWorkoutDraft,
   onEditWorkoutDraft,
-  onOpenSavedWorkout,
 }: {
   message: AIChatMessage;
   isLastAssistant?: boolean;
   onRetry?: () => void;
   workoutDraft?: AIWorkoutDraft;
-  isSavingWorkoutDraft?: boolean;
-  isSavedWorkoutDraft?: boolean;
-  savedWorkoutId?: number;
+  workoutDraftSaveState: ChatWorkoutDraftSaveState;
   onSaveWorkoutDraft?: () => void;
   onEditWorkoutDraft?: () => void;
-  onOpenSavedWorkout?: () => void;
 }) {
   const isUser = message.role === "user";
 
@@ -549,14 +536,41 @@ function MessageBubble({
         <ChatWorkoutDraftCard
           className={cn("mt-1 w-full")}
           draft={workoutDraft}
-          isSaving={isSavingWorkoutDraft}
-          isSaved={isSavedWorkoutDraft}
-          savedWorkoutId={savedWorkoutId}
+          saveState={workoutDraftSaveState}
           onSave={onSaveWorkoutDraft}
           onEdit={onEditWorkoutDraft}
-          onOpenSavedWorkout={onOpenSavedWorkout}
         />
       ) : null}
     </div>
   );
+}
+
+function getWorkoutDraftSaveState({
+  isSaving,
+  isSaved,
+  savedWorkoutId,
+  onOpenSavedWorkout,
+}: {
+  readonly isSaving: boolean;
+  readonly isSaved: boolean;
+  readonly savedWorkoutId: number | undefined;
+  readonly onOpenSavedWorkout: (workoutId: number) => void;
+}): ChatWorkoutDraftSaveState {
+  if (isSaving) {
+    return { status: "saving" };
+  }
+
+  if (!isSaved) {
+    return { status: "idle" };
+  }
+
+  if (savedWorkoutId === undefined) {
+    return { status: "saved" };
+  }
+
+  return {
+    status: "savedWithWorkout",
+    workoutId: savedWorkoutId,
+    onOpenSavedWorkout: () => onOpenSavedWorkout(savedWorkoutId),
+  };
 }
