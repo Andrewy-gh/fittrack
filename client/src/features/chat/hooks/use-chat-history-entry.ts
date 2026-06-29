@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   listAIChatConversations,
   type AIChatConversationSummary,
@@ -31,26 +31,32 @@ export function useChatHistoryEntry({
   const [error, setError] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const requestIdRef = useRef(0);
 
   const loadConversations = useCallback(
     async (requestUserId: string, signal?: AbortSignal) => {
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+      const isCurrentRequest = () =>
+        !signal?.aborted && requestIdRef.current === requestId;
+
       setIsLoading(true);
       setError(null);
 
       try {
         const loadedConversations = await listAIChatConversations({ signal });
-        if (!signal?.aborted) {
+        if (isCurrentRequest()) {
           setConversations(loadedConversations);
           setLoadedUserId(requestUserId);
         }
       } catch (listError: unknown) {
-        if (!signal?.aborted) {
+        if (isCurrentRequest()) {
           setConversations([]);
           setLoadedUserId(null);
           setError(getErrorMessage(listError, "Could not load recent chats."));
         }
       } finally {
-        if (!signal?.aborted) {
+        if (isCurrentRequest()) {
           setIsLoading(false);
         }
       }
@@ -60,6 +66,7 @@ export function useChatHistoryEntry({
 
   useEffect(() => {
     if (!userId) {
+      requestIdRef.current += 1;
       setConversations([]);
       setLoadedUserId(null);
       setError(null);
