@@ -155,6 +155,93 @@ describe("ChatRouteComponent", () => {
     expect(mockListConversations).toHaveBeenCalledTimes(2);
   });
 
+  it("refreshes chat history after the first prompt creates a conversation", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockListConversations
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 73,
+          created_at: "2026-06-26T17:00:00Z",
+          updated_at: "2026-06-26T17:00:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 73,
+          title: "What should we train",
+          created_at: "2026-06-26T17:00:00Z",
+          updated_at: "2026-06-26T17:05:00Z",
+          last_message_at: "2026-06-26T17:05:00Z",
+        },
+      ]);
+    mockCreateConversation.mockResolvedValue({
+      id: 73,
+      created_at: "2026-06-26T17:00:00Z",
+      updated_at: "2026-06-26T17:00:00Z",
+    });
+    mockGetConversation.mockResolvedValue({
+      conversation: {
+        id: 73,
+        title: "What should we train",
+        created_at: "2026-06-26T17:00:00Z",
+        updated_at: "2026-06-26T17:05:00Z",
+        last_message_at: "2026-06-26T17:05:00Z",
+      },
+      messages: [],
+    });
+    mockStreamMessage.mockImplementation(
+      async (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+          onDone?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          message_id: 72,
+        });
+        options?.onDone?.({
+          type: "done",
+          message_id: 72,
+          text: "Start with squats.",
+        });
+
+        return {
+          doneEvent: {
+            type: "done",
+            message_id: 72,
+            text: "Start with squats.",
+          },
+          endedWithError: false,
+        };
+      },
+    );
+
+    render(<ChatRouteComponent />);
+
+    await user.type(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+      "What should we train?",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "73" },
+    });
+    expect(await screen.findByText("What should we train")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockListConversations).toHaveBeenCalledTimes(3);
+    });
+  });
+
   it("shows every recent chat returned by the history endpoint", async () => {
     mockGetConversation.mockResolvedValue(conversationDetail([]));
     mockListConversations.mockResolvedValue(

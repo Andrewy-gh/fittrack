@@ -145,6 +145,7 @@ export function ChatPage({
     }
 
     await submitPrompt();
+    void historyEntry.refreshConversations();
     billingAccess.refreshAccess();
   }
 
@@ -155,6 +156,7 @@ export function ChatPage({
 
     setPrompt(text);
     await submitPromptValue(text);
+    void historyEntry.refreshConversations();
     billingAccess.refreshAccess();
   }
 
@@ -175,6 +177,7 @@ export function ChatPage({
     }
 
     await submitPromptValue(lastUserPrompt);
+    void historyEntry.refreshConversations();
     billingAccess.refreshAccess();
   }
 
