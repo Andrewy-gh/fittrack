@@ -1,43 +1,31 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
+import { AppShell } from "@/components/nav/app-shell";
 import { Badge } from "@/components/ui/badge";
 import {
   getPolicySections,
   effectiveDate,
 } from "@/features/privacy/privacy-content";
+import { useDisplayMode } from "@/hooks/use-display-mode";
 
 export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
 });
 
-function PrivacyPage() {
+export function PrivacyPage() {
+  const { user } = Route.useRouteContext();
+  const displayMode = useDisplayMode();
   const sections = getPolicySections();
 
   return (
-    <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link
-            to="/"
-            className="flex items-center gap-2 font-bold tracking-wide text-foreground"
-          >
-            <img
-              src="/favicon.svg"
-              alt=""
-              aria-hidden="true"
-              className="h-6 w-6 rounded-sm"
-            />
-            FITTRACK
-          </Link>
-          <Link
-            to="/"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Home
-          </Link>
-        </div>
-      </header>
-
+    <main
+      className={
+        displayMode === "pwa"
+          ? "min-h-screen bg-background pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]"
+          : "min-h-screen bg-background"
+      }
+    >
+      <AppShell user={user} />
       <section className="px-6 py-14">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12 max-w-3xl space-y-4">
