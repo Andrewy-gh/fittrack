@@ -112,6 +112,23 @@ describe("useAIChatBillingAccess checkout polling", () => {
     expect(result.current.isBillingError).toBe(false);
   });
 
+  it("passes the React Query cancellation signal to checkout polling requests", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    const { result } = renderBillingAccessHook();
+
+    await waitFor(() => {
+      expect(result.current.accessState).toBe("ready");
+    });
+    expectSharedCancellationSignal(
+      mocks.mockGetCheckoutFeatureAccess.mock.calls[0]?.[0],
+      mocks.mockGetCheckoutBillingStatus.mock.calls[0]?.[0],
+    );
+  });
+
   it("keeps exhausted checkout polling in payment confirming when billing has not caught up", async () => {
     mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
     mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
@@ -386,7 +403,51 @@ describe("useAIChatBillingAccess checkout polling", () => {
     expect(mocks.mockGetBaseBillingStatus).toHaveBeenCalled();
     expect(mocks.mockGetBaseFeatureAccess).toHaveBeenCalled();
   });
+
+  it("passes the React Query cancellation signal to billing cancellation polling requests", async () => {
+    mocks.mockGetBaseBillingStatus.mockResolvedValue(activeBillingStatus);
+    mocks.mockGetBaseFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+    mocks.mockGetCheckoutBillingStatus.mockResolvedValue({
+      ...activeBillingStatus,
+      subscription: {
+        stripe_subscription_id: "sub_canceled",
+        status: "canceled",
+        cancellation_scheduled: false,
+      },
+    });
+    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([aiChatFeatureGrant]);
+
+    const { result } = renderBillingAccessHook({
+      checkout: undefined,
+      billing: "cancelled",
+    });
+
+    await waitFor(() => {
+      expect(result.current.billingStatus?.subscription?.status).toBe(
+        "canceled",
+      );
+    });
+    expectSharedCancellationSignal(
+      mocks.mockGetCheckoutFeatureAccess.mock.calls[0]?.[0],
+      mocks.mockGetCheckoutBillingStatus.mock.calls[0]?.[0],
+    );
+  });
 });
+
+function expectSharedCancellationSignal(
+  featureAccessOptions: unknown,
+  billingStatusOptions: unknown,
+) {
+  expect(featureAccessOptions).toEqual({
+    signal: expect.any(AbortSignal),
+  });
+  expect(billingStatusOptions).toEqual({
+    signal: expect.any(AbortSignal),
+  });
+  expect((featureAccessOptions as { signal?: AbortSignal }).signal).toBe(
+    (billingStatusOptions as { signal?: AbortSignal }).signal,
+  );
+}
 
 function renderBillingAccessHook(
   options: {
