@@ -479,7 +479,7 @@ function parseAIChatStreamEvent(rawEventJson: string): AIChatStreamEvent {
       const workoutDraft = parseOptionalWorkoutDraft(event.workout_draft);
       return {
         type,
-        text: parseRequiredString(event, "text"),
+        text: parseOptionalStringValue(event, "text") ?? "",
         ...parseDoneEventContext(event),
         ...(workoutDraft === undefined ? {} : { workout_draft: workoutDraft }),
       };
@@ -636,17 +636,29 @@ function parseOptionalStringProperty<K extends string>(
   record: UnknownRecord,
   key: K,
 ): Partial<Record<K, string>> {
-  const value = record[key];
+  const value = parseOptionalStringValue(record, key);
   if (value === undefined) {
     return {};
-  }
-  if (typeof value !== "string") {
-    throw new Error(`AI chat stream event ${key} must be a string`);
   }
 
   // SAFETY: The computed key is the exact key argument, and the value was checked
   // as a string before constructing the single-property record.
   return { [key]: value } as Record<K, string>;
+}
+
+function parseOptionalStringValue(
+  record: UnknownRecord,
+  key: string,
+): string | undefined {
+  const value = record[key];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`AI chat stream event ${key} must be a string`);
+  }
+
+  return value;
 }
 
 function parseOptionalNumberProperty<K extends string>(

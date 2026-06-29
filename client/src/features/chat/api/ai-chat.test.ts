@@ -192,6 +192,44 @@ describe("ai chat api wrapper", () => {
     });
   });
 
+  it("accepts completed done events when the server omits empty text", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            [
+              "event: done",
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61}',
+              "",
+              "",
+            ].join("\n"),
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+        },
+      }),
+    );
+
+    const onDone = vi.fn();
+
+    const result = await streamAIChatMessage(41, "hello", { onDone });
+
+    expectDoneEvent(result.doneEvent);
+    expect(result.endedWithError).toBe(false);
+    expect(result.doneEvent.text).toBe("");
+    expect(onDone).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "done", text: "" }),
+    );
+  });
+
   it("resumes a chat stream after a sequence cursor", async () => {
     const stream = new ReadableStream({
       start(controller) {
