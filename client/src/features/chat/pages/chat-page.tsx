@@ -316,14 +316,11 @@ export function ChatPage({
         </div>
       ) : null}
 
+      {/* Symmetric gutter (history rail width + 2rem, see --spacing-chat-gutter)
+          keeps the reading column centered in the viewport and clear of the rail. */}
       <div
         data-testid="chat-page-layout"
-        className={cn(
-          "w-full px-4",
-          historyEntry.isCollapsed
-            ? "mx-auto max-w-3xl"
-            : "mx-auto max-w-6xl lg:ml-72 lg:mr-0 lg:max-w-none lg:px-8",
-        )}
+        className="w-full px-4 lg:px-chat-gutter"
       >
         <ChatHistoryEntry
           conversations={historyEntry.conversations}
@@ -343,12 +340,7 @@ export function ChatPage({
 
         <div
           data-testid="chat-main-pane"
-          className={cn(
-            "min-w-0",
-            historyEntry.isCollapsed
-              ? "w-full lg:max-w-3xl"
-              : "w-full lg:max-w-5xl",
-          )}
+          className="mx-auto w-full min-w-0 max-w-3xl"
         >
           {historyEntry.isPreparingEntry ||
           historyEntry.isAutoOpeningRecentChat ? (

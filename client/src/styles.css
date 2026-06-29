@@ -55,6 +55,9 @@ code {
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: Menlo, Monaco, "Courier New", monospace;
   --radius: 0.75rem;
+  /* Width of the expanded chat history rail; the chat page derives its centered
+     gutter from this (see --spacing-chat-gutter below). */
+  --chat-sidebar-w: 18rem;
   --shadow-2xs: 0px 4px 16px -2px hsl(0 0% 0% / 0.03);
   --shadow-xs: 0px 4px 16px -2px hsl(0 0% 0% / 0.03);
   --shadow-sm:
@@ -181,6 +184,11 @@ code {
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Chat layout: w-chat-sidebar matches the expanded history rail; the gutter
+     (rail + 2rem) keeps the centered chat column clear of it at all widths. */
+  --spacing-chat-sidebar: var(--chat-sidebar-w);
+  --spacing-chat-gutter: calc(var(--chat-sidebar-w) + 2rem);
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);

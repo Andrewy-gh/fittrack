@@ -158,7 +158,7 @@ describe("ChatRouteComponent", () => {
   it("shows every recent chat returned by the history endpoint", async () => {
     mockGetConversation.mockResolvedValue(conversationDetail([]));
     mockListConversations.mockResolvedValue(
-      Array.from({ length: 10 }, (_, index) => ({
+      Array.from({ length: 50 }, (_, index) => ({
         id: index + 1,
         title: `Recent chat ${index + 1}`,
         created_at: "2026-06-25T17:00:00Z",
@@ -169,7 +169,7 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
-    expect(await screen.findByText("Recent chat 10")).toBeInTheDocument();
+    expect(await screen.findByText("Recent chat 50")).toBeInTheDocument();
   });
 
   it("lets desktop users collapse and expand chat history", async () => {
@@ -190,10 +190,12 @@ describe("ChatRouteComponent", () => {
     const expandedHistory = await screen.findByLabelText("Chat history");
     expect(expandedHistory).toHaveClass("lg:fixed", "lg:left-0");
     expect(screen.getByTestId("chat-page-layout")).toHaveClass(
-      "lg:ml-72",
-      "lg:max-w-none",
+      "lg:px-chat-gutter",
     );
-    expect(screen.getByTestId("chat-main-pane")).toHaveClass("lg:max-w-5xl");
+    expect(screen.getByTestId("chat-main-pane")).toHaveClass(
+      "mx-auto",
+      "max-w-3xl",
+    );
 
     await user.click(
       screen.getByRole("button", { name: "Collapse chat history" }),
@@ -205,10 +207,12 @@ describe("ChatRouteComponent", () => {
     const collapsedHistory = screen.getByLabelText("Collapsed chat history");
     expect(collapsedHistory).toHaveClass("lg:fixed", "lg:left-0");
     expect(screen.getByTestId("chat-page-layout")).toHaveClass(
+      "lg:px-chat-gutter",
+    );
+    expect(screen.getByTestId("chat-main-pane")).toHaveClass(
       "mx-auto",
       "max-w-3xl",
     );
-    expect(screen.getByTestId("chat-main-pane")).toHaveClass("lg:max-w-3xl");
     expect(
       within(collapsedHistory)
         .getAllByRole("button")

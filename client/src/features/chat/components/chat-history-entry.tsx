@@ -146,7 +146,7 @@ function DesktopHistoryPanel({
   return (
     <aside
       aria-label="Chat history"
-      className="hidden w-72 flex-col border-r bg-background lg:fixed lg:bottom-0 lg:left-0 lg:top-[3.25rem] lg:z-20 lg:flex"
+      className="hidden w-chat-sidebar flex-col border-r bg-background lg:fixed lg:bottom-0 lg:left-0 lg:top-[3.25rem] lg:z-20 lg:flex"
     >
       <div className="flex items-center justify-between gap-2 border-b p-3">
         <div className="flex min-w-0 items-center gap-2">
