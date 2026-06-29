@@ -3,6 +3,7 @@ package aichat
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -162,5 +163,24 @@ func (h *Handler) writeStreamError(sse *sseWriter, r *http.Request, conversation
 }
 
 func (h *Handler) logStreamWriteFailure(message string, r *http.Request, err error) {
-	h.logger.Error(message, "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+	h.logger.Error(message,
+		"path", r.URL.Path,
+		"method", r.Method,
+		"request_id", request.GetRequestID(r.Context()),
+		"error_category", "stream_write",
+		"error_present", err != nil,
+		"error_type", fmt.Sprintf("%T", err))
+}
+
+func (h *Handler) logServiceFailure(message string, r *http.Request, err error, attrs ...any) {
+	logAttrs := []any{
+		"path", r.URL.Path,
+		"method", r.Method,
+		"request_id", request.GetRequestID(r.Context()),
+		"error_category", "service",
+		"error_present", err != nil,
+		"error_type", fmt.Sprintf("%T", err),
+	}
+	logAttrs = append(logAttrs, attrs...)
+	h.logger.Error(message, logAttrs...)
 }

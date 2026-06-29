@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
@@ -252,6 +251,19 @@ func TestRoutes_RegistersAccountDeletion(t *testing.T) {
 }
 
 func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get working directory: %v", err)
+	}
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatalf("switch to temporary static file directory: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("restore working directory: %v", err)
+		}
+	})
+
 	writeStaticTestFile(t, "index.html", "<!doctype html>")
 	writeStaticTestFile(t, "sw.js", "self.skipWaiting()")
 	writeStaticTestFile(t, "manifest.webmanifest", "{}")
@@ -330,12 +342,4 @@ func writeStaticTestFile(t *testing.T, relativePath string, contents string) {
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 		t.Fatalf("write static test file: %v", err)
 	}
-	t.Cleanup(func() {
-		for range 10 {
-			if err := os.RemoveAll("dist"); err == nil || os.IsNotExist(err) {
-				return
-			}
-			time.Sleep(50 * time.Millisecond)
-		}
-	})
 }

@@ -94,8 +94,9 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 	fs := http.FileServer(http.Dir("./dist"))
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := http.Dir("./dist").Open(r.URL.Path)
+		file, err := http.Dir("./dist").Open(r.URL.Path)
 		if err == nil {
+			_ = file.Close()
 			setStaticCacheHeader(w, r.URL.Path)
 			fs.ServeHTTP(w, r)
 			return
