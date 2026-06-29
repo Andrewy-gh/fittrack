@@ -17,7 +17,10 @@ import {
 } from "../components/ai-chat-billing-card";
 import { ChatComposer } from "../components/chat-composer";
 import { ChatEmptyState } from "../components/chat-empty-state";
-import { ChatHistoryEntry } from "../components/chat-history-entry";
+import {
+  ChatHistoryEntry,
+  getChatHistoryListState,
+} from "../components/chat-history-entry";
 import { ChatMessageActions } from "../components/chat-message-actions";
 import { ChatTypingIndicator } from "../components/chat-typing-indicator";
 import {
@@ -107,6 +110,12 @@ export function ChatPage({
     billing,
     conversationId: conversationIdSearch,
     navigate,
+  });
+  const historyState = getChatHistoryListState({
+    conversations: historyEntry.conversations,
+    activeConversationId: conversationId,
+    isLoading: historyEntry.isLoading,
+    error: historyEntry.error,
   });
 
   if (!userId) {
@@ -336,10 +345,7 @@ export function ChatPage({
         className="w-full px-4 lg:px-chat-gutter"
       >
         <ChatHistoryEntry
-          conversations={historyEntry.conversations}
-          activeConversationId={conversationId}
-          isLoading={historyEntry.isLoading}
-          error={historyEntry.error}
+          historyState={historyState}
           isCollapsed={historyEntry.isCollapsed}
           isMobileOpen={historyEntry.isMobileOpen}
           onMobileOpenChange={historyEntry.setIsMobileOpen}
