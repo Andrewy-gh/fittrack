@@ -76,7 +76,9 @@ describe("useChatHistoryEntry", () => {
         expect.objectContaining({ title: "User 2 current chat" }),
       ]);
     });
-    expect(view.result.current.isPreparingEntry).toBe(false);
+    expect(view.result.current.entryState).toEqual({
+      status: "openingLatestChat",
+    });
 
     await act(async () => {
       resolveStaleRefresh([conversation(73, "User 1 stale chat")]);
@@ -85,6 +87,50 @@ describe("useChatHistoryEntry", () => {
     expect(view.result.current.conversations).toEqual([
       expect.objectContaining({ title: "User 2 current chat" }),
     ]);
-    expect(view.result.current.isPreparingEntry).toBe(false);
+    expect(view.result.current.entryState).toEqual({
+      status: "openingLatestChat",
+    });
+  });
+
+  it("models the no-conversation loading path as opening the latest chat", () => {
+    mockListConversations.mockReturnValue(new Promise(() => {}));
+
+    const view = renderHook(() =>
+      useChatHistoryEntry({
+        userId: "user-1",
+        conversationId: null,
+        onOpenConversation: vi.fn(),
+      }),
+    );
+
+    expect(view.result.current.entryState).toEqual({
+      status: "openingLatestChat",
+    });
+  });
+
+  it("models no-conversation history load failures separately from ready chat content", async () => {
+    mockListConversations.mockRejectedValue(new Error("Recent chats failed"));
+
+    const view = renderHook(() =>
+      useChatHistoryEntry({
+        userId: "user-1",
+        conversationId: null,
+        onOpenConversation: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(view.result.current.entryState).toEqual({
+        status: "historyLoadError",
+        message: "Recent chats failed",
+      });
+    });
+
+    view.rerender();
+
+    expect(view.result.current.entryState).toEqual({
+      status: "historyLoadError",
+      message: "Recent chats failed",
+    });
   });
 });
