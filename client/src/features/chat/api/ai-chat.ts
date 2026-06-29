@@ -88,22 +88,43 @@ export type AIWorkoutDraft = {
   exercises: AIWorkoutExerciseInput[];
 };
 
-export type AIChatStreamEvent = {
-  type: "start" | "delta" | "done" | "error";
+type AIChatStreamEventContext = {
   request_id?: string;
   conversation_id?: number;
   run_id?: number;
   message_id?: number;
   model?: string;
-  delta?: string;
-  text?: string;
-  message?: string;
   sequence?: number;
-  workout_draft?: AIWorkoutDraft;
 };
 
+export type AIChatStreamStartEvent = {
+  type: "start";
+} & AIChatStreamEventContext;
+
+export type AIChatStreamDeltaEvent = {
+  type: "delta";
+  delta: string;
+} & AIChatStreamEventContext;
+
+export type AIChatStreamDoneEvent = {
+  type: "done";
+  text: string;
+  workout_draft?: AIWorkoutDraft;
+} & AIChatStreamEventContext;
+
+export type AIChatStreamErrorEvent = {
+  type: "error";
+  message: string;
+} & AIChatStreamEventContext;
+
+export type AIChatStreamEvent =
+  | AIChatStreamStartEvent
+  | AIChatStreamDeltaEvent
+  | AIChatStreamDoneEvent
+  | AIChatStreamErrorEvent;
+
 export type AIChatStreamResult = {
-  doneEvent?: AIChatStreamEvent;
+  doneEvent?: AIChatStreamDoneEvent | AIChatStreamErrorEvent;
   endedWithError: boolean;
 };
 
@@ -135,11 +156,13 @@ type ParsedSSEChunk = {
   id?: string;
 };
 
+type UnknownRecord = Record<string, unknown>;
+
 type StreamHandlers = {
-  onStart?: (event: AIChatStreamEvent) => void;
-  onDelta?: (event: AIChatStreamEvent) => void;
-  onDone?: (event: AIChatStreamEvent) => void;
-  onErrorEvent?: (event: AIChatStreamEvent) => void;
+  onStart?: (event: AIChatStreamStartEvent) => void;
+  onDelta?: (event: AIChatStreamDeltaEvent) => void;
+  onDone?: (event: AIChatStreamDoneEvent) => void;
+  onErrorEvent?: (event: AIChatStreamErrorEvent) => void;
   signal?: AbortSignal;
 };
 
@@ -363,7 +386,7 @@ async function readAIChatStreamResponse(
             handlers.onErrorEvent?.(event);
             return { doneEvent: event, endedWithError: true };
           default:
-            break;
+            return casesHandled(event);
         }
       }
     }
@@ -428,9 +451,223 @@ function parseSSEChunk(chunk: string): ParsedSSEChunk | null {
   }
 
   return {
-    event: JSON.parse(dataLines.join("\n")) as AIChatStreamEvent,
+    event: parseAIChatStreamEvent(dataLines.join("\n")),
     id,
   };
+}
+
+function parseAIChatStreamEvent(rawEventJson: string): AIChatStreamEvent {
+  let rawEvent: unknown;
+  try {
+    rawEvent = JSON.parse(rawEventJson);
+  } catch {
+    throw new Error("Invalid AI chat stream event JSON");
+  }
+
+  const event = parseRecord(rawEvent, "AI chat stream event");
+  const type = parseRequiredString(event, "type");
+  switch (type) {
+    case "start":
+      return { type, ...parseStreamEventContext(event) };
+    case "delta":
+      return {
+        type,
+        delta: parseRequiredString(event, "delta"),
+        ...parseStreamEventSequence(event),
+      };
+    case "done": {
+      const workoutDraft = parseOptionalWorkoutDraft(event.workout_draft);
+      return {
+        type,
+        text: parseRequiredString(event, "text"),
+        ...parseDoneEventContext(event),
+        ...(workoutDraft === undefined ? {} : { workout_draft: workoutDraft }),
+      };
+    }
+    case "error":
+      return {
+        type,
+        message: parseRequiredString(event, "message"),
+        ...parseErrorEventContext(event),
+      };
+    default:
+      throw new Error(`Unknown AI chat stream event type: ${type}`);
+  }
+}
+
+function parseStreamEventContext(
+  event: UnknownRecord,
+): AIChatStreamEventContext {
+  return {
+    ...parseStreamEventIdentity(event),
+    ...parseOptionalStringProperty(event, "request_id"),
+    ...parseOptionalStringProperty(event, "model"),
+    ...parseStreamEventSequence(event),
+  };
+}
+
+function parseDoneEventContext(
+  event: UnknownRecord,
+): Omit<AIChatStreamEventContext, "request_id"> {
+  return {
+    ...parseStreamEventIdentity(event),
+    ...parseOptionalStringProperty(event, "model"),
+    ...parseStreamEventSequence(event),
+  };
+}
+
+function parseErrorEventContext(
+  event: UnknownRecord,
+): Omit<AIChatStreamEventContext, "request_id" | "model" | "sequence"> {
+  return parseStreamEventIdentity(event);
+}
+
+function parseStreamEventIdentity(
+  event: UnknownRecord,
+): Pick<AIChatStreamEventContext, "conversation_id" | "run_id" | "message_id"> {
+  return {
+    ...parseOptionalNumberProperty(event, "conversation_id"),
+    ...parseOptionalNumberProperty(event, "run_id"),
+    ...parseOptionalNumberProperty(event, "message_id"),
+  };
+}
+
+function parseStreamEventSequence(
+  event: UnknownRecord,
+): Pick<AIChatStreamEventContext, "sequence"> {
+  return parseOptionalNumberProperty(event, "sequence");
+}
+
+function parseOptionalWorkoutDraft(
+  rawDraft: unknown,
+): AIWorkoutDraft | undefined {
+  if (rawDraft === undefined) {
+    return undefined;
+  }
+
+  const draft = parseRecord(rawDraft, "workout_draft");
+  const notes = parseOptionalStringProperty(draft, "notes");
+  const workoutFocus = parseOptionalStringProperty(draft, "workoutFocus");
+
+  return {
+    date: parseRequiredString(draft, "date"),
+    ...notes,
+    ...workoutFocus,
+    exercises: parseWorkoutExercises(draft.exercises),
+  };
+}
+
+function parseWorkoutExercises(
+  rawExercises: unknown,
+): AIWorkoutExerciseInput[] {
+  if (!Array.isArray(rawExercises)) {
+    throw new Error("AI chat workout draft exercises must be an array");
+  }
+
+  return rawExercises.map((rawExercise, exerciseIndex) => {
+    const exercise = parseRecord(
+      rawExercise,
+      `workout_draft.exercises[${exerciseIndex}]`,
+    );
+    return {
+      name: parseRequiredString(exercise, "name"),
+      sets: parseWorkoutSets(exercise.sets, exerciseIndex),
+    };
+  });
+}
+
+function parseWorkoutSets(
+  rawSets: unknown,
+  exerciseIndex: number,
+): AIWorkoutSetInput[] {
+  if (!Array.isArray(rawSets)) {
+    throw new Error(
+      `AI chat workout draft exercise ${exerciseIndex + 1} sets must be an array`,
+    );
+  }
+
+  return rawSets.map((rawSet, setIndex) => {
+    const set = parseRecord(
+      rawSet,
+      `workout_draft.exercises[${exerciseIndex}].sets[${setIndex}]`,
+    );
+    const setType = parseRequiredString(set, "setType");
+    if (setType !== "warmup" && setType !== "working") {
+      throw new Error("AI chat workout draft setType is invalid");
+    }
+
+    return {
+      ...parseOptionalNumberProperty(set, "weight"),
+      reps: parseRequiredNumber(set, "reps"),
+      setType,
+    };
+  });
+}
+
+function parseRecord(value: unknown, label: string): UnknownRecord {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+
+  // SAFETY: The runtime object/null/array checks above establish the record shape
+  // needed for concrete field parsing in this boundary adapter.
+  return value as UnknownRecord;
+}
+
+function parseRequiredString(record: UnknownRecord, key: string): string {
+  const value = record[key];
+  if (typeof value !== "string") {
+    throw new Error(`AI chat stream event ${key} must be a string`);
+  }
+
+  return value;
+}
+
+function parseRequiredNumber(record: UnknownRecord, key: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`AI chat stream event ${key} must be a number`);
+  }
+
+  return value;
+}
+
+function parseOptionalStringProperty<K extends string>(
+  record: UnknownRecord,
+  key: K,
+): Partial<Record<K, string>> {
+  const value = record[key];
+  if (value === undefined) {
+    return {};
+  }
+  if (typeof value !== "string") {
+    throw new Error(`AI chat stream event ${key} must be a string`);
+  }
+
+  // SAFETY: The computed key is the exact key argument, and the value was checked
+  // as a string before constructing the single-property record.
+  return { [key]: value } as Record<K, string>;
+}
+
+function parseOptionalNumberProperty<K extends string>(
+  record: UnknownRecord,
+  key: K,
+): Partial<Record<K, number>> {
+  const value = record[key];
+  if (value === undefined) {
+    return {};
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`AI chat stream event ${key} must be a number`);
+  }
+
+  // SAFETY: The computed key is the exact key argument, and the value was checked
+  // as a finite number before constructing the single-property record.
+  return { [key]: value } as Record<K, number>;
+}
+
+function casesHandled(value: never): never {
+  return value;
 }
 
 function throwIfAborted(signal?: AbortSignal): void {

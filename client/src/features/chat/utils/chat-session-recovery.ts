@@ -258,7 +258,11 @@ export async function resumeConversation(
       aborted: refreshed.aborted,
       error:
         refreshed.error ??
-        new Error(streamResult.doneEvent?.message ?? "AI chat resume failed"),
+        new Error(
+          streamResult.doneEvent?.type === "error"
+            ? streamResult.doneEvent.message
+            : "AI chat resume failed",
+        ),
     };
   } catch (error) {
     if (controller.signal.aborted || isAbortError(error)) {

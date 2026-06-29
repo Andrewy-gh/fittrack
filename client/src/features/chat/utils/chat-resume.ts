@@ -1,7 +1,8 @@
 import type {
   AIChatConversationDetail,
   AIChatMessage,
-  AIChatStreamEvent,
+  AIChatStreamDoneEvent,
+  AIChatStreamErrorEvent,
 } from "@/features/chat/api/ai-chat";
 
 const storageKeyPrefix = "fittrack.ai-chat.resume";
@@ -104,7 +105,7 @@ export function updateStreamingMessageWithDelta(
 export function updateStreamingMessageWithDone(
   messages: AIChatMessage[],
   messageId: number,
-  event: AIChatStreamEvent,
+  event: AIChatStreamDoneEvent,
 ): AIChatMessage[] {
   return messages.map((message) =>
     message.id === messageId
@@ -112,7 +113,7 @@ export function updateStreamingMessageWithDone(
           ...message,
           id: event.message_id ?? message.id,
           status: "completed",
-          content: event.text ?? message.content,
+          content: event.text,
           completed_at: new Date().toISOString(),
         }
       : message,
@@ -122,7 +123,7 @@ export function updateStreamingMessageWithDone(
 export function updateStreamingMessageWithError(
   messages: AIChatMessage[],
   messageId: number,
-  event: AIChatStreamEvent,
+  event: AIChatStreamErrorEvent,
 ): AIChatMessage[] {
   return messages.map((message) =>
     message.id === messageId
