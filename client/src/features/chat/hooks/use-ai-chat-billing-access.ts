@@ -580,10 +580,14 @@ function isAIChatAccessErrorState(state: AIChatAccessState): boolean {
   return state === "billing-error" || state === "checkout-activation-error";
 }
 
-async function waitForCheckoutAccess(): Promise<CheckoutAccessPollResult> {
+async function waitForCheckoutAccess({
+  signal,
+}: {
+  signal: AbortSignal;
+}): Promise<CheckoutAccessPollResult> {
   const [featureAccess, billingStatus] = await Promise.all([
-    getFeatureAccess(),
-    getBillingStatus(),
+    getFeatureAccess({ signal }),
+    getBillingStatus({ signal }),
   ]);
 
   if (!hasAIChatFeatureAccess(featureAccess)) {
@@ -593,10 +597,14 @@ async function waitForCheckoutAccess(): Promise<CheckoutAccessPollResult> {
   return { billingStatus, featureAccess };
 }
 
-async function waitForBillingCancellation(): Promise<CheckoutAccessPollResult> {
+async function waitForBillingCancellation({
+  signal,
+}: {
+  signal: AbortSignal;
+}): Promise<CheckoutAccessPollResult> {
   const [featureAccess, billingStatus] = await Promise.all([
-    getFeatureAccess(),
-    getBillingStatus(),
+    getFeatureAccess({ signal }),
+    getBillingStatus({ signal }),
   ]);
 
   if (!isBillingCancellationReflected(billingStatus)) {
