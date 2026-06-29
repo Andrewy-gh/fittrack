@@ -1,6 +1,7 @@
 package aichat
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -667,11 +668,13 @@ func TestHandlerStreamMessage(t *testing.T) {
 	})
 
 	t.Run("aborts prepared run when start event write disconnects", func(t *testing.T) {
+		var logs bytes.Buffer
+		logger := slog.New(slog.NewJSONHandler(&logs, nil))
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 		prepared := preparedStreamFixture()
 		service.On("PrepareMessageStream", mock.Anything, int32(41), "prove streaming", "req-123").Return(prepared, nil).Once()
-		service.On("AbortPreparedMessageStream", mock.Anything, prepared, ErrStreamNotStarted).Return(nil).Once()
+		service.On("AbortPreparedMessageStream", mock.Anything, prepared, ErrStreamNotStarted).Return(errors.New("provider cleanup failed with secret api-key-123 and SQLSTATE 23505")).Once()
 
 		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/messages/stream", strings.NewReader(`{"prompt":"prove streaming"}`))
 		req = req.WithContext(request.WithRequestID(req.Context(), "req-123"))
@@ -681,6 +684,22 @@ func TestHandlerStreamMessage(t *testing.T) {
 		handler.StreamMessage(rr, req)
 
 		service.AssertNotCalled(t, "StreamMessage", mock.Anything, mock.Anything, mock.Anything)
+		logOutput := logs.String()
+		assert.Contains(t, logOutput, `"error_category":"service"`)
+		assert.Contains(t, logOutput, `"error_category":"stream_write"`)
+		assert.Contains(t, logOutput, `"error_present":true`)
+		assert.Contains(t, logOutput, `"error_type":"*errors.errorString"`)
+		for _, forbidden := range []string{
+			"provider cleanup failed",
+			"secret api-key-123",
+			"broken pipe",
+			"SQLSTATE",
+			"23505",
+		} {
+			if strings.Contains(logOutput, forbidden) {
+				t.Fatalf("ai chat stream log contains sensitive raw error detail %q: %s", forbidden, logOutput)
+			}
+		}
 		service.AssertExpectations(t)
 	})
 }

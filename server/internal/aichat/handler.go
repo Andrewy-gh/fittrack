@@ -121,7 +121,7 @@ func (h *Handler) StreamValidate(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if !h.writeStreamError(sse, r, 0, 0, 0, "failed to generate ai chat validation", err) {
-			h.logger.Error("failed to stream ai chat validation response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			h.logServiceFailure("failed to stream ai chat validation response", r, err)
 		}
 		return
 	}
@@ -354,7 +354,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 	sse, err := h.startSSE(w)
 	if err != nil {
 		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
-			h.logger.Error("failed to abort ai chat run after stream preflight error", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
+			h.logServiceFailure("failed to abort ai chat run after stream preflight error", r, abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat stream", err)
 		return
@@ -371,7 +371,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		// If the initial SSE start event never reaches the client, treat the run
 		// as never started. Recovery only applies after streaming has begun.
 		if abortErr := h.service.AbortPreparedMessageStream(r.Context(), prepared, ErrStreamNotStarted); abortErr != nil {
-			h.logger.Error("failed to abort ai chat run after start event write failure", "error", abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
+			h.logServiceFailure("failed to abort ai chat run after start event write failure", r, abortErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
 		h.logStreamWriteFailure("failed to start ai chat stream", r, err)
 		return
@@ -387,7 +387,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.service.StartMessageGeneration(r.Context(), prepared); err != nil {
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to start ai chat generation", err) {
-			h.logger.Error("failed to start ai chat generation", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			h.logServiceFailure("failed to start ai chat generation", r, err)
 		}
 		return
 	}
@@ -426,7 +426,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to generate ai chat response", err) {
-			h.logger.Error("failed to stream ai chat response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			h.logServiceFailure("failed to stream ai chat response", r, err)
 		}
 		return
 	}
@@ -520,7 +520,7 @@ func (h *Handler) ResumeMessageStream(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to resume ai chat response", err) {
-			h.logger.Error("failed to resume ai chat response", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			h.logServiceFailure("failed to resume ai chat response", r, err)
 		}
 		return
 	}

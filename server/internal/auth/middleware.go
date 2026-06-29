@@ -73,15 +73,16 @@ func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) err
 		// Check if this is an RLS context error
 		if db.IsRLSContextError(err) {
 			a.logger.Error("RLS context setup failed",
-				"error", err,
 				"userID", userID,
-				"error_type", "rls_context")
-			a.logger.Debug("raw RLS context error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "userID", userID)
+				"error_category", "rls_context",
+				"error_present", true,
+				"error_type", fmt.Sprintf("%T", err))
 		} else {
 			a.logger.Error("failed to set session variable",
-				"error", err,
-				"userID", userID)
-			a.logger.Debug("raw session variable error details", "error", err.Error(), "error_type", fmt.Sprintf("%T", err), "userID", userID)
+				"userID", userID,
+				"error_category", "database",
+				"error_present", true,
+				"error_type", fmt.Sprintf("%T", err))
 		}
 		return fmt.Errorf("failed to set user context: %w", err)
 	}
@@ -118,7 +119,14 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 
 		userID, err := a.jwkCache.GetUserIDFromToken(accessToken)
 		if err != nil {
-			a.logger.Error("invalid access token", "error", err, "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			a.logger.Error("invalid access token",
+				"path", r.URL.Path,
+				"method", r.Method,
+				"status", http.StatusUnauthorized,
+				"request_id", request.GetRequestID(r.Context()),
+				"error_category", "jwt",
+				"error_present", true,
+				"error_type", fmt.Sprintf("%T", err))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "invalid access token", err)
 			return
 		}
@@ -130,7 +138,15 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request, next http.Handler, userID string) bool {
 	dbUser, err := a.userService.EnsureUser(r.Context(), userID)
 	if err != nil {
-		a.logger.Error("failed to ensure user", "error", err, "userID", userID, "request_id", request.GetRequestID(r.Context()))
+		a.logger.Error("failed to ensure user",
+			"userID", userID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", http.StatusInternalServerError,
+			"request_id", request.GetRequestID(r.Context()),
+			"error_category", "database",
+			"error_present", true,
+			"error_type", fmt.Sprintf("%T", err))
 		response.ErrorJSON(w, r, a.logger, http.StatusInternalServerError, "failed to ensure user", err)
 		return false
 	}
@@ -139,10 +155,14 @@ func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request,
 	if a.dbPool != nil {
 		if err := a.setSessionUserID(r.Context(), userID); err != nil {
 			a.logger.Error("failed to set user context",
-				"error", err,
 				"userID", userID,
 				"path", r.URL.Path,
-				"request_id", request.GetRequestID(r.Context()))
+				"method", r.Method,
+				"status", http.StatusInternalServerError,
+				"request_id", request.GetRequestID(r.Context()),
+				"error_category", "database",
+				"error_present", true,
+				"error_type", fmt.Sprintf("%T", err))
 			response.ErrorJSON(w, r, a.logger,
 				http.StatusInternalServerError,
 				"failed to set user context",

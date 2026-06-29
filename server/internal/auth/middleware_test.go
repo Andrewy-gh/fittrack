@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -9,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -320,6 +322,110 @@ func TestAuthenticator_Middleware_NilDBPool(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	mockJWKSCache.AssertExpectations(t)
 	mockUserService.AssertExpectations(t)
+}
+
+func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
+	tests := []struct {
+		name         string
+		setup        func(*MockJWKSCache, *MockUserService, *MockDBTX)
+		wantStatus   int
+		wantCategory string
+		forbidden    []string
+	}{
+		{
+			name: "invalid access token",
+			setup: func(jwkCache *MockJWKSCache, userService *MockUserService, dbPool *MockDBTX) {
+				jwkCache.On("GetUserIDFromToken", "invalid-token").Return("", fmt.Errorf("failed to parse token for project secret-project-id: SQLSTATE 42501"))
+			},
+			wantStatus:   http.StatusUnauthorized,
+			wantCategory: `"error_category":"jwt"`,
+			forbidden: []string{
+				"secret-project-id",
+				"SQLSTATE",
+				"42501",
+				"failed to parse token for project",
+			},
+		},
+		{
+			name: "ensure user database error",
+			setup: func(jwkCache *MockJWKSCache, userService *MockUserService, dbPool *MockDBTX) {
+				jwkCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
+				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{}, fmt.Errorf("pq: duplicate key value violates unique constraint \"users_email_key\" DETAIL: Key (email)=(andy@example.com) already exists. SQLSTATE 23505"))
+			},
+			wantStatus:   http.StatusInternalServerError,
+			wantCategory: `"error_category":"database"`,
+			forbidden: []string{
+				"pq:",
+				"users_email_key",
+				"andy@example.com",
+				"SQLSTATE",
+				"23505",
+			},
+		},
+		{
+			name: "session user database error",
+			setup: func(jwkCache *MockJWKSCache, userService *MockUserService, dbPool *MockDBTX) {
+				jwkCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
+				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{UserID: "user-123"}, nil)
+				tag := pgconn.NewCommandTag("SET")
+				dbPool.On("Exec", mock.Anything, setUserIDQuery, "user-123").Return(tag, fmt.Errorf("pq: permission denied for relation users SQLSTATE 42501"))
+			},
+			wantStatus:   http.StatusInternalServerError,
+			wantCategory: `"error_category":"database"`,
+			forbidden: []string{
+				"pq:",
+				"permission denied",
+				"relation users",
+				"SQLSTATE",
+				"42501",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			logger := slog.New(slog.NewJSONHandler(&logs, nil))
+			mockJWKSCache := &MockJWKSCache{}
+			mockUserService := &MockUserService{}
+			mockDB := &MockDBTX{}
+			tt.setup(mockJWKSCache, mockUserService, mockDB)
+
+			auth := &Authenticator{
+				logger:      logger,
+				jwkCache:    mockJWKSCache,
+				userService: mockUserService,
+				dbPool:      mockDB,
+			}
+
+			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+			req.Header.Set("x-stack-access-token", "valid-token")
+			if tt.name == "invalid access token" {
+				req.Header.Set("x-stack-access-token", "invalid-token")
+			}
+			w := httptest.NewRecorder()
+
+			auth.Middleware(nextHandler).ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+			logOutput := logs.String()
+			assert.Contains(t, logOutput, tt.wantCategory)
+			assert.Contains(t, logOutput, `"error_present":true`)
+			assert.Contains(t, logOutput, `"error_type":`)
+			for _, forbidden := range tt.forbidden {
+				if strings.Contains(logOutput, forbidden) {
+					t.Fatalf("auth log contains sensitive raw error detail %q: %s", forbidden, logOutput)
+				}
+			}
+
+			mockJWKSCache.AssertExpectations(t)
+			mockUserService.AssertExpectations(t)
+			mockDB.AssertExpectations(t)
+		})
+	}
 }
 
 func TestJWKSCache_GetUserIDFromToken(t *testing.T) {
