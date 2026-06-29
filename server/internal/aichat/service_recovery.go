@@ -127,19 +127,9 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 }
 
 func shouldRecoverRun(run *ChatRun, now time.Time) bool {
-	if run == nil || run.Status != statusStreaming {
-		return false
-	}
-	switch run.GenerationStatus {
-	case generationStatusGenerating:
-		return run.LeaseExpiresAt != nil && now.UTC().After(run.LeaseExpiresAt.UTC())
-	case generationStatusQueued:
-		return isStreamingRunStale(run.UpdatedAt, now)
-	default:
-		return false
-	}
+	return newChatRunLifecycle(run, now).ShouldRecover()
 }
 
 func generationAttemptsExhausted(run *ChatRun) bool {
-	return run != nil && run.GenerationAttempt >= maxGenerationAttempts
+	return newChatRunLifecycle(run, time.Now().UTC()).GenerationAttemptsExhausted()
 }
