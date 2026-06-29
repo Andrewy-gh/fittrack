@@ -98,4 +98,52 @@ describe("workoutDraftStorage", () => {
 
     expect(draftStorage.load("user-123")).toBeNull();
   });
+
+  it("returns saved draft data from valid stored JSON", () => {
+    const storage = createMemoryStorage({
+      "workout-entry-form-data-user-123": JSON.stringify({
+        date: "2026-03-24T10:30:00.000Z",
+        notes: "Saved draft",
+        workoutFocus: "Upper",
+        exercises: [
+          {
+            name: "Bench Press",
+            sets: [{ reps: 5, setType: "working", weight: 185 }],
+          },
+        ],
+      }),
+    });
+    const draftStorage = createWorkoutDraftStorage(storage);
+
+    expect(draftStorage.load("user-123")).toEqual({
+      date: new Date("2026-03-24T10:30:00.000Z"),
+      notes: "Saved draft",
+      workoutFocus: "Upper",
+      exercises: [
+        {
+          name: "Bench Press",
+          sets: [{ reps: 5, setType: "working", weight: 185 }],
+        },
+      ],
+    });
+  });
+
+  it("returns null for structurally invalid stored drafts", () => {
+    const storage = createMemoryStorage({
+      "workout-entry-form-data-user-123": JSON.stringify({
+        date: "2026-03-24T10:30:00.000Z",
+        notes: "Bad draft",
+        workoutFocus: "Upper",
+        exercises: [
+          {
+            name: "Bench Press",
+            sets: [{ reps: "5", setType: "working", weight: 185 }],
+          },
+        ],
+      }),
+    });
+    const draftStorage = createWorkoutDraftStorage(storage);
+
+    expect(draftStorage.load("user-123")).toBeNull();
+  });
 });

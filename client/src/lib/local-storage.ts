@@ -1,4 +1,5 @@
 import type { WorkoutCreateWorkoutRequest } from "../client/types.gen";
+import * as v from "valibot";
 
 const STORAGE_KEY = "workout-entry-form-data";
 
@@ -19,6 +20,24 @@ export type WorkoutDraftStorage = {
   clear: (userId?: string) => void;
 };
 
+const WorkoutSetSchema = v.object({
+  reps: v.number(),
+  weight: v.optional(v.number()),
+  setType: v.picklist(["warmup", "working"]),
+});
+
+const WorkoutExerciseSchema = v.object({
+  name: v.string(),
+  sets: v.array(WorkoutSetSchema),
+});
+
+const WorkoutDraftSchema = v.object({
+  date: v.string(),
+  notes: v.optional(v.string()),
+  workoutFocus: v.optional(v.string()),
+  exercises: v.array(WorkoutExerciseSchema),
+});
+
 function serializeDraft(data: FormDataType): WorkoutCreateWorkoutRequest {
   return {
     ...data,
@@ -26,15 +45,35 @@ function serializeDraft(data: FormDataType): WorkoutCreateWorkoutRequest {
   };
 }
 
+function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
+  const result = v.safeParse(WorkoutDraftSchema, input);
+
+  if (!result.success) {
+    return null;
+  }
+
+  const date = new Date(result.output.date);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return {
+    // SAFETY: Existing draft consumers expect storage to rehydrate the saved
+    // ISO string into a Date for the date picker, while the generated request
+    // type still represents the submitted JSON payload.
+    date: date as unknown as string,
+    notes: result.output.notes,
+    workoutFocus: result.output.workoutFocus,
+    exercises: result.output.exercises,
+  };
+}
+
 function deserializeDraft(
   rawValue: string,
 ): WorkoutCreateWorkoutRequest | null {
   try {
-    const parsed = JSON.parse(rawValue);
-    if (parsed.date && typeof parsed.date === "string") {
-      parsed.date = new Date(parsed.date);
-    }
-    return parsed as WorkoutCreateWorkoutRequest;
+    const parsed: unknown = JSON.parse(rawValue);
+    return parseWorkoutDraft(parsed);
   } catch {
     return null;
   }

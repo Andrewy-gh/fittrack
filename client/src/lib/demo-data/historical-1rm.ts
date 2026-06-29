@@ -1,5 +1,6 @@
 import type { StoredSet } from "./types";
 import { STORAGE_KEYS } from "./types";
+import * as v from "valibot";
 
 type Historical1RmEntry = {
   historical_1rm: number;
@@ -9,12 +10,56 @@ type Historical1RmEntry = {
 
 type Historical1RmMap = Record<string, Historical1RmEntry>;
 
-function getFromStorage<T>(key: string, defaultValue: T): T {
+type StorageParser<T> = (input: unknown) => T | null;
+
+const StoredSetSchema = v.object({
+  id: v.number(),
+  exercise_id: v.number(),
+  workout_id: v.number(),
+  weight: v.optional(v.number()),
+  reps: v.number(),
+  set_type: v.picklist(["warmup", "working"]),
+  exercise_order: v.number(),
+  set_order: v.number(),
+  user_id: v.string(),
+  created_at: v.string(),
+});
+
+const Historical1RmEntrySchema = v.object({
+  historical_1rm: v.number(),
+  updated_at: v.string(),
+  source_workout_id: v.nullable(v.number()),
+});
+
+const StoredSetsSchema = v.array(StoredSetSchema);
+const Historical1RmMapSchema = v.record(v.string(), Historical1RmEntrySchema);
+
+function parseWithSchema<
+  TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
+>(schema: TSchema, input: unknown): v.InferOutput<TSchema> | null {
+  const result = v.safeParse(schema, input);
+  return result.success ? result.output : null;
+}
+
+function parseStoredSets(input: unknown): StoredSet[] | null {
+  return parseWithSchema(StoredSetsSchema, input);
+}
+
+function parseHistorical1RmMap(input: unknown): Historical1RmMap | null {
+  return parseWithSchema(Historical1RmMapSchema, input);
+}
+
+function getFromStorage<T>(
+  key: string,
+  defaultValue: T,
+  parseStoredValue: StorageParser<T>,
+): T {
   if (typeof window === "undefined") return defaultValue;
   const stored = localStorage.getItem(key);
   if (!stored) return defaultValue;
   try {
-    return JSON.parse(stored) as T;
+    const parsed: unknown = JSON.parse(stored);
+    return parseStoredValue(parsed) ?? defaultValue;
   } catch {
     return defaultValue;
   }
@@ -31,11 +76,11 @@ function removeFromStorage(key: string): void {
 }
 
 function getAllSets(): StoredSet[] {
-  return getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
+  return getFromStorage(STORAGE_KEYS.SETS, [], parseStoredSets);
 }
 
 function getMap(): Historical1RmMap {
-  return getFromStorage<Historical1RmMap>(STORAGE_KEYS.HISTORICAL_1RM, {});
+  return getFromStorage(STORAGE_KEYS.HISTORICAL_1RM, {}, parseHistorical1RmMap);
 }
 
 function setMap(map: Historical1RmMap): void {
