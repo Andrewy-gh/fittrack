@@ -32,9 +32,16 @@ import {
   saveAIChatLatestWorkoutDraft,
   streamAIChatMessage,
 } from "./ai-chat";
+import type { AIChatStreamDoneEvent } from "./ai-chat";
 
 function latestRequest(): Request {
   return vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
+}
+
+function expectDoneEvent(
+  event: unknown,
+): asserts event is AIChatStreamDoneEvent {
+  expect(event).toMatchObject({ type: "done" });
 }
 
 describe("ai chat api wrapper", () => {
@@ -137,7 +144,8 @@ describe("ai chat api wrapper", () => {
 
     expect(seen).toEqual(["start", "hello ", "done"]);
     expect(result.endedWithError).toBe(false);
-    expect(result.doneEvent?.text).toBe("hello world");
+    expectDoneEvent(result.doneEvent);
+    expect(result.doneEvent.text).toBe("hello world");
   });
 
   it("parses workout draft payloads from done events", async () => {
@@ -171,7 +179,8 @@ describe("ai chat api wrapper", () => {
 
     const result = await streamAIChatMessage(41, "build me a pull workout");
 
-    expect(result.doneEvent?.workout_draft).toEqual({
+    expectDoneEvent(result.doneEvent);
+    expect(result.doneEvent.workout_draft).toEqual({
       date: "2026-04-20T12:00:00Z",
       workoutFocus: "pull",
       exercises: [
@@ -181,6 +190,44 @@ describe("ai chat api wrapper", () => {
         },
       ],
     });
+  });
+
+  it("accepts completed done events when the server omits empty text", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            [
+              "event: done",
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61}',
+              "",
+              "",
+            ].join("\n"),
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+        },
+      }),
+    );
+
+    const onDone = vi.fn();
+
+    const result = await streamAIChatMessage(41, "hello", { onDone });
+
+    expectDoneEvent(result.doneEvent);
+    expect(result.endedWithError).toBe(false);
+    expect(result.doneEvent.text).toBe("");
+    expect(onDone).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "done", text: "" }),
+    );
   });
 
   it("resumes a chat stream after a sequence cursor", async () => {
@@ -229,8 +276,9 @@ describe("ai chat api wrapper", () => {
       }),
     );
     expect(seen).toEqual([3, 4, "done"]);
-    expect(result.doneEvent?.sequence).toBe(4);
-    expect(result.doneEvent?.workout_draft?.date).toBe("2026-04-20T12:00:00Z");
+    expectDoneEvent(result.doneEvent);
+    expect(result.doneEvent.sequence).toBe(4);
+    expect(result.doneEvent.workout_draft?.date).toBe("2026-04-20T12:00:00Z");
   });
 
   it("suppresses duplicate SSE chunks by event id", async () => {
@@ -307,6 +355,64 @@ describe("ai chat api wrapper", () => {
     await expect(streamAIChatMessage(41, "hello")).rejects.toThrow(
       "AI chat stream ended before a terminal event",
     );
+  });
+
+  it("rejects malformed SSE event JSON before handlers receive it", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            ["event: delta", 'data: {"type":"delta"', "", ""].join("\n"),
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+        },
+      }),
+    );
+
+    const onDelta = vi.fn();
+
+    await expect(streamAIChatMessage(41, "hello", { onDelta })).rejects.toThrow(
+      "Invalid AI chat stream event JSON",
+    );
+    expect(onDelta).not.toHaveBeenCalled();
+  });
+
+  it("rejects SSE event variants that are missing required payload fields", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            ["event: delta", 'data: {"type":"delta"}', "", ""].join("\n"),
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/event-stream",
+        },
+      }),
+    );
+
+    const onDelta = vi.fn();
+
+    await expect(streamAIChatMessage(41, "hello", { onDelta })).rejects.toThrow(
+      "AI chat stream event delta must be a string",
+    );
+    expect(onDelta).not.toHaveBeenCalled();
   });
 
   it("polls persisted conversation state until streaming settles", async () => {
