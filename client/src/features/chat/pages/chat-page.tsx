@@ -361,15 +361,14 @@ export function ChatPage({
           data-testid="chat-main-pane"
           className="mx-auto w-full min-w-0 max-w-3xl"
         >
-          {historyEntry.isPreparingEntry ||
-          historyEntry.isAutoOpeningRecentChat ? (
+          {historyEntry.entryState.status === "openingLatestChat" ? (
             <div className="text-sm text-muted-foreground">
               Opening latest chat...
             </div>
-          ) : historyEntry.error && !conversationId ? (
+          ) : historyEntry.entryState.status === "historyLoadError" ? (
             <div className="flex flex-col gap-4">
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                {historyEntry.error}
+                {historyEntry.entryState.message}
               </div>
               {emptyState}
             </div>

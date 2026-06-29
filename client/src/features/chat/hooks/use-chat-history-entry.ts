@@ -18,6 +18,11 @@ type UseChatHistoryEntryOptions = {
   ) => void;
 };
 
+export type ChatHistoryEntryState =
+  | { status: "openingLatestChat" }
+  | { status: "historyLoadError"; message: string }
+  | { status: "ready" };
+
 export function useChatHistoryEntry({
   userId,
   conversationId,
@@ -117,25 +122,51 @@ export function useChatHistoryEntry({
     onOpenConversation,
   ]);
 
-  const isPreparingEntry =
-    !conversationId && (isLoading || !hasLoadedCurrentUser) && !error;
-  const isAutoOpeningRecentChat =
-    !conversationId &&
-    !isLoading &&
-    !error &&
-    hasLoadedCurrentUser &&
-    loadedCurrentUserConversations.length > 0;
+  const entryState = getChatHistoryEntryState({
+    conversationId,
+    conversations: loadedCurrentUserConversations,
+    error,
+    hasLoadedCurrentUser,
+    isLoading,
+  });
 
   return {
     conversations: loadedCurrentUserConversations,
+    entryState,
     error,
-    isAutoOpeningRecentChat,
     isCollapsed,
     isLoading,
     isMobileOpen,
-    isPreparingEntry,
     refreshConversations,
     setIsCollapsed,
     setIsMobileOpen,
   };
+}
+
+function getChatHistoryEntryState({
+  conversationId,
+  conversations,
+  error,
+  hasLoadedCurrentUser,
+  isLoading,
+}: {
+  conversationId: number | null;
+  conversations: AIChatConversationSummary[];
+  error: string | null;
+  hasLoadedCurrentUser: boolean;
+  isLoading: boolean;
+}): ChatHistoryEntryState {
+  if (conversationId !== null) {
+    return { status: "ready" };
+  }
+
+  if (error) {
+    return { status: "historyLoadError", message: error };
+  }
+
+  if (isLoading || !hasLoadedCurrentUser || conversations.length > 0) {
+    return { status: "openingLatestChat" };
+  }
+
+  return { status: "ready" };
 }
