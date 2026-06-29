@@ -231,6 +231,10 @@ func (r *repository) ClaimRunGeneration(ctx context.Context, run *ChatRun, owner
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	if !newChatRunLifecycle(run, now).CanClaimGeneration() {
+		return pgx.ErrNoRows
+	}
+
 	runRow, err := r.queries.ClaimAIChatRunGeneration(ctx, db.ClaimAIChatRunGenerationParams{
 		ID:     run.ID,
 		UserID: run.UserID,
