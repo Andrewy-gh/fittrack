@@ -6,31 +6,39 @@ import type {
 } from "@/features/chat/api/ai-chat";
 import { cn } from "@/lib/utils";
 
+/** Save/open state for a structured workout draft card. */
+export type ChatWorkoutDraftSaveState =
+  | { readonly status: "idle" }
+  | { readonly status: "saving" }
+  | { readonly status: "saved" }
+  | {
+      readonly status: "savedWithWorkout";
+      readonly workoutId: number;
+      readonly onOpenSavedWorkout: () => void;
+    };
+
 type ChatWorkoutDraftCardProps = {
-  draft: AIWorkoutDraft;
-  isSaving?: boolean;
-  isSaved?: boolean;
-  savedWorkoutId?: number;
-  onSave: () => void;
-  onEdit: () => void;
-  onOpenSavedWorkout?: () => void;
-  className?: string;
+  readonly draft: AIWorkoutDraft;
+  readonly saveState: ChatWorkoutDraftSaveState;
+  readonly onSave: () => void;
+  readonly onEdit: () => void;
+  readonly className?: string;
 };
 
 export function ChatWorkoutDraftCard({
   draft,
-  isSaving = false,
-  isSaved = false,
-  savedWorkoutId,
+  saveState,
   onSave,
   onEdit,
-  onOpenSavedWorkout,
   className,
 }: ChatWorkoutDraftCardProps) {
   const totalSets = draft.exercises.reduce(
     (count, exercise) => count + exercise.sets.length,
     0,
   );
+  const isSaving = saveState.status === "saving";
+  const isSaved =
+    saveState.status === "saved" || saveState.status === "savedWithWorkout";
 
   return (
     <div
@@ -81,11 +89,11 @@ export function ChatWorkoutDraftCard({
           >
             Edit in workout form
           </Button>
-          {isSaved && savedWorkoutId && onOpenSavedWorkout ? (
+          {saveState.status === "savedWithWorkout" ? (
             <Button
               type="button"
               variant="outline"
-              onClick={onOpenSavedWorkout}
+              onClick={saveState.onOpenSavedWorkout}
             >
               Open saved workout
             </Button>
