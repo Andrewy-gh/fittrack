@@ -82,6 +82,7 @@ vi.mock("@/components/ui/card", () => ({
 
 import {
   WorkoutExerciseCards,
+  type WorkoutExerciseArrayField,
   type WorkoutExerciseCard,
 } from "../workout-form-sections";
 import { useExerciseReorder } from "../use-exercise-reorder";
@@ -116,10 +117,12 @@ function WorkoutExerciseCardsHarness() {
   );
 }
 
-function WorkoutExerciseCardsField({ field }: { field: any }) {
-  const exerciseReorder = useExerciseReorder(
-    field.state.value as WorkoutExerciseCard[],
-  );
+function WorkoutExerciseCardsField({
+  field,
+}: {
+  field: WorkoutExerciseArrayField;
+}) {
+  const exerciseReorder = useExerciseReorder(field.state.value);
 
   return (
     <>
