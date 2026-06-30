@@ -1,12 +1,10 @@
 package workout
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
@@ -167,19 +165,12 @@ func (h *WorkoutHandler) GetContributionData(w http.ResponseWriter, r *http.Requ
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /workouts/{id} [get]
 func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Request) {
-	workoutID := r.PathValue("id")
-	if workoutID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing workout ID", nil)
+	workoutID, ok := h.decodeWorkoutID(w, r)
+	if !ok {
 		return
 	}
 
-	workoutIDInt, err := strconv.Atoi(workoutID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid workout ID", err)
-		return
-	}
-
-	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), int32(workoutIDInt))
+	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), workoutID)
 	if err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
@@ -212,7 +203,7 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 // @Router /workouts [post]
 func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	var req CreateWorkoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeStrictJSON(r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
@@ -255,22 +246,13 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /workouts/{id} [put]
 func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
-	// Extract and validate workout ID from path
-	workoutID := r.PathValue("id")
-	if workoutID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing workout ID", nil)
+	workoutID, ok := h.decodeWorkoutID(w, r)
+	if !ok {
 		return
 	}
 
-	workoutIDInt, err := strconv.Atoi(workoutID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid workout ID", err)
-		return
-	}
-
-	// Parse and decode the request body
 	var req UpdateWorkoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeStrictJSON(r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
@@ -282,7 +264,7 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delegate to service layer for business logic
-	if err := h.workoutService.UpdateWorkout(r.Context(), int32(workoutIDInt), req); err != nil {
+	if err := h.workoutService.UpdateWorkout(r.Context(), workoutID, req); err != nil {
 		// Handle different error types with appropriate HTTP status codes
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
@@ -319,21 +301,13 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /workouts/{id} [delete]
 func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
-	// Extract and validate workout ID from path
-	workoutID := r.PathValue("id")
-	if workoutID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing workout ID", nil)
-		return
-	}
-
-	workoutIDInt, err := strconv.Atoi(workoutID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid workout ID", err)
+	workoutID, ok := h.decodeWorkoutID(w, r)
+	if !ok {
 		return
 	}
 
 	// Delegate to service layer for business logic
-	if err := h.workoutService.DeleteWorkout(r.Context(), int32(workoutIDInt)); err != nil {
+	if err := h.workoutService.DeleteWorkout(r.Context(), workoutID); err != nil {
 		// Handle different error types with appropriate HTTP status codes
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound

@@ -272,6 +272,26 @@ func TestWorkoutHandler_CreateWorkout(t *testing.T) {
 			expectedError: "failed to decode request body",
 		},
 		{
+			name: "unknown request field",
+			requestBody: map[string]interface{}{
+				"date":       time.Now().Format(time.RFC3339),
+				"unexpected": "ignored before strict decoding",
+				"exercises": []map[string]interface{}{
+					{
+						"name": "Bench Press",
+						"sets": []map[string]interface{}{
+							{"reps": 10, "setType": "working"},
+						},
+					},
+				},
+			},
+			setupMock:     func(m *MockWorkoutRepository) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectJSON:    true,
+			expectedError: "failed to decode request body",
+		},
+		{
 			name: "validation error - missing date",
 			requestBody: CreateWorkoutRequest{
 				Exercises: []ExerciseInput{

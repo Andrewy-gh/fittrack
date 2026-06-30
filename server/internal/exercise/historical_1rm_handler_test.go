@@ -111,4 +111,23 @@ func TestExerciseHandler_UpdateExerciseHistorical1RM(t *testing.T) {
 		handler.UpdateExerciseHistorical1RM(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
+
+	t.Run("unknown_request_field", func(t *testing.T) {
+		repo := new(MockExerciseRepository)
+		service := NewService(logger, repo)
+		handler := NewHandler(logger, validator, service)
+
+		userID := "user-123"
+		exerciseID := int32(7)
+
+		body := []byte(`{"mode":"recompute","unexpected":"ignored before strict decoding"}`)
+		ctx := context.WithValue(context.Background(), user.UserIDKey, userID)
+		req := httptest.NewRequest(http.MethodPatch, "/api/exercises/7/historical-1rm", bytes.NewBuffer(body)).WithContext(ctx)
+		req.SetPathValue("id", strconv.Itoa(int(exerciseID)))
+		w := httptest.NewRecorder()
+
+		handler.UpdateExerciseHistorical1RM(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assertJSONError(t, w, "Failed to decode request body")
+	})
 }

@@ -148,6 +148,26 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			expectedError: "failed to decode request body",
 		},
 		{
+			name:      "unknown request field",
+			workoutID: "1",
+			requestBody: map[string]interface{}{
+				"date":       "2023-01-15T10:00:00Z",
+				"unexpected": "ignored before strict decoding",
+				"exercises": []map[string]interface{}{
+					{
+						"name": "placeholder",
+						"sets": []map[string]interface{}{
+							{"reps": 1, "setType": "working"},
+						},
+					},
+				},
+			},
+			setupMock:     func(m *MockWorkoutRepository) {},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusBadRequest,
+			expectedError: "failed to decode request body",
+		},
+		{
 			name:      "validation error - invalid date format",
 			workoutID: "1",
 			requestBody: UpdateWorkoutRequest{

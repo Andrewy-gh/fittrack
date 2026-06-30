@@ -1,11 +1,9 @@
 package exercise
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
@@ -74,20 +72,13 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id} [get]
 func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Request) {
-	exerciseID := r.PathValue("id")
-	if exerciseID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
-		return
-	}
-
-	exerciseIDInt, err := strconv.Atoi(exerciseID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+	exerciseID, ok := h.decodeExerciseID(w, r)
+	if !ok {
 		return
 	}
 
 	req := GetExerciseWithSetsRequest{
-		ExerciseID: int32(exerciseIDInt),
+		ExerciseID: exerciseID,
 	}
 
 	if err := h.validator.Struct(req); err != nil {
@@ -133,7 +124,7 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 // @Router /exercises [post]
 func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Request) {
 	var req CreateExerciseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeStrictJSON(r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
 		return
 	}
@@ -175,20 +166,13 @@ func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Req
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id}/recent-sets [get]
 func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *http.Request) {
-	exerciseID := r.PathValue("id")
-	if exerciseID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
-		return
-	}
-
-	exerciseIDInt, err := strconv.Atoi(exerciseID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+	exerciseID, ok := h.decodeExerciseID(w, r)
+	if !ok {
 		return
 	}
 
 	req := GetRecentSetsRequest{
-		ExerciseID: int32(exerciseIDInt),
+		ExerciseID: exerciseID,
 	}
 
 	if err := h.validator.Struct(req); err != nil {
@@ -230,15 +214,8 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id}/metrics-history [get]
 func (h *ExerciseHandler) GetExerciseMetricsHistory(w http.ResponseWriter, r *http.Request) {
-	exerciseID := r.PathValue("id")
-	if exerciseID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
-		return
-	}
-
-	exerciseIDInt, err := strconv.Atoi(exerciseID)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+	exerciseID, ok := h.decodeExerciseID(w, r)
+	if !ok {
 		return
 	}
 
@@ -248,7 +225,7 @@ func (h *ExerciseHandler) GetExerciseMetricsHistory(w http.ResponseWriter, r *ht
 	}
 
 	req := GetExerciseMetricsHistoryRequest{
-		ExerciseID: int32(exerciseIDInt),
+		ExerciseID: exerciseID,
 		Range:      rng,
 	}
 
@@ -297,20 +274,13 @@ func (h *ExerciseHandler) GetExerciseMetricsHistory(w http.ResponseWriter, r *ht
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id} [patch]
 func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Request) {
-	exerciseID := r.PathValue("id")
-	if exerciseID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
-		return
-	}
-
-	exerciseIDInt, err := strconv.ParseInt(exerciseID, 10, 32)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+	exerciseID, ok := h.decodeExerciseID(w, r)
+	if !ok {
 		return
 	}
 
 	var req UpdateExerciseNameRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeStrictJSON(r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
 		return
 	}
@@ -320,7 +290,7 @@ func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := h.exerciseService.UpdateExerciseName(r.Context(), int32(exerciseIDInt), req.Name); err != nil {
+	if err := h.exerciseService.UpdateExerciseName(r.Context(), exerciseID, req.Name); err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
 
@@ -356,19 +326,12 @@ func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Requ
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id} [delete]
 func (h *ExerciseHandler) DeleteExercise(w http.ResponseWriter, r *http.Request) {
-	exerciseID := r.PathValue("id")
-	if exerciseID == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+	exerciseID, ok := h.decodeExerciseID(w, r)
+	if !ok {
 		return
 	}
 
-	exerciseIDInt, err := strconv.ParseInt(exerciseID, 10, 32)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
-		return
-	}
-
-	if err := h.exerciseService.DeleteExercise(r.Context(), int32(exerciseIDInt)); err != nil {
+	if err := h.exerciseService.DeleteExercise(r.Context(), exerciseID); err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
 
