@@ -1,17 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import { getExerciseDetailQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import { ExerciseDetailPage } from "@/features/exercises/pages/exercise-detail-page";
+import { exerciseDetailSearchValidator } from "@/lib/route-search-validation";
 import { initializeDemoData, clearDemoData } from "@/lib/demo-data/storage";
 
-const exerciseSearchSchema = z.object({
-  sortOrder: z.enum(["asc", "desc"]).optional(),
-  itemsPerPage: z.coerce.number().int().positive().optional(),
-  page: z.coerce.number().int().positive().optional(),
-});
-
 export const Route = createFileRoute("/_layout/exercises/$exerciseId")({
-  validateSearch: exerciseSearchSchema,
+  validateSearch: exerciseDetailSearchValidator,
   params: {
     parse: (params) => {
       const exerciseId = parseInt(params.exerciseId, 10);
