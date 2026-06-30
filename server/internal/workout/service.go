@@ -151,8 +151,11 @@ func (ws *WorkoutService) UpdateWorkout(ctx context.Context, id int32, req Updat
 	// First, validate that the workout exists and belongs to the user
 	// This helps provide better error messages (404 vs generic error)
 	_, err := ws.repo.GetWorkout(ctx, id, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to look up workout before update: %w", err)
 	}
 
 	// Transform the request to our internal format (same as CreateWorkout)
@@ -180,8 +183,11 @@ func (ws *WorkoutService) DeleteWorkout(ctx context.Context, id int32) error {
 	// First, validate that the workout exists and belongs to the user
 	// This helps provide better error messages (404 vs generic error)
 	_, err := ws.repo.GetWorkout(ctx, id, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to look up workout before delete: %w", err)
 	}
 
 	// Call repository to delete the workout
