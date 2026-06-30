@@ -490,6 +490,12 @@ SELECT user_id, stripe_customer_id, created_at, updated_at
 FROM stripe_customers
 WHERE stripe_customer_id = $1;
 
+-- name: GetBillingUserForUpdate :one
+SELECT id, user_id, created_at
+FROM users
+WHERE user_id = $1
+FOR UPDATE;
+
 -- name: UpsertStripeCustomer :one
 INSERT INTO stripe_customers (
     user_id,
@@ -608,7 +614,7 @@ ON CONFLICT (stripe_event_id) DO NOTHING;
 
 -- name: RevokeStripeFeatureAccess :exec
 UPDATE user_feature_access
-SET revoked_at = CURRENT_TIMESTAMP
+SET revoked_at = GREATEST(CURRENT_TIMESTAMP, starts_at)
 WHERE user_id = $1
   AND feature_key = $2
   AND source = 'stripe'
