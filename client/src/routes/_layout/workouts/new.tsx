@@ -1,18 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 import {
   NewWorkoutRouteComposition,
   preloadNewWorkoutRouteData,
 } from "@/features/workouts/pages/workout-route-composition";
-
-const workoutSearchSchema = z.object({
-  addExercise: z.boolean().optional(),
-  exerciseIndex: z.coerce.number().int().optional(),
-  newExercise: z.boolean().optional(),
-});
+import { workoutEditorSearchValidator } from "@/lib/route-search-validation";
 
 export const Route = createFileRoute("/_layout/workouts/new")({
-  validateSearch: workoutSearchSchema,
+  validateSearch: workoutEditorSearchValidator,
   loader: ({ context }) => {
     preloadNewWorkoutRouteData(context);
   },
