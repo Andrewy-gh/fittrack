@@ -1,15 +1,15 @@
 package workout
 
 import (
-	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
+
+const maxWorkoutJSONBodyBytes = 256 << 10
 
 func (h *WorkoutHandler) decodeWorkoutID(w http.ResponseWriter, r *http.Request) (int32, bool) {
 	raw := strings.TrimSpace(r.PathValue("id"))
@@ -27,20 +27,6 @@ func (h *WorkoutHandler) decodeWorkoutID(w http.ResponseWriter, r *http.Request)
 	return int32(parsed), true
 }
 
-func decodeStrictJSON(r *http.Request, dst any) error {
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(dst); err != nil {
-		return err
-	}
-
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		if err != nil {
-			return err
-		}
-		return errors.New("request body must contain a single JSON value")
-	}
-
-	return nil
+func decodeStrictJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	return request.DecodeStrictJSON(w, r, dst, maxWorkoutJSONBodyBytes)
 }

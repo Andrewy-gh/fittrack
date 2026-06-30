@@ -124,7 +124,7 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 // @Router /exercises [post]
 func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Request) {
 	var req CreateExerciseRequest
-	if err := decodeStrictJSON(r, &req); err != nil {
+	if err := decodeStrictJSON(w, r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
 		return
 	}
@@ -280,7 +280,7 @@ func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Requ
 	}
 
 	var req UpdateExerciseNameRequest
-	if err := decodeStrictJSON(r, &req); err != nil {
+	if err := decodeStrictJSON(w, r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
 		return
 	}
