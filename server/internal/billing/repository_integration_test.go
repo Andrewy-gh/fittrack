@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"os"
@@ -430,7 +431,16 @@ func TestServiceHandleWebhook_ConcurrentSameEventLeavesOneActiveStripeGrant(t *t
 	periodStart := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
 	periodEnd := periodStart.Add(30 * 24 * time.Hour)
 	eventCreatedAt := periodStart.Add(time.Minute)
-	raw := subscriptionEventPayload(t, subscriptionID, subscriptionStatusActive, false, periodStart, periodEnd)
+	raw := subscriptionEventPayloadForUser(
+		t,
+		subscriptionID,
+		subscriptionStatusActive,
+		false,
+		periodStart,
+		periodEnd,
+		userID,
+		customerID,
+	)
 	service.constructEvent = func(payload []byte, header string, secret string) (stripe.Event, error) {
 		return stripe.Event{
 			ID:      eventID,
@@ -582,6 +592,31 @@ func processedStripeWebhookEventCount(t *testing.T, pool *pgxpool.Pool, eventID 
 	`, eventID).Scan(&count)
 	require.NoError(t, err)
 	return count
+}
+
+func subscriptionEventPayloadForUser(
+	t *testing.T,
+	subscriptionID string,
+	status string,
+	cancelAtPeriodEnd bool,
+	periodStart time.Time,
+	periodEnd time.Time,
+	userID string,
+	customerID string,
+) []byte {
+	t.Helper()
+
+	var payload map[string]any
+	raw := subscriptionEventPayload(t, subscriptionID, status, cancelAtPeriodEnd, periodStart, periodEnd)
+	require.NoError(t, json.Unmarshal(raw, &payload))
+	payload["customer"] = customerID
+	payload["metadata"] = map[string]string{
+		"fittrack_user_id": userID,
+	}
+
+	raw, err := json.Marshal(payload)
+	require.NoError(t, err)
+	return raw
 }
 
 func currentStripeSubscriptionStatus(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) string {
