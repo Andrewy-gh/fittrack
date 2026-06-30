@@ -14,10 +14,12 @@ import (
 
 type stubRepository struct {
 	deleteErr     error
+	deleteCalled  bool
 	deletedUserID string
 }
 
 func (s *stubRepository) DeleteUser(ctx context.Context, userID string) error {
+	s.deleteCalled = true
 	s.deletedUserID = userID
 	return s.deleteErr
 }
@@ -87,5 +89,23 @@ func TestServiceDeleteCurrentUser_DoesNotDeleteWhenSubscriptionCancellationFails
 	err := service.DeleteCurrentUser(ctx)
 
 	require.ErrorIs(t, err, expectedErr)
+	assert.True(t, billing.called)
+	assert.False(t, repo.deleteCalled)
 	assert.Empty(t, repo.deletedUserID)
+}
+
+func TestServiceDeleteCurrentUser_ReturnsLocalDeletionFailureAfterSubscriptionCancellation(t *testing.T) {
+	expectedErr := errors.New("delete failed")
+	repo := &stubRepository{deleteErr: expectedErr}
+	billing := &stubBillingCanceler{}
+	service := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo, billing)
+	ctx := user.WithContext(context.Background(), "user-123")
+
+	err := service.DeleteCurrentUser(ctx)
+
+	require.ErrorIs(t, err, expectedErr)
+	assert.ErrorContains(t, err, "delete local account data after subscription cancellation")
+	assert.True(t, billing.called)
+	assert.True(t, repo.deleteCalled)
+	assert.Equal(t, "user-123", repo.deletedUserID)
 }
