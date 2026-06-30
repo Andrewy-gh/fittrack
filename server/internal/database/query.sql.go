@@ -849,6 +849,20 @@ func (q *Queries) GetActiveAIChatRunForConversation(ctx context.Context, arg Get
 	return i, err
 }
 
+const getBillingUserForUpdate = `-- name: GetBillingUserForUpdate :one
+SELECT id, user_id, created_at
+FROM users
+WHERE user_id = $1
+FOR UPDATE
+`
+
+func (q *Queries) GetBillingUserForUpdate(ctx context.Context, userID string) (Users, error) {
+	row := q.db.QueryRow(ctx, getBillingUserForUpdate, userID)
+	var i Users
+	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	return i, err
+}
+
 const getContributionData = `-- name: GetContributionData :many
 WITH workout_totals AS (
     SELECT
@@ -2592,7 +2606,7 @@ func (q *Queries) MarkStripeWebhookEventProcessed(ctx context.Context, arg MarkS
 
 const revokeStripeFeatureAccess = `-- name: RevokeStripeFeatureAccess :exec
 UPDATE user_feature_access
-SET revoked_at = CURRENT_TIMESTAMP
+SET revoked_at = GREATEST(CURRENT_TIMESTAMP, starts_at)
 WHERE user_id = $1
   AND feature_key = $2
   AND source = 'stripe'
