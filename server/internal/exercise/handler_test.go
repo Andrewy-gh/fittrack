@@ -21,6 +21,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -245,7 +246,7 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			name:       "exercise not found",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{}, assert.AnError)
+				m.On("GetExerciseDetail", mock.Anything, id, userID).Return(db.GetExerciseDetailRow{}, pgx.ErrNoRows)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
@@ -596,7 +597,7 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 			name:       "exercise not found",
 			exerciseID: "999",
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, pgx.ErrNoRows)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
@@ -736,7 +737,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			exerciseID:  "999",
 			requestBody: map[string]string{"name": "Updated Exercise"},
 			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, assert.AnError)
+				m.On("GetExercise", mock.Anything, id, userID).Return(db.Exercise{}, pgx.ErrNoRows)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,

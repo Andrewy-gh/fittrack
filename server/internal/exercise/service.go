@@ -2,6 +2,7 @@ package exercise
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -9,6 +10,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5"
 )
 
 type ExerciseRepository interface {
@@ -59,8 +61,11 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*
 	}
 
 	exercise, err := es.repo.GetExerciseDetail(ctx, id, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to look up exercise detail: %w", err)
 	}
 
 	sets, err := es.repo.GetExerciseWithSets(ctx, id, userID)
@@ -145,8 +150,11 @@ func (es *ExerciseService) UpdateExerciseName(ctx context.Context, id int32, nam
 	}
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to look up exercise before update: %w", err)
 	}
 
 	if err := es.repo.UpdateExerciseName(ctx, id, name, userID); err != nil {
@@ -164,8 +172,11 @@ func (es *ExerciseService) DeleteExercise(ctx context.Context, id int32) error {
 	}
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to look up exercise before delete: %w", err)
 	}
 
 	if err := es.repo.DeleteExercise(ctx, id, userID); err != nil {

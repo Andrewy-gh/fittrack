@@ -16,6 +16,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -236,7 +237,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			},
 			setupMock: func(m *MockWorkoutRepository) {
 				// GetWorkout returns error for non-existent workout
-				m.On("GetWorkout", mock.Anything, int32(999), userID).Return(db.Workout{}, fmt.Errorf("workout not found"))
+				m.On("GetWorkout", mock.Anything, int32(999), userID).Return(db.Workout{}, pgx.ErrNoRows)
 				// UpdateWorkout should not be called since GetWorkout returns error
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),

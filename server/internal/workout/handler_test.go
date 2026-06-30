@@ -7,6 +7,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -421,7 +422,7 @@ func TestWorkoutHandler_DeleteWorkout(t *testing.T) {
 			name:      "workout not found",
 			workoutID: "999",
 			setupMock: func(m *MockWorkoutRepository, id int32) {
-				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{}, assert.AnError)
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{}, pgx.ErrNoRows)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusNotFound,
