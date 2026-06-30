@@ -1,5 +1,16 @@
-import type { ComponentType, CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  LazyExoticComponent,
+  ReactElement,
+  ReactNode,
+} from "react";
 import { Link, useRouter } from "@tanstack/react-router";
+import type { AppFieldExtendedReactFormApi } from "@tanstack/react-form";
+import type {
+  FormAsyncValidateOrFn,
+  FormValidateOrFn,
+  Updater,
+} from "@tanstack/form-core";
 import {
   DndContext,
   KeyboardSensor,
@@ -21,8 +32,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { PencilLine, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { WorkoutExerciseInput } from "@/client";
+import type {
+  WorkoutCreateWorkoutRequest,
+  WorkoutExerciseInput,
+  WorkoutUpdateWorkoutRequest,
+} from "@/client";
 import type { WorkoutFocus } from "@/features/workouts/api/workouts";
+import type { DbExercise } from "@/features/exercises/api/exercises";
 import { cn } from "@/lib/utils";
 import type { ReorderableExercise } from "./use-exercise-reorder";
 
@@ -30,13 +46,72 @@ export type WorkoutExerciseCard = Pick<WorkoutExerciseInput, "name" | "sets">;
 type SortableHandleAttributes = ReturnType<typeof useSortable>["attributes"];
 type SortableHandleListeners = ReturnType<typeof useSortable>["listeners"];
 type SortableHandleRef = ReturnType<typeof useSortable>["setActivatorNodeRef"];
-type WorkoutFormSectionApi = {
-  AppField: ComponentType<any>;
-  Subscribe: ComponentType<any>;
+
+type WorkoutFormValues =
+  | WorkoutCreateWorkoutRequest
+  | WorkoutUpdateWorkoutRequest;
+type WorkoutFormSyncValidator<TFormValues> =
+  | FormValidateOrFn<TFormValues>
+  | undefined;
+type WorkoutFormAsyncValidator<TFormValues> =
+  | FormAsyncValidateOrFn<TFormValues>
+  | undefined;
+type LazyFieldComponent<TProps extends object = Record<string, never>> =
+  LazyExoticComponent<(props: TProps) => ReactElement>;
+type LazyEmptyFieldComponent = LazyExoticComponent<() => ReactElement>;
+type WorkoutFormFieldComponents = {
+  DatePicker: LazyEmptyFieldComponent;
+  NotesTextarea: LazyEmptyFieldComponent;
+  SetTypeSelect: LazyFieldComponent<{ className?: string }>;
+  InputField: LazyFieldComponent<{
+    label: string;
+    placeholder?: string;
+    type?: "text" | "number";
+    className?: string;
+    step?: string;
+    min?: string;
+  }>;
+  AddExerciseField: LazyFieldComponent<{
+    exercises: DbExercise[];
+    onAddExercise: (exerciseIndex: number, exerciseId?: number) => void;
+  }>;
+  WorkoutFocusCombobox: LazyFieldComponent<{
+    workoutsFocus: WorkoutFocus[];
+  }>;
+};
+type WorkoutFormApi<TFormValues extends WorkoutFormValues> =
+  AppFieldExtendedReactFormApi<
+    TFormValues,
+    WorkoutFormSyncValidator<TFormValues>,
+    WorkoutFormSyncValidator<TFormValues>,
+    WorkoutFormAsyncValidator<TFormValues>,
+    WorkoutFormSyncValidator<TFormValues>,
+    WorkoutFormAsyncValidator<TFormValues>,
+    WorkoutFormSyncValidator<TFormValues>,
+    WorkoutFormAsyncValidator<TFormValues>,
+    WorkoutFormSyncValidator<TFormValues>,
+    WorkoutFormAsyncValidator<TFormValues>,
+    WorkoutFormAsyncValidator<TFormValues>,
+    unknown,
+    WorkoutFormFieldComponents,
+    Record<string, never>
+  >;
+
+export type WorkoutFormSectionApi<
+  TFormValues extends WorkoutFormValues = WorkoutFormValues,
+> = Pick<WorkoutFormApi<TFormValues>, "AppField" | "Subscribe">;
+export type WorkoutExerciseArrayField = {
+  readonly state: {
+    readonly value: WorkoutExerciseCard[];
+  };
+  readonly removeValue: (index: number) => void;
+  readonly handleChange: (updater: Updater<WorkoutExerciseCard[]>) => void;
 };
 
-type WorkoutMetadataFieldsProps = {
-  form: WorkoutFormSectionApi;
+type WorkoutMetadataFieldsProps<
+  TFormValues extends WorkoutFormValues = WorkoutFormValues,
+> = {
+  form: WorkoutFormSectionApi<TFormValues>;
   workoutsFocus: WorkoutFocus[];
 };
 
@@ -56,8 +131,10 @@ type WorkoutExerciseCardsProps = {
   renderMetrics?: (exercise: WorkoutExerciseCard) => ReactNode;
 };
 
-type WorkoutFormActionsProps = {
-  form: WorkoutFormSectionApi;
+type WorkoutFormActionsProps<
+  TFormValues extends WorkoutFormValues = WorkoutFormValues,
+> = {
+  form: WorkoutFormSectionApi<TFormValues>;
   isReorderMode: boolean;
 };
 
@@ -68,26 +145,25 @@ function getExerciseVolume(exercise: WorkoutExerciseCard): number {
   );
 }
 
-export function WorkoutMetadataFields({
-  form,
-  workoutsFocus,
-}: WorkoutMetadataFieldsProps) {
+export function WorkoutMetadataFields<
+  TFormValues extends WorkoutFormValues = WorkoutFormValues,
+>({ form, workoutsFocus }: WorkoutMetadataFieldsProps<TFormValues>) {
   return (
     <div className="grid grid-cols-2 gap-4 mb-4">
       <form.AppField
         name="date"
-        children={(field: any) => <field.DatePicker />}
+        children={(field) => <field.DatePicker />}
       />
       <form.AppField
         name="workoutFocus"
-        children={(field: any) => (
+        children={(field) => (
           <field.WorkoutFocusCombobox workoutsFocus={workoutsFocus} />
         )}
       />
       <div className="col-span-2">
         <form.AppField
           name="notes"
-          children={(field: any) => <field.NotesTextarea />}
+          children={(field) => <field.NotesTextarea />}
         />
       </div>
     </div>
@@ -464,10 +540,9 @@ function SortableWorkoutExerciseCard({
   );
 }
 
-export function WorkoutFormActions({
-  form,
-  isReorderMode,
-}: WorkoutFormActionsProps) {
+export function WorkoutFormActions<
+  TFormValues extends WorkoutFormValues = WorkoutFormValues,
+>({ form, isReorderMode }: WorkoutFormActionsProps<TFormValues>) {
   return (
     <>
       <div className="py-6">
@@ -501,9 +576,9 @@ export function WorkoutFormActions({
         )}
       </div>
       <div className="mt-8">
-        <form.Subscribe
-          selector={(state: any) => [state.canSubmit, state.isSubmitting]}
-          children={([canSubmit, isSubmitting]: [boolean, boolean]) => (
+        <form.Subscribe<readonly [boolean, boolean]>
+          selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+          children={([canSubmit, isSubmitting]) => (
             <Button
               type="submit"
               disabled={!canSubmit || isReorderMode}

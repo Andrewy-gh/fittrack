@@ -28,15 +28,23 @@ import {
 import { formatWeight } from "@/lib/utils";
 import {
   WorkoutExerciseCards,
+  type WorkoutExerciseArrayField,
   type WorkoutExerciseCard,
   WorkoutFormActions,
+  type WorkoutFormSectionApi,
   WorkoutMetadataFields,
 } from "@/features/workouts/components/form/workout-form-sections";
 import { useExerciseReorder } from "@/features/workouts/components/form/use-exercise-reorder";
 
-function WorkoutExerciseSection({ field, form }: { field: any; form: any }) {
+function WorkoutExerciseSection({
+  field,
+  form,
+}: {
+  field: WorkoutExerciseArrayField;
+  form: WorkoutFormSectionApi<WorkoutUpdateWorkoutRequest>;
+}) {
   const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(
-    field.state.value as WorkoutExerciseCard[],
+    field.state.value,
   );
 
   return (

@@ -19,7 +19,10 @@ import {
 } from "@/components/error-boundary";
 import { ExerciseContextPanel } from "@/features/workouts/components/form/exercise-context-panel";
 import { LastWorkoutNoteSection } from "@/features/workouts/components/last-workout-note-section";
-import type { WorkoutNewWorkoutContextResponse } from "@/client";
+import type {
+  WorkoutCreateWorkoutRequest,
+  WorkoutNewWorkoutContextResponse,
+} from "@/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,8 +51,10 @@ import { RecentSets } from "@/features/workouts/components/form/recent-sets-disp
 import { shouldShowRecentFocusAreaCard } from "@/features/workouts/components/form/workout-form-helpers";
 import {
   WorkoutExerciseCards,
+  type WorkoutExerciseArrayField,
   type WorkoutExerciseCard,
   WorkoutFormActions,
+  type WorkoutFormSectionApi,
   WorkoutMetadataFields,
 } from "@/features/workouts/components/form/workout-form-sections";
 import { useExerciseReorder } from "@/features/workouts/components/form/use-exercise-reorder";
@@ -61,13 +66,13 @@ function WorkoutExerciseSection({
   formatVolume,
   renderExerciseGoalSummary,
 }: {
-  field: any;
-  form: any;
+  field: WorkoutExerciseArrayField;
+  form: WorkoutFormSectionApi<WorkoutCreateWorkoutRequest>;
   formatVolume: (value: number) => string;
   renderExerciseGoalSummary: (exercise: { name: string }) => ReactNode;
 }) {
   const exerciseReorder = useExerciseReorder<WorkoutExerciseCard>(
-    field.state.value as WorkoutExerciseCard[],
+    field.state.value,
   );
 
   return (
