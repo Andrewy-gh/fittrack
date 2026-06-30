@@ -1,3 +1,5 @@
+import * as v from "valibot";
+
 export type ExerciseGoal = {
   targetWeight?: number;
   targetReps?: number;
@@ -14,6 +16,14 @@ type ExerciseGoalLookup = {
 };
 
 const STORAGE_KEY = "fittrack-exercise-goals-v1";
+
+const ExerciseGoalSchema = v.object({
+  targetWeight: v.optional(v.number()),
+  targetReps: v.optional(v.number()),
+  frequencyPerWeek: v.optional(v.number()),
+});
+
+const ExerciseGoalRecordSchema = v.record(v.string(), ExerciseGoalSchema);
 
 function normalizeExerciseName(exerciseName: string): string {
   return exerciseName.trim().toLowerCase();
@@ -34,6 +44,13 @@ function getExerciseGoalKey({
   return null;
 }
 
+function parseExerciseGoalRecord(
+  input: unknown,
+): Record<string, ExerciseGoal> | null {
+  const result = v.safeParse(ExerciseGoalRecordSchema, input);
+  return result.success ? result.output : null;
+}
+
 function readExerciseGoals(): Record<string, ExerciseGoal> {
   if (typeof window === "undefined") {
     return {};
@@ -45,7 +62,8 @@ function readExerciseGoals(): Record<string, ExerciseGoal> {
   }
 
   try {
-    return JSON.parse(storedValue) as Record<string, ExerciseGoal>;
+    const parsed: unknown = JSON.parse(storedValue);
+    return parseExerciseGoalRecord(parsed) ?? {};
   } catch {
     return {};
   }

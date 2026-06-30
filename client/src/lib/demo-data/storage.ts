@@ -11,6 +11,7 @@ import type {
   ExerciseRecentSetsResponse,
 } from "./types";
 import { STORAGE_KEYS, DEMO_USER_ID } from "./types";
+import * as v from "valibot";
 import {
   INITIAL_EXERCISES,
   INITIAL_SETS,
@@ -33,17 +34,118 @@ import type { DemoContributionWorkout } from "@/lib/demo-data/contribution-data"
 // localStorage Utilities
 // ===========================
 
-function getFromStorage<T>(key: string, defaultValue: T): T {
+type StorageParser<T> = (input: unknown) => T | null;
+
+const StoredExerciseSchema = v.object({
+  id: v.number(),
+  name: v.string(),
+  user_id: v.string(),
+  created_at: v.string(),
+  updated_at: v.string(),
+});
+
+const StoredWorkoutSchema = v.object({
+  id: v.number(),
+  date: v.string(),
+  notes: v.optional(v.string()),
+  workout_focus: v.optional(v.string()),
+  user_id: v.string(),
+  created_at: v.string(),
+  updated_at: v.string(),
+});
+
+const StoredSetSchema = v.object({
+  id: v.number(),
+  exercise_id: v.number(),
+  workout_id: v.number(),
+  weight: v.optional(v.number()),
+  reps: v.number(),
+  set_type: v.picklist(["warmup", "working"]),
+  exercise_order: v.number(),
+  set_order: v.number(),
+  user_id: v.string(),
+  created_at: v.string(),
+});
+
+function parseWithSchema<
+  TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
+>(schema: TSchema, input: unknown): v.InferOutput<TSchema> | null {
+  const result = v.safeParse(schema, input);
+  return result.success ? result.output : null;
+}
+
+function parseStoredExercise(input: unknown): StoredExercise | null {
+  return parseWithSchema(StoredExerciseSchema, input);
+}
+
+function parseStoredWorkout(input: unknown): StoredWorkout | null {
+  return parseWithSchema(StoredWorkoutSchema, input);
+}
+
+function parseStoredSet(input: unknown): StoredSet | null {
+  return parseWithSchema(StoredSetSchema, input);
+}
+
+function parseArray<T>(
+  input: unknown,
+  parseItem: StorageParser<T>,
+): T[] | null {
+  if (!Array.isArray(input)) {
+    return null;
+  }
+
+  const items: T[] = [];
+  for (const itemInput of input) {
+    const item = parseItem(itemInput);
+    if (item === null) {
+      return null;
+    }
+    items.push(item);
+  }
+
+  return items;
+}
+
+function parseStoredExercises(input: unknown): StoredExercise[] | null {
+  return parseArray(input, parseStoredExercise);
+}
+
+function parseStoredWorkouts(input: unknown): StoredWorkout[] | null {
+  return parseArray(input, parseStoredWorkout);
+}
+
+function parseStoredSets(input: unknown): StoredSet[] | null {
+  return parseArray(input, parseStoredSet);
+}
+
+function getFromStorage<T>(
+  key: string,
+  defaultValue: T,
+  parseStoredValue: StorageParser<T>,
+): T {
   if (typeof window === "undefined") return defaultValue;
 
   const stored = localStorage.getItem(key);
   if (!stored) return defaultValue;
 
   try {
-    return JSON.parse(stored) as T;
+    const parsed: unknown = JSON.parse(stored);
+    return parseStoredValue(parsed) ?? defaultValue;
   } catch {
     return defaultValue;
   }
+}
+
+function getStoredExercises(): StoredExercise[] {
+  return getFromStorage(STORAGE_KEYS.EXERCISES, [], parseStoredExercises);
+}
+
+function getStoredWorkouts(): StoredWorkout[] {
+  return getFromStorage(STORAGE_KEYS.WORKOUTS, [], parseStoredWorkouts);
+}
+
+function getStoredSets(): StoredSet[] {
+  return getFromStorage(STORAGE_KEYS.SETS, [], parseStoredSets);
 }
 
 function setInStorage<T>(key: string, value: T): void {
@@ -88,10 +190,7 @@ export function clearDemoData(): void {
 // ===========================
 
 export function getAllExercises(): ExerciseExerciseResponse[] {
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const exercises = getStoredExercises();
   return exercises.map((ex) => ({
     id: ex.id,
     name: ex.name,
@@ -102,10 +201,7 @@ export function getAllExercises(): ExerciseExerciseResponse[] {
 }
 
 export function getExerciseById(id: number): ExerciseExerciseResponse | null {
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const exercises = getStoredExercises();
   const exercise = exercises.find((ex) => ex.id === id);
 
   if (!exercise) return null;
@@ -120,10 +216,7 @@ export function getExerciseById(id: number): ExerciseExerciseResponse | null {
 }
 
 export function createExercise(name: string): ExerciseExerciseResponse {
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const exercises = getStoredExercises();
 
   const newExercise: StoredExercise = {
     id: getNextId(exercises),
@@ -146,10 +239,7 @@ export function createExercise(name: string): ExerciseExerciseResponse {
 }
 
 export function updateExercise(id: number, name: string): boolean {
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const exercises = getStoredExercises();
   const exerciseIndex = exercises.findIndex((ex) => ex.id === id);
 
   if (exerciseIndex === -1) return false;
@@ -171,16 +261,13 @@ export function updateExercise(id: number, name: string): boolean {
 }
 
 export function deleteExercise(id: number): boolean {
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const exercises = getStoredExercises();
   const filtered = exercises.filter((ex) => ex.id !== id);
 
   if (filtered.length === exercises.length) return false;
 
   // Also delete all sets referencing this exercise
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
+  const sets = getStoredSets();
   const filteredSets = sets.filter((set) => set.exercise_id !== id);
   setInStorage(STORAGE_KEYS.SETS, filteredSets);
   handleDemoExerciseDeleted(id);
@@ -193,12 +280,9 @@ export function deleteExercise(id: number): boolean {
 export function getExerciseWithSets(
   exerciseId: number,
 ): ExerciseExerciseWithSetsResponse[] {
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const sets = getStoredSets();
+  const workouts = getStoredWorkouts();
+  const exercises = getStoredExercises();
 
   const exerciseSets = sets.filter((set) => set.exercise_id === exerciseId);
 
@@ -242,10 +326,7 @@ function computeBestE1rmFromWorkingSets(
 export function getExerciseDetail(
   exerciseId: number,
 ): ExerciseExerciseDetailResponse {
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const exercises = getStoredExercises();
   const exercise = exercises.find((e) => e.id === exerciseId);
   if (!exercise) throw new Error("Exercise not found");
 
@@ -276,8 +357,8 @@ export function getExerciseRecentSets(
   exerciseId: number,
   limit = 10,
 ): ExerciseRecentSetsResponse[] {
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
+  const sets = getStoredSets();
+  const workouts = getStoredWorkouts();
 
   const exerciseSets = sets
     .filter((set) => set.exercise_id === exerciseId)
@@ -308,7 +389,7 @@ export function getExerciseRecentSets(
 // ===========================
 
 export function getAllWorkouts(): WorkoutWorkoutResponse[] {
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
+  const workouts = getStoredWorkouts();
 
   return workouts
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -324,8 +405,8 @@ export function getAllWorkouts(): WorkoutWorkoutResponse[] {
 }
 
 export function getAllWorkoutsForContribution(): DemoContributionWorkout[] {
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
+  const workouts = getStoredWorkouts();
+  const sets = getStoredSets();
 
   return workouts.map((workout) => {
     const workingSets = sets.filter(
@@ -346,12 +427,9 @@ export function getAllWorkoutsForContribution(): DemoContributionWorkout[] {
 }
 
 export function getWorkoutById(id: number): WorkoutWorkoutWithSetsResponse[] {
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const sets = getStoredSets();
+  const workouts = getStoredWorkouts();
+  const exercises = getStoredExercises();
 
   const workout = workouts.find((w) => w.id === id);
   if (!workout) return [];
@@ -401,12 +479,9 @@ interface CreateWorkoutInput {
 }
 
 export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const workouts = getStoredWorkouts();
+  const sets = getStoredSets();
+  const exercises = getStoredExercises();
 
   // Create new workout
   const newWorkout: StoredWorkout = {
@@ -467,12 +542,9 @@ export function updateWorkout(
   id: number,
   input: CreateWorkoutInput,
 ): { success: boolean } {
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
-  const exercises = getFromStorage<StoredExercise[]>(
-    STORAGE_KEYS.EXERCISES,
-    [],
-  );
+  const workouts = getStoredWorkouts();
+  const sets = getStoredSets();
+  const exercises = getStoredExercises();
 
   const workoutIndex = workouts.findIndex((w) => w.id === id);
   if (workoutIndex === -1) return { success: false };
@@ -534,8 +606,8 @@ export function updateWorkout(
 }
 
 export function deleteWorkout(id: number): boolean {
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
-  const sets = getFromStorage<StoredSet[]>(STORAGE_KEYS.SETS, []);
+  const workouts = getStoredWorkouts();
+  const sets = getStoredSets();
 
   const filtered = workouts.filter((w) => w.id !== id);
   if (filtered.length === workouts.length) return false;
@@ -555,7 +627,7 @@ export function deleteWorkout(id: number): boolean {
 // ===========================
 
 export function getWorkoutFocusValues(): string[] {
-  const workouts = getFromStorage<StoredWorkout[]>(STORAGE_KEYS.WORKOUTS, []);
+  const workouts = getStoredWorkouts();
   const focusValues = workouts
     .map((w) => w.workout_focus)
     .filter((focus): focus is string => !!focus);

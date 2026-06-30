@@ -47,6 +47,38 @@ describe("exercise-goals", () => {
     expect(getExerciseGoal({ exerciseId: 8 })).toBeNull();
   });
 
+  it("reads valid persisted goals from browser storage", () => {
+    localStorage.setItem(
+      "fittrack-exercise-goals-v1",
+      JSON.stringify({
+        "id:12": {
+          targetWeight: 225,
+          targetReps: 5,
+          frequencyPerWeek: 2,
+        },
+      }),
+    );
+
+    expect(getExerciseGoal({ exerciseId: 12 })).toEqual({
+      targetWeight: 225,
+      targetReps: 5,
+      frequencyPerWeek: 2,
+    });
+  });
+
+  it("discards structurally invalid persisted goals", () => {
+    localStorage.setItem(
+      "fittrack-exercise-goals-v1",
+      JSON.stringify({
+        "id:12": {
+          targetWeight: "225",
+        },
+      }),
+    );
+
+    expect(getExerciseGoal({ exerciseId: 12 })).toBeNull();
+  });
+
   it("formats a readable goal summary", () => {
     expect(
       formatExerciseGoalSummary({
