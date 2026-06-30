@@ -203,7 +203,7 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 // @Router /workouts [post]
 func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	var req CreateWorkoutRequest
-	if err := decodeStrictJSON(r, &req); err != nil {
+	if err := decodeStrictJSON(w, r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
@@ -252,7 +252,7 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateWorkoutRequest
-	if err := decodeStrictJSON(r, &req); err != nil {
+	if err := decodeStrictJSON(w, r, &req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}

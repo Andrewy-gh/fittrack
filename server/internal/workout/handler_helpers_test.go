@@ -2,6 +2,7 @@ package workout
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -74,14 +75,47 @@ func TestWorkoutHandler_decodeWorkoutIDRejectsInvalidBoundaryValues(t *testing.T
 
 func TestDecodeStrictJSONRejectsTrailingJSON(t *testing.T) {
 	var req CreateWorkoutRequest
+	w := httptest.NewRecorder()
 	httpReq := httptest.NewRequest(
 		http.MethodPost,
 		"/api/workouts",
 		strings.NewReader(`{"date":"2023-01-15T10:00:00Z","exercises":[{"name":"Bench Press","sets":[{"reps":10,"setType":"working"}]}]}{"unexpected":true}`),
 	)
 
-	err := decodeStrictJSON(httpReq, &req)
+	err := decodeStrictJSON(w, httpReq, &req)
 
 	require.Error(t, err)
 	assert.Equal(t, "2023-01-15T10:00:00Z", req.Date)
+}
+
+func TestDecodeStrictJSONRejectsUnknownWorkoutFields(t *testing.T) {
+	var req CreateWorkoutRequest
+	w := httptest.NewRecorder()
+	httpReq := httptest.NewRequest(
+		http.MethodPost,
+		"/api/workouts",
+		strings.NewReader(`{"date":"2023-01-15T10:00:00Z","exercises":[{"name":"Bench Press","sets":[{"reps":10,"setType":"working"}]}],"unexpected":true}`),
+	)
+
+	err := decodeStrictJSON(w, httpReq, &req)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown field "unexpected"`)
+}
+
+func TestDecodeStrictJSONRejectsOversizedWorkoutJSON(t *testing.T) {
+	var req CreateWorkoutRequest
+	w := httptest.NewRecorder()
+	httpReq := httptest.NewRequest(
+		http.MethodPost,
+		"/api/workouts",
+		strings.NewReader(`{"date":"2023-01-15T10:00:00Z","notes":"`+strings.Repeat("x", maxWorkoutJSONBodyBytes)+`","exercises":[{"name":"Bench Press","sets":[{"reps":10,"setType":"working"}]}]}`),
+	)
+
+	err := decodeStrictJSON(w, httpReq, &req)
+
+	require.Error(t, err)
+	var maxBytesErr *http.MaxBytesError
+	assert.True(t, errors.As(err, &maxBytesErr))
+	assert.Equal(t, int64(maxWorkoutJSONBodyBytes), maxBytesErr.Limit)
 }
