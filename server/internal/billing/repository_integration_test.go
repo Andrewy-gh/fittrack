@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-go/v83"
 )
 
 func TestRepositoryUpsertSubscriptionFromWebhook_SourceScopedFeatureAccess(t *testing.T) {
@@ -392,6 +394,80 @@ func TestRepositoryUpsertSubscriptionFromWebhook_DoesNotGrantWithoutPremiumPrice
 	}
 }
 
+func TestServiceHandleWebhook_ConcurrentSameEventLeavesOneActiveStripeGrant(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed billing integration test without DATABASE_URL")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	require.NoError(t, err)
+	defer pool.Close()
+	require.NoError(t, pool.Ping(ctx))
+
+	userID := "billing-concurrent-webhook-user"
+	subscriptionID := "sub_concurrent_webhook"
+	customerID := "cus_concurrent_webhook"
+	eventID := "evt_concurrent_webhook"
+	cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+	cleanupStripeWebhookEvent(t, pool, eventID)
+	defer cleanupBillingSourceScopeTest(t, pool, userID, subscriptionID, customerID)
+	defer cleanupStripeWebhookEvent(t, pool, eventID)
+	seedBillingUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := &concurrentWebhookRepository{
+		Repository: NewRepository(logger, db.New(pool), pool),
+		targetID:   eventID,
+		ready:      make(chan struct{}, 2),
+		release:    make(chan struct{}),
+	}
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+
+	periodStart := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	periodEnd := periodStart.Add(30 * 24 * time.Hour)
+	eventCreatedAt := periodStart.Add(time.Minute)
+	raw := subscriptionEventPayload(t, subscriptionID, subscriptionStatusActive, false, periodStart, periodEnd)
+	service.constructEvent = func(payload []byte, header string, secret string) (stripe.Event, error) {
+		return stripe.Event{
+			ID:      eventID,
+			Type:    "customer.subscription.updated",
+			Created: eventCreatedAt.Unix(),
+			Data:    &stripe.EventData{Raw: raw},
+		}, nil
+	}
+
+	var wg sync.WaitGroup
+	errs := make(chan error, 2)
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- service.HandleWebhook(ctx, []byte("payload"), "sig")
+		}()
+	}
+
+	for range 2 {
+		select {
+		case <-repo.ready:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for concurrent webhook checks")
+		}
+	}
+	close(repo.release)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int64(1), activeStripeGrantCount(t, pool, userID, subscriptionID))
+	assert.Equal(t, int64(1), processedStripeWebhookEventCount(t, pool, eventID))
+}
+
 func seedLocalE2EFeatureAccess(t *testing.T, pool *pgxpool.Pool, userID string) {
 	t.Helper()
 
@@ -473,6 +549,41 @@ func revokedStripeGrantCount(t *testing.T, pool *pgxpool.Pool, userID string, su
 	return count
 }
 
+func activeStripeGrantCount(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) int64 {
+	t.Helper()
+
+	var count int64
+	withBillingTestUser(t, pool, userID, func(tx pgx.Tx) {
+		err := tx.QueryRow(context.Background(), `
+			SELECT COUNT(*)
+			FROM user_feature_access
+			WHERE user_id = $1
+			  AND feature_key = 'ai_chatbot'
+			  AND source = 'stripe'
+			  AND source_reference = $2
+			  AND revoked_at IS NULL
+			  AND starts_at <= NOW()
+			  AND (expires_at IS NULL OR expires_at > NOW())
+		`, userID, subscriptionID).Scan(&count)
+		require.NoError(t, err)
+	})
+
+	return count
+}
+
+func processedStripeWebhookEventCount(t *testing.T, pool *pgxpool.Pool, eventID string) int64 {
+	t.Helper()
+
+	var count int64
+	err := pool.QueryRow(context.Background(), `
+		SELECT COUNT(*)
+		FROM stripe_webhook_events
+		WHERE stripe_event_id = $1
+	`, eventID).Scan(&count)
+	require.NoError(t, err)
+	return count
+}
+
 func currentStripeSubscriptionStatus(t *testing.T, pool *pgxpool.Pool, userID string, subscriptionID string) string {
 	t.Helper()
 
@@ -544,6 +655,34 @@ func cleanupBillingSourceScopeTest(t *testing.T, pool *pgxpool.Pool, userID stri
 		`, userID)
 		require.NoError(t, err)
 	})
+}
+
+func cleanupStripeWebhookEvent(t *testing.T, pool *pgxpool.Pool, eventID string) {
+	t.Helper()
+
+	_, err := pool.Exec(context.Background(), `
+		DELETE FROM stripe_webhook_events
+		WHERE stripe_event_id = $1
+	`, eventID)
+	require.NoError(t, err)
+}
+
+type concurrentWebhookRepository struct {
+	Repository
+	targetID string
+	ready    chan struct{}
+	release  chan struct{}
+}
+
+func (r *concurrentWebhookRepository) HasProcessedWebhookEvent(ctx context.Context, stripeEventID string) (bool, error) {
+	processed, err := r.Repository.HasProcessedWebhookEvent(ctx, stripeEventID)
+	if stripeEventID != r.targetID || err != nil {
+		return processed, err
+	}
+
+	r.ready <- struct{}{}
+	<-r.release
+	return processed, nil
 }
 
 func withBillingTestUser(t *testing.T, pool *pgxpool.Pool, userID string, fn func(tx pgx.Tx)) {
