@@ -143,6 +143,21 @@ type UserFeatureAccess struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
+type UserTrainingProfile struct {
+	UserID                          string             `json:"user_id"`
+	PrimaryGoal                     pgtype.Text        `json:"primary_goal"`
+	ExperienceLevel                 pgtype.Text        `json:"experience_level"`
+	PreferredSessionDurationMinutes pgtype.Int4        `json:"preferred_session_duration_minutes"`
+	UsualTrainingLocation           pgtype.Text        `json:"usual_training_location"`
+	AvailableEquipment              []byte             `json:"available_equipment"`
+	AvoidedExercises                []byte             `json:"avoided_exercises"`
+	MovementLimitations             []byte             `json:"movement_limitations"`
+	SourceConversationID            pgtype.Int4        `json:"source_conversation_id"`
+	SourceMessageID                 pgtype.Int4        `json:"source_message_id"`
+	CreatedAt                       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Users struct {
 	ID        int32              `json:"id"`
 	UserID    string             `json:"user_id"`
