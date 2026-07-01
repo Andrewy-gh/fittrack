@@ -1,5 +1,11 @@
 -- +goose Up
 -- +goose StatementBegin
+ALTER TABLE ai_chat_conversation
+ADD CONSTRAINT ai_chat_conversation_user_id_id_unique UNIQUE (user_id, id);
+
+ALTER TABLE ai_chat_message
+ADD CONSTRAINT ai_chat_message_user_conversation_id_unique UNIQUE (user_id, conversation_id, id);
+
 CREATE TABLE user_training_profile (
     user_id VARCHAR(256) PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
     primary_goal VARCHAR(64),
@@ -9,8 +15,8 @@ CREATE TABLE user_training_profile (
     available_equipment JSONB NOT NULL DEFAULT '[]'::jsonb,
     avoided_exercises JSONB NOT NULL DEFAULT '[]'::jsonb,
     movement_limitations JSONB NOT NULL DEFAULT '[]'::jsonb,
-    source_conversation_id INTEGER REFERENCES ai_chat_conversation(id) ON DELETE SET NULL,
-    source_message_id INTEGER REFERENCES ai_chat_message(id) ON DELETE SET NULL,
+    source_conversation_id INTEGER,
+    source_message_id INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT user_training_profile_primary_goal_valid CHECK (
@@ -53,7 +59,23 @@ CREATE TABLE user_training_profile (
     ),
     CONSTRAINT user_training_profile_source_message_requires_conversation CHECK (
         source_message_id IS NULL OR source_conversation_id IS NOT NULL
-    )
+    ),
+    CONSTRAINT user_training_profile_source_conversation_owner_fk FOREIGN KEY (
+        user_id,
+        source_conversation_id
+    ) REFERENCES ai_chat_conversation (
+        user_id,
+        id
+    ) ON DELETE SET NULL (source_conversation_id),
+    CONSTRAINT user_training_profile_source_message_owner_conversation_fk FOREIGN KEY (
+        user_id,
+        source_conversation_id,
+        source_message_id
+    ) REFERENCES ai_chat_message (
+        user_id,
+        conversation_id,
+        id
+    ) ON DELETE SET NULL (source_message_id)
 );
 
 ALTER TABLE user_training_profile ENABLE ROW LEVEL SECURITY;
@@ -90,4 +112,10 @@ ALTER TABLE user_training_profile DISABLE ROW LEVEL SECURITY;
 REVOKE ALL ON user_training_profile FROM PUBLIC;
 
 DROP TABLE IF EXISTS user_training_profile;
+
+ALTER TABLE ai_chat_message
+DROP CONSTRAINT IF EXISTS ai_chat_message_user_conversation_id_unique;
+
+ALTER TABLE ai_chat_conversation
+DROP CONSTRAINT IF EXISTS ai_chat_conversation_user_id_id_unique;
 -- +goose StatementEnd

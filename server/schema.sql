@@ -86,7 +86,8 @@ CREATE TABLE ai_chat_conversation (
     last_message_at TIMESTAMPTZ,
     CONSTRAINT ai_chat_conversation_title_not_empty CHECK (
         title IS NULL OR btrim(title) <> ''
-    )
+    ),
+    CONSTRAINT ai_chat_conversation_user_id_id_unique UNIQUE (user_id, id)
 );
 
 -- AI chat messages table
@@ -109,7 +110,8 @@ CREATE TABLE ai_chat_message (
     ),
     CONSTRAINT ai_chat_message_error_not_empty CHECK (
         error_message IS NULL OR btrim(error_message) <> ''
-    )
+    ),
+    CONSTRAINT ai_chat_message_user_conversation_id_unique UNIQUE (user_id, conversation_id, id)
 );
 
 -- AI chat runs table
@@ -181,8 +183,8 @@ CREATE TABLE user_training_profile (
     available_equipment JSONB NOT NULL DEFAULT '[]'::jsonb,
     avoided_exercises JSONB NOT NULL DEFAULT '[]'::jsonb,
     movement_limitations JSONB NOT NULL DEFAULT '[]'::jsonb,
-    source_conversation_id INTEGER REFERENCES ai_chat_conversation(id) ON DELETE SET NULL,
-    source_message_id INTEGER REFERENCES ai_chat_message(id) ON DELETE SET NULL,
+    source_conversation_id INTEGER,
+    source_message_id INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT user_training_profile_primary_goal_valid CHECK (
@@ -225,7 +227,23 @@ CREATE TABLE user_training_profile (
     ),
     CONSTRAINT user_training_profile_source_message_requires_conversation CHECK (
         source_message_id IS NULL OR source_conversation_id IS NOT NULL
-    )
+    ),
+    CONSTRAINT user_training_profile_source_conversation_owner_fk FOREIGN KEY (
+        user_id,
+        source_conversation_id
+    ) REFERENCES ai_chat_conversation (
+        user_id,
+        id
+    ) ON DELETE SET NULL (source_conversation_id),
+    CONSTRAINT user_training_profile_source_message_owner_conversation_fk FOREIGN KEY (
+        user_id,
+        source_conversation_id,
+        source_message_id
+    ) REFERENCES ai_chat_message (
+        user_id,
+        conversation_id,
+        id
+    ) ON DELETE SET NULL (source_message_id)
 );
 
 -- Workouts table

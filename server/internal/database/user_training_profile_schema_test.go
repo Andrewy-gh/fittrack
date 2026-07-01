@@ -34,6 +34,19 @@ func TestUserTrainingProfileSchemaAndRLS(t *testing.T) {
 	defer connA.Release()
 	ctxA := testutils.SetTestUserContext(ctx, t, connA, userA)
 
+	sourceConversationA := insertUserTrainingProfileTestConversation(t, connA, ctxA, userA)
+	sourceMessageA := insertUserTrainingProfileTestMessage(t, connA, ctxA, userA, sourceConversationA)
+	otherConversationA := insertUserTrainingProfileTestConversation(t, connA, ctxA, userA)
+	otherMessageA := insertUserTrainingProfileTestMessage(t, connA, ctxA, userA, otherConversationA)
+
+	connB, err := pool.Acquire(ctx)
+	require.NoError(t, err)
+	defer connB.Release()
+	ctxB := testutils.SetTestUserContext(ctx, t, connB, userB)
+
+	sourceConversationB := insertUserTrainingProfileTestConversation(t, connB, ctxB, userB)
+	sourceMessageB := insertUserTrainingProfileTestMessage(t, connB, ctxB, userB, sourceConversationB)
+
 	_, err = connA.Exec(ctxA, `
 		INSERT INTO user_training_profile (
 			user_id,
@@ -43,7 +56,9 @@ func TestUserTrainingProfileSchemaAndRLS(t *testing.T) {
 			usual_training_location,
 			available_equipment,
 			avoided_exercises,
-			movement_limitations
+			movement_limitations,
+			source_conversation_id,
+			source_message_id
 		) VALUES (
 			$1,
 			'strength',
@@ -52,9 +67,11 @@ func TestUserTrainingProfileSchemaAndRLS(t *testing.T) {
 			'gym',
 			'["barbell", "dumbbells"]'::jsonb,
 			'["burpees"]'::jsonb,
-			'["sensitive knee"]'::jsonb
+			'["sensitive knee"]'::jsonb,
+			$2,
+			$3
 		)
-	`, userA)
+	`, userA, sourceConversationA, sourceMessageA)
 	require.NoError(t, err)
 
 	var visibleToOwner int
@@ -82,16 +99,29 @@ func TestUserTrainingProfileSchemaAndRLS(t *testing.T) {
 		SET available_equipment = '{}'::jsonb
 		WHERE user_id = $1
 	`, userA)
+	assertUserTrainingProfileConstraintRejects(t, connA, ctxA, "cross-user source conversation", `
+		UPDATE user_training_profile
+		SET source_conversation_id = $1,
+			source_message_id = NULL
+		WHERE user_id = $2
+	`, sourceConversationB, userA)
+	assertUserTrainingProfileConstraintRejects(t, connA, ctxA, "cross-user source message", `
+		UPDATE user_training_profile
+		SET source_conversation_id = $1,
+			source_message_id = $2
+		WHERE user_id = $3
+	`, sourceConversationA, sourceMessageB, userA)
+	assertUserTrainingProfileConstraintRejects(t, connA, ctxA, "same-user mismatched conversation and message", `
+		UPDATE user_training_profile
+		SET source_conversation_id = $1,
+			source_message_id = $2
+		WHERE user_id = $3
+	`, sourceConversationA, otherMessageA, userA)
 
 	if isCurrentDatabaseUserSuperuser(t, pool) {
 		t.Log("Skipping cross-user visibility assertion because PostgreSQL superusers bypass RLS")
 		return
 	}
-
-	connB, err := pool.Acquire(ctx)
-	require.NoError(t, err)
-	defer connB.Release()
-	ctxB := testutils.SetTestUserContext(ctx, t, connB, userB)
 
 	var visibleToOtherUser int
 	err = connB.QueryRow(ctxB, "SELECT COUNT(*) FROM user_training_profile WHERE user_id = $1", userA).Scan(&visibleToOtherUser)
@@ -150,10 +180,47 @@ func seedUserTrainingProfileTestUser(t *testing.T, pool *pgxpool.Pool, userID st
 	require.NoError(t, err)
 }
 
-func assertUserTrainingProfileConstraintRejects(t *testing.T, db testutils.DBTX, ctx context.Context, name string, query string, userID string) {
+func insertUserTrainingProfileTestConversation(t *testing.T, db testutils.DBTX, ctx context.Context, userID string) int32 {
 	t.Helper()
 
-	_, err := db.Exec(ctx, query, userID)
+	var conversationID int32
+	err := db.QueryRow(ctx, `
+		INSERT INTO ai_chat_conversation (user_id, title)
+		VALUES ($1, 'Training profile source test')
+		RETURNING id
+	`, userID).Scan(&conversationID)
+	require.NoError(t, err)
+	return conversationID
+}
+
+func insertUserTrainingProfileTestMessage(t *testing.T, db testutils.DBTX, ctx context.Context, userID string, conversationID int32) int32 {
+	t.Helper()
+
+	var messageID int32
+	err := db.QueryRow(ctx, `
+		INSERT INTO ai_chat_message (
+			conversation_id,
+			user_id,
+			role,
+			content,
+			status
+		) VALUES (
+			$1,
+			$2,
+			'user',
+			'Use this as durable training profile source context.',
+			'completed'
+		)
+		RETURNING id
+	`, conversationID, userID).Scan(&messageID)
+	require.NoError(t, err)
+	return messageID
+}
+
+func assertUserTrainingProfileConstraintRejects(t *testing.T, db testutils.DBTX, ctx context.Context, name string, query string, args ...interface{}) {
+	t.Helper()
+
+	_, err := db.Exec(ctx, query, args...)
 	require.Error(t, err, name)
 }
 
