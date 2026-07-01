@@ -302,7 +302,6 @@ CREATE INDEX idx_stripe_subscriptions_user_updated ON stripe_subscriptions(user_
 CREATE INDEX idx_stripe_subscriptions_customer ON stripe_subscriptions(stripe_customer_id);
 CREATE INDEX idx_ai_chat_conversation_user_updated ON ai_chat_conversation(user_id, updated_at DESC, id DESC);
 CREATE INDEX idx_ai_chat_message_conversation ON ai_chat_message(conversation_id, id ASC);
-CREATE INDEX idx_ai_chat_message_user_conversation ON ai_chat_message(user_id, conversation_id, id ASC);
 CREATE INDEX idx_ai_chat_run_conversation_created ON ai_chat_run(conversation_id, created_at DESC, id DESC);
 CREATE UNIQUE INDEX idx_ai_chat_run_active_conversation ON ai_chat_run(conversation_id) WHERE status = 'streaming';
 CREATE INDEX idx_ai_chat_stream_chunk_user_run_sequence ON ai_chat_stream_chunk(user_id, run_id, sequence ASC);

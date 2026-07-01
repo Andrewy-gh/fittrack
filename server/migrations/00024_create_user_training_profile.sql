@@ -6,6 +6,8 @@ ADD CONSTRAINT ai_chat_conversation_user_id_id_unique UNIQUE (user_id, id);
 ALTER TABLE ai_chat_message
 ADD CONSTRAINT ai_chat_message_user_conversation_id_unique UNIQUE (user_id, conversation_id, id);
 
+DROP INDEX IF EXISTS idx_ai_chat_message_user_conversation;
+
 CREATE TABLE user_training_profile (
     user_id VARCHAR(256) PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
     primary_goal VARCHAR(64),
@@ -115,6 +117,9 @@ DROP TABLE IF EXISTS user_training_profile;
 
 ALTER TABLE ai_chat_message
 DROP CONSTRAINT IF EXISTS ai_chat_message_user_conversation_id_unique;
+
+CREATE INDEX IF NOT EXISTS idx_ai_chat_message_user_conversation
+    ON ai_chat_message (user_id, conversation_id, id ASC);
 
 ALTER TABLE ai_chat_conversation
 DROP CONSTRAINT IF EXISTS ai_chat_conversation_user_id_id_unique;
