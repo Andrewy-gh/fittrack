@@ -242,6 +242,29 @@ describe("ChatRouteComponent", () => {
     });
   });
 
+  it("drafts an example prompt without submitting it", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockListConversations.mockResolvedValue([]);
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Build me a 45-min push day",
+      }),
+    );
+
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toHaveValue("Build me a 45-min push day");
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+    expect(mockStreamMessage).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledTimes(1);
+  });
+
   it("shows every recent chat returned by the history endpoint", async () => {
     mockGetConversation.mockResolvedValue(conversationDetail([]));
     mockListConversations.mockResolvedValue(
