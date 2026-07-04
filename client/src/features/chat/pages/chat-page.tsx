@@ -161,15 +161,12 @@ export function ChatPage({
     billingAccess.refreshAccess();
   }
 
-  async function handleSelectExample(text: string) {
+  function handleSelectExample(text: string) {
     if (isComposerDisabled) {
       return;
     }
 
     setPrompt(text);
-    await submitPromptValue(text);
-    void historyEntry.refreshConversations();
-    billingAccess.refreshAccess();
   }
 
   async function handleRetry() {
