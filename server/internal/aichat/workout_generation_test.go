@@ -14,7 +14,7 @@ import (
 )
 
 func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
-	prompt := buildChatSystemPrompt()
+	prompt := buildChatSystemPrompt(nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
 
 	requiredSnippets := []string{
 		"Ask at most 3 short, focused follow-up questions",
@@ -526,6 +526,22 @@ func TestExtractWorkoutDraftFromHistoryRejectsInvalidContract(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "Date") {
 		t.Fatalf("extractWorkoutDraftFromHistory() error = %v, want missing date validation", err)
+	}
+}
+
+func TestExtractToolCallsFromHistory(t *testing.T) {
+	history := []*ai.Message{
+		ai.NewUserMessage(ai.NewTextPart("What did I do last week?")),
+		ai.NewModelMessage(
+			ai.NewToolRequestPart(&ai.ToolRequest{Name: getWorkoutsToolName}),
+			ai.NewToolRequestPart(&ai.ToolRequest{Name: workoutDraftToolName}),
+		),
+		ai.NewMessage(ai.RoleTool, nil, ai.NewToolResponsePart(&ai.ToolResponse{Name: getWorkoutsToolName, Output: map[string]any{}})),
+	}
+
+	calls := extractToolCallsFromHistory(history)
+	if !reflect.DeepEqual(calls, []string{getWorkoutsToolName, workoutDraftToolName}) {
+		t.Fatalf("extractToolCallsFromHistory() = %#v", calls)
 	}
 }
 

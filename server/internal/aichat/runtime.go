@@ -14,6 +14,7 @@ import (
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
 
 const (
@@ -21,6 +22,9 @@ const (
 	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
 	chatStreamTimeout  = chatGenerationTimeout
 	chatMaxTurns       = 6
+	// chatEmptyResponseRetryLimit caps regeneration attempts when the model
+	// returns an empty candidate with no text and no tool calls.
+	chatEmptyResponseRetryLimit = 1
 )
 
 var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
@@ -32,31 +36,35 @@ type GenkitRuntime struct {
 	modelName        string
 	g                *genkit.Genkit
 	workoutDraftTool ai.Tool
+	getWorkoutsTool  ai.Tool
+	dataReader       ChatDataReader
 }
 
-func NewGenkitRuntime(ctx context.Context) *GenkitRuntime {
+func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime {
 	modelName := resolveModelName()
 	runtime := &GenkitRuntime{
-		modelName: modelName,
+		modelName:  modelName,
+		dataReader: reader,
 	}
 
 	if configuredAPIKeyEnvVar() == "" {
 		return runtime
 	}
 
-	g, workoutDraftTool, ok := activateGenkitRuntime(ctx, modelName)
+	g, workoutDraftTool, getWorkoutsTool, ok := activateGenkitRuntime(ctx, modelName, reader)
 	if !ok {
 		return runtime
 	}
 
 	runtime.g = g
 	runtime.workoutDraftTool = workoutDraftTool
+	runtime.getWorkoutsTool = getWorkoutsTool
 	runtime.available = true
 
 	return runtime
 }
 
-func activateGenkitRuntime(ctx context.Context, modelName string) (_ *genkit.Genkit, _ ai.Tool, ok bool) {
+func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			slog.Warn("ai chat runtime initialization skipped after genkit panic",
@@ -73,8 +81,12 @@ func activateGenkitRuntime(ctx context.Context, modelName string) (_ *genkit.Gen
 	)
 
 	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
+	var getWorkoutsTool ai.Tool
+	if reader != nil {
+		getWorkoutsTool = defineGetWorkoutsTool(g, reader)
+	}
 
-	return g, workoutDraftTool, true
+	return g, workoutDraftTool, getWorkoutsTool, true
 }
 
 func (r *GenkitRuntime) ModelName() string {
@@ -149,11 +161,12 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 
 	var builder strings.Builder
 	firstModelDelta := false
+	snapshot := r.trainingSnapshotForChat(ctx)
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
-		ai.WithTools(r.workoutDraftTool),
+		ai.WithTools(r.chatTools()...),
 		ai.WithMaxTurns(chatMaxTurns),
-		ai.WithMessages(buildChatMessages(history)...),
+		ai.WithMessages(buildChatMessages(history, snapshot, r.dataReader != nil)...),
 		ai.WithPrompt(prompt),
 		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
 			delta := collectChunkText(chunk)
@@ -181,12 +194,30 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 		"history_messages", len(history),
 		"request_id", request.GetRequestID(ctx),
 	)
-	resp, err := genkit.Generate(streamCtx, r.g, opts...)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(streamCtx.Err(), context.DeadlineExceeded) {
-			return nil, fmt.Errorf("%w: %v", ErrGenerationTimeout, err)
+	var resp *ai.ModelResponse
+	for attempt := 1; ; attempt++ {
+		builder.Reset()
+		var err error
+		resp, err = genkit.Generate(streamCtx, r.g, opts...)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(streamCtx.Err(), context.DeadlineExceeded) {
+				return nil, fmt.Errorf("%w: %v", ErrGenerationTimeout, err)
+			}
+			return nil, fmt.Errorf("stream ai chat response: %w", err)
 		}
-		return nil, fmt.Errorf("stream ai chat response: %w", err)
+		if attempt > chatEmptyResponseRetryLimit || !isEmptyChatModelResponse(resp, builder.String()) {
+			break
+		}
+		// Gemini intermittently returns an empty candidate (for example on
+		// MALFORMED_FUNCTION_CALL) when multiple tools are registered; an empty
+		// reply is never a valid chat outcome, so retry the generation.
+		slog.Warn("ai chat model returned an empty response with no tool activity; retrying",
+			"model", r.modelName,
+			"finish_reason", resp.FinishReason,
+			"finish_message", resp.FinishMessage,
+			"attempt", attempt,
+			"request_id", request.GetRequestID(ctx),
+		)
 	}
 	logAIChatTraceContext(ctx, "runtime_generate_finished",
 		"elapsed_ms", time.Since(traceStartedAt).Milliseconds(),
@@ -203,13 +234,55 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 	if err != nil {
 		return nil, fmt.Errorf("extract workout draft from history: %w", err)
 	}
+	toolCalls := extractToolCallsFromHistory(resp.History())
 	text = finalizeAssistantText(text, workoutDraft)
 
 	return &StreamDone{
 		Model:        r.modelName,
 		Text:         text,
 		WorkoutDraft: workoutDraft,
+		ToolCalls:    toolCalls,
 	}, nil
+}
+
+func isEmptyChatModelResponse(resp *ai.ModelResponse, streamedText string) bool {
+	if resp == nil {
+		return true
+	}
+	if strings.TrimSpace(resp.Text()) != "" || strings.TrimSpace(streamedText) != "" {
+		return false
+	}
+	return len(extractToolCallsFromHistory(resp.History())) == 0
+}
+
+func (r *GenkitRuntime) chatTools() []ai.ToolRef {
+	if r == nil || r.workoutDraftTool == nil {
+		return nil
+	}
+	tools := []ai.ToolRef{r.workoutDraftTool}
+	if r.getWorkoutsTool != nil {
+		tools = append(tools, r.getWorkoutsTool)
+	}
+	return tools
+}
+
+func (r *GenkitRuntime) trainingSnapshotForChat(ctx context.Context) *TrainingSnapshot {
+	if r == nil || r.dataReader == nil {
+		return nil
+	}
+	userID, ok := user.Current(ctx)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return nil
+	}
+	snapshot, err := r.dataReader.TrainingSnapshot(ctx, userID)
+	if err != nil {
+		slog.Warn("ai chat training snapshot omitted after reader error",
+			"error", err,
+			"request_id", request.GetRequestID(ctx),
+		)
+		return nil
+	}
+	return snapshot
 }
 
 func configuredAPIKeyEnvVar() string {
@@ -251,9 +324,9 @@ User validation prompt:
 %s`, prompt)
 }
 
-func buildChatMessages(history []RuntimeChatMessage) []*ai.Message {
+func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, dataToolsEnabled bool) []*ai.Message {
 	messages := []*ai.Message{
-		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt())),
+		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt(snapshot, time.Now(), dataToolsEnabled))),
 	}
 
 	for _, message := range history {
@@ -272,13 +345,24 @@ func buildChatMessages(history []RuntimeChatMessage) []*ai.Message {
 	return messages
 }
 
-func buildChatSystemPrompt() string {
+func buildChatSystemPrompt(snapshot *TrainingSnapshot, now time.Time, dataToolsEnabled bool) string {
+	personalDataRule := "- Never guess or invent personal workout history. Say you do not have workout data available in this chat when asked about personal training history. Do not call data tools for general fitness knowledge."
+	if dataToolsEnabled {
+		personalDataRule = fmt.Sprintf(`- For questions about the user's logged workouts or personal training history, call the %s tool. Never guess or invent workout history; if no data exists, say so. Do not call data tools for general fitness knowledge.
+- The %s tool and the training snapshot exist only to answer questions about past training. When the user asks you to build a workout, do not call %s: follow the workout-building rules below and always respond with either a follow-up question or a %s tool call, never an empty reply. The snapshot and logged history never satisfy the workout-building inputs below — in particular, they say nothing about current injury status, so still ask about injuries when that is missing.`, getWorkoutsToolName, getWorkoutsToolName, getWorkoutsToolName, workoutDraftToolName)
+	}
+	currentDateSection := fmt.Sprintf("Current date: %s.", now.Format("2006-01-02"))
+	snapshotSection := buildTrainingSnapshotPromptSection(snapshot)
+
 	return fmt.Sprintf(`You are FitTrack's in-app training assistant.
 
 Rules:
 - Stay focused on fitness, training, recovery, exercise selection, and how to use FitTrack.
 - Keep answers concise, practical, and safe.
-- Base your response on the visible conversation only. Do not invent personal history or workout data.
+%s
+
+%s
+%s
 
 When the user wants you to build a workout:
 - Review the visible conversation first and reason about which workout inputs are already confirmed versus still missing.
@@ -311,7 +395,26 @@ Examples:
 - If the user says "45-minute back workout, cables only, no injuries," call the workout draft tool and choose cable-only movements instead of asking what other equipment they have.
 - If the user first asks for a 4-day split, say FitTrack builds one workout at a time and ask them to choose one day or session to start. If they then say "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes," call the %s tool for that upper-body session.
 - If the user says "swap anything that bothers my knee/elbow/shoulder/back/wrist" after a draft, ask which movements, ranges, or exercise patterns bother that body part before revising.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, personalDataRule, currentDateSection, snapshotSection, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+}
+
+func buildTrainingSnapshotPromptSection(snapshot *TrainingSnapshot) string {
+	if snapshot == nil {
+		return ""
+	}
+
+	var builder strings.Builder
+	builder.WriteString("\nUser training snapshot:\n")
+	if strings.TrimSpace(snapshot.LastWorkoutDate) != "" {
+		builder.WriteString(fmt.Sprintf("- Last workout: %s\n", snapshot.LastWorkoutDate))
+	} else {
+		builder.WriteString("- Last workout: none logged\n")
+	}
+	builder.WriteString(fmt.Sprintf("- Workouts in last 30 days: %d\n", snapshot.WorkoutsLast30D))
+	if len(snapshot.TopExercises) > 0 {
+		builder.WriteString(fmt.Sprintf("- Most frequent exercises: %s\n", strings.Join(snapshot.TopExercises, ", ")))
+	}
+	return strings.TrimRight(builder.String(), "\n")
 }
 
 func collectChunkText(chunk *ai.ModelResponseChunk) string {

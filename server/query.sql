@@ -302,6 +302,77 @@ SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg
 FROM workout_metrics
 ORDER BY workout_day ASC, workout_id ASC;
 
+-- name: ListWorkoutsWithSetsForChat :many
+WITH matching_workouts AS (
+    SELECT w.id
+    FROM workout w
+    WHERE w.user_id = sqlc.arg(user_id)
+      AND (sqlc.narg(start_date)::timestamptz IS NULL OR w.date >= sqlc.narg(start_date)::timestamptz)
+      AND (sqlc.narg(end_date)::timestamptz IS NULL OR w.date <= sqlc.narg(end_date)::timestamptz)
+      AND (
+          NULLIF(sqlc.narg(exercise_name)::text, '') IS NULL
+          OR EXISTS (
+              SELECT 1
+              FROM "set" filter_set
+              JOIN exercise filter_exercise ON filter_exercise.id = filter_set.exercise_id
+              WHERE filter_set.workout_id = w.id
+                AND filter_set.user_id = w.user_id
+                AND filter_exercise.user_id = w.user_id
+                AND filter_exercise.name = sqlc.narg(exercise_name)::text
+          )
+      )
+      AND (
+          NULLIF(sqlc.narg(workout_focus)::text, '') IS NULL
+          OR w.workout_focus ILIKE '%' || sqlc.narg(workout_focus)::text || '%'
+      )
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT sqlc.arg(row_limit)
+)
+SELECT
+    w.id AS workout_id,
+    w.date,
+    w.notes,
+    w.workout_focus,
+    e.name AS exercise_name,
+    s.exercise_order,
+    s.set_order,
+    s.weight,
+    s.reps,
+    s.set_type
+FROM matching_workouts mw
+JOIN workout w ON w.id = mw.id
+LEFT JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
+LEFT JOIN exercise e ON e.id = s.exercise_id AND e.user_id = w.user_id
+ORDER BY w.date DESC, w.id DESC, s.exercise_order, s.set_order, s.id;
+
+-- name: ListExerciseNameMatches :many
+SELECT id, name
+FROM exercise
+WHERE user_id = $1
+  AND name ILIKE '%' || sqlc.arg(name_query)::text || '%'
+ORDER BY name
+LIMIT 8;
+
+-- name: GetChatWorkoutSnapshotStats :one
+SELECT
+    MAX(date)::timestamptz AS last_workout_date,
+    COUNT(*) FILTER (WHERE date >= now() - interval '30 days') AS workouts_last_30d
+FROM workout
+WHERE user_id = $1;
+
+-- name: ListTopExercisesByFrequency :many
+SELECT
+    e.name,
+    COUNT(DISTINCT s.workout_id)::integer AS workout_count
+FROM "set" s
+JOIN exercise e ON e.id = s.exercise_id AND e.user_id = s.user_id
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+WHERE s.user_id = $1
+  AND w.date >= now() - interval '90 days'
+GROUP BY e.name
+ORDER BY workout_count DESC, e.name
+LIMIT 5;
+
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
 INSERT INTO workout (date, notes, workout_focus, user_id)

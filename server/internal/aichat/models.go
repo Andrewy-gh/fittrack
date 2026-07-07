@@ -166,6 +166,32 @@ type RuntimeChatMessage struct {
 	Text string
 }
 
+type WorkoutHistoryFilter struct {
+	LastN        int
+	StartDate    *time.Time
+	EndDate      *time.Time
+	ExerciseName string
+	WorkoutFocus string
+}
+
+type ChatWorkoutView struct {
+	Date      string             `json:"date"`
+	Focus     string             `json:"focus,omitempty"`
+	Notes     string             `json:"notes,omitempty"`
+	Exercises []ChatExerciseView `json:"exercises,omitempty"`
+}
+
+type ChatExerciseView struct {
+	Name string   `json:"name"`
+	Sets []string `json:"sets,omitempty"`
+}
+
+type TrainingSnapshot struct {
+	LastWorkoutDate string   `json:"last_workout_date,omitempty"`
+	WorkoutsLast30D int64    `json:"workouts_last_30d"`
+	TopExercises    []string `json:"top_exercises,omitempty"`
+}
+
 type StreamDone struct {
 	ConversationID int32                         `json:"conversation_id,omitempty"`
 	RunID          int32                         `json:"run_id,omitempty"`
@@ -174,6 +200,7 @@ type StreamDone struct {
 	Text           string                        `json:"text"`
 	Sequence       int32                         `json:"sequence,omitempty"`
 	WorkoutDraft   *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
+	ToolCalls      []string                      `json:"tool_calls,omitempty"`
 }
 
 type StreamChunk struct {

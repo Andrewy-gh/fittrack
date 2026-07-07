@@ -188,7 +188,7 @@ func main() {
 	accountService := account.NewService(logger, accountRepo, billingService)
 	userService := user.NewService(logger, userRepo)
 	aiChatRepo := aichat.NewRepository(logger, queries, pool, cfg.AIChatTrialPromptCap)
-	aiChatRuntime := aichat.NewGenkitRuntime(ctx)
+	aiChatRuntime := aichat.NewGenkitRuntime(ctx, aiChatRepo)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutTxSaver)
 	var inngestRecovery *aichat.InngestRecovery
 	switch {

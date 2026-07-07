@@ -3,7 +3,9 @@ package aichateval
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
 )
 
 func ScoreResult(result *Result, mode string) {
@@ -31,6 +33,10 @@ func ScoreResult(result *Result, mode string) {
 		scoreNarrowScopeBeforeGenerate(result, mode)
 	case ExpectedReviseWithoutRestart:
 		scoreReviseWithoutRestart(result)
+	case ExpectedAnswerFromData:
+		scoreAnswerFromData(result)
+	case ExpectedAnswerWithoutTools:
+		scoreAnswerWithoutTools(result)
 	default:
 		setScore(result, ScoreStatusUnscored, fmt.Sprintf("unknown expected outcome %q", result.ExpectedOutcome))
 	}
@@ -39,6 +45,14 @@ func ScoreResult(result *Result, mode string) {
 func scoreGenerateFirstTurn(result *Result) {
 	if firstTurnStatus(*result) != StatusStructuredDraft {
 		setScore(result, ScoreStatusFail, "expected a structured draft on the first turn")
+		return
+	}
+	if !hasToolCall(result.ToolCalls, "generate_workout_draft") {
+		setScore(result, ScoreStatusFail, "expected the workout draft tool to be called")
+		return
+	}
+	if hasToolCall(result.ToolCalls, "get_workouts") {
+		setScore(result, ScoreStatusFail, "expected no workout history tool call for a normal draft request")
 		return
 	}
 	if !passesTermChecks(result) {
@@ -254,10 +268,60 @@ func scoreReviseWithoutRestart(result *Result) {
 	setScore(result, ScoreStatusPass, "revised the draft without restarting discovery")
 }
 
+func scoreAnswerFromData(result *Result) {
+	if result.Draft != nil {
+		setScore(result, ScoreStatusFail, "expected no structured workout draft for a data answer")
+		return
+	}
+	if !hasToolCall(result.ToolCalls, "get_workouts") {
+		setScore(result, ScoreStatusFail, "expected get_workouts to be called")
+		return
+	}
+	if hasToolCall(result.ToolCalls, "generate_workout_draft") {
+		setScore(result, ScoreStatusFail, "expected no workout draft tool call for a data answer")
+		return
+	}
+	if strings.TrimSpace(result.Text) == "" {
+		setScore(result, ScoreStatusFail, "expected answer text from workout data")
+		return
+	}
+	if !passesTermChecks(result) {
+		return
+	}
+	setScore(result, ScoreStatusPass, "answered from workout data with get_workouts")
+}
+
+func scoreAnswerWithoutTools(result *Result) {
+	if result.Draft != nil {
+		setScore(result, ScoreStatusFail, "expected no structured workout draft")
+		return
+	}
+	if disallowed := disallowedToolCalls(result.ToolCalls, result.AllowedToolCalls); len(disallowed) > 0 {
+		if len(result.AllowedToolCalls) == 0 {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("expected zero tool calls, got %s", strings.Join(disallowed, ", ")))
+			return
+		}
+		setScore(result, ScoreStatusFail, fmt.Sprintf("expected no tool calls beyond %s, got %s", strings.Join(result.AllowedToolCalls, ", "), strings.Join(disallowed, ", ")))
+		return
+	}
+	if strings.TrimSpace(result.Text) == "" {
+		setScore(result, ScoreStatusFail, "expected answer text without tools")
+		return
+	}
+	if !passesTermChecks(result) {
+		return
+	}
+	if len(result.ToolCalls) > 0 {
+		setScore(result, ScoreStatusPass, fmt.Sprintf("answered correctly with tolerated tool calls: %s", strings.Join(result.ToolCalls, ", ")))
+		return
+	}
+	setScore(result, ScoreStatusPass, "answered without tools")
+}
+
 func passesTermChecks(result *Result) bool {
 	text := allResponseText(*result)
 	for _, term := range result.RequiredTextTerms {
-		if !containsFold(text, term) {
+		if !containsRequiredTerm(text, term) {
 			setScore(result, ScoreStatusFail, fmt.Sprintf("response text is missing required term %q", term))
 			return false
 		}
@@ -303,6 +367,40 @@ func exerciseText(result *Result) string {
 	return strings.Join(names, "\n")
 }
 
+var isoDateTermPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+
+// containsRequiredTerm matches like containsFold, except an ISO-date term
+// (e.g. "2026-06-30") also accepts prose renderings such as "June 30th, 2026"
+// or "30 June".
+func containsRequiredTerm(text string, term string) bool {
+	trimmed := strings.TrimSpace(term)
+	if !isoDateTermPattern.MatchString(trimmed) {
+		return containsFold(text, term)
+	}
+	if containsFold(text, trimmed) {
+		return true
+	}
+	parsed, err := time.Parse("2006-01-02", trimmed)
+	if err != nil {
+		return false
+	}
+	month := parsed.Month().String()
+	monthAlternatives := fmt.Sprintf(`(?:%s|%s\.?)`, month, month[:3])
+	day := fmt.Sprintf(`0?%d(?:st|nd|rd|th)?`, parsed.Day())
+	pattern := fmt.Sprintf(`(?i)\b(?:%[1]s\s+%[2]s|%[2]s\s+(?:of\s+)?%[1]s)\b`, monthAlternatives, day)
+	return regexp.MustCompile(pattern).MatchString(text)
+}
+
+func disallowedToolCalls(calls []string, allowed []string) []string {
+	var disallowed []string
+	for _, call := range calls {
+		if !hasToolCall(allowed, call) {
+			disallowed = append(disallowed, call)
+		}
+	}
+	return disallowed
+}
+
 func containsFold(text string, term string) bool {
 	normalizedTerm := strings.TrimSpace(term)
 	if normalizedTerm == "" {
@@ -314,6 +412,15 @@ func containsFold(text string, term string) bool {
 func containsAny(text string, terms []string) bool {
 	for _, term := range terms {
 		if strings.Contains(text, term) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasToolCall(calls []string, name string) bool {
+	for _, call := range calls {
+		if call == name {
 			return true
 		}
 	}

@@ -64,6 +64,24 @@ type mockRepository struct {
 	mock.Mock
 }
 
+func (m *mockRepository) ListWorkoutsWithSets(ctx context.Context, userID string, filter WorkoutHistoryFilter) ([]ChatWorkoutView, error) {
+	args := m.Called(ctx, userID, filter)
+	workouts, _ := args.Get(0).([]ChatWorkoutView)
+	return workouts, args.Error(1)
+}
+
+func (m *mockRepository) ResolveExerciseNames(ctx context.Context, userID string, query string) ([]string, error) {
+	args := m.Called(ctx, userID, query)
+	names, _ := args.Get(0).([]string)
+	return names, args.Error(1)
+}
+
+func (m *mockRepository) TrainingSnapshot(ctx context.Context, userID string) (*TrainingSnapshot, error) {
+	args := m.Called(ctx, userID)
+	snapshot, _ := args.Get(0).(*TrainingSnapshot)
+	return snapshot, args.Error(1)
+}
+
 func (m *mockRepository) CreateConversation(ctx context.Context, userID string) (*Conversation, error) {
 	args := m.Called(ctx, userID)
 	conversation, _ := args.Get(0).(*Conversation)

@@ -374,6 +374,24 @@ func extractWorkoutDraftFromHistory(history []*ai.Message) (*workout.CreateWorko
 	return nil, nil
 }
 
+func extractToolCallsFromHistory(history []*ai.Message) []string {
+	var calls []string
+	for _, message := range history {
+		if message == nil {
+			continue
+		}
+		for _, part := range message.Content {
+			if part == nil || !part.IsToolRequest() || part.ToolRequest == nil {
+				continue
+			}
+			if name := strings.TrimSpace(part.ToolRequest.Name); name != "" {
+				calls = append(calls, name)
+			}
+		}
+	}
+	return calls
+}
+
 func finalizeAssistantText(text string, draft *workout.CreateWorkoutRequest) string {
 	text = strings.TrimSpace(text)
 	if draft == nil {

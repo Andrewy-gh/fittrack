@@ -19,6 +19,15 @@ func TestDefaultScenariosIncludesMachineChestHypertrophyFollowUp(t *testing.T) {
 	}
 }
 
+func TestDefaultScenariosDoNotIncludeDataFixtureScenarios(t *testing.T) {
+	if _, ok := findDefaultScenario("data-01"); ok {
+		t.Fatal("DefaultScenarios() should not include fixture-backed data scenarios")
+	}
+	if len(DataFixtureScenarios()) < 6 {
+		t.Fatalf("DataFixtureScenarios() returned %d scenarios, want at least 6", len(DataFixtureScenarios()))
+	}
+}
+
 func findDefaultScenario(id string) (Scenario, bool) {
 	for _, scenario := range DefaultScenarios() {
 		if scenario.ID == id {
