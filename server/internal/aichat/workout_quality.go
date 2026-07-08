@@ -427,16 +427,43 @@ func hasUnavailableEquipmentTerm(text string, terms ...string) bool {
 				return true
 			}
 		}
-		if hasAnyQualityTerm(text, "no ") && hasAnyQualityTerm(text, "or "+normalizedTerm, "and "+normalizedTerm) {
+		if hasNegatedEquipmentClauseTerm(text, normalizedTerm) {
 			return true
 		}
-		if !strings.HasSuffix(normalizedTerm, "s") &&
-			hasAnyQualityTerm(text, "no ") &&
-			hasAnyQualityTerm(text, "or "+normalizedTerm+"s", "and "+normalizedTerm+"s") {
+		if !strings.HasSuffix(normalizedTerm, "s") && hasNegatedEquipmentClauseTerm(text, normalizedTerm+"s") {
 			return true
 		}
 	}
 	return false
+}
+
+func hasNegatedEquipmentClauseTerm(text string, term string) bool {
+	for _, prefix := range []string{"no access to ", "without ", "no "} {
+		searchStart := 0
+		for {
+			index := strings.Index(text[searchStart:], prefix)
+			if index < 0 {
+				break
+			}
+			spanStart := searchStart + index + len(prefix)
+			span := text[spanStart:negatedEquipmentClauseEnd(text, spanStart)]
+			if hasAnyQualityTerm(span, term, "or "+term, "and "+term) {
+				return true
+			}
+			searchStart = spanStart
+		}
+	}
+	return false
+}
+
+func negatedEquipmentClauseEnd(text string, start int) int {
+	end := len(text)
+	for _, marker := range []string{".", ";"} {
+		if index := strings.Index(text[start:], marker); index >= 0 && start+index < end {
+			end = start + index
+		}
+	}
+	return end
 }
 
 func hasAvailableGymContext(text string) bool {

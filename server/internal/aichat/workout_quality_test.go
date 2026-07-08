@@ -171,6 +171,34 @@ func TestValidateWorkoutDraftQualityAllowsFreeWeightsWhenContextOnlyExcludesCabl
 	}
 }
 
+func TestHasUnavailableEquipmentTermScopesNegationToClause(t *testing.T) {
+	context := normalizeQualityText("dumbbells or barbell, no bench")
+
+	if hasUnavailableEquipmentTerm(context, "barbell") {
+		t.Fatal("barbell should remain available when only bench is negated")
+	}
+	if !hasUnavailableEquipmentTerm(context, "bench") {
+		t.Fatal("bench should be unavailable")
+	}
+}
+
+func TestHasUnavailableEquipmentTermHandlesNegatedLists(t *testing.T) {
+	cablesAndMachines := normalizeQualityText("no cables or machines")
+	if !hasUnavailableEquipmentTerm(cablesAndMachines, "cables") {
+		t.Fatal("cables should be unavailable")
+	}
+	if !hasUnavailableEquipmentTerm(cablesAndMachines, "machines") {
+		t.Fatal("machines should be unavailable")
+	}
+
+	rackBarbellBench := normalizeQualityText("no rack, barbell or bench")
+	for _, term := range []string{"rack", "barbell", "bench"} {
+		if !hasUnavailableEquipmentTerm(rackBarbellBench, term) {
+			t.Fatalf("%s should be unavailable", term)
+		}
+	}
+}
+
 func TestValidateWorkoutDraftQualityRejectsBenchExerciseWhenGymContextExcludesBench(t *testing.T) {
 	input := WorkoutGenerationToolInput{
 		FitnessGoal:      "general fitness",
