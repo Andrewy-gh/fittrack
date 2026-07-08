@@ -951,6 +951,34 @@ WHERE s.exercise_id = $1 AND s.user_id = $2
 ORDER BY w.date DESC, s.set_order DESC
 LIMIT 3;
 
+-- name: GetLastSessionSetsForExerciseChat :many
+WITH latest_workout AS (
+    SELECT s.workout_id
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT 1
+)
+SELECT
+    s.id AS set_id,
+    w.id AS workout_id,
+    w.date AS workout_date,
+    w.workout_focus AS workout_focus,
+    s.weight,
+    s.reps,
+    s.exercise_order,
+    s.set_order,
+    s.created_at
+FROM "set" s
+JOIN latest_workout lw ON lw.workout_id = s.workout_id
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+WHERE s.exercise_id = $1
+  AND s.user_id = $2
+  AND s.set_type = 'working'
+ORDER BY s.set_order ASC;
+
 -- name: ListWorkoutFocusValues :many
 SELECT DISTINCT workout_focus
 FROM workout

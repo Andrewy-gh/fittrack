@@ -153,7 +153,13 @@ func TestRepositoryChatDataReader_ExerciseStatsAreUserScoped(t *testing.T) {
 	seedAIChatRepositoryTestUser(t, pool, otherUserID)
 
 	seedAIChatDataWorkout(t, pool, userID, "2026-06-30", "lower body", []chatDataExerciseSeed{
-		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(225), reps: 5, setType: "working"}, {weight: ptrFloat64(235), reps: 3, setType: "working"}}},
+		{name: "Back Squat", sets: []chatDataSetSeed{
+			{weight: ptrFloat64(135), reps: 5, setType: "warmup"},
+			{weight: ptrFloat64(225), reps: 5, setType: "working"},
+			{weight: ptrFloat64(235), reps: 3, setType: "working"},
+			{weight: ptrFloat64(245), reps: 2, setType: "working"},
+			{weight: ptrFloat64(255), reps: 1, setType: "working"},
+		}},
 	})
 	seedAIChatDataWorkout(t, pool, userID, "2026-05-15", "lower body", []chatDataExerciseSeed{
 		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(205), reps: 6, setType: "working"}}},
@@ -171,9 +177,9 @@ func TestRepositoryChatDataReader_ExerciseStatsAreUserScoped(t *testing.T) {
 	assert.Equal(t, "Back Squat", stats.ExerciseName)
 	assert.Equal(t, "all", stats.Window)
 	assert.Equal(t, "2026-06-30", stats.BestE1RM.Date)
-	assert.InDelta(t, 258.5, stats.BestE1RM.Weight, 0.01)
+	assert.InDelta(t, 263.5, stats.BestE1RM.Weight, 0.01)
 	assert.Equal(t, 2, stats.SessionCount)
-	assert.Equal(t, []string{"235x3", "225x5"}, stats.LastSessionSets)
+	assert.Equal(t, []string{"225x5", "235x3", "245x2", "255x1"}, stats.LastSessionSets)
 	assert.Len(t, stats.Trend, 2)
 }
 

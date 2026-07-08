@@ -1718,6 +1718,82 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 	return items, nil
 }
 
+const getLastSessionSetsForExerciseChat = `-- name: GetLastSessionSetsForExerciseChat :many
+WITH latest_workout AS (
+    SELECT s.workout_id
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT 1
+)
+SELECT
+    s.id AS set_id,
+    w.id AS workout_id,
+    w.date AS workout_date,
+    w.workout_focus AS workout_focus,
+    s.weight,
+    s.reps,
+    s.exercise_order,
+    s.set_order,
+    s.created_at
+FROM "set" s
+JOIN latest_workout lw ON lw.workout_id = s.workout_id
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+WHERE s.exercise_id = $1
+  AND s.user_id = $2
+  AND s.set_type = 'working'
+ORDER BY s.set_order ASC
+`
+
+type GetLastSessionSetsForExerciseChatParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetLastSessionSetsForExerciseChatRow struct {
+	SetID         int32              `json:"set_id"`
+	WorkoutID     int32              `json:"workout_id"`
+	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
+	Weight        pgtype.Numeric     `json:"weight"`
+	Reps          int32              `json:"reps"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetLastSessionSetsForExerciseChat(ctx context.Context, arg GetLastSessionSetsForExerciseChatParams) ([]GetLastSessionSetsForExerciseChatRow, error) {
+	rows, err := q.db.Query(ctx, getLastSessionSetsForExerciseChat, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLastSessionSetsForExerciseChatRow
+	for rows.Next() {
+		var i GetLastSessionSetsForExerciseChatRow
+		if err := rows.Scan(
+			&i.SetID,
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.WorkoutFocus,
+			&i.Weight,
+			&i.Reps,
+			&i.ExerciseOrder,
+			&i.SetOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLatestAIChatStreamChunkSequence = `-- name: GetLatestAIChatStreamChunkSequence :one
 SELECT COALESCE(MAX(sequence), 0)::INTEGER
 FROM ai_chat_stream_chunk

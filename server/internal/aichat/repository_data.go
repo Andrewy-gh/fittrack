@@ -209,22 +209,18 @@ func (r *repository) ExerciseStats(ctx context.Context, userID string, exerciseN
 	stats.SessionCount = len(points)
 	stats.Trend = compactExerciseStatsTrend(points, maxExerciseStatsTrendPoints)
 
-	recentSets, err := r.queries.GetRecentSetsForExercise(ctx, db.GetRecentSetsForExerciseParams{
+	recentSets, err := r.queries.GetLastSessionSetsForExerciseChat(ctx, db.GetLastSessionSetsForExerciseChatParams{
 		ExerciseID: exerciseRow.ID,
 		UserID:     userID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get recent sets for ai chat exercise stats: %w", err)
+		return nil, fmt.Errorf("get last-session sets for ai chat exercise stats: %w", err)
 	}
 	if len(recentSets) > 0 {
-		latestWorkoutID := recentSets[0].WorkoutID
 		if recentSets[0].WorkoutDate.Valid {
 			stats.LastSessionDate = recentSets[0].WorkoutDate.Time.Format("2006-01-02")
 		}
 		for _, row := range recentSets {
-			if row.WorkoutID != latestWorkoutID {
-				continue
-			}
 			setText, err := formatRecentExerciseStatSet(row.Weight, row.Reps)
 			if err != nil {
 				return nil, err
