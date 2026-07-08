@@ -189,6 +189,8 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"cannot create a meal plan",
 		"not able to create meal plans",
 		"not able to create a meal plan",
+		"not equipped to create meal plans",
+		"not equipped to create a meal plan",
 		"not equipped to build meal plans",
 		"not equipped to build a meal plan",
 		"not equipped to provide meal plans",
