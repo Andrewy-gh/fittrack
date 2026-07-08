@@ -186,6 +186,30 @@ type ChatExerciseView struct {
 	Sets []string `json:"sets,omitempty"`
 }
 
+type ExerciseStatsView struct {
+	ExerciseName    string                    `json:"exercise_name"`
+	Window          string                    `json:"window"`
+	BestE1RM        *ExerciseBestE1RMView     `json:"best_e1rm,omitempty"`
+	Trend           []ExerciseStatsTrendPoint `json:"trend,omitempty"`
+	LastSessionSets []string                  `json:"last_session_sets,omitempty"`
+	LastSessionDate string                    `json:"last_session_date,omitempty"`
+	SessionCount    int                       `json:"session_count"`
+	Message         string                    `json:"message,omitempty"`
+}
+
+type ExerciseBestE1RMView struct {
+	Weight float64 `json:"weight"`
+	Date   string  `json:"date,omitempty"`
+}
+
+type ExerciseStatsTrendPoint struct {
+	Date      string  `json:"date"`
+	BestE1RM  float64 `json:"best_e1rm,omitempty"`
+	AvgE1RM   float64 `json:"avg_e1rm,omitempty"`
+	Volume    float64 `json:"volume,omitempty"`
+	WorkoutID int32   `json:"workout_id,omitempty"`
+}
+
 type TrainingSnapshot struct {
 	LastWorkoutDate string   `json:"last_workout_date,omitempty"`
 	WorkoutsLast30D int64    `json:"workouts_last_30d"`

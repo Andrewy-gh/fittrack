@@ -94,7 +94,7 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 
 func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(t *testing.T) {
 	inputType := reflect.TypeOf(WorkoutGenerationToolInput{})
-	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints"}
+	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints", "RecentPerformance"}
 
 	for _, fieldName := range optionalFields {
 		field, ok := inputType.FieldByName(fieldName)
@@ -210,6 +210,7 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 		`"setType": "warmup" | "working"`,
 		`"date" is always required and must be RFC3339.`,
 		`If fitness level is unknown, prefer omitting weights instead of guessing aggressively.`,
+		`When recent performance is supplied, use it to choose conservative weights and progressions`,
 		`Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.`,
 		`Do not satisfy a normal 40+ minute strength or hypertrophy request with a very small workout unless the user asked for minimal, beginner, rehab, warm-up, or low-volume work.`,
 		`strength can use fewer exercises with longer rests and enough sets`,
@@ -225,10 +226,11 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 
 func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *testing.T) {
 	prompt := buildWorkoutGenerationUserPrompt(WorkoutGenerationToolInput{
-		Equipment:       "full gym",
-		SessionDuration: 45,
-		WorkoutFocus:    "pull",
-		Injuries:        "none",
+		Equipment:         "full gym",
+		SessionDuration:   45,
+		WorkoutFocus:      "pull",
+		Injuries:          "none",
+		RecentPerformance: "Bench Press last session: 195x3 working",
 	})
 
 	if !strings.Contains(prompt, "- Fitness level: unknown") {
@@ -236,6 +238,9 @@ func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *t
 	}
 	if !strings.Contains(prompt, "- Goal: unknown") {
 		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want unknown goal", prompt)
+	}
+	if !strings.Contains(prompt, "- Recent performance to respect: Bench Press last session: 195x3 working") {
+		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want recent performance", prompt)
 	}
 }
 

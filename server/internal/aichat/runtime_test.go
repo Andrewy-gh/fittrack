@@ -116,6 +116,9 @@ func TestWorkoutDraftToolNameIsGeminiCompatible(t *testing.T) {
 	if strings.Contains(workoutDraftToolName, "/") {
 		t.Fatalf("workoutDraftToolName = %q, slash is not allowed in Gemini tool names", workoutDraftToolName)
 	}
+	if !validToolNamePattern.MatchString(getExerciseStatsToolName) {
+		t.Fatalf("getExerciseStatsToolName = %q, want Gemini-compatible tool name", getExerciseStatsToolName)
+	}
 }
 
 func TestPromptsReferenceToolNames(t *testing.T) {
@@ -143,7 +146,9 @@ func TestBuildChatSystemPromptComposesDataSections(t *testing.T) {
 
 	for _, snippet := range []string{
 		"call the " + getWorkoutsToolName + " tool",
-		"When the user asks you to build a workout, do not call " + getWorkoutsToolName,
+		"Default to " + getWorkoutsToolName + " for personal workout-history questions",
+		"use " + getExerciseStatsToolName + " only for all-time bests",
+		"do not call data tools unless the user explicitly references past training",
 		"Current date: 2026-07-06.",
 		"User training snapshot:",
 		"Last workout: 2026-07-03",
@@ -226,11 +231,12 @@ func TestIsEmptyChatModelResponse(t *testing.T) {
 
 func TestChatToolsOmitsDataToolWhenReaderNil(t *testing.T) {
 	draft := fakeTool{name: workoutDraftToolName}
-	data := fakeTool{name: getWorkoutsToolName}
+	workouts := fakeTool{name: getWorkoutsToolName}
+	stats := fakeTool{name: getExerciseStatsToolName}
 
-	withData := (&GenkitRuntime{workoutDraftTool: draft, getWorkoutsTool: data}).chatTools()
-	if len(withData) != 2 || withData[0].Name() != workoutDraftToolName || withData[1].Name() != getWorkoutsToolName {
-		t.Fatalf("chatTools() with data = %#v, want draft then data", withData)
+	withData := (&GenkitRuntime{workoutDraftTool: draft, getWorkoutsTool: workouts, getExerciseStatsTool: stats}).chatTools()
+	if len(withData) != 3 || withData[0].Name() != workoutDraftToolName || withData[1].Name() != getWorkoutsToolName || withData[2].Name() != getExerciseStatsToolName {
+		t.Fatalf("chatTools() with data = %#v, want draft then workout data then exercise stats", withData)
 	}
 
 	withoutData := (&GenkitRuntime{workoutDraftTool: draft}).chatTools()

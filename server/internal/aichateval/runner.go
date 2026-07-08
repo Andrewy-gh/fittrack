@@ -31,6 +31,7 @@ const (
 	ExpectedReviseWithoutRestart      = "revise_without_restart"
 	ExpectedAnswerFromData            = "answer_from_data"
 	ExpectedAnswerWithoutTools        = "answer_without_tools"
+	ExpectedHistoryInformedDraft      = "history_informed_draft"
 )
 
 const (
@@ -54,6 +55,7 @@ type Scenario struct {
 	Expectation            string                      `json:"expectation"`
 	ExpectedOutcome        string                      `json:"expected_outcome,omitempty"`
 	RequiredTextTerms      []string                    `json:"required_text_terms,omitempty"`
+	RequiredToolCalls      []string                    `json:"required_tool_calls,omitempty"`
 	ForbiddenTextTerms     []string                    `json:"forbidden_text_terms,omitempty"`
 	ForbiddenExerciseTerms []string                    `json:"forbidden_exercise_terms,omitempty"`
 	AllowedToolCalls       []string                    `json:"allowed_tool_calls,omitempty"`
@@ -105,6 +107,7 @@ type Result struct {
 	Expectation            string                        `json:"expectation"`
 	ExpectedOutcome        string                        `json:"expected_outcome,omitempty"`
 	RequiredTextTerms      []string                      `json:"required_text_terms,omitempty"`
+	RequiredToolCalls      []string                      `json:"required_tool_calls,omitempty"`
 	ForbiddenTextTerms     []string                      `json:"forbidden_text_terms,omitempty"`
 	ForbiddenExerciseTerms []string                      `json:"forbidden_exercise_terms,omitempty"`
 	AllowedToolCalls       []string                      `json:"allowed_tool_calls,omitempty"`
@@ -260,6 +263,7 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 		Expectation:            scenario.Expectation,
 		ExpectedOutcome:        scenario.ExpectedOutcome,
 		RequiredTextTerms:      append([]string{}, scenario.RequiredTextTerms...),
+		RequiredToolCalls:      append([]string{}, scenario.RequiredToolCalls...),
 		ForbiddenTextTerms:     append([]string{}, scenario.ForbiddenTextTerms...),
 		ForbiddenExerciseTerms: append([]string{}, scenario.ForbiddenExerciseTerms...),
 		AllowedToolCalls:       append([]string{}, scenario.AllowedToolCalls...),

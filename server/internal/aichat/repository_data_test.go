@@ -52,6 +52,55 @@ func TestNormalizeWorkoutHistoryFilterCapsLastN(t *testing.T) {
 	}
 }
 
+func TestNormalizeExerciseStatsWindow(t *testing.T) {
+	tests := map[string]string{
+		"":             "3m",
+		"three months": "3m",
+		"1 year":       "1y",
+		"ALL-TIME":     "all",
+		"nonsense":     "3m",
+	}
+	for input, want := range tests {
+		if got := normalizeExerciseStatsWindow(input); got != want {
+			t.Fatalf("normalizeExerciseStatsWindow(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestCompactExerciseStatsTrendKeepsFirstAndLast(t *testing.T) {
+	var points []exerciseStatsTrendRow
+	for i := 0; i < 12; i++ {
+		points = append(points, exerciseStatsTrendRow{
+			WorkoutID:       int32(i + 1),
+			WorkoutDay:      time.Date(2026, 1, i+1, 0, 0, 0, 0, time.UTC),
+			SessionBestE1RM: float64(i + 100),
+		})
+	}
+
+	compact := compactExerciseStatsTrend(points, 8)
+
+	if len(compact) != 8 {
+		t.Fatalf("compact len = %d, want 8", len(compact))
+	}
+	if compact[0].Date != "2026-01-01" || compact[len(compact)-1].Date != "2026-01-12" {
+		t.Fatalf("compact endpoints = %#v ... %#v", compact[0], compact[len(compact)-1])
+	}
+}
+
+func TestFilterLastThreeMonthsUsesLatestPoint(t *testing.T) {
+	points := []exerciseStatsTrendRow{
+		{WorkoutDay: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)},
+	}
+
+	filtered := filterLastThreeMonths(points)
+
+	if len(filtered) != 2 || !filtered[0].WorkoutDay.Equal(points[1].WorkoutDay) || !filtered[1].WorkoutDay.Equal(points[2].WorkoutDay) {
+		t.Fatalf("filtered = %#v", filtered)
+	}
+}
+
 func chatWorkoutRow(workoutID int32, date string, focus string, exercise string, exerciseOrder int32, setOrder int32, weight pgtype.Numeric, reps int32, setType string) db.ListWorkoutsWithSetsForChatRow {
 	parsed, _ := time.Parse("2006-01-02", date)
 	return db.ListWorkoutsWithSetsForChatRow{

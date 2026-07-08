@@ -32,12 +32,13 @@ var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.
 }
 
 type GenkitRuntime struct {
-	available        bool
-	modelName        string
-	g                *genkit.Genkit
-	workoutDraftTool ai.Tool
-	getWorkoutsTool  ai.Tool
-	dataReader       ChatDataReader
+	available            bool
+	modelName            string
+	g                    *genkit.Genkit
+	workoutDraftTool     ai.Tool
+	getWorkoutsTool      ai.Tool
+	getExerciseStatsTool ai.Tool
+	dataReader           ChatDataReader
 }
 
 func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime {
@@ -51,7 +52,7 @@ func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime
 		return runtime
 	}
 
-	g, workoutDraftTool, getWorkoutsTool, ok := activateGenkitRuntime(ctx, modelName, reader)
+	g, workoutDraftTool, getWorkoutsTool, getExerciseStatsTool, ok := activateGenkitRuntime(ctx, modelName, reader)
 	if !ok {
 		return runtime
 	}
@@ -59,12 +60,13 @@ func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime
 	runtime.g = g
 	runtime.workoutDraftTool = workoutDraftTool
 	runtime.getWorkoutsTool = getWorkoutsTool
+	runtime.getExerciseStatsTool = getExerciseStatsTool
 	runtime.available = true
 
 	return runtime
 }
 
-func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, ok bool) {
+func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, _ ai.Tool, ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			slog.Warn("ai chat runtime initialization skipped after genkit panic",
@@ -82,11 +84,13 @@ func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDat
 
 	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
 	var getWorkoutsTool ai.Tool
+	var getExerciseStatsTool ai.Tool
 	if reader != nil {
 		getWorkoutsTool = defineGetWorkoutsTool(g, reader)
+		getExerciseStatsTool = defineGetExerciseStatsTool(g, reader)
 	}
 
-	return g, workoutDraftTool, getWorkoutsTool, true
+	return g, workoutDraftTool, getWorkoutsTool, getExerciseStatsTool, true
 }
 
 func (r *GenkitRuntime) ModelName() string {
@@ -263,6 +267,9 @@ func (r *GenkitRuntime) chatTools() []ai.ToolRef {
 	if r.getWorkoutsTool != nil {
 		tools = append(tools, r.getWorkoutsTool)
 	}
+	if r.getExerciseStatsTool != nil {
+		tools = append(tools, r.getExerciseStatsTool)
+	}
 	return tools
 }
 
@@ -349,7 +356,8 @@ func buildChatSystemPrompt(snapshot *TrainingSnapshot, now time.Time, dataToolsE
 	personalDataRule := "- Never guess or invent personal workout history. Say you do not have workout data available in this chat when asked about personal training history. Do not call data tools for general fitness knowledge."
 	if dataToolsEnabled {
 		personalDataRule = fmt.Sprintf(`- For questions about the user's logged workouts or personal training history, call the %s tool. Never guess or invent workout history; if no data exists, say so. Do not call data tools for general fitness knowledge.
-- The %s tool and the training snapshot exist only to answer questions about past training. When the user asks you to build a workout, do not call %s: follow the workout-building rules below and always respond with either a follow-up question or a %s tool call, never an empty reply. The snapshot and logged history never satisfy the workout-building inputs below — in particular, they say nothing about current injury status, so still ask about injuries when that is missing.`, getWorkoutsToolName, getWorkoutsToolName, getWorkoutsToolName, workoutDraftToolName)
+- Default to %s for personal workout-history questions; use %s only for all-time bests, PRs, estimated 1RM, or long-range single-exercise trends.
+- The data tools and the training snapshot exist only to answer questions about past training or to supply recentPerformance for a requested workout draft. When the user asks you to build a workout, do not call data tools unless the user explicitly references past training, such as "based on last week", "like last time", or "heavier than last time". Always respond with either a follow-up question or a %s tool call, never an empty reply. The snapshot and logged history never satisfy the workout-building inputs below — in particular, they say nothing about current injury status, so still ask about injuries when that is missing.`, getWorkoutsToolName, getWorkoutsToolName, getExerciseStatsToolName, workoutDraftToolName)
 	}
 	currentDateSection := fmt.Sprintf("Current date: %s.", now.Format("2006-01-02"))
 	snapshotSection := buildTrainingSnapshotPromptSection(snapshot)

@@ -37,6 +37,8 @@ func ScoreResult(result *Result, mode string) {
 		scoreAnswerFromData(result)
 	case ExpectedAnswerWithoutTools:
 		scoreAnswerWithoutTools(result)
+	case ExpectedHistoryInformedDraft:
+		scoreHistoryInformedDraft(result)
 	default:
 		setScore(result, ScoreStatusUnscored, fmt.Sprintf("unknown expected outcome %q", result.ExpectedOutcome))
 	}
@@ -51,8 +53,11 @@ func scoreGenerateFirstTurn(result *Result) {
 		setScore(result, ScoreStatusFail, "expected the workout draft tool to be called")
 		return
 	}
-	if hasToolCall(result.ToolCalls, "get_workouts") {
-		setScore(result, ScoreStatusFail, "expected no workout history tool call for a normal draft request")
+	if !passesRequiredToolCallChecks(result) {
+		return
+	}
+	if disallowed := disallowedDataToolCalls(result); len(disallowed) > 0 {
+		setScore(result, ScoreStatusFail, fmt.Sprintf("expected no data tool call for a normal draft request, got %s", strings.Join(disallowed, ", ")))
 		return
 	}
 	if !passesTermChecks(result) {
@@ -150,6 +155,7 @@ func narrowsToSingleWorkout(text string) bool {
 		"one workout",
 		"single workout",
 		"one workout at a time",
+		"one structured workout draft at a time",
 		"one session",
 		"single session",
 		"one training session",
@@ -171,10 +177,15 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"cannot provide meal plans",
 		"can't create meal plans",
 		"cannot create meal plans",
+		"not able to create meal plans",
 	})
 	asksForWorkoutFocus := strings.Contains(text, "?") && containsAny(text, []string{
 		"what is your workout focus",
 		"what's your workout focus",
+		"what is your primary focus",
+		"what is your primary workout focus",
+		"what is your preferred workout focus",
+		"what is your desired workout focus",
 		"what workout focus",
 		"what is the workout focus",
 		"what should the workout focus be",
@@ -185,6 +196,10 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"session length",
 		"how long would you like the session",
 		"how long do you want the session",
+		"how long do you have for the session",
+		"how long do you have for each session",
+		"how long can you train for each session",
+		"how long is your session duration",
 		"how long should the session",
 	})
 	return refusesMealPlan && asksForWorkoutFocus && asksForSessionDetails
@@ -268,18 +283,46 @@ func scoreReviseWithoutRestart(result *Result) {
 	setScore(result, ScoreStatusPass, "revised the draft without restarting discovery")
 }
 
+func scoreHistoryInformedDraft(result *Result) {
+	if firstTurnStatus(*result) != StatusStructuredDraft {
+		setScore(result, ScoreStatusFail, "expected a structured draft on the first turn")
+		return
+	}
+	if !hasToolCall(result.ToolCalls, "generate_workout_draft") {
+		setScore(result, ScoreStatusFail, "expected the workout draft tool to be called")
+		return
+	}
+	if !hasAnyToolCall(result.ToolCalls, []string{"get_workouts", "get_exercise_stats"}) {
+		setScore(result, ScoreStatusFail, "expected a data tool to be called before the workout draft")
+		return
+	}
+	if !passesTermChecks(result) {
+		return
+	}
+	setScore(result, ScoreStatusPass, "used workout history before generating a structured draft")
+}
+
 func scoreAnswerFromData(result *Result) {
 	if result.Draft != nil {
 		setScore(result, ScoreStatusFail, "expected no structured workout draft for a data answer")
 		return
 	}
-	if !hasToolCall(result.ToolCalls, "get_workouts") {
-		setScore(result, ScoreStatusFail, "expected get_workouts to be called")
-		return
-	}
 	if hasToolCall(result.ToolCalls, "generate_workout_draft") {
 		setScore(result, ScoreStatusFail, "expected no workout draft tool call for a data answer")
 		return
+	}
+	if len(result.RequiredToolCalls) == 0 && !hasToolCall(result.ToolCalls, "get_workouts") {
+		setScore(result, ScoreStatusFail, "expected get_workouts to be called")
+		return
+	}
+	if !passesRequiredToolCallChecks(result) {
+		return
+	}
+	if len(result.RequiredToolCalls) > 0 {
+		if disallowed := disallowedDataToolCalls(result); len(disallowed) > 0 {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("expected no data tool call beyond %s, got %s", strings.Join(result.AllowedToolCalls, ", "), strings.Join(disallowed, ", ")))
+			return
+		}
 	}
 	if strings.TrimSpace(result.Text) == "" {
 		setScore(result, ScoreStatusFail, "expected answer text from workout data")
@@ -341,6 +384,27 @@ func passesTermChecks(result *Result) bool {
 		}
 	}
 	return true
+}
+
+func passesRequiredToolCallChecks(result *Result) bool {
+	for _, required := range result.RequiredToolCalls {
+		if !hasToolCall(result.ToolCalls, required) {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("expected %s to be called", required))
+			return false
+		}
+	}
+	return true
+}
+
+func disallowedDataToolCalls(result *Result) []string {
+	dataTools := []string{"get_workouts", "get_exercise_stats"}
+	var disallowed []string
+	for _, tool := range dataTools {
+		if hasToolCall(result.ToolCalls, tool) && !hasToolCall(result.AllowedToolCalls, tool) {
+			disallowed = append(disallowed, tool)
+		}
+	}
+	return disallowed
 }
 
 func allResponseText(result Result) string {
@@ -421,6 +485,15 @@ func containsAny(text string, terms []string) bool {
 func hasToolCall(calls []string, name string) bool {
 	for _, call := range calls {
 		if call == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAnyToolCall(calls []string, names []string) bool {
+	for _, name := range names {
+		if hasToolCall(calls, name) {
 			return true
 		}
 	}

@@ -239,5 +239,33 @@ func DataFixtureScenarios() []Scenario {
 			Expectation:     "Should still call only the workout draft tool for a normal draft request.",
 			ExpectedOutcome: ExpectedGenerateFirstTurn,
 		},
+		{
+			ID:                "data-09",
+			Title:             "Bench All-Time Best",
+			Prompt:            "What is my all-time best bench press estimated 1RM?",
+			Expectation:       "Should call get_exercise_stats, not the broader workout-history tool, and answer with the fixture bench best.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredToolCalls: []string{"get_exercise_stats"},
+			AllowedToolCalls:  []string{"get_exercise_stats"},
+			RequiredTextTerms: []string{"bench", "216"},
+		},
+		{
+			ID:                "data-10",
+			Title:             "Deadlift Long Range Trend",
+			Prompt:            "How has my deadlift trended over the last year?",
+			Expectation:       "Should call get_exercise_stats for a single-exercise long-range trend.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredToolCalls: []string{"get_exercise_stats"},
+			AllowedToolCalls:  []string{"get_exercise_stats"},
+			RequiredTextTerms: []string{"deadlift"},
+		},
+		{
+			ID:               "data-11",
+			Title:            "History Informed Push Draft",
+			Prompt:           "Intermediate, 45 minutes, push day, full gym, no injuries. Make it like last week's bench work but a little heavier.",
+			Expectation:      "Should use logged history before generating a structured draft so recent bench performance can guide weights.",
+			ExpectedOutcome:  ExpectedHistoryInformedDraft,
+			AllowedToolCalls: []string{"get_workouts", "get_exercise_stats"},
+		},
 	}
 }

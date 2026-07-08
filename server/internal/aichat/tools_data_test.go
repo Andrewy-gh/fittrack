@@ -95,12 +95,51 @@ func TestRunGetWorkoutsToolEmptyResultMentionsLastWorkout(t *testing.T) {
 	}
 }
 
+func TestRunGetExerciseStatsToolUsesResolvedExercise(t *testing.T) {
+	reader := &stubChatDataReader{
+		names: []string{"Bench Press"},
+		stats: &ExerciseStatsView{
+			ExerciseName:    "Bench Press",
+			Window:          "3m",
+			LastSessionDate: "2026-07-03",
+			LastSessionSets: []string{"195x3 working"},
+			SessionCount:    3,
+		},
+	}
+	ctx := user.WithContext(context.Background(), "user-1")
+
+	result := runGetExerciseStatsTool(ctx, reader, GetExerciseStatsToolInput{ExerciseName: "bench", Window: "3m"})
+
+	if result.Stats == nil || result.Stats.ExerciseName != "Bench Press" {
+		t.Fatalf("Stats = %#v, want resolved bench stats", result.Stats)
+	}
+	if reader.statsExerciseName != "Bench Press" {
+		t.Fatalf("ExerciseStats exercise name = %q, want resolved exact name", reader.statsExerciseName)
+	}
+}
+
+func TestRunGetExerciseStatsToolReturnsAmbiguousCandidates(t *testing.T) {
+	reader := &stubChatDataReader{names: []string{"Barbell Row", "Cable Row"}}
+	ctx := user.WithContext(context.Background(), "user-1")
+
+	result := runGetExerciseStatsTool(ctx, reader, GetExerciseStatsToolInput{ExerciseName: "row"})
+
+	if !reflect.DeepEqual(result.CandidateExercises, []string{"Barbell Row", "Cable Row"}) {
+		t.Fatalf("CandidateExercises = %#v", result.CandidateExercises)
+	}
+	if !strings.Contains(result.Message, "multiple matching exercises") {
+		t.Fatalf("Message = %q, want ambiguity guidance", result.Message)
+	}
+}
+
 type stubChatDataReader struct {
-	names     []string
-	workouts  []ChatWorkoutView
-	snapshot  *TrainingSnapshot
-	listErr   error
-	listCalls int
+	names             []string
+	workouts          []ChatWorkoutView
+	snapshot          *TrainingSnapshot
+	stats             *ExerciseStatsView
+	listErr           error
+	listCalls         int
+	statsExerciseName string
 }
 
 func (s *stubChatDataReader) ListWorkoutsWithSets(ctx context.Context, userID string, filter WorkoutHistoryFilter) ([]ChatWorkoutView, error) {
@@ -122,4 +161,12 @@ func (s *stubChatDataReader) TrainingSnapshot(ctx context.Context, userID string
 	_ = ctx
 	_ = userID
 	return s.snapshot, nil
+}
+
+func (s *stubChatDataReader) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {
+	_ = ctx
+	_ = userID
+	_ = window
+	s.statsExerciseName = exerciseName
+	return s.stats, nil
 }

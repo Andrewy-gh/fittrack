@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	getWorkoutsToolName        = "get_workouts"
-	getWorkoutsToolDescription = "Reads the authenticated user's logged FitTrack workouts. Use this for questions about their personal workout history, recent sessions, exercises performed, or logged training data. Do not use it for general fitness knowledge or to create a new workout draft."
+	getWorkoutsToolName             = "get_workouts"
+	getWorkoutsToolDescription      = "Reads the authenticated user's logged FitTrack workouts. Use this for questions about their personal workout history, recent sessions, exercises performed, or logged training data. Do not use it for general fitness knowledge or to create a new workout draft."
+	getExerciseStatsToolName        = "get_exercise_stats"
+	getExerciseStatsToolDescription = "Reads compact stats for one of the authenticated user's exercises: all-time best estimated 1RM, recent trend points, last-session sets, and session count. Use this only for all-time bests or long-range single-exercise trends, or before drafting when the user explicitly wants the draft based on past performance."
 )
 
 type GetWorkoutsToolInput struct {
@@ -29,6 +31,17 @@ type GetWorkoutsToolResult struct {
 	Workouts           []ChatWorkoutView `json:"workouts,omitempty"`
 	Message            string            `json:"message,omitempty"`
 	CandidateExercises []string          `json:"candidateExercises,omitempty"`
+}
+
+type GetExerciseStatsToolInput struct {
+	ExerciseName string `json:"exerciseName" jsonschema:"description=Exercise name to inspect. Partial name is okay, e.g. bench or squat."`
+	Window       string `json:"window,omitempty" jsonschema:"description=Stats window: 3m, 1y, or all. Default 3m."`
+}
+
+type GetExerciseStatsToolResult struct {
+	Stats              *ExerciseStatsView `json:"stats,omitempty"`
+	Message            string             `json:"message,omitempty"`
+	CandidateExercises []string           `json:"candidateExercises,omitempty"`
 }
 
 func defineGetWorkoutsTool(g *genkit.Genkit, reader ChatDataReader) ai.Tool {
@@ -46,6 +59,32 @@ func defineGetWorkoutsTool(g *genkit.Genkit, reader ChatDataReader) ai.Tool {
 			logAIChatTraceContext(ctx, "get_workouts_tool_finished",
 				"elapsed_ms", time.Since(startedAt).Milliseconds(),
 				"workout_count", len(result.Workouts),
+				"candidate_count", len(result.CandidateExercises),
+				"request_id", request.GetRequestID(ctx),
+			)
+			return result, nil
+		},
+	)
+}
+
+func defineGetExerciseStatsTool(g *genkit.Genkit, reader ChatDataReader) ai.Tool {
+	return genkit.DefineTool(g, getExerciseStatsToolName,
+		getExerciseStatsToolDescription,
+		func(ctx *ai.ToolContext, input GetExerciseStatsToolInput) (*GetExerciseStatsToolResult, error) {
+			startedAt := time.Now()
+			logAIChatTraceContext(ctx, "get_exercise_stats_tool_started",
+				"exercise_name", strings.TrimSpace(input.ExerciseName),
+				"window", strings.TrimSpace(input.Window),
+				"request_id", request.GetRequestID(ctx),
+			)
+			result := runGetExerciseStatsTool(ctx, reader, input)
+			statCount := 0
+			if result.Stats != nil {
+				statCount = len(result.Stats.Trend)
+			}
+			logAIChatTraceContext(ctx, "get_exercise_stats_tool_finished",
+				"elapsed_ms", time.Since(startedAt).Milliseconds(),
+				"trend_count", statCount,
 				"candidate_count", len(result.CandidateExercises),
 				"request_id", request.GetRequestID(ctx),
 			)
@@ -112,6 +151,49 @@ func runGetWorkoutsTool(ctx context.Context, reader ChatDataReader, input GetWor
 	return &GetWorkoutsToolResult{
 		Workouts: workouts,
 		Message:  strings.Join(notes, " "),
+	}
+}
+
+func runGetExerciseStatsTool(ctx context.Context, reader ChatDataReader, input GetExerciseStatsToolInput) *GetExerciseStatsToolResult {
+	if reader == nil {
+		return &GetExerciseStatsToolResult{Message: "Exercise stats are not available in this chat."}
+	}
+	userID, ok := user.Current(ctx)
+	if !ok || strings.TrimSpace(userID) == "" {
+		return &GetExerciseStatsToolResult{Message: "Exercise stats are not available because this chat has no authenticated user."}
+	}
+
+	exerciseQuery := strings.TrimSpace(input.ExerciseName)
+	if exerciseQuery == "" {
+		return &GetExerciseStatsToolResult{Message: "Ask the user which exercise they want stats for."}
+	}
+
+	names, err := reader.ResolveExerciseNames(ctx, userID, exerciseQuery)
+	if err != nil {
+		return &GetExerciseStatsToolResult{Message: "I couldn't resolve that exercise name right now."}
+	}
+	resolved, candidates, ok := resolveExerciseNameForChat(exerciseQuery, names)
+	switch {
+	case ok:
+	case len(candidates) > 0:
+		return &GetExerciseStatsToolResult{
+			Message:            "I found multiple matching exercises. Ask the user which one they mean or retry with an exact exercise name.",
+			CandidateExercises: candidates,
+		}
+	default:
+		return &GetExerciseStatsToolResult{Message: fmt.Sprintf("No exercises matched %q.", exerciseQuery)}
+	}
+
+	stats, err := reader.ExerciseStats(ctx, userID, resolved, input.Window)
+	if err != nil {
+		return &GetExerciseStatsToolResult{Message: "I couldn't read exercise stats right now."}
+	}
+	if stats == nil {
+		return &GetExerciseStatsToolResult{Message: "No exercise stats were found."}
+	}
+	return &GetExerciseStatsToolResult{
+		Stats:   stats,
+		Message: strings.TrimSpace(stats.Message),
 	}
 }
 

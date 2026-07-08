@@ -302,6 +302,50 @@ SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg
 FROM workout_metrics
 ORDER BY workout_day ASC, workout_id ASC;
 
+-- name: GetExerciseMetricsHistoryRawAll :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day)::date AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM working_sets
+    GROUP BY workout_id
+)
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC;
+
 -- name: ListWorkoutsWithSetsForChat :many
 WITH matching_workouts AS (
     SELECT w.id

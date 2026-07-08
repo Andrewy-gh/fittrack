@@ -135,6 +135,48 @@ func TestRepositoryChatDataReader_CapsWorkoutLimit(t *testing.T) {
 	assert.Equal(t, "2026-06-12", workouts[19].Date)
 }
 
+func TestRepositoryChatDataReader_ExerciseStatsAreUserScoped(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-exercise-stats-user"
+	const otherUserID = "aichat-exercise-stats-other-user"
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+	seedAIChatRepositoryTestUser(t, pool, otherUserID)
+
+	seedAIChatDataWorkout(t, pool, userID, "2026-06-30", "lower body", []chatDataExerciseSeed{
+		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(225), reps: 5, setType: "working"}, {weight: ptrFloat64(235), reps: 3, setType: "working"}}},
+	})
+	seedAIChatDataWorkout(t, pool, userID, "2026-05-15", "lower body", []chatDataExerciseSeed{
+		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(205), reps: 6, setType: "working"}}},
+	})
+	seedAIChatDataWorkout(t, pool, otherUserID, "2026-06-29", "lower body", []chatDataExerciseSeed{
+		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(405), reps: 1, setType: "working"}}},
+	})
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	stats, err := repo.ExerciseStats(ctx, userID, "Back Squat", "all")
+
+	require.NoError(t, err)
+	require.NotNil(t, stats)
+	require.NotNil(t, stats.BestE1RM)
+	assert.Equal(t, "Back Squat", stats.ExerciseName)
+	assert.Equal(t, "all", stats.Window)
+	assert.Equal(t, "2026-06-30", stats.BestE1RM.Date)
+	assert.InDelta(t, 258.5, stats.BestE1RM.Weight, 0.01)
+	assert.Equal(t, 2, stats.SessionCount)
+	assert.Equal(t, []string{"235x3", "225x5"}, stats.LastSessionSets)
+	assert.Len(t, stats.Trend, 2)
+}
+
 type chatDataExerciseSeed struct {
 	name string
 	sets []chatDataSetSeed

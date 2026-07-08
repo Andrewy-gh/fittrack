@@ -153,6 +153,24 @@ func TestValidateWorkoutDraftQualityRejectsMachineExerciseWhenGymContextExcludes
 	}
 }
 
+func TestValidateWorkoutDraftQualityAllowsFreeWeightsWhenContextOnlyExcludesCablesAndMachines(t *testing.T) {
+	input := WorkoutGenerationToolInput{
+		FitnessGoal:     "hypertrophy",
+		Equipment:       "no cables or machines",
+		SessionDuration: 45,
+		WorkoutFocus:    "pull",
+		Injuries:        "none",
+	}
+	draft := validDraftWithExercises(
+		draftExercise("Barbell Bent-Over Row", workingSet(8), workingSet(8), workingSet(8), workingSet(8)),
+		draftExercise("Barbell Bicep Curl", workingSet(10), workingSet(10), workingSet(10), workingSet(10), workingSet(10)),
+	)
+
+	if err := validateWorkoutDraftQuality(input, draft); err != nil {
+		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil for negative-only equipment exclusions", err)
+	}
+}
+
 func TestValidateWorkoutDraftQualityRejectsBenchExerciseWhenGymContextExcludesBench(t *testing.T) {
 	input := WorkoutGenerationToolInput{
 		FitnessGoal:      "general fitness",

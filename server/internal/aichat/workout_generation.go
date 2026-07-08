@@ -32,14 +32,15 @@ type workoutDraftGenerator func(
 ) (*workout.CreateWorkoutRequest, error)
 
 type WorkoutGenerationToolInput struct {
-	FitnessLevel     string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
-	FitnessGoal      string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`
-	Equipment        string `json:"equipment,omitempty" jsonschema:"description=Available equipment such as bodyweight, dumbbells, barbells, machines, cables, or bands when known."`
-	SessionDuration  int    `json:"sessionDuration" jsonschema:"description=Available session length in minutes."`
-	WorkoutFocus     string `json:"workoutFocus" jsonschema:"description=Workout focus such as push, pull, legs, upper body, lower body, or full body."`
-	SpaceConstraints string `json:"spaceConstraints,omitempty" jsonschema:"description=Training location or space constraints such as home, gym, hotel, or outdoors when known."`
-	Injuries         string `json:"injuries" jsonschema:"description=Current injuries, pain, or movement limitations. Use none when the user reports no injuries."`
-	WorkoutDate      string `json:"workoutDate,omitempty" jsonschema:"description=Optional requested workout date when the user specified one. May be an ISO value or a relative phrase like tomorrow."`
+	FitnessLevel      string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
+	FitnessGoal       string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`
+	Equipment         string `json:"equipment,omitempty" jsonschema:"description=Available equipment such as bodyweight, dumbbells, barbells, machines, cables, or bands when known."`
+	SessionDuration   int    `json:"sessionDuration" jsonschema:"description=Available session length in minutes."`
+	WorkoutFocus      string `json:"workoutFocus" jsonschema:"description=Workout focus such as push, pull, legs, upper body, lower body, or full body."`
+	SpaceConstraints  string `json:"spaceConstraints,omitempty" jsonschema:"description=Training location or space constraints such as home, gym, hotel, or outdoors when known."`
+	Injuries          string `json:"injuries" jsonschema:"description=Current injuries, pain, or movement limitations. Use none when the user reports no injuries."`
+	WorkoutDate       string `json:"workoutDate,omitempty" jsonschema:"description=Optional requested workout date when the user specified one. May be an ISO value or a relative phrase like tomorrow."`
+	RecentPerformance string `json:"recentPerformance,omitempty" jsonschema:"description=Optional concise summary from workout-history tools when the user asked for the draft to be based on past training, such as last-session sets, best e1RM, or recent trend."`
 }
 
 func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
@@ -260,6 +261,7 @@ Rules:
 - Adjust density by goal: strength can use fewer exercises with longer rests and enough sets; hypertrophy should use moderate rests and enough total working sets; endurance or circuit work should use shorter rests and higher density; rehab, mobility, and beginner sessions can use lower volume when appropriate.
 - Do not invent equipment the user does not have.
 - Use real, established exercise names only.
+- When recent performance is supplied, use it to choose conservative weights and progressions; do not exceed past bests aggressively unless the user explicitly asks for testing.
 - Add weights only when they are reasonably known from the user's context. If fitness level is unknown, prefer omitting weights instead of guessing aggressively.
 - Keep notes brief and practical. Use notes for rest, effort, or injury reminders when helpful.
 - Place compound lifts before accessories when that fits the request.
@@ -279,6 +281,9 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 	builder.WriteString(fmt.Sprintf("- Injuries or limitations: %s\n", workoutPromptValue(input.Injuries)))
 	if requestedDate := strings.TrimSpace(input.WorkoutDate); requestedDate != "" {
 		builder.WriteString(fmt.Sprintf("- Requested workout date: %s\n", requestedDate))
+	}
+	if recentPerformance := strings.TrimSpace(input.RecentPerformance); recentPerformance != "" {
+		builder.WriteString(fmt.Sprintf("- Recent performance to respect: %s\n", recentPerformance))
 	}
 
 	return builder.String()
