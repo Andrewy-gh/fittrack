@@ -657,6 +657,11 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "meal plan refusal says do not create",
+			text: "I can help with a workout plan, but I don't create meal plans.\n\nTo design your workout, what would you like the focus to be? For example, \"full body,\" \"upper body,\" \"legs,\" or \"cardio\"?",
+			want: true,
+		},
+		{
 			name: "meal plan refusal with profile duration and workout focus",
 			text: "I can help with a workout plan for fat loss, but I'm not able to create meal plans.\n\nTo build your workout, I'll use your usual home setup with adjustable dumbbells and a bench, for about 45 minutes.\n\nWhat would you like the workout focus to be (e.g., full body, upper body, lower body)? Also, do you have any injuries I should be aware of?",
 			want: true,
