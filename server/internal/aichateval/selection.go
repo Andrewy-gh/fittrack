@@ -53,6 +53,17 @@ func FilterScenarios(scenarios []Scenario, selection ScenarioSelection) ([]Scena
 	return filterScenarioIDs(scenarios, listIDs)
 }
 
+// FilterBaseOnlyScenarios removes scenarios that are only valid without fixture-backed data.
+func FilterBaseOnlyScenarios(scenarios []Scenario) []Scenario {
+	filtered := make([]Scenario, 0, len(scenarios))
+	for _, scenario := range scenarios {
+		if !scenario.BaseOnly {
+			filtered = append(filtered, scenario)
+		}
+	}
+	return filtered
+}
+
 func filterScenarioIDs(scenarios []Scenario, ids []string) ([]Scenario, error) {
 	wanted := make(map[string]bool, len(ids))
 	for _, id := range ids {

@@ -62,6 +62,7 @@ type Scenario struct {
 	AllowedToolCalls       []string                    `json:"allowed_tool_calls,omitempty"`
 	History                []aichat.RuntimeChatMessage `json:"history,omitempty"`
 	FollowUpAnswer         string                      `json:"follow_up_answer,omitempty"`
+	BaseOnly               bool                        `json:"base_only,omitempty"`
 }
 
 type RunOptions struct {

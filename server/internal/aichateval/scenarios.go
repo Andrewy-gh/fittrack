@@ -177,6 +177,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Without a training profile, should preserve the ask-first behavior for missing equipment/location and injury status.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. Full gym. Intermediate, hypertrophy.",
+			BaseOnly:        true,
 		},
 	}
 }
