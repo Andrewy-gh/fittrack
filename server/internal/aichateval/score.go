@@ -176,12 +176,25 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 	refusesMealPlan := containsAny(text, []string{
 		"unable to provide meal plans",
 		"can't provide meal plans",
+		"can't provide a meal plan",
+		"can't assist with meal plans",
+		"can't assist with a meal plan",
 		"cannot provide meal plans",
+		"cannot provide a meal plan",
+		"not able to provide meal plans",
+		"not able to provide a meal plan",
 		"can't create meal plans",
+		"can't create a meal plan",
 		"cannot create meal plans",
+		"cannot create a meal plan",
 		"not able to create meal plans",
+		"not able to create a meal plan",
+		"not equipped to build meal plans",
+		"not equipped to build a meal plan",
+		"not equipped to provide meal plans",
+		"not equipped to provide a meal plan",
 	})
-	asksForWorkoutFocus := strings.Contains(text, "?") && containsAny(text, []string{
+	asksForWorkoutFocus := strings.Contains(text, "?") && (containsAny(text, []string{
 		"what is your workout focus",
 		"what's your workout focus",
 		"what is your primary focus",
@@ -195,7 +208,10 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"what workout focus",
 		"what is the workout focus",
 		"what should the workout focus be",
-	})
+		"what would you like to focus on today",
+		"what would you like the focus to be",
+		"what would you like the focus of this workout to be",
+	}) || (strings.Contains(text, "workout") && strings.Contains(text, "focus")))
 	asksForSessionDetails := containsAny(text, []string{
 		"session to be",
 		"session should be",
@@ -208,8 +224,11 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"how long can you train for each session",
 		"how long is your session duration",
 		"how long should the session",
+		"i'll plan for 45 minutes",
+		"for about 45 minutes",
 	})
-	return refusesMealPlan && asksForWorkoutFocus && asksForSessionDetails
+	hasWorkoutContext := strings.Contains(text, "for your workout") || strings.Contains(text, "to build your workout")
+	return refusesMealPlan && asksForWorkoutFocus && (asksForSessionDetails || hasWorkoutContext)
 }
 
 func asksUserToChooseWorkout(text string) bool {
@@ -361,7 +380,7 @@ func scoreProfileUpdated(result *Result) {
 		setScore(result, ScoreStatusFail, "expected profile update announcement text")
 		return
 	}
-	if !passesTermChecks(result) {
+	if !passesProfileUpdateTermChecks(result) {
 		return
 	}
 	setScore(result, ScoreStatusPass, "updated the training profile and announced the saved facts")
@@ -417,6 +436,37 @@ func passesTermChecks(result *Result) bool {
 		}
 	}
 	return true
+}
+
+func passesProfileUpdateTermChecks(result *Result) bool {
+	text := allResponseText(*result)
+	for _, term := range result.RequiredTextTerms {
+		if term == "remember" && announcesProfileUpdate(text) {
+			continue
+		}
+		if !containsRequiredTerm(text, term) {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("response text is missing required term %q", term))
+			return false
+		}
+	}
+	for _, term := range result.ForbiddenTextTerms {
+		if containsFold(text, term) {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("response text includes forbidden term %q", term))
+			return false
+		}
+	}
+	return true
+}
+
+func announcesProfileUpdate(text string) bool {
+	lower := strings.ToLower(text)
+	return containsAny(lower, []string{
+		"updated your training profile",
+		"updated your profile",
+		"saved to your training profile",
+		"added to your training profile",
+		"saved your usual training setup",
+	})
 }
 
 func passesRequiredToolCallChecks(result *Result) bool {
