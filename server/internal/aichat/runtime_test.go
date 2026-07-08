@@ -200,6 +200,7 @@ func TestBuildChatSystemPromptComposesTrainingProfileSection(t *testing.T) {
 		"The user's current message always overrides the profile",
 		"Call the " + updateTrainingProfileToolName + " tool only for durable training facts",
 		"Do not call it for one-off session details",
+		"unless you called the " + updateTrainingProfileToolName + " tool in this same turn",
 	} {
 		if !strings.Contains(prompt, snippet) {
 			t.Fatalf("buildChatSystemPrompt() missing %q\nprompt=%s", snippet, prompt)

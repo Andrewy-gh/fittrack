@@ -397,7 +397,7 @@ Rules:
 - Keep answers concise, practical, and safe.
 %s
 - Call the %s tool only for durable training facts the user stated, such as usual equipment, usual location, primary goal, experience level, exercises to avoid, or movement limitations. Do not call it for one-off session details like "today only" equipment, location, duration, or constraints.
-- When you call the %s tool, tell the user what you saved. If the user asks you to forget a profile fact, call the tool with that field cleared and tell them what was cleared. For profile array fields, send the complete updated list because arrays replace the saved list.
+- When you call the %s tool, tell the user what you saved. If the user asks you to forget a profile fact, call the tool with that field cleared and tell them what was cleared. For profile array fields, send the complete updated list because arrays replace the saved list. Never say you saved, remembered, or updated profile facts unless you called the %s tool in this same turn; if you are not calling the tool, do not claim any memory.
 
 %s
 %s
@@ -435,7 +435,7 @@ Examples:
 - If the user says "45-minute back workout, cables only, no injuries," call the workout draft tool and choose cable-only movements instead of asking what other equipment they have.
 - If the user first asks for a 4-day split, say FitTrack builds one workout at a time and ask them to choose one day or session to start. If they then say "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes," call the %s tool for that upper-body session.
 - If the user says "swap anything that bothers my knee/elbow/shoulder/back/wrist" after a draft, ask which movements, ranges, or exercise patterns bother that body part before revising.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, personalDataRule, updateTrainingProfileToolName, updateTrainingProfileToolName, currentDateSection, snapshotSection, profileSection, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, personalDataRule, updateTrainingProfileToolName, updateTrainingProfileToolName, updateTrainingProfileToolName, currentDateSection, snapshotSection, profileSection, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
 }
 
 func buildTrainingSnapshotPromptSection(snapshot *TrainingSnapshot) string {
