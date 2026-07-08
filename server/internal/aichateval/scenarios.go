@@ -12,6 +12,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ideally generate a structured draft with realistic dumbbell-and-bench pull volume.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm intermediate and want muscle growth.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-02",
@@ -20,6 +21,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first or generate only if it can proceed after asking once; when it generates the draft should feel full enough for 60 minutes.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm intermediate, and hypertrophy is the goal.",
+			BaseOnly:        true,
 		},
 		{
 			ID:                     "prompt-03",
@@ -29,6 +31,7 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome:        ExpectedAskOnceThenGenerate,
 			ForbiddenExerciseTerms: []string{"leg press"},
 			FollowUpAnswer:         "It's mild front-of-knee discomfort, no sharp pain. Keep it joint-friendly, 35 minutes, dumbbells and machines are available.",
+			BaseOnly:               true,
 		},
 		{
 			ID:              "prompt-04",
@@ -37,6 +40,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first or generate a concise feasible hotel-room bodyweight draft.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm beginner to intermediate and want a balanced full-body session.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-05",
@@ -54,6 +58,7 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome:        ExpectedAskOnceThenGenerate,
 			ForbiddenExerciseTerms: []string{"overhead press", "shoulder press"},
 			FollowUpAnswer:         "It is a recent mild strain and overhead pressing bothers it. Keep the workout shoulder-friendly, 30 minutes, no sharp pain.",
+			BaseOnly:               true,
 		},
 		{
 			ID:              "prompt-07",
@@ -62,6 +67,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first or generate a realistic bodyweight strength-leaning draft.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm intermediate and can do push-ups, lunges, and planks.",
+			BaseOnly:        true,
 		},
 		{
 			ID:                     "prompt-08",
@@ -71,6 +77,7 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome:        ExpectedAskOnceThenGenerate,
 			ForbiddenExerciseTerms: []string{"cable", "machine"},
 			FollowUpAnswer:         "No injuries. I'm intermediate and want strength with some hypertrophy.",
+			BaseOnly:               true,
 		},
 		{
 			ID:              "prompt-09",
@@ -79,6 +86,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should allow intentionally low-volume work instead of forcing a normal lifting session.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No acute injury or numbness. This is gentle low-back stiffness, and I want easy mobility only.",
+			BaseOnly:        true,
 		},
 		{
 			ID:    "prompt-10",
@@ -91,6 +99,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask a focused revision follow-up before adapting the next draft around the new elbow constraint.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "It's mild elbow irritation during deep pressing and skull crushers. Keep dumbbells and bench, avoid elbow-aggravating moves.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-11",
@@ -115,6 +124,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask once for injury or limitation status, then convert to a structured draft on turn two.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries or limitations. I'm intermediate and want back and biceps hypertrophy.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-14",
@@ -169,6 +179,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first, then generate a structured machine-and-cable chest draft after a short no-injuries answer without failing workout contract validation.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "Nope.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-20",
