@@ -200,6 +200,7 @@ func TestBuildChatSystemPromptComposesTrainingProfileSection(t *testing.T) {
 		"Treat user profile values as defaults",
 		"The user's current message always overrides the profile",
 		"only treat injury status as known when the profile includes a Movement limitations line",
+		"do not ask about injuries before drafting",
 		"Call the " + updateTrainingProfileToolName + " tool only for durable training facts",
 		"Do not call it for one-off session details",
 		"unless you called the " + updateTrainingProfileToolName + " tool in this same turn",
