@@ -44,8 +44,12 @@ func (r *fixtureChatDataReader) ListWorkoutsWithSets(ctx context.Context, userID
 		if filter.WorkoutFocus != "" && !strings.Contains(strings.ToLower(workout.Focus), strings.ToLower(filter.WorkoutFocus)) {
 			continue
 		}
-		if filter.ExerciseName != "" && !workoutHasExercise(workout, filter.ExerciseName) {
-			continue
+		if filter.ExerciseName != "" {
+			filteredExercises := matchingWorkoutExercises(workout, filter.ExerciseName)
+			if len(filteredExercises) == 0 {
+				continue
+			}
+			workout.Exercises = filteredExercises
 		}
 		workouts = append(workouts, workout)
 		if len(workouts) == filter.LastN {
@@ -118,13 +122,14 @@ func fixtureExercise(name string, sets ...string) aichat.ChatExerciseView {
 	return aichat.ChatExerciseView{Name: name, Sets: sets}
 }
 
-func workoutHasExercise(workout aichat.ChatWorkoutView, name string) bool {
+func matchingWorkoutExercises(workout aichat.ChatWorkoutView, name string) []aichat.ChatExerciseView {
+	var matches []aichat.ChatExerciseView
 	for _, exercise := range workout.Exercises {
 		if strings.EqualFold(exercise.Name, name) {
-			return true
+			matches = append(matches, exercise)
 		}
 	}
-	return false
+	return matches
 }
 
 func startOfDay(value time.Time) time.Time {

@@ -23,6 +23,12 @@ func TestFixtureChatDataReaderUsesFixtureUser(t *testing.T) {
 	if workouts[0].Date != "2026-06-30" {
 		t.Fatalf("fixture workout date = %q, want 2026-06-30", workouts[0].Date)
 	}
+	if len(workouts[0].Exercises) != 1 {
+		t.Fatalf("fixture workout exercises = %#v, want only requested exercise", workouts[0].Exercises)
+	}
+	if workouts[0].Exercises[0].Name != "Back Squat" {
+		t.Fatalf("fixture workout exercise = %q, want Back Squat", workouts[0].Exercises[0].Name)
+	}
 
 	names, err := reader.ResolveExerciseNames(context.Background(), FixtureUserID, "squat")
 	if err != nil {
