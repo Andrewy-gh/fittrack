@@ -667,6 +667,11 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "meal plan refusal designs workout with profile session",
+			text: "I can help you create a workout plan for fat loss, but I'm not able to provide meal plans.\n\nTo design your workout, what would you like the focus to be? For example, full body, upper body, lower body, or a specific muscle group? I will use your usual home setup with adjustable dumbbells and a bench, assuming no injuries, for a 45-minute session.",
+			want: true,
+		},
+		{
 			name: "meal plan refusal singular",
 			text: "I can help you create a workout, but I can't create a meal plan.\n\nFor your workout, what would you like to focus on today (e.g., full body, upper body, lower body, push, pull)? Also, while the workout will support your fat loss goal, FitTrack's workout generator currently optimizes for \"strength\" or \"hypertrophy\" as primary goals. Which would you prefer for this workout?",
 			want: true,

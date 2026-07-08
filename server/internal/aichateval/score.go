@@ -228,8 +228,14 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"how long should the session",
 		"i'll plan for 45 minutes",
 		"for about 45 minutes",
+		"45-minute session",
+		"45 minute session",
 	})
-	hasWorkoutContext := strings.Contains(text, "for your workout") || strings.Contains(text, "to build your workout")
+	hasWorkoutContext := containsAny(text, []string{
+		"for your workout",
+		"to build your workout",
+		"to design your workout",
+	})
 	return refusesMealPlan && asksForWorkoutFocus && (asksForSessionDetails || hasWorkoutContext)
 }
 
