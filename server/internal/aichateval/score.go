@@ -251,7 +251,14 @@ func asksUserToChooseWorkout(text string) bool {
 	}) {
 		return true
 	}
-	return sentenceStartsWithAny(text, []string{"pick", "choose", "select"})
+	return sentenceStartsWithAny(text, []string{
+		"pick",
+		"choose",
+		"select",
+		"tell me which day",
+		"tell me which workout",
+		"tell me which session",
+	})
 }
 
 func sentenceContainsQuestionPhrase(text string, phrases []string) bool {

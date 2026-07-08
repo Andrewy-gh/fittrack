@@ -672,6 +672,11 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "weekly split refusal tells user which day or session",
+			text: "FitTrack can build one workout draft at a time, not a full multi-day split. Tell me which day or session you'd like to build first, and I'll ask for the details needed to create that workout.",
+			want: true,
+		},
+		{
 			name: "vague text",
 			text: "Sure, I can help with that.",
 			want: false,
