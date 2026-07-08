@@ -32,6 +32,7 @@ func TestRepositoryChatDataReader_FiltersByUserDateAndExercise(t *testing.T) {
 
 	seedAIChatDataWorkout(t, pool, userID, "2026-06-30", "lower body", []chatDataExerciseSeed{
 		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(225), reps: 5, setType: "working"}, {weight: ptrFloat64(235), reps: 3, setType: "working"}}},
+		{name: "Romanian Deadlift", sets: []chatDataSetSeed{{weight: ptrFloat64(185), reps: 8, setType: "working"}}},
 	})
 	seedAIChatDataWorkout(t, pool, userID, "2026-06-15", "pull", []chatDataExerciseSeed{
 		{name: "Deadlift", sets: []chatDataSetSeed{{weight: ptrFloat64(275), reps: 3, setType: "working"}}},

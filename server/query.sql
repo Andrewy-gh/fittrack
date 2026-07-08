@@ -341,7 +341,18 @@ SELECT
     s.set_type
 FROM matching_workouts mw
 JOIN workout w ON w.id = mw.id
-LEFT JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
+LEFT JOIN "set" s ON s.workout_id = w.id
+    AND s.user_id = w.user_id
+    AND (
+        NULLIF(sqlc.narg(exercise_name)::text, '') IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM exercise selected_exercise
+            WHERE selected_exercise.id = s.exercise_id
+              AND selected_exercise.user_id = s.user_id
+              AND selected_exercise.name = sqlc.narg(exercise_name)::text
+        )
+    )
 LEFT JOIN exercise e ON e.id = s.exercise_id AND e.user_id = w.user_id
 ORDER BY w.date DESC, w.id DESC, s.exercise_order, s.set_order, s.id;
 

@@ -2630,11 +2630,11 @@ const listWorkoutsWithSetsForChat = `-- name: ListWorkoutsWithSetsForChat :many
 WITH matching_workouts AS (
     SELECT w.id
     FROM workout w
-    WHERE w.user_id = $1
-      AND ($2::timestamptz IS NULL OR w.date >= $2::timestamptz)
-      AND ($3::timestamptz IS NULL OR w.date <= $3::timestamptz)
+    WHERE w.user_id = $2
+      AND ($3::timestamptz IS NULL OR w.date >= $3::timestamptz)
+      AND ($4::timestamptz IS NULL OR w.date <= $4::timestamptz)
       AND (
-          NULLIF($4::text, '') IS NULL
+          NULLIF($1::text, '') IS NULL
           OR EXISTS (
               SELECT 1
               FROM "set" filter_set
@@ -2642,7 +2642,7 @@ WITH matching_workouts AS (
               WHERE filter_set.workout_id = w.id
                 AND filter_set.user_id = w.user_id
                 AND filter_exercise.user_id = w.user_id
-                AND filter_exercise.name = $4::text
+                AND filter_exercise.name = $1::text
           )
       )
       AND (
@@ -2665,16 +2665,27 @@ SELECT
     s.set_type
 FROM matching_workouts mw
 JOIN workout w ON w.id = mw.id
-LEFT JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
+LEFT JOIN "set" s ON s.workout_id = w.id
+    AND s.user_id = w.user_id
+    AND (
+        NULLIF($1::text, '') IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM exercise selected_exercise
+            WHERE selected_exercise.id = s.exercise_id
+              AND selected_exercise.user_id = s.user_id
+              AND selected_exercise.name = $1::text
+        )
+    )
 LEFT JOIN exercise e ON e.id = s.exercise_id AND e.user_id = w.user_id
 ORDER BY w.date DESC, w.id DESC, s.exercise_order, s.set_order, s.id
 `
 
 type ListWorkoutsWithSetsForChatParams struct {
+	ExerciseName pgtype.Text        `json:"exercise_name"`
 	UserID       string             `json:"user_id"`
 	StartDate    pgtype.Timestamptz `json:"start_date"`
 	EndDate      pgtype.Timestamptz `json:"end_date"`
-	ExerciseName pgtype.Text        `json:"exercise_name"`
 	WorkoutFocus pgtype.Text        `json:"workout_focus"`
 	RowLimit     int32              `json:"row_limit"`
 }
@@ -2694,10 +2705,10 @@ type ListWorkoutsWithSetsForChatRow struct {
 
 func (q *Queries) ListWorkoutsWithSetsForChat(ctx context.Context, arg ListWorkoutsWithSetsForChatParams) ([]ListWorkoutsWithSetsForChatRow, error) {
 	rows, err := q.db.Query(ctx, listWorkoutsWithSetsForChat,
+		arg.ExerciseName,
 		arg.UserID,
 		arg.StartDate,
 		arg.EndDate,
-		arg.ExerciseName,
 		arg.WorkoutFocus,
 		arg.RowLimit,
 	)
