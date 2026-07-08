@@ -90,16 +90,42 @@ func TestCompactExerciseStatsTrendKeepsFirstAndLast(t *testing.T) {
 	}
 }
 
-func TestFilterLastThreeMonthsUsesLatestPoint(t *testing.T) {
+func TestCompactExerciseStatsTrendMaxPointsOneKeepsLast(t *testing.T) {
+	points := []exerciseStatsTrendRow{
+		{
+			WorkoutID:       1,
+			WorkoutDay:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			SessionBestE1RM: 100,
+		},
+		{
+			WorkoutID:       2,
+			WorkoutDay:      time.Date(2026, 1, 12, 0, 0, 0, 0, time.UTC),
+			SessionBestE1RM: 120,
+		},
+	}
+
+	compact := compactExerciseStatsTrend(points, 1)
+
+	if len(compact) != 1 {
+		t.Fatalf("compact len = %d, want 1", len(compact))
+	}
+	if compact[0].WorkoutID != 2 || compact[0].Date != "2026-01-12" {
+		t.Fatalf("compact[0] = %#v, want last point", compact[0])
+	}
+}
+
+func TestFilterLastThreeMonthsUsesNow(t *testing.T) {
+	now := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
 	points := []exerciseStatsTrendRow{
 		{WorkoutDay: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
-		{WorkoutDay: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 4, 7, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC)},
 		{WorkoutDay: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)},
 	}
 
-	filtered := filterLastThreeMonths(points)
+	filtered := filterLastThreeMonths(points, now)
 
-	if len(filtered) != 2 || !filtered[0].WorkoutDay.Equal(points[1].WorkoutDay) || !filtered[1].WorkoutDay.Equal(points[2].WorkoutDay) {
+	if len(filtered) != 2 || !filtered[0].WorkoutDay.Equal(points[2].WorkoutDay) || !filtered[1].WorkoutDay.Equal(points[3].WorkoutDay) {
 		t.Fatalf("filtered = %#v", filtered)
 	}
 }

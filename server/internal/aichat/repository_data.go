@@ -383,7 +383,7 @@ func (r *repository) exerciseStatsTrendRows(ctx context.Context, userID string, 
 		if err != nil {
 			return nil, fmt.Errorf("get exercise metrics history 6m for ai chat stats: %w", err)
 		}
-		return filterLastThreeMonths(mapExerciseMetrics6MRows(rows)), nil
+		return filterLastThreeMonths(mapExerciseMetrics6MRows(rows), time.Now()), nil
 	}
 }
 
@@ -508,11 +508,11 @@ func mapExerciseMetricsAllRows(rows []db.GetExerciseMetricsHistoryRawAllRow) []e
 	return points
 }
 
-func filterLastThreeMonths(points []exerciseStatsTrendRow) []exerciseStatsTrendRow {
+func filterLastThreeMonths(points []exerciseStatsTrendRow, now time.Time) []exerciseStatsTrendRow {
 	if len(points) == 0 {
 		return nil
 	}
-	cutoff := points[len(points)-1].WorkoutDay.AddDate(0, -3, 0)
+	cutoff := now.AddDate(0, -3, 0)
 	filtered := make([]exerciseStatsTrendRow, 0, len(points))
 	for _, point := range points {
 		if !point.WorkoutDay.Before(cutoff) {
@@ -525,6 +525,9 @@ func filterLastThreeMonths(points []exerciseStatsTrendRow) []exerciseStatsTrendR
 func compactExerciseStatsTrend(points []exerciseStatsTrendRow, maxPoints int) []ExerciseStatsTrendPoint {
 	if maxPoints <= 0 || len(points) == 0 {
 		return nil
+	}
+	if maxPoints == 1 {
+		return mapExerciseStatsTrendPoints(points[len(points)-1:])
 	}
 	if len(points) <= maxPoints {
 		return mapExerciseStatsTrendPoints(points)
