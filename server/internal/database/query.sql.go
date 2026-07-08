@@ -3791,7 +3791,7 @@ VALUES (
     NULLIF($5::text, ''),
     COALESCE($6::jsonb, '[]'::jsonb),
     COALESCE($7::jsonb, '[]'::jsonb),
-    COALESCE($8::jsonb, '[]'::jsonb),
+    $8::jsonb,
     $9,
     $10
 )

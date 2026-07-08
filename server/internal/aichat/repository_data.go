@@ -295,6 +295,7 @@ func trainingProfileFromRow(row db.UserTrainingProfile) (*TrainingProfile, error
 	if err != nil {
 		return nil, fmt.Errorf("decode profile movement limitations: %w", err)
 	}
+	profile.MovementLimitationsRecorded = row.MovementLimitations != nil
 	return profile, nil
 }
 
@@ -345,7 +346,7 @@ func hasTrainingProfileContent(profile *TrainingProfile) bool {
 		strings.TrimSpace(profile.UsualTrainingLocation) != "" ||
 		len(profile.AvailableEquipment) > 0 ||
 		len(profile.AvoidedExercises) > 0 ||
-		len(profile.MovementLimitations) > 0
+		profile.MovementLimitationsRecorded
 }
 
 func (r *repository) workoutDate(ctx context.Context, userID string, workoutID int32) (string, error) {

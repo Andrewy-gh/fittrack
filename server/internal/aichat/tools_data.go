@@ -54,7 +54,7 @@ type UpdateTrainingProfileToolInput struct {
 	UsualTrainingLocation           *string   `json:"usualTrainingLocation,omitempty" jsonschema:"description=Durable usual training location. Allowed: gym, home, outdoor, travel. Empty string clears it."`
 	AvailableEquipment              *[]string `json:"availableEquipment,omitempty" jsonschema:"description=Complete durable list of available equipment. Send the full list; empty list clears it."`
 	AvoidedExercises                *[]string `json:"avoidedExercises,omitempty" jsonschema:"description=Complete durable list of exercises the user avoids. Send the full list; empty list clears it."`
-	MovementLimitations             *[]string `json:"movementLimitations,omitempty" jsonschema:"description=Complete durable list of injuries, movement limits, or none stated. Send the full list; empty list clears it."`
+	MovementLimitations             *[]string `json:"movementLimitations,omitempty" jsonschema:"description=Complete durable list of injuries, movement limits, or explicit none. Send the full list; empty list records no movement limitations."`
 }
 
 type UpdateTrainingProfileToolResult struct {

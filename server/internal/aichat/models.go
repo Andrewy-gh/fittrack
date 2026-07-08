@@ -218,6 +218,7 @@ type TrainingProfile struct {
 	AvailableEquipment              []string `json:"available_equipment,omitempty"`
 	AvoidedExercises                []string `json:"avoided_exercises,omitempty"`
 	MovementLimitations             []string `json:"movement_limitations,omitempty"`
+	MovementLimitationsRecorded     bool     `json:"movement_limitations_recorded,omitempty"`
 }
 
 type TrainingProfileUpdate struct {

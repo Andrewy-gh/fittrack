@@ -219,6 +219,7 @@ func TestRepositoryChatDataReader_TrainingProfileDecodesArrays(t *testing.T) {
 	assert.Equal(t, []string{"dumbbells", "bench"}, profile.AvailableEquipment)
 	assert.Equal(t, []string{"burpees"}, profile.AvoidedExercises)
 	assert.Equal(t, []string{"no overhead pressing"}, profile.MovementLimitations)
+	assert.True(t, profile.MovementLimitationsRecorded)
 }
 
 func TestRepositoryChatDataReader_UpdateTrainingProfilePartialUpsert(t *testing.T) {
@@ -250,12 +251,16 @@ func TestRepositoryChatDataReader_UpdateTrainingProfilePartialUpsert(t *testing.
 	assert.Equal(t, "hypertrophy", profile.PrimaryGoal)
 	assert.Equal(t, "home", profile.UsualTrainingLocation)
 	assert.Equal(t, []string{"adjustable dumbbells", "bench"}, profile.AvailableEquipment)
+	assert.False(t, profile.MovementLimitationsRecorded)
+	assert.Empty(t, profile.MovementLimitations)
 
 	experience := "intermediate"
 	clearedGoal := ""
+	limitations := []string{}
 	profile, err = repo.UpdateTrainingProfile(ctx, userID, TrainingProfileUpdate{
-		PrimaryGoal:     &clearedGoal,
-		ExperienceLevel: &experience,
+		PrimaryGoal:         &clearedGoal,
+		ExperienceLevel:     &experience,
+		MovementLimitations: &limitations,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, profile)
@@ -263,6 +268,8 @@ func TestRepositoryChatDataReader_UpdateTrainingProfilePartialUpsert(t *testing.
 	assert.Equal(t, "intermediate", profile.ExperienceLevel)
 	assert.Equal(t, "home", profile.UsualTrainingLocation)
 	assert.Equal(t, []string{"adjustable dumbbells", "bench"}, profile.AvailableEquipment)
+	assert.True(t, profile.MovementLimitationsRecorded)
+	assert.Empty(t, profile.MovementLimitations)
 }
 
 type chatDataExerciseSeed struct {

@@ -470,7 +470,7 @@ VALUES (
     NULLIF(sqlc.narg(usual_training_location)::text, ''),
     COALESCE(sqlc.narg(available_equipment)::jsonb, '[]'::jsonb),
     COALESCE(sqlc.narg(avoided_exercises)::jsonb, '[]'::jsonb),
-    COALESCE(sqlc.narg(movement_limitations)::jsonb, '[]'::jsonb),
+    sqlc.narg(movement_limitations)::jsonb,
     sqlc.narg(source_conversation_id),
     sqlc.narg(source_message_id)
 )

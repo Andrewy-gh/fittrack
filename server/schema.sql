@@ -182,7 +182,7 @@ CREATE TABLE user_training_profile (
     usual_training_location VARCHAR(64),
     available_equipment JSONB NOT NULL DEFAULT '[]'::jsonb,
     avoided_exercises JSONB NOT NULL DEFAULT '[]'::jsonb,
-    movement_limitations JSONB NOT NULL DEFAULT '[]'::jsonb,
+    movement_limitations JSONB,
     source_conversation_id INTEGER,
     source_message_id INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -223,7 +223,7 @@ CREATE TABLE user_training_profile (
         jsonb_typeof(avoided_exercises) = 'array'
     ),
     CONSTRAINT user_training_profile_movement_limitations_array CHECK (
-        jsonb_typeof(movement_limitations) = 'array'
+        movement_limitations IS NULL OR jsonb_typeof(movement_limitations) = 'array'
     ),
     CONSTRAINT user_training_profile_source_message_requires_conversation CHECK (
         source_message_id IS NULL OR source_conversation_id IS NOT NULL

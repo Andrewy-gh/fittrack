@@ -255,6 +255,7 @@ func (s *stubChatDataReader) UpdateTrainingProfile(ctx context.Context, userID s
 	}
 	if update.MovementLimitations != nil {
 		profile.MovementLimitations = *update.MovementLimitations
+		profile.MovementLimitationsRecorded = true
 	}
 	return profile, nil
 }

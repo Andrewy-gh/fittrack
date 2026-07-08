@@ -104,6 +104,16 @@ func TestFilterLastThreeMonthsUsesLatestPoint(t *testing.T) {
 	}
 }
 
+func TestDecodeProfileStringArrayHandlesNull(t *testing.T) {
+	values, err := decodeProfileStringArray(nil)
+	if err != nil {
+		t.Fatalf("decodeProfileStringArray() error = %v", err)
+	}
+	if values != nil {
+		t.Fatalf("decodeProfileStringArray(nil) = %#v, want nil", values)
+	}
+}
+
 func TestDecodeProfileStringArrayCleansValues(t *testing.T) {
 	values, err := decodeProfileStringArray([]byte(`[" dumbbells ","", "bench", "bench"]`))
 	if err != nil {
@@ -142,6 +152,9 @@ func TestHasTrainingProfileContent(t *testing.T) {
 	}
 	if !hasTrainingProfileContent(&TrainingProfile{AvailableEquipment: []string{"dumbbells"}}) {
 		t.Fatal("profile with equipment should have content")
+	}
+	if !hasTrainingProfileContent(&TrainingProfile{MovementLimitationsRecorded: true}) {
+		t.Fatal("profile with explicitly recorded no movement limitations should have content")
 	}
 }
 

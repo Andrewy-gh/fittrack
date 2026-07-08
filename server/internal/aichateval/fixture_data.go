@@ -30,6 +30,7 @@ func NewFixtureChatDataReader() aichat.ChatDataReader {
 			UsualTrainingLocation:           "home",
 			AvailableEquipment:              []string{"adjustable dumbbells", "bench"},
 			MovementLimitations:             nil,
+			MovementLimitationsRecorded:     true,
 		},
 	}
 }
@@ -149,6 +150,7 @@ func (r *fixtureChatDataReader) UpdateTrainingProfile(ctx context.Context, userI
 	}
 	if update.MovementLimitations != nil {
 		r.profile.MovementLimitations = append([]string(nil), (*update.MovementLimitations)...)
+		r.profile.MovementLimitationsRecorded = true
 	}
 	return cloneTrainingProfile(r.profile), nil
 }
