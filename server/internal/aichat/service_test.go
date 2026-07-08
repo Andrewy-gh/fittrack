@@ -88,6 +88,12 @@ func (m *mockRepository) TrainingProfile(ctx context.Context, userID string) (*T
 	return profile, args.Error(1)
 }
 
+func (m *mockRepository) UpdateTrainingProfile(ctx context.Context, userID string, update TrainingProfileUpdate) (*TrainingProfile, error) {
+	args := m.Called(ctx, userID, update)
+	profile, _ := args.Get(0).(*TrainingProfile)
+	return profile, args.Error(1)
+}
+
 func (m *mockRepository) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {
 	args := m.Called(ctx, userID, exerciseName, window)
 	stats, _ := args.Get(0).(*ExerciseStatsView)
@@ -838,6 +844,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 			ID:                 51,
 			ConversationID:     41,
 			UserID:             "user-123",
+			UserMessageID:      60,
 			AssistantMessageID: 61,
 			Model:              defaultModelName,
 			Status:             statusStreaming,
@@ -870,6 +877,10 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		{Role: roleUser, Text: "previous user"},
 		{Role: roleAssistant, Text: "previous assistant"},
 	}, mock.Anything).Run(func(args mock.Arguments) {
+		source, ok := trainingProfileSourceFromContext(args.Get(0).(context.Context))
+		require.True(t, ok)
+		assert.Equal(t, int32(41), source.ConversationID)
+		assert.Equal(t, int32(60), source.MessageID)
 		onChunk := args.Get(3).(func(string) error)
 		_ = onChunk("hello ")
 		_ = onChunk("world")
@@ -877,6 +888,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 		Model:        defaultModelName,
 		Text:         "hello world",
 		WorkoutDraft: workoutDraft,
+		ToolCalls:    []string{workoutDraftToolName, updateTrainingProfileToolName},
 	}, nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
 	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
@@ -909,6 +921,7 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	assert.Equal(t, "hello world", done.Text)
 	assert.Equal(t, int32(51), done.RunID)
 	assert.Equal(t, workoutDraft, done.WorkoutDraft)
+	assert.Equal(t, []string{workoutDraftToolName, updateTrainingProfileToolName}, done.ToolCalls)
 	repo.AssertNotCalled(t, "FailRun", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)

@@ -282,5 +282,23 @@ func DataFixtureScenarios() []Scenario {
 			Expectation:     "Should use the profile's home dumbbell setup, intermediate level, hypertrophy goal, and no stated movement limitations instead of asking discovery questions.",
 			ExpectedOutcome: ExpectedGenerateFirstTurn,
 		},
+		{
+			ID:                "profile-02",
+			Title:             "Durable Profile Fact Saved",
+			Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+			Expectation:       "Should save the durable training setup with update_training_profile and tell the user what was remembered.",
+			ExpectedOutcome:   ExpectedProfileUpdated,
+			RequiredToolCalls: []string{"update_training_profile"},
+			AllowedToolCalls:  []string{"update_training_profile"},
+			RequiredTextTerms: []string{"remember", "home", "dumbbells"},
+		},
+		{
+			ID:                "profile-03",
+			Title:             "One Off Detail Not Saved",
+			Prompt:            "Today only, I am training outside instead of at home. Do not save that as my usual setup.",
+			Expectation:       "Should not call update_training_profile for an explicitly one-off session detail.",
+			ExpectedOutcome:   ExpectedAnswerWithoutTools,
+			RequiredTextTerms: []string{"today"},
+		},
 	}
 }

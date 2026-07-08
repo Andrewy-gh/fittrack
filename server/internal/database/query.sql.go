@@ -3765,3 +3765,115 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 	)
 	return i, err
 }
+
+const upsertUserTrainingProfileForChat = `-- name: UpsertUserTrainingProfileForChat :one
+INSERT INTO user_training_profile (
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id
+)
+VALUES (
+    $1,
+    NULLIF($2::text, ''),
+    NULLIF($3::text, ''),
+    CASE
+        WHEN $4::integer IS NULL THEN NULL
+        WHEN $4::integer <= 0 THEN NULL
+        ELSE $4::integer
+    END,
+    NULLIF($5::text, ''),
+    COALESCE($6::jsonb, '[]'::jsonb),
+    COALESCE($7::jsonb, '[]'::jsonb),
+    COALESCE($8::jsonb, '[]'::jsonb),
+    $9,
+    $10
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    primary_goal = CASE
+        WHEN $2::text IS NULL THEN user_training_profile.primary_goal
+        ELSE NULLIF($2::text, '')
+    END,
+    experience_level = CASE
+        WHEN $3::text IS NULL THEN user_training_profile.experience_level
+        ELSE NULLIF($3::text, '')
+    END,
+    preferred_session_duration_minutes = CASE
+        WHEN $4::integer IS NULL THEN user_training_profile.preferred_session_duration_minutes
+        WHEN $4::integer <= 0 THEN NULL
+        ELSE $4::integer
+    END,
+    usual_training_location = CASE
+        WHEN $5::text IS NULL THEN user_training_profile.usual_training_location
+        ELSE NULLIF($5::text, '')
+    END,
+    available_equipment = COALESCE($6::jsonb, user_training_profile.available_equipment),
+    avoided_exercises = COALESCE($7::jsonb, user_training_profile.avoided_exercises),
+    movement_limitations = COALESCE($8::jsonb, user_training_profile.movement_limitations),
+    source_conversation_id = COALESCE($9, user_training_profile.source_conversation_id),
+    source_message_id = COALESCE($10, user_training_profile.source_message_id),
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+`
+
+type UpsertUserTrainingProfileForChatParams struct {
+	UserID                          string      `json:"user_id"`
+	PrimaryGoal                     pgtype.Text `json:"primary_goal"`
+	ExperienceLevel                 pgtype.Text `json:"experience_level"`
+	PreferredSessionDurationMinutes pgtype.Int4 `json:"preferred_session_duration_minutes"`
+	UsualTrainingLocation           pgtype.Text `json:"usual_training_location"`
+	AvailableEquipment              []byte      `json:"available_equipment"`
+	AvoidedExercises                []byte      `json:"avoided_exercises"`
+	MovementLimitations             []byte      `json:"movement_limitations"`
+	SourceConversationID            pgtype.Int4 `json:"source_conversation_id"`
+	SourceMessageID                 pgtype.Int4 `json:"source_message_id"`
+}
+
+func (q *Queries) UpsertUserTrainingProfileForChat(ctx context.Context, arg UpsertUserTrainingProfileForChatParams) (UserTrainingProfile, error) {
+	row := q.db.QueryRow(ctx, upsertUserTrainingProfileForChat,
+		arg.UserID,
+		arg.PrimaryGoal,
+		arg.ExperienceLevel,
+		arg.PreferredSessionDurationMinutes,
+		arg.UsualTrainingLocation,
+		arg.AvailableEquipment,
+		arg.AvoidedExercises,
+		arg.MovementLimitations,
+		arg.SourceConversationID,
+		arg.SourceMessageID,
+	)
+	var i UserTrainingProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.PrimaryGoal,
+		&i.ExperienceLevel,
+		&i.PreferredSessionDurationMinutes,
+		&i.UsualTrainingLocation,
+		&i.AvailableEquipment,
+		&i.AvoidedExercises,
+		&i.MovementLimitations,
+		&i.SourceConversationID,
+		&i.SourceMessageID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

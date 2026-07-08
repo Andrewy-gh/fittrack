@@ -118,7 +118,39 @@ func (r *fixtureChatDataReader) TrainingProfile(ctx context.Context, userID stri
 	if userID != r.userID {
 		return nil, nil
 	}
-	return r.profile, nil
+	return cloneTrainingProfile(r.profile), nil
+}
+
+func (r *fixtureChatDataReader) UpdateTrainingProfile(ctx context.Context, userID string, update aichat.TrainingProfileUpdate) (*aichat.TrainingProfile, error) {
+	_ = ctx
+	if userID != r.userID {
+		return nil, nil
+	}
+	if r.profile == nil {
+		r.profile = &aichat.TrainingProfile{}
+	}
+	if update.PrimaryGoal != nil {
+		r.profile.PrimaryGoal = *update.PrimaryGoal
+	}
+	if update.ExperienceLevel != nil {
+		r.profile.ExperienceLevel = *update.ExperienceLevel
+	}
+	if update.PreferredSessionDurationMinutes != nil {
+		r.profile.PreferredSessionDurationMinutes = *update.PreferredSessionDurationMinutes
+	}
+	if update.UsualTrainingLocation != nil {
+		r.profile.UsualTrainingLocation = *update.UsualTrainingLocation
+	}
+	if update.AvailableEquipment != nil {
+		r.profile.AvailableEquipment = append([]string(nil), (*update.AvailableEquipment)...)
+	}
+	if update.AvoidedExercises != nil {
+		r.profile.AvoidedExercises = append([]string(nil), (*update.AvoidedExercises)...)
+	}
+	if update.MovementLimitations != nil {
+		r.profile.MovementLimitations = append([]string(nil), (*update.MovementLimitations)...)
+	}
+	return cloneTrainingProfile(r.profile), nil
 }
 
 func (r *fixtureChatDataReader) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*aichat.ExerciseStatsView, error) {
@@ -188,6 +220,17 @@ func fixtureWorkouts() []aichat.ChatWorkoutView {
 		fixtureWorkout("2026-05-30", "push", "", fixtureExercise("Bench Press", "175x6 working"), fixtureExercise("Dumbbell Shoulder Press", "55x8 working")),
 		fixtureWorkout("2026-05-24", "full body", "", fixtureExercise("Deadlift", "255x5 working"), fixtureExercise("Back Squat", "205x6 working")),
 	}
+}
+
+func cloneTrainingProfile(profile *aichat.TrainingProfile) *aichat.TrainingProfile {
+	if profile == nil {
+		return nil
+	}
+	clone := *profile
+	clone.AvailableEquipment = append([]string(nil), profile.AvailableEquipment...)
+	clone.AvoidedExercises = append([]string(nil), profile.AvoidedExercises...)
+	clone.MovementLimitations = append([]string(nil), profile.MovementLimitations...)
+	return &clone
 }
 
 func normalizeFixtureStatsWindow(window string) string {

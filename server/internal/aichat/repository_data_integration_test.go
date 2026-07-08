@@ -221,6 +221,50 @@ func TestRepositoryChatDataReader_TrainingProfileDecodesArrays(t *testing.T) {
 	assert.Equal(t, []string{"no overhead pressing"}, profile.MovementLimitations)
 }
 
+func TestRepositoryChatDataReader_UpdateTrainingProfilePartialUpsert(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-profile-update-user"
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	goal := "hypertrophy"
+	location := "home"
+	equipment := []string{"adjustable dumbbells", "bench"}
+	profile, err := repo.UpdateTrainingProfile(ctx, userID, TrainingProfileUpdate{
+		PrimaryGoal:           &goal,
+		UsualTrainingLocation: &location,
+		AvailableEquipment:    &equipment,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, profile)
+	assert.Equal(t, "hypertrophy", profile.PrimaryGoal)
+	assert.Equal(t, "home", profile.UsualTrainingLocation)
+	assert.Equal(t, []string{"adjustable dumbbells", "bench"}, profile.AvailableEquipment)
+
+	experience := "intermediate"
+	clearedGoal := ""
+	profile, err = repo.UpdateTrainingProfile(ctx, userID, TrainingProfileUpdate{
+		PrimaryGoal:     &clearedGoal,
+		ExperienceLevel: &experience,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, profile)
+	assert.Empty(t, profile.PrimaryGoal)
+	assert.Equal(t, "intermediate", profile.ExperienceLevel)
+	assert.Equal(t, "home", profile.UsualTrainingLocation)
+	assert.Equal(t, []string{"adjustable dumbbells", "bench"}, profile.AvailableEquipment)
+}
+
 type chatDataExerciseSeed struct {
 	name string
 	sets []chatDataSetSeed

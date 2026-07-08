@@ -32,6 +32,7 @@ const (
 	ExpectedAnswerFromData            = "answer_from_data"
 	ExpectedAnswerWithoutTools        = "answer_without_tools"
 	ExpectedHistoryInformedDraft      = "history_informed_draft"
+	ExpectedProfileUpdated            = "profile_updated"
 )
 
 const (

@@ -198,6 +198,8 @@ func TestBuildChatSystemPromptComposesTrainingProfileSection(t *testing.T) {
 		"Movement limitations: no overhead pressing",
 		"Treat user profile values as defaults",
 		"The user's current message always overrides the profile",
+		"Call the " + updateTrainingProfileToolName + " tool only for durable training facts",
+		"Do not call it for one-off session details",
 	} {
 		if !strings.Contains(prompt, snippet) {
 			t.Fatalf("buildChatSystemPrompt() missing %q\nprompt=%s", snippet, prompt)
@@ -263,10 +265,15 @@ func TestChatToolsOmitsDataToolWhenReaderNil(t *testing.T) {
 	draft := fakeTool{name: workoutDraftToolName}
 	workouts := fakeTool{name: getWorkoutsToolName}
 	stats := fakeTool{name: getExerciseStatsToolName}
+	profile := fakeTool{name: updateTrainingProfileToolName}
 
-	withData := (&GenkitRuntime{workoutDraftTool: draft, getWorkoutsTool: workouts, getExerciseStatsTool: stats}).chatTools()
-	if len(withData) != 3 || withData[0].Name() != workoutDraftToolName || withData[1].Name() != getWorkoutsToolName || withData[2].Name() != getExerciseStatsToolName {
-		t.Fatalf("chatTools() with data = %#v, want draft then workout data then exercise stats", withData)
+	withData := (&GenkitRuntime{workoutDraftTool: draft, getWorkoutsTool: workouts, getExerciseStatsTool: stats, updateProfileTool: profile}).chatTools()
+	if len(withData) != 4 ||
+		withData[0].Name() != workoutDraftToolName ||
+		withData[1].Name() != getWorkoutsToolName ||
+		withData[2].Name() != getExerciseStatsToolName ||
+		withData[3].Name() != updateTrainingProfileToolName {
+		t.Fatalf("chatTools() with data = %#v, want draft then workout data then exercise stats then profile update", withData)
 	}
 
 	withoutData := (&GenkitRuntime{workoutDraftTool: draft}).chatTools()

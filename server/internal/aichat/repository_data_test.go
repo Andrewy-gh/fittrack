@@ -1,7 +1,9 @@
 package aichat
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,12 +105,31 @@ func TestFilterLastThreeMonthsUsesLatestPoint(t *testing.T) {
 }
 
 func TestDecodeProfileStringArrayCleansValues(t *testing.T) {
-	values, err := decodeProfileStringArray([]byte(`[" dumbbells ","", "bench"]`))
+	values, err := decodeProfileStringArray([]byte(`[" dumbbells ","", "bench", "bench"]`))
 	if err != nil {
 		t.Fatalf("decodeProfileStringArray() error = %v", err)
 	}
 	if !reflect.DeepEqual(values, []string{"dumbbells", "bench"}) {
 		t.Fatalf("decodeProfileStringArray() = %#v", values)
+	}
+}
+
+func TestCleanProfileStringListCapsAndDeduplicates(t *testing.T) {
+	values := []string{" dumbbells ", "DUMBBELLS", "", strings.Repeat("x", 140)}
+	for i := 0; i < 25; i++ {
+		values = append(values, fmt.Sprintf("item-%02d", i))
+	}
+
+	got := cleanProfileStringList(values)
+
+	if len(got) != 20 {
+		t.Fatalf("cleanProfileStringList() len = %d, want 20", len(got))
+	}
+	if got[0] != "dumbbells" {
+		t.Fatalf("cleanProfileStringList()[0] = %q, want dumbbells", got[0])
+	}
+	if len(got[1]) != 120 {
+		t.Fatalf("cleanProfileStringList()[1] len = %d, want 120", len(got[1]))
 	}
 }
 

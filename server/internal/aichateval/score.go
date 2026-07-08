@@ -39,6 +39,8 @@ func ScoreResult(result *Result, mode string) {
 		scoreAnswerWithoutTools(result)
 	case ExpectedHistoryInformedDraft:
 		scoreHistoryInformedDraft(result)
+	case ExpectedProfileUpdated:
+		scoreProfileUpdated(result)
 	default:
 		setScore(result, ScoreStatusUnscored, fmt.Sprintf("unknown expected outcome %q", result.ExpectedOutcome))
 	}
@@ -334,6 +336,32 @@ func scoreAnswerFromData(result *Result) {
 	setScore(result, ScoreStatusPass, "answered from workout data with get_workouts")
 }
 
+func scoreProfileUpdated(result *Result) {
+	if result.Draft != nil {
+		setScore(result, ScoreStatusFail, "expected no structured workout draft for a profile update")
+		return
+	}
+	if !hasToolCall(result.ToolCalls, "update_training_profile") {
+		setScore(result, ScoreStatusFail, "expected update_training_profile to be called")
+		return
+	}
+	if !passesRequiredToolCallChecks(result) {
+		return
+	}
+	if disallowed := disallowedToolCalls(result.ToolCalls, result.AllowedToolCalls); len(disallowed) > 0 {
+		setScore(result, ScoreStatusFail, fmt.Sprintf("expected no tool calls beyond %s, got %s", strings.Join(result.AllowedToolCalls, ", "), strings.Join(disallowed, ", ")))
+		return
+	}
+	if strings.TrimSpace(result.Text) == "" {
+		setScore(result, ScoreStatusFail, "expected profile update announcement text")
+		return
+	}
+	if !passesTermChecks(result) {
+		return
+	}
+	setScore(result, ScoreStatusPass, "updated the training profile and announced the saved facts")
+}
+
 func scoreAnswerWithoutTools(result *Result) {
 	if result.Draft != nil {
 		setScore(result, ScoreStatusFail, "expected no structured workout draft")
@@ -397,7 +425,7 @@ func passesRequiredToolCallChecks(result *Result) bool {
 }
 
 func disallowedDataToolCalls(result *Result) []string {
-	dataTools := []string{"get_workouts", "get_exercise_stats"}
+	dataTools := []string{"get_workouts", "get_exercise_stats", "update_training_profile"}
 	var disallowed []string
 	for _, tool := range dataTools {
 		if hasToolCall(result.ToolCalls, tool) && !hasToolCall(result.AllowedToolCalls, tool) {

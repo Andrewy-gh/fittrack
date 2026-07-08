@@ -132,11 +132,72 @@ func TestRunGetExerciseStatsToolReturnsAmbiguousCandidates(t *testing.T) {
 	}
 }
 
+func TestRunUpdateTrainingProfileToolNormalizesAndSaves(t *testing.T) {
+	reader := &stubChatDataReader{}
+	ctx := user.WithContext(contextWithTrainingProfileSource(context.Background(), 12, 34), "user-1")
+	duration := int32(45)
+	goal := "muscle growth"
+	location := "home gym"
+	equipment := []string{" adjustable dumbbells ", "bench", "bench"}
+
+	result := runUpdateTrainingProfileTool(ctx, reader, UpdateTrainingProfileToolInput{
+		PrimaryGoal:                     &goal,
+		PreferredSessionDurationMinutes: &duration,
+		UsualTrainingLocation:           &location,
+		AvailableEquipment:              &equipment,
+	})
+
+	if result.Profile == nil || result.Profile.PrimaryGoal != "hypertrophy" {
+		t.Fatalf("Profile = %#v, want normalized hypertrophy profile", result.Profile)
+	}
+	if reader.profileUpdate.SourceConversationID == nil || *reader.profileUpdate.SourceConversationID != 12 {
+		t.Fatalf("SourceConversationID = %#v, want 12", reader.profileUpdate.SourceConversationID)
+	}
+	if reader.profileUpdate.SourceMessageID == nil || *reader.profileUpdate.SourceMessageID != 34 {
+		t.Fatalf("SourceMessageID = %#v, want 34", reader.profileUpdate.SourceMessageID)
+	}
+	if reader.profileUpdate.AvailableEquipment == nil || !reflect.DeepEqual(*reader.profileUpdate.AvailableEquipment, []string{"adjustable dumbbells", "bench"}) {
+		t.Fatalf("AvailableEquipment update = %#v", reader.profileUpdate.AvailableEquipment)
+	}
+	if !strings.Contains(result.Message, "updated") {
+		t.Fatalf("Message = %q, want update confirmation", result.Message)
+	}
+}
+
+func TestRunUpdateTrainingProfileToolCanClearFields(t *testing.T) {
+	reader := &stubChatDataReader{}
+	ctx := user.WithContext(context.Background(), "user-1")
+	goal := ""
+	duration := int32(0)
+	limitations := []string{}
+
+	result := runUpdateTrainingProfileTool(ctx, reader, UpdateTrainingProfileToolInput{
+		PrimaryGoal:                     &goal,
+		PreferredSessionDurationMinutes: &duration,
+		MovementLimitations:             &limitations,
+	})
+
+	if result.Profile == nil {
+		t.Fatalf("Profile = nil, want saved cleared profile")
+	}
+	if reader.profileUpdate.PrimaryGoal == nil || *reader.profileUpdate.PrimaryGoal != "" {
+		t.Fatalf("PrimaryGoal update = %#v, want clear", reader.profileUpdate.PrimaryGoal)
+	}
+	if reader.profileUpdate.PreferredSessionDurationMinutes == nil || *reader.profileUpdate.PreferredSessionDurationMinutes != 0 {
+		t.Fatalf("PreferredSessionDurationMinutes update = %#v, want clear", reader.profileUpdate.PreferredSessionDurationMinutes)
+	}
+	if reader.profileUpdate.MovementLimitations == nil || len(*reader.profileUpdate.MovementLimitations) != 0 {
+		t.Fatalf("MovementLimitations update = %#v, want empty replacement", reader.profileUpdate.MovementLimitations)
+	}
+}
+
 type stubChatDataReader struct {
 	names             []string
 	workouts          []ChatWorkoutView
 	snapshot          *TrainingSnapshot
 	stats             *ExerciseStatsView
+	profile           *TrainingProfile
+	profileUpdate     TrainingProfileUpdate
 	listErr           error
 	listCalls         int
 	statsExerciseName string
@@ -166,7 +227,36 @@ func (s *stubChatDataReader) TrainingSnapshot(ctx context.Context, userID string
 func (s *stubChatDataReader) TrainingProfile(ctx context.Context, userID string) (*TrainingProfile, error) {
 	_ = ctx
 	_ = userID
-	return nil, nil
+	return s.profile, nil
+}
+
+func (s *stubChatDataReader) UpdateTrainingProfile(ctx context.Context, userID string, update TrainingProfileUpdate) (*TrainingProfile, error) {
+	_ = ctx
+	_ = userID
+	s.profileUpdate = update
+	profile := &TrainingProfile{}
+	if update.PrimaryGoal != nil {
+		profile.PrimaryGoal = *update.PrimaryGoal
+	}
+	if update.ExperienceLevel != nil {
+		profile.ExperienceLevel = *update.ExperienceLevel
+	}
+	if update.PreferredSessionDurationMinutes != nil {
+		profile.PreferredSessionDurationMinutes = *update.PreferredSessionDurationMinutes
+	}
+	if update.UsualTrainingLocation != nil {
+		profile.UsualTrainingLocation = *update.UsualTrainingLocation
+	}
+	if update.AvailableEquipment != nil {
+		profile.AvailableEquipment = *update.AvailableEquipment
+	}
+	if update.AvoidedExercises != nil {
+		profile.AvoidedExercises = *update.AvoidedExercises
+	}
+	if update.MovementLimitations != nil {
+		profile.MovementLimitations = *update.MovementLimitations
+	}
+	return profile, nil
 }
 
 func (s *stubChatDataReader) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {

@@ -25,6 +25,7 @@ type ChatDataReader interface {
 	ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error)
 	TrainingSnapshot(ctx context.Context, userID string) (*TrainingSnapshot, error)
 	TrainingProfile(ctx context.Context, userID string) (*TrainingProfile, error)
+	UpdateTrainingProfile(ctx context.Context, userID string, update TrainingProfileUpdate) (*TrainingProfile, error)
 }
 
 func (r *repository) ListWorkoutsWithSets(ctx context.Context, userID string, filter WorkoutHistoryFilter) ([]ChatWorkoutView, error) {
@@ -109,33 +110,50 @@ func (r *repository) TrainingProfile(ctx context.Context, userID string) (*Train
 		return nil, fmt.Errorf("get ai chat user training profile: %w", err)
 	}
 
-	profile := &TrainingProfile{
-		PrimaryGoal:                     pgTextString(row.PrimaryGoal),
-		ExperienceLevel:                 pgTextString(row.ExperienceLevel),
-		PreferredSessionDurationMinutes: row.PreferredSessionDurationMinutes.Int32,
-		UsualTrainingLocation:           pgTextString(row.UsualTrainingLocation),
-	}
-	if profile.PreferredSessionDurationMinutes != 0 && !row.PreferredSessionDurationMinutes.Valid {
-		profile.PreferredSessionDurationMinutes = 0
-	}
-
-	profile.AvailableEquipment, err = decodeProfileStringArray(row.AvailableEquipment)
+	profile, err := trainingProfileFromRow(row)
 	if err != nil {
-		return nil, fmt.Errorf("decode profile available equipment: %w", err)
-	}
-	profile.AvoidedExercises, err = decodeProfileStringArray(row.AvoidedExercises)
-	if err != nil {
-		return nil, fmt.Errorf("decode profile avoided exercises: %w", err)
-	}
-	profile.MovementLimitations, err = decodeProfileStringArray(row.MovementLimitations)
-	if err != nil {
-		return nil, fmt.Errorf("decode profile movement limitations: %w", err)
+		return nil, err
 	}
 
 	if !hasTrainingProfileContent(profile) {
 		return nil, nil
 	}
 	return profile, nil
+}
+
+func (r *repository) UpdateTrainingProfile(ctx context.Context, userID string, update TrainingProfileUpdate) (*TrainingProfile, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	params := db.UpsertUserTrainingProfileForChatParams{
+		UserID:                          userID,
+		PrimaryGoal:                     optionalProfileText(update.PrimaryGoal),
+		ExperienceLevel:                 optionalProfileText(update.ExperienceLevel),
+		PreferredSessionDurationMinutes: optionalProfileInt(update.PreferredSessionDurationMinutes),
+		UsualTrainingLocation:           optionalProfileText(update.UsualTrainingLocation),
+		SourceConversationID:            optionalProfileInt(update.SourceConversationID),
+		SourceMessageID:                 optionalProfileInt(update.SourceMessageID),
+	}
+
+	var err error
+	params.AvailableEquipment, err = optionalProfileStringArray(update.AvailableEquipment)
+	if err != nil {
+		return nil, fmt.Errorf("encode profile available equipment: %w", err)
+	}
+	params.AvoidedExercises, err = optionalProfileStringArray(update.AvoidedExercises)
+	if err != nil {
+		return nil, fmt.Errorf("encode profile avoided exercises: %w", err)
+	}
+	params.MovementLimitations, err = optionalProfileStringArray(update.MovementLimitations)
+	if err != nil {
+		return nil, fmt.Errorf("encode profile movement limitations: %w", err)
+	}
+
+	row, err := r.queries.UpsertUserTrainingProfileForChat(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("upsert ai chat user training profile: %w", err)
+	}
+	return trainingProfileFromRow(row)
 }
 
 func (r *repository) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {
@@ -228,6 +246,58 @@ func pgTextString(value pgtype.Text) string {
 	return strings.TrimSpace(value.String)
 }
 
+func optionalProfileText(value *string) pgtype.Text {
+	if value == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: strings.TrimSpace(*value), Valid: true}
+}
+
+func optionalProfileInt(value *int32) pgtype.Int4 {
+	if value == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: *value, Valid: true}
+}
+
+func optionalProfileStringArray(value *[]string) ([]byte, error) {
+	if value == nil {
+		return nil, nil
+	}
+	cleaned := cleanProfileStringList(*value)
+	raw, err := json.Marshal(cleaned)
+	if err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func trainingProfileFromRow(row db.UserTrainingProfile) (*TrainingProfile, error) {
+	profile := &TrainingProfile{
+		PrimaryGoal:           pgTextString(row.PrimaryGoal),
+		ExperienceLevel:       pgTextString(row.ExperienceLevel),
+		UsualTrainingLocation: pgTextString(row.UsualTrainingLocation),
+	}
+	if row.PreferredSessionDurationMinutes.Valid {
+		profile.PreferredSessionDurationMinutes = row.PreferredSessionDurationMinutes.Int32
+	}
+
+	var err error
+	profile.AvailableEquipment, err = decodeProfileStringArray(row.AvailableEquipment)
+	if err != nil {
+		return nil, fmt.Errorf("decode profile available equipment: %w", err)
+	}
+	profile.AvoidedExercises, err = decodeProfileStringArray(row.AvoidedExercises)
+	if err != nil {
+		return nil, fmt.Errorf("decode profile avoided exercises: %w", err)
+	}
+	profile.MovementLimitations, err = decodeProfileStringArray(row.MovementLimitations)
+	if err != nil {
+		return nil, fmt.Errorf("decode profile movement limitations: %w", err)
+	}
+	return profile, nil
+}
+
 func decodeProfileStringArray(raw []byte) ([]string, error) {
 	if len(raw) == 0 {
 		return nil, nil
@@ -237,12 +307,32 @@ func decodeProfileStringArray(raw []byte) ([]string, error) {
 		return nil, err
 	}
 	cleaned := make([]string, 0, len(values))
+	return append(cleaned, cleanProfileStringList(values)...), nil
+}
+
+func cleanProfileStringList(values []string) []string {
+	const maxProfileListItems = 20
+	cleaned := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
-		if trimmed := strings.TrimSpace(value); trimmed != "" {
-			cleaned = append(cleaned, trimmed)
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if len(trimmed) > 120 {
+			trimmed = trimmed[:120]
+		}
+		key := strings.ToLower(trimmed)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		cleaned = append(cleaned, trimmed)
+		if len(cleaned) == maxProfileListItems {
+			break
 		}
 	}
-	return cleaned, nil
+	return cleaned
 }
 
 func hasTrainingProfileContent(profile *TrainingProfile) bool {

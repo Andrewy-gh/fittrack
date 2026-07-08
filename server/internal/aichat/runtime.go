@@ -38,6 +38,7 @@ type GenkitRuntime struct {
 	workoutDraftTool     ai.Tool
 	getWorkoutsTool      ai.Tool
 	getExerciseStatsTool ai.Tool
+	updateProfileTool    ai.Tool
 	dataReader           ChatDataReader
 }
 
@@ -52,7 +53,7 @@ func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime
 		return runtime
 	}
 
-	g, workoutDraftTool, getWorkoutsTool, getExerciseStatsTool, ok := activateGenkitRuntime(ctx, modelName, reader)
+	g, workoutDraftTool, getWorkoutsTool, getExerciseStatsTool, updateProfileTool, ok := activateGenkitRuntime(ctx, modelName, reader)
 	if !ok {
 		return runtime
 	}
@@ -61,12 +62,13 @@ func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime
 	runtime.workoutDraftTool = workoutDraftTool
 	runtime.getWorkoutsTool = getWorkoutsTool
 	runtime.getExerciseStatsTool = getExerciseStatsTool
+	runtime.updateProfileTool = updateProfileTool
 	runtime.available = true
 
 	return runtime
 }
 
-func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, _ ai.Tool, ok bool) {
+func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, _ ai.Tool, _ ai.Tool, ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			slog.Warn("ai chat runtime initialization skipped after genkit panic",
@@ -85,12 +87,14 @@ func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDat
 	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
 	var getWorkoutsTool ai.Tool
 	var getExerciseStatsTool ai.Tool
+	var updateProfileTool ai.Tool
 	if reader != nil {
 		getWorkoutsTool = defineGetWorkoutsTool(g, reader)
 		getExerciseStatsTool = defineGetExerciseStatsTool(g, reader)
+		updateProfileTool = defineUpdateTrainingProfileTool(g, reader)
 	}
 
-	return g, workoutDraftTool, getWorkoutsTool, getExerciseStatsTool, true
+	return g, workoutDraftTool, getWorkoutsTool, getExerciseStatsTool, updateProfileTool, true
 }
 
 func (r *GenkitRuntime) ModelName() string {
@@ -271,6 +275,9 @@ func (r *GenkitRuntime) chatTools() []ai.ToolRef {
 	if r.getExerciseStatsTool != nil {
 		tools = append(tools, r.getExerciseStatsTool)
 	}
+	if r.updateProfileTool != nil {
+		tools = append(tools, r.updateProfileTool)
+	}
 	return tools
 }
 
@@ -389,6 +396,8 @@ Rules:
 - Stay focused on fitness, training, recovery, exercise selection, and how to use FitTrack.
 - Keep answers concise, practical, and safe.
 %s
+- Call the %s tool only for durable training facts the user stated, such as usual equipment, usual location, primary goal, experience level, exercises to avoid, or movement limitations. Do not call it for one-off session details like "today only" equipment, location, duration, or constraints.
+- When you call the %s tool, tell the user what you saved. If the user asks you to forget a profile fact, call the tool with that field cleared and tell them what was cleared. For profile array fields, send the complete updated list because arrays replace the saved list.
 
 %s
 %s
@@ -426,7 +435,7 @@ Examples:
 - If the user says "45-minute back workout, cables only, no injuries," call the workout draft tool and choose cable-only movements instead of asking what other equipment they have.
 - If the user first asks for a 4-day split, say FitTrack builds one workout at a time and ask them to choose one day or session to start. If they then say "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes," call the %s tool for that upper-body session.
 - If the user says "swap anything that bothers my knee/elbow/shoulder/back/wrist" after a draft, ask which movements, ranges, or exercise patterns bother that body part before revising.
-- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, personalDataRule, currentDateSection, snapshotSection, profileSection, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
+- If the user asks to swap or revise a generated workout later, gather only the extra details needed for the revision and stay concise.`, personalDataRule, updateTrainingProfileToolName, updateTrainingProfileToolName, currentDateSection, snapshotSection, profileSection, workoutChatFollowUpQuestionCeiling, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName, workoutDraftToolName)
 }
 
 func buildTrainingSnapshotPromptSection(snapshot *TrainingSnapshot) string {
