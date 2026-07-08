@@ -210,6 +210,16 @@ type ExerciseStatsTrendPoint struct {
 	WorkoutID int32   `json:"workout_id,omitempty"`
 }
 
+type TrainingProfile struct {
+	PrimaryGoal                     string   `json:"primary_goal,omitempty"`
+	ExperienceLevel                 string   `json:"experience_level,omitempty"`
+	PreferredSessionDurationMinutes int32    `json:"preferred_session_duration_minutes,omitempty"`
+	UsualTrainingLocation           string   `json:"usual_training_location,omitempty"`
+	AvailableEquipment              []string `json:"available_equipment,omitempty"`
+	AvoidedExercises                []string `json:"avoided_exercises,omitempty"`
+	MovementLimitations             []string `json:"movement_limitations,omitempty"`
+}
+
 type TrainingSnapshot struct {
 	LastWorkoutDate string   `json:"last_workout_date,omitempty"`
 	WorkoutsLast30D int64    `json:"workouts_last_30d"`

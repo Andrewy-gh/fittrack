@@ -82,6 +82,12 @@ func (m *mockRepository) TrainingSnapshot(ctx context.Context, userID string) (*
 	return snapshot, args.Error(1)
 }
 
+func (m *mockRepository) TrainingProfile(ctx context.Context, userID string) (*TrainingProfile, error) {
+	args := m.Called(ctx, userID)
+	profile, _ := args.Get(0).(*TrainingProfile)
+	return profile, args.Error(1)
+}
+
 func (m *mockRepository) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {
 	args := m.Called(ctx, userID, exerciseName, window)
 	stats, _ := args.Get(0).(*ExerciseStatsView)

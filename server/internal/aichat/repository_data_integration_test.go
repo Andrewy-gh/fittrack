@@ -177,6 +177,50 @@ func TestRepositoryChatDataReader_ExerciseStatsAreUserScoped(t *testing.T) {
 	assert.Len(t, stats.Trend, 2)
 }
 
+func TestRepositoryChatDataReader_TrainingProfileDecodesArrays(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-profile-user"
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	_, err := pool.Exec(ctx, `
+		INSERT INTO user_training_profile (
+			user_id,
+			primary_goal,
+			experience_level,
+			preferred_session_duration_minutes,
+			usual_training_location,
+			available_equipment,
+			avoided_exercises,
+			movement_limitations
+		)
+		VALUES ($1, 'hypertrophy', 'intermediate', 45, 'home', '["dumbbells", "bench"]'::jsonb, '["burpees"]'::jsonb, '["no overhead pressing"]'::jsonb)
+	`, userID)
+	require.NoError(t, err)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	profile, err := repo.TrainingProfile(ctx, userID)
+
+	require.NoError(t, err)
+	require.NotNil(t, profile)
+	assert.Equal(t, "hypertrophy", profile.PrimaryGoal)
+	assert.Equal(t, "intermediate", profile.ExperienceLevel)
+	assert.EqualValues(t, 45, profile.PreferredSessionDurationMinutes)
+	assert.Equal(t, "home", profile.UsualTrainingLocation)
+	assert.Equal(t, []string{"dumbbells", "bench"}, profile.AvailableEquipment)
+	assert.Equal(t, []string{"burpees"}, profile.AvoidedExercises)
+	assert.Equal(t, []string{"no overhead pressing"}, profile.MovementLimitations)
+}
+
 type chatDataExerciseSeed struct {
 	name string
 	sets []chatDataSetSeed

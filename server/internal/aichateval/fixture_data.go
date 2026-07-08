@@ -16,10 +16,22 @@ const FixtureUserID = "ai-chat-fixture-user"
 type fixtureChatDataReader struct {
 	userID   string
 	workouts []aichat.ChatWorkoutView
+	profile  *aichat.TrainingProfile
 }
 
 func NewFixtureChatDataReader() aichat.ChatDataReader {
-	return &fixtureChatDataReader{userID: FixtureUserID, workouts: fixtureWorkouts()}
+	return &fixtureChatDataReader{
+		userID:   FixtureUserID,
+		workouts: fixtureWorkouts(),
+		profile: &aichat.TrainingProfile{
+			PrimaryGoal:                     "hypertrophy",
+			ExperienceLevel:                 "intermediate",
+			PreferredSessionDurationMinutes: 45,
+			UsualTrainingLocation:           "home",
+			AvailableEquipment:              []string{"adjustable dumbbells", "bench"},
+			MovementLimitations:             nil,
+		},
+	}
 }
 
 func (r *fixtureChatDataReader) ListWorkoutsWithSets(ctx context.Context, userID string, filter aichat.WorkoutHistoryFilter) ([]aichat.ChatWorkoutView, error) {
@@ -99,6 +111,14 @@ func (r *fixtureChatDataReader) TrainingSnapshot(ctx context.Context, userID str
 		WorkoutsLast30D: 7,
 		TopExercises:    []string{"Bench Press", "Back Squat", "Deadlift", "Barbell Row", "Incline Bench Press"},
 	}, nil
+}
+
+func (r *fixtureChatDataReader) TrainingProfile(ctx context.Context, userID string) (*aichat.TrainingProfile, error) {
+	_ = ctx
+	if userID != r.userID {
+		return nil, nil
+	}
+	return r.profile, nil
 }
 
 func (r *fixtureChatDataReader) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*aichat.ExerciseStatsView, error) {

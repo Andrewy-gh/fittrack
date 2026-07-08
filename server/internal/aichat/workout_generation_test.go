@@ -14,7 +14,7 @@ import (
 )
 
 func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
-	prompt := buildChatSystemPrompt(nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
+	prompt := buildChatSystemPrompt(nil, nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
 
 	requiredSnippets := []string{
 		"Ask at most 3 short, focused follow-up questions",
@@ -27,7 +27,7 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Use only that context unless the user explicitly mentions more",
 		"Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable",
 		"Do not assume unmentioned accessories or equipment",
-		"If injury status is missing, ask once before generating",
+		"If injury status is missing and no profile movement limitation default is available, ask once before generating",
 		"Do not infer \"none\" from silence in the initial request",
 		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
 		"When the user answers a follow-up, combine that answer with the earlier visible workout request",

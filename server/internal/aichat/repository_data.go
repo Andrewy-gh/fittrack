@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ type ChatDataReader interface {
 	ResolveExerciseNames(ctx context.Context, userID string, query string) ([]string, error)
 	ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error)
 	TrainingSnapshot(ctx context.Context, userID string) (*TrainingSnapshot, error)
+	TrainingProfile(ctx context.Context, userID string) (*TrainingProfile, error)
 }
 
 func (r *repository) ListWorkoutsWithSets(ctx context.Context, userID string, filter WorkoutHistoryFilter) ([]ChatWorkoutView, error) {
@@ -93,6 +95,47 @@ func (r *repository) TrainingSnapshot(ctx context.Context, userID string) (*Trai
 	}
 
 	return snapshot, nil
+}
+
+func (r *repository) TrainingProfile(ctx context.Context, userID string) (*TrainingProfile, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	row, err := r.queries.GetUserTrainingProfile(ctx, userID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get ai chat user training profile: %w", err)
+	}
+
+	profile := &TrainingProfile{
+		PrimaryGoal:                     pgTextString(row.PrimaryGoal),
+		ExperienceLevel:                 pgTextString(row.ExperienceLevel),
+		PreferredSessionDurationMinutes: row.PreferredSessionDurationMinutes.Int32,
+		UsualTrainingLocation:           pgTextString(row.UsualTrainingLocation),
+	}
+	if profile.PreferredSessionDurationMinutes != 0 && !row.PreferredSessionDurationMinutes.Valid {
+		profile.PreferredSessionDurationMinutes = 0
+	}
+
+	profile.AvailableEquipment, err = decodeProfileStringArray(row.AvailableEquipment)
+	if err != nil {
+		return nil, fmt.Errorf("decode profile available equipment: %w", err)
+	}
+	profile.AvoidedExercises, err = decodeProfileStringArray(row.AvoidedExercises)
+	if err != nil {
+		return nil, fmt.Errorf("decode profile avoided exercises: %w", err)
+	}
+	profile.MovementLimitations, err = decodeProfileStringArray(row.MovementLimitations)
+	if err != nil {
+		return nil, fmt.Errorf("decode profile movement limitations: %w", err)
+	}
+
+	if !hasTrainingProfileContent(profile) {
+		return nil, nil
+	}
+	return profile, nil
 }
 
 func (r *repository) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {
@@ -176,6 +219,43 @@ func (r *repository) ExerciseStats(ctx context.Context, userID string, exerciseN
 		stats.Message = fmt.Sprintf("No working-set stats were found for %s.", stats.ExerciseName)
 	}
 	return stats, nil
+}
+
+func pgTextString(value pgtype.Text) string {
+	if !value.Valid {
+		return ""
+	}
+	return strings.TrimSpace(value.String)
+}
+
+func decodeProfileStringArray(raw []byte) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var values []string
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return nil, err
+	}
+	cleaned := make([]string, 0, len(values))
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			cleaned = append(cleaned, trimmed)
+		}
+	}
+	return cleaned, nil
+}
+
+func hasTrainingProfileContent(profile *TrainingProfile) bool {
+	if profile == nil {
+		return false
+	}
+	return strings.TrimSpace(profile.PrimaryGoal) != "" ||
+		strings.TrimSpace(profile.ExperienceLevel) != "" ||
+		profile.PreferredSessionDurationMinutes > 0 ||
+		strings.TrimSpace(profile.UsualTrainingLocation) != "" ||
+		len(profile.AvailableEquipment) > 0 ||
+		len(profile.AvoidedExercises) > 0 ||
+		len(profile.MovementLimitations) > 0
 }
 
 func (r *repository) workoutDate(ctx context.Context, userID string, workoutID int32) (string, error) {

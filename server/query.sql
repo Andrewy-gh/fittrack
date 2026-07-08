@@ -428,6 +428,23 @@ GROUP BY e.name
 ORDER BY workout_count DESC, e.name
 LIMIT 5;
 
+-- name: GetUserTrainingProfile :one
+SELECT
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+FROM user_training_profile
+WHERE user_id = $1;
+
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
 INSERT INTO workout (date, notes, workout_focus, user_id)

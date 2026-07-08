@@ -163,6 +163,12 @@ func (s *stubChatDataReader) TrainingSnapshot(ctx context.Context, userID string
 	return s.snapshot, nil
 }
 
+func (s *stubChatDataReader) TrainingProfile(ctx context.Context, userID string) (*TrainingProfile, error) {
+	_ = ctx
+	_ = userID
+	return nil, nil
+}
+
 func (s *stubChatDataReader) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*ExerciseStatsView, error) {
 	_ = ctx
 	_ = userID

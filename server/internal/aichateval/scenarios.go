@@ -170,6 +170,14 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "Nope.",
 		},
+		{
+			ID:              "prompt-20",
+			Title:           "No Profile Push Day Guard",
+			Prompt:          "45-minute push day.",
+			Expectation:     "Without a training profile, should preserve the ask-first behavior for missing equipment/location and injury status.",
+			ExpectedOutcome: ExpectedAskOnceThenGenerate,
+			FollowUpAnswer:  "No injuries. Full gym. Intermediate, hypertrophy.",
+		},
 	}
 }
 
@@ -266,6 +274,13 @@ func DataFixtureScenarios() []Scenario {
 			Expectation:      "Should use logged history before generating a structured draft so recent bench performance can guide weights.",
 			ExpectedOutcome:  ExpectedHistoryInformedDraft,
 			AllowedToolCalls: []string{"get_workouts", "get_exercise_stats"},
+		},
+		{
+			ID:              "profile-01",
+			Title:           "Profile Defaults Push Draft",
+			Prompt:          "45-minute push day.",
+			Expectation:     "Should use the profile's home dumbbell setup, intermediate level, hypertrophy goal, and no stated movement limitations instead of asking discovery questions.",
+			ExpectedOutcome: ExpectedGenerateFirstTurn,
 		},
 	}
 }

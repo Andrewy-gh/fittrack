@@ -1945,6 +1945,44 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (Users, er
 	return i, err
 }
 
+const getUserTrainingProfile = `-- name: GetUserTrainingProfile :one
+SELECT
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+FROM user_training_profile
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserTrainingProfile(ctx context.Context, userID string) (UserTrainingProfile, error) {
+	row := q.db.QueryRow(ctx, getUserTrainingProfile, userID)
+	var i UserTrainingProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.PrimaryGoal,
+		&i.ExperienceLevel,
+		&i.PreferredSessionDurationMinutes,
+		&i.UsualTrainingLocation,
+		&i.AvailableEquipment,
+		&i.AvoidedExercises,
+		&i.MovementLimitations,
+		&i.SourceConversationID,
+		&i.SourceMessageID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getWorkout = `-- name: GetWorkout :one
 SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE id = $1 AND user_id = $2
 `

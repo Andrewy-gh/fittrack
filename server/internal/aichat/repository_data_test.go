@@ -1,6 +1,7 @@
 package aichat
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -98,6 +99,28 @@ func TestFilterLastThreeMonthsUsesLatestPoint(t *testing.T) {
 
 	if len(filtered) != 2 || !filtered[0].WorkoutDay.Equal(points[1].WorkoutDay) || !filtered[1].WorkoutDay.Equal(points[2].WorkoutDay) {
 		t.Fatalf("filtered = %#v", filtered)
+	}
+}
+
+func TestDecodeProfileStringArrayCleansValues(t *testing.T) {
+	values, err := decodeProfileStringArray([]byte(`[" dumbbells ","", "bench"]`))
+	if err != nil {
+		t.Fatalf("decodeProfileStringArray() error = %v", err)
+	}
+	if !reflect.DeepEqual(values, []string{"dumbbells", "bench"}) {
+		t.Fatalf("decodeProfileStringArray() = %#v", values)
+	}
+}
+
+func TestHasTrainingProfileContent(t *testing.T) {
+	if hasTrainingProfileContent(nil) {
+		t.Fatal("nil profile should not have content")
+	}
+	if hasTrainingProfileContent(&TrainingProfile{}) {
+		t.Fatal("empty profile should not have content")
+	}
+	if !hasTrainingProfileContent(&TrainingProfile{AvailableEquipment: []string{"dumbbells"}}) {
+		t.Fatal("profile with equipment should have content")
 	}
 }
 

@@ -123,7 +123,7 @@ func TestWorkoutDraftToolNameIsGeminiCompatible(t *testing.T) {
 
 func TestPromptsReferenceToolNames(t *testing.T) {
 	structuredPrompt := buildStructuredPrompt("test prompt")
-	chatPrompt := buildChatSystemPrompt(nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
+	chatPrompt := buildChatSystemPrompt(nil, nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
 
 	if strings.Contains(structuredPrompt, "list_active_features") {
 		t.Fatalf("buildStructuredPrompt() = %q, should not reference active feature tools", structuredPrompt)
@@ -142,7 +142,7 @@ func TestBuildChatSystemPromptComposesDataSections(t *testing.T) {
 		WorkoutsLast30D: 7,
 		TopExercises:    []string{"Bench Press", "Back Squat"},
 	}
-	prompt := buildChatSystemPrompt(snapshot, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
+	prompt := buildChatSystemPrompt(snapshot, nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
 
 	for _, snippet := range []string{
 		"call the " + getWorkoutsToolName + " tool",
@@ -162,7 +162,7 @@ func TestBuildChatSystemPromptComposesDataSections(t *testing.T) {
 }
 
 func TestBuildChatSystemPromptOmitsSnapshotAndDataToolWhenReaderNil(t *testing.T) {
-	prompt := buildChatSystemPrompt(nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), false)
+	prompt := buildChatSystemPrompt(nil, nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), false)
 
 	if strings.Contains(prompt, "User training snapshot:") {
 		t.Fatalf("buildChatSystemPrompt() included snapshot without reader: %s", prompt)
@@ -172,6 +172,36 @@ func TestBuildChatSystemPromptOmitsSnapshotAndDataToolWhenReaderNil(t *testing.T
 	}
 	if !strings.Contains(prompt, "Do not call data tools for general fitness knowledge.") {
 		t.Fatalf("buildChatSystemPrompt() missing nil-reader data routing rule: %s", prompt)
+	}
+}
+
+func TestBuildChatSystemPromptComposesTrainingProfileSection(t *testing.T) {
+	profile := &TrainingProfile{
+		PrimaryGoal:                     "hypertrophy",
+		ExperienceLevel:                 "intermediate",
+		PreferredSessionDurationMinutes: 45,
+		UsualTrainingLocation:           "home",
+		AvailableEquipment:              []string{"adjustable dumbbells", "bench"},
+		AvoidedExercises:                []string{"burpees"},
+		MovementLimitations:             []string{"no overhead pressing"},
+	}
+	prompt := buildChatSystemPrompt(nil, profile, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
+
+	for _, snippet := range []string{
+		"User training profile:",
+		"Goal: hypertrophy",
+		"Experience: intermediate",
+		"Preferred duration: 45 minutes",
+		"Usual location: home",
+		"Available equipment: adjustable dumbbells, bench",
+		"Avoided exercises: burpees",
+		"Movement limitations: no overhead pressing",
+		"Treat user profile values as defaults",
+		"The user's current message always overrides the profile",
+	} {
+		if !strings.Contains(prompt, snippet) {
+			t.Fatalf("buildChatSystemPrompt() missing %q\nprompt=%s", snippet, prompt)
+		}
 	}
 }
 
