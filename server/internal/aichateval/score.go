@@ -203,6 +203,7 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"how long would you like the session",
 		"how long do you want the session",
 		"how long do you have for the session",
+		"how long do you have for this session",
 		"how long do you have for each session",
 		"how long can you train for each session",
 		"how long is your session duration",

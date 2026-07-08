@@ -575,6 +575,11 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "meal plan refusal asks how long this session can be",
+			text: "I can help with a workout for fat loss! While I can't create meal plans, I can definitely design a training session to help you reach your goals. To get started, what workout focus are you looking for? And how long do you have for this session?",
+			want: true,
+		},
+		{
 			name: "vague text",
 			text: "Sure, I can help with that.",
 			want: false,
