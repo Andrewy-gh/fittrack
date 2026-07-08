@@ -482,6 +482,7 @@ func announcesProfileUpdate(text string) bool {
 		"updated your profile",
 		"saved to your training profile",
 		"added to your training profile",
+		"saved that your usual training setup",
 		"saved your usual training setup",
 	})
 }
