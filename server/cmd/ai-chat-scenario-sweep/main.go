@@ -32,6 +32,7 @@ func main() {
 	scenarioIDs := flag.String("scenarios", "", "run comma-separated scenario ids from the default pack, for example prompt-03,prompt-04")
 	fromID := flag.String("from", "", "run an inclusive scenario id range starting at this id")
 	toID := flag.String("to", "", "run an inclusive scenario id range ending at this id")
+	withDataFixtures := flag.Bool("with-data-fixtures", false, "include AI chat data Q&A scenarios backed by in-memory workout fixtures")
 	flag.Parse()
 	if err := aichateval.ValidateMode(*mode); err != nil {
 		fail("%v", err)
@@ -42,7 +43,15 @@ func main() {
 	if *scenarioDelay < 0 {
 		fail("scenario-delay must be zero or greater")
 	}
-	scenarios, err := aichateval.FilterScenarios(aichateval.DefaultScenarios(), aichateval.ScenarioSelection{
+	scenarios := aichateval.DefaultScenarios()
+	var dataReader aichat.ChatDataReader
+	evalUserID := ""
+	if *withDataFixtures {
+		dataReader = aichateval.NewFixtureChatDataReader()
+		evalUserID = aichateval.FixtureUserID
+		scenarios = append(scenarios, aichateval.DataFixtureScenarios()...)
+	}
+	scenarios, err := aichateval.FilterScenarios(scenarios, aichateval.ScenarioSelection{
 		ScenarioID:  *scenarioID,
 		ScenarioIDs: *scenarioIDs,
 		FromID:      *fromID,
@@ -63,7 +72,7 @@ func main() {
 	runtimeCtx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	runtime := aichat.NewGenkitRuntime(runtimeCtx)
+	runtime := aichat.NewGenkitRuntime(runtimeCtx, dataReader)
 	if !runtime.Available() {
 		fail("ai chat runtime unavailable. Set GEMINI_API_KEY or GOOGLE_API_KEY in your shell, server/.env, or server/setenv.sh")
 	}
@@ -71,6 +80,7 @@ func main() {
 	report := aichateval.Run(runtimeCtx, runtime, scenarios, aichateval.RunOptions{
 		Mode:               *mode,
 		InterScenarioDelay: selectedScenarioDelay(*scenarioDelay, len(scenarios)),
+		UserID:             evalUserID,
 		OnScenario: func(item aichateval.Scenario) {
 			fmt.Fprintf(os.Stderr, "Running %s: %s\n", item.ID, item.Title)
 		},

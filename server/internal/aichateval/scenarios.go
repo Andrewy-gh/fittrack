@@ -172,3 +172,72 @@ func DefaultScenarios() []Scenario {
 		},
 	}
 }
+
+func DataFixtureScenarios() []Scenario {
+	return []Scenario{
+		{
+			ID:                "data-01",
+			Title:             "Snapshot Last Workout",
+			Prompt:            "When did I last work out?",
+			Expectation:       "Should answer from the injected snapshot; a redundant get_workouts call is tolerated but a draft is not.",
+			ExpectedOutcome:   ExpectedAnswerWithoutTools,
+			RequiredTextTerms: []string{"2026-07-03"},
+			AllowedToolCalls:  []string{"get_workouts"},
+		},
+		{
+			ID:                "data-02",
+			Title:             "Last Back Squat",
+			Prompt:            "When did I last back squat?",
+			Expectation:       "Should call get_workouts and answer from logged back squat data without an ambiguity detour.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredTextTerms: []string{"2026-06-30", "squat"},
+		},
+		{
+			ID:                "data-03",
+			Title:             "Recent Bench Sets",
+			Prompt:            "What bench press work have I logged recently?",
+			Expectation:       "Should call get_workouts and summarize recent bench sessions.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredTextTerms: []string{"bench", "2026-07-03"},
+		},
+		{
+			ID:                "data-04",
+			Title:             "Last Week Workouts",
+			Prompt:            "What workouts did I do from 2026-06-23 through 2026-06-30?",
+			Expectation:       "Should call get_workouts with date bounds and mention all three workouts in that range (dates may be rendered as prose, so match on the focus of each workout).",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredTextTerms: []string{"push", "pull", "lower body"},
+		},
+		{
+			ID:                "data-05",
+			Title:             "Ambiguous Row Lookup",
+			Prompt:            "What rows have I done recently?",
+			Expectation:       "Should call get_workouts and ask for clarification or mention matching row variants.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredTextTerms: []string{"row"},
+		},
+		{
+			ID:                "data-06",
+			Title:             "Deadlift History",
+			Prompt:            "Show my recent deadlift workouts.",
+			Expectation:       "Should call get_workouts and answer from fixture deadlift history.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredTextTerms: []string{"deadlift", "2026-06-27"},
+		},
+		{
+			ID:                "data-07",
+			Title:             "General Fitness No Tool",
+			Prompt:            "What muscles do rows train?",
+			Expectation:       "Should answer general fitness knowledge without data tools.",
+			ExpectedOutcome:   ExpectedAnswerWithoutTools,
+			RequiredTextTerms: []string{"back"},
+		},
+		{
+			ID:              "data-08",
+			Title:           "Draft Guard With Data Fixtures",
+			Prompt:          "Intermediate, 45 minutes, push day, full gym, no injuries. Build me a hypertrophy workout.",
+			Expectation:     "Should still call only the workout draft tool for a normal draft request.",
+			ExpectedOutcome: ExpectedGenerateFirstTurn,
+		},
+	}
+}

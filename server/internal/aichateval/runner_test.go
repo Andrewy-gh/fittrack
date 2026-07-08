@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
@@ -19,6 +20,8 @@ type fakeRuntime struct {
 type runtimeCall struct {
 	prompt  string
 	history []aichat.RuntimeChatMessage
+	userID  string
+	hasUser bool
 }
 
 type runtimeResponse struct {
@@ -27,9 +30,12 @@ type runtimeResponse struct {
 }
 
 func (f *fakeRuntime) StreamChat(ctx context.Context, prompt string, history []aichat.RuntimeChatMessage, onChunk func(string) error) (*aichat.StreamDone, error) {
+	userID, hasUser := user.Current(ctx)
 	f.calls = append(f.calls, runtimeCall{
 		prompt:  prompt,
 		history: append([]aichat.RuntimeChatMessage{}, history...),
+		userID:  userID,
+		hasUser: hasUser,
 	})
 	if len(f.next) == 0 {
 		return nil, errors.New("unexpected call")
@@ -53,6 +59,7 @@ func TestRunSingleTurnClassifiesStructuredDraft(t *testing.T) {
 				Model:        "test-model",
 				Text:         "I made a draft.",
 				WorkoutDraft: testDraft(),
+				ToolCalls:    []string{"generate_workout_draft"},
 			},
 		}},
 	}
@@ -255,6 +262,158 @@ func TestRunScoresUnexpectedDraftForDoNotGenerateAsFailure(t *testing.T) {
 	}
 	if report.Summary.FailedCount != 1 || report.Summary.PassRate != 0 {
 		t.Fatalf("summary scores = failed %d rate %f, want 1 and 0", report.Summary.FailedCount, report.Summary.PassRate)
+	}
+}
+
+func TestRunScoresAnswerFromData(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:      "You last squatted on 2026-06-30.",
+				ToolCalls: []string{"get_workouts"},
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-data",
+		Title:             "Data Answer",
+		Prompt:            "When did I last squat?",
+		ExpectedOutcome:   ExpectedAnswerFromData,
+		RequiredTextTerms: []string{"2026-06-30"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+}
+
+func TestRunScoresAnswerWithoutTools(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{Text: "Your last workout was 2026-07-03."},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-snapshot",
+		Title:             "Snapshot Answer",
+		Prompt:            "When did I last work out?",
+		ExpectedOutcome:   ExpectedAnswerWithoutTools,
+		RequiredTextTerms: []string{"2026-07-03"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+}
+
+func TestRunScoresAnswerWithoutToolsAllowsListedToolCalls(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:      "You last worked out on July 3rd, 2026.",
+				ToolCalls: []string{"get_workouts"},
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-snapshot-redundant-tool",
+		Title:             "Snapshot Answer With Redundant Tool Call",
+		Prompt:            "When did I last work out?",
+		ExpectedOutcome:   ExpectedAnswerWithoutTools,
+		RequiredTextTerms: []string{"2026-07-03"},
+		AllowedToolCalls:  []string{"get_workouts"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+}
+
+func TestRunScoresAnswerWithoutToolsFailsOnDisallowedToolCall(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:      "You last worked out on 2026-07-03.",
+				ToolCalls: []string{"generate_workout_draft"},
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-snapshot-disallowed-tool",
+		Title:             "Snapshot Answer With Disallowed Tool Call",
+		Prompt:            "When did I last work out?",
+		ExpectedOutcome:   ExpectedAnswerWithoutTools,
+		RequiredTextTerms: []string{"2026-07-03"},
+		AllowedToolCalls:  []string{"get_workouts"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if result.Passed || result.ScoreStatus != ScoreStatusFail {
+		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
+	}
+}
+
+func TestContainsRequiredTermDateRenderings(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+		term string
+		want bool
+	}{
+		{"iso literal", "Your last squat was 2026-06-30.", "2026-06-30", true},
+		{"month day year", "You last worked out on July 3, 2026.", "2026-07-03", true},
+		{"month ordinal", "That was on July 3rd.", "2026-07-03", true},
+		{"day month", "You trained on 3 July 2026.", "2026-07-03", true},
+		{"day of month", "It was the 3rd of July.", "2026-07-03", true},
+		{"abbreviated month", "Squats were on Jun 30.", "2026-06-30", true},
+		{"day prefix does not match longer day", "That was on July 30, 2026.", "2026-07-03", false},
+		{"wrong month", "That was on June 3, 2026.", "2026-07-03", false},
+		{"missing date", "You worked out recently.", "2026-07-03", false},
+		{"non-date term unchanged", "Bench Press felt strong.", "bench", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := containsRequiredTerm(tc.text, tc.term); got != tc.want {
+				t.Fatalf("containsRequiredTerm(%q, %q) = %v, want %v", tc.text, tc.term, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunAppliesUserIDToEveryStreamCall(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{
+			{done: &aichat.StreamDone{Text: "Any injuries?"}},
+			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
+		},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:              "case-fixture-user",
+		Title:           "Fixture User",
+		Prompt:          "Build pull.",
+		ExpectedOutcome: ExpectedAskOnceThenGenerate,
+		FollowUpAnswer:  "No injuries, full gym, 45 minutes.",
+	}}, RunOptions{Mode: ModeTwoTurn, UserID: FixtureUserID})
+
+	if !report.Results[0].Passed {
+		t.Fatalf("scenario passed = false, reason %q", report.Results[0].ScoreReason)
+	}
+	if len(runtime.calls) != 2 {
+		t.Fatalf("runtime calls = %d, want 2", len(runtime.calls))
+	}
+	for i, call := range runtime.calls {
+		if !call.hasUser || call.userID != FixtureUserID {
+			t.Fatalf("call %d user = (%q, %v), want fixture user", i+1, call.userID, call.hasUser)
+		}
 	}
 }
 
@@ -568,7 +727,7 @@ func TestRunSelectedScenarioSummaryUsesOnlySelectedScenarios(t *testing.T) {
 	}
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{
-			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
+			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft(), ToolCalls: []string{"generate_workout_draft"}}},
 			{done: &aichat.StreamDone{Text: "I made a draft.", WorkoutDraft: testDraft()}},
 		},
 	}

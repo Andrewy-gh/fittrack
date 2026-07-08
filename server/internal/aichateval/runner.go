@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
@@ -28,6 +29,8 @@ const (
 	ExpectedDoNotGenerate             = "do_not_generate"
 	ExpectedNarrowScopeBeforeGenerate = "narrow_scope_before_generating"
 	ExpectedReviseWithoutRestart      = "revise_without_restart"
+	ExpectedAnswerFromData            = "answer_from_data"
+	ExpectedAnswerWithoutTools        = "answer_without_tools"
 )
 
 const (
@@ -53,6 +56,7 @@ type Scenario struct {
 	RequiredTextTerms      []string                    `json:"required_text_terms,omitempty"`
 	ForbiddenTextTerms     []string                    `json:"forbidden_text_terms,omitempty"`
 	ForbiddenExerciseTerms []string                    `json:"forbidden_exercise_terms,omitempty"`
+	AllowedToolCalls       []string                    `json:"allowed_tool_calls,omitempty"`
 	History                []aichat.RuntimeChatMessage `json:"history,omitempty"`
 	FollowUpAnswer         string                      `json:"follow_up_answer,omitempty"`
 }
@@ -61,6 +65,7 @@ type RunOptions struct {
 	Mode               string
 	MaxAttempts        int
 	InterScenarioDelay time.Duration
+	UserID             string
 	OnScenario         func(Scenario)
 	OnScenarioDelay    func(time.Duration, Scenario)
 	OnRetry            func(Scenario, time.Duration, int, int)
@@ -102,6 +107,7 @@ type Result struct {
 	RequiredTextTerms      []string                      `json:"required_text_terms,omitempty"`
 	ForbiddenTextTerms     []string                      `json:"forbidden_text_terms,omitempty"`
 	ForbiddenExerciseTerms []string                      `json:"forbidden_exercise_terms,omitempty"`
+	AllowedToolCalls       []string                      `json:"allowed_tool_calls,omitempty"`
 	History                []HistoryMessage              `json:"history,omitempty"`
 	FollowUpAnswer         string                        `json:"follow_up_answer,omitempty"`
 	Status                 string                        `json:"status"`
@@ -114,6 +120,7 @@ type Result struct {
 	DurationMS             int64                         `json:"duration_ms"`
 	Draft                  *workout.CreateWorkoutRequest `json:"draft,omitempty"`
 	DraftSummary           *DraftSummary                 `json:"draft_summary,omitempty"`
+	ToolCalls              []string                      `json:"tool_calls,omitempty"`
 	Attempts               int                           `json:"attempts"`
 	Turns                  []TurnResult                  `json:"turns,omitempty"`
 }
@@ -128,6 +135,7 @@ type TurnResult struct {
 	DurationMS   int64                         `json:"duration_ms"`
 	Draft        *workout.CreateWorkoutRequest `json:"draft,omitempty"`
 	DraftSummary *DraftSummary                 `json:"draft_summary,omitempty"`
+	ToolCalls    []string                      `json:"tool_calls,omitempty"`
 	Attempts     int                           `json:"attempts"`
 }
 
@@ -254,6 +262,7 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 		RequiredTextTerms:      append([]string{}, scenario.RequiredTextTerms...),
 		ForbiddenTextTerms:     append([]string{}, scenario.ForbiddenTextTerms...),
 		ForbiddenExerciseTerms: append([]string{}, scenario.ForbiddenExerciseTerms...),
+		AllowedToolCalls:       append([]string{}, scenario.AllowedToolCalls...),
 		History:                ConvertHistory(scenario.History),
 		FollowUpAnswer:         scenario.FollowUpAnswer,
 	}
@@ -300,6 +309,7 @@ func applyTurnToResult(result *Result, turn TurnResult) {
 	result.DurationMS += turn.DurationMS
 	result.Draft = turn.Draft
 	result.DraftSummary = turn.DraftSummary
+	result.ToolCalls = append(result.ToolCalls, turn.ToolCalls...)
 	result.Attempts += turn.Attempts
 	if len(result.Turns) == 0 {
 		turn.Turn = 1
@@ -330,7 +340,11 @@ func runTurn(ctx context.Context, runtime Runtime, scenario Scenario, prompt str
 			break
 		}
 		result.Attempts = attempt
-		done, err = runtime.StreamChat(ctx, prompt, history, func(string) error {
+		callCtx := ctx
+		if strings.TrimSpace(options.UserID) != "" {
+			callCtx = user.WithContext(ctx, strings.TrimSpace(options.UserID))
+		}
+		done, err = runtime.StreamChat(callCtx, prompt, history, func(string) error {
 			return nil
 		})
 		if err == nil {
@@ -363,6 +377,7 @@ func runTurn(ctx context.Context, runtime Runtime, scenario Scenario, prompt str
 	result.Model = done.Model
 	result.Draft = done.WorkoutDraft
 	result.DraftSummary = SummarizeDraft(done.WorkoutDraft)
+	result.ToolCalls = append([]string(nil), done.ToolCalls...)
 	result.Status = Classify(done)
 	return result
 }

@@ -863,6 +863,26 @@ func (q *Queries) GetBillingUserForUpdate(ctx context.Context, userID string) (U
 	return i, err
 }
 
+const getChatWorkoutSnapshotStats = `-- name: GetChatWorkoutSnapshotStats :one
+SELECT
+    MAX(date)::timestamptz AS last_workout_date,
+    COUNT(*) FILTER (WHERE date >= now() - interval '30 days') AS workouts_last_30d
+FROM workout
+WHERE user_id = $1
+`
+
+type GetChatWorkoutSnapshotStatsRow struct {
+	LastWorkoutDate pgtype.Timestamptz `json:"last_workout_date"`
+	WorkoutsLast30d int64              `json:"workouts_last_30d"`
+}
+
+func (q *Queries) GetChatWorkoutSnapshotStats(ctx context.Context, userID string) (GetChatWorkoutSnapshotStatsRow, error) {
+	row := q.db.QueryRow(ctx, getChatWorkoutSnapshotStats, userID)
+	var i GetChatWorkoutSnapshotStatsRow
+	err := row.Scan(&i.LastWorkoutDate, &i.WorkoutsLast30d)
+	return i, err
+}
+
 const getContributionData = `-- name: GetContributionData :many
 WITH workout_totals AS (
     SELECT
@@ -2303,6 +2323,45 @@ func (q *Queries) ListActiveFeatureAccess(ctx context.Context, userID string) ([
 	return items, nil
 }
 
+const listExerciseNameMatches = `-- name: ListExerciseNameMatches :many
+SELECT id, name
+FROM exercise
+WHERE user_id = $1
+  AND name ILIKE '%' || $2::text || '%'
+ORDER BY name
+LIMIT 8
+`
+
+type ListExerciseNameMatchesParams struct {
+	UserID    string `json:"user_id"`
+	NameQuery string `json:"name_query"`
+}
+
+type ListExerciseNameMatchesRow struct {
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) ListExerciseNameMatches(ctx context.Context, arg ListExerciseNameMatchesParams) ([]ListExerciseNameMatchesRow, error) {
+	rows, err := q.db.Query(ctx, listExerciseNameMatches, arg.UserID, arg.NameQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListExerciseNameMatchesRow
+	for rows.Next() {
+		var i ListExerciseNameMatchesRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExercises = `-- name: ListExercises :many
 SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name
 `
@@ -2403,6 +2462,45 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]ListSetsRow, e
 			&i.ExerciseOrder,
 			&i.SetOrder,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTopExercisesByFrequency = `-- name: ListTopExercisesByFrequency :many
+SELECT
+    e.name,
+    COUNT(DISTINCT s.workout_id)::integer AS workout_count
+FROM "set" s
+JOIN exercise e ON e.id = s.exercise_id AND e.user_id = s.user_id
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+WHERE s.user_id = $1
+  AND w.date >= now() - interval '90 days'
+GROUP BY e.name
+ORDER BY workout_count DESC, e.name
+LIMIT 5
+`
+
+type ListTopExercisesByFrequencyRow struct {
+	Name         string `json:"name"`
+	WorkoutCount int32  `json:"workout_count"`
+}
+
+func (q *Queries) ListTopExercisesByFrequency(ctx context.Context, userID string) ([]ListTopExercisesByFrequencyRow, error) {
+	rows, err := q.db.Query(ctx, listTopExercisesByFrequency, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTopExercisesByFrequencyRow
+	for rows.Next() {
+		var i ListTopExercisesByFrequencyRow
+		if err := rows.Scan(&i.Name, &i.WorkoutCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2517,6 +2615,121 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 			&i.WorkoutFocus,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkoutsWithSetsForChat = `-- name: ListWorkoutsWithSetsForChat :many
+WITH matching_workouts AS (
+    SELECT w.id
+    FROM workout w
+    WHERE w.user_id = $2
+      AND ($3::timestamptz IS NULL OR w.date >= $3::timestamptz)
+      AND ($4::timestamptz IS NULL OR w.date <= $4::timestamptz)
+      AND (
+          NULLIF($1::text, '') IS NULL
+          OR EXISTS (
+              SELECT 1
+              FROM "set" filter_set
+              JOIN exercise filter_exercise ON filter_exercise.id = filter_set.exercise_id
+              WHERE filter_set.workout_id = w.id
+                AND filter_set.user_id = w.user_id
+                AND filter_exercise.user_id = w.user_id
+                AND filter_exercise.name = $1::text
+          )
+      )
+      AND (
+          NULLIF($5::text, '') IS NULL
+          OR w.workout_focus ILIKE '%' || $5::text || '%'
+      )
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT $6
+)
+SELECT
+    w.id AS workout_id,
+    w.date,
+    w.notes,
+    w.workout_focus,
+    e.name AS exercise_name,
+    s.exercise_order,
+    s.set_order,
+    s.weight,
+    s.reps,
+    s.set_type
+FROM matching_workouts mw
+JOIN workout w ON w.id = mw.id
+LEFT JOIN "set" s ON s.workout_id = w.id
+    AND s.user_id = w.user_id
+    AND (
+        NULLIF($1::text, '') IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM exercise selected_exercise
+            WHERE selected_exercise.id = s.exercise_id
+              AND selected_exercise.user_id = s.user_id
+              AND selected_exercise.name = $1::text
+        )
+    )
+LEFT JOIN exercise e ON e.id = s.exercise_id AND e.user_id = w.user_id
+ORDER BY w.date DESC, w.id DESC, s.exercise_order, s.set_order, s.id
+`
+
+type ListWorkoutsWithSetsForChatParams struct {
+	ExerciseName pgtype.Text        `json:"exercise_name"`
+	UserID       string             `json:"user_id"`
+	StartDate    pgtype.Timestamptz `json:"start_date"`
+	EndDate      pgtype.Timestamptz `json:"end_date"`
+	WorkoutFocus pgtype.Text        `json:"workout_focus"`
+	RowLimit     int32              `json:"row_limit"`
+}
+
+type ListWorkoutsWithSetsForChatRow struct {
+	WorkoutID     int32              `json:"workout_id"`
+	Date          pgtype.Timestamptz `json:"date"`
+	Notes         pgtype.Text        `json:"notes"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
+	ExerciseName  pgtype.Text        `json:"exercise_name"`
+	ExerciseOrder pgtype.Int4        `json:"exercise_order"`
+	SetOrder      pgtype.Int4        `json:"set_order"`
+	Weight        pgtype.Numeric     `json:"weight"`
+	Reps          pgtype.Int4        `json:"reps"`
+	SetType       pgtype.Text        `json:"set_type"`
+}
+
+func (q *Queries) ListWorkoutsWithSetsForChat(ctx context.Context, arg ListWorkoutsWithSetsForChatParams) ([]ListWorkoutsWithSetsForChatRow, error) {
+	rows, err := q.db.Query(ctx, listWorkoutsWithSetsForChat,
+		arg.ExerciseName,
+		arg.UserID,
+		arg.StartDate,
+		arg.EndDate,
+		arg.WorkoutFocus,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkoutsWithSetsForChatRow
+	for rows.Next() {
+		var i ListWorkoutsWithSetsForChatRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.Date,
+			&i.Notes,
+			&i.WorkoutFocus,
+			&i.ExerciseName,
+			&i.ExerciseOrder,
+			&i.SetOrder,
+			&i.Weight,
+			&i.Reps,
+			&i.SetType,
 		); err != nil {
 			return nil, err
 		}

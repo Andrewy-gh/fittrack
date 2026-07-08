@@ -570,6 +570,12 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-failed-start-user")
 		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-data-reader-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-data-reader-other-user")
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-data-reader-limit-user")
+		require.NoError(t, err)
 
 		for _, table := range tables {
 			_, err := pool.Exec(ctx, "ALTER TABLE "+table+" ENABLE ROW LEVEL SECURITY")
