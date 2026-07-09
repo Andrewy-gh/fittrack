@@ -672,6 +672,78 @@ export const response_SuccessResponseSchema = {
   },
 } as const;
 
+export const trainingprofile_ProfileResponseSchema = {
+  type: "object",
+  properties: {
+    available_equipment: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    avoided_exercises: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    experience_level: {
+      type: "string",
+    },
+    movement_limitations: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    preferred_session_duration_minutes: {
+      type: "integer",
+    },
+    primary_goal: {
+      type: "string",
+    },
+    usual_training_location: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const trainingprofile_UpdateProfileRequestSchema = {
+  type: "object",
+  properties: {
+    available_equipment: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    avoided_exercises: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    experience_level: {
+      type: "string",
+    },
+    movement_limitations: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    preferred_session_duration_minutes: {
+      type: "integer",
+    },
+    primary_goal: {
+      type: "string",
+    },
+    usual_training_location: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const workout_ContributionDataResponseSchema = {
   type: "object",
   properties: {

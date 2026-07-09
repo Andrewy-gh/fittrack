@@ -19,6 +19,7 @@ import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
 import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
 import { Route as LayoutExercisesIndexRouteImport } from './routes/_layout/exercises/index'
 import { Route as LayoutWorkoutsNewRouteImport } from './routes/_layout/workouts/new'
+import { Route as LayoutSettingsTrainingProfileRouteImport } from './routes/_layout/settings/training-profile'
 import { Route as LayoutExercisesExerciseIdRouteImport } from './routes/_layout/exercises/$exerciseId'
 import { Route as LayoutWorkoutsWorkoutIdIndexRouteImport } from './routes/_layout/workouts/$workoutId/index'
 import { Route as LayoutWorkoutsWorkoutIdEditRouteImport } from './routes/_layout/workouts/$workoutId/edit'
@@ -72,6 +73,12 @@ const LayoutWorkoutsNewRoute = LayoutWorkoutsNewRouteImport.update({
   path: '/workouts/new',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutSettingsTrainingProfileRoute =
+  LayoutSettingsTrainingProfileRouteImport.update({
+    id: '/training-profile',
+    path: '/training-profile',
+    getParentRoute: () => LayoutSettingsRoute,
+  } as any)
 const LayoutExercisesExerciseIdRoute =
   LayoutExercisesExerciseIdRouteImport.update({
     id: '/exercises/$exerciseId',
@@ -96,9 +103,10 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/analytics': typeof LayoutAnalyticsRoute
   '/chat': typeof LayoutChatRoute
-  '/settings': typeof LayoutSettingsRoute
+  '/settings': typeof LayoutSettingsRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
+  '/settings/training-profile': typeof LayoutSettingsTrainingProfileRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
   '/exercises/': typeof LayoutExercisesIndexRoute
   '/workouts/': typeof LayoutWorkoutsIndexRoute
@@ -110,9 +118,10 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/analytics': typeof LayoutAnalyticsRoute
   '/chat': typeof LayoutChatRoute
-  '/settings': typeof LayoutSettingsRoute
+  '/settings': typeof LayoutSettingsRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
+  '/settings/training-profile': typeof LayoutSettingsTrainingProfileRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
   '/exercises': typeof LayoutExercisesIndexRoute
   '/workouts': typeof LayoutWorkoutsIndexRoute
@@ -126,9 +135,10 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/_layout/analytics': typeof LayoutAnalyticsRoute
   '/_layout/chat': typeof LayoutChatRoute
-  '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/settings': typeof LayoutSettingsRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/_layout/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
+  '/_layout/settings/training-profile': typeof LayoutSettingsTrainingProfileRoute
   '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
   '/_layout/exercises/': typeof LayoutExercisesIndexRoute
   '/_layout/workouts/': typeof LayoutWorkoutsIndexRoute
@@ -145,6 +155,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/handler/$'
     | '/exercises/$exerciseId'
+    | '/settings/training-profile'
     | '/workouts/new'
     | '/exercises/'
     | '/workouts/'
@@ -159,6 +170,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/handler/$'
     | '/exercises/$exerciseId'
+    | '/settings/training-profile'
     | '/workouts/new'
     | '/exercises'
     | '/workouts'
@@ -174,6 +186,7 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/handler/$'
     | '/_layout/exercises/$exerciseId'
+    | '/_layout/settings/training-profile'
     | '/_layout/workouts/new'
     | '/_layout/exercises/'
     | '/_layout/workouts/'
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWorkoutsNewRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/settings/training-profile': {
+      id: '/_layout/settings/training-profile'
+      path: '/training-profile'
+      fullPath: '/settings/training-profile'
+      preLoaderRoute: typeof LayoutSettingsTrainingProfileRouteImport
+      parentRoute: typeof LayoutSettingsRoute
+    }
     '/_layout/exercises/$exerciseId': {
       id: '/_layout/exercises/$exerciseId'
       path: '/exercises/$exerciseId'
@@ -284,10 +304,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface LayoutSettingsRouteChildren {
+  LayoutSettingsTrainingProfileRoute: typeof LayoutSettingsTrainingProfileRoute
+}
+
+const LayoutSettingsRouteChildren: LayoutSettingsRouteChildren = {
+  LayoutSettingsTrainingProfileRoute: LayoutSettingsTrainingProfileRoute,
+}
+
+const LayoutSettingsRouteWithChildren = LayoutSettingsRoute._addFileChildren(
+  LayoutSettingsRouteChildren,
+)
+
 interface LayoutRouteChildren {
   LayoutAnalyticsRoute: typeof LayoutAnalyticsRoute
   LayoutChatRoute: typeof LayoutChatRoute
-  LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSettingsRoute: typeof LayoutSettingsRouteWithChildren
   LayoutExercisesExerciseIdRoute: typeof LayoutExercisesExerciseIdRoute
   LayoutWorkoutsNewRoute: typeof LayoutWorkoutsNewRoute
   LayoutExercisesIndexRoute: typeof LayoutExercisesIndexRoute
@@ -299,7 +331,7 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAnalyticsRoute: LayoutAnalyticsRoute,
   LayoutChatRoute: LayoutChatRoute,
-  LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSettingsRoute: LayoutSettingsRouteWithChildren,
   LayoutExercisesExerciseIdRoute: LayoutExercisesExerciseIdRoute,
   LayoutWorkoutsNewRoute: LayoutWorkoutsNewRoute,
   LayoutExercisesIndexRoute: LayoutExercisesIndexRoute,

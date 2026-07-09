@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CurrentUser } from "@stackframe/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
@@ -17,6 +18,22 @@ const { mockClearCurrentDeviceAccountState } = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+    className,
+  }: {
+    children: ReactNode;
+    to: string;
+    className?: string;
+  }) => (
+    <a
+      href={to}
+      className={className}
+    >
+      {children}
+    </a>
+  ),
   useNavigate: () => mockNavigate,
 }));
 
@@ -60,6 +77,11 @@ describe("AccountSettingsPage", () => {
     expect(
       screen.getByRole("heading", { name: "Account settings" }),
     ).toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: /Open profile/i })).toHaveAttribute(
+      "href",
+      "/settings/training-profile",
+    );
 
     const billingSection = screen
       .getByRole("heading", { name: "Billing" })

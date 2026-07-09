@@ -42,6 +42,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
 	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/trainingprofile"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/go-playground/validator/v10"
@@ -168,6 +169,7 @@ func main() {
 	featureAccessRepo := featureaccess.NewRepository(logger, queries)
 	accountRepo := account.NewRepository(logger, queries)
 	billingRepo := billing.NewRepository(logger, queries, pool)
+	trainingProfileRepo := trainingprofile.NewRepository(logger, queries, pool)
 	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
 	userRepo := user.NewRepository(logger, queries, pool)
 	workoutTxSaver := workout.NewTxSaver(logger, exerciseRepo)
@@ -185,6 +187,7 @@ func main() {
 		cfg.AppBaseURL,
 		cfg.AIChatTrialPromptCap,
 	)
+	trainingProfileService := trainingprofile.NewService(logger, trainingProfileRepo)
 	accountService := account.NewService(logger, accountRepo, billingService)
 	userService := user.NewService(logger, userRepo)
 	aiChatRepo := aichat.NewRepository(logger, queries, pool, cfg.AIChatTrialPromptCap)
@@ -211,6 +214,7 @@ func main() {
 	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
 	accountHandler := account.NewHandler(logger, accountService)
 	billingHandler := billing.NewHandler(logger, billingService)
+	trainingProfileHandler := trainingprofile.NewHandler(logger, trainingProfileService)
 	healthHandler := health.NewHandler(logger, pool)
 	aiChatHandler := aichat.NewHandler(logger, aiChatService)
 	var e2eAuthHandler *e2eauth.Handler
@@ -250,7 +254,7 @@ func main() {
 			UserID:  cfg.LocalE2EAuthUserID,
 		})
 	}
-	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, billingHandler, accountHandler, e2eAuthHandler)
+	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, billingHandler, trainingProfileHandler, accountHandler, e2eAuthHandler)
 
 	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RequestLog → Metrics → Authentication → RateLimit
 	var handler http.Handler = router

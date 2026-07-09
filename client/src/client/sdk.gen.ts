@@ -39,6 +39,9 @@ import type {
   GetReadyData,
   GetReadyErrors,
   GetReadyResponses,
+  GetTrainingProfileData,
+  GetTrainingProfileErrors,
+  GetTrainingProfileResponses,
   GetWorkoutsByIdData,
   GetWorkoutsByIdErrors,
   GetWorkoutsByIdResponses,
@@ -89,6 +92,9 @@ import type {
   PostWorkoutsData,
   PostWorkoutsErrors,
   PostWorkoutsResponses,
+  PutTrainingProfileData,
+  PutTrainingProfileErrors,
+  PutTrainingProfileResponses,
   PutWorkoutsByIdData,
   PutWorkoutsByIdErrors,
   PutWorkoutsByIdResponses,
@@ -537,6 +543,46 @@ export const getReady = <ThrowOnError extends boolean = false>(
     GetReadyErrors,
     ThrowOnError
   >({ url: "/ready", ...options });
+
+/**
+ * Get training profile
+ *
+ * Returns the authenticated user's durable AI training profile. First-time users receive an empty profile shape.
+ */
+export const getTrainingProfile = <ThrowOnError extends boolean = false>(
+  options?: Options<GetTrainingProfileData, ThrowOnError>,
+) =>
+  (options?.client ?? client).get<
+    GetTrainingProfileResponses,
+    GetTrainingProfileErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/training-profile",
+    ...options,
+  });
+
+/**
+ * Update training profile
+ *
+ * Replaces the authenticated user's durable AI training profile with the full submitted document.
+ */
+export const putTrainingProfile = <ThrowOnError extends boolean = false>(
+  options: Options<PutTrainingProfileData, ThrowOnError>,
+) =>
+  (options.client ?? client).put<
+    PutTrainingProfileResponses,
+    PutTrainingProfileErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/training-profile",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
 
 /**
  * List workouts

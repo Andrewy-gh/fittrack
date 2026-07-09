@@ -512,6 +512,56 @@ RETURNING
     created_at,
     updated_at;
 
+-- name: UpsertUserTrainingProfileForSettings :one
+INSERT INTO user_training_profile (
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id
+)
+VALUES (
+    sqlc.arg(user_id),
+    NULLIF(sqlc.narg(primary_goal)::text, ''),
+    NULLIF(sqlc.narg(experience_level)::text, ''),
+    sqlc.narg(preferred_session_duration_minutes)::integer,
+    NULLIF(sqlc.narg(usual_training_location)::text, ''),
+    sqlc.arg(available_equipment)::jsonb,
+    sqlc.arg(avoided_exercises)::jsonb,
+    sqlc.narg(movement_limitations)::jsonb,
+    NULL,
+    NULL
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    primary_goal = NULLIF(sqlc.narg(primary_goal)::text, ''),
+    experience_level = NULLIF(sqlc.narg(experience_level)::text, ''),
+    preferred_session_duration_minutes = sqlc.narg(preferred_session_duration_minutes)::integer,
+    usual_training_location = NULLIF(sqlc.narg(usual_training_location)::text, ''),
+    available_equipment = sqlc.arg(available_equipment)::jsonb,
+    avoided_exercises = sqlc.arg(avoided_exercises)::jsonb,
+    movement_limitations = sqlc.narg(movement_limitations)::jsonb,
+    source_conversation_id = NULL,
+    source_message_id = NULL,
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at;
+
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
 INSERT INTO workout (date, notes, workout_focus, user_id)
