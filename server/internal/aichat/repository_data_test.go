@@ -43,6 +43,15 @@ func TestMapChatWorkoutRowsRegroupsFlatRows(t *testing.T) {
 	}
 }
 
+func TestFormatChatWorkoutDateUsesUTCCalendarDay(t *testing.T) {
+	utcMinusFour := time.FixedZone("UTC-4", -4*60*60)
+	scannedLocalTime := time.Date(2026, 6, 30, 20, 0, 0, 0, utcMinusFour)
+
+	if got := formatChatWorkoutDate(scannedLocalTime); got != "2026-07-01" {
+		t.Fatalf("formatChatWorkoutDate() = %q, want 2026-07-01", got)
+	}
+}
+
 func TestNormalizeWorkoutHistoryFilterCapsLastN(t *testing.T) {
 	if got := normalizeWorkoutHistoryFilter(WorkoutHistoryFilter{}).LastN; got != defaultChatWorkoutLimit {
 		t.Fatalf("default LastN = %d, want %d", got, defaultChatWorkoutLimit)
