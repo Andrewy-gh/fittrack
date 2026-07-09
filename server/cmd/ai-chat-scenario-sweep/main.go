@@ -22,6 +22,8 @@ const (
 	defaultLogName       = "fittrack-ai-chat-scenario-sweep-runs.jsonl"
 	defaultRunTimeout    = 15 * time.Minute
 	defaultScenarioDelay = 75 * time.Second
+	baseTimeoutHeadroom  = 5 * time.Minute
+	scenarioHeadroom     = 90 * time.Second
 )
 
 func main() {
@@ -34,10 +36,11 @@ func main() {
 	toID := flag.String("to", "", "run an inclusive scenario id range ending at this id")
 	withDataFixtures := flag.Bool("with-data-fixtures", false, "include AI chat data Q&A scenarios backed by in-memory workout fixtures")
 	flag.Parse()
+	timeoutExplicit := flagWasSet("timeout")
 	if err := aichateval.ValidateMode(*mode); err != nil {
 		fail("%v", err)
 	}
-	if *timeout <= 0 {
+	if timeoutExplicit && *timeout <= 0 {
 		fail("timeout must be greater than zero")
 	}
 	if *scenarioDelay < 0 {
@@ -61,6 +64,11 @@ func main() {
 	if err != nil {
 		fail("invalid scenario selection: %v", err)
 	}
+	runTimeout := selectedRunTimeout(*timeout, timeoutExplicit, len(scenarios), *scenarioDelay, *mode)
+	if runTimeout <= 0 {
+		fail("timeout must be greater than zero")
+	}
+	fmt.Fprintf(os.Stderr, "Using sweep timeout %s (source=%s, scenarios=%d, mode=%s, scenario_delay=%s)\n", runTimeout, timeoutSource(timeoutExplicit), len(scenarios), *mode, *scenarioDelay)
 	if err := loadLocalEnv(); err != nil {
 		fail("failed to load local env files: %v", err)
 	}
@@ -70,7 +78,7 @@ func main() {
 		fail("failed to create output directory: %v", err)
 	}
 
-	runtimeCtx, cancel := context.WithTimeout(context.Background(), *timeout)
+	runtimeCtx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	defer cancel()
 
 	runtime := aichat.NewGenkitRuntime(runtimeCtx, dataReader)
@@ -154,6 +162,39 @@ func selectedScenarioDelay(delay time.Duration, scenarioCount int) time.Duration
 		return 0
 	}
 	return delay
+}
+
+func selectedRunTimeout(explicit time.Duration, explicitSet bool, scenarioCount int, delay time.Duration, mode string) time.Duration {
+	if explicitSet {
+		return explicit
+	}
+
+	headroom := scenarioHeadroom
+	if mode == aichateval.ModeTwoTurn {
+		headroom *= 2
+	}
+	scaled := time.Duration(scenarioCount)*(delay+headroom) + baseTimeoutHeadroom
+	if scaled < defaultRunTimeout {
+		return defaultRunTimeout
+	}
+	return scaled
+}
+
+func timeoutSource(explicitSet bool) string {
+	if explicitSet {
+		return "explicit"
+	}
+	return "computed_default"
+}
+
+func flagWasSet(name string) bool {
+	wasSet := false
+	flag.Visit(func(item *flag.Flag) {
+		if item.Name == name {
+			wasSet = true
+		}
+	})
+	return wasSet
 }
 
 func fail(format string, args ...any) {

@@ -114,6 +114,62 @@ func TestSelectedScenarioDelaySkipsSingleScenarioRuns(t *testing.T) {
 	}
 }
 
+func TestSelectedRunTimeoutFloorsComputedDefault(t *testing.T) {
+	got := selectedRunTimeout(0, false, 1, defaultScenarioDelay, aichateval.ModeSingleTurn)
+	if got != defaultRunTimeout {
+		t.Fatalf("selectedRunTimeout(single scenario) = %s, want %s", got, defaultRunTimeout)
+	}
+}
+
+func TestSelectedRunTimeoutScalesWithScenarioCountDelayAndMode(t *testing.T) {
+	tests := []struct {
+		name          string
+		scenarioCount int
+		delay         time.Duration
+		mode          string
+		want          time.Duration
+	}{
+		{
+			name:          "single turn",
+			scenarioCount: 20,
+			delay:         75 * time.Second,
+			mode:          aichateval.ModeSingleTurn,
+			want:          time.Hour,
+		},
+		{
+			name:          "custom delay",
+			scenarioCount: 20,
+			delay:         30 * time.Second,
+			mode:          aichateval.ModeSingleTurn,
+			want:          45 * time.Minute,
+		},
+		{
+			name:          "two turn doubles per scenario headroom",
+			scenarioCount: 20,
+			delay:         75 * time.Second,
+			mode:          aichateval.ModeTwoTurn,
+			want:          90 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := selectedRunTimeout(0, false, tt.scenarioCount, tt.delay, tt.mode)
+			if got != tt.want {
+				t.Fatalf("selectedRunTimeout() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSelectedRunTimeoutUsesExplicitOverride(t *testing.T) {
+	explicit := 2 * time.Minute
+	got := selectedRunTimeout(explicit, true, 20, defaultScenarioDelay, aichateval.ModeTwoTurn)
+	if got != explicit {
+		t.Fatalf("selectedRunTimeout(explicit) = %s, want %s", got, explicit)
+	}
+}
+
 func splitNonEmptyLines(body string) []string {
 	var lines []string
 	for _, line := range strings.Split(body, "\n") {
