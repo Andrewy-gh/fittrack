@@ -9,6 +9,10 @@ import (
 )
 
 func ScoreResult(result *Result, mode string) {
+	ScoreResultWithJudge(context.Background(), result, mode, nil)
+}
+
+func ScoreResultWithJudge(ctx context.Context, result *Result, mode string, judge NarrowScopeJudge) {
 	if result.Status == StatusError && IsOperationalError(result.Error) {
 		setScore(result, ScoreStatusOperationalError, "provider or runtime issue; not scored as assistant behavior")
 		return
@@ -30,7 +34,7 @@ func ScoreResult(result *Result, mode string) {
 	case ExpectedDoNotGenerate:
 		scoreDoNotGenerate(result)
 	case ExpectedNarrowScopeBeforeGenerate:
-		scoreNarrowScopeBeforeGenerate(result, mode)
+		scoreNarrowScopeBeforeGenerate(ctx, result, mode, judge)
 	case ExpectedReviseWithoutRestart:
 		scoreReviseWithoutRestart(result)
 	case ExpectedAnswerFromData:
@@ -111,7 +115,7 @@ func scoreDoNotGenerate(result *Result) {
 	setScore(result, ScoreStatusPass, "no draft was generated and the assistant returned text")
 }
 
-func scoreNarrowScopeBeforeGenerate(result *Result, mode string) {
+func scoreNarrowScopeBeforeGenerate(ctx context.Context, result *Result, mode string, judge NarrowScopeJudge) {
 	if len(result.Turns) == 0 {
 		setScore(result, ScoreStatusFail, "expected a first turn response")
 		return
@@ -125,8 +129,33 @@ func scoreNarrowScopeBeforeGenerate(result *Result, mode string) {
 		setScore(result, ScoreStatusFail, "expected narrowing text before generating")
 		return
 	}
-	if !narrowsToSingleWorkout(first.Text) {
-		setScore(result, ScoreStatusFail, "expected the first turn to ask the user to choose one workout or session")
+	termListFallback := judge == nil
+	if judge != nil {
+		verdict, err := judge.JudgeNarrowScope(ctx, NarrowScopeJudgeInput{
+			ScenarioID:    result.ID,
+			ScenarioTitle: result.Title,
+			UserPrompt:    result.Prompt,
+			ResponseText:  first.Text,
+		})
+		if err == nil && verdict == nil {
+			err = fmt.Errorf("narrow-scope judge returned nil verdict")
+		}
+		if err == nil {
+			result.NarrowScopeJudge = verdict
+			if !narrowScopeJudgePass(result, *verdict) {
+				setScore(result, ScoreStatusFail, fmt.Sprintf("judge rejected narrowing response: %s", verdict.Rationale))
+				return
+			}
+		} else {
+			result.NarrowScopeJudgeError = err.Error()
+			if !narrowsToSingleWorkout(first.Text) {
+				setScore(result, ScoreStatusFail, "expected the first turn to ask the user to choose one workout or session (term-list fallback)")
+				return
+			}
+			termListFallback = true
+		}
+	} else if !narrowsToSingleWorkout(first.Text) {
+		setScore(result, ScoreStatusFail, "expected the first turn to ask the user to choose one workout or session (term-list fallback)")
 		return
 	}
 	if !passesTermChecks(result) {
@@ -142,7 +171,11 @@ func scoreNarrowScopeBeforeGenerate(result *Result, mode string) {
 			return
 		}
 	}
-	setScore(result, ScoreStatusPass, "assistant narrowed scope, then generated a structured draft")
+	reason := "assistant narrowed scope, then generated a structured draft"
+	if termListFallback {
+		reason += " (term-list fallback)"
+	}
+	setScore(result, ScoreStatusPass, reason)
 }
 
 func narrowsToSingleWorkout(text string) bool {

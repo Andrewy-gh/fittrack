@@ -33,15 +33,17 @@ type gitSnapshot struct {
 }
 
 type sweepLogResult struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Status      string `json:"status"`
-	Passed      bool   `json:"passed"`
-	ScoreStatus string `json:"score_status"`
-	ScoreReason string `json:"score_reason"`
-	Error       string `json:"error,omitempty"`
-	DurationMS  int64  `json:"duration_ms"`
-	Attempts    int    `json:"attempts"`
+	ID                    string                              `json:"id"`
+	Title                 string                              `json:"title"`
+	Status                string                              `json:"status"`
+	Passed                bool                                `json:"passed"`
+	ScoreStatus           string                              `json:"score_status"`
+	ScoreReason           string                              `json:"score_reason"`
+	Error                 string                              `json:"error,omitempty"`
+	DurationMS            int64                               `json:"duration_ms"`
+	Attempts              int                                 `json:"attempts"`
+	NarrowScopeJudge      *aichateval.NarrowScopeJudgeVerdict `json:"narrow_scope_judge,omitempty"`
+	NarrowScopeJudgeError string                              `json:"narrow_scope_judge_error,omitempty"`
 }
 
 func appendSweepLog(path string, report aichateval.Report, reportPath string) error {
@@ -73,15 +75,17 @@ func buildSweepLogEntry(report aichateval.Report, reportPath string, loggedAt ti
 	for _, result := range report.Results {
 		scenarioIDs = append(scenarioIDs, result.ID)
 		results = append(results, sweepLogResult{
-			ID:          result.ID,
-			Title:       result.Title,
-			Status:      result.Status,
-			Passed:      result.Passed,
-			ScoreStatus: result.ScoreStatus,
-			ScoreReason: result.ScoreReason,
-			Error:       result.Error,
-			DurationMS:  result.DurationMS,
-			Attempts:    result.Attempts,
+			ID:                    result.ID,
+			Title:                 result.Title,
+			Status:                result.Status,
+			Passed:                result.Passed,
+			ScoreStatus:           result.ScoreStatus,
+			ScoreReason:           result.ScoreReason,
+			Error:                 result.Error,
+			DurationMS:            result.DurationMS,
+			Attempts:              result.Attempts,
+			NarrowScopeJudge:      result.NarrowScopeJudge,
+			NarrowScopeJudgeError: result.NarrowScopeJudgeError,
 		})
 	}
 

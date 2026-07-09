@@ -42,6 +42,11 @@ func TestBuildSweepLogEntryIncludesRunContextAndCompactResults(t *testing.T) {
 				Error:       "rate limited",
 				DurationMS:  3000,
 				Attempts:    3,
+				NarrowScopeJudge: &aichateval.NarrowScopeJudgeVerdict{
+					NarrowsToSingleWorkout: true,
+					AsksUserToChoose:       true,
+					Rationale:              "Asks which session to build first.",
+				},
 			},
 		},
 	}
@@ -64,6 +69,9 @@ func TestBuildSweepLogEntryIncludesRunContextAndCompactResults(t *testing.T) {
 	}
 	if len(entry.Results) != 2 || entry.Results[1].Error != "rate limited" {
 		t.Fatalf("unexpected compact results: %+v", entry.Results)
+	}
+	if entry.Results[1].NarrowScopeJudge == nil || entry.Results[1].NarrowScopeJudge.Rationale != "Asks which session to build first." {
+		t.Fatalf("compact judge verdict = %+v, want recorded rationale", entry.Results[1].NarrowScopeJudge)
 	}
 }
 

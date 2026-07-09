@@ -571,7 +571,7 @@ func TestRunScoresNarrowScopeRejectsVagueFirstTurn(t *testing.T) {
 	if result.Passed || result.ScoreStatus != ScoreStatusFail {
 		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
 	}
-	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session" {
+	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session (term-list fallback)" {
 		t.Fatalf("ScoreReason = %q, want narrow-scope failure", result.ScoreReason)
 	}
 }
@@ -596,7 +596,7 @@ func TestRunScoresNarrowScopeRejectsTextOnlyWholeWeekPlan(t *testing.T) {
 	if result.Passed || result.ScoreStatus != ScoreStatusFail {
 		t.Fatalf("score = passed %v status %q, want fail", result.Passed, result.ScoreStatus)
 	}
-	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session" {
+	if result.ScoreReason != "expected the first turn to ask the user to choose one workout or session (term-list fallback)" {
 		t.Fatalf("ScoreReason = %q, want narrow-scope failure", result.ScoreReason)
 	}
 }

@@ -10,7 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
+	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/joho/godotenv"
+	"google.golang.org/genai"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichateval"
@@ -24,6 +28,8 @@ const (
 	defaultScenarioDelay = 75 * time.Second
 	baseTimeoutHeadroom  = 5 * time.Minute
 	scenarioHeadroom     = 90 * time.Second
+	geminiAPIKeyEnvVar   = "GEMINI_API_KEY"
+	googleAPIKeyEnvVar   = "GOOGLE_API_KEY"
 )
 
 func main() {
@@ -85,11 +91,13 @@ func main() {
 	if !runtime.Available() {
 		fail("ai chat runtime unavailable. Set GEMINI_API_KEY or GOOGLE_API_KEY in your shell, server/.env, or server/setenv.sh")
 	}
+	judge := newNarrowScopeJudge(runtimeCtx, runtime.ModelName())
 
 	report := aichateval.Run(runtimeCtx, runtime, scenarios, aichateval.RunOptions{
 		Mode:               *mode,
 		InterScenarioDelay: selectedScenarioDelay(*scenarioDelay, len(scenarios)),
 		UserID:             evalUserID,
+		NarrowScopeJudge:   judge,
 		OnScenario: func(item aichateval.Scenario) {
 			fmt.Fprintf(os.Stderr, "Running %s: %s\n", item.ID, item.Title)
 		},
@@ -195,6 +203,58 @@ func flagWasSet(name string) bool {
 		}
 	})
 	return wasSet
+}
+
+func newNarrowScopeJudge(ctx context.Context, modelName string) aichateval.NarrowScopeJudge {
+	if configuredJudgeAPIKeyEnvVar() == "" {
+		fmt.Fprintln(os.Stderr, "Narrow-scope judge unavailable: GEMINI_API_KEY or GOOGLE_API_KEY is not set; term-list fallback will be used")
+		return nil
+	}
+
+	var g *genkit.Genkit
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				fmt.Fprintf(os.Stderr, "Narrow-scope judge unavailable after Genkit panic: %v; term-list fallback will be used\n", recovered)
+				g = nil
+			}
+		}()
+		g = genkit.Init(ctx,
+			genkit.WithPlugins(&googlegenai.GoogleAI{}),
+			genkit.WithDefaultModel(modelName),
+		)
+	}()
+	if g == nil {
+		return nil
+	}
+
+	return aichateval.LLMNarrowScopeJudge{
+		Generate: func(callCtx context.Context, prompt string) (string, error) {
+			output, _, err := genkit.GenerateData[aichateval.NarrowScopeJudgeVerdict](callCtx, g,
+				ai.WithModelName(modelName),
+				ai.WithConfig(genai.GenerateContentConfig{Temperature: genai.Ptr[float32](0)}),
+				ai.WithPrompt(prompt),
+			)
+			if err != nil {
+				return "", err
+			}
+			body, err := json.Marshal(output)
+			if err != nil {
+				return "", err
+			}
+			return string(body), nil
+		},
+	}
+}
+
+func configuredJudgeAPIKeyEnvVar() string {
+	if strings.TrimSpace(os.Getenv(geminiAPIKeyEnvVar)) != "" {
+		return geminiAPIKeyEnvVar
+	}
+	if strings.TrimSpace(os.Getenv(googleAPIKeyEnvVar)) != "" {
+		return googleAPIKeyEnvVar
+	}
+	return ""
 }
 
 func fail(format string, args ...any) {
