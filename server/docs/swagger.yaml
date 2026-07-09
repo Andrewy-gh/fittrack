@@ -472,6 +472,52 @@ definitions:
         example: true
         type: boolean
     type: object
+  trainingprofile.ProfileResponse:
+    properties:
+      available_equipment:
+        items:
+          type: string
+        type: array
+      avoided_exercises:
+        items:
+          type: string
+        type: array
+      experience_level:
+        type: string
+      movement_limitations:
+        items:
+          type: string
+        type: array
+      preferred_session_duration_minutes:
+        type: integer
+      primary_goal:
+        type: string
+      usual_training_location:
+        type: string
+    type: object
+  trainingprofile.UpdateProfileRequest:
+    properties:
+      available_equipment:
+        items:
+          type: string
+        type: array
+      avoided_exercises:
+        items:
+          type: string
+        type: array
+      experience_level:
+        type: string
+      movement_limitations:
+        items:
+          type: string
+        type: array
+      preferred_session_duration_minutes:
+        type: integer
+      primary_goal:
+        type: string
+      usual_training_location:
+        type: string
+    type: object
   workout.ContributionDataResponse:
     properties:
       days:
@@ -1542,6 +1588,66 @@ paths:
       summary: Readiness check
       tags:
       - health
+  /training-profile:
+    get:
+      description: Returns the authenticated user's durable AI training profile. First-time
+        users receive an empty profile shape.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/trainingprofile.ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Get training profile
+      tags:
+      - training-profile
+    put:
+      consumes:
+      - application/json
+      description: Replaces the authenticated user's durable AI training profile with
+        the full submitted document.
+      parameters:
+      - description: Training profile
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/trainingprofile.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/trainingprofile.ProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Update training profile
+      tags:
+      - training-profile
   /workouts:
     get:
       consumes:

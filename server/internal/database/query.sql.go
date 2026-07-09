@@ -3954,3 +3954,94 @@ func (q *Queries) UpsertUserTrainingProfileForChat(ctx context.Context, arg Upse
 	)
 	return i, err
 }
+
+const upsertUserTrainingProfileForSettings = `-- name: UpsertUserTrainingProfileForSettings :one
+INSERT INTO user_training_profile (
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id
+)
+VALUES (
+    $1,
+    NULLIF($2::text, ''),
+    NULLIF($3::text, ''),
+    $4::integer,
+    NULLIF($5::text, ''),
+    $6::jsonb,
+    $7::jsonb,
+    $8::jsonb,
+    NULL,
+    NULL
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    primary_goal = NULLIF($2::text, ''),
+    experience_level = NULLIF($3::text, ''),
+    preferred_session_duration_minutes = $4::integer,
+    usual_training_location = NULLIF($5::text, ''),
+    available_equipment = $6::jsonb,
+    avoided_exercises = $7::jsonb,
+    movement_limitations = $8::jsonb,
+    source_conversation_id = NULL,
+    source_message_id = NULL,
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+`
+
+type UpsertUserTrainingProfileForSettingsParams struct {
+	UserID                          string      `json:"user_id"`
+	PrimaryGoal                     pgtype.Text `json:"primary_goal"`
+	ExperienceLevel                 pgtype.Text `json:"experience_level"`
+	PreferredSessionDurationMinutes pgtype.Int4 `json:"preferred_session_duration_minutes"`
+	UsualTrainingLocation           pgtype.Text `json:"usual_training_location"`
+	AvailableEquipment              []byte      `json:"available_equipment"`
+	AvoidedExercises                []byte      `json:"avoided_exercises"`
+	MovementLimitations             []byte      `json:"movement_limitations"`
+}
+
+func (q *Queries) UpsertUserTrainingProfileForSettings(ctx context.Context, arg UpsertUserTrainingProfileForSettingsParams) (UserTrainingProfile, error) {
+	row := q.db.QueryRow(ctx, upsertUserTrainingProfileForSettings,
+		arg.UserID,
+		arg.PrimaryGoal,
+		arg.ExperienceLevel,
+		arg.PreferredSessionDurationMinutes,
+		arg.UsualTrainingLocation,
+		arg.AvailableEquipment,
+		arg.AvoidedExercises,
+		arg.MovementLimitations,
+	)
+	var i UserTrainingProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.PrimaryGoal,
+		&i.ExperienceLevel,
+		&i.PreferredSessionDurationMinutes,
+		&i.UsualTrainingLocation,
+		&i.AvailableEquipment,
+		&i.AvoidedExercises,
+		&i.MovementLimitations,
+		&i.SourceConversationID,
+		&i.SourceMessageID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

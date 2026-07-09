@@ -71,7 +71,7 @@ func TestRoutes_AllowsInngestHandlerAlongsideStaticFallback(t *testing.T) {
 		}
 	}()
 
-	_ = api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
+	_ = api.routes(wh, eh, fh, hh, ah, nil, nil, nil, nil)
 }
 
 func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
@@ -96,7 +96,7 @@ func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
 	hh := health.NewHandler(logger, nil)
 	ah := aichat.NewHandler(logger, nil)
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPut, "/inngest", nil)
 	rr := httptest.NewRecorder()
 
@@ -124,7 +124,7 @@ func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
 	hh := health.NewHandler(logger, nil)
 	ah := aichat.NewHandler(logger, nil)
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil, nil)
 
 	for _, path := range []string{"/api/ai/chat/validate", "/api/ai/chat/validate/stream"} {
 		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"prompt":"prove the slice"}`))
@@ -155,7 +155,7 @@ func TestRoutes_ProtectsPublicMetricsWhenCredentialsConfigured(t *testing.T) {
 	hh := health.NewHandler(logger, nil)
 	ah := aichat.NewHandler(logger, nil)
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	rr := httptest.NewRecorder()
 
@@ -181,7 +181,7 @@ func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
 	ah := aichat.NewHandler(logger, nil)
 	bh := billing.NewHandler(logger, routeBillingService{})
 
-	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session", nil)
 	rr := httptest.NewRecorder()
 
@@ -210,7 +210,7 @@ func TestRoutes_RegistersBillingSubscriptionCancelPortalSession(t *testing.T) {
 	ah := aichat.NewHandler(logger, nil)
 	bh := billing.NewHandler(logger, routeBillingService{})
 
-	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/billing/subscription-cancel-portal-session", nil)
 	rr := httptest.NewRecorder()
 
@@ -239,7 +239,7 @@ func TestRoutes_RegistersAccountDeletion(t *testing.T) {
 	ah := aichat.NewHandler(logger, nil)
 	accountHandler := account.NewHandler(logger, routeAccountService{})
 
-	mux := api.routes(wh, eh, fh, hh, ah, nil, accountHandler, nil)
+	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, accountHandler, nil)
 	req := httptest.NewRequest(http.MethodDelete, "/api/account", nil)
 	rr := httptest.NewRecorder()
 

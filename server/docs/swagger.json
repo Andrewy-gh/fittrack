@@ -1243,6 +1243,98 @@
                 }
             }
         },
+        "/training-profile": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's durable AI training profile. First-time users receive an empty profile shape.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training-profile"
+                ],
+                "summary": "Get training profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/trainingprofile.ProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Replaces the authenticated user's durable AI training profile with the full submitted document.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "training-profile"
+                ],
+                "summary": "Update training profile",
+                "parameters": [
+                    {
+                        "description": "Training profile",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/trainingprofile.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/trainingprofile.ProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/workouts": {
             "get": {
                 "security": [
@@ -2325,6 +2417,76 @@
                 "success": {
                     "type": "boolean",
                     "example": true
+                }
+            }
+        },
+        "trainingprofile.ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "available_equipment": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "avoided_exercises": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "experience_level": {
+                    "type": "string"
+                },
+                "movement_limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preferred_session_duration_minutes": {
+                    "type": "integer"
+                },
+                "primary_goal": {
+                    "type": "string"
+                },
+                "usual_training_location": {
+                    "type": "string"
+                }
+            }
+        },
+        "trainingprofile.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "available_equipment": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "avoided_exercises": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "experience_level": {
+                    "type": "string"
+                },
+                "movement_limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "preferred_session_duration_minutes": {
+                    "type": "integer"
+                },
+                "primary_goal": {
+                    "type": "string"
+                },
+                "usual_training_location": {
+                    "type": "string"
                 }
             }
         },
