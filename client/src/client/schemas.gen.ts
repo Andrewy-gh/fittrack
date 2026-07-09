@@ -695,6 +695,7 @@ export const trainingprofile_ProfileResponseSchema = {
       items: {
         type: "string",
       },
+      "x-nullable": true,
     },
     preferred_session_duration_minutes: {
       type: "integer",
@@ -731,6 +732,7 @@ export const trainingprofile_UpdateProfileRequestSchema = {
       items: {
         type: "string",
       },
+      "x-nullable": true,
     },
     preferred_session_duration_minutes: {
       type: "integer",

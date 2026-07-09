@@ -2445,7 +2445,8 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true
                 },
                 "preferred_session_duration_minutes": {
                     "type": "integer"
@@ -2480,7 +2481,8 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "x-nullable": true
                 },
                 "preferred_session_duration_minutes": {
                     "type": "integer"

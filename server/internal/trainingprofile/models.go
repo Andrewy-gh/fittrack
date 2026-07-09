@@ -15,7 +15,7 @@ type ProfileResponse struct {
 	UsualTrainingLocation           *string   `json:"usual_training_location"`
 	AvailableEquipment              []string  `json:"available_equipment"`
 	AvoidedExercises                []string  `json:"avoided_exercises"`
-	MovementLimitations             *[]string `json:"movement_limitations"`
+	MovementLimitations             *[]string `json:"movement_limitations" extensions:"x-nullable"`
 }
 
 type UpdateProfileRequest struct {
@@ -25,7 +25,7 @@ type UpdateProfileRequest struct {
 	UsualTrainingLocation           *string   `json:"usual_training_location"`
 	AvailableEquipment              []string  `json:"available_equipment"`
 	AvoidedExercises                []string  `json:"avoided_exercises"`
-	MovementLimitations             *[]string `json:"movement_limitations"`
+	MovementLimitations             *[]string `json:"movement_limitations" extensions:"x-nullable"`
 }
 
 type ValidationError struct {

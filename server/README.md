@@ -131,6 +131,8 @@ The live API chat runtime uses the same model default as the smoke test:
 - supported API key env vars: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 - optional model override: `GEMINI_MODEL`
 
+Manual training profile settings saves intentionally clear chat provenance: `source_conversation_id` and `source_message_id` only reference the chat message that last wrote the profile via AI.
+
 For local development, keep using the existing server env workflow:
 
 1. Put values in your shell, `server/.env`, or `server/setenv.sh`

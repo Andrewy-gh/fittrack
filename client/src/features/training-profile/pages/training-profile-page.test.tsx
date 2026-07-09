@@ -198,4 +198,39 @@ describe("TrainingProfilePage", () => {
       );
     });
   });
+
+  it("blocks saving limitations mode without tags until another option is chosen", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole("radio", { name: "I have limitations:" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mockUpdateTrainingProfile).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        "Add at least one limitation, or choose another option.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("radio", { name: "No known limitations" }),
+    );
+
+    expect(
+      screen.queryByText(
+        "Add at least one limitation, or choose another option.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(latestUpdatePayload()).toEqual(
+        expect.objectContaining({ movement_limitations: [] }),
+      );
+    });
+  });
 });
