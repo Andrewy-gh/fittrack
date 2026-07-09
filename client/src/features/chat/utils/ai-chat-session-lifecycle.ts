@@ -21,7 +21,19 @@ import type { ChatSessionRefs, ChatSessionSetters } from "./chat-session-types";
 type AIChatSessionLifecycleOptions = {
   refs: ChatSessionRefs;
   setters: ChatSessionSetters;
-  onConversationCreated: (conversationId: number) => Promise<void>;
+  onConversationCreated: (
+    conversationId: number,
+    options?: AIChatCreatedConversationOptions,
+  ) => Promise<void>;
+};
+
+export type AIChatCreatedConversationOptions = {
+  replace?: true;
+};
+
+type CreateNewChatOptions = {
+  replaceNavigation?: true;
+  signal?: AbortSignal;
 };
 
 type SubmitPromptOptions = {
@@ -95,9 +107,15 @@ export function createAIChatSessionLifecycle({
     }
   };
 
-  const createNewChat = async () => {
+  const createNewChat = async (options: CreateNewChatOptions = {}) => {
     try {
-      const created = await createAIChatConversation();
+      const created = await createAIChatConversation({
+        signal: options.signal,
+      });
+      if (options.signal?.aborted) {
+        return false;
+      }
+
       refs.streamAbortRef.current?.abort();
       refs.recoveryAbortRef.current?.abort();
       refs.loadAbortRef.current?.abort();
@@ -105,9 +123,17 @@ export function createAIChatSessionLifecycle({
       setters.setMessages([]);
       setters.setLatestWorkoutDraftMessageId(null);
       setters.setLoadError(null);
-      await onConversationCreated(created.id);
+      if (options.replaceNavigation) {
+        await onConversationCreated(created.id, { replace: true });
+      } else {
+        await onConversationCreated(created.id);
+      }
       return true;
     } catch (error) {
+      if (options.signal?.aborted) {
+        return false;
+      }
+
       showErrorToast(error, "Failed to create chat conversation");
       return false;
     }

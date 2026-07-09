@@ -218,9 +218,12 @@ async function readApiError(response: Response): Promise<ApiError> {
   }
 }
 
-export async function createAIChatConversation(): Promise<AIChatConversation> {
+export async function createAIChatConversation(
+  options: ConversationRequestOptions = {},
+): Promise<AIChatConversation> {
   const response = await postAiConversations({
     throwOnError: true,
+    signal: options.signal,
   });
 
   return response.data as AIChatConversation;

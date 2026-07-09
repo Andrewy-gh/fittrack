@@ -3,7 +3,10 @@ import type {
   AIChatConversation,
   AIChatMessage,
 } from "@/features/chat/api/ai-chat";
-import { createAIChatSessionLifecycle } from "../utils/ai-chat-session-lifecycle";
+import {
+  createAIChatSessionLifecycle,
+  type AIChatCreatedConversationOptions,
+} from "../utils/ai-chat-session-lifecycle";
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
@@ -12,7 +15,10 @@ import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../util
 
 type UseAIChatSessionOptions = {
   conversationId: number | null;
-  onConversationCreated: (conversationId: number) => Promise<void>;
+  onConversationCreated: (
+    conversationId: number,
+    options?: AIChatCreatedConversationOptions,
+  ) => Promise<void>;
 };
 
 export function useAIChatSession({
@@ -68,8 +74,10 @@ export function useAIChatSession({
   }, [onConversationCreated]);
 
   const handleConversationCreated = useCallback(
-    (createdConversationId: number) =>
-      onConversationCreatedRef.current(createdConversationId),
+    (
+      createdConversationId: number,
+      options?: AIChatCreatedConversationOptions,
+    ) => onConversationCreatedRef.current(createdConversationId, options),
     [],
   );
 

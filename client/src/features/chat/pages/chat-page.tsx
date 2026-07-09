@@ -99,11 +99,12 @@ export function ChatPage({
     saveLatestWorkoutDraft,
   } = useAIChatSession({
     conversationId,
-    onConversationCreated: async (createdConversationId) => {
-      await navigate({
+    onConversationCreated: async (createdConversationId, options) => {
+      const target = {
         to: "/chat",
         search: { conversationId: String(createdConversationId) },
-      });
+      } as const;
+      await navigate(options?.replace ? { ...target, replace: true } : target);
       await historyEntry.refreshConversations();
     },
   });
@@ -131,9 +132,13 @@ export function ChatPage({
       return;
     }
 
+    const controller = new AbortController();
     linkedChatCreationStartedRef.current = true;
-    void createNewChat().then((created) => {
-      if (!created) {
+    void createNewChat({
+      replaceNavigation: true,
+      signal: controller.signal,
+    }).then((created) => {
+      if (!created && !controller.signal.aborted) {
         void navigate({
           to: "/chat",
           search: {},
@@ -141,6 +146,8 @@ export function ChatPage({
         });
       }
     });
+
+    return () => controller.abort();
   }, [
     billingAccess.hasChatAccess,
     billingAccess.isCheckingAccess,
