@@ -195,6 +195,8 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"not equipped to create a meal plan",
 		"not equipped to build meal plans",
 		"not equipped to build a meal plan",
+		"not equipped to design meal plans",
+		"not equipped to design a meal plan",
 		"not equipped to provide meal plans",
 		"not equipped to provide a meal plan",
 	})
@@ -215,6 +217,7 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 		"what would you like to focus on today",
 		"what would you like the focus to be",
 		"what would you like the focus of this workout to be",
+		"what would you like the focus of your workout to be",
 	}) || (strings.Contains(text, "workout") && strings.Contains(text, "focus")))
 	asksForSessionDetails := containsAny(text, []string{
 		"session to be",
@@ -235,6 +238,7 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 	})
 	hasWorkoutContext := containsAny(text, []string{
 		"for your workout",
+		"to make a workout",
 		"to build your workout",
 		"to design your workout",
 	})

@@ -1725,6 +1725,7 @@ WITH latest_workout AS (
     JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
     WHERE s.exercise_id = $1
       AND s.user_id = $2
+      AND s.set_type = 'working'
     ORDER BY w.date DESC, w.id DESC
     LIMIT 1
 )

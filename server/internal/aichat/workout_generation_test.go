@@ -29,7 +29,7 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Do not assume unmentioned accessories or equipment",
 		"If injury status is missing and no profile movement limitation default is available, ask once before generating",
 		"Do not infer \"none\" from silence in the initial request",
-		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
+		"Use injuries=\"none\" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries",
 		"When the user answers a follow-up, combine that answer with the earlier visible workout request",
 		"previous message only asked about injuries and the user now confirms no injuries",
 		"After one follow-up answer, if workout focus, session duration, equipment or location context",

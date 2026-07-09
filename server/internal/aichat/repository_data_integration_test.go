@@ -161,6 +161,9 @@ func TestRepositoryChatDataReader_ExerciseStatsAreUserScoped(t *testing.T) {
 			{weight: ptrFloat64(255), reps: 1, setType: "working"},
 		}},
 	})
+	seedAIChatDataWorkout(t, pool, userID, "2026-07-02", "lower body", []chatDataExerciseSeed{
+		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(135), reps: 5, setType: "warmup"}}},
+	})
 	seedAIChatDataWorkout(t, pool, userID, "2026-05-15", "lower body", []chatDataExerciseSeed{
 		{name: "Back Squat", sets: []chatDataSetSeed{{weight: ptrFloat64(205), reps: 6, setType: "working"}}},
 	})

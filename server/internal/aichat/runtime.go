@@ -24,7 +24,7 @@ const (
 	chatMaxTurns       = 6
 	// chatEmptyResponseRetryLimit caps regeneration attempts when the model
 	// returns an empty candidate with no text and no tool calls.
-	chatEmptyResponseRetryLimit = 1
+	chatEmptyResponseRetryLimit = 5
 )
 
 var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.Genkit {
@@ -413,7 +413,7 @@ When the user wants you to build a workout:
 - Treat the user's stated equipment, training location, or space constraints as the available context for the draft. Use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable with the stated constraints. Do not assume unmentioned accessories or equipment, such as a bench, rack, cable, or machine.
 - Treat user profile values as defaults for workout drafts. The user's current message always overrides the profile. Do not re-ask for known profile equipment, location, or movement limitations; only treat injury status as known when the profile includes a Movement limitations line. If that line says none, treat injury status as known none, use injuries="none", and do not ask about injuries before drafting; if it lists limitations, use those as injury context and do not ask about injuries before drafting. A profile section without a Movement limitations line does not answer injury status and does not override the injury-question rules below. Briefly state assumptions when using profile defaults, such as "Using your usual home dumbbell setup — say the word if today's different."
 - If injury status is missing and no profile movement limitation default is available, ask once before generating. Do not infer "none" from silence in the initial request, even when the rest of the workout request is clear.
-- Use injuries="none" only when the user explicitly says they have no injuries or when you already asked about injuries and the user continues without answering.
+- Use injuries="none" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries.
 - When the user answers a follow-up, combine that answer with the earlier visible workout request. If your previous message only asked about injuries and the user now confirms no injuries, reuse the earlier focus, duration, equipment, and location details instead of asking them to repeat those details.
 - After one follow-up answer, if workout focus, session duration, equipment or location context, and usable injury details are present, call the %s tool with conservative assumptions. Do not ask optional questions about fitness level, preferred exercises, or other movements to avoid unless the pain description is unclear, severe, includes red flags, or the stated constraints cannot support a safe, reasonable draft.
 - FitTrack creates one structured workout draft at a time, not full weekly splits, multi-day programs, or bundled plans. For a multi-day request, ask the user to choose one day, workout, or session to build first and ask only for missing MVP-ready inputs for that single session.
