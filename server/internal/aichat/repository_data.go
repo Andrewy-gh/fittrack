@@ -17,6 +17,7 @@ const (
 	maxChatWorkoutLimit         = 20
 	defaultExerciseStatsWindow  = "3m"
 	maxExerciseStatsTrendPoints = 8
+	chatDateLayout              = "2006-01-02"
 )
 
 type ChatDataReader interface {
@@ -89,7 +90,7 @@ func (r *repository) TrainingSnapshot(ctx context.Context, userID string) (*Trai
 		TopExercises:    make([]string, 0, len(topRows)),
 	}
 	if stats.LastWorkoutDate.Valid {
-		snapshot.LastWorkoutDate = stats.LastWorkoutDate.Time.Format("2006-01-02")
+		snapshot.LastWorkoutDate = formatChatWorkoutDate(stats.LastWorkoutDate.Time)
 	}
 	for _, row := range topRows {
 		snapshot.TopExercises = append(snapshot.TopExercises, row.Name)
@@ -218,7 +219,7 @@ func (r *repository) ExerciseStats(ctx context.Context, userID string, exerciseN
 	}
 	if len(recentSets) > 0 {
 		if recentSets[0].WorkoutDate.Valid {
-			stats.LastSessionDate = recentSets[0].WorkoutDate.Time.Format("2006-01-02")
+			stats.LastSessionDate = formatChatWorkoutDate(recentSets[0].WorkoutDate.Time)
 		}
 		for _, row := range recentSets {
 			setText, err := formatRecentExerciseStatSet(row.Weight, row.Reps)
@@ -353,7 +354,7 @@ func (r *repository) workoutDate(ctx context.Context, userID string, workoutID i
 	if !row.Date.Valid {
 		return "", nil
 	}
-	return row.Date.Time.Format("2006-01-02"), nil
+	return formatChatWorkoutDate(row.Date.Time), nil
 }
 
 type exerciseStatsTrendRow struct {
@@ -419,7 +420,7 @@ func mapChatWorkoutRows(rows []db.ListWorkoutsWithSetsForChatRow) ([]ChatWorkout
 		workoutIndex, ok := workoutIndexes[row.WorkoutID]
 		if !ok {
 			workout := ChatWorkoutView{
-				Date: row.Date.Time.Format("2006-01-02"),
+				Date: formatChatWorkoutDate(row.Date.Time),
 			}
 			if row.WorkoutFocus.Valid {
 				workout.Focus = row.WorkoutFocus.String
@@ -546,7 +547,7 @@ func mapExerciseStatsTrendPoints(points []exerciseStatsTrendRow) []ExerciseStats
 	mapped := make([]ExerciseStatsTrendPoint, 0, len(points))
 	for _, point := range points {
 		mapped = append(mapped, ExerciseStatsTrendPoint{
-			Date:      point.WorkoutDay.Format("2006-01-02"),
+			Date:      formatChatWorkoutDate(point.WorkoutDay),
 			BestE1RM:  point.SessionBestE1RM,
 			AvgE1RM:   point.SessionAvgE1RM,
 			Volume:    point.TotalVolumeWorking,
@@ -582,6 +583,10 @@ func formatRecentExerciseStatSet(weight pgtype.Numeric, reps int32) (string, err
 func formatSetWeight(weight float64) string {
 	text := fmt.Sprintf("%.1f", weight)
 	return strings.TrimSuffix(strings.TrimSuffix(text, "0"), ".")
+}
+
+func formatChatWorkoutDate(value time.Time) string {
+	return value.UTC().Format(chatDateLayout)
 }
 
 var _ ChatDataReader = (*repository)(nil)
