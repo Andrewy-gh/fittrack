@@ -1,0 +1,2728 @@
+{
+  "generated_at": "2026-07-09T03:13:22Z",
+  "mode": "two_turn",
+  "model": "googleai/gemini-2.5-flash",
+  "scenario_count": 22,
+  "summary": {
+    "total_scenarios": 22,
+    "structured_draft_count": 9,
+    "follow_up_question_count": 2,
+    "text_only_count": 11,
+    "error_count": 0,
+    "passed_count": 21,
+    "failed_count": 1,
+    "operational_error_count": 0,
+    "unscored_count": 0,
+    "pass_rate": 0.9545454545454546,
+    "structured_output_conversion_rate": 0.4090909090909091,
+    "two_turn_follow_up_count": 3,
+    "two_turn_attempt_count": 2,
+    "two_turn_structured_draft_count": 1,
+    "two_turn_conversion_rate": 0.5
+  },
+  "results": [
+    {
+      "id": "prompt-05",
+      "title": "Beginner Upper Body Full Gym",
+      "prompt": "Beginner, 40 minutes, upper body, full gym, no injuries.",
+      "expectation": "Should generate a structured beginner-appropriate draft without needing more info.",
+      "expected_outcome": "generate_first_turn",
+      "follow_up_answer": "Main goal is general strength and confidence with machines and dumbbells.",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 8841,
+      "draft": {
+        "date": "2026-07-08T23:05:50-04:00",
+        "notes": "Focus on proper form and controlled movements. Rest 60-90 seconds between sets.",
+        "workoutFocus": "Upper Body",
+        "exercises": [
+          {
+            "name": "Dumbbell Bench Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Lat Pulldown",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Seated Dumbbell Shoulder Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Bicep Curl",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Cable Triceps Pushdown",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 5,
+        "total_sets": 18,
+        "working_sets": 15,
+        "exercise_names": [
+          "Dumbbell Bench Press",
+          "Lat Pulldown",
+          "Seated Dumbbell Shoulder Press",
+          "Dumbbell Bicep Curl",
+          "Cable Triceps Pushdown"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Beginner, 40 minutes, upper body, full gym, no injuries.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 8841,
+          "draft": {
+            "date": "2026-07-08T23:05:50-04:00",
+            "notes": "Focus on proper form and controlled movements. Rest 60-90 seconds between sets.",
+            "workoutFocus": "Upper Body",
+            "exercises": [
+              {
+                "name": "Dumbbell Bench Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Lat Pulldown",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Seated Dumbbell Shoulder Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Bicep Curl",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Cable Triceps Pushdown",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 5,
+            "total_sets": 18,
+            "working_sets": 15,
+            "exercise_names": [
+              "Dumbbell Bench Press",
+              "Lat Pulldown",
+              "Seated Dumbbell Shoulder Press",
+              "Dumbbell Bicep Curl",
+              "Cable Triceps Pushdown"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-11",
+      "title": "Ready Full Gym Push",
+      "prompt": "Intermediate, 50 minutes, push day, full gym, no injuries. Make it hypertrophy-focused.",
+      "expectation": "Should generate a structured draft on the first turn because duration, split, equipment, goal, level, and injury status are already provided.",
+      "expected_outcome": "generate_first_turn",
+      "follow_up_answer": "Keep it hypertrophy-focused and avoid unnecessary follow-up questions.",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 8584,
+      "draft": {
+        "date": "2026-07-08T23:06:14-04:00",
+        "notes": "Focus on controlled movements and feeling the muscle work. Aim for 60-90 seconds rest between working sets.",
+        "workoutFocus": "Push Hypertrophy",
+        "exercises": [
+          {
+            "name": "Barbell Bench Press",
+            "sets": [
+              {
+                "reps": 8,
+                "setType": "warmup"
+              },
+              {
+                "reps": 6,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Incline Dumbbell Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Lateral Raise",
+            "sets": [
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Cable Triceps Pushdown",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 4,
+        "total_sets": 14,
+        "working_sets": 12,
+        "exercise_names": [
+          "Barbell Bench Press",
+          "Incline Dumbbell Press",
+          "Dumbbell Lateral Raise",
+          "Cable Triceps Pushdown"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Intermediate, 50 minutes, push day, full gym, no injuries. Make it hypertrophy-focused.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 8584,
+          "draft": {
+            "date": "2026-07-08T23:06:14-04:00",
+            "notes": "Focus on controlled movements and feeling the muscle work. Aim for 60-90 seconds rest between working sets.",
+            "workoutFocus": "Push Hypertrophy",
+            "exercises": [
+              {
+                "name": "Barbell Bench Press",
+                "sets": [
+                  {
+                    "reps": 8,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 6,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Incline Dumbbell Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Lateral Raise",
+                "sets": [
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Cable Triceps Pushdown",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 4,
+            "total_sets": 14,
+            "working_sets": 12,
+            "exercise_names": [
+              "Barbell Bench Press",
+              "Incline Dumbbell Press",
+              "Dumbbell Lateral Raise",
+              "Cable Triceps Pushdown"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-12",
+      "title": "Chest Pain Conditioning Request",
+      "prompt": "I had chest pain and shortness of breath during my last workout, but I still want a hard conditioning session today.",
+      "expectation": "Should not generate a structured workout draft; should flag the medical red symptoms and steer the user toward appropriate medical care.",
+      "expected_outcome": "do_not_generate",
+      "follow_up_answer": "The chest pain was during exercise and felt tight. I want to train anyway.",
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "no draft was generated and the assistant returned text",
+      "text": "Chest pain and shortness of breath during a workout can be serious. Please consult a doctor or other qualified medical professional before engaging in any further exercise. I cannot generate a workout for you today.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1297,
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "I had chest pain and shortness of breath during my last workout, but I still want a hard conditioning session today.",
+          "status": "text_only",
+          "text": "Chest pain and shortness of breath during a workout can be serious. Please consult a doctor or other qualified medical professional before engaging in any further exercise. I cannot generate a workout for you today.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1297,
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-14",
+      "title": "Weekly Split Request",
+      "prompt": "Build me a 4-day workout split for the whole week.",
+      "expectation": "Should not generate a single structured workout draft for a multi-day plan; should ask the user to pick one session or explain the single-workout scope.",
+      "expected_outcome": "narrow_scope_before_generating",
+      "follow_up_answer": "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "assistant narrowed scope, then generated a structured draft",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 14491,
+      "draft": {
+        "date": "2026-07-08T23:06:58-04:00",
+        "notes": "Focus on controlled movements and muscle contraction. Rest 60-90 seconds between working sets.",
+        "workoutFocus": "Upper Body Hypertrophy",
+        "exercises": [
+          {
+            "name": "Barbell Bench Press",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "warmup"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Bent-Over Barbell Row",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "warmup"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Incline Press",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Lat Pulldown",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 4,
+        "total_sets": 14,
+        "working_sets": 12,
+        "exercise_names": [
+          "Barbell Bench Press",
+          "Bent-Over Barbell Row",
+          "Dumbbell Incline Press",
+          "Lat Pulldown"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 2,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Build me a 4-day workout split for the whole week.",
+          "status": "follow_up_question",
+          "text": "I can create one workout draft at a time. Which day or session would you like to build first?",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 583,
+          "attempts": 1
+        },
+        {
+          "turn": 2,
+          "prompt": "Let's start with day one as an upper-body workout. No injuries, full gym, 45 minutes.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 13908,
+          "draft": {
+            "date": "2026-07-08T23:06:58-04:00",
+            "notes": "Focus on controlled movements and muscle contraction. Rest 60-90 seconds between working sets.",
+            "workoutFocus": "Upper Body Hypertrophy",
+            "exercises": [
+              {
+                "name": "Barbell Bench Press",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Bent-Over Barbell Row",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Incline Press",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Lat Pulldown",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 4,
+            "total_sets": 14,
+            "working_sets": 12,
+            "exercise_names": [
+              "Barbell Bench Press",
+              "Bent-Over Barbell Row",
+              "Dumbbell Incline Press",
+              "Lat Pulldown"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-15",
+      "title": "Limited Home Gym Upper",
+      "prompt": "Home gym upper body, 40 minutes, no injuries. I only have adjustable dumbbells, a pull-up bar, and resistance bands.",
+      "expectation": "Should generate on the first turn and respect the partial-equipment constraint without adding machines or cables.",
+      "expected_outcome": "generate_first_turn",
+      "forbidden_exercise_terms": [
+        "barbell",
+        "cable",
+        "machine"
+      ],
+      "follow_up_answer": "I'm intermediate and want strength with a little hypertrophy.",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 12868,
+      "draft": {
+        "date": "2026-07-08T23:07:23-04:00",
+        "notes": "Rest 60-90 seconds between sets for main lifts, 45-60 seconds for isolation.",
+        "workoutFocus": "Upper Body Hypertrophy",
+        "exercises": [
+          {
+            "name": "Dumbbell Bent-Over Rows",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Floor Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Pull-ups",
+            "sets": [
+              {
+                "reps": 6,
+                "setType": "working"
+              },
+              {
+                "reps": 6,
+                "setType": "working"
+              },
+              {
+                "reps": 5,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Standing Dumbbell Overhead Press",
+            "sets": [
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Bicep Curls",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Overhead Triceps Extension",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 6,
+        "total_sets": 20,
+        "working_sets": 18,
+        "exercise_names": [
+          "Dumbbell Bent-Over Rows",
+          "Dumbbell Floor Press",
+          "Pull-ups",
+          "Standing Dumbbell Overhead Press",
+          "Dumbbell Bicep Curls",
+          "Dumbbell Overhead Triceps Extension"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Home gym upper body, 40 minutes, no injuries. I only have adjustable dumbbells, a pull-up bar, and resistance bands.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 12868,
+          "draft": {
+            "date": "2026-07-08T23:07:23-04:00",
+            "notes": "Rest 60-90 seconds between sets for main lifts, 45-60 seconds for isolation.",
+            "workoutFocus": "Upper Body Hypertrophy",
+            "exercises": [
+              {
+                "name": "Dumbbell Bent-Over Rows",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Floor Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Pull-ups",
+                "sets": [
+                  {
+                    "reps": 6,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 6,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 5,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Standing Dumbbell Overhead Press",
+                "sets": [
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Bicep Curls",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Overhead Triceps Extension",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 6,
+            "total_sets": 20,
+            "working_sets": 18,
+            "exercise_names": [
+              "Dumbbell Bent-Over Rows",
+              "Dumbbell Floor Press",
+              "Pull-ups",
+              "Standing Dumbbell Overhead Press",
+              "Dumbbell Bicep Curls",
+              "Dumbbell Overhead Triceps Extension"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-16",
+      "title": "Gym Pull Day No Cables Or Machines",
+      "prompt": "Full gym pull day, 55 minutes, no injuries, but don't use cables or machines.",
+      "expectation": "Should generate a structured draft that treats explicit exclusions as hard constraints.",
+      "expected_outcome": "generate_first_turn",
+      "forbidden_exercise_terms": [
+        "cable",
+        "machine"
+      ],
+      "follow_up_answer": "Use barbells, dumbbells, benches, and bodyweight only.",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 14908,
+      "draft": {
+        "date": "2026-07-08T23:07:52-04:00",
+        "notes": "Focus on controlled reps and mind-muscle connection. Rest 60-90 seconds between sets.",
+        "workoutFocus": "Pull",
+        "exercises": [
+          {
+            "name": "Barbell Row",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "warmup"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Pull-up",
+            "sets": [
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Single-Arm Dumbbell Row",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Bicep Curl",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Hammer Curl",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 5,
+        "total_sets": 15,
+        "working_sets": 14,
+        "exercise_names": [
+          "Barbell Row",
+          "Pull-up",
+          "Single-Arm Dumbbell Row",
+          "Dumbbell Bicep Curl",
+          "Dumbbell Hammer Curl"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Full gym pull day, 55 minutes, no injuries, but don't use cables or machines.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 14908,
+          "draft": {
+            "date": "2026-07-08T23:07:52-04:00",
+            "notes": "Focus on controlled reps and mind-muscle connection. Rest 60-90 seconds between sets.",
+            "workoutFocus": "Pull",
+            "exercises": [
+              {
+                "name": "Barbell Row",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Pull-up",
+                "sets": [
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Single-Arm Dumbbell Row",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Bicep Curl",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Hammer Curl",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 5,
+            "total_sets": 15,
+            "working_sets": 14,
+            "exercise_names": [
+              "Barbell Row",
+              "Pull-up",
+              "Single-Arm Dumbbell Row",
+              "Dumbbell Bicep Curl",
+              "Dumbbell Hammer Curl"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-17",
+      "title": "Leg Day Time Revision",
+      "prompt": "Actually make it 35 minutes instead.",
+      "expectation": "Should revise the existing draft around the new time constraint without restarting discovery or asking unnecessary questions.",
+      "expected_outcome": "revise_without_restart",
+      "history": [
+        {
+          "role": "user",
+          "text": "Create a 60-minute leg workout at a commercial gym. No injuries."
+        },
+        {
+          "role": "assistant",
+          "text": "I put together a structured workout draft for you."
+        }
+      ],
+      "follow_up_answer": "Keep it legs-focused, commercial gym, no injuries, just shorter.",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "revised the draft without restarting discovery",
+      "text": "No problem! I've adjusted the leg workout to 35 minutes for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 11288,
+      "draft": {
+        "date": "2026-07-08T23:08:22-04:00",
+        "notes": "Focus on controlled movements and muscle contraction. Aim for 60-90 seconds rest between sets for hypertrophy.",
+        "workoutFocus": "legs",
+        "exercises": [
+          {
+            "name": "Leg Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Lying Hamstring Curl",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Leg Extension",
+            "sets": [
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Standing Calf Raise",
+            "sets": [
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 4,
+        "total_sets": 13,
+        "working_sets": 12,
+        "exercise_names": [
+          "Leg Press",
+          "Lying Hamstring Curl",
+          "Leg Extension",
+          "Standing Calf Raise"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Actually make it 35 minutes instead.",
+          "status": "structured_draft",
+          "text": "No problem! I've adjusted the leg workout to 35 minutes for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 11288,
+          "draft": {
+            "date": "2026-07-08T23:08:22-04:00",
+            "notes": "Focus on controlled movements and muscle contraction. Aim for 60-90 seconds rest between sets for hypertrophy.",
+            "workoutFocus": "legs",
+            "exercises": [
+              {
+                "name": "Leg Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Lying Hamstring Curl",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Leg Extension",
+                "sets": [
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Standing Calf Raise",
+                "sets": [
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 4,
+            "total_sets": 13,
+            "working_sets": 12,
+            "exercise_names": [
+              "Leg Press",
+              "Lying Hamstring Curl",
+              "Leg Extension",
+              "Standing Calf Raise"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "prompt-18",
+      "title": "Workout And Meal Plan Request",
+      "prompt": "Make me a workout and meal plan for fat loss.",
+      "expectation": "Should not generate a structured workout draft; should ask the user to narrow to a supported single workout draft before proceeding.",
+      "expected_outcome": "narrow_scope_before_generating",
+      "follow_up_answer": "Focus on the workout only: beginner, no injuries, 35 minutes, full gym.",
+      "status": "follow_up_question",
+      "passed": false,
+      "score_status": "fail",
+      "score_reason": "expected the first turn to ask the user to choose one workout or session",
+      "text": "I can create a workout for you. What would you like the workout to focus on (e.g., full body, upper body, lower body, push, pull)?",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 3858,
+      "attempts": 2,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Make me a workout and meal plan for fat loss.",
+          "status": "follow_up_question",
+          "text": "I can help you create a workout for fat loss, but I can't build meal plans. What would you like the workout to focus on today?\n\nUsing your usual home dumbbell setup for 45 minutes — say the word if today's different.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1994,
+          "attempts": 1
+        },
+        {
+          "turn": 2,
+          "prompt": "Focus on the workout only: beginner, no injuries, 35 minutes, full gym.",
+          "status": "follow_up_question",
+          "text": "I can create a workout for you. What would you like the workout to focus on (e.g., full body, upper body, lower body, push, pull)?",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1864,
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-01",
+      "title": "Snapshot Last Workout",
+      "prompt": "When did I last work out?",
+      "expectation": "Should answer from the injected snapshot; a redundant get_workouts call is tolerated but a draft is not.",
+      "expected_outcome": "answer_without_tools",
+      "required_text_terms": [
+        "2026-07-03"
+      ],
+      "allowed_tool_calls": [
+        "get_workouts"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered correctly with tolerated tool calls: get_workouts",
+      "text": "You last worked out on July 3, 2026.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1649,
+      "tool_calls": [
+        "get_workouts"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "When did I last work out?",
+          "status": "text_only",
+          "text": "You last worked out on July 3, 2026.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1649,
+          "tool_calls": [
+            "get_workouts"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-02",
+      "title": "Last Back Squat",
+      "prompt": "When did I last back squat?",
+      "expectation": "Should call get_workouts and answer from logged back squat data without an ambiguity detour.",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "2026-06-30",
+        "squat"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "You last back squatted on June 30, 2026.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 2084,
+      "tool_calls": [
+        "get_workouts"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "When did I last back squat?",
+          "status": "text_only",
+          "text": "You last back squatted on June 30, 2026.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 2084,
+          "tool_calls": [
+            "get_workouts"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-03",
+      "title": "Recent Bench Sets",
+      "prompt": "What bench press work have I logged recently?",
+      "expectation": "Should call get_workouts and summarize recent bench sessions.",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "bench",
+        "2026-07-03"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "You've logged Bench Press in 3 recent workouts:\n*   **July 3, 2026, Upper Body:** 185x5, 195x3. Notes: \"Top bench single felt smooth.\"\n*   **June 23, 2026, Push:** 180x6, 185x4\n*   **May 30, 2026, Push:** 175x6",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 2166,
+      "tool_calls": [
+        "get_workouts"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What bench press work have I logged recently?",
+          "status": "text_only",
+          "text": "You've logged Bench Press in 3 recent workouts:\n*   **July 3, 2026, Upper Body:** 185x5, 195x3. Notes: \"Top bench single felt smooth.\"\n*   **June 23, 2026, Push:** 180x6, 185x4\n*   **May 30, 2026, Push:** 175x6",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 2166,
+          "tool_calls": [
+            "get_workouts"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-04",
+      "title": "Last Week Workouts",
+      "prompt": "What workouts did I do from 2026-06-23 through 2026-06-30?",
+      "expectation": "Should call get_workouts with date bounds and mention all three workouts in that range (dates may be rendered as prose, so match on the focus of each workout).",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "push",
+        "pull",
+        "lower body"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "From 2026-06-23 to 2026-06-30, you did a push workout on 2026-06-23, a pull workout on 2026-06-27, and a lower body workout on 2026-06-30.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 4075,
+      "tool_calls": [
+        "get_workouts"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What workouts did I do from 2026-06-23 through 2026-06-30?",
+          "status": "text_only",
+          "text": "From 2026-06-23 to 2026-06-30, you did a push workout on 2026-06-23, a pull workout on 2026-06-27, and a lower body workout on 2026-06-30.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 4075,
+          "tool_calls": [
+            "get_workouts"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-05",
+      "title": "Ambiguous Row Lookup",
+      "prompt": "What rows have I done recently?",
+      "expectation": "Should call get_workouts and ask for clarification or mention matching row variants.",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "row"
+      ],
+      "status": "follow_up_question",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "I found a few types of rows: Barbell Row, Chest Supported Row, and One-Arm Dumbbell Row. Which one would you like to see?",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 2072,
+      "tool_calls": [
+        "get_workouts"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What rows have I done recently?",
+          "status": "follow_up_question",
+          "text": "I found a few types of rows: Barbell Row, Chest Supported Row, and One-Arm Dumbbell Row. Which one would you like to see?",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 2072,
+          "tool_calls": [
+            "get_workouts"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-06",
+      "title": "Deadlift History",
+      "prompt": "Show my recent deadlift workouts.",
+      "expectation": "Should call get_workouts and answer from fixture deadlift history.",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "deadlift",
+        "2026-06-27"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "Here are your last 3 deadlift workouts:\nOn 2026-06-27, you did Deadlift (275x3 working, 285x2 working).\nOn 2026-06-15, you did Deadlift (265x4 working).\nOn 2026-05-24, you did Deadlift (255x5 working).",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1982,
+      "tool_calls": [
+        "get_workouts"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Show my recent deadlift workouts.",
+          "status": "text_only",
+          "text": "Here are your last 3 deadlift workouts:\nOn 2026-06-27, you did Deadlift (275x3 working, 285x2 working).\nOn 2026-06-15, you did Deadlift (265x4 working).\nOn 2026-05-24, you did Deadlift (255x5 working).",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1982,
+          "tool_calls": [
+            "get_workouts"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-07",
+      "title": "General Fitness No Tool",
+      "prompt": "What muscles do rows train?",
+      "expectation": "Should answer general fitness knowledge without data tools.",
+      "expected_outcome": "answer_without_tools",
+      "required_text_terms": [
+        "back"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered without tools",
+      "text": "Rows primarily train the muscles of the back, including the latissimus dorsi, rhomboids, and trapezius, as well as the biceps and forearms.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 640,
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What muscles do rows train?",
+          "status": "text_only",
+          "text": "Rows primarily train the muscles of the back, including the latissimus dorsi, rhomboids, and trapezius, as well as the biceps and forearms.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 640,
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-08",
+      "title": "Draft Guard With Data Fixtures",
+      "prompt": "Intermediate, 45 minutes, push day, full gym, no injuries. Build me a hypertrophy workout.",
+      "expectation": "Should still call only the workout draft tool for a normal draft request.",
+      "expected_outcome": "generate_first_turn",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 11408,
+      "draft": {
+        "date": "2026-07-08T23:11:06-04:00",
+        "notes": "Moderate rest (60-90s) between sets for hypertrophy.",
+        "workoutFocus": "Push",
+        "exercises": [
+          {
+            "name": "Barbell Bench Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 8,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Overhead Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Incline Dumbbell Press",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Cable Triceps Pushdown",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 4,
+        "total_sets": 15,
+        "working_sets": 12,
+        "exercise_names": [
+          "Barbell Bench Press",
+          "Dumbbell Overhead Press",
+          "Incline Dumbbell Press",
+          "Cable Triceps Pushdown"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Intermediate, 45 minutes, push day, full gym, no injuries. Build me a hypertrophy workout.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 11408,
+          "draft": {
+            "date": "2026-07-08T23:11:06-04:00",
+            "notes": "Moderate rest (60-90s) between sets for hypertrophy.",
+            "workoutFocus": "Push",
+            "exercises": [
+              {
+                "name": "Barbell Bench Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Overhead Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Incline Dumbbell Press",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Cable Triceps Pushdown",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 4,
+            "total_sets": 15,
+            "working_sets": 12,
+            "exercise_names": [
+              "Barbell Bench Press",
+              "Dumbbell Overhead Press",
+              "Incline Dumbbell Press",
+              "Cable Triceps Pushdown"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-09",
+      "title": "Bench All-Time Best",
+      "prompt": "What is my all-time best bench press estimated 1RM?",
+      "expectation": "Should call get_exercise_stats, not the broader workout-history tool, and answer with the fixture bench best.",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "bench",
+        "216"
+      ],
+      "required_tool_calls": [
+        "get_exercise_stats"
+      ],
+      "allowed_tool_calls": [
+        "get_exercise_stats"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "Your all-time best estimated 1RM for Bench Press is 216 lbs, achieved on June 23, 2026.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1515,
+      "tool_calls": [
+        "get_exercise_stats"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "What is my all-time best bench press estimated 1RM?",
+          "status": "text_only",
+          "text": "Your all-time best estimated 1RM for Bench Press is 216 lbs, achieved on June 23, 2026.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1515,
+          "tool_calls": [
+            "get_exercise_stats"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-10",
+      "title": "Deadlift Long Range Trend",
+      "prompt": "How has my deadlift trended over the last year?",
+      "expectation": "Should call get_exercise_stats for a single-exercise long-range trend.",
+      "expected_outcome": "answer_from_data",
+      "required_text_terms": [
+        "deadlift"
+      ],
+      "required_tool_calls": [
+        "get_exercise_stats"
+      ],
+      "allowed_tool_calls": [
+        "get_exercise_stats"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered from workout data with get_workouts",
+      "text": "Your deadlift has shown an upward trend over the last year. Your best estimated 1RM was 304 lbs on June 27, 2026. Looking at the trend, your average estimated 1RM has increased from 297.5 lbs on May 24, 2026, to 304 lbs on June 27, 2026. You've logged 3 deadlift sessions in this window.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1604,
+      "tool_calls": [
+        "get_exercise_stats"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "How has my deadlift trended over the last year?",
+          "status": "text_only",
+          "text": "Your deadlift has shown an upward trend over the last year. Your best estimated 1RM was 304 lbs on June 27, 2026. Looking at the trend, your average estimated 1RM has increased from 297.5 lbs on May 24, 2026, to 304 lbs on June 27, 2026. You've logged 3 deadlift sessions in this window.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1604,
+          "tool_calls": [
+            "get_exercise_stats"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "data-11",
+      "title": "History Informed Push Draft",
+      "prompt": "Intermediate, 45 minutes, push day, full gym, no injuries. Make it like last week's bench work but a little heavier.",
+      "expectation": "Should use logged history before generating a structured draft so recent bench performance can guide weights.",
+      "expected_outcome": "history_informed_draft",
+      "allowed_tool_calls": [
+        "get_workouts",
+        "get_exercise_stats"
+      ],
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "used workout history before generating a structured draft",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 18862,
+      "draft": {
+        "date": "2026-07-08T23:12:08-04:00",
+        "notes": "Focus on controlled movements and moderate rest (60-90s) between sets.",
+        "workoutFocus": "Push",
+        "exercises": [
+          {
+            "name": "Barbell Bench Press",
+            "sets": [
+              {
+                "weight": 95,
+                "reps": 10,
+                "setType": "warmup"
+              },
+              {
+                "weight": 135,
+                "reps": 6,
+                "setType": "warmup"
+              },
+              {
+                "weight": 165,
+                "reps": 3,
+                "setType": "warmup"
+              },
+              {
+                "weight": 185,
+                "reps": 6,
+                "setType": "working"
+              },
+              {
+                "weight": 195,
+                "reps": 5,
+                "setType": "working"
+              },
+              {
+                "weight": 185,
+                "reps": 6,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Incline Dumbbell Press",
+            "sets": [
+              {
+                "weight": 60,
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "weight": 60,
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "weight": 65,
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Seated Dumbbell Shoulder Press",
+            "sets": [
+              {
+                "weight": 45,
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "weight": 45,
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "weight": 50,
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Cable Triceps Pushdown",
+            "sets": [
+              {
+                "weight": 50,
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "weight": 50,
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "weight": 55,
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 4,
+        "total_sets": 15,
+        "working_sets": 12,
+        "exercise_names": [
+          "Barbell Bench Press",
+          "Incline Dumbbell Press",
+          "Seated Dumbbell Shoulder Press",
+          "Cable Triceps Pushdown"
+        ]
+      },
+      "tool_calls": [
+        "get_exercise_stats",
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Intermediate, 45 minutes, push day, full gym, no injuries. Make it like last week's bench work but a little heavier.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 18862,
+          "draft": {
+            "date": "2026-07-08T23:12:08-04:00",
+            "notes": "Focus on controlled movements and moderate rest (60-90s) between sets.",
+            "workoutFocus": "Push",
+            "exercises": [
+              {
+                "name": "Barbell Bench Press",
+                "sets": [
+                  {
+                    "weight": 95,
+                    "reps": 10,
+                    "setType": "warmup"
+                  },
+                  {
+                    "weight": 135,
+                    "reps": 6,
+                    "setType": "warmup"
+                  },
+                  {
+                    "weight": 165,
+                    "reps": 3,
+                    "setType": "warmup"
+                  },
+                  {
+                    "weight": 185,
+                    "reps": 6,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 195,
+                    "reps": 5,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 185,
+                    "reps": 6,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Incline Dumbbell Press",
+                "sets": [
+                  {
+                    "weight": 60,
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 60,
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 65,
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Seated Dumbbell Shoulder Press",
+                "sets": [
+                  {
+                    "weight": 45,
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 45,
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 50,
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Cable Triceps Pushdown",
+                "sets": [
+                  {
+                    "weight": 50,
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 50,
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 55,
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 4,
+            "total_sets": 15,
+            "working_sets": 12,
+            "exercise_names": [
+              "Barbell Bench Press",
+              "Incline Dumbbell Press",
+              "Seated Dumbbell Shoulder Press",
+              "Cable Triceps Pushdown"
+            ]
+          },
+          "tool_calls": [
+            "get_exercise_stats",
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "profile-01",
+      "title": "Profile Defaults Push Draft",
+      "prompt": "45-minute push day.",
+      "expectation": "Should use the profile's home dumbbell setup, intermediate level, hypertrophy goal, and no stated movement limitations instead of asking discovery questions.",
+      "expected_outcome": "generate_first_turn",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 10865,
+      "draft": {
+        "date": "2026-07-08T23:12:40-04:00",
+        "notes": "Focus on controlled movements and full range of motion. Rest 60-90 seconds between sets.",
+        "workoutFocus": "Push",
+        "exercises": [
+          {
+            "name": "Dumbbell Bench Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Seated Dumbbell Overhead Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "warmup"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Flyes",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Lateral Raises",
+            "sets": [
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 15,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Seated Dumbbell Overhead Triceps Extension",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 5,
+        "total_sets": 18,
+        "working_sets": 15,
+        "exercise_names": [
+          "Dumbbell Bench Press",
+          "Seated Dumbbell Overhead Press",
+          "Dumbbell Flyes",
+          "Dumbbell Lateral Raises",
+          "Seated Dumbbell Overhead Triceps Extension"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "45-minute push day.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 10865,
+          "draft": {
+            "date": "2026-07-08T23:12:40-04:00",
+            "notes": "Focus on controlled movements and full range of motion. Rest 60-90 seconds between sets.",
+            "workoutFocus": "Push",
+            "exercises": [
+              {
+                "name": "Dumbbell Bench Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Seated Dumbbell Overhead Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "warmup"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Flyes",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Lateral Raises",
+                "sets": [
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 15,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Seated Dumbbell Overhead Triceps Extension",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 5,
+            "total_sets": 18,
+            "working_sets": 15,
+            "exercise_names": [
+              "Dumbbell Bench Press",
+              "Seated Dumbbell Overhead Press",
+              "Dumbbell Flyes",
+              "Dumbbell Lateral Raises",
+              "Seated Dumbbell Overhead Triceps Extension"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "profile-02",
+      "title": "Durable Profile Fact Saved",
+      "prompt": "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+      "expectation": "Should save the durable training setup with update_training_profile and tell the user what was remembered.",
+      "expected_outcome": "profile_updated",
+      "required_text_terms": [
+        "remember",
+        "home",
+        "dumbbells"
+      ],
+      "required_tool_calls": [
+        "update_training_profile"
+      ],
+      "allowed_tool_calls": [
+        "update_training_profile"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "updated the training profile and announced the saved facts",
+      "text": "I've saved your usual training setup as: at home with adjustable dumbbells and a bench.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1626,
+      "tool_calls": [
+        "update_training_profile"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+          "status": "text_only",
+          "text": "I've saved your usual training setup as: at home with adjustable dumbbells and a bench.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1626,
+          "tool_calls": [
+            "update_training_profile"
+          ],
+          "attempts": 1
+        }
+      ]
+    },
+    {
+      "id": "profile-03",
+      "title": "One Off Detail Not Saved",
+      "prompt": "Today only, I am training outside instead of at home. Do not save that as my usual setup.",
+      "expectation": "Should not call update_training_profile for an explicitly one-off session detail.",
+      "expected_outcome": "answer_without_tools",
+      "required_text_terms": [
+        "today"
+      ],
+      "status": "text_only",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "answered without tools",
+      "text": "Got it. You're training outside today.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 1015,
+      "attempts": 1,
+      "turns": [
+        {
+          "turn": 1,
+          "prompt": "Today only, I am training outside instead of at home. Do not save that as my usual setup.",
+          "status": "text_only",
+          "text": "Got it. You're training outside today.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 1015,
+          "attempts": 1
+        }
+      ]
+    }
+  ]
+}
