@@ -70,6 +70,7 @@ type RunOptions struct {
 	MaxAttempts        int
 	InterScenarioDelay time.Duration
 	UserID             string
+	NarrowScopeJudge   NarrowScopeJudge
 	OnScenario         func(Scenario)
 	OnScenarioDelay    func(time.Duration, Scenario)
 	OnRetry            func(Scenario, time.Duration, int, int)
@@ -128,6 +129,8 @@ type Result struct {
 	ToolCalls              []string                      `json:"tool_calls,omitempty"`
 	Attempts               int                           `json:"attempts"`
 	Turns                  []TurnResult                  `json:"turns,omitempty"`
+	NarrowScopeJudge       *NarrowScopeJudgeVerdict      `json:"narrow_scope_judge,omitempty"`
+	NarrowScopeJudgeError  string                        `json:"narrow_scope_judge_error,omitempty"`
 }
 
 type TurnResult struct {
@@ -276,7 +279,7 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 	first := runTurn(ctx, runtime, scenario, scenario.Prompt, scenario.History, options)
 	applyTurnToResult(&result, first)
 	if !shouldRunFollowUpTurn(scenario, mode, first) {
-		ScoreResult(&result, mode)
+		ScoreResultWithJudge(ctx, &result, mode, options.NarrowScopeJudge)
 		return result
 	}
 
@@ -290,7 +293,7 @@ func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode s
 	result.Turns = append(result.Turns, second)
 	applyTurnToResult(&result, second)
 
-	ScoreResult(&result, mode)
+	ScoreResultWithJudge(ctx, &result, mode, options.NarrowScopeJudge)
 	return result
 }
 
