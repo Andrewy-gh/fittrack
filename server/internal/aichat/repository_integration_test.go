@@ -548,34 +548,11 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err)
 	}
 
+	cleanupAIChatRepositoryTestUsers(t, pool)
+
 	cleanup := func() {
 		ctx := context.Background()
-		_, err := pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-nil-draft-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-complete-run-null-byte-draft-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-interrupt-snapshot-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-save-draft-race-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-list-conversations-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-list-conversations-other-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-list-conversations-limit-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-cap-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-trial-failed-start-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-data-reader-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-data-reader-other-user")
-		require.NoError(t, err)
-		_, err = pool.Exec(ctx, "DELETE FROM users WHERE user_id = $1", "aichat-data-reader-limit-user")
-		require.NoError(t, err)
+		cleanupAIChatRepositoryTestUsers(t, pool)
 
 		for _, table := range tables {
 			_, err := pool.Exec(ctx, "ALTER TABLE "+table+" ENABLE ROW LEVEL SECURITY")
@@ -586,6 +563,34 @@ func setupAIChatRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 	}
 
 	return pool, cleanup
+}
+
+func cleanupAIChatRepositoryTestUsers(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+
+	testUserIDs := []string{
+		"aichat-complete-run-user",
+		"aichat-complete-run-nil-draft-user",
+		"aichat-complete-run-null-byte-draft-user",
+		"aichat-interrupt-snapshot-user",
+		"aichat-save-draft-race-user",
+		"aichat-list-conversations-user",
+		"aichat-list-conversations-other-user",
+		"aichat-list-conversations-limit-user",
+		"aichat-trial-cap-user",
+		"aichat-trial-failed-start-user",
+		"aichat-data-reader-user",
+		"aichat-data-reader-other-user",
+		"aichat-data-reader-limit-user",
+		"aichat-exercise-stats-user",
+		"aichat-exercise-stats-other-user",
+		"aichat-profile-user",
+		"aichat-profile-update-user",
+	}
+	for _, userID := range testUserIDs {
+		_, err := pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", userID)
+		require.NoError(t, err)
+	}
 }
 
 func seedAIChatRepositoryTestUser(t *testing.T, pool *pgxpool.Pool, userID string) {

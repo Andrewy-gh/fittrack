@@ -2,7 +2,9 @@ package aichateval
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,10 +16,23 @@ const FixtureUserID = "ai-chat-fixture-user"
 type fixtureChatDataReader struct {
 	userID   string
 	workouts []aichat.ChatWorkoutView
+	profile  *aichat.TrainingProfile
 }
 
 func NewFixtureChatDataReader() aichat.ChatDataReader {
-	return &fixtureChatDataReader{userID: FixtureUserID, workouts: fixtureWorkouts()}
+	return &fixtureChatDataReader{
+		userID:   FixtureUserID,
+		workouts: fixtureWorkouts(),
+		profile: &aichat.TrainingProfile{
+			PrimaryGoal:                     "hypertrophy",
+			ExperienceLevel:                 "intermediate",
+			PreferredSessionDurationMinutes: 45,
+			UsualTrainingLocation:           "home",
+			AvailableEquipment:              []string{"adjustable dumbbells", "bench"},
+			MovementLimitations:             nil,
+			MovementLimitationsRecorded:     true,
+		},
+	}
 }
 
 func (r *fixtureChatDataReader) ListWorkoutsWithSets(ctx context.Context, userID string, filter aichat.WorkoutHistoryFilter) ([]aichat.ChatWorkoutView, error) {
@@ -99,6 +114,101 @@ func (r *fixtureChatDataReader) TrainingSnapshot(ctx context.Context, userID str
 	}, nil
 }
 
+func (r *fixtureChatDataReader) TrainingProfile(ctx context.Context, userID string) (*aichat.TrainingProfile, error) {
+	_ = ctx
+	if userID != r.userID {
+		return nil, nil
+	}
+	return cloneTrainingProfile(r.profile), nil
+}
+
+func (r *fixtureChatDataReader) UpdateTrainingProfile(ctx context.Context, userID string, update aichat.TrainingProfileUpdate) (*aichat.TrainingProfile, error) {
+	_ = ctx
+	if userID != r.userID {
+		return nil, nil
+	}
+	if r.profile == nil {
+		r.profile = &aichat.TrainingProfile{}
+	}
+	if update.PrimaryGoal != nil {
+		r.profile.PrimaryGoal = *update.PrimaryGoal
+	}
+	if update.ExperienceLevel != nil {
+		r.profile.ExperienceLevel = *update.ExperienceLevel
+	}
+	if update.PreferredSessionDurationMinutes != nil {
+		r.profile.PreferredSessionDurationMinutes = *update.PreferredSessionDurationMinutes
+	}
+	if update.UsualTrainingLocation != nil {
+		r.profile.UsualTrainingLocation = *update.UsualTrainingLocation
+	}
+	if update.AvailableEquipment != nil {
+		r.profile.AvailableEquipment = append([]string(nil), (*update.AvailableEquipment)...)
+	}
+	if update.AvoidedExercises != nil {
+		r.profile.AvoidedExercises = append([]string(nil), (*update.AvoidedExercises)...)
+	}
+	if update.MovementLimitations != nil {
+		r.profile.MovementLimitations = append([]string(nil), (*update.MovementLimitations)...)
+		r.profile.MovementLimitationsRecorded = true
+	}
+	return cloneTrainingProfile(r.profile), nil
+}
+
+func (r *fixtureChatDataReader) ExerciseStats(ctx context.Context, userID string, exerciseName string, window string) (*aichat.ExerciseStatsView, error) {
+	_ = ctx
+	if userID != r.userID {
+		return nil, nil
+	}
+	window = normalizeFixtureStatsWindow(window)
+	stats := &aichat.ExerciseStatsView{ExerciseName: exerciseName, Window: window}
+	var points []aichat.ExerciseStatsTrendPoint
+	for _, workout := range r.workouts {
+		exercises := matchingWorkoutExercises(workout, exerciseName)
+		if len(exercises) == 0 {
+			continue
+		}
+		best := 0.0
+		volume := 0.0
+		for _, set := range exercises[0].Sets {
+			weight, reps, ok := parseFixtureSet(set)
+			if !ok {
+				continue
+			}
+			e1rm := weight * (1 + float64(reps)/30)
+			if e1rm > best {
+				best = e1rm
+			}
+			volume += weight * float64(reps)
+		}
+		if best == 0 {
+			continue
+		}
+		if stats.BestE1RM == nil || best > stats.BestE1RM.Weight {
+			stats.BestE1RM = &aichat.ExerciseBestE1RMView{Weight: best, Date: workout.Date}
+		}
+		points = append(points, aichat.ExerciseStatsTrendPoint{
+			Date:     workout.Date,
+			BestE1RM: best,
+			AvgE1RM:  best,
+			Volume:   volume,
+		})
+		if len(stats.LastSessionSets) == 0 {
+			stats.LastSessionDate = workout.Date
+			stats.LastSessionSets = append([]string{}, exercises[0].Sets...)
+		}
+	}
+	sort.Slice(points, func(i, j int) bool {
+		return points[i].Date < points[j].Date
+	})
+	stats.SessionCount = len(points)
+	stats.Trend = compactFixtureTrend(points, 8)
+	if stats.SessionCount == 0 {
+		stats.Message = fmt.Sprintf("No working-set stats were found for %s.", exerciseName)
+	}
+	return stats, nil
+}
+
 func fixtureWorkouts() []aichat.ChatWorkoutView {
 	return []aichat.ChatWorkoutView{
 		fixtureWorkout("2026-07-03", "upper body", "Top bench single felt smooth.", fixtureExercise("Bench Press", "185x5 working", "195x3 working"), fixtureExercise("Barbell Row", "155x8 working", "155x8 working")),
@@ -112,6 +222,58 @@ func fixtureWorkouts() []aichat.ChatWorkoutView {
 		fixtureWorkout("2026-05-30", "push", "", fixtureExercise("Bench Press", "175x6 working"), fixtureExercise("Dumbbell Shoulder Press", "55x8 working")),
 		fixtureWorkout("2026-05-24", "full body", "", fixtureExercise("Deadlift", "255x5 working"), fixtureExercise("Back Squat", "205x6 working")),
 	}
+}
+
+func cloneTrainingProfile(profile *aichat.TrainingProfile) *aichat.TrainingProfile {
+	if profile == nil {
+		return nil
+	}
+	clone := *profile
+	clone.AvailableEquipment = append([]string(nil), profile.AvailableEquipment...)
+	clone.AvoidedExercises = append([]string(nil), profile.AvoidedExercises...)
+	clone.MovementLimitations = append([]string(nil), profile.MovementLimitations...)
+	return &clone
+}
+
+func normalizeFixtureStatsWindow(window string) string {
+	switch strings.ToLower(strings.TrimSpace(window)) {
+	case "1y", "all":
+		return strings.ToLower(strings.TrimSpace(window))
+	default:
+		return "3m"
+	}
+}
+
+func parseFixtureSet(set string) (float64, int, bool) {
+	firstField := strings.Fields(set)
+	if len(firstField) == 0 {
+		return 0, 0, false
+	}
+	parts := strings.Split(firstField[0], "x")
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	weight, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		return 0, 0, false
+	}
+	reps, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, false
+	}
+	return weight, reps, true
+}
+
+func compactFixtureTrend(points []aichat.ExerciseStatsTrendPoint, maxPoints int) []aichat.ExerciseStatsTrendPoint {
+	if len(points) <= maxPoints {
+		return points
+	}
+	compact := make([]aichat.ExerciseStatsTrendPoint, 0, maxPoints)
+	lastIndex := len(points) - 1
+	for i := 0; i < maxPoints; i++ {
+		compact = append(compact, points[i*lastIndex/(maxPoints-1)])
+	}
+	return compact
 }
 
 func fixtureWorkout(date string, focus string, notes string, exercises ...aichat.ChatExerciseView) aichat.ChatWorkoutView {

@@ -12,6 +12,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ideally generate a structured draft with realistic dumbbell-and-bench pull volume.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm intermediate and want muscle growth.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-02",
@@ -20,6 +21,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first or generate only if it can proceed after asking once; when it generates the draft should feel full enough for 60 minutes.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm intermediate, and hypertrophy is the goal.",
+			BaseOnly:        true,
 		},
 		{
 			ID:                     "prompt-03",
@@ -29,6 +31,7 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome:        ExpectedAskOnceThenGenerate,
 			ForbiddenExerciseTerms: []string{"leg press"},
 			FollowUpAnswer:         "It's mild front-of-knee discomfort, no sharp pain. Keep it joint-friendly, 35 minutes, dumbbells and machines are available.",
+			BaseOnly:               true,
 		},
 		{
 			ID:              "prompt-04",
@@ -37,6 +40,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first or generate a concise feasible hotel-room bodyweight draft.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm beginner to intermediate and want a balanced full-body session.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-05",
@@ -54,6 +58,7 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome:        ExpectedAskOnceThenGenerate,
 			ForbiddenExerciseTerms: []string{"overhead press", "shoulder press"},
 			FollowUpAnswer:         "It is a recent mild strain and overhead pressing bothers it. Keep the workout shoulder-friendly, 30 minutes, no sharp pain.",
+			BaseOnly:               true,
 		},
 		{
 			ID:              "prompt-07",
@@ -62,6 +67,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first or generate a realistic bodyweight strength-leaning draft.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries. I'm intermediate and can do push-ups, lunges, and planks.",
+			BaseOnly:        true,
 		},
 		{
 			ID:                     "prompt-08",
@@ -71,6 +77,7 @@ func DefaultScenarios() []Scenario {
 			ExpectedOutcome:        ExpectedAskOnceThenGenerate,
 			ForbiddenExerciseTerms: []string{"cable", "machine"},
 			FollowUpAnswer:         "No injuries. I'm intermediate and want strength with some hypertrophy.",
+			BaseOnly:               true,
 		},
 		{
 			ID:              "prompt-09",
@@ -79,6 +86,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should allow intentionally low-volume work instead of forcing a normal lifting session.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No acute injury or numbness. This is gentle low-back stiffness, and I want easy mobility only.",
+			BaseOnly:        true,
 		},
 		{
 			ID:    "prompt-10",
@@ -91,6 +99,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask a focused revision follow-up before adapting the next draft around the new elbow constraint.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "It's mild elbow irritation during deep pressing and skull crushers. Keep dumbbells and bench, avoid elbow-aggravating moves.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-11",
@@ -115,6 +124,7 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask once for injury or limitation status, then convert to a structured draft on turn two.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "No injuries or limitations. I'm intermediate and want back and biceps hypertrophy.",
+			BaseOnly:        true,
 		},
 		{
 			ID:              "prompt-14",
@@ -169,6 +179,16 @@ func DefaultScenarios() []Scenario {
 			Expectation:     "Should ask about injuries first, then generate a structured machine-and-cable chest draft after a short no-injuries answer without failing workout contract validation.",
 			ExpectedOutcome: ExpectedAskOnceThenGenerate,
 			FollowUpAnswer:  "Nope.",
+			BaseOnly:        true,
+		},
+		{
+			ID:              "prompt-20",
+			Title:           "No Profile Push Day Guard",
+			Prompt:          "45-minute push day.",
+			Expectation:     "Without a training profile, should preserve the ask-first behavior for missing equipment/location and injury status.",
+			ExpectedOutcome: ExpectedAskOnceThenGenerate,
+			FollowUpAnswer:  "No injuries. Full gym. Intermediate, hypertrophy.",
+			BaseOnly:        true,
 		},
 	}
 }
@@ -238,6 +258,59 @@ func DataFixtureScenarios() []Scenario {
 			Prompt:          "Intermediate, 45 minutes, push day, full gym, no injuries. Build me a hypertrophy workout.",
 			Expectation:     "Should still call only the workout draft tool for a normal draft request.",
 			ExpectedOutcome: ExpectedGenerateFirstTurn,
+		},
+		{
+			ID:                "data-09",
+			Title:             "Bench All-Time Best",
+			Prompt:            "What is my all-time best bench press estimated 1RM?",
+			Expectation:       "Should call get_exercise_stats, not the broader workout-history tool, and answer with the fixture bench best.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredToolCalls: []string{"get_exercise_stats"},
+			AllowedToolCalls:  []string{"get_exercise_stats"},
+			RequiredTextTerms: []string{"bench", "216"},
+		},
+		{
+			ID:                "data-10",
+			Title:             "Deadlift Long Range Trend",
+			Prompt:            "How has my deadlift trended over the last year?",
+			Expectation:       "Should call get_exercise_stats for a single-exercise long-range trend.",
+			ExpectedOutcome:   ExpectedAnswerFromData,
+			RequiredToolCalls: []string{"get_exercise_stats"},
+			AllowedToolCalls:  []string{"get_exercise_stats"},
+			RequiredTextTerms: []string{"deadlift"},
+		},
+		{
+			ID:               "data-11",
+			Title:            "History Informed Push Draft",
+			Prompt:           "Intermediate, 45 minutes, push day, full gym, no injuries. Make it like last week's bench work but a little heavier.",
+			Expectation:      "Should use logged history before generating a structured draft so recent bench performance can guide weights.",
+			ExpectedOutcome:  ExpectedHistoryInformedDraft,
+			AllowedToolCalls: []string{"get_workouts", "get_exercise_stats"},
+		},
+		{
+			ID:              "profile-01",
+			Title:           "Profile Defaults Push Draft",
+			Prompt:          "45-minute push day.",
+			Expectation:     "Should use the profile's home dumbbell setup, intermediate level, hypertrophy goal, and no stated movement limitations instead of asking discovery questions.",
+			ExpectedOutcome: ExpectedGenerateFirstTurn,
+		},
+		{
+			ID:                "profile-02",
+			Title:             "Durable Profile Fact Saved",
+			Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+			Expectation:       "Should save the durable training setup with update_training_profile and tell the user what was remembered.",
+			ExpectedOutcome:   ExpectedProfileUpdated,
+			RequiredToolCalls: []string{"update_training_profile"},
+			AllowedToolCalls:  []string{"update_training_profile"},
+			RequiredTextTerms: []string{"remember", "home", "dumbbells"},
+		},
+		{
+			ID:                "profile-03",
+			Title:             "One Off Detail Not Saved",
+			Prompt:            "Today only, I am training outside instead of at home. Do not save that as my usual setup.",
+			Expectation:       "Should not call update_training_profile for an explicitly one-off session detail.",
+			ExpectedOutcome:   ExpectedAnswerWithoutTools,
+			RequiredTextTerms: []string{"today"},
 		},
 	}
 }

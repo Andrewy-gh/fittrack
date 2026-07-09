@@ -302,6 +302,50 @@ SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg
 FROM workout_metrics
 ORDER BY workout_day ASC, workout_id ASC;
 
+-- name: GetExerciseMetricsHistoryRawAll :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day)::date AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM working_sets
+    GROUP BY workout_id
+)
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC;
+
 -- name: ListWorkoutsWithSetsForChat :many
 WITH matching_workouts AS (
     SELECT w.id
@@ -383,6 +427,90 @@ WHERE s.user_id = $1
 GROUP BY e.name
 ORDER BY workout_count DESC, e.name
 LIMIT 5;
+
+-- name: GetUserTrainingProfile :one
+SELECT
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+FROM user_training_profile
+WHERE user_id = $1;
+
+-- name: UpsertUserTrainingProfileForChat :one
+INSERT INTO user_training_profile (
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id
+)
+VALUES (
+    sqlc.arg(user_id),
+    NULLIF(sqlc.narg(primary_goal)::text, ''),
+    NULLIF(sqlc.narg(experience_level)::text, ''),
+    CASE
+        WHEN sqlc.narg(preferred_session_duration_minutes)::integer IS NULL THEN NULL
+        WHEN sqlc.narg(preferred_session_duration_minutes)::integer <= 0 THEN NULL
+        ELSE sqlc.narg(preferred_session_duration_minutes)::integer
+    END,
+    NULLIF(sqlc.narg(usual_training_location)::text, ''),
+    COALESCE(sqlc.narg(available_equipment)::jsonb, '[]'::jsonb),
+    COALESCE(sqlc.narg(avoided_exercises)::jsonb, '[]'::jsonb),
+    sqlc.narg(movement_limitations)::jsonb,
+    sqlc.narg(source_conversation_id),
+    sqlc.narg(source_message_id)
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    primary_goal = CASE
+        WHEN sqlc.narg(primary_goal)::text IS NULL THEN user_training_profile.primary_goal
+        ELSE NULLIF(sqlc.narg(primary_goal)::text, '')
+    END,
+    experience_level = CASE
+        WHEN sqlc.narg(experience_level)::text IS NULL THEN user_training_profile.experience_level
+        ELSE NULLIF(sqlc.narg(experience_level)::text, '')
+    END,
+    preferred_session_duration_minutes = CASE
+        WHEN sqlc.narg(preferred_session_duration_minutes)::integer IS NULL THEN user_training_profile.preferred_session_duration_minutes
+        WHEN sqlc.narg(preferred_session_duration_minutes)::integer <= 0 THEN NULL
+        ELSE sqlc.narg(preferred_session_duration_minutes)::integer
+    END,
+    usual_training_location = CASE
+        WHEN sqlc.narg(usual_training_location)::text IS NULL THEN user_training_profile.usual_training_location
+        ELSE NULLIF(sqlc.narg(usual_training_location)::text, '')
+    END,
+    available_equipment = COALESCE(sqlc.narg(available_equipment)::jsonb, user_training_profile.available_equipment),
+    avoided_exercises = COALESCE(sqlc.narg(avoided_exercises)::jsonb, user_training_profile.avoided_exercises),
+    movement_limitations = COALESCE(sqlc.narg(movement_limitations)::jsonb, user_training_profile.movement_limitations),
+    source_conversation_id = COALESCE(sqlc.narg(source_conversation_id), user_training_profile.source_conversation_id),
+    source_message_id = COALESCE(sqlc.narg(source_message_id), user_training_profile.source_message_id),
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at;
 
 -- INSERT queries for form submission
 -- name: CreateWorkout :one
@@ -822,6 +950,35 @@ JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
 ORDER BY w.date DESC, s.set_order DESC
 LIMIT 3;
+
+-- name: GetLastSessionSetsForExerciseChat :many
+WITH latest_workout AS (
+    SELECT s.workout_id
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT 1
+)
+SELECT
+    s.id AS set_id,
+    w.id AS workout_id,
+    w.date AS workout_date,
+    w.workout_focus AS workout_focus,
+    s.weight,
+    s.reps,
+    s.exercise_order,
+    s.set_order,
+    s.created_at
+FROM "set" s
+JOIN latest_workout lw ON lw.workout_id = s.workout_id
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+WHERE s.exercise_id = $1
+  AND s.user_id = $2
+  AND s.set_type = 'working'
+ORDER BY s.set_order ASC;
 
 -- name: ListWorkoutFocusValues :many
 SELECT DISTINCT workout_focus

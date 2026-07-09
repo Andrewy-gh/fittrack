@@ -1262,6 +1262,94 @@ func (q *Queries) GetExerciseMetricsHistoryRaw6M(ctx context.Context, arg GetExe
 	return items, nil
 }
 
+const getExerciseMetricsHistoryRawAll = `-- name: GetExerciseMetricsHistoryRawAll :many
+WITH working_sets AS (
+    SELECT
+        w.id AS workout_id,
+        w.date::date AS workout_day,
+        COALESCE(s.weight, 0)::numeric AS weight,
+        s.reps AS reps,
+        (COALESCE(s.weight, 0)::numeric * s.reps::numeric) AS volume,
+        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)) AS e1rm,
+        e.historical_1rm AS historical_1rm,
+        MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))) OVER (PARTITION BY w.id) AS session_best_e1rm
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id
+    JOIN exercise e ON e.id = s.exercise_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+),
+workout_metrics AS (
+    SELECT
+        workout_id,
+        MIN(workout_day)::date AS workout_day,
+        COALESCE(MAX(session_best_e1rm), 0)::float8 AS session_best_e1rm,
+        COALESCE(AVG(e1rm), 0)::float8 AS session_avg_e1rm,
+        COALESCE(AVG(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_avg_intensity,
+        COALESCE(MAX(
+            CASE
+                WHEN (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) > 0
+                THEN (weight / (CASE WHEN historical_1rm > 0 THEN historical_1rm ELSE session_best_e1rm END) * 100)
+            END
+        ), 0)::float8 AS session_best_intensity,
+        COALESCE(SUM(volume), 0)::float8 AS total_volume_working
+    FROM working_sets
+    GROUP BY workout_id
+)
+SELECT workout_id, workout_day, session_best_e1rm, session_avg_e1rm, session_avg_intensity, session_best_intensity, total_volume_working
+FROM workout_metrics
+ORDER BY workout_day ASC, workout_id ASC
+`
+
+type GetExerciseMetricsHistoryRawAllParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExerciseMetricsHistoryRawAllRow struct {
+	WorkoutID            int32       `json:"workout_id"`
+	WorkoutDay           pgtype.Date `json:"workout_day"`
+	SessionBestE1rm      float64     `json:"session_best_e1rm"`
+	SessionAvgE1rm       float64     `json:"session_avg_e1rm"`
+	SessionAvgIntensity  float64     `json:"session_avg_intensity"`
+	SessionBestIntensity float64     `json:"session_best_intensity"`
+	TotalVolumeWorking   float64     `json:"total_volume_working"`
+}
+
+func (q *Queries) GetExerciseMetricsHistoryRawAll(ctx context.Context, arg GetExerciseMetricsHistoryRawAllParams) ([]GetExerciseMetricsHistoryRawAllRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseMetricsHistoryRawAll, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseMetricsHistoryRawAllRow
+	for rows.Next() {
+		var i GetExerciseMetricsHistoryRawAllRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDay,
+			&i.SessionBestE1rm,
+			&i.SessionAvgE1rm,
+			&i.SessionAvgIntensity,
+			&i.SessionBestIntensity,
+			&i.TotalVolumeWorking,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExerciseMetricsHistoryRawMonth = `-- name: GetExerciseMetricsHistoryRawMonth :many
 WITH working_sets AS (
     SELECT
@@ -1630,6 +1718,83 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 	return items, nil
 }
 
+const getLastSessionSetsForExerciseChat = `-- name: GetLastSessionSetsForExerciseChat :many
+WITH latest_workout AS (
+    SELECT s.workout_id
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+    WHERE s.exercise_id = $1
+      AND s.user_id = $2
+      AND s.set_type = 'working'
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT 1
+)
+SELECT
+    s.id AS set_id,
+    w.id AS workout_id,
+    w.date AS workout_date,
+    w.workout_focus AS workout_focus,
+    s.weight,
+    s.reps,
+    s.exercise_order,
+    s.set_order,
+    s.created_at
+FROM "set" s
+JOIN latest_workout lw ON lw.workout_id = s.workout_id
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+WHERE s.exercise_id = $1
+  AND s.user_id = $2
+  AND s.set_type = 'working'
+ORDER BY s.set_order ASC
+`
+
+type GetLastSessionSetsForExerciseChatParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetLastSessionSetsForExerciseChatRow struct {
+	SetID         int32              `json:"set_id"`
+	WorkoutID     int32              `json:"workout_id"`
+	WorkoutDate   pgtype.Timestamptz `json:"workout_date"`
+	WorkoutFocus  pgtype.Text        `json:"workout_focus"`
+	Weight        pgtype.Numeric     `json:"weight"`
+	Reps          int32              `json:"reps"`
+	ExerciseOrder int32              `json:"exercise_order"`
+	SetOrder      int32              `json:"set_order"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetLastSessionSetsForExerciseChat(ctx context.Context, arg GetLastSessionSetsForExerciseChatParams) ([]GetLastSessionSetsForExerciseChatRow, error) {
+	rows, err := q.db.Query(ctx, getLastSessionSetsForExerciseChat, arg.ExerciseID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLastSessionSetsForExerciseChatRow
+	for rows.Next() {
+		var i GetLastSessionSetsForExerciseChatRow
+		if err := rows.Scan(
+			&i.SetID,
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.WorkoutFocus,
+			&i.Weight,
+			&i.Reps,
+			&i.ExerciseOrder,
+			&i.SetOrder,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLatestAIChatStreamChunkSequence = `-- name: GetLatestAIChatStreamChunkSequence :one
 SELECT COALESCE(MAX(sequence), 0)::INTEGER
 FROM ai_chat_stream_chunk
@@ -1854,6 +2019,44 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID string) (Users, er
 	row := q.db.QueryRow(ctx, getUserByUserID, userID)
 	var i Users
 	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	return i, err
+}
+
+const getUserTrainingProfile = `-- name: GetUserTrainingProfile :one
+SELECT
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+FROM user_training_profile
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserTrainingProfile(ctx context.Context, userID string) (UserTrainingProfile, error) {
+	row := q.db.QueryRow(ctx, getUserTrainingProfile, userID)
+	var i UserTrainingProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.PrimaryGoal,
+		&i.ExperienceLevel,
+		&i.PreferredSessionDurationMinutes,
+		&i.UsualTrainingLocation,
+		&i.AvailableEquipment,
+		&i.AvoidedExercises,
+		&i.MovementLimitations,
+		&i.SourceConversationID,
+		&i.SourceMessageID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -3634,6 +3837,118 @@ func (q *Queries) UpsertStripeSubscription(ctx context.Context, arg UpsertStripe
 		&i.CurrentPeriodEnd,
 		&i.TrialStart,
 		&i.TrialEnd,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertUserTrainingProfileForChat = `-- name: UpsertUserTrainingProfileForChat :one
+INSERT INTO user_training_profile (
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id
+)
+VALUES (
+    $1,
+    NULLIF($2::text, ''),
+    NULLIF($3::text, ''),
+    CASE
+        WHEN $4::integer IS NULL THEN NULL
+        WHEN $4::integer <= 0 THEN NULL
+        ELSE $4::integer
+    END,
+    NULLIF($5::text, ''),
+    COALESCE($6::jsonb, '[]'::jsonb),
+    COALESCE($7::jsonb, '[]'::jsonb),
+    $8::jsonb,
+    $9,
+    $10
+)
+ON CONFLICT (user_id) DO UPDATE SET
+    primary_goal = CASE
+        WHEN $2::text IS NULL THEN user_training_profile.primary_goal
+        ELSE NULLIF($2::text, '')
+    END,
+    experience_level = CASE
+        WHEN $3::text IS NULL THEN user_training_profile.experience_level
+        ELSE NULLIF($3::text, '')
+    END,
+    preferred_session_duration_minutes = CASE
+        WHEN $4::integer IS NULL THEN user_training_profile.preferred_session_duration_minutes
+        WHEN $4::integer <= 0 THEN NULL
+        ELSE $4::integer
+    END,
+    usual_training_location = CASE
+        WHEN $5::text IS NULL THEN user_training_profile.usual_training_location
+        ELSE NULLIF($5::text, '')
+    END,
+    available_equipment = COALESCE($6::jsonb, user_training_profile.available_equipment),
+    avoided_exercises = COALESCE($7::jsonb, user_training_profile.avoided_exercises),
+    movement_limitations = COALESCE($8::jsonb, user_training_profile.movement_limitations),
+    source_conversation_id = COALESCE($9, user_training_profile.source_conversation_id),
+    source_message_id = COALESCE($10, user_training_profile.source_message_id),
+    updated_at = CURRENT_TIMESTAMP
+RETURNING
+    user_id,
+    primary_goal,
+    experience_level,
+    preferred_session_duration_minutes,
+    usual_training_location,
+    available_equipment,
+    avoided_exercises,
+    movement_limitations,
+    source_conversation_id,
+    source_message_id,
+    created_at,
+    updated_at
+`
+
+type UpsertUserTrainingProfileForChatParams struct {
+	UserID                          string      `json:"user_id"`
+	PrimaryGoal                     pgtype.Text `json:"primary_goal"`
+	ExperienceLevel                 pgtype.Text `json:"experience_level"`
+	PreferredSessionDurationMinutes pgtype.Int4 `json:"preferred_session_duration_minutes"`
+	UsualTrainingLocation           pgtype.Text `json:"usual_training_location"`
+	AvailableEquipment              []byte      `json:"available_equipment"`
+	AvoidedExercises                []byte      `json:"avoided_exercises"`
+	MovementLimitations             []byte      `json:"movement_limitations"`
+	SourceConversationID            pgtype.Int4 `json:"source_conversation_id"`
+	SourceMessageID                 pgtype.Int4 `json:"source_message_id"`
+}
+
+func (q *Queries) UpsertUserTrainingProfileForChat(ctx context.Context, arg UpsertUserTrainingProfileForChatParams) (UserTrainingProfile, error) {
+	row := q.db.QueryRow(ctx, upsertUserTrainingProfileForChat,
+		arg.UserID,
+		arg.PrimaryGoal,
+		arg.ExperienceLevel,
+		arg.PreferredSessionDurationMinutes,
+		arg.UsualTrainingLocation,
+		arg.AvailableEquipment,
+		arg.AvoidedExercises,
+		arg.MovementLimitations,
+		arg.SourceConversationID,
+		arg.SourceMessageID,
+	)
+	var i UserTrainingProfile
+	err := row.Scan(
+		&i.UserID,
+		&i.PrimaryGoal,
+		&i.ExperienceLevel,
+		&i.PreferredSessionDurationMinutes,
+		&i.UsualTrainingLocation,
+		&i.AvailableEquipment,
+		&i.AvoidedExercises,
+		&i.MovementLimitations,
+		&i.SourceConversationID,
+		&i.SourceMessageID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

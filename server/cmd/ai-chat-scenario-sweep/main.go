@@ -50,6 +50,7 @@ func main() {
 		dataReader = aichateval.NewFixtureChatDataReader()
 		evalUserID = aichateval.FixtureUserID
 		scenarios = append(scenarios, aichateval.DataFixtureScenarios()...)
+		scenarios = aichateval.FilterBaseOnlyScenarios(scenarios)
 	}
 	scenarios, err := aichateval.FilterScenarios(scenarios, aichateval.ScenarioSelection{
 		ScenarioID:  *scenarioID,

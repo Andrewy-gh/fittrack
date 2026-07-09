@@ -186,6 +186,53 @@ type ChatExerciseView struct {
 	Sets []string `json:"sets,omitempty"`
 }
 
+type ExerciseStatsView struct {
+	ExerciseName    string                    `json:"exercise_name"`
+	Window          string                    `json:"window"`
+	BestE1RM        *ExerciseBestE1RMView     `json:"best_e1rm,omitempty"`
+	Trend           []ExerciseStatsTrendPoint `json:"trend,omitempty"`
+	LastSessionSets []string                  `json:"last_session_sets,omitempty"`
+	LastSessionDate string                    `json:"last_session_date,omitempty"`
+	SessionCount    int                       `json:"session_count"`
+	Message         string                    `json:"message,omitempty"`
+}
+
+type ExerciseBestE1RMView struct {
+	Weight float64 `json:"weight"`
+	Date   string  `json:"date,omitempty"`
+}
+
+type ExerciseStatsTrendPoint struct {
+	Date      string  `json:"date"`
+	BestE1RM  float64 `json:"best_e1rm,omitempty"`
+	AvgE1RM   float64 `json:"avg_e1rm,omitempty"`
+	Volume    float64 `json:"volume,omitempty"`
+	WorkoutID int32   `json:"workout_id,omitempty"`
+}
+
+type TrainingProfile struct {
+	PrimaryGoal                     string   `json:"primary_goal,omitempty"`
+	ExperienceLevel                 string   `json:"experience_level,omitempty"`
+	PreferredSessionDurationMinutes int32    `json:"preferred_session_duration_minutes,omitempty"`
+	UsualTrainingLocation           string   `json:"usual_training_location,omitempty"`
+	AvailableEquipment              []string `json:"available_equipment,omitempty"`
+	AvoidedExercises                []string `json:"avoided_exercises,omitempty"`
+	MovementLimitations             []string `json:"movement_limitations,omitempty"`
+	MovementLimitationsRecorded     bool     `json:"movement_limitations_recorded,omitempty"`
+}
+
+type TrainingProfileUpdate struct {
+	PrimaryGoal                     *string   `json:"primary_goal,omitempty"`
+	ExperienceLevel                 *string   `json:"experience_level,omitempty"`
+	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes,omitempty"`
+	UsualTrainingLocation           *string   `json:"usual_training_location,omitempty"`
+	AvailableEquipment              *[]string `json:"available_equipment,omitempty"`
+	AvoidedExercises                *[]string `json:"avoided_exercises,omitempty"`
+	MovementLimitations             *[]string `json:"movement_limitations,omitempty"`
+	SourceConversationID            *int32    `json:"source_conversation_id,omitempty"`
+	SourceMessageID                 *int32    `json:"source_message_id,omitempty"`
+}
+
 type TrainingSnapshot struct {
 	LastWorkoutDate string   `json:"last_workout_date,omitempty"`
 	WorkoutsLast30D int64    `json:"workouts_last_30d"`

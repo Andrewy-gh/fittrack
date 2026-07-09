@@ -202,7 +202,8 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		"history_messages", len(history),
 	)
 	firstChunkPersisted := false
-	done, err := s.runtime.StreamChat(ctx, prepared.Prompt, history, func(delta string) error {
+	runtimeCtx := contextWithTrainingProfileSource(ctx, prepared.Conversation.ID, prepared.Run.UserMessageID)
+	done, err := s.runtime.StreamChat(runtimeCtx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
 		partialText := strings.TrimSpace(partial.String())
 		sequence, err := s.repo.AppendStreamChunk(persistCtx, prepared, delta, partialText, time.Now().UTC())
@@ -277,6 +278,7 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		Text:           text,
 		Sequence:       prepared.LastSequence,
 		WorkoutDraft:   done.WorkoutDraft,
+		ToolCalls:      done.ToolCalls,
 	}, nil
 }
 

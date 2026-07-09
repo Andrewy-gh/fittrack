@@ -91,6 +91,41 @@ func TestFilterScenariosRejectsRangeCombinedWithIDs(t *testing.T) {
 	}
 }
 
+func TestFilterBaseOnlyScenariosExcludesBaseOnlyScenarios(t *testing.T) {
+	scenarios := []Scenario{
+		{ID: "prompt-19", Title: "Before"},
+		{ID: "prompt-20", Title: "Base Only", BaseOnly: true},
+		{ID: "profile-01", Title: "Fixture"},
+	}
+
+	got := FilterBaseOnlyScenarios(scenarios)
+
+	if gotIDs(got) != "prompt-19,profile-01" {
+		t.Fatalf("FilterBaseOnlyScenarios() ids = %s, want prompt-19,profile-01", gotIDs(got))
+	}
+}
+
+func TestFilterBaseOnlyScenariosExcludesAskFirstDefaultScenariosFromFixturesMode(t *testing.T) {
+	scenarios := append(DefaultScenarios(), DataFixtureScenarios()...)
+	got := FilterBaseOnlyScenarios(scenarios)
+	gotByID := make(map[string]Scenario, len(got))
+	for _, scenario := range got {
+		gotByID[scenario.ID] = scenario
+	}
+
+	for _, scenario := range DefaultScenarios() {
+		if scenario.ExpectedOutcome != ExpectedAskOnceThenGenerate {
+			continue
+		}
+		if !scenario.BaseOnly {
+			t.Fatalf("%s has ask-first outcome but BaseOnly = false", scenario.ID)
+		}
+		if _, ok := gotByID[scenario.ID]; ok {
+			t.Fatalf("fixtures-mode scenarios include ask-first default scenario %s", scenario.ID)
+		}
+	}
+}
+
 func selectionTestScenarios() []Scenario {
 	return []Scenario{
 		{ID: "prompt-01", Title: "One"},

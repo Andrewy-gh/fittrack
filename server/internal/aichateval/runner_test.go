@@ -360,6 +360,84 @@ func TestRunScoresAnswerWithoutToolsFailsOnDisallowedToolCall(t *testing.T) {
 	}
 }
 
+func TestRunScoresProfileUpdateAcceptsUpdatedProfileAnnouncement(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:      "I've updated your training profile to reflect that your usual training setup is at home with adjustable dumbbells and a bench.",
+				ToolCalls: []string{"update_training_profile"},
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-profile-update",
+		Title:             "Profile Update",
+		Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+		ExpectedOutcome:   ExpectedProfileUpdated,
+		RequiredTextTerms: []string{"remember", "home", "dumbbells"},
+		RequiredToolCalls: []string{"update_training_profile"},
+		AllowedToolCalls:  []string{"update_training_profile"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+}
+
+func TestRunScoresProfileUpdateAcceptsSavedSetupAnnouncement(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:      "I've saved your usual training setup as at home with adjustable dumbbells and a bench.",
+				ToolCalls: []string{"update_training_profile"},
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-profile-update",
+		Title:             "Profile Update",
+		Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+		ExpectedOutcome:   ExpectedProfileUpdated,
+		RequiredTextTerms: []string{"remember", "home", "dumbbells"},
+		RequiredToolCalls: []string{"update_training_profile"},
+		AllowedToolCalls:  []string{"update_training_profile"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+}
+
+func TestRunScoresProfileUpdateAcceptsSavedThatSetupAnnouncement(t *testing.T) {
+	runtime := &fakeRuntime{
+		next: []runtimeResponse{{
+			done: &aichat.StreamDone{
+				Text:      "I've saved that your usual training setup is at home with adjustable dumbbells and a bench.",
+				ToolCalls: []string{"update_training_profile"},
+			},
+		}},
+	}
+
+	report := Run(context.Background(), runtime, []Scenario{{
+		ID:                "case-profile-update",
+		Title:             "Profile Update",
+		Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
+		ExpectedOutcome:   ExpectedProfileUpdated,
+		RequiredTextTerms: []string{"remember", "home", "dumbbells"},
+		RequiredToolCalls: []string{"update_training_profile"},
+		AllowedToolCalls:  []string{"update_training_profile"},
+	}}, RunOptions{Mode: ModeSingleTurn})
+
+	result := report.Results[0]
+	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
+		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
+	}
+}
+
 func TestContainsRequiredTermDateRenderings(t *testing.T) {
 	cases := []struct {
 		name string
@@ -572,6 +650,71 @@ func TestNarrowsToSingleWorkoutAcceptsNaturalNarrowingText(t *testing.T) {
 		{
 			name: "meal plan refusal asks how long session should be",
 			text: "I can help you create a workout plan, but I'm unable to provide meal plans. What is your workout focus? How long should the session be? What equipment do you have available?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal asks how long this session can be",
+			text: "I can help with a workout for fat loss! While I can't create meal plans, I can definitely design a training session to help you reach your goals. To get started, what workout focus are you looking for? And how long do you have for this session?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal says cannot assist",
+			text: "I can help you create a workout plan, but I can't assist with meal plans.\n\nTo create your workout, I need a little more information. What is your preferred workout focus (e.g., full body, upper body, lower body, push, pull)? How long would you like the session to be? And do you have any injuries I should be aware of?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal with profile-backed session details",
+			text: "I can certainly help you create a workout plan to support fat loss, but I'm not equipped to build meal plans.\n\nTo design your workout, what would you like to focus on today (e.g., full body, upper body, lower body)? I'll plan for 45 minutes at home with your adjustable dumbbells and bench, assuming no injuries. Is \"fat loss\" the primary goal for this workout?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal with workout-context focus question",
+			text: "I can help you create a workout plan, but I cannot provide meal plans or dietary advice.\n\nFor your workout, what would you like the focus to be? For example, would you like an upper body, lower body, full body, or a different kind of workout?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal with workout-context focus-of-workout question",
+			text: "I can help you create a workout plan, but I'm not equipped to provide meal plans for fat loss.\n\nFor your workout, I'll use your usual home setup with adjustable dumbbells and a bench for 45 minutes with no injuries. What would you like the focus of this workout to be (e.g., full body, upper body, lower body)?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal not equipped to create",
+			text: "I can help with a workout plan, but I'm not equipped to create meal plans.\n\nFor your workout, what would you like the focus to be (e.g., full body, upper body, lower body)? Do you have any injuries or movement limitations I should be aware of? I'll plan for your usual 45-minute home workout with adjustable dumbbells and a bench, but let me know if that's different today.",
+			want: true,
+		},
+		{
+			name: "meal plan refusal not equipped to design",
+			text: "I can help you create a workout plan, but I'm not equipped to design meal plans.\n\nTo make a workout plan, what would you like the workout to focus on (e.g., full body, upper body, lower body)?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal says do not create",
+			text: "I can help with a workout plan, but I don't create meal plans.\n\nTo design your workout, what would you like the focus to be? For example, \"full body,\" \"upper body,\" \"legs,\" or \"cardio\"?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal with profile duration and workout focus",
+			text: "I can help with a workout plan for fat loss, but I'm not able to create meal plans.\n\nTo build your workout, I'll use your usual home setup with adjustable dumbbells and a bench, for about 45 minutes.\n\nWhat would you like the workout focus to be (e.g., full body, upper body, lower body)? Also, do you have any injuries I should be aware of?",
+			want: true,
+		},
+		{
+			name: "meal plan refusal not able to provide",
+			text: "I can help you create a workout to support your fat loss goal, but I'm not able to provide meal plans.\n\nTo build your workout, what would you like the focus to be? For example, \"upper body,\" \"lower body,\" or \"full body\"? I'll plan for your usual 45-minute home workout with adjustable dumbbells and a bench.",
+			want: true,
+		},
+		{
+			name: "meal plan refusal designs workout with profile session",
+			text: "I can help you create a workout plan for fat loss, but I'm not able to provide meal plans.\n\nTo design your workout, what would you like the focus to be? For example, full body, upper body, lower body, or a specific muscle group? I will use your usual home setup with adjustable dumbbells and a bench, assuming no injuries, for a 45-minute session.",
+			want: true,
+		},
+		{
+			name: "meal plan refusal singular",
+			text: "I can help you create a workout, but I can't create a meal plan.\n\nFor your workout, what would you like to focus on today (e.g., full body, upper body, lower body, push, pull)? Also, while the workout will support your fat loss goal, FitTrack's workout generator currently optimizes for \"strength\" or \"hypertrophy\" as primary goals. Which would you prefer for this workout?",
+			want: true,
+		},
+		{
+			name: "weekly split refusal tells user which day or session",
+			text: "FitTrack can build one workout draft at a time, not a full multi-day split. Tell me which day or session you'd like to build first, and I'll ask for the details needed to create that workout.",
 			want: true,
 		},
 		{

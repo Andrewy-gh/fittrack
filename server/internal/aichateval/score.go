@@ -37,6 +37,10 @@ func ScoreResult(result *Result, mode string) {
 		scoreAnswerFromData(result)
 	case ExpectedAnswerWithoutTools:
 		scoreAnswerWithoutTools(result)
+	case ExpectedHistoryInformedDraft:
+		scoreHistoryInformedDraft(result)
+	case ExpectedProfileUpdated:
+		scoreProfileUpdated(result)
 	default:
 		setScore(result, ScoreStatusUnscored, fmt.Sprintf("unknown expected outcome %q", result.ExpectedOutcome))
 	}
@@ -51,8 +55,11 @@ func scoreGenerateFirstTurn(result *Result) {
 		setScore(result, ScoreStatusFail, "expected the workout draft tool to be called")
 		return
 	}
-	if hasToolCall(result.ToolCalls, "get_workouts") {
-		setScore(result, ScoreStatusFail, "expected no workout history tool call for a normal draft request")
+	if !passesRequiredToolCallChecks(result) {
+		return
+	}
+	if disallowed := disallowedDataToolCalls(result); len(disallowed) > 0 {
+		setScore(result, ScoreStatusFail, fmt.Sprintf("expected no data tool call for a normal draft request, got %s", strings.Join(disallowed, ", ")))
 		return
 	}
 	if !passesTermChecks(result) {
@@ -150,6 +157,7 @@ func narrowsToSingleWorkout(text string) bool {
 		"one workout",
 		"single workout",
 		"one workout at a time",
+		"one structured workout draft at a time",
 		"one session",
 		"single session",
 		"one training session",
@@ -168,26 +176,73 @@ func redirectsMealPlanToWorkoutSession(text string) bool {
 	refusesMealPlan := containsAny(text, []string{
 		"unable to provide meal plans",
 		"can't provide meal plans",
+		"can't provide a meal plan",
+		"can't assist with meal plans",
+		"can't assist with a meal plan",
 		"cannot provide meal plans",
+		"cannot provide a meal plan",
+		"not able to provide meal plans",
+		"not able to provide a meal plan",
 		"can't create meal plans",
+		"can't create a meal plan",
+		"don't create meal plans",
+		"don't create a meal plan",
 		"cannot create meal plans",
+		"cannot create a meal plan",
+		"not able to create meal plans",
+		"not able to create a meal plan",
+		"not equipped to create meal plans",
+		"not equipped to create a meal plan",
+		"not equipped to build meal plans",
+		"not equipped to build a meal plan",
+		"not equipped to design meal plans",
+		"not equipped to design a meal plan",
+		"not equipped to provide meal plans",
+		"not equipped to provide a meal plan",
 	})
-	asksForWorkoutFocus := strings.Contains(text, "?") && containsAny(text, []string{
+	asksForWorkoutFocus := strings.Contains(text, "?") && (containsAny(text, []string{
 		"what is your workout focus",
 		"what's your workout focus",
+		"what is your primary focus",
+		"what is your primary workout focus",
+		"what is your preferred workout focus",
+		"what is your desired workout focus",
+		"what's your primary focus",
+		"what's your primary workout focus",
+		"what's your preferred workout focus",
+		"what's your desired workout focus",
 		"what workout focus",
 		"what is the workout focus",
 		"what should the workout focus be",
-	})
+		"what would you like to focus on today",
+		"what would you like the focus to be",
+		"what would you like the focus of this workout to be",
+		"what would you like the focus of your workout to be",
+	}) || (strings.Contains(text, "workout") && strings.Contains(text, "focus")))
 	asksForSessionDetails := containsAny(text, []string{
 		"session to be",
 		"session should be",
 		"session length",
 		"how long would you like the session",
 		"how long do you want the session",
+		"how long do you have for the session",
+		"how long do you have for this session",
+		"how long do you have for each session",
+		"how long can you train for each session",
+		"how long is your session duration",
 		"how long should the session",
+		"i'll plan for 45 minutes",
+		"for about 45 minutes",
+		"45-minute session",
+		"45 minute session",
 	})
-	return refusesMealPlan && asksForWorkoutFocus && asksForSessionDetails
+	hasWorkoutContext := containsAny(text, []string{
+		"for your workout",
+		"to make a workout",
+		"to build your workout",
+		"to design your workout",
+	})
+	return refusesMealPlan && asksForWorkoutFocus && (asksForSessionDetails || hasWorkoutContext)
 }
 
 func asksUserToChooseWorkout(text string) bool {
@@ -208,7 +263,14 @@ func asksUserToChooseWorkout(text string) bool {
 	}) {
 		return true
 	}
-	return sentenceStartsWithAny(text, []string{"pick", "choose", "select"})
+	return sentenceStartsWithAny(text, []string{
+		"pick",
+		"choose",
+		"select",
+		"tell me which day",
+		"tell me which workout",
+		"tell me which session",
+	})
 }
 
 func sentenceContainsQuestionPhrase(text string, phrases []string) bool {
@@ -268,18 +330,46 @@ func scoreReviseWithoutRestart(result *Result) {
 	setScore(result, ScoreStatusPass, "revised the draft without restarting discovery")
 }
 
+func scoreHistoryInformedDraft(result *Result) {
+	if firstTurnStatus(*result) != StatusStructuredDraft {
+		setScore(result, ScoreStatusFail, "expected a structured draft on the first turn")
+		return
+	}
+	if !hasToolCall(result.ToolCalls, "generate_workout_draft") {
+		setScore(result, ScoreStatusFail, "expected the workout draft tool to be called")
+		return
+	}
+	if !hasAnyToolCall(result.ToolCalls, []string{"get_workouts", "get_exercise_stats"}) {
+		setScore(result, ScoreStatusFail, "expected a data tool to be called before the workout draft")
+		return
+	}
+	if !passesTermChecks(result) {
+		return
+	}
+	setScore(result, ScoreStatusPass, "used workout history before generating a structured draft")
+}
+
 func scoreAnswerFromData(result *Result) {
 	if result.Draft != nil {
 		setScore(result, ScoreStatusFail, "expected no structured workout draft for a data answer")
 		return
 	}
-	if !hasToolCall(result.ToolCalls, "get_workouts") {
-		setScore(result, ScoreStatusFail, "expected get_workouts to be called")
-		return
-	}
 	if hasToolCall(result.ToolCalls, "generate_workout_draft") {
 		setScore(result, ScoreStatusFail, "expected no workout draft tool call for a data answer")
 		return
+	}
+	if len(result.RequiredToolCalls) == 0 && !hasToolCall(result.ToolCalls, "get_workouts") {
+		setScore(result, ScoreStatusFail, "expected get_workouts to be called")
+		return
+	}
+	if !passesRequiredToolCallChecks(result) {
+		return
+	}
+	if len(result.RequiredToolCalls) > 0 {
+		if disallowed := disallowedDataToolCalls(result); len(disallowed) > 0 {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("expected no data tool call beyond %s, got %s", strings.Join(result.AllowedToolCalls, ", "), strings.Join(disallowed, ", ")))
+			return
+		}
 	}
 	if strings.TrimSpace(result.Text) == "" {
 		setScore(result, ScoreStatusFail, "expected answer text from workout data")
@@ -289,6 +379,32 @@ func scoreAnswerFromData(result *Result) {
 		return
 	}
 	setScore(result, ScoreStatusPass, "answered from workout data with get_workouts")
+}
+
+func scoreProfileUpdated(result *Result) {
+	if result.Draft != nil {
+		setScore(result, ScoreStatusFail, "expected no structured workout draft for a profile update")
+		return
+	}
+	if !hasToolCall(result.ToolCalls, "update_training_profile") {
+		setScore(result, ScoreStatusFail, "expected update_training_profile to be called")
+		return
+	}
+	if !passesRequiredToolCallChecks(result) {
+		return
+	}
+	if disallowed := disallowedToolCalls(result.ToolCalls, result.AllowedToolCalls); len(disallowed) > 0 {
+		setScore(result, ScoreStatusFail, fmt.Sprintf("expected no tool calls beyond %s, got %s", strings.Join(result.AllowedToolCalls, ", "), strings.Join(disallowed, ", ")))
+		return
+	}
+	if strings.TrimSpace(result.Text) == "" {
+		setScore(result, ScoreStatusFail, "expected profile update announcement text")
+		return
+	}
+	if !passesProfileUpdateTermChecks(result) {
+		return
+	}
+	setScore(result, ScoreStatusPass, "updated the training profile and announced the saved facts")
 }
 
 func scoreAnswerWithoutTools(result *Result) {
@@ -341,6 +457,59 @@ func passesTermChecks(result *Result) bool {
 		}
 	}
 	return true
+}
+
+func passesProfileUpdateTermChecks(result *Result) bool {
+	text := allResponseText(*result)
+	for _, term := range result.RequiredTextTerms {
+		if term == "remember" && announcesProfileUpdate(text) {
+			continue
+		}
+		if !containsRequiredTerm(text, term) {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("response text is missing required term %q", term))
+			return false
+		}
+	}
+	for _, term := range result.ForbiddenTextTerms {
+		if containsFold(text, term) {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("response text includes forbidden term %q", term))
+			return false
+		}
+	}
+	return true
+}
+
+func announcesProfileUpdate(text string) bool {
+	lower := strings.ToLower(text)
+	return containsAny(lower, []string{
+		"updated your training profile",
+		"updated your profile",
+		"saved to your training profile",
+		"added to your training profile",
+		"saved that your usual training setup",
+		"saved your usual training setup",
+	})
+}
+
+func passesRequiredToolCallChecks(result *Result) bool {
+	for _, required := range result.RequiredToolCalls {
+		if !hasToolCall(result.ToolCalls, required) {
+			setScore(result, ScoreStatusFail, fmt.Sprintf("expected %s to be called", required))
+			return false
+		}
+	}
+	return true
+}
+
+func disallowedDataToolCalls(result *Result) []string {
+	dataTools := []string{"get_workouts", "get_exercise_stats", "update_training_profile"}
+	var disallowed []string
+	for _, tool := range dataTools {
+		if hasToolCall(result.ToolCalls, tool) && !hasToolCall(result.AllowedToolCalls, tool) {
+			disallowed = append(disallowed, tool)
+		}
+	}
+	return disallowed
 }
 
 func allResponseText(result Result) string {
@@ -421,6 +590,15 @@ func containsAny(text string, terms []string) bool {
 func hasToolCall(calls []string, name string) bool {
 	for _, call := range calls {
 		if call == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAnyToolCall(calls []string, names []string) bool {
+	for _, name := range names {
+		if hasToolCall(calls, name) {
 			return true
 		}
 	}

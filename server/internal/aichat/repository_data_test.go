@@ -1,6 +1,9 @@
 package aichat
 
 import (
+	"fmt"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +52,135 @@ func TestNormalizeWorkoutHistoryFilterCapsLastN(t *testing.T) {
 	}
 	if got := normalizeWorkoutHistoryFilter(WorkoutHistoryFilter{LastN: 12}).LastN; got != 12 {
 		t.Fatalf("LastN = %d, want 12", got)
+	}
+}
+
+func TestNormalizeExerciseStatsWindow(t *testing.T) {
+	tests := map[string]string{
+		"":             "3m",
+		"three months": "3m",
+		"1 year":       "1y",
+		"ALL-TIME":     "all",
+		"nonsense":     "3m",
+	}
+	for input, want := range tests {
+		if got := normalizeExerciseStatsWindow(input); got != want {
+			t.Fatalf("normalizeExerciseStatsWindow(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestCompactExerciseStatsTrendKeepsFirstAndLast(t *testing.T) {
+	var points []exerciseStatsTrendRow
+	for i := 0; i < 12; i++ {
+		points = append(points, exerciseStatsTrendRow{
+			WorkoutID:       int32(i + 1),
+			WorkoutDay:      time.Date(2026, 1, i+1, 0, 0, 0, 0, time.UTC),
+			SessionBestE1RM: float64(i + 100),
+		})
+	}
+
+	compact := compactExerciseStatsTrend(points, 8)
+
+	if len(compact) != 8 {
+		t.Fatalf("compact len = %d, want 8", len(compact))
+	}
+	if compact[0].Date != "2026-01-01" || compact[len(compact)-1].Date != "2026-01-12" {
+		t.Fatalf("compact endpoints = %#v ... %#v", compact[0], compact[len(compact)-1])
+	}
+}
+
+func TestCompactExerciseStatsTrendMaxPointsOneKeepsLast(t *testing.T) {
+	points := []exerciseStatsTrendRow{
+		{
+			WorkoutID:       1,
+			WorkoutDay:      time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			SessionBestE1RM: 100,
+		},
+		{
+			WorkoutID:       2,
+			WorkoutDay:      time.Date(2026, 1, 12, 0, 0, 0, 0, time.UTC),
+			SessionBestE1RM: 120,
+		},
+	}
+
+	compact := compactExerciseStatsTrend(points, 1)
+
+	if len(compact) != 1 {
+		t.Fatalf("compact len = %d, want 1", len(compact))
+	}
+	if compact[0].WorkoutID != 2 || compact[0].Date != "2026-01-12" {
+		t.Fatalf("compact[0] = %#v, want last point", compact[0])
+	}
+}
+
+func TestFilterLastThreeMonthsUsesNow(t *testing.T) {
+	now := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
+	points := []exerciseStatsTrendRow{
+		{WorkoutDay: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 4, 7, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 4, 8, 0, 0, 0, 0, time.UTC)},
+		{WorkoutDay: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)},
+	}
+
+	filtered := filterLastThreeMonths(points, now)
+
+	if len(filtered) != 2 || !filtered[0].WorkoutDay.Equal(points[2].WorkoutDay) || !filtered[1].WorkoutDay.Equal(points[3].WorkoutDay) {
+		t.Fatalf("filtered = %#v", filtered)
+	}
+}
+
+func TestDecodeProfileStringArrayHandlesNull(t *testing.T) {
+	values, err := decodeProfileStringArray(nil)
+	if err != nil {
+		t.Fatalf("decodeProfileStringArray() error = %v", err)
+	}
+	if values != nil {
+		t.Fatalf("decodeProfileStringArray(nil) = %#v, want nil", values)
+	}
+}
+
+func TestDecodeProfileStringArrayCleansValues(t *testing.T) {
+	values, err := decodeProfileStringArray([]byte(`[" dumbbells ","", "bench", "bench"]`))
+	if err != nil {
+		t.Fatalf("decodeProfileStringArray() error = %v", err)
+	}
+	if !reflect.DeepEqual(values, []string{"dumbbells", "bench"}) {
+		t.Fatalf("decodeProfileStringArray() = %#v", values)
+	}
+}
+
+func TestCleanProfileStringListCapsAndDeduplicates(t *testing.T) {
+	values := []string{" dumbbells ", "DUMBBELLS", "", strings.Repeat("x", 140)}
+	for i := 0; i < 25; i++ {
+		values = append(values, fmt.Sprintf("item-%02d", i))
+	}
+
+	got := cleanProfileStringList(values)
+
+	if len(got) != 20 {
+		t.Fatalf("cleanProfileStringList() len = %d, want 20", len(got))
+	}
+	if got[0] != "dumbbells" {
+		t.Fatalf("cleanProfileStringList()[0] = %q, want dumbbells", got[0])
+	}
+	if len(got[1]) != 120 {
+		t.Fatalf("cleanProfileStringList()[1] len = %d, want 120", len(got[1]))
+	}
+}
+
+func TestHasTrainingProfileContent(t *testing.T) {
+	if hasTrainingProfileContent(nil) {
+		t.Fatal("nil profile should not have content")
+	}
+	if hasTrainingProfileContent(&TrainingProfile{}) {
+		t.Fatal("empty profile should not have content")
+	}
+	if !hasTrainingProfileContent(&TrainingProfile{AvailableEquipment: []string{"dumbbells"}}) {
+		t.Fatal("profile with equipment should have content")
+	}
+	if !hasTrainingProfileContent(&TrainingProfile{MovementLimitationsRecorded: true}) {
+		t.Fatal("profile with explicitly recorded no movement limitations should have content")
 	}
 }
 

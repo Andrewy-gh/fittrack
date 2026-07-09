@@ -214,6 +214,9 @@ func disallowedEquipmentTerms(context string) []string {
 	if inventory.hasFullGym {
 		return explicitlyUnavailableGymEquipmentTerms(context)
 	}
+	if !inventory.hasAnyAvailableEquipment() && hasExplicitUnavailableEquipment(context) {
+		return explicitlyUnavailableGymEquipmentTerms(context)
+	}
 
 	terms := make([]string, 0, 12)
 	if !inventory.hasBarbell {
@@ -236,6 +239,19 @@ func disallowedEquipmentTerms(context string) []string {
 	}
 
 	return terms
+}
+
+func (inventory equipmentInventory) hasAnyAvailableEquipment() bool {
+	return inventory.hasBench ||
+		inventory.hasBarbell ||
+		inventory.hasDumbbell ||
+		inventory.hasKettlebell ||
+		inventory.hasCable ||
+		inventory.hasMachine
+}
+
+func hasExplicitUnavailableEquipment(context string) bool {
+	return len(explicitlyUnavailableGymEquipmentTerms(context)) > 0
 }
 
 func explicitlyUnavailableGymEquipmentTerms(context string) []string {
@@ -383,11 +399,7 @@ func hasAvailableEquipmentTerm(text string, terms ...string) bool {
 		if !strings.Contains(text, normalizedTerm) {
 			continue
 		}
-		if hasAnyQualityTerm(text,
-			"no "+normalizedTerm,
-			"without "+normalizedTerm,
-			"no access to "+normalizedTerm,
-		) {
+		if hasUnavailableEquipmentTerm(text, normalizedTerm) {
 			continue
 		}
 		return true
@@ -398,15 +410,60 @@ func hasAvailableEquipmentTerm(text string, terms ...string) bool {
 func hasUnavailableEquipmentTerm(text string, terms ...string) bool {
 	for _, term := range terms {
 		normalizedTerm := normalizeQualityText(term)
-		if hasAnyQualityTerm(text,
-			"no "+normalizedTerm,
-			"without "+normalizedTerm,
-			"no access to "+normalizedTerm,
-		) {
+		unavailablePhrases := []string{
+			"no " + normalizedTerm,
+			"without " + normalizedTerm,
+			"no access to " + normalizedTerm,
+		}
+		if !strings.HasSuffix(normalizedTerm, "s") {
+			unavailablePhrases = append(unavailablePhrases,
+				"no "+normalizedTerm+"s",
+				"without "+normalizedTerm+"s",
+				"no access to "+normalizedTerm+"s",
+			)
+		}
+		for _, phrase := range unavailablePhrases {
+			if hasAnyQualityTerm(text, phrase) {
+				return true
+			}
+		}
+		if hasNegatedEquipmentClauseTerm(text, normalizedTerm) {
+			return true
+		}
+		if !strings.HasSuffix(normalizedTerm, "s") && hasNegatedEquipmentClauseTerm(text, normalizedTerm+"s") {
 			return true
 		}
 	}
 	return false
+}
+
+func hasNegatedEquipmentClauseTerm(text string, term string) bool {
+	for _, prefix := range []string{"no access to ", "without ", "no "} {
+		searchStart := 0
+		for {
+			index := strings.Index(text[searchStart:], prefix)
+			if index < 0 {
+				break
+			}
+			spanStart := searchStart + index + len(prefix)
+			span := text[spanStart:negatedEquipmentClauseEnd(text, spanStart)]
+			if hasAnyQualityTerm(span, term, "or "+term, "and "+term) {
+				return true
+			}
+			searchStart = spanStart
+		}
+	}
+	return false
+}
+
+func negatedEquipmentClauseEnd(text string, start int) int {
+	end := len(text)
+	for _, marker := range []string{".", ";"} {
+		if index := strings.Index(text[start:], marker); index >= 0 && start+index < end {
+			end = start + index
+		}
+	}
+	return end
 }
 
 func hasAvailableGymContext(text string) bool {

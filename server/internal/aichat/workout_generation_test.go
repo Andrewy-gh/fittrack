@@ -14,7 +14,7 @@ import (
 )
 
 func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
-	prompt := buildChatSystemPrompt(nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
+	prompt := buildChatSystemPrompt(nil, nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
 
 	requiredSnippets := []string{
 		"Ask at most 3 short, focused follow-up questions",
@@ -27,9 +27,9 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Use only that context unless the user explicitly mentions more",
 		"Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable",
 		"Do not assume unmentioned accessories or equipment",
-		"If injury status is missing, ask once before generating",
+		"If injury status is missing and no profile movement limitation default is available, ask once before generating",
 		"Do not infer \"none\" from silence in the initial request",
-		"Use injuries=\"none\" only when the user explicitly says they have no injuries",
+		"Use injuries=\"none\" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries",
 		"When the user answers a follow-up, combine that answer with the earlier visible workout request",
 		"previous message only asked about injuries and the user now confirms no injuries",
 		"After one follow-up answer, if workout focus, session duration, equipment or location context",
@@ -94,7 +94,7 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 
 func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(t *testing.T) {
 	inputType := reflect.TypeOf(WorkoutGenerationToolInput{})
-	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints"}
+	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints", "RecentPerformance"}
 
 	for _, fieldName := range optionalFields {
 		field, ok := inputType.FieldByName(fieldName)
@@ -210,6 +210,7 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 		`"setType": "warmup" | "working"`,
 		`"date" is always required and must be RFC3339.`,
 		`If fitness level is unknown, prefer omitting weights instead of guessing aggressively.`,
+		`When recent performance is supplied, use it to choose conservative weights and progressions`,
 		`Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.`,
 		`Do not satisfy a normal 40+ minute strength or hypertrophy request with a very small workout unless the user asked for minimal, beginner, rehab, warm-up, or low-volume work.`,
 		`strength can use fewer exercises with longer rests and enough sets`,
@@ -225,10 +226,11 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 
 func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *testing.T) {
 	prompt := buildWorkoutGenerationUserPrompt(WorkoutGenerationToolInput{
-		Equipment:       "full gym",
-		SessionDuration: 45,
-		WorkoutFocus:    "pull",
-		Injuries:        "none",
+		Equipment:         "full gym",
+		SessionDuration:   45,
+		WorkoutFocus:      "pull",
+		Injuries:          "none",
+		RecentPerformance: "Bench Press last session: 195x3 working",
 	})
 
 	if !strings.Contains(prompt, "- Fitness level: unknown") {
@@ -236,6 +238,9 @@ func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *t
 	}
 	if !strings.Contains(prompt, "- Goal: unknown") {
 		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want unknown goal", prompt)
+	}
+	if !strings.Contains(prompt, "- Recent performance to respect: Bench Press last session: 195x3 working") {
+		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want recent performance", prompt)
 	}
 }
 
