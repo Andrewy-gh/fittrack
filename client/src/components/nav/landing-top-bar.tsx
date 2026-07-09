@@ -50,13 +50,14 @@ export function LandingTopBar({ user }: LandingTopBarProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {navItems.map(({ to, label, icon: Icon }) => (
+              {navItems.map(({ to, label, icon: Icon, search }) => (
                 <DropdownMenuItem
                   asChild
                   key={to}
                 >
                   <Link
                     to={to}
+                    search={search}
                     preload={false}
                     className="flex items-center gap-2"
                   >

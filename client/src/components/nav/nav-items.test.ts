@@ -6,10 +6,10 @@ describe("navItems", () => {
     expect(
       navItems.map(({ icon: _icon, ...destination }) => destination),
     ).toEqual([
-      { to: "/workouts", label: "Workouts" },
-      { to: "/exercises", label: "Exercises" },
-      { to: "/analytics", label: "Analytics" },
-      { to: "/chat", label: "AI Chat" },
+      { to: "/workouts", label: "Workouts", search: undefined },
+      { to: "/exercises", label: "Exercises", search: undefined },
+      { to: "/analytics", label: "Analytics", search: undefined },
+      { to: "/chat", label: "AI Chat", search: { createChat: true } },
     ]);
   });
 });

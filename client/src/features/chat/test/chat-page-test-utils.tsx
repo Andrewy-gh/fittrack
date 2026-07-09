@@ -7,6 +7,7 @@ import type {
 const mocks = vi.hoisted(() => ({
   mockSearch: {
     conversationId: "41" as string | undefined,
+    createChat: undefined as true | undefined,
     checkout: undefined as "success" | "cancelled" | undefined,
     billing: undefined as "cancelled" | "portal-return" | undefined,
   },
@@ -142,6 +143,7 @@ export function ChatRouteComponent({
       userId={userId}
       conversationId={parseConversationId(mockSearch.conversationId)}
       conversationIdSearch={mockSearch.conversationId}
+      createChat={mockSearch.createChat}
       checkout={mockSearch.checkout}
       billing={mockSearch.billing}
     />
@@ -183,6 +185,7 @@ export function resetChatRouteMocks() {
   window.sessionStorage.clear();
   window.localStorage.clear();
   mockSearch.conversationId = "41";
+  mockSearch.createChat = undefined;
   mockSearch.checkout = undefined;
   mockSearch.billing = undefined;
   mockNavigate.mockReset();

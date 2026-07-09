@@ -106,8 +106,10 @@ export function createAIChatSessionLifecycle({
       setters.setLatestWorkoutDraftMessageId(null);
       setters.setLoadError(null);
       await onConversationCreated(created.id);
+      return true;
     } catch (error) {
       showErrorToast(error, "Failed to create chat conversation");
+      return false;
     }
   };
 

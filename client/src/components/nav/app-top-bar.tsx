@@ -31,13 +31,14 @@ export function AppTopBar({ user }: AppTopBarProps) {
         aria-label="Primary navigation"
         className="hidden items-center gap-1 md:flex"
       >
-        {navItems.map(({ to, label }) => {
+        {navItems.map(({ to, label, search }) => {
           const active = isActivePath(pathname, to);
 
           return (
             <Link
               key={to}
               to={to}
+              search={search}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "rounded-md px-3 py-2 text-sm font-medium transition-colors",

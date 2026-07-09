@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { History } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ type ChatPageProps = {
   userId?: string;
   conversationId: number | null;
   conversationIdSearch?: string;
+  createChat?: true;
   checkout?: ChatCheckoutSearch;
   billing?: ChatBillingSearch;
 };
@@ -51,6 +52,7 @@ export function ChatPage({
   userId,
   conversationId,
   conversationIdSearch,
+  createChat,
   checkout,
   billing,
 }: ChatPageProps) {
@@ -78,6 +80,7 @@ export function ChatPage({
   const historyEntry = useChatHistoryEntry({
     userId,
     conversationId,
+    shouldOpenLatestConversation: !createChat,
     onOpenConversation: openConversation,
   });
   const {
@@ -111,6 +114,42 @@ export function ChatPage({
     conversationId: conversationIdSearch,
     navigate,
   });
+  const linkedChatCreationStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (!createChat || conversationId !== null) {
+      linkedChatCreationStartedRef.current = false;
+      return;
+    }
+
+    if (
+      !userId ||
+      billingAccess.isCheckingAccess ||
+      !billingAccess.hasChatAccess ||
+      linkedChatCreationStartedRef.current
+    ) {
+      return;
+    }
+
+    linkedChatCreationStartedRef.current = true;
+    void createNewChat().then((created) => {
+      if (!created) {
+        void navigate({
+          to: "/chat",
+          search: {},
+          replace: true,
+        });
+      }
+    });
+  }, [
+    billingAccess.hasChatAccess,
+    billingAccess.isCheckingAccess,
+    conversationId,
+    createChat,
+    createNewChat,
+    navigate,
+    userId,
+  ]);
   const historyState = getChatHistoryListState({
     conversations: historyEntry.conversations,
     activeConversationId: conversationId,
@@ -136,7 +175,10 @@ export function ChatPage({
 
   const hasChatAccess = billingAccess.hasChatAccess;
   const isComposerDisabled =
-    isSubmitting || billingAccess.isCheckingAccess || !hasChatAccess;
+    isSubmitting ||
+    billingAccess.isCheckingAccess ||
+    !hasChatAccess ||
+    Boolean(createChat && conversationId === null);
   const showBillingAccessPanel = billingAccess.accessState !== "ready";
 
   async function handleNewChat() {

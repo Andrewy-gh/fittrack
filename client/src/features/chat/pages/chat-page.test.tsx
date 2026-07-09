@@ -49,6 +49,42 @@ describe("ChatRouteComponent", () => {
     expect(mockGetConversation).not.toHaveBeenCalled();
   });
 
+  it("creates a fresh conversation when entering from a chat navigation link", async () => {
+    mockSearch.conversationId = undefined;
+    mockSearch.createChat = true;
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 72,
+          title: "Leg day plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+          last_message_at: "2026-06-25T17:05:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    mockCreateConversation.mockResolvedValue({
+      id: 73,
+      created_at: "2026-06-26T17:00:00Z",
+      updated_at: "2026-06-26T17:00:00Z",
+    });
+
+    render(<ChatRouteComponent />);
+
+    await waitFor(() => {
+      expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "73" },
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: { conversationId: "72" },
+      }),
+    );
+  });
+
   it("does not auto-open stale history after the signed-in user changes", async () => {
     mockSearch.conversationId = undefined;
     let resolveNextHistory!: (value: Array<Record<string, unknown>>) => void;

@@ -3,6 +3,7 @@ import { ChatPage } from "@/features/chat/pages/chat-page";
 
 type ChatSearch = {
   conversationId?: string;
+  createChat?: true;
   checkout?: "success" | "cancelled";
   billing?: "cancelled" | "portal-return";
 };
@@ -10,6 +11,7 @@ type ChatSearch = {
 export const Route = createFileRoute("/_layout/chat")({
   validateSearch: (search): ChatSearch => ({
     conversationId: normalizeConversationSearchValue(search.conversationId),
+    createChat: normalizeCreateChatSearchValue(search.createChat),
     checkout: normalizeCheckoutSearchValue(search.checkout),
     billing: normalizeBillingSearchValue(search.billing),
   }),
@@ -25,10 +27,15 @@ function RouteComponent() {
       userId={user?.id}
       conversationId={parseConversationId(search.conversationId)}
       conversationIdSearch={search.conversationId}
+      createChat={search.createChat}
       checkout={search.checkout}
       billing={search.billing}
     />
   );
+}
+
+function normalizeCreateChatSearchValue(value: unknown): true | undefined {
+  return value === true || value === "true" ? true : undefined;
 }
 
 function parseConversationId(value?: string): number | null {
