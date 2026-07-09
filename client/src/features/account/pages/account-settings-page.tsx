@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
-import { useNavigate } from "@tanstack/react-router";
-import { CreditCard, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { CreditCard, Dumbbell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteAccount } from "@/features/account/api/account";
 import { clearCurrentDeviceAccountState } from "@/features/account/utils/current-device-state";
@@ -101,6 +101,29 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
           Manage billing separately from destructive account deletion.
         </p>
       </header>
+
+      <section className="rounded-lg border bg-card p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Training Profile
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Review and correct the durable workout preferences used by the AI
+              coach.
+            </p>
+          </div>
+          <Button
+            asChild
+            variant="outline"
+          >
+            <Link to="/settings/training-profile">
+              <Dumbbell className="size-4" />
+              Open profile
+            </Link>
+          </Button>
+        </div>
+      </section>
 
       <section className="rounded-lg border bg-card p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -241,6 +241,26 @@ export type ResponseSuccessResponse = {
   success?: boolean;
 };
 
+export type TrainingprofileProfileResponse = {
+  available_equipment?: Array<string>;
+  avoided_exercises?: Array<string>;
+  experience_level?: string;
+  movement_limitations?: Array<string>;
+  preferred_session_duration_minutes?: number;
+  primary_goal?: string;
+  usual_training_location?: string;
+};
+
+export type TrainingprofileUpdateProfileRequest = {
+  available_equipment?: Array<string>;
+  avoided_exercises?: Array<string>;
+  experience_level?: string;
+  movement_limitations?: Array<string>;
+  preferred_session_duration_minutes?: number;
+  primary_goal?: string;
+  usual_training_location?: string;
+};
+
 export type WorkoutContributionDataResponse = {
   days?: Array<WorkoutContributionDay>;
 };
@@ -1210,6 +1230,75 @@ export type GetReadyResponses = {
 };
 
 export type GetReadyResponse = GetReadyResponses[keyof GetReadyResponses];
+
+export type GetTrainingProfileData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/training-profile";
+};
+
+export type GetTrainingProfileErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetTrainingProfileError =
+  GetTrainingProfileErrors[keyof GetTrainingProfileErrors];
+
+export type GetTrainingProfileResponses = {
+  /**
+   * OK
+   */
+  200: TrainingprofileProfileResponse;
+};
+
+export type GetTrainingProfileResponse =
+  GetTrainingProfileResponses[keyof GetTrainingProfileResponses];
+
+export type PutTrainingProfileData = {
+  /**
+   * Training profile
+   */
+  body: TrainingprofileUpdateProfileRequest;
+  path?: never;
+  query?: never;
+  url: "/training-profile";
+};
+
+export type PutTrainingProfileErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type PutTrainingProfileError =
+  PutTrainingProfileErrors[keyof PutTrainingProfileErrors];
+
+export type PutTrainingProfileResponses = {
+  /**
+   * OK
+   */
+  200: TrainingprofileProfileResponse;
+};
+
+export type PutTrainingProfileResponse =
+  PutTrainingProfileResponses[keyof PutTrainingProfileResponses];
 
 export type GetWorkoutsData = {
   body?: never;

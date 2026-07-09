@@ -19,6 +19,7 @@ import {
   getFeaturesAccess,
   getHealth,
   getReady,
+  getTrainingProfile,
   getWorkouts,
   getWorkoutsById,
   getWorkoutsContributionData,
@@ -34,6 +35,7 @@ import {
   postAiConversationsByIdMessagesRecover,
   postExercises,
   postWorkouts,
+  putTrainingProfile,
   putWorkoutsById,
 } from "../sdk.gen";
 import type {
@@ -67,6 +69,9 @@ import type {
   GetReadyData,
   GetReadyError,
   GetReadyResponse,
+  GetTrainingProfileData,
+  GetTrainingProfileError,
+  GetTrainingProfileResponse,
   GetWorkoutsByIdData,
   GetWorkoutsByIdError,
   GetWorkoutsByIdResponse,
@@ -106,6 +111,9 @@ import type {
   PostWorkoutsData,
   PostWorkoutsError,
   PostWorkoutsResponse,
+  PutTrainingProfileData,
+  PutTrainingProfileError,
+  PutTrainingProfileResponse,
   PutWorkoutsByIdData,
   PutWorkoutsByIdError,
 } from "../types.gen";
@@ -675,6 +683,65 @@ export const getReadyQueryOptions = (options?: Options<GetReadyData>) =>
     },
     queryKey: getReadyQueryKey(options),
   });
+
+export const getTrainingProfileQueryKey = (
+  options?: Options<GetTrainingProfileData>,
+) => createQueryKey("getTrainingProfile", options, false, ["training-profile"]);
+
+/**
+ * Get training profile
+ *
+ * Returns the authenticated user's durable AI training profile. First-time users receive an empty profile shape.
+ */
+export const getTrainingProfileQueryOptions = (
+  options?: Options<GetTrainingProfileData>,
+) =>
+  queryOptions<
+    GetTrainingProfileResponse,
+    GetTrainingProfileError,
+    GetTrainingProfileResponse,
+    ReturnType<typeof getTrainingProfileQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getTrainingProfile({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getTrainingProfileQueryKey(options),
+  });
+
+/**
+ * Update training profile
+ *
+ * Replaces the authenticated user's durable AI training profile with the full submitted document.
+ */
+export const putTrainingProfileMutation = (
+  options?: Partial<Options<PutTrainingProfileData>>,
+): UseMutationOptions<
+  PutTrainingProfileResponse,
+  PutTrainingProfileError,
+  Options<PutTrainingProfileData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PutTrainingProfileResponse,
+    PutTrainingProfileError,
+    Options<PutTrainingProfileData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await putTrainingProfile({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
 
 export const getWorkoutsQueryKey = (options?: Options<GetWorkoutsData>) =>
   createQueryKey("getWorkouts", options, false, ["workouts"]);
