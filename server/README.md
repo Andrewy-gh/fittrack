@@ -327,6 +327,9 @@ make run               # Run the compiled binary
 make swagger           # Generate OpenAPI documentation
 make sqlc              # Generate SQL code from query.sql
 make test              # Run all tests
+make test-fast         # Run the quick short suite without the DB package
+make test-short        # Start the local DB and run the short suite
+make test-integration  # Start the local DB and run the full suite with integration tests
 make vet               # Run go vet
 make migrate-up        # Apply all pending migrations
 make migrate-down      # Rollback last migration
@@ -334,4 +337,6 @@ make migrate-create    # Create a new migration file (NAME=<name>)
 make docker-down       # Stop PostgreSQL container
 make clean             # Clean build files and cache
 ```
+
+Use `make test` for the full Go suite without local DB setup, and `make test-fast` for the quick no-DB-package short-mode check used by pre-commit. Use `make test-short` when you need the local DB boot and migrations but still want short-mode tests, and use `make test-integration` when you need DB-backed integration tests because it runs the full suite without `-short`.
 
