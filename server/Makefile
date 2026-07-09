@@ -1,4 +1,4 @@
-.PHONY: help build clean docker-down migrate-create migrate-up migrate-down sqlc swagger run test test-fast test-short vet dev
+.PHONY: help build clean docker-down migrate-create migrate-up migrate-down sqlc swagger run test test-fast test-db-ready test-short test-integration vet dev
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -19,6 +19,7 @@ DB_READY_TIMEOUT ?= 90
 AIR_CMD ?= air
 DB_DATA_DIR ?= _db-data
 ENV_FILE ?= setenv.sh
+TEST_DB_ENV_FILE ?= /tmp/fittrack-test-db.env
 
 help:
 	@echo "Available commands:"
@@ -27,7 +28,8 @@ help:
 	@echo "  docker-down  - Stop Docker containers"
 	@echo "  run          - Run the application"
 	@echo "  test-fast    - Quick local check for server code changes (no DB package)"
-	@echo "  test-short   - Use before push for DB/integration-impacting server changes"
+	@echo "  test-short   - Use before push for DB-impacting server changes (integration tests are skipped; see test-integration)"
+	@echo "  test-integration - Start local DB and run full server suite with integration tests"
 	@echo "  test         - Full verbose suite (deep local check / CI parity)"
 	@echo "  vet          - Run go vet"
 	@echo "  migrate-up   - Run database migrations up"
@@ -92,7 +94,7 @@ test-fast: ## Run fast test suite without DB integration package
 	fi; \
 	$(GOTEST) -short $$pkgs
 
-test-short: ## Start local DB and run short test suite
+test-db-ready: ## Prepare local test DB for server tests
 	@echo "==> Starting database container: $(DB_SERVICE)"
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "ERROR: docker is not installed or not on PATH."; \
@@ -100,7 +102,7 @@ test-short: ## Start local DB and run short test suite
 	fi
 	@if [ ! -f "$(ENV_FILE)" ]; then \
 		echo "ERROR: expected env file at $$(pwd)/$(ENV_FILE)"; \
-		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running make test-short."; \
+		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running DB-backed test targets."; \
 		exit 1; \
 	fi
 	. ./$(ENV_FILE); \
@@ -170,8 +172,17 @@ test-short: ## Start local DB and run short test suite
 	echo "==> PostgreSQL credentials verified"; \
 	echo "==> Applying migrations"; \
 	goose -dir migrations postgres "$$db_url" up; \
+	printf 'DATABASE_URL=%q\n' "$$db_url" > "$(TEST_DB_ENV_FILE)"
+
+test-short: test-db-ready ## Start local DB and run short test suite (integration tests are skipped; see test-integration)
+	@. "$(TEST_DB_ENV_FILE)"; \
 	echo "==> Running go test -short ./..."; \
-	DATABASE_URL="$$db_url" $(GOTEST) -short ./...
+	DATABASE_URL="$$DATABASE_URL" $(GOTEST) -short ./...
+
+test-integration: test-db-ready ## Start local DB and run full server suite with integration tests
+	@. "$(TEST_DB_ENV_FILE)"; \
+	echo "==> Running go test ./..."; \
+	DATABASE_URL="$$DATABASE_URL" $(GOTEST) ./...
 
 vet:
 	$(GOCMD) vet -v ./...
