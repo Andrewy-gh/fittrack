@@ -8,6 +8,7 @@ import {
 
 import { client } from "../client.gen";
 import {
+  deleteAiConversationsById,
   deleteExercisesById,
   deleteWorkoutsById,
   getAiConversations,
@@ -39,6 +40,8 @@ import {
   putWorkoutsById,
 } from "../sdk.gen";
 import type {
+  DeleteAiConversationsByIdData,
+  DeleteAiConversationsByIdError,
   DeleteExercisesByIdData,
   DeleteExercisesByIdError,
   DeleteWorkoutsByIdData,
@@ -265,6 +268,35 @@ export const postAiConversationsMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await postAiConversations({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Delete AI chat conversation
+ *
+ * Deletes an AI chat conversation and its associated messages, runs, and stream chunks. Only the owner can delete it, and active streams must finish first.
+ */
+export const deleteAiConversationsByIdMutation = (
+  options?: Partial<Options<DeleteAiConversationsByIdData>>,
+): UseMutationOptions<
+  unknown,
+  DeleteAiConversationsByIdError,
+  Options<DeleteAiConversationsByIdData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    DeleteAiConversationsByIdError,
+    Options<DeleteAiConversationsByIdData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await deleteAiConversationsById({
         ...options,
         ...fnOptions,
         throwOnError: true,

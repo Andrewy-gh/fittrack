@@ -20,6 +20,7 @@ type chatService interface {
 	CreateConversation(ctx context.Context) (*Conversation, error)
 	ListConversations(ctx context.Context) ([]ConversationSummary, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
+	DeleteConversation(ctx context.Context, conversationID int32) error
 	SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error)
 	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
@@ -210,6 +211,34 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	if err := response.JSON(w, http.StatusOK, detail); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 	}
+}
+
+// DeleteConversation godoc
+// @Summary Delete AI chat conversation
+// @Description Deletes an AI chat conversation and its associated messages, runs, and stream chunks. Only the owner can delete it, and active streams must finish first.
+// @Tags ai-chat
+// @Security StackAuth
+// @Param id path int true "Conversation ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 404 {object} response.Error
+// @Failure 409 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations/{id} [delete]
+func (h *Handler) DeleteConversation(w http.ResponseWriter, r *http.Request) {
+	conversationID, ok := h.decodeConversationID(w, r)
+	if !ok {
+		return
+	}
+
+	if err := h.service.DeleteConversation(r.Context(), conversationID); err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to delete ai chat conversation")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // SaveLatestWorkoutDraft godoc

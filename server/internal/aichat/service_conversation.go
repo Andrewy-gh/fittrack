@@ -122,6 +122,25 @@ func (s *Service) GetConversation(ctx context.Context, conversationID int32) (*C
 	}, nil
 }
 
+func (s *Service) DeleteConversation(ctx context.Context, conversationID int32) error {
+	if err := s.ensureFeatureAccess(ctx); err != nil {
+		return err
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.DeleteConversation(ctx, conversationID, userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return newConversationNotFound(conversationID)
+		}
+		return err
+	}
+	return nil
+}
+
 func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {
 	if err := s.ensureFeatureAccess(ctx); err != nil {
 		return nil, err

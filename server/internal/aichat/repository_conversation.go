@@ -78,6 +78,56 @@ func (r *repository) GetConversation(ctx context.Context, conversationID int32, 
 	return conversation, nil
 }
 
+func (r *repository) DeleteConversation(ctx context.Context, conversationID int32, userID string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin ai chat conversation delete transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+	if _, err := qtx.GetAIChatConversationForUpdate(ctx, db.GetAIChatConversationForUpdateParams{
+		ID: conversationID, UserID: userID,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		return fmt.Errorf("lock ai chat conversation for delete: %w", err)
+	}
+
+	// Persisted streaming state is the deletion boundary. Recovery must move even
+	// an abandoned run to a terminal state before its conversation can be deleted.
+	if _, err := qtx.GetActiveAIChatRunForConversation(ctx, db.GetActiveAIChatRunForConversationParams{
+		ConversationID: conversationID, UserID: userID,
+	}); err == nil {
+		return ErrConversationBusy
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("check active ai chat run before delete: %w", err)
+	}
+
+	if err := qtx.ClearUserTrainingProfileConversationSource(ctx, db.ClearUserTrainingProfileConversationSourceParams{
+		UserID: userID, SourceConversationID: pgtype.Int4{Int32: conversationID, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("clear training profile source before deleting ai chat conversation: %w", err)
+	}
+
+	rows, err := qtx.DeleteAIChatConversation(ctx, db.DeleteAIChatConversationParams{ID: conversationID, UserID: userID})
+	if err != nil {
+		return fmt.Errorf("delete ai chat conversation: %w", err)
+	}
+	if rows == 0 {
+		return pgx.ErrNoRows
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit ai chat conversation delete transaction: %w", err)
+	}
+	return nil
+}
+
 func (r *repository) SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

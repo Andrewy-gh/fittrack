@@ -98,6 +98,11 @@ func (m *mockChatService) GetConversation(ctx context.Context, conversationID in
 	return detail, args.Error(1)
 }
 
+func (m *mockChatService) DeleteConversation(ctx context.Context, conversationID int32) error {
+	args := m.Called(ctx, conversationID)
+	return args.Error(0)
+}
+
 func (m *mockChatService) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {
 	args := m.Called(ctx, conversationID)
 	resp, _ := args.Get(0).(*SaveLatestWorkoutDraftResponse)
@@ -427,6 +432,52 @@ func TestHandlerGetConversation(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, rr.Code)
 		assert.Contains(t, rr.Body.String(), "ai conversation with id 41 not found")
 		service.AssertExpectations(t)
+	})
+}
+
+func TestHandlerDeleteConversation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("returns no content", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("DeleteConversation", mock.Anything, int32(41)).Return(nil).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/api/ai/conversations/41", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.DeleteConversation(rr, req)
+
+		require.Equal(t, http.StatusNoContent, rr.Code)
+		assert.Empty(t, rr.Body.String())
+		service.AssertExpectations(t)
+	})
+
+	t.Run("rejects an invalid id", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		req := httptest.NewRequest(http.MethodDelete, "/api/ai/conversations/nope", nil)
+		req.SetPathValue("id", "nope")
+		rr := httptest.NewRecorder()
+
+		handler.DeleteConversation(rr, req)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+		service.AssertNotCalled(t, "DeleteConversation", mock.Anything, mock.Anything)
+	})
+
+	t.Run("maps an active run to conflict", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("DeleteConversation", mock.Anything, int32(41)).Return(ErrConversationBusy).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/api/ai/conversations/41", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+
+		handler.DeleteConversation(rr, req)
+
+		require.Equal(t, http.StatusConflict, rr.Code)
+		assert.Contains(t, rr.Body.String(), "active run")
 	})
 }
 

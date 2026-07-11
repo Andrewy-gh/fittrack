@@ -112,6 +112,11 @@ func (m *mockRepository) GetConversation(ctx context.Context, conversationID int
 	return conversation, args.Error(1)
 }
 
+func (m *mockRepository) DeleteConversation(ctx context.Context, conversationID int32, userID string) error {
+	args := m.Called(ctx, conversationID, userID)
+	return args.Error(0)
+}
+
 func (m *mockRepository) ListConversations(ctx context.Context, userID string, limit int32) ([]ConversationSummary, error) {
 	args := m.Called(ctx, userID, limit)
 	conversations, _ := args.Get(0).([]ConversationSummary)
@@ -381,6 +386,61 @@ func TestServiceListConversations_AllowsReadWithoutRuntime(t *testing.T) {
 	runtime.AssertNotCalled(t, "Available")
 	featureAccess.AssertExpectations(t)
 	repo.AssertExpectations(t)
+}
+
+func TestServiceDeleteConversation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("deletes an owned conversation with feature access", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, new(mockRuntime), repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+		repo.On("DeleteConversation", mock.Anything, int32(41), "user-123").Return(nil).Once()
+
+		require.NoError(t, service.DeleteConversation(ctx, 41))
+		featureAccess.AssertExpectations(t)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("requires feature access", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, new(mockRuntime), repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(false, nil).Once()
+
+		assert.ErrorIs(t, service.DeleteConversation(ctx, 41), ErrFeatureDisabled)
+		repo.AssertNotCalled(t, "DeleteConversation", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("maps a missing or foreign conversation to not found", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, new(mockRuntime), repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+		repo.On("DeleteConversation", mock.Anything, int32(41), "user-123").Return(pgx.ErrNoRows).Once()
+
+		var notFound *apperrors.NotFound
+		require.ErrorAs(t, service.DeleteConversation(ctx, 41), &notFound)
+	})
+
+	t.Run("preserves active-run conflict", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, new(mockRuntime), repo, nil)
+		ctx := user.WithContext(context.Background(), "user-123")
+
+		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+		repo.On("DeleteConversation", mock.Anything, int32(41), "user-123").Return(ErrConversationBusy).Once()
+
+		assert.ErrorIs(t, service.DeleteConversation(ctx, 41), ErrConversationBusy)
+	})
 }
 
 func TestServiceGetConversation_AllowsReadWithoutRuntime(t *testing.T) {

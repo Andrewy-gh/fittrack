@@ -972,6 +972,48 @@ paths:
       tags:
       - ai-chat
   /ai/conversations/{id}:
+    delete:
+      description: Deletes an AI chat conversation and its associated messages, runs,
+        and stream chunks. Only the owner can delete it, and active streams must finish
+        first.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Delete AI chat conversation
+      tags:
+      - ai-chat
     get:
       description: Returns a persisted AI chat conversation with its messages.
       parameters:
