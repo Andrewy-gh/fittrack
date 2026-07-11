@@ -1,8 +1,14 @@
+import { useEffect } from "react";
 import { vi } from "vitest";
 import type {
   AIWorkoutDraft,
   AIWorkoutDraftStatus,
 } from "@/features/chat/api/ai-chat";
+import {
+  ChatDraftProvider,
+  useChatDraftStore,
+} from "@/features/chat/utils/chat-draft-context";
+import type { ChatDraftStore } from "@/features/chat/utils/chat-draft-store";
 
 const mocks = vi.hoisted(() => ({
   mockSearch: {
@@ -133,20 +139,43 @@ vi.mock("sonner", () => ({
 
 const { ChatPage } = await import("@/features/chat/pages/chat-page");
 
+let renderedChatDraftStore: ChatDraftStore | null = null;
+
+function CaptureChatDraftStore() {
+  const store = useChatDraftStore();
+  useEffect(() => {
+    renderedChatDraftStore = store;
+    return () => {
+      if (renderedChatDraftStore === store) renderedChatDraftStore = null;
+    };
+  }, [store]);
+  return null;
+}
+
+export function getRenderedChatDraftStore() {
+  if (!renderedChatDraftStore) {
+    throw new Error("Chat draft store has not been rendered");
+  }
+  return renderedChatDraftStore;
+}
+
 export function ChatRouteComponent({
   userId = "user-123",
 }: {
   userId?: string;
 } = {}) {
   return (
-    <ChatPage
-      userId={userId}
-      conversationId={parseConversationId(mockSearch.conversationId)}
-      conversationIdSearch={mockSearch.conversationId}
-      createChat={mockSearch.createChat}
-      checkout={mockSearch.checkout}
-      billing={mockSearch.billing}
-    />
+    <ChatDraftProvider key={userId ?? "signed-out"}>
+      <CaptureChatDraftStore />
+      <ChatPage
+        userId={userId}
+        conversationId={parseConversationId(mockSearch.conversationId)}
+        conversationIdSearch={mockSearch.conversationId}
+        createChat={mockSearch.createChat}
+        checkout={mockSearch.checkout}
+        billing={mockSearch.billing}
+      />
+    </ChatDraftProvider>
   );
 }
 
@@ -182,6 +211,7 @@ export function deferredPromise<T>() {
 }
 
 export function resetChatRouteMocks() {
+  renderedChatDraftStore = null;
   window.sessionStorage.clear();
   window.localStorage.clear();
   mockSearch.conversationId = "41";

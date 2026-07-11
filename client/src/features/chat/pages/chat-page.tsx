@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { History } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ import {
 import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
 import { useChatHistoryEntry } from "../hooks/use-chat-history-entry";
+import { useChatDraftStore } from "../utils/chat-draft-context";
+import { type ChatDraftDestination } from "../utils/chat-draft-store";
 
 type ChatCheckoutSearch = "success" | "cancelled";
 type ChatBillingSearch = "cancelled" | "portal-return";
@@ -56,7 +58,32 @@ export function ChatPage({
   checkout,
   billing,
 }: ChatPageProps) {
+  const chatDraftStore = useChatDraftStore();
   const navigate = useNavigate({ from: "/chat" });
+  const draftDestination = useMemo<ChatDraftDestination>(
+    () =>
+      conversationId === null
+        ? { type: "new" }
+        : { type: "conversation", conversationId },
+    [conversationId],
+  );
+  const initialPrompt = useMemo(
+    () => chatDraftStore.getDraft(draftDestination),
+    [draftDestination],
+  );
+  const handlePromptChange = useCallback(
+    (value: string) => chatDraftStore.setDraft(draftDestination, value),
+    [draftDestination],
+  );
+  const handlePromptStarted = useCallback((startedConversationId: number) => {
+    chatDraftStore.setDraft(
+      { type: "conversation", conversationId: startedConversationId },
+      "",
+    );
+  }, []);
+  const handleNewConversationCreated = useCallback((createdId: number) => {
+    chatDraftStore.migrateNewChatDraft(createdId);
+  }, []);
   const openConversation = useCallback(
     (
       selectedConversationId: number,
@@ -80,7 +107,7 @@ export function ChatPage({
   const historyEntry = useChatHistoryEntry({
     userId,
     conversationId,
-    shouldOpenLatestConversation: !createChat,
+    shouldOpenLatestConversation: false,
     onOpenConversation: openConversation,
   });
   const {
@@ -99,6 +126,10 @@ export function ChatPage({
     saveLatestWorkoutDraft,
   } = useAIChatSession({
     conversationId,
+    initialPrompt,
+    onPromptChange: handlePromptChange,
+    onPromptStarted: handlePromptStarted,
+    onNewConversationCreated: handleNewConversationCreated,
     onConversationCreated: async (createdConversationId) => {
       const target = {
         to: "/chat",
@@ -108,6 +139,16 @@ export function ChatPage({
       await historyEntry.refreshConversations();
     },
   });
+
+  useEffect(() => {
+    if (conversationId !== null || createChat || !userId) return;
+    const destination = chatDraftStore.resolveMainDestination();
+    if (destination.type === "conversation") {
+      openConversation(destination.conversationId, { replace: true });
+      return;
+    }
+    void navigate({ to: "/chat", search: { createChat: true }, replace: true });
+  }, [conversationId, createChat, navigate, openConversation, userId]);
   const billingAccess = useAIChatBillingAccess({
     userId,
     checkout,
@@ -148,7 +189,8 @@ export function ChatPage({
       return;
     }
 
-    resetConversation();
+    chatDraftStore.startNewChat();
+    resetConversation("");
     void navigate({
       to: "/chat",
       search: { createChat: true },
@@ -156,6 +198,7 @@ export function ChatPage({
   }
 
   function handleResumeConversation(selectedConversationId: number) {
+    chatDraftStore.openConversation(selectedConversationId);
     openConversation(selectedConversationId);
   }
 

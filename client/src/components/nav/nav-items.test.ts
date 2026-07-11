@@ -9,7 +9,7 @@ describe("navItems", () => {
       { to: "/workouts", label: "Workouts", search: undefined },
       { to: "/exercises", label: "Exercises", search: undefined },
       { to: "/analytics", label: "Analytics", search: undefined },
-      { to: "/chat", label: "AI Chat", search: { createChat: true } },
+      { to: "/chat", label: "AI Chat", search: undefined },
     ]);
   });
 });

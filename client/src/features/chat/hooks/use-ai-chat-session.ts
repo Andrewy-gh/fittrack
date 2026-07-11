@@ -12,18 +12,26 @@ import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../util
 
 type UseAIChatSessionOptions = {
   conversationId: number | null;
+  initialPrompt: string;
+  onPromptChange: (prompt: string) => void;
+  onPromptStarted: (conversationId: number) => void;
+  onNewConversationCreated: (conversationId: number) => void;
   onConversationCreated: (conversationId: number) => Promise<void>;
 };
 
 export function useAIChatSession({
   conversationId,
+  initialPrompt,
+  onPromptChange,
+  onPromptStarted,
+  onNewConversationCreated,
   onConversationCreated,
 }: UseAIChatSessionOptions) {
   const [conversation, setConversation] = useState<AIChatConversation | null>(
     null,
   );
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPromptState] = useState(initialPrompt);
   const [isLoadingConversation, setIsLoadingConversation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -36,7 +44,16 @@ export function useAIChatSession({
   const recoveryAbortRef = useRef<AbortController | null>(null);
   const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
-  const onConversationCreatedRef = useRef(onConversationCreated);
+  const callbacksRef = useRef({
+    onPromptChange,
+    onPromptStarted,
+    onNewConversationCreated,
+    onConversationCreated,
+  });
+  const setPrompt = useCallback((value: string) => {
+    setPromptState(value);
+    callbacksRef.current.onPromptChange(value);
+  }, []);
 
   const refs = useMemo<ChatSessionRefs>(
     () => ({
@@ -53,7 +70,7 @@ export function useAIChatSession({
     () => ({
       setConversation,
       setMessages,
-      setPrompt,
+      setPrompt: setPromptState,
       setIsLoadingConversation,
       setIsSubmitting,
       setLoadError,
@@ -64,12 +81,34 @@ export function useAIChatSession({
   );
 
   useEffect(() => {
-    onConversationCreatedRef.current = onConversationCreated;
-  }, [onConversationCreated]);
+    callbacksRef.current = {
+      onPromptChange,
+      onPromptStarted,
+      onNewConversationCreated,
+      onConversationCreated,
+    };
+  }, [
+    onConversationCreated,
+    onNewConversationCreated,
+    onPromptChange,
+    onPromptStarted,
+  ]);
+
+  const handlePromptStarted = useCallback(
+    (conversationId: number) =>
+      callbacksRef.current.onPromptStarted(conversationId),
+    [],
+  );
+
+  const handleNewConversationCreated = useCallback(
+    (conversationId: number) =>
+      callbacksRef.current.onNewConversationCreated(conversationId),
+    [],
+  );
 
   const handleConversationCreated = useCallback(
     (createdConversationId: number) =>
-      onConversationCreatedRef.current(createdConversationId),
+      callbacksRef.current.onConversationCreated(createdConversationId),
     [],
   );
 
@@ -79,13 +118,22 @@ export function useAIChatSession({
         refs,
         setters,
         onConversationCreated: handleConversationCreated,
+        onPromptStarted: handlePromptStarted,
+        onNewConversationCreated: handleNewConversationCreated,
       }),
-    [handleConversationCreated, refs, setters],
+    [
+      handleConversationCreated,
+      handleNewConversationCreated,
+      handlePromptStarted,
+      refs,
+      setters,
+    ],
   );
 
   useEffect(() => {
+    setters.setPrompt(initialPrompt);
     if (!conversationId) {
-      lifecycle.resetConversation();
+      lifecycle.resetConversation(initialPrompt);
       return;
     }
 
@@ -94,7 +142,7 @@ export function useAIChatSession({
     return () => {
       lifecycle.abortActiveRequests();
     };
-  }, [conversationId, lifecycle]);
+  }, [conversationId, initialPrompt, lifecycle]);
 
   const submitPrompt = useCallback(
     () =>

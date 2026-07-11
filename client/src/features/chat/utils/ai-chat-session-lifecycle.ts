@@ -21,6 +21,8 @@ type AIChatSessionLifecycleOptions = {
   refs: ChatSessionRefs;
   setters: ChatSessionSetters;
   onConversationCreated: (conversationId: number) => Promise<void>;
+  onPromptStarted: (conversationId: number) => void;
+  onNewConversationCreated: (conversationId: number) => void;
 };
 
 type SubmitPromptOptions = {
@@ -33,6 +35,8 @@ export function createAIChatSessionLifecycle({
   refs,
   setters,
   onConversationCreated,
+  onPromptStarted,
+  onNewConversationCreated,
 }: AIChatSessionLifecycleOptions) {
   const recordTelemetry = (event: AIChatTelemetryEvent) => {
     void Promise.resolve(reportAIChatTelemetry(event)).catch((error) => {
@@ -62,11 +66,11 @@ export function createAIChatSessionLifecycle({
     refs.streamAbortRef.current?.abort();
   };
 
-  const resetConversation = () => {
+  const resetConversation = (prompt = "") => {
     abortActiveRequests();
     setters.setConversation(null);
     setters.setMessages([]);
-    setters.setPrompt("");
+    setters.setPrompt(prompt);
     setters.setLatestWorkoutDraftMessageId(null);
     setters.setLoadError(null);
     setters.setIsLoadingConversation(false);
@@ -105,6 +109,8 @@ export function createAIChatSessionLifecycle({
       prompt,
       isSubmitting,
       onConversationCreated,
+      onPromptStarted,
+      onNewConversationCreated,
       loadConversation,
       recoverConversation,
       recordTelemetry,
