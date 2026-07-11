@@ -1125,6 +1125,10 @@ FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2
 FOR UPDATE;
 
+-- name: DeleteAIChatConversation :execrows
+DELETE FROM ai_chat_conversation
+WHERE id = $1 AND user_id = $2;
+
 -- name: ListAIChatConversationsByUser :many
 SELECT
     id,

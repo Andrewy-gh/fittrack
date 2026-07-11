@@ -3,6 +3,9 @@
 import type { Client, Options as Options2, TDataShape } from "./client";
 import { client } from "./client.gen";
 import type {
+  DeleteAiConversationsByIdData,
+  DeleteAiConversationsByIdErrors,
+  DeleteAiConversationsByIdResponses,
   DeleteExercisesByIdData,
   DeleteExercisesByIdErrors,
   DeleteExercisesByIdResponses,
@@ -221,6 +224,24 @@ export const postAiConversations = <ThrowOnError extends boolean = false>(
   >({
     security: [{ name: "x-stack-access-token", type: "apiKey" }],
     url: "/ai/conversations",
+    ...options,
+  });
+
+/**
+ * Delete AI chat conversation
+ *
+ * Deletes an AI chat conversation and its associated messages, runs, and stream chunks. Only the owner can delete it, and active streams must finish first.
+ */
+export const deleteAiConversationsById = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteAiConversationsByIdData, ThrowOnError>,
+) =>
+  (options.client ?? client).delete<
+    DeleteAiConversationsByIdResponses,
+    DeleteAiConversationsByIdErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/ai/conversations/{id}",
     ...options,
   });
 

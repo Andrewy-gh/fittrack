@@ -558,6 +558,55 @@ export type PostAiConversationsResponses = {
 export type PostAiConversationsResponse =
   PostAiConversationsResponses[keyof PostAiConversationsResponses];
 
+export type DeleteAiConversationsByIdData = {
+  body?: never;
+  path: {
+    /**
+     * Conversation ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/ai/conversations/{id}";
+};
+
+export type DeleteAiConversationsByIdErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseError;
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Forbidden
+   */
+  403: ResponseError;
+  /**
+   * Not Found
+   */
+  404: ResponseError;
+  /**
+   * Conflict
+   */
+  409: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+};
+
+export type DeleteAiConversationsByIdError =
+  DeleteAiConversationsByIdErrors[keyof DeleteAiConversationsByIdErrors];
+
+export type DeleteAiConversationsByIdResponses = {
+  /**
+   * No Content
+   */
+  204: unknown;
+};
+
 export type GetAiConversationsByIdData = {
   body?: never;
   path: {

@@ -503,6 +503,24 @@ func (q *Queries) CreateWorkout(ctx context.Context, arg CreateWorkoutParams) (i
 	return id, err
 }
 
+const deleteAIChatConversation = `-- name: DeleteAIChatConversation :execrows
+DELETE FROM ai_chat_conversation
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteAIChatConversationParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) DeleteAIChatConversation(ctx context.Context, arg DeleteAIChatConversationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAIChatConversation, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteExercise = `-- name: DeleteExercise :exec
 DELETE FROM exercise WHERE id = $1 AND user_id = $2
 `

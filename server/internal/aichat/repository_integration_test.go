@@ -384,6 +384,53 @@ func TestRepositoryListConversations_OrdersByRecentActivityAndScopesToUser(t *te
 	assert.Nil(t, conversations[0].LastMessageAt)
 }
 
+func TestRepositoryDeleteConversation_CascadesAndRejectsActiveRun(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-delete-conversation-user"
+	const otherUserID = "aichat-delete-conversation-other-user"
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+	seedAIChatRepositoryTestUser(t, pool, otherUserID)
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "hello", defaultModelName, "req-delete")
+	require.NoError(t, err)
+
+	assert.ErrorIs(t, repo.DeleteConversation(ctx, conversation.ID, userID), ErrConversationBusy)
+	_, err = repo.GetConversation(ctx, conversation.ID, userID)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.FailRun(ctx, prepared, "partial", errors.New("finished before delete"), time.Now().UTC()))
+	assert.ErrorIs(t, repo.DeleteConversation(ctx, conversation.ID, otherUserID), pgx.ErrNoRows)
+	require.NoError(t, repo.DeleteConversation(ctx, conversation.ID, userID))
+
+	_, err = repo.GetConversation(ctx, conversation.ID, userID)
+	assert.ErrorIs(t, err, pgx.ErrNoRows)
+	for table, column := range map[string]string{
+		"ai_chat_message": "conversation_id",
+		"ai_chat_run":     "conversation_id",
+	} {
+		var count int
+		require.NoError(t, pool.QueryRow(ctx, "SELECT COUNT(*) FROM "+table+" WHERE "+column+" = $1", conversation.ID).Scan(&count))
+		assert.Zero(t, count, table)
+	}
+	var chunkCount int
+	require.NoError(t, pool.QueryRow(ctx, "SELECT COUNT(*) FROM ai_chat_stream_chunk WHERE run_id = $1", prepared.Run.ID).Scan(&chunkCount))
+	assert.Zero(t, chunkCount)
+
+}
+
 func TestRepositoryListConversations_AppliesLimit(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping database-backed AI chat repository test in short mode")

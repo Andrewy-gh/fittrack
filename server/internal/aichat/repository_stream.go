@@ -64,7 +64,7 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 
 	qtx := r.queries.WithTx(tx)
 
-	conversationRow, err := qtx.GetAIChatConversation(ctx, db.GetAIChatConversationParams{
+	conversationRow, err := qtx.GetAIChatConversationForUpdate(ctx, db.GetAIChatConversationForUpdateParams{
 		ID:     conversationID,
 		UserID: userID,
 	})
@@ -72,7 +72,7 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("get ai chat conversation for stream: %w", err)
+		return nil, fmt.Errorf("lock ai chat conversation for stream: %w", err)
 	}
 
 	conversation, err := mapConversation(conversationRow)
