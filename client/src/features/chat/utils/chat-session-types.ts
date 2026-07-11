@@ -33,6 +33,7 @@ export type ChatSessionSetters = {
   setLoadError: Dispatch<SetStateAction<string | null>>;
   setIsSavingWorkoutDraft: Dispatch<SetStateAction<boolean>>;
   setLatestWorkoutDraftMessageId: Dispatch<SetStateAction<number | null>>;
+  setActiveRunId: Dispatch<SetStateAction<number | null>>;
 };
 
 export type RecordChatTelemetry = (event: AIChatTelemetryEvent) => void;

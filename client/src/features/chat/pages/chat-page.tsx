@@ -125,6 +125,7 @@ export function ChatPage({
     submitPromptValue,
     saveLatestWorkoutDraft,
     stopRun,
+    canStop,
   } = useAIChatSession({
     conversationId,
     initialPrompt,
@@ -294,7 +295,7 @@ export function ChatPage({
       value={prompt}
       onChange={setPrompt}
       onSubmit={handleSubmit}
-      onStop={() => void stopRun()}
+      onStop={canStop ? () => void stopRun() : undefined}
       disabled={isComposerDisabled}
       isSubmitting={isSubmitting}
       placeholder={COMPOSER_PLACEHOLDER}

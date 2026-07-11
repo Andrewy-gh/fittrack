@@ -10,7 +10,7 @@ import type {
 } from "../utils/chat-session-types";
 import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../utils/chat-session-workout-draft";
 import { stopAIChatRun } from "@/features/chat/api/ai-chat";
-import { clearResumeCursor, loadResumeCursor } from "../utils/chat-resume";
+import { clearResumeCursor } from "../utils/chat-resume";
 import { showErrorToast } from "@/lib/errors";
 
 type UseAIChatSessionOptions = {
@@ -41,6 +41,7 @@ export function useAIChatSession({
   const [isSavingWorkoutDraft, setIsSavingWorkoutDraft] = useState(false);
   const [latestWorkoutDraftMessageId, setLatestWorkoutDraftMessageId] =
     useState<number | null>(null);
+  const [activeRunId, setActiveRunId] = useState<number | null>(null);
 
   const pendingAssistantIdRef = useRef<number | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
@@ -79,6 +80,7 @@ export function useAIChatSession({
       setLoadError,
       setIsSavingWorkoutDraft,
       setLatestWorkoutDraftMessageId,
+      setActiveRunId,
     }),
     [],
   );
@@ -178,10 +180,9 @@ export function useAIChatSession({
 
   const stopRun = useCallback(async () => {
     if (!conversationId) return;
-    const cursor = loadResumeCursor(conversationId);
-    if (!cursor?.runId) return;
+    if (!activeRunId) return;
     try {
-      const result = await stopAIChatRun(conversationId, cursor.runId);
+      const result = await stopAIChatRun(conversationId, activeRunId);
       if (result.status === "stopped") {
         streamAbortRef.current?.abort();
         resumeAbortRef.current?.abort();
@@ -199,7 +200,7 @@ export function useAIChatSession({
     } catch (error) {
       showErrorToast(error, "Failed to stop AI chat response");
     }
-  }, [conversationId, lifecycle]);
+  }, [activeRunId, conversationId, lifecycle]);
 
   return {
     conversation,
@@ -216,5 +217,6 @@ export function useAIChatSession({
     submitPromptValue,
     saveLatestWorkoutDraft,
     stopRun,
+    canStop: activeRunId !== null,
   };
 }

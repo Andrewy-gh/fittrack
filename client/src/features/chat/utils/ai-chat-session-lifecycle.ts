@@ -72,6 +72,7 @@ export function createAIChatSessionLifecycle({
     setters.setMessages([]);
     setters.setPrompt(prompt);
     setters.setLatestWorkoutDraftMessageId(null);
+    setters.setActiveRunId(null);
     setters.setLoadError(null);
     setters.setIsLoadingConversation(false);
   };
@@ -86,6 +87,7 @@ export function createAIChatSessionLifecycle({
     });
 
     if (loadResult.detail?.active_run) {
+      setters.setActiveRunId(loadResult.detail.active_run.id);
       await resumeOrRecoverActiveRun(conversationId, loadResult.detail);
       return;
     }

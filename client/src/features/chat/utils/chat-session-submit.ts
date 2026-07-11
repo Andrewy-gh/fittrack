@@ -139,6 +139,7 @@ export async function submitPrompt({
             sequence: event.sequence ?? 0,
             assistantMessageId,
           });
+          setters.setActiveRunId(event.run_id ?? null);
         },
         onDelta: (event) => {
           const targetId =
@@ -254,6 +255,7 @@ export async function submitPrompt({
     }
     refs.pendingAssistantIdRef.current = null;
     setters.setIsSubmitting(false);
+    setters.setActiveRunId(null);
   }
 
   if (shouldRefreshConversation) {
