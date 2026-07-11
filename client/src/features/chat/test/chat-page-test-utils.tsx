@@ -3,6 +3,7 @@ import type {
   AIWorkoutDraft,
   AIWorkoutDraftStatus,
 } from "@/features/chat/api/ai-chat";
+import { chatDraftStore } from "@/features/chat/utils/chat-draft-store";
 
 const mocks = vi.hoisted(() => ({
   mockSearch: {
@@ -182,6 +183,7 @@ export function deferredPromise<T>() {
 }
 
 export function resetChatRouteMocks() {
+  chatDraftStore.clear();
   window.sessionStorage.clear();
   window.localStorage.clear();
   mockSearch.conversationId = "41";

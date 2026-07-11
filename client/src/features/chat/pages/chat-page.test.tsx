@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
+import { chatDraftStore } from "../utils/chat-draft-store";
 import {
   ChatRouteComponent,
   conversationDetail,
@@ -22,7 +23,7 @@ import {
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
 
-  it("opens the newest recent chat when entering without a conversation id", async () => {
+  it("opens blank New Chat when entering without an eligible draft", async () => {
     mockSearch.conversationId = undefined;
     mockListConversations.mockResolvedValue([
       {
@@ -40,13 +41,11 @@ describe("ChatRouteComponent", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({
         to: "/chat",
-        search: { conversationId: "72" },
+        search: { createChat: true },
         replace: true,
       });
     });
-    expect(
-      screen.queryByText("What should we train today?"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("What should we train today?")).toBeInTheDocument();
     expect(mockGetConversation).not.toHaveBeenCalled();
   });
 
@@ -110,7 +109,7 @@ describe("ChatRouteComponent", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({
         to: "/chat",
-        search: { conversationId: "72" },
+        search: { createChat: true },
         replace: true,
       });
     });
@@ -119,7 +118,11 @@ describe("ChatRouteComponent", () => {
     view.rerender(<ChatRouteComponent userId="user-456" />);
 
     expect(screen.queryByText("Leg day plan")).not.toBeInTheDocument();
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { createChat: true },
+      replace: true,
+    });
 
     resolveNextHistory([
       {
@@ -132,13 +135,9 @@ describe("ChatRouteComponent", () => {
     ]);
 
     expect(await screen.findByText("Back day plan")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/chat",
-        search: { conversationId: "88" },
-        replace: true,
-      });
-    });
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ search: { conversationId: "88" } }),
+    );
   });
 
   it("opens a blank draft from chat history without persisting it", async () => {
@@ -268,6 +267,9 @@ describe("ChatRouteComponent", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    expect(
+      chatDraftStore.getDraft({ type: "conversation", conversationId: 73 }),
+    ).toBe("");
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/chat",
       search: { conversationId: "73" },
@@ -524,6 +526,9 @@ describe("ChatRouteComponent", () => {
         "Ask about training, recovery, exercise choices, or FitTrack usage...",
       ),
     ).toHaveValue("hello");
+    expect(
+      chatDraftStore.getDraft({ type: "conversation", conversationId: 41 }),
+    ).toBe("hello");
   });
 
   it("keeps the prompt visible and shows the recovery failure when submit recovery fails before stream start", async () => {

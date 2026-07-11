@@ -31,6 +31,8 @@ type SubmitPromptOptions = {
   prompt: string;
   isSubmitting: boolean;
   onConversationCreated: (conversationId: number) => Promise<void>;
+  onPromptStarted: (conversationId: number) => void;
+  onNewConversationCreated: (conversationId: number) => void;
   loadConversation: LoadConversation;
   recoverConversation: RecoverConversation;
   recordTelemetry: RecordChatTelemetry;
@@ -43,6 +45,8 @@ export async function submitPrompt({
   prompt,
   isSubmitting,
   onConversationCreated,
+  onPromptStarted,
+  onNewConversationCreated,
   loadConversation,
   recoverConversation,
   recordTelemetry,
@@ -63,6 +67,7 @@ export async function submitPrompt({
     if (!activeConversationId) {
       const createdConversation = await createAIChatConversation();
       activeConversationId = createdConversation.id;
+      onNewConversationCreated(activeConversationId);
       setters.setConversation(createdConversation);
       await onConversationCreated(activeConversationId);
     }
@@ -119,6 +124,7 @@ export async function submitPrompt({
       {
         onStart: (event) => {
           streamStarted = true;
+          onPromptStarted(activeConversationId);
           const assistantMessageId = event.message_id ?? tempAssistantId;
           refs.pendingAssistantIdRef.current = assistantMessageId;
           setters.setMessages((current) =>

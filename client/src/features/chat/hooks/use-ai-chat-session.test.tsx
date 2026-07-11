@@ -72,6 +72,10 @@ function renderSession(conversationId: number | null = 41) {
     ({ id }) =>
       useAIChatSession({
         conversationId: id,
+        initialPrompt: "",
+        onPromptChange: vi.fn(),
+        onPromptStarted: vi.fn(),
+        onNewConversationCreated: vi.fn(),
         onConversationCreated: vi.fn().mockResolvedValue(undefined),
       }),
     {

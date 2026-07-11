@@ -13,6 +13,6 @@ export const navItems = [
     to: "/chat",
     label: "AI Chat",
     icon: Bot,
-    search: { createChat: true },
+    search: undefined,
   },
 ] as const;
