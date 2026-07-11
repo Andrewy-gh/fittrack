@@ -44,6 +44,7 @@ type Repository interface {
 	InterruptRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, reason string, completedAt time.Time) error
 	CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error)
 	FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error
+	StopRun(ctx context.Context, conversationID, runID int32, userID string, stoppedAt time.Time) (*StopRunResponse, error)
 }
 
 type repository struct {

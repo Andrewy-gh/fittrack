@@ -68,6 +68,16 @@ func (h *Handler) decodeConversationID(w http.ResponseWriter, r *http.Request) (
 	return int32(parsed), true
 }
 
+func (h *Handler) decodePositivePathID(w http.ResponseWriter, r *http.Request, key, label string) (int32, bool) {
+	raw := r.PathValue(key)
+	parsed, err := strconv.ParseInt(raw, 10, 32)
+	if err != nil || parsed <= 0 {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "invalid "+label, err)
+		return 0, false
+	}
+	return int32(parsed), true
+}
+
 func (h *Handler) decodeResumeStreamQuery(w http.ResponseWriter, r *http.Request) (int32, int32, bool) {
 	rawRunID := strings.TrimSpace(r.URL.Query().Get("runId"))
 	if rawRunID == "" {

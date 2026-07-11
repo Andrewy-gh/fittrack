@@ -202,6 +202,12 @@ func (m *mockRepository) FailRun(ctx context.Context, prepared *PreparedMessageS
 	return args.Error(0)
 }
 
+func (m *mockRepository) StopRun(ctx context.Context, conversationID, runID int32, userID string, stoppedAt time.Time) (*StopRunResponse, error) {
+	args := m.Called(ctx, conversationID, runID, userID, stoppedAt)
+	result, _ := args.Get(0).(*StopRunResponse)
+	return result, args.Error(1)
+}
+
 type mockRecoveryDispatcher struct {
 	mock.Mock
 }

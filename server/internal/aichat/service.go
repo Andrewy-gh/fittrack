@@ -3,6 +3,7 @@ package aichat
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
@@ -31,6 +32,8 @@ type Service struct {
 	repo              Repository
 	recovery          recoveryDispatcher
 	workoutDraftSaver workout.TxSaver
+	cancelMu          sync.Mutex
+	runCancels        map[int32]context.CancelFunc
 }
 
 const (
@@ -47,6 +50,7 @@ func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime
 		runtime:           runtime,
 		repo:              repo,
 		workoutDraftSaver: workoutDraftSaver,
+		runCancels:        make(map[int32]context.CancelFunc),
 	}
 }
 

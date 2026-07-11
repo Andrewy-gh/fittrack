@@ -17,6 +17,7 @@ const (
 	statusStreaming = "streaming"
 	statusCompleted = "completed"
 	statusFailed    = "failed"
+	statusStopped   = "stopped"
 )
 
 var (
@@ -248,6 +249,16 @@ type StreamDone struct {
 	Sequence       int32                         `json:"sequence,omitempty"`
 	WorkoutDraft   *workout.CreateWorkoutRequest `json:"workout_draft,omitempty"`
 	ToolCalls      []string                      `json:"tool_calls,omitempty"`
+	Status         string                        `json:"status,omitempty"`
+}
+
+type StopRunResponse struct {
+	ConversationID int32  `json:"conversation_id"`
+	RunID          int32  `json:"run_id"`
+	MessageID      int32  `json:"message_id"`
+	Status         string `json:"status"`
+	Text           string `json:"text"`
+	Sequence       int32  `json:"sequence"`
 }
 
 type StreamChunk struct {
@@ -264,6 +275,7 @@ type ConversationRunView struct {
 
 type StreamEvent struct {
 	Type           string                        `json:"type"`
+	Status         string                        `json:"status,omitempty"`
 	RequestID      string                        `json:"request_id,omitempty"`
 	ConversationID int32                         `json:"conversation_id,omitempty"`
 	RunID          int32                         `json:"run_id,omitempty"`

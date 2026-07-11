@@ -97,7 +97,7 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 		prepared = refreshed
 
 		if prepared.Run.Status != statusStreaming {
-			if prepared.Run.Status == statusCompleted {
+			if prepared.Run.Status == statusCompleted || prepared.Run.Status == statusStopped {
 				return &StreamDone{
 					ConversationID: prepared.Conversation.ID,
 					RunID:          prepared.Run.ID,
@@ -106,6 +106,7 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 					Text:           prepared.AssistantMessage.Content,
 					Sequence:       prepared.LastSequence,
 					WorkoutDraft:   prepared.Run.WorkoutDraft,
+					Status:         prepared.Run.Status,
 				}, nil
 			}
 
@@ -132,6 +133,10 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 
 func (s *Service) runOwnedGeneration(ctx context.Context, prepared *PreparedMessageStream, owner runOwner) {
 	if _, err := s.executeOwnedRun(ctx, prepared, owner); err != nil {
+		if errors.Is(err, context.Canceled) {
+			s.logger.Info("ai chat generation canceled", "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID, "owner", owner.Value())
+			return
+		}
 		s.logger.Error("failed to complete owned ai chat generation",
 			"error", err,
 			"conversation_id", prepared.Conversation.ID,
@@ -144,6 +149,14 @@ func (s *Service) runOwnedGeneration(ctx context.Context, prepared *PreparedMess
 func (s *Service) executeOwnedRun(ctx context.Context, prepared *PreparedMessageStream, owner runOwner) (*StreamDone, error) {
 	generationCtx, cancel := context.WithTimeout(ctx, chatGenerationTimeout)
 	defer cancel()
+	s.cancelMu.Lock()
+	s.runCancels[prepared.Run.ID] = cancel
+	s.cancelMu.Unlock()
+	defer func() {
+		s.cancelMu.Lock()
+		delete(s.runCancels, prepared.Run.ID)
+		s.cancelMu.Unlock()
+	}()
 
 	heartbeatDone := make(chan struct{})
 	go s.heartbeatRunGeneration(generationCtx, cancel, prepared, owner, heartbeatDone)
@@ -230,6 +243,9 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, err
+		}
 		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
 			s.logger.Error("failed to persist ai chat run failure", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}

@@ -114,6 +114,21 @@ definitions:
       prompt:
         type: string
     type: object
+  aichat.StopRunResponse:
+    properties:
+      conversation_id:
+        type: integer
+      message_id:
+        type: integer
+      run_id:
+        type: integer
+      sequence:
+        type: integer
+      status:
+        type: string
+      text:
+        type: string
+    type: object
   aichat.StreamEvent:
     properties:
       conversation_id:
@@ -1255,6 +1270,49 @@ paths:
       security:
       - StackAuth: []
       summary: Resume AI chat message stream
+      tags:
+      - ai-chat
+  /ai/conversations/{id}/runs/{runID}/stop:
+    post:
+      description: Idempotently stops the authenticated user's exact streaming run
+        while preserving partial output.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Run ID
+        in: path
+        name: runID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/aichat.StopRunResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Error'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Error'
+      security:
+      - StackAuth: []
+      summary: Stop an AI chat run
       tags:
       - ai-chat
   /exercises:
