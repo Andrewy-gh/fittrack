@@ -179,7 +179,7 @@ describe("TrainingProfilePage", () => {
     });
   });
 
-  it("sends the limitation list when limitations are provided", async () => {
+  it("adds a drafted limitation when Save is clicked", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -188,7 +188,7 @@ describe("TrainingProfilePage", () => {
     );
     await user.type(
       screen.getByLabelText("Movement limitation details"),
-      "knee pain{Enter}",
+      "knee pain",
     );
     await user.click(screen.getByRole("button", { name: "Save" }));
 

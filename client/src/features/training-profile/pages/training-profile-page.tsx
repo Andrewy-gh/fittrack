@@ -441,6 +441,7 @@ function TagInput({
         value={draft}
         aria-invalid={error ? true : undefined}
         onChange={(event) => setDraft(event.currentTarget.value)}
+        onBlur={addDraft}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
