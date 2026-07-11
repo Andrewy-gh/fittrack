@@ -108,6 +108,12 @@ func (r *repository) DeleteConversation(ctx context.Context, conversationID int3
 		return fmt.Errorf("check active ai chat run before delete: %w", err)
 	}
 
+	if err := qtx.ClearUserTrainingProfileConversationSource(ctx, db.ClearUserTrainingProfileConversationSourceParams{
+		UserID: userID, SourceConversationID: pgtype.Int4{Int32: conversationID, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("clear training profile source before deleting ai chat conversation: %w", err)
+	}
+
 	rows, err := qtx.DeleteAIChatConversation(ctx, db.DeleteAIChatConversationParams{ID: conversationID, UserID: userID})
 	if err != nil {
 		return fmt.Errorf("delete ai chat conversation: %w", err)

@@ -101,6 +101,25 @@ func (q *Queries) ClaimAIChatRunGeneration(ctx context.Context, arg ClaimAIChatR
 	return i, err
 }
 
+const clearUserTrainingProfileConversationSource = `-- name: ClearUserTrainingProfileConversationSource :exec
+UPDATE user_training_profile
+SET
+    source_conversation_id = NULL,
+    source_message_id = NULL
+WHERE user_id = $1
+  AND source_conversation_id = $2
+`
+
+type ClearUserTrainingProfileConversationSourceParams struct {
+	UserID               string      `json:"user_id"`
+	SourceConversationID pgtype.Int4 `json:"source_conversation_id"`
+}
+
+func (q *Queries) ClearUserTrainingProfileConversationSource(ctx context.Context, arg ClearUserTrainingProfileConversationSourceParams) error {
+	_, err := q.db.Exec(ctx, clearUserTrainingProfileConversationSource, arg.UserID, arg.SourceConversationID)
+	return err
+}
+
 const consumeAIChatTrialPrompt = `-- name: ConsumeAIChatTrialPrompt :one
 INSERT INTO ai_chat_trial_prompt_usage (
     user_id,

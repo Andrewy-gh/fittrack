@@ -406,6 +406,23 @@ func TestRepositoryDeleteConversation_CascadesAndRejectsActiveRun(t *testing.T) 
 	require.NoError(t, err)
 	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "hello", defaultModelName, "req-delete")
 	require.NoError(t, err)
+	var sourceMessageID int32
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT id
+		FROM ai_chat_message
+		WHERE conversation_id = $1 AND user_id = $2
+		ORDER BY id
+		LIMIT 1
+	`, conversation.ID, userID).Scan(&sourceMessageID))
+	_, err = pool.Exec(ctx, `
+		INSERT INTO user_training_profile (
+			user_id,
+			primary_goal,
+			source_conversation_id,
+			source_message_id
+		) VALUES ($1, 'strength', $2, $3)
+	`, userID, conversation.ID, sourceMessageID)
+	require.NoError(t, err)
 
 	assert.ErrorIs(t, repo.DeleteConversation(ctx, conversation.ID, userID), ErrConversationBusy)
 	_, err = repo.GetConversation(ctx, conversation.ID, userID)
@@ -428,6 +445,18 @@ func TestRepositoryDeleteConversation_CascadesAndRejectsActiveRun(t *testing.T) 
 	var chunkCount int
 	require.NoError(t, pool.QueryRow(ctx, "SELECT COUNT(*) FROM ai_chat_stream_chunk WHERE run_id = $1", prepared.Run.ID).Scan(&chunkCount))
 	assert.Zero(t, chunkCount)
+
+	var primaryGoal string
+	var sourceConversationID *int32
+	var remainingSourceMessageID *int32
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT primary_goal, source_conversation_id, source_message_id
+		FROM user_training_profile
+		WHERE user_id = $1
+	`, userID).Scan(&primaryGoal, &sourceConversationID, &remainingSourceMessageID))
+	assert.Equal(t, "strength", primaryGoal)
+	assert.Nil(t, sourceConversationID)
+	assert.Nil(t, remainingSourceMessageID)
 
 }
 
