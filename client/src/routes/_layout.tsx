@@ -4,6 +4,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { AppShell } from "@/components/nav/app-shell";
+import { ChatDraftProvider } from "@/features/chat/utils/chat-draft-context";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { useDisplayMode } from "@/hooks/use-display-mode";
 
@@ -32,7 +33,9 @@ export function LayoutComponent() {
         pathname={pathname}
         user={user}
       />
-      <Outlet />
+      <ChatDraftProvider key={user?.id ?? "signed-out"}>
+        <Outlet />
+      </ChatDraftProvider>
     </div>
   );
 }

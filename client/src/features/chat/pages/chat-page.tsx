@@ -30,10 +30,8 @@ import {
 import { useAIChatBillingAccess } from "../hooks/use-ai-chat-billing-access";
 import { useAIChatSession } from "../hooks/use-ai-chat-session";
 import { useChatHistoryEntry } from "../hooks/use-chat-history-entry";
-import {
-  chatDraftStore,
-  type ChatDraftDestination,
-} from "../utils/chat-draft-store";
+import { useChatDraftStore } from "../utils/chat-draft-context";
+import { type ChatDraftDestination } from "../utils/chat-draft-store";
 
 type ChatCheckoutSearch = "success" | "cancelled";
 type ChatBillingSearch = "cancelled" | "portal-return";
@@ -60,8 +58,8 @@ export function ChatPage({
   checkout,
   billing,
 }: ChatPageProps) {
+  const chatDraftStore = useChatDraftStore();
   const navigate = useNavigate({ from: "/chat" });
-  chatDraftStore.setUser(userId);
   const draftDestination = useMemo<ChatDraftDestination>(
     () =>
       conversationId === null

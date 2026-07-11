@@ -44,14 +44,16 @@ export function useAIChatSession({
   const recoveryAbortRef = useRef<AbortController | null>(null);
   const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
-  const onConversationCreatedRef = useRef(onConversationCreated);
-  const setPrompt = useCallback(
-    (value: string) => {
-      setPromptState(value);
-      onPromptChange(value);
-    },
-    [onPromptChange],
-  );
+  const callbacksRef = useRef({
+    onPromptChange,
+    onPromptStarted,
+    onNewConversationCreated,
+    onConversationCreated,
+  });
+  const setPrompt = useCallback((value: string) => {
+    setPromptState(value);
+    callbacksRef.current.onPromptChange(value);
+  }, []);
 
   const refs = useMemo<ChatSessionRefs>(
     () => ({
@@ -79,12 +81,34 @@ export function useAIChatSession({
   );
 
   useEffect(() => {
-    onConversationCreatedRef.current = onConversationCreated;
-  }, [onConversationCreated]);
+    callbacksRef.current = {
+      onPromptChange,
+      onPromptStarted,
+      onNewConversationCreated,
+      onConversationCreated,
+    };
+  }, [
+    onConversationCreated,
+    onNewConversationCreated,
+    onPromptChange,
+    onPromptStarted,
+  ]);
+
+  const handlePromptStarted = useCallback(
+    (conversationId: number) =>
+      callbacksRef.current.onPromptStarted(conversationId),
+    [],
+  );
+
+  const handleNewConversationCreated = useCallback(
+    (conversationId: number) =>
+      callbacksRef.current.onNewConversationCreated(conversationId),
+    [],
+  );
 
   const handleConversationCreated = useCallback(
     (createdConversationId: number) =>
-      onConversationCreatedRef.current(createdConversationId),
+      callbacksRef.current.onConversationCreated(createdConversationId),
     [],
   );
 
@@ -94,13 +118,13 @@ export function useAIChatSession({
         refs,
         setters,
         onConversationCreated: handleConversationCreated,
-        onPromptStarted,
-        onNewConversationCreated,
+        onPromptStarted: handlePromptStarted,
+        onNewConversationCreated: handleNewConversationCreated,
       }),
     [
       handleConversationCreated,
-      onNewConversationCreated,
-      onPromptStarted,
+      handleNewConversationCreated,
+      handlePromptStarted,
       refs,
       setters,
     ],

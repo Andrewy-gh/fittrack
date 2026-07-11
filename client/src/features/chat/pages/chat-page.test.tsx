@@ -2,11 +2,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { chatDraftStore } from "../utils/chat-draft-store";
 import {
   ChatRouteComponent,
   conversationDetail,
   deferredPromise,
+  getRenderedChatDraftStore,
   mockCreateConversation,
   mockGetConversation,
   mockListConversations,
@@ -140,6 +140,25 @@ describe("ChatRouteComponent", () => {
     );
   });
 
+  it("discards the previous account's draft when the signed-in user changes", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+
+    const view = render(<ChatRouteComponent userId="user-123" />);
+    const promptBox = await screen.findByPlaceholderText(
+      "Ask about training, recovery, exercise choices, or FitTrack usage...",
+    );
+    await user.type(promptBox, "private draft");
+
+    view.rerender(<ChatRouteComponent userId="user-456" />);
+
+    expect(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toHaveValue("");
+  });
+
   it("opens a blank draft from chat history without persisting it", async () => {
     const user = userEvent.setup();
     mockGetConversation.mockResolvedValue(conversationDetail([]));
@@ -268,7 +287,10 @@ describe("ChatRouteComponent", () => {
 
     expect(mockCreateConversation).toHaveBeenCalledTimes(1);
     expect(
-      chatDraftStore.getDraft({ type: "conversation", conversationId: 73 }),
+      getRenderedChatDraftStore().getDraft({
+        type: "conversation",
+        conversationId: 73,
+      }),
     ).toBe("");
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/chat",
@@ -527,7 +549,10 @@ describe("ChatRouteComponent", () => {
       ),
     ).toHaveValue("hello");
     expect(
-      chatDraftStore.getDraft({ type: "conversation", conversationId: 41 }),
+      getRenderedChatDraftStore().getDraft({
+        type: "conversation",
+        conversationId: 41,
+      }),
     ).toBe("hello");
   });
 

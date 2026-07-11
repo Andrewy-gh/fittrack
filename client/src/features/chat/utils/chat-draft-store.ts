@@ -12,18 +12,10 @@ export const MAIN_CHAT_NAVIGATION_POLICY: MainChatNavigationPolicy =
 type Draft = { text: string; editedAt: number };
 
 export class ChatDraftStore {
-  private userId: string | null = null;
   private newChatDraft: Draft | null = null;
   private conversationDrafts = new Map<number, Draft>();
   private latestExplicitDestination: ChatDraftDestination | null = null;
   private editSequence = 0;
-
-  setUser(userId?: string) {
-    const nextUserId = userId ?? null;
-    if (this.userId === nextUserId) return;
-    this.clear();
-    this.userId = nextUserId;
-  }
 
   getDraft(destination: ChatDraftDestination): string {
     return this.getDraftRecord(destination)?.text ?? "";
@@ -94,5 +86,3 @@ export class ChatDraftStore {
       : (this.conversationDrafts.get(destination.conversationId) ?? null);
   }
 }
-
-export const chatDraftStore = new ChatDraftStore();

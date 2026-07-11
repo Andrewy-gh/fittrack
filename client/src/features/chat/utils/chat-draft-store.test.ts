@@ -6,7 +6,6 @@ describe("ChatDraftStore", () => {
 
   beforeEach(() => {
     store = new ChatDraftStore();
-    store.setUser("user-1");
   });
 
   it("keeps independent drafts and restores the most recently edited conversation", () => {
@@ -60,10 +59,9 @@ describe("ChatDraftStore", () => {
     );
   });
 
-  it("clears every draft on sign-out or account change", () => {
+  it("clears every draft", () => {
     store.setDraft({ type: "conversation", conversationId: 1 }, "secret");
-    store.setUser(undefined);
-    store.setUser("user-2");
+    store.clear();
     expect(store.getDraft({ type: "conversation", conversationId: 1 })).toBe(
       "",
     );
