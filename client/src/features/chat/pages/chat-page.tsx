@@ -38,6 +38,7 @@ type ChatPageProps = {
   userId?: string;
   conversationId: number | null;
   conversationIdSearch?: string;
+  createChat?: true;
   checkout?: ChatCheckoutSearch;
   billing?: ChatBillingSearch;
 };
@@ -51,6 +52,7 @@ export function ChatPage({
   userId,
   conversationId,
   conversationIdSearch,
+  createChat,
   checkout,
   billing,
 }: ChatPageProps) {
@@ -78,6 +80,7 @@ export function ChatPage({
   const historyEntry = useChatHistoryEntry({
     userId,
     conversationId,
+    shouldOpenLatestConversation: !createChat,
     onOpenConversation: openConversation,
   });
   const {
@@ -90,17 +93,18 @@ export function ChatPage({
     loadError,
     isSavingWorkoutDraft,
     latestWorkoutDraftMessageId,
-    createNewChat,
+    resetConversation,
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
   } = useAIChatSession({
     conversationId,
     onConversationCreated: async (createdConversationId) => {
-      await navigate({
+      const target = {
         to: "/chat",
         search: { conversationId: String(createdConversationId) },
-      });
+      } as const;
+      await navigate(createChat ? { ...target, replace: true } : target);
       await historyEntry.refreshConversations();
     },
   });
@@ -139,12 +143,16 @@ export function ChatPage({
     isSubmitting || billingAccess.isCheckingAccess || !hasChatAccess;
   const showBillingAccessPanel = billingAccess.accessState !== "ready";
 
-  async function handleNewChat() {
+  function handleNewChat() {
     if (!hasChatAccess || billingAccess.isCheckingAccess) {
       return;
     }
 
-    await createNewChat();
+    resetConversation();
+    void navigate({
+      to: "/chat",
+      search: { createChat: true },
+    });
   }
 
   function handleResumeConversation(selectedConversationId: number) {
@@ -350,7 +358,7 @@ export function ChatPage({
             historyEntry.setIsCollapsed((value) => !value)
           }
           onResumeConversation={handleResumeConversation}
-          onNewChat={() => void handleNewChat()}
+          onNewChat={handleNewChat}
           isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
         />
 

@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   ChatRouteComponent,
@@ -47,6 +48,41 @@ describe("ChatRouteComponent", () => {
       screen.queryByText("What should we train today?"),
     ).not.toBeInTheDocument();
     expect(mockGetConversation).not.toHaveBeenCalled();
+  });
+
+  it("opens a blank draft without persisting a conversation from chat navigation", async () => {
+    mockSearch.conversationId = undefined;
+    mockSearch.createChat = true;
+    mockListConversations.mockResolvedValue([
+      {
+        id: 72,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(
+      <StrictMode>
+        <ChatRouteComponent />
+      </StrictMode>,
+    );
+
+    expect(
+      await screen.findByText("What should we train today?"),
+    ).toBeInTheDocument();
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: { conversationId: "72" },
+      }),
+    );
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeEnabled();
   });
 
   it("does not auto-open stale history after the signed-in user changes", async () => {
@@ -105,40 +141,18 @@ describe("ChatRouteComponent", () => {
     });
   });
 
-  it("keeps explicit New Chat available from chat history", async () => {
+  it("opens a blank draft from chat history without persisting it", async () => {
     const user = userEvent.setup();
     mockGetConversation.mockResolvedValue(conversationDetail([]));
-    mockListConversations
-      .mockResolvedValueOnce([
-        {
-          id: 41,
-          title: "Leg day plan",
-          created_at: "2026-06-25T17:00:00Z",
-          updated_at: "2026-06-25T17:05:00Z",
-          last_message_at: "2026-06-25T17:05:00Z",
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 73,
-          title: "Fresh chat",
-          created_at: "2026-06-26T17:00:00Z",
-          updated_at: "2026-06-26T17:00:00Z",
-          last_message_at: "2026-06-26T17:00:00Z",
-        },
-        {
-          id: 41,
-          title: "Leg day plan",
-          created_at: "2026-06-25T17:00:00Z",
-          updated_at: "2026-06-25T17:05:00Z",
-          last_message_at: "2026-06-25T17:05:00Z",
-        },
-      ]);
-    mockCreateConversation.mockResolvedValue({
-      id: 73,
-      created_at: "2026-06-26T17:00:00Z",
-      updated_at: "2026-06-26T17:00:00Z",
-    });
+    mockListConversations.mockResolvedValue([
+      {
+        id: 41,
+        title: "Leg day plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+        last_message_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
 
     render(<ChatRouteComponent />);
 
@@ -146,18 +160,40 @@ describe("ChatRouteComponent", () => {
     const newChatButtons = screen.getAllByRole("button", { name: "New Chat" });
     await user.click(newChatButtons.at(-1)!);
 
-    expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    expect(mockCreateConversation).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/chat",
-      search: { conversationId: "73" },
+      search: { createChat: true },
     });
-    expect(await screen.findByText("Fresh chat")).toBeInTheDocument();
-    expect(mockListConversations).toHaveBeenCalledTimes(2);
+    expect(mockListConversations).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears an unsent draft when starting another new chat", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockSearch.createChat = true;
+    mockListConversations.mockResolvedValue([]);
+
+    render(<ChatRouteComponent />);
+
+    const composer = await screen.findByPlaceholderText(
+      "Ask about training, recovery, exercise choices, or FitTrack usage...",
+    );
+    await user.type(composer, "Keep this draft");
+    await user.click(screen.getAllByRole("button", { name: "New Chat" })[0]);
+
+    expect(composer).toHaveValue("");
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { createChat: true },
+    });
   });
 
   it("refreshes chat history after the first prompt creates a conversation", async () => {
     const user = userEvent.setup();
     mockSearch.conversationId = undefined;
+    mockSearch.createChat = true;
     mockListConversations
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -235,6 +271,7 @@ describe("ChatRouteComponent", () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/chat",
       search: { conversationId: "73" },
+      replace: true,
     });
     expect(await screen.findByText("What should we train")).toBeInTheDocument();
     await waitFor(() => {
@@ -825,51 +862,5 @@ describe("ChatRouteComponent", () => {
     );
     expect(mockPollConversation).not.toHaveBeenCalled();
     expect(mockShowErrorToast).not.toHaveBeenCalled();
-  });
-
-  it("keeps the active stream running when new chat creation fails", async () => {
-    const user = userEvent.setup();
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    let streamSignal: AbortSignal | undefined;
-    mockStreamMessage.mockImplementation(
-      (
-        _conversationId: number,
-        _prompt: string,
-        options?: { signal?: AbortSignal },
-      ) => {
-        streamSignal = options?.signal;
-        return new Promise(() => {});
-      },
-    );
-    mockCreateConversation.mockRejectedValue(new Error("create failed"));
-
-    const view = render(<ChatRouteComponent />);
-
-    await user.type(
-      await screen.findByPlaceholderText(
-        "Ask about training, recovery, exercise choices, or FitTrack usage...",
-      ),
-      "hello",
-    );
-    await user.click(screen.getByRole("button", { name: "Send" }));
-
-    await waitFor(() => {
-      expect(mockStreamMessage).toHaveBeenCalledTimes(1);
-    });
-
-    await user.click(screen.getAllByRole("button", { name: "New Chat" })[0]);
-
-    await waitFor(() => {
-      expect(mockShowErrorToast).toHaveBeenCalledWith(
-        expect.objectContaining({ message: "create failed" }),
-        "Failed to create chat conversation",
-      );
-    });
-    expect(streamSignal?.aborted).toBe(false);
-    expect(screen.getByText("hello")).toBeInTheDocument();
-    expect(screen.getByTestId("chat-typing-indicator")).toBeInTheDocument();
-
-    view.unmount();
   });
 });

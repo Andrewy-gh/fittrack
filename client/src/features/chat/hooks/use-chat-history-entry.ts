@@ -12,6 +12,7 @@ type OpenConversationOptions = {
 type UseChatHistoryEntryOptions = {
   userId?: string;
   conversationId: number | null;
+  shouldOpenLatestConversation?: boolean;
   onOpenConversation: (
     conversationId: number,
     options?: OpenConversationOptions,
@@ -26,6 +27,7 @@ export type ChatHistoryEntryState =
 export function useChatHistoryEntry({
   userId,
   conversationId,
+  shouldOpenLatestConversation = true,
   onOpenConversation,
 }: UseChatHistoryEntryOptions) {
   const [conversations, setConversations] = useState<
@@ -101,6 +103,7 @@ export function useChatHistoryEntry({
 
   useEffect(() => {
     if (
+      !shouldOpenLatestConversation ||
       conversationId ||
       isLoading ||
       error ||
@@ -120,6 +123,7 @@ export function useChatHistoryEntry({
     isLoading,
     loadedCurrentUserConversations,
     onOpenConversation,
+    shouldOpenLatestConversation,
   ]);
 
   const entryState = getChatHistoryEntryState({
@@ -128,6 +132,7 @@ export function useChatHistoryEntry({
     error,
     hasLoadedCurrentUser,
     isLoading,
+    shouldOpenLatestConversation,
   });
 
   return {
@@ -149,12 +154,14 @@ function getChatHistoryEntryState({
   error,
   hasLoadedCurrentUser,
   isLoading,
+  shouldOpenLatestConversation,
 }: {
   conversationId: number | null;
   conversations: AIChatConversationSummary[];
   error: string | null;
   hasLoadedCurrentUser: boolean;
   isLoading: boolean;
+  shouldOpenLatestConversation: boolean;
 }): ChatHistoryEntryState {
   if (conversationId !== null) {
     return { status: "ready" };
@@ -164,7 +171,11 @@ function getChatHistoryEntryState({
     return { status: "historyLoadError", message: error };
   }
 
-  if (isLoading || !hasLoadedCurrentUser || conversations.length > 0) {
+  if (
+    isLoading ||
+    !hasLoadedCurrentUser ||
+    (shouldOpenLatestConversation && conversations.length > 0)
+  ) {
     return { status: "openingLatestChat" };
   }
 

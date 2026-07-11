@@ -67,7 +67,7 @@ export function NavSideDrawer({ user, children }: NavSideDrawerProps) {
           aria-label="Main navigation"
           className="flex flex-col p-3"
         >
-          {navItems.map(({ to, label, icon: Icon }) => {
+          {navItems.map(({ to, label, icon: Icon, search }) => {
             const active = isActivePath(pathname, to);
 
             return (
@@ -77,6 +77,7 @@ export function NavSideDrawer({ user, children }: NavSideDrawerProps) {
               >
                 <Link
                   to={to}
+                  search={search}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",

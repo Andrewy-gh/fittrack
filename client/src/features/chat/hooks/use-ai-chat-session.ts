@@ -135,7 +135,7 @@ export function useAIChatSession({
     loadError,
     isSavingWorkoutDraft,
     latestWorkoutDraftMessageId,
-    createNewChat: lifecycle.createNewChat,
+    resetConversation: lifecycle.resetConversation,
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,

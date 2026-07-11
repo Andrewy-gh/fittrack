@@ -22,13 +22,14 @@ export function AppBottomBar({ user }: AppBottomBarProps) {
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
     >
       <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-1 rounded-full border bg-background/95 px-2 py-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/85">
-        {navItems.map(({ to, label, icon: Icon }) => {
+        {navItems.map(({ to, label, icon: Icon, search }) => {
           const active = isActivePath(pathname, to);
 
           return (
             <Link
               key={to}
               to={to}
+              search={search}
               aria-current={active ? "page" : undefined}
               aria-label={label}
               title={label}

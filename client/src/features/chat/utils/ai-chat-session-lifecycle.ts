@@ -1,5 +1,4 @@
 import {
-  createAIChatConversation,
   reportAIChatTelemetry,
   type AIChatConversationDetail,
   type AIChatTelemetryEvent,
@@ -67,6 +66,7 @@ export function createAIChatSessionLifecycle({
     abortActiveRequests();
     setters.setConversation(null);
     setters.setMessages([]);
+    setters.setPrompt("");
     setters.setLatestWorkoutDraftMessageId(null);
     setters.setLoadError(null);
     setters.setIsLoadingConversation(false);
@@ -92,22 +92,6 @@ export function createAIChatSessionLifecycle({
       )
     ) {
       await recoverOpenedConversation(conversationId);
-    }
-  };
-
-  const createNewChat = async () => {
-    try {
-      const created = await createAIChatConversation();
-      refs.streamAbortRef.current?.abort();
-      refs.recoveryAbortRef.current?.abort();
-      refs.loadAbortRef.current?.abort();
-      setters.setConversation(created);
-      setters.setMessages([]);
-      setters.setLatestWorkoutDraftMessageId(null);
-      setters.setLoadError(null);
-      await onConversationCreated(created.id);
-    } catch (error) {
-      showErrorToast(error, "Failed to create chat conversation");
     }
   };
 
@@ -181,7 +165,6 @@ export function createAIChatSessionLifecycle({
 
   return {
     abortActiveRequests,
-    createNewChat,
     loadRouteConversation,
     resetConversation,
     submitPrompt,
