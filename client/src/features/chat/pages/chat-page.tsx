@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { History } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -93,18 +93,17 @@ export function ChatPage({
     loadError,
     isSavingWorkoutDraft,
     latestWorkoutDraftMessageId,
-    createNewChat,
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
   } = useAIChatSession({
     conversationId,
-    onConversationCreated: async (createdConversationId, options) => {
+    onConversationCreated: async (createdConversationId) => {
       const target = {
         to: "/chat",
         search: { conversationId: String(createdConversationId) },
       } as const;
-      await navigate(options?.replace ? { ...target, replace: true } : target);
+      await navigate(createChat ? { ...target, replace: true } : target);
       await historyEntry.refreshConversations();
     },
   });
@@ -115,53 +114,6 @@ export function ChatPage({
     conversationId: conversationIdSearch,
     navigate,
   });
-  const linkedChatCreationControllerRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    if (!createChat || conversationId !== null) {
-      linkedChatCreationControllerRef.current = null;
-      return;
-    }
-
-    if (
-      !userId ||
-      billingAccess.isCheckingAccess ||
-      !billingAccess.hasChatAccess ||
-      linkedChatCreationControllerRef.current
-    ) {
-      return;
-    }
-
-    const controller = new AbortController();
-    linkedChatCreationControllerRef.current = controller;
-    void createNewChat({
-      replaceNavigation: true,
-      signal: controller.signal,
-    }).then((created) => {
-      if (!created && !controller.signal.aborted) {
-        void navigate({
-          to: "/chat",
-          search: {},
-          replace: true,
-        });
-      }
-    });
-
-    return () => {
-      controller.abort();
-      if (linkedChatCreationControllerRef.current === controller) {
-        linkedChatCreationControllerRef.current = null;
-      }
-    };
-  }, [
-    billingAccess.hasChatAccess,
-    billingAccess.isCheckingAccess,
-    conversationId,
-    createChat,
-    createNewChat,
-    navigate,
-    userId,
-  ]);
   const historyState = getChatHistoryListState({
     conversations: historyEntry.conversations,
     activeConversationId: conversationId,
@@ -187,18 +139,18 @@ export function ChatPage({
 
   const hasChatAccess = billingAccess.hasChatAccess;
   const isComposerDisabled =
-    isSubmitting ||
-    billingAccess.isCheckingAccess ||
-    !hasChatAccess ||
-    Boolean(createChat && conversationId === null);
+    isSubmitting || billingAccess.isCheckingAccess || !hasChatAccess;
   const showBillingAccessPanel = billingAccess.accessState !== "ready";
 
-  async function handleNewChat() {
+  function handleNewChat() {
     if (!hasChatAccess || billingAccess.isCheckingAccess) {
       return;
     }
 
-    await createNewChat();
+    void navigate({
+      to: "/chat",
+      search: { createChat: true },
+    });
   }
 
   function handleResumeConversation(selectedConversationId: number) {
@@ -404,7 +356,7 @@ export function ChatPage({
             historyEntry.setIsCollapsed((value) => !value)
           }
           onResumeConversation={handleResumeConversation}
-          onNewChat={() => void handleNewChat()}
+          onNewChat={handleNewChat}
           isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
         />
 
