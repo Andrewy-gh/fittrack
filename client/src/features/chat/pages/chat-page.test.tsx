@@ -479,6 +479,12 @@ describe("ChatRouteComponent", () => {
 
     expect(await screen.findByText("Recovered answer")).toBeInTheDocument();
     expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(
+      getRenderedChatDraftStore().getDraft({
+        type: "conversation",
+        conversationId: 41,
+      }),
+    ).toBe("");
     expect(mockPollConversation).toHaveBeenCalledWith(
       41,
       expect.objectContaining({
@@ -576,7 +582,11 @@ describe("ChatRouteComponent", () => {
     );
     await user.click(screen.getByRole("button", { name: "Send" }));
 
-    expect(await screen.findByText("hello")).toBeInTheDocument();
+    expect(
+      await screen.findByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toHaveValue("hello");
     expect(
       await screen.findByText("ai chat recovery is not configured"),
     ).toBeInTheDocument();

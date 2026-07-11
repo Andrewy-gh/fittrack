@@ -243,6 +243,7 @@ export async function submitPrompt({
       tempAssistantId,
       error,
       recoverConversation,
+      onPromptStarted,
       recordTelemetry,
       refs,
       setters,
@@ -267,6 +268,7 @@ async function handleStreamFailureRecovery({
   tempAssistantId,
   error,
   recoverConversation,
+  onPromptStarted,
   recordTelemetry,
   refs,
   setters,
@@ -277,6 +279,7 @@ async function handleStreamFailureRecovery({
   tempAssistantId: number;
   error: unknown;
   recoverConversation: RecoverConversation;
+  onPromptStarted: (conversationId: number) => void;
   recordTelemetry: RecordChatTelemetry;
   refs: ChatSessionRefs;
   setters: ChatSessionSetters;
@@ -314,12 +317,19 @@ async function handleStreamFailureRecovery({
   }
 
   if (recoveredPromptStatus !== "completed") {
+    if (!streamStarted) {
+      setters.setPrompt(nextPrompt);
+    }
     recordTelemetry({
       category: "ux",
       outcome: "failure_toast_shown",
     });
     showErrorToast(submitFailure, "Failed to stream AI chat response");
     return;
+  }
+
+  if (!streamStarted) {
+    onPromptStarted(activeConversationId);
   }
 
   recordTelemetry({
