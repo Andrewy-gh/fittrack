@@ -9,6 +9,9 @@ import type {
   ChatSessionSetters,
 } from "../utils/chat-session-types";
 import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../utils/chat-session-workout-draft";
+import { stopAIChatRun } from "@/features/chat/api/ai-chat";
+import { clearResumeCursor, loadResumeCursor } from "../utils/chat-resume";
+import { showErrorToast } from "@/lib/errors";
 
 type UseAIChatSessionOptions = {
   conversationId: number | null;
@@ -173,6 +176,31 @@ export function useAIChatSession({
     [conversation, setters],
   );
 
+  const stopRun = useCallback(async () => {
+    if (!conversationId) return;
+    const cursor = loadResumeCursor(conversationId);
+    if (!cursor?.runId) return;
+    try {
+      const result = await stopAIChatRun(conversationId, cursor.runId);
+      if (result.status === "stopped") {
+        streamAbortRef.current?.abort();
+        resumeAbortRef.current?.abort();
+        recoveryAbortRef.current?.abort();
+        clearResumeCursor(conversationId);
+        setMessages((current) => current.map((message) =>
+          message.id === result.message_id
+            ? { ...message, content: result.text, status: "stopped", completed_at: new Date().toISOString() }
+            : message,
+        ));
+        setIsSubmitting(false);
+      } else {
+        await lifecycle.loadRouteConversation(conversationId);
+      }
+    } catch (error) {
+      showErrorToast(error, "Failed to stop AI chat response");
+    }
+  }, [conversationId, lifecycle]);
+
   return {
     conversation,
     messages,
@@ -187,5 +215,6 @@ export function useAIChatSession({
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
+    stopRun,
   };
 }
