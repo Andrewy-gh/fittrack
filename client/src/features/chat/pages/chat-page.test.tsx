@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   ChatRouteComponent,
@@ -112,6 +113,38 @@ describe("ChatRouteComponent", () => {
     });
 
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("restarts linked chat creation after Strict Mode cleanup", async () => {
+    mockSearch.conversationId = undefined;
+    mockSearch.createChat = true;
+    mockCreateConversation.mockResolvedValue({
+      id: 73,
+      created_at: "2026-06-26T17:00:00Z",
+      updated_at: "2026-06-26T17:00:00Z",
+    });
+
+    render(
+      <StrictMode>
+        <ChatRouteComponent />
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(mockCreateConversation).toHaveBeenCalledTimes(2);
+    });
+    expect(mockCreateConversation.mock.calls[0]?.[0]?.signal.aborted).toBe(
+      true,
+    );
+    expect(mockCreateConversation.mock.calls[1]?.[0]?.signal.aborted).toBe(
+      false,
+    );
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { conversationId: "73" },
+      replace: true,
+    });
   });
 
   it("does not auto-open stale history after the signed-in user changes", async () => {

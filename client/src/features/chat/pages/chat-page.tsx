@@ -115,11 +115,11 @@ export function ChatPage({
     conversationId: conversationIdSearch,
     navigate,
   });
-  const linkedChatCreationStartedRef = useRef(false);
+  const linkedChatCreationControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!createChat || conversationId !== null) {
-      linkedChatCreationStartedRef.current = false;
+      linkedChatCreationControllerRef.current = null;
       return;
     }
 
@@ -127,13 +127,13 @@ export function ChatPage({
       !userId ||
       billingAccess.isCheckingAccess ||
       !billingAccess.hasChatAccess ||
-      linkedChatCreationStartedRef.current
+      linkedChatCreationControllerRef.current
     ) {
       return;
     }
 
     const controller = new AbortController();
-    linkedChatCreationStartedRef.current = true;
+    linkedChatCreationControllerRef.current = controller;
     void createNewChat({
       replaceNavigation: true,
       signal: controller.signal,
@@ -147,7 +147,12 @@ export function ChatPage({
       }
     });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (linkedChatCreationControllerRef.current === controller) {
+        linkedChatCreationControllerRef.current = null;
+      }
+    };
   }, [
     billingAccess.hasChatAccess,
     billingAccess.isCheckingAccess,
