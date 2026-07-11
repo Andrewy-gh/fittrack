@@ -45,6 +45,9 @@ const introCopy =
 const movementHelperText =
   "If you choose 'No known limitations', the AI coach will stop asking about injuries before workouts. Leave 'Not specified' if you'd rather be asked.";
 
+const movementLimitationsRequiredMessage =
+  "Add at least one limitation, or choose another option.";
+
 const goalOptions: SelectOption[] = [
   { value: "strength", label: "Strength" },
   { value: "hypertrophy", label: "Hypertrophy" },
@@ -118,6 +121,12 @@ export function TrainingProfilePage() {
         nextErrors.preferredSessionDurationMinutes =
           "Enter a duration from 10 to 240 minutes.";
       }
+    }
+    if (
+      form.movementState === "list" &&
+      cleanTagList(form.movementLimitations).length === 0
+    ) {
+      nextErrors.movementLimitations = movementLimitationsRequiredMessage;
     }
     return nextErrors;
   }
@@ -300,6 +309,7 @@ export function TrainingProfilePage() {
             <TagInput
               label="Movement limitation details"
               values={form.movementLimitations}
+              error={errors.movementLimitations}
               onChange={(movementLimitations) =>
                 updateForm({ movementLimitations })
               }
@@ -395,10 +405,12 @@ function FieldShell({
 function TagInput({
   label,
   values,
+  error,
   onChange,
 }: {
   label: string;
   values: string[];
+  error?: string;
   onChange: (values: string[]) => void;
 }) {
   const [draft, setDraft] = useState("");
@@ -427,7 +439,9 @@ function TagInput({
       <Input
         id={inputId}
         value={draft}
+        aria-invalid={error ? true : undefined}
         onChange={(event) => setDraft(event.currentTarget.value)}
+        onBlur={addDraft}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
@@ -455,6 +469,7 @@ function TagInput({
           ))}
         </div>
       ) : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }

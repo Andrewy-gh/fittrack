@@ -19,7 +19,7 @@ DB_READY_TIMEOUT ?= 90
 AIR_CMD ?= air
 DB_DATA_DIR ?= _db-data
 ENV_FILE ?= setenv.sh
-TEST_DB_ENV_FILE ?= /tmp/fittrack-test-db.env
+TEST_DB_ENV_FILE ?= $(CURDIR)/tmp/fittrack-test-db.env
 
 help:
 	@echo "Available commands:"
@@ -137,7 +137,7 @@ test-db-ready: ## Prepare local test DB for server tests
 		fi; \
 		now=$$(date +%s); \
 		elapsed=$$(( now - start_ts )); \
-		if [ "$$elapsed" -ge 30 ]; then \
+		if [ "$$elapsed" -ge "$(DB_READY_TIMEOUT)" ]; then \
 			echo "ERROR: Timed out waiting for PostgreSQL readiness"; \
 			echo "Tip: Check logs with: docker compose logs $(DB_SERVICE)"; \
 			exit 1; \
@@ -172,7 +172,9 @@ test-db-ready: ## Prepare local test DB for server tests
 	echo "==> PostgreSQL credentials verified"; \
 	echo "==> Applying migrations"; \
 	goose -dir migrations postgres "$$db_url" up; \
-	printf 'DATABASE_URL=%q\n' "$$db_url" > "$(TEST_DB_ENV_FILE)"
+	mkdir -p "$$(dirname "$(TEST_DB_ENV_FILE)")"; \
+	escaped_db_url="$$(printf '%s\n' "$$db_url" | sed "s/'/'\\\\''/g")"; \
+	printf "DATABASE_URL='%s'\n" "$$escaped_db_url" > "$(TEST_DB_ENV_FILE)"
 
 test-short: test-db-ready ## Start local DB and run short test suite (integration tests are skipped; see test-integration)
 	@. "$(TEST_DB_ENV_FILE)"; \

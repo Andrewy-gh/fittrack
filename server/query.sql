@@ -534,6 +534,7 @@ VALUES (
     sqlc.arg(available_equipment)::jsonb,
     sqlc.arg(avoided_exercises)::jsonb,
     sqlc.narg(movement_limitations)::jsonb,
+    -- Manual settings saves supersede AI-written profile provenance.
     NULL,
     NULL
 )
@@ -545,6 +546,7 @@ ON CONFLICT (user_id) DO UPDATE SET
     available_equipment = sqlc.arg(available_equipment)::jsonb,
     avoided_exercises = sqlc.arg(avoided_exercises)::jsonb,
     movement_limitations = sqlc.narg(movement_limitations)::jsonb,
+    -- These columns only reference the chat message that last wrote the profile via AI.
     source_conversation_id = NULL,
     source_message_id = NULL,
     updated_at = CURRENT_TIMESTAMP

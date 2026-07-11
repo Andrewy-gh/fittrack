@@ -4014,6 +4014,7 @@ VALUES (
     $6::jsonb,
     $7::jsonb,
     $8::jsonb,
+    -- Manual settings saves supersede AI-written profile provenance.
     NULL,
     NULL
 )
@@ -4025,6 +4026,7 @@ ON CONFLICT (user_id) DO UPDATE SET
     available_equipment = $6::jsonb,
     avoided_exercises = $7::jsonb,
     movement_limitations = $8::jsonb,
+    -- These columns only reference the chat message that last wrote the profile via AI.
     source_conversation_id = NULL,
     source_message_id = NULL,
     updated_at = CURRENT_TIMESTAMP
