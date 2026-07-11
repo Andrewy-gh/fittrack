@@ -168,6 +168,28 @@ describe("ChatRouteComponent", () => {
     expect(mockListConversations).toHaveBeenCalledTimes(1);
   });
 
+  it("clears an unsent draft when starting another new chat", async () => {
+    const user = userEvent.setup();
+    mockSearch.conversationId = undefined;
+    mockSearch.createChat = true;
+    mockListConversations.mockResolvedValue([]);
+
+    render(<ChatRouteComponent />);
+
+    const composer = await screen.findByPlaceholderText(
+      "Ask about training, recovery, exercise choices, or FitTrack usage...",
+    );
+    await user.type(composer, "Keep this draft");
+    await user.click(screen.getAllByRole("button", { name: "New Chat" })[0]);
+
+    expect(composer).toHaveValue("");
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/chat",
+      search: { createChat: true },
+    });
+  });
+
   it("refreshes chat history after the first prompt creates a conversation", async () => {
     const user = userEvent.setup();
     mockSearch.conversationId = undefined;

@@ -93,6 +93,7 @@ export function ChatPage({
     loadError,
     isSavingWorkoutDraft,
     latestWorkoutDraftMessageId,
+    resetConversation,
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
@@ -147,6 +148,7 @@ export function ChatPage({
       return;
     }
 
+    resetConversation();
     void navigate({
       to: "/chat",
       search: { createChat: true },

@@ -66,6 +66,7 @@ export function createAIChatSessionLifecycle({
     abortActiveRequests();
     setters.setConversation(null);
     setters.setMessages([]);
+    setters.setPrompt("");
     setters.setLatestWorkoutDraftMessageId(null);
     setters.setLoadError(null);
     setters.setIsLoadingConversation(false);
