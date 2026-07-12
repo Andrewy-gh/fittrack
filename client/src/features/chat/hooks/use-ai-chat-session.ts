@@ -58,6 +58,7 @@ export function useAIChatSession({
   const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const stopTargetRef = useRef({ conversationId, activeRunId });
+  const acceptedCreatedConversationRouteRef = useRef(false);
   const callbacksRef = useRef({
     onPromptChange,
     onPromptStarted,
@@ -150,18 +151,38 @@ export function useAIChatSession({
     ],
   );
 
+  useLayoutEffect(() => {
+    acceptedCreatedConversationRouteRef.current =
+      conversationId !== null &&
+      lifecycle.acceptCreatedConversationRoute(conversationId);
+  }, [conversationId, lifecycle]);
+
+  useEffect(
+    () => () => {
+      lifecycle.abortActiveRequests();
+    },
+    [lifecycle],
+  );
+
   useEffect(() => {
     setters.setPrompt(initialPrompt);
+    const acceptedCreatedConversationRoute =
+      acceptedCreatedConversationRouteRef.current;
+    acceptedCreatedConversationRouteRef.current = false;
+
+    if (acceptedCreatedConversationRoute) {
+      return;
+    }
+
     if (!conversationId) {
+      if (lifecycle.isCreatedConversationRoutePending()) {
+        return;
+      }
       lifecycle.resetConversation(initialPrompt);
       return;
     }
 
     void lifecycle.loadRouteConversation(conversationId);
-
-    return () => {
-      lifecycle.abortActiveRequests();
-    };
   }, [conversationId, initialPrompt, lifecycle]);
 
   const submitPrompt = useCallback(

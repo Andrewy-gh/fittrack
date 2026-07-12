@@ -400,7 +400,9 @@ func normalizeStreamFailure(err error) error {
 func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {
 	messages := make([]RuntimeChatMessage, 0, len(history))
 	for _, message := range history {
-		if message.Status != statusCompleted {
+		isVisibleStoppedAssistant := message.Role == roleAssistant &&
+			message.Status == statusStopped
+		if message.Status != statusCompleted && !isVisibleStoppedAssistant {
 			continue
 		}
 		if message.Role != roleUser && message.Role != roleAssistant {

@@ -79,6 +79,21 @@ export function createAIChatSessionLifecycle({
     refs.streamAbortRef.current?.abort();
   };
 
+  const acceptCreatedConversationRoute = (conversationId: number) => {
+    const operation = refs.activeOperationRef.current;
+    if (operation?.routeHandoffConversationId !== conversationId) {
+      return false;
+    }
+
+    operation.routeHandoffConversationId = null;
+    return true;
+  };
+
+  const isCreatedConversationRoutePending = () => {
+    const operation = refs.activeOperationRef.current;
+    return operation !== null && operation.routeHandoffConversationId !== null;
+  };
+
   const resetConversation = (prompt = "") => {
     abortActiveRequests();
     setters.setConversation(null);
@@ -92,7 +107,7 @@ export function createAIChatSessionLifecycle({
   };
 
   const loadRouteConversation = async (conversationId: number) => {
-    refs.activeOperationRef.current = null;
+    abortActiveRequests();
     setters.setIsSubmitting(false);
     setters.setActiveRunId(null);
     const loadResult = await loadConversation(conversationId);
@@ -107,6 +122,7 @@ export function createAIChatSessionLifecycle({
       const operation: ChatSessionOperation = {
         conversationId,
         runId: loadResult.detail.active_run.id,
+        routeHandoffConversationId: null,
       };
       refs.activeOperationRef.current = operation;
       setters.setActiveRunId(loadResult.detail.active_run.id);
@@ -208,7 +224,9 @@ export function createAIChatSessionLifecycle({
   }
 
   return {
+    acceptCreatedConversationRoute,
     abortActiveRequests,
+    isCreatedConversationRoutePending,
     loadRouteConversation,
     resetConversation,
     submitPrompt,

@@ -215,6 +215,169 @@ describe("useAIChatSession", () => {
     });
   });
 
+  it("preserves the first prompt while navigating to its newly created conversation", async () => {
+    mockCreateConversation.mockResolvedValue({
+      id: 41,
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:00Z",
+    });
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 71,
+          conversation_id: 41,
+          role: "user",
+          content: "first prompt",
+          status: "completed",
+          created_at: "2026-03-26T17:00:01Z",
+          updated_at: "2026-03-26T17:00:01Z",
+          completed_at: "2026-03-26T17:00:01Z",
+        },
+        {
+          id: 72,
+          conversation_id: 41,
+          role: "assistant",
+          content: "First answer",
+          status: "completed",
+          created_at: "2026-03-26T17:00:01Z",
+          updated_at: "2026-03-26T17:00:02Z",
+          completed_at: "2026-03-26T17:00:02Z",
+        },
+      ]),
+    );
+    mockStreamMessage.mockImplementation(
+      async (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+          onDelta?: (event: Record<string, unknown>) => void;
+          onDone?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          run_id: 91,
+          message_id: 72,
+          sequence: 1,
+        });
+        options?.onDelta?.({
+          type: "delta",
+          run_id: 91,
+          message_id: 72,
+          delta: "First answer",
+          sequence: 2,
+        });
+        options?.onDone?.({
+          type: "done",
+          run_id: 91,
+          message_id: 72,
+          text: "First answer",
+          sequence: 3,
+        });
+        return { doneEvent: null, endedWithError: false };
+      },
+    );
+
+    let finishNavigation: (() => void) | undefined;
+    const onConversationCreated = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishNavigation = resolve;
+        }),
+    );
+    const { result, rerender } = renderHook(
+      ({ id }) =>
+        useAIChatSession({
+          conversationId: id,
+          initialPrompt: "",
+          onPromptChange: vi.fn(),
+          onPromptStarted: vi.fn(),
+          onNewConversationCreated: vi.fn(),
+          onConversationCreated,
+        }),
+      { initialProps: { id: null as number | null } },
+    );
+    act(() => {
+      result.current.setPrompt("first prompt");
+    });
+    let submitPromise: Promise<void> | undefined;
+    act(() => {
+      submitPromise = result.current.submitPrompt();
+    });
+    await waitFor(() => {
+      expect(onConversationCreated).toHaveBeenCalledWith(41);
+    });
+    rerender({ id: 41 });
+    await act(async () => {
+      finishNavigation?.();
+      await submitPromise;
+    });
+
+    expect(mockStreamMessage).toHaveBeenCalledWith(
+      41,
+      "first prompt",
+      expect.any(Object),
+    );
+    expect(result.current.messages).toEqual([
+      expect.objectContaining({
+        role: "user",
+        content: "first prompt",
+        status: "completed",
+      }),
+      expect.objectContaining({
+        role: "assistant",
+        content: "First answer",
+        status: "completed",
+      }),
+    ]);
+  });
+
+  it("invalidates a new-conversation submit when navigation targets another conversation", async () => {
+    mockCreateConversation.mockResolvedValue({
+      id: 41,
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:00Z",
+    });
+    let finishNavigation: (() => void) | undefined;
+    const onConversationCreated = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishNavigation = resolve;
+        }),
+    );
+    const { result, rerender } = renderHook(
+      ({ id }) =>
+        useAIChatSession({
+          conversationId: id,
+          initialPrompt: "",
+          onPromptChange: vi.fn(),
+          onPromptStarted: vi.fn(),
+          onNewConversationCreated: vi.fn(),
+          onConversationCreated,
+        }),
+      { initialProps: { id: null as number | null } },
+    );
+    act(() => {
+      result.current.setPrompt("stale prompt");
+    });
+    let submitPromise: Promise<void> | undefined;
+    act(() => {
+      submitPromise = result.current.submitPrompt();
+    });
+    await waitFor(() => {
+      expect(onConversationCreated).toHaveBeenCalledWith(41);
+    });
+    rerender({ id: 42 });
+    await act(async () => {
+      finishNavigation?.();
+      await submitPromise;
+    });
+
+    expect(mockStreamMessage).not.toHaveBeenCalled();
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
   it("does not let an old terminal refresh overwrite a newly submitted stream", async () => {
     let resolveOldRefresh:
       | ((value: ReturnType<typeof conversationDetail>) => void)

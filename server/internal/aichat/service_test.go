@@ -998,6 +998,26 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestToRuntimeHistory_IncludesVisibleStoppedAssistantOutput(t *testing.T) {
+	history := []ChatMessage{
+		{Role: roleUser, Content: " first prompt ", Status: statusCompleted},
+		{Role: roleAssistant, Content: " first answer ", Status: statusCompleted},
+		{Role: roleUser, Content: "second prompt", Status: statusCompleted},
+		{Role: roleAssistant, Content: " partial stopped answer ", Status: statusStopped},
+		{Role: roleAssistant, Content: "failed answer", Status: statusFailed},
+		{Role: roleAssistant, Content: "streaming answer", Status: statusStreaming},
+		{Role: roleAssistant, Content: "   ", Status: statusStopped},
+		{Role: roleUser, Content: "stopped user input", Status: statusStopped},
+	}
+
+	assert.Equal(t, []RuntimeChatMessage{
+		{Role: roleUser, Text: "first prompt"},
+		{Role: roleAssistant, Text: "first answer"},
+		{Role: roleUser, Text: "second prompt"},
+		{Role: roleAssistant, Text: "partial stopped answer"},
+	}, toRuntimeHistory(history))
+}
+
 func TestServiceStreamMessage_FailsRunOnDisconnect(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)

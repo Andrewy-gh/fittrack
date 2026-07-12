@@ -61,6 +61,7 @@ export async function submitPrompt({
   const operation: ChatSessionOperation = {
     conversationId,
     runId: null,
+    routeHandoffConversationId: null,
   };
   refs.activeOperationRef.current = operation;
   refs.loadAbortRef.current?.abort();
@@ -87,6 +88,7 @@ export async function submitPrompt({
       }
       activeConversationId = createdConversation.id;
       operation.conversationId = activeConversationId;
+      operation.routeHandoffConversationId = activeConversationId;
       onNewConversationCreated(activeConversationId);
       setters.setConversation(createdConversation);
       await onConversationCreated(activeConversationId);

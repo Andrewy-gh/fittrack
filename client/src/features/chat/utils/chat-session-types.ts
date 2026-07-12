@@ -20,6 +20,7 @@ export type ConversationRequestOptions = {
 export type ChatSessionOperation = {
   conversationId: number | null;
   runId: number | null;
+  routeHandoffConversationId: number | null;
 };
 
 export type ChatSessionRefs = {
