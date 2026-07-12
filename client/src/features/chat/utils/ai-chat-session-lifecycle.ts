@@ -88,7 +88,13 @@ export function createAIChatSessionLifecycle({
 
     if (loadResult.detail?.active_run) {
       setters.setActiveRunId(loadResult.detail.active_run.id);
-      await resumeOrRecoverActiveRun(conversationId, loadResult.detail);
+      setters.setIsSubmitting(true);
+      try {
+        await resumeOrRecoverActiveRun(conversationId, loadResult.detail);
+      } finally {
+        setters.setIsSubmitting(false);
+        setters.setActiveRunId(null);
+      }
       return;
     }
 
