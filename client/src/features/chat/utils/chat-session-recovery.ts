@@ -171,6 +171,7 @@ export async function resumeConversation(
   refs.resumeAbortRef.current = controller;
   refs.pendingAssistantIdRef.current = activeRun.assistant_message_id;
   const afterSequence = getResumeAfterSequence(detail);
+  const ownsOperation = () => refs.activeOperationRef.current === operation;
 
   try {
     const streamResult = await resumeAIChatMessageStream(
@@ -179,6 +180,7 @@ export async function resumeConversation(
       afterSequence,
       {
         onStart: (event) => {
+          if (!ownsOperation()) return;
           const assistantMessageId =
             event.message_id ?? activeRun.assistant_message_id;
           refs.pendingAssistantIdRef.current = assistantMessageId;
@@ -191,6 +193,7 @@ export async function resumeConversation(
           }
         },
         onDelta: (event) => {
+          if (!ownsOperation()) return;
           const targetId =
             refs.pendingAssistantIdRef.current ??
             activeRun.assistant_message_id;
@@ -210,6 +213,7 @@ export async function resumeConversation(
           }
         },
         onDone: (event) => {
+          if (!ownsOperation()) return;
           const targetId =
             refs.pendingAssistantIdRef.current ??
             activeRun.assistant_message_id;
@@ -233,6 +237,7 @@ export async function resumeConversation(
           clearResumeCursor(detail.conversation.id);
         },
         onErrorEvent: (event) => {
+          if (!ownsOperation()) return;
           const targetId =
             refs.pendingAssistantIdRef.current ??
             activeRun.assistant_message_id;

@@ -54,6 +54,19 @@ vi.mock("sonner", () => ({
 }));
 
 import { useAIChatSession } from "@/features/chat/hooks/use-ai-chat-session";
+import type {
+  AIChatStreamDeltaEvent,
+  AIChatStreamDoneEvent,
+  AIChatStreamErrorEvent,
+  AIChatStreamStartEvent,
+} from "@/features/chat/api/ai-chat";
+
+type ResumeStreamHandlers = {
+  onStart?: (event: AIChatStreamStartEvent) => void;
+  onDelta?: (event: AIChatStreamDeltaEvent) => void;
+  onDone?: (event: AIChatStreamDoneEvent) => void;
+  onErrorEvent?: (event: AIChatStreamErrorEvent) => void;
+};
 
 function conversationDetail(
   messages: Array<Record<string, unknown>>,
@@ -636,6 +649,260 @@ describe("useAIChatSession", () => {
       await result.current.stopRun();
     });
     expect(mockStopRun).toHaveBeenCalledWith(42, 92);
+  });
+
+  it("ignores queued resume callbacks after Stop clears operation ownership", async () => {
+    let resumeHandlers: ResumeStreamHandlers | undefined;
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: ResumeStreamHandlers,
+      ) => {
+        resumeHandlers = handlers;
+        return new Promise(() => undefined);
+      },
+    );
+    mockGetConversation.mockResolvedValue(
+      conversationDetail(
+        [
+          {
+            id: 61,
+            conversation_id: 41,
+            role: "assistant",
+            content: "partial response",
+            status: "streaming",
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-03-26T17:00:01Z",
+          },
+        ],
+        {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        },
+      ),
+    );
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "stopped",
+      text: "authoritative stopped response",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => {
+      expect(resumeHandlers).toBeDefined();
+      expect(result.current.canStop).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    const assertStoppedStateIsUnchanged = () => {
+      expect(result.current.messages).toEqual([
+        expect.objectContaining({
+          id: 61,
+          content: "authoritative stopped response",
+          status: "stopped",
+        }),
+      ]);
+      expect(result.current.conversation?.latest_workout_draft).toBeUndefined();
+      expect(result.current.latestWorkoutDraftMessageId).toBeNull();
+      expect(
+        window.sessionStorage.getItem("fittrack.ai-chat.resume:41"),
+      ).toBeNull();
+    };
+
+    assertStoppedStateIsUnchanged();
+    act(() => {
+      resumeHandlers?.onStart?.({
+        type: "start",
+        run_id: 91,
+        message_id: 161,
+        sequence: 3,
+      });
+    });
+    assertStoppedStateIsUnchanged();
+    act(() => {
+      resumeHandlers?.onDelta?.({
+        type: "delta",
+        run_id: 91,
+        message_id: 61,
+        delta: " stale delta",
+        sequence: 4,
+      });
+    });
+    assertStoppedStateIsUnchanged();
+    act(() => {
+      resumeHandlers?.onDone?.({
+        type: "done",
+        run_id: 91,
+        message_id: 61,
+        text: "stale completion",
+        sequence: 5,
+        workout_draft: {
+          date: "2026-03-26",
+          exercises: [],
+        },
+      });
+    });
+    assertStoppedStateIsUnchanged();
+    act(() => {
+      resumeHandlers?.onErrorEvent?.({
+        type: "error",
+        run_id: 91,
+        message_id: 61,
+        message: "stale failure",
+        sequence: 6,
+      });
+    });
+    assertStoppedStateIsUnchanged();
+  });
+
+  it("ignores queued resume callbacks after a new operation takes ownership", async () => {
+    const resumeHandlers: ResumeStreamHandlers[] = [];
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: ResumeStreamHandlers,
+      ) => {
+        resumeHandlers.push(handlers);
+        return new Promise(() => undefined);
+      },
+    );
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: "old partial response",
+              status: "streaming",
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:01Z",
+            },
+          ],
+          {
+            id: 91,
+            assistant_message_id: 61,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      )
+      .mockResolvedValueOnce({
+        ...conversationDetail(
+          [
+            {
+              id: 82,
+              conversation_id: 42,
+              role: "assistant",
+              content: "new partial response",
+              status: "streaming",
+              created_at: "2026-03-26T17:01:00Z",
+              updated_at: "2026-03-26T17:01:01Z",
+            },
+          ],
+          {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+        conversation: {
+          id: 42,
+          created_at: "2026-03-26T17:01:00Z",
+          updated_at: "2026-03-26T17:01:00Z",
+        },
+      });
+
+    const { result, rerender } = renderSession();
+    await waitFor(() => {
+      expect(resumeHandlers).toHaveLength(1);
+      expect(result.current.canStop).toBe(true);
+    });
+
+    rerender({ id: 42 });
+    await waitFor(() => {
+      expect(resumeHandlers).toHaveLength(2);
+      expect(result.current.messages.at(-1)?.content).toBe(
+        "new partial response",
+      );
+      expect(result.current.canStop).toBe(true);
+    });
+
+    const assertNewOperationStateIsUnchanged = () => {
+      expect(result.current.messages).toEqual([
+        expect.objectContaining({
+          id: 82,
+          content: "new partial response",
+          status: "streaming",
+        }),
+      ]);
+      expect(result.current.conversation?.id).toBe(42);
+      expect(result.current.conversation?.latest_workout_draft).toBeUndefined();
+      expect(result.current.latestWorkoutDraftMessageId).toBeNull();
+      expect(
+        window.sessionStorage.getItem("fittrack.ai-chat.resume:41"),
+      ).toBeNull();
+    };
+
+    const oldHandlers = resumeHandlers[0];
+    assertNewOperationStateIsUnchanged();
+    act(() => {
+      oldHandlers?.onStart?.({
+        type: "start",
+        run_id: 91,
+        message_id: 161,
+        sequence: 2,
+      });
+    });
+    assertNewOperationStateIsUnchanged();
+    act(() => {
+      oldHandlers?.onDelta?.({
+        type: "delta",
+        run_id: 91,
+        message_id: 61,
+        delta: " stale delta",
+        sequence: 3,
+      });
+    });
+    assertNewOperationStateIsUnchanged();
+    act(() => {
+      oldHandlers?.onDone?.({
+        type: "done",
+        run_id: 91,
+        message_id: 61,
+        text: "stale completion",
+        sequence: 4,
+        workout_draft: {
+          date: "2026-03-26",
+          exercises: [],
+        },
+      });
+    });
+    assertNewOperationStateIsUnchanged();
+    act(() => {
+      oldHandlers?.onErrorEvent?.({
+        type: "error",
+        run_id: 91,
+        message_id: 61,
+        message: "stale failure",
+        sequence: 5,
+      });
+    });
+    assertNewOperationStateIsUnchanged();
   });
 
   it("keeps a newly loaded Stop target when an aborted submit settles late", async () => {
