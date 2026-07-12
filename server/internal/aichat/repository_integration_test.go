@@ -224,6 +224,119 @@ func TestRepositoryStopRun_SerializesWithConcurrentCompletion(t *testing.T) {
 	assert.Equal(t, "completed response", stopped.response.Text)
 }
 
+func TestRepositoryPrepareMessageStream_AllowsNextPromptWhenStopFinishesStaleCleanup(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const (
+		userID          = "aichat-stop-stale-cleanup-race-user"
+		advisoryLockKey = int64(242002)
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	repo := NewRepository(logger, queries, pool)
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+	stale, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "Old prompt.", defaultModelName, "req-stop-stale-cleanup-old")
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+		UPDATE ai_chat_run
+		SET updated_at = CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+		WHERE id = $1 AND user_id = $2
+	`, stale.Run.ID, userID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION test_block_ai_chat_stale_run_stop()
+		RETURNS trigger AS $$
+		BEGIN
+			IF OLD.status = 'streaming' AND NEW.status = 'stopped' THEN
+				PERFORM pg_advisory_xact_lock(242002);
+			END IF;
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
+		CREATE TRIGGER test_block_ai_chat_stale_run_stop
+		BEFORE UPDATE ON ai_chat_message
+		FOR EACH ROW
+		EXECUTE FUNCTION test_block_ai_chat_stale_run_stop();
+	`)
+	require.NoError(t, err)
+	defer func() {
+		_, cleanupErr := pool.Exec(context.Background(), `
+			DROP TRIGGER IF EXISTS test_block_ai_chat_stale_run_stop ON ai_chat_message;
+			DROP FUNCTION IF EXISTS test_block_ai_chat_stale_run_stop();
+		`)
+		require.NoError(t, cleanupErr)
+	}()
+
+	gate, err := pool.Acquire(ctx)
+	require.NoError(t, err)
+	defer gate.Release()
+	_, err = gate.Exec(ctx, "SELECT pg_advisory_lock($1)", advisoryLockKey)
+	require.NoError(t, err)
+	defer gate.Exec(context.Background(), "SELECT pg_advisory_unlock($1)", advisoryLockKey)
+
+	type stopRunResult struct {
+		response *StopRunResponse
+		err      error
+	}
+	stopResult := make(chan stopRunResult, 1)
+	go func() {
+		response, stopErr := repo.StopRun(context.Background(), conversation.ID, stale.Run.ID, userID, time.Now().UTC())
+		stopResult <- stopRunResult{response: response, err: stopErr}
+	}()
+	waitForAIChatRepositoryBlockedLocks(t, pool, 1)
+
+	type prepareResult struct {
+		prepared *PreparedMessageStream
+		err      error
+	}
+	nextResult := make(chan prepareResult, 1)
+	go func() {
+		prepared, prepareErr := repo.PrepareMessageStream(context.Background(), conversation.ID, userID, "New prompt.", defaultModelName, "req-stop-stale-cleanup-new")
+		nextResult <- prepareResult{prepared: prepared, err: prepareErr}
+	}()
+	waitForAIChatRepositoryBlockedLocks(t, pool, 2)
+
+	_, err = gate.Exec(ctx, "SELECT pg_advisory_unlock($1)", advisoryLockKey)
+	require.NoError(t, err)
+
+	stopped := <-stopResult
+	require.NoError(t, stopped.err)
+	require.NotNil(t, stopped.response)
+	assert.Equal(t, statusStopped, stopped.response.Status)
+
+	next := <-nextResult
+	require.NoError(t, next.err)
+	require.NotNil(t, next.prepared)
+	assert.Equal(t, "New prompt.", next.prepared.Prompt)
+
+	var oldRunStatus, oldMessageStatus string
+	err = pool.QueryRow(ctx, `
+		SELECT run.status, message.status
+		FROM ai_chat_run AS run
+		JOIN ai_chat_message AS message ON message.id = run.assistant_message_id
+		WHERE run.id = $1 AND run.user_id = $2
+	`, stale.Run.ID, userID).Scan(&oldRunStatus, &oldMessageStatus)
+	require.NoError(t, err)
+	assert.Equal(t, statusStopped, oldRunStatus)
+	assert.Equal(t, statusStopped, oldMessageStatus)
+}
+
 func waitForAIChatRunRowLock(t *testing.T, pool *pgxpool.Pool, runID int32, userID string) {
 	t.Helper()
 
@@ -787,6 +900,7 @@ func cleanupAIChatRepositoryTestUsers(t *testing.T, pool *pgxpool.Pool) {
 	testUserIDs := []string{
 		"aichat-complete-run-user",
 		"aichat-stop-completion-race-user",
+		"aichat-stop-stale-cleanup-race-user",
 		"aichat-complete-run-nil-draft-user",
 		"aichat-complete-run-null-byte-draft-user",
 		"aichat-interrupt-snapshot-user",

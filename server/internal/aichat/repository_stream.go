@@ -569,13 +569,29 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 }
 
 func (r *repository) failStaleRun(ctx context.Context, qtx *db.Queries, conversation *Conversation, activeRun *ChatRun) error {
-	if _, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
+	lockedRunRow, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
 		ID:             activeRun.ID,
 		ConversationID: conversation.ID,
 		UserID:         activeRun.UserID,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("lock stale ai chat run before failure: %w", err)
 	}
+	lockedRun, err := mapRun(lockedRunRow)
+	if err != nil {
+		return err
+	}
+	switch newChatRunLifecycle(lockedRun, time.Now().UTC()).State() {
+	case chatRunLifecycleTerminal:
+		return nil
+	case chatRunLifecycleRecoverableStaleRun:
+		activeRun = lockedRun
+	case chatRunLifecycleQueued, chatRunLifecycleOwnedGeneration:
+		return ErrConversationBusy
+	case chatRunLifecycleInvalid:
+		return fmt.Errorf("stale ai chat run entered an invalid lifecycle state while waiting for its lock")
+	}
+
 	assistantRow, err := qtx.GetAIChatMessage(ctx, db.GetAIChatMessageParams{
 		ID:     activeRun.AssistantMessageID,
 		UserID: activeRun.UserID,

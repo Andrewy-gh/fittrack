@@ -202,6 +202,117 @@ describe("useAIChatSession", () => {
     });
   });
 
+  it("does not let an old terminal refresh overwrite a newly submitted stream", async () => {
+    let resolveOldRefresh:
+      | ((value: ReturnType<typeof conversationDetail>) => void)
+      | undefined;
+    let resolveNewStream:
+      | ((value: { doneEvent: null; endedWithError: false }) => void)
+      | undefined;
+    mockGetConversation
+      .mockResolvedValueOnce(conversationDetail([]))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOldRefresh = resolve;
+          }),
+      );
+    mockStreamMessage
+      .mockImplementationOnce(async (_conversationId, _prompt, options) => {
+        options?.onStart?.({ type: "start", run_id: 91, message_id: 71 });
+        options?.onDone?.({
+          type: "done",
+          run_id: 91,
+          message_id: 71,
+          text: "First answer",
+        });
+        return { doneEvent: null, endedWithError: false };
+      })
+      .mockImplementationOnce((_conversationId, _prompt, options) => {
+        options?.onStart?.({ type: "start", run_id: 92, message_id: 72 });
+        options?.onDelta?.({
+          type: "delta",
+          run_id: 92,
+          message_id: 72,
+          delta: "New partial",
+        });
+        return new Promise((resolve) => {
+          resolveNewStream = resolve;
+        });
+      });
+
+    const { result } = renderSession();
+    await waitFor(() => {
+      expect(result.current.isLoadingConversation).toBe(false);
+    });
+
+    act(() => {
+      result.current.setPrompt("first prompt");
+    });
+    let firstSubmit: Promise<void> | undefined;
+    act(() => {
+      firstSubmit = result.current.submitPrompt();
+    });
+    await waitFor(() => {
+      expect(mockGetConversation).toHaveBeenCalledTimes(2);
+      expect(result.current.isSubmitting).toBe(false);
+    });
+
+    act(() => {
+      result.current.setPrompt("second prompt");
+    });
+    let secondSubmit: Promise<void> | undefined;
+    act(() => {
+      secondSubmit = result.current.submitPrompt();
+    });
+    await waitFor(() => {
+      expect(result.current.messages.at(-1)).toEqual(
+        expect.objectContaining({
+          id: 72,
+          content: "New partial",
+          status: "streaming",
+        }),
+      );
+    });
+
+    await act(async () => {
+      resolveOldRefresh?.(
+        conversationDetail([
+          {
+            id: 71,
+            conversation_id: 41,
+            role: "assistant",
+            content: "Stale first answer",
+            status: "completed",
+            created_at: "2026-03-26T17:00:01Z",
+            updated_at: "2026-03-26T17:00:02Z",
+            completed_at: "2026-03-26T17:00:02Z",
+          },
+        ]),
+      );
+      await firstSubmit;
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.messages.at(-1)).toEqual(
+      expect.objectContaining({
+        id: 72,
+        content: "New partial",
+        status: "streaming",
+      }),
+    );
+    expect(result.current.messages).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ content: "Stale first answer" }),
+      ]),
+    );
+
+    await act(async () => {
+      resolveNewStream?.({ doneEvent: null, endedWithError: false });
+      await secondSubmit;
+    });
+  });
+
   it("recovers an interrupted stream and suppresses the failure toast when recovery succeeds", async () => {
     mockStreamMessage.mockRejectedValue(
       new Error("AI chat stream ended before a terminal event"),

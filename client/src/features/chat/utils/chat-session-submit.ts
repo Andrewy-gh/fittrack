@@ -63,6 +63,7 @@ export async function submitPrompt({
     runId: null,
   };
   refs.activeOperationRef.current = operation;
+  refs.loadAbortRef.current?.abort();
   const ownsOperation = () => refs.activeOperationRef.current === operation;
   const releaseOperation = () => {
     if (!ownsOperation()) {
