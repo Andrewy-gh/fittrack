@@ -3,9 +3,8 @@ import { defineConfig } from "@hey-api/openapi-ts";
 export default defineConfig({
   input: "../server/docs/swagger.json",
   output: {
-    format: "prettier",
-    lint: "eslint",
     path: "./src/client",
+    postProcess: ["oxfmt", "oxlint"],
   },
   plugins: [
     "@hey-api/schemas", // Types for your Workout interface etc.
