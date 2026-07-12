@@ -16,6 +16,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -131,6 +132,145 @@ func TestRepositoryCompleteRun_AllowsNilWorkoutDraft(t *testing.T) {
 	err = pool.QueryRow(ctx, "SELECT workout_draft FROM ai_chat_run WHERE id = $1 AND user_id = $2", run.ID, userID).Scan(&storedRunDraft)
 	require.NoError(t, err)
 	assert.Nil(t, storedRunDraft)
+}
+
+func TestRepositoryStopRun_SerializesWithConcurrentCompletion(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const (
+		userID          = "aichat-stop-completion-race-user"
+		advisoryLockKey = int64(242001)
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	queries := db.New(pool)
+	repo := NewRepository(logger, queries, pool)
+
+	conversation, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+	prepared, err := repo.PrepareMessageStream(ctx, conversation.ID, userID, "Finish while I try to stop you.", defaultModelName, "req-stop-completion-race")
+	require.NoError(t, err)
+	require.NoError(t, repo.ClaimRunGeneration(ctx, prepared.Run, newRunOwner(runOwnerKindAPI, "stop-completion-race"), time.Now().UTC()))
+
+	_, err = pool.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION test_block_ai_chat_streaming_message_update()
+		RETURNS trigger AS $$
+		BEGIN
+			IF OLD.status = 'streaming' AND NEW.status = 'completed' THEN
+				PERFORM pg_advisory_xact_lock(242001);
+			END IF;
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
+		CREATE TRIGGER test_block_ai_chat_streaming_message_update
+		BEFORE UPDATE ON ai_chat_message
+		FOR EACH ROW
+		EXECUTE FUNCTION test_block_ai_chat_streaming_message_update();
+	`)
+	require.NoError(t, err)
+	defer func() {
+		_, cleanupErr := pool.Exec(context.Background(), `
+			DROP TRIGGER IF EXISTS test_block_ai_chat_streaming_message_update ON ai_chat_message;
+			DROP FUNCTION IF EXISTS test_block_ai_chat_streaming_message_update();
+		`)
+		require.NoError(t, cleanupErr)
+	}()
+
+	gate, err := pool.Acquire(ctx)
+	require.NoError(t, err)
+	defer gate.Release()
+	_, err = gate.Exec(ctx, "SELECT pg_advisory_lock($1)", advisoryLockKey)
+	require.NoError(t, err)
+	defer gate.Exec(context.Background(), "SELECT pg_advisory_unlock($1)", advisoryLockKey)
+
+	completionResult := make(chan error, 1)
+	go func() {
+		_, _, completionErr := repo.CompleteRun(context.Background(), prepared, "completed response", nil, time.Now().UTC())
+		completionResult <- completionErr
+	}()
+	waitForAIChatRepositoryBlockedLocks(t, pool, 1)
+
+	type stopRunResult struct {
+		response *StopRunResponse
+		err      error
+	}
+	stopResult := make(chan stopRunResult, 1)
+	go func() {
+		response, stopErr := repo.StopRun(context.Background(), conversation.ID, prepared.Run.ID, userID, time.Now().UTC())
+		stopResult <- stopRunResult{response: response, err: stopErr}
+	}()
+	waitForAIChatRunRowLock(t, pool, prepared.Run.ID, userID)
+
+	_, err = gate.Exec(ctx, "SELECT pg_advisory_unlock($1)", advisoryLockKey)
+	require.NoError(t, err)
+
+	require.NoError(t, <-completionResult)
+	stopped := <-stopResult
+	require.NoError(t, stopped.err)
+	require.NotNil(t, stopped.response)
+	assert.Equal(t, statusCompleted, stopped.response.Status)
+	assert.Equal(t, "completed response", stopped.response.Text)
+}
+
+func waitForAIChatRunRowLock(t *testing.T, pool *pgxpool.Pool, runID int32, userID string) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		tx, err := pool.Begin(context.Background())
+		require.NoError(t, err)
+		_, lockErr := tx.Exec(context.Background(), `
+			SELECT 1
+			FROM ai_chat_run
+			WHERE id = $1 AND user_id = $2
+			FOR UPDATE NOWAIT
+		`, runID, userID)
+		require.NoError(t, tx.Rollback(context.Background()))
+
+		var pgErr *pgconn.PgError
+		if errors.As(lockErr, &pgErr) && pgErr.Code == "55P03" {
+			return
+		}
+		require.NoError(t, lockErr)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatal("timed out waiting for the AI chat run row to be locked")
+}
+
+func waitForAIChatRepositoryBlockedLocks(t *testing.T, pool *pgxpool.Pool, want int) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var count int
+		err := pool.QueryRow(context.Background(), `
+			SELECT COUNT(*)
+			FROM pg_stat_activity
+			WHERE datname = current_database()
+			  AND pid <> pg_backend_pid()
+			  AND wait_event_type = 'Lock'
+		`).Scan(&count)
+		require.NoError(t, err)
+		if count >= want {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatalf("timed out waiting for %d blocked PostgreSQL lock operations", want)
 }
 
 func TestRepositoryInterruptRun_RequiresLoadedGenerationSnapshot(t *testing.T) {
