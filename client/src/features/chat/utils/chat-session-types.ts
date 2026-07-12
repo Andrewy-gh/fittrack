@@ -16,7 +16,14 @@ export type ConversationRequestOptions = {
   silent?: boolean;
 };
 
+/** Identifies the async operation that currently owns shared run state. */
+export type ChatSessionOperation = {
+  conversationId: number | null;
+  runId: number | null;
+};
+
 export type ChatSessionRefs = {
+  activeOperationRef: { current: ChatSessionOperation | null };
   pendingAssistantIdRef: { current: number | null };
   loadAbortRef: { current: AbortController | null };
   recoveryAbortRef: { current: AbortController | null };

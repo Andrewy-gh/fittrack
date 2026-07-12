@@ -21,6 +21,7 @@ import {
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
+  ChatSessionOperation,
   ConversationRequestOptions,
   ConversationRequestResult,
   RecordChatTelemetry,
@@ -158,6 +159,7 @@ export async function resumeConversation(
   detail: AIChatConversationDetail,
   loadConversation: LoadConversation,
   { refs, setters }: SessionStateContext,
+  operation: ChatSessionOperation,
 ): Promise<ConversationRequestResult> {
   const activeRun = detail.active_run;
   if (!activeRun) {
@@ -273,7 +275,9 @@ export async function resumeConversation(
     if (refs.resumeAbortRef.current === controller) {
       refs.resumeAbortRef.current = null;
     }
-    refs.pendingAssistantIdRef.current = null;
+    if (refs.activeOperationRef.current === operation) {
+      refs.pendingAssistantIdRef.current = null;
+    }
   }
 }
 

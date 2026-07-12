@@ -50,6 +50,8 @@ export function useAIChatSession({
     useState<number | null>(null);
   const [activeRunId, setActiveRunId] = useState<number | null>(null);
 
+  const activeOperationRef =
+    useRef<ChatSessionRefs["activeOperationRef"]["current"]>(null);
   const pendingAssistantIdRef = useRef<number | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const recoveryAbortRef = useRef<AbortController | null>(null);
@@ -69,6 +71,7 @@ export function useAIChatSession({
 
   const refs = useMemo<ChatSessionRefs>(
     () => ({
+      activeOperationRef,
       pendingAssistantIdRef,
       loadAbortRef,
       recoveryAbortRef,
@@ -202,11 +205,20 @@ export function useAIChatSession({
       ) {
         return;
       }
+      const activeOperation = activeOperationRef.current;
+      if (
+        activeOperation?.conversationId === conversationId &&
+        activeOperation.runId === activeRunId
+      ) {
+        activeOperationRef.current = null;
+      }
+      streamAbortRef.current?.abort();
+      resumeAbortRef.current?.abort();
+      recoveryAbortRef.current?.abort();
+      clearResumeCursor(conversationId);
+      setIsSubmitting(false);
+      setActiveRunId(null);
       if (result.status === "stopped") {
-        streamAbortRef.current?.abort();
-        resumeAbortRef.current?.abort();
-        recoveryAbortRef.current?.abort();
-        clearResumeCursor(conversationId);
         setMessages((current) =>
           current.map((message) =>
             message.id === result.message_id
@@ -219,7 +231,6 @@ export function useAIChatSession({
               : message,
           ),
         );
-        setIsSubmitting(false);
       } else {
         await lifecycle.loadRouteConversation(conversationId);
       }

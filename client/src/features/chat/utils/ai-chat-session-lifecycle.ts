@@ -15,7 +15,11 @@ import {
   resumeConversation as resumeConversationRequest,
 } from "./chat-session-recovery";
 import { submitPrompt as submitPromptRequest } from "./chat-session-submit";
-import type { ChatSessionRefs, ChatSessionSetters } from "./chat-session-types";
+import type {
+  ChatSessionOperation,
+  ChatSessionRefs,
+  ChatSessionSetters,
+} from "./chat-session-types";
 
 type AIChatSessionLifecycleOptions = {
   refs: ChatSessionRefs;
@@ -56,10 +60,19 @@ export function createAIChatSessionLifecycle({
     opts?: Parameters<typeof recoverConversationRequest>[1],
   ) => recoverConversationRequest(id, opts, { refs, setters });
 
-  const resumeConversation = (detail: AIChatConversationDetail) =>
-    resumeConversationRequest(detail, loadConversation, { refs, setters });
+  const resumeConversation = (
+    detail: AIChatConversationDetail,
+    operation: ChatSessionOperation,
+  ) =>
+    resumeConversationRequest(
+      detail,
+      loadConversation,
+      { refs, setters },
+      operation,
+    );
 
   const abortActiveRequests = () => {
+    refs.activeOperationRef.current = null;
     refs.loadAbortRef.current?.abort();
     refs.recoveryAbortRef.current?.abort();
     refs.resumeAbortRef.current?.abort();
@@ -73,11 +86,15 @@ export function createAIChatSessionLifecycle({
     setters.setPrompt(prompt);
     setters.setLatestWorkoutDraftMessageId(null);
     setters.setActiveRunId(null);
+    setters.setIsSubmitting(false);
     setters.setLoadError(null);
     setters.setIsLoadingConversation(false);
   };
 
   const loadRouteConversation = async (conversationId: number) => {
+    refs.activeOperationRef.current = null;
+    setters.setIsSubmitting(false);
+    setters.setActiveRunId(null);
     const loadResult = await loadConversation(conversationId);
     recordTelemetry({
       category: "load",
@@ -87,13 +104,25 @@ export function createAIChatSessionLifecycle({
     });
 
     if (loadResult.detail?.active_run) {
+      const operation: ChatSessionOperation = {
+        conversationId,
+        runId: loadResult.detail.active_run.id,
+      };
+      refs.activeOperationRef.current = operation;
       setters.setActiveRunId(loadResult.detail.active_run.id);
       setters.setIsSubmitting(true);
       try {
-        await resumeOrRecoverActiveRun(conversationId, loadResult.detail);
+        await resumeOrRecoverActiveRun(
+          conversationId,
+          loadResult.detail,
+          operation,
+        );
       } finally {
-        setters.setIsSubmitting(false);
-        setters.setActiveRunId(null);
+        if (refs.activeOperationRef.current === operation) {
+          refs.activeOperationRef.current = null;
+          setters.setIsSubmitting(false);
+          setters.setActiveRunId(null);
+        }
       }
       return;
     }
@@ -129,8 +158,9 @@ export function createAIChatSessionLifecycle({
   async function resumeOrRecoverActiveRun(
     conversationId: number,
     detail: AIChatConversationDetail,
+    operation: ChatSessionOperation,
   ) {
-    const resumeResult = await resumeConversation(detail);
+    const resumeResult = await resumeConversation(detail, operation);
     if (!resumeResult.aborted && resumeResult.detail) {
       const resumeOutcome = classifyRecoveryOutcome({
         messages: resumeResult.detail.messages,

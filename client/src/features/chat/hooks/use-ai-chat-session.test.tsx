@@ -401,6 +401,216 @@ describe("useAIChatSession", () => {
     );
   });
 
+  it.each(["completed", "failed"] as const)(
+    "releases a hung active request when Stop reports an already %s run",
+    async (status) => {
+      mockGetConversation
+        .mockResolvedValueOnce(
+          conversationDetail([], {
+            id: 91,
+            assistant_message_id: 61,
+            status: "streaming",
+            latest_sequence: 1,
+          }),
+        )
+        .mockResolvedValueOnce(
+          conversationDetail([
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: `${status} response`,
+              status,
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:02Z",
+              completed_at: "2026-03-26T17:00:02Z",
+            },
+          ]),
+        );
+      mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+      mockStopRun.mockResolvedValue({
+        conversation_id: 41,
+        run_id: 91,
+        message_id: 61,
+        status,
+        text: `${status} response`,
+        sequence: 2,
+      });
+
+      const { result } = renderSession();
+
+      await waitFor(() => {
+        expect(result.current.canStop).toBe(true);
+      });
+
+      await act(async () => {
+        await result.current.stopRun();
+      });
+
+      expect(result.current.isSubmitting).toBe(false);
+      expect(result.current.canStop).toBe(false);
+      expect(result.current.messages).toEqual([
+        expect.objectContaining({
+          id: 61,
+          content: `${status} response`,
+          status,
+        }),
+      ]);
+    },
+  );
+
+  it("keeps a newly loaded Stop target when an aborted route resume settles late", async () => {
+    const resolveResume: Array<
+      (value: { doneEvent: null; endedWithError: false }) => void
+    > = [];
+    mockResumeStream.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveResume.push(resolve);
+        }),
+    );
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce({
+        ...conversationDetail([], {
+          id: 92,
+          assistant_message_id: 82,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+        conversation: {
+          id: 42,
+          created_at: "2026-03-26T17:01:00Z",
+          updated_at: "2026-03-26T17:01:00Z",
+        },
+      });
+
+    const { result, rerender } = renderSession();
+
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+      expect(resolveResume).toHaveLength(1);
+    });
+
+    rerender({ id: 42 });
+    await waitFor(() => {
+      expect(resolveResume).toHaveLength(2);
+      expect(result.current.canStop).toBe(true);
+      expect(result.current.isSubmitting).toBe(true);
+    });
+
+    await act(async () => {
+      resolveResume[0]?.({ doneEvent: null, endedWithError: false });
+      await Promise.resolve();
+    });
+
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.isSubmitting).toBe(true);
+    mockStopRun.mockResolvedValue({
+      conversation_id: 42,
+      run_id: 92,
+      message_id: 82,
+      status: "stopped",
+      text: "new response",
+      sequence: 2,
+    });
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledWith(42, 92);
+  });
+
+  it("keeps a newly loaded Stop target when an aborted submit settles late", async () => {
+    let resolveSubmit:
+      | ((value: { doneEvent: null; endedWithError: false }) => void)
+      | undefined;
+    mockStreamMessage.mockImplementation(
+      (
+        _conversationId: number,
+        _prompt: string,
+        options?: {
+          onStart?: (event: Record<string, unknown>) => void;
+        },
+      ) => {
+        options?.onStart?.({
+          type: "start",
+          run_id: 91,
+          message_id: 61,
+          sequence: 1,
+        });
+        return new Promise((resolve) => {
+          resolveSubmit = resolve;
+        });
+      },
+    );
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+    mockGetConversation
+      .mockResolvedValueOnce(conversationDetail([]))
+      .mockResolvedValueOnce({
+        ...conversationDetail([], {
+          id: 92,
+          assistant_message_id: 82,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+        conversation: {
+          id: 42,
+          created_at: "2026-03-26T17:01:00Z",
+          updated_at: "2026-03-26T17:01:00Z",
+        },
+      });
+
+    const { result, rerender } = renderSession();
+    await waitFor(() => {
+      expect(result.current.isLoadingConversation).toBe(false);
+    });
+
+    act(() => {
+      result.current.setPrompt("hello");
+    });
+    let submitPromise: Promise<void> | undefined;
+    act(() => {
+      submitPromise = result.current.submitPrompt();
+    });
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+    });
+
+    rerender({ id: 42 });
+    await waitFor(() => {
+      expect(mockResumeStream).toHaveBeenCalled();
+      expect(result.current.canStop).toBe(true);
+      expect(result.current.isSubmitting).toBe(true);
+    });
+
+    await act(async () => {
+      resolveSubmit?.({ doneEvent: null, endedWithError: false });
+      await submitPromise;
+    });
+
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.isSubmitting).toBe(true);
+    mockStopRun.mockResolvedValue({
+      conversation_id: 42,
+      run_id: 92,
+      message_id: 82,
+      status: "stopped",
+      text: "new response",
+      sequence: 2,
+    });
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledWith(42, 92);
+  });
+
   it("ignores a Stop response after navigating to a different active run", async () => {
     let resolveStop: ((value: Record<string, unknown>) => void) | undefined;
     mockStopRun.mockImplementation(
