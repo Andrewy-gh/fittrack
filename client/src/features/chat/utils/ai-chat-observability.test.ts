@@ -58,6 +58,34 @@ describe("ai chat observability helpers", () => {
     ).toBe("recovered_completed");
   });
 
+  it("classifies a persisted stopped response as successful recovery", () => {
+    expect(
+      classifyRecoveryOutcome({
+        prompt: "hello",
+        messages: [
+          {
+            id: 1,
+            conversation_id: 41,
+            role: "user",
+            content: "hello",
+            status: "completed",
+            created_at: "2026-03-27T00:00:00Z",
+            updated_at: "2026-03-27T00:00:00Z",
+          },
+          {
+            id: 2,
+            conversation_id: 41,
+            role: "assistant",
+            content: "Partial answer",
+            status: "stopped",
+            created_at: "2026-03-27T00:00:00Z",
+            updated_at: "2026-03-27T00:00:01Z",
+          },
+        ],
+      }),
+    ).toBe("recovered_completed");
+  });
+
   it("classifies recovery timeouts without counting them as aborts", () => {
     const error = new Error(recoveryTimeoutMessage);
 

@@ -47,7 +47,7 @@ export function classifyRecoveryOutcome({
   }
 
   const status = findRecoveredAssistantStatus(messages, prompt);
-  if (status === "completed") {
+  if (status === "completed" || status === "stopped") {
     return "recovered_completed";
   }
   if (status === "failed") {

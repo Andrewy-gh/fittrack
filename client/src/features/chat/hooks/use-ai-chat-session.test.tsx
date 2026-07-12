@@ -251,6 +251,64 @@ describe("useAIChatSession", () => {
     });
   });
 
+  it("treats a persisted stopped response as successful recovery", async () => {
+    mockStreamMessage.mockRejectedValue(
+      new Error("AI chat stream ended before a terminal event"),
+    );
+    mockPollConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          id: 71,
+          conversation_id: 41,
+          role: "user",
+          content: "hello",
+          status: "completed",
+          created_at: "2026-03-26T17:00:01Z",
+          updated_at: "2026-03-26T17:00:01Z",
+          completed_at: "2026-03-26T17:00:01Z",
+        },
+        {
+          id: 72,
+          conversation_id: 41,
+          role: "assistant",
+          content: "Partial answer",
+          status: "stopped",
+          created_at: "2026-03-26T17:00:01Z",
+          updated_at: "2026-03-26T17:00:02Z",
+          completed_at: "2026-03-26T17:00:02Z",
+        },
+      ]),
+    );
+    const { result } = renderSession();
+
+    await waitFor(() => {
+      expect(result.current.isLoadingConversation).toBe(false);
+    });
+
+    act(() => {
+      result.current.setPrompt("hello");
+    });
+    await act(async () => {
+      await result.current.submitPrompt();
+    });
+
+    expect(result.current.messages.at(-1)).toEqual(
+      expect.objectContaining({
+        content: "Partial answer",
+        status: "stopped",
+      }),
+    );
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovered_completed",
+    });
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "ux",
+      outcome: "failure_toast_suppressed_due_to_successful_recovery",
+    });
+  });
+
   it("removes optimistic messages and restores the prompt after a pre-start server error", async () => {
     mockStreamMessage.mockRejectedValue({
       message: "ai chat runtime is not configured",
@@ -431,5 +489,105 @@ describe("useAIChatSession", () => {
         status: "streaming",
       }),
     ]);
+  });
+
+  it("ignores a rejected Stop request after navigating to a different active run", async () => {
+    let rejectStop: ((reason?: unknown) => void) | undefined;
+    mockStopRun.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectStop = reject;
+        }),
+    );
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce({
+        ...conversationDetail(
+          [
+            {
+              id: 82,
+              conversation_id: 42,
+              role: "assistant",
+              content: "new response",
+              status: "streaming",
+              created_at: "2026-03-26T17:01:00Z",
+              updated_at: "2026-03-26T17:01:01Z",
+            },
+          ],
+          {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+        conversation: {
+          id: 42,
+          created_at: "2026-03-26T17:01:00Z",
+          updated_at: "2026-03-26T17:01:00Z",
+        },
+      });
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+
+    const { result, rerender } = renderSession();
+
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+    });
+
+    let stopPromise: Promise<void> | undefined;
+    act(() => {
+      stopPromise = result.current.stopRun();
+    });
+
+    rerender({ id: 42 });
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+      expect(result.current.isSubmitting).toBe(true);
+    });
+
+    await act(async () => {
+      rejectStop?.(new Error("old Stop request failed"));
+      await stopPromise;
+    });
+
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(result.current.isSubmitting).toBe(true);
+  });
+
+  it("reports a rejected Stop request for the current active run", async () => {
+    const error = new Error("Stop request failed");
+    mockStopRun.mockRejectedValue(error);
+    mockGetConversation.mockResolvedValue(
+      conversationDetail([], {
+        id: 91,
+        assistant_message_id: 61,
+        status: "streaming",
+        latest_sequence: 1,
+      }),
+    );
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+
+    const { result } = renderSession();
+
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      error,
+      "Failed to stop AI chat response",
+    );
   });
 });

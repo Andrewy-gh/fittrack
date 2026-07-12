@@ -224,6 +224,13 @@ export function useAIChatSession({
         await lifecycle.loadRouteConversation(conversationId);
       }
     } catch (error) {
+      const currentTarget = stopTargetRef.current;
+      if (
+        currentTarget.conversationId !== conversationId ||
+        currentTarget.activeRunId !== activeRunId
+      ) {
+        return;
+      }
       showErrorToast(error, "Failed to stop AI chat response");
     }
   }, [activeRunId, conversationId, lifecycle]);

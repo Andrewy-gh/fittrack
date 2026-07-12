@@ -1,7 +1,6 @@
 import {
   createAIChatConversation,
   streamAIChatMessage,
-  type AIChatMessage,
 } from "@/features/chat/api/ai-chat";
 import {
   classifyRecoveryOutcome,
@@ -306,11 +305,6 @@ async function handleStreamFailureRecovery({
     return;
   }
 
-  const recoveredPromptStatus = findRecoveredPromptStatus(
-    recoveredDetail?.messages ?? [],
-    nextPrompt,
-  );
-
   if (!recoveredDetail) {
     const targetId = streamStarted
       ? (refs.pendingAssistantIdRef.current ?? tempAssistantId)
@@ -318,7 +312,7 @@ async function handleStreamFailureRecovery({
     markAssistantMessageFailed(setters, targetId, submitFailure);
   }
 
-  if (recoveredPromptStatus !== "completed") {
+  if (recoveryOutcome !== "recovered_completed") {
     if (!streamStarted) {
       setters.setPrompt(nextPrompt);
     }
@@ -378,33 +372,4 @@ function isPreflightAPIError(error: unknown): error is { message: string } {
     "message" in error &&
     typeof (error as { message?: unknown }).message === "string"
   );
-}
-
-function findRecoveredPromptStatus(
-  messages: AIChatMessage[],
-  prompt: string,
-): AIChatMessage["status"] | null {
-  const normalizedPrompt = prompt.trim();
-  if (!normalizedPrompt) {
-    return null;
-  }
-
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (
-      message.role !== "user" ||
-      message.content.trim() !== normalizedPrompt
-    ) {
-      continue;
-    }
-
-    const assistant = messages[index + 1];
-    if (assistant?.role === "assistant") {
-      return assistant.status;
-    }
-
-    return null;
-  }
-
-  return null;
 }
