@@ -39,6 +39,7 @@ type Repository interface {
 	ListStreamChunksAfter(ctx context.Context, runID int32, userID string, afterSequence int32) ([]StreamChunk, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, userID string, prompt string, model string, requestID string) (*PreparedMessageStream, error)
 	ClaimRunGeneration(ctx context.Context, run *ChatRun, owner runOwner, now time.Time) error
+	OwnsRunGeneration(ctx context.Context, run *ChatRun, owner runOwner) (bool, error)
 	HeartbeatRunGeneration(ctx context.Context, run *ChatRun, owner runOwner, now time.Time) (bool, error)
 	AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error)
 	InterruptRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, reason string, completedAt time.Time) error

@@ -3103,6 +3103,31 @@ func (q *Queries) MarkStripeWebhookEventProcessed(ctx context.Context, arg MarkS
 	return err
 }
 
+const ownsAIChatRunGeneration = `-- name: OwnsAIChatRunGeneration :one
+SELECT EXISTS (
+    SELECT 1
+    FROM ai_chat_run
+    WHERE id = $1
+      AND user_id = $2
+      AND status = 'streaming'
+      AND generation_status = 'generating'
+      AND generation_owner = $3
+)
+`
+
+type OwnsAIChatRunGenerationParams struct {
+	ID              int32       `json:"id"`
+	UserID          string      `json:"user_id"`
+	GenerationOwner pgtype.Text `json:"generation_owner"`
+}
+
+func (q *Queries) OwnsAIChatRunGeneration(ctx context.Context, arg OwnsAIChatRunGenerationParams) (bool, error) {
+	row := q.db.QueryRow(ctx, ownsAIChatRunGeneration, arg.ID, arg.UserID, arg.GenerationOwner)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const revokeStripeFeatureAccess = `-- name: RevokeStripeFeatureAccess :exec
 UPDATE user_feature_access
 SET revoked_at = GREATEST(CURRENT_TIMESTAMP, starts_at)

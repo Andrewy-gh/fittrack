@@ -25,10 +25,10 @@ func (s *Service) StopRun(ctx context.Context, conversationID, runID int32) (*St
 	}
 	if result.Status == statusStopped {
 		s.cancelMu.Lock()
-		cancel := s.runCancels[runID]
+		registration := s.runCancels[runID]
 		s.cancelMu.Unlock()
-		if cancel != nil {
-			cancel()
+		if registration.cancel != nil {
+			registration.cancel()
 		}
 		s.logger.Info("ai chat run stopped", "conversation_id", conversationID, "run_id", runID, "sequence", result.Sequence)
 	}

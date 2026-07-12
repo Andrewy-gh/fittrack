@@ -295,6 +295,21 @@ func (r *repository) HeartbeatRunGeneration(ctx context.Context, run *ChatRun, o
 	return rows > 0, nil
 }
 
+func (r *repository) OwnsRunGeneration(ctx context.Context, run *ChatRun, owner runOwner) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	owned, err := r.queries.OwnsAIChatRunGeneration(ctx, db.OwnsAIChatRunGenerationParams{
+		ID:              run.ID,
+		UserID:          run.UserID,
+		GenerationOwner: pgtype.Text{String: owner.Value(), Valid: true},
+	})
+	if err != nil {
+		return false, fmt.Errorf("check ai chat run generation ownership: %w", err)
+	}
+	return owned, nil
+}
+
 func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

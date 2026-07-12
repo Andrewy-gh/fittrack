@@ -33,7 +33,12 @@ type Service struct {
 	recovery          recoveryDispatcher
 	workoutDraftSaver workout.TxSaver
 	cancelMu          sync.Mutex
-	runCancels        map[int32]context.CancelFunc
+	runCancels        map[int32]runCancellation
+}
+
+type runCancellation struct {
+	owner  string
+	cancel context.CancelFunc
 }
 
 const (
@@ -50,7 +55,7 @@ func NewService(logger *slog.Logger, featureAccess featureAccessService, runtime
 		runtime:           runtime,
 		repo:              repo,
 		workoutDraftSaver: workoutDraftSaver,
-		runCancels:        make(map[int32]context.CancelFunc),
+		runCancels:        make(map[int32]runCancellation),
 	}
 }
 

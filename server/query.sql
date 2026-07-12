@@ -1591,6 +1591,17 @@ WHERE id = $1
   AND generation_status = 'generating'
   AND generation_owner = $5;
 
+-- name: OwnsAIChatRunGeneration :one
+SELECT EXISTS (
+    SELECT 1
+    FROM ai_chat_run
+    WHERE id = $1
+      AND user_id = $2
+      AND status = 'streaming'
+      AND generation_status = 'generating'
+      AND generation_owner = $3
+);
+
 -- name: UpdateAIChatRunFailed :one
 UPDATE ai_chat_run
 SET status = 'failed',

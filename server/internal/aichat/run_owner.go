@@ -16,6 +16,7 @@ const (
 	generationStatusFailed      = "failed"
 	generationStatusInterrupted = "interrupted"
 
+	generationStopPollInterval  = 250 * time.Millisecond
 	generationHeartbeatInterval = 5 * time.Second
 	generationLeaseDuration     = 30 * time.Second
 	chatGenerationTimeout       = 75 * time.Second
