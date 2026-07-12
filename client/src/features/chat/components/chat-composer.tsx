@@ -94,7 +94,11 @@ export function ChatComposer({
           disabled={isSubmitting ? !onStop : !canSend}
           className="size-9 shrink-0 rounded-full"
         >
-          {isSubmitting ? <Square className="size-4 fill-current" /> : <ArrowUp className="size-4" />}
+          {isSubmitting ? (
+            <Square className="size-4 fill-current" />
+          ) : (
+            <ArrowUp className="size-4" />
+          )}
         </Button>
       </div>
     </form>

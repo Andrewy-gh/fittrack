@@ -188,11 +188,18 @@ export function useAIChatSession({
         resumeAbortRef.current?.abort();
         recoveryAbortRef.current?.abort();
         clearResumeCursor(conversationId);
-        setMessages((current) => current.map((message) =>
-          message.id === result.message_id
-            ? { ...message, content: result.text, status: "stopped", completed_at: new Date().toISOString() }
-            : message,
-        ));
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === result.message_id
+              ? {
+                  ...message,
+                  content: result.text,
+                  status: "stopped",
+                  completed_at: new Date().toISOString(),
+                }
+              : message,
+          ),
+        );
         setIsSubmitting(false);
       } else {
         await lifecycle.loadRouteConversation(conversationId);
