@@ -1,7 +1,6 @@
 import {
   createAIChatConversation,
   streamAIChatMessage,
-  type AIChatMessage,
 } from "@/features/chat/api/ai-chat";
 import {
   classifyRecoveryOutcome,
@@ -19,6 +18,7 @@ import {
 import type {
   ChatSessionRefs,
   ChatSessionSetters,
+  ChatSessionOperation,
   RecordChatTelemetry,
 } from "./chat-session-types";
 import type {
@@ -54,9 +54,26 @@ export async function submitPrompt({
   setters,
 }: SubmitPromptOptions) {
   const nextPrompt = prompt.trim();
-  if (!nextPrompt || isSubmitting) {
+  if (!nextPrompt || isSubmitting || refs.activeOperationRef.current) {
     return;
   }
+
+  const operation: ChatSessionOperation = {
+    conversationId,
+    runId: null,
+    routeHandoffConversationId: null,
+  };
+  refs.activeOperationRef.current = operation;
+  refs.loadAbortRef.current?.abort();
+  const ownsOperation = () => refs.activeOperationRef.current === operation;
+  const releaseOperation = () => {
+    if (!ownsOperation()) {
+      return;
+    }
+    refs.activeOperationRef.current = null;
+    setters.setIsSubmitting(false);
+    setters.setActiveRunId(null);
+  };
 
   setters.setIsSubmitting(true);
   setters.setPrompt("");
@@ -66,21 +83,32 @@ export async function submitPrompt({
   try {
     if (!activeConversationId) {
       const createdConversation = await createAIChatConversation();
+      if (!ownsOperation()) {
+        return;
+      }
       activeConversationId = createdConversation.id;
+      operation.conversationId = activeConversationId;
+      operation.routeHandoffConversationId = activeConversationId;
       onNewConversationCreated(activeConversationId);
       setters.setConversation(createdConversation);
       await onConversationCreated(activeConversationId);
+      if (!ownsOperation()) {
+        return;
+      }
     }
   } catch (error) {
+    if (!ownsOperation()) {
+      return;
+    }
     setters.setPrompt(nextPrompt);
-    setters.setIsSubmitting(false);
+    releaseOperation();
     showErrorToast(error, "Failed to create chat conversation");
     return;
   }
 
   if (!activeConversationId) {
     setters.setPrompt(nextPrompt);
-    setters.setIsSubmitting(false);
+    releaseOperation();
     return;
   }
 
@@ -123,6 +151,7 @@ export async function submitPrompt({
       nextPrompt,
       {
         onStart: (event) => {
+          if (!ownsOperation()) return;
           streamStarted = true;
           onPromptStarted(activeConversationId);
           const assistantMessageId = event.message_id ?? tempAssistantId;
@@ -139,8 +168,11 @@ export async function submitPrompt({
             sequence: event.sequence ?? 0,
             assistantMessageId,
           });
+          operation.runId = event.run_id ?? null;
+          setters.setActiveRunId(operation.runId);
         },
         onDelta: (event) => {
+          if (!ownsOperation()) return;
           const targetId =
             refs.pendingAssistantIdRef.current ?? tempAssistantId;
           setters.setMessages((current) =>
@@ -159,6 +191,7 @@ export async function submitPrompt({
           }
         },
         onDone: (event) => {
+          if (!ownsOperation()) return;
           const targetId =
             refs.pendingAssistantIdRef.current ?? tempAssistantId;
           setters.setMessages((current) =>
@@ -181,6 +214,7 @@ export async function submitPrompt({
           clearResumeCursor(activeConversationId);
         },
         onErrorEvent: (event) => {
+          if (!ownsOperation()) return;
           const targetId =
             refs.pendingAssistantIdRef.current ?? tempAssistantId;
           setters.setMessages((current) =>
@@ -196,6 +230,9 @@ export async function submitPrompt({
       },
     );
 
+    if (!ownsOperation()) {
+      return;
+    }
     recordTelemetry({
       category: "stream",
       outcome: streamResult.endedWithError ? "server_error" : "completed",
@@ -209,6 +246,9 @@ export async function submitPrompt({
     }
     shouldRefreshConversation = true;
   } catch (error) {
+    if (!ownsOperation()) {
+      return;
+    }
     if (!streamStarted && isPreflightAPIError(error)) {
       removeOptimisticMessages(setters, tempUserId, tempAssistantId);
       setters.setPrompt(nextPrompt);
@@ -252,11 +292,13 @@ export async function submitPrompt({
     if (refs.streamAbortRef.current === streamController) {
       refs.streamAbortRef.current = null;
     }
-    refs.pendingAssistantIdRef.current = null;
-    setters.setIsSubmitting(false);
+    if (ownsOperation()) {
+      refs.pendingAssistantIdRef.current = null;
+      releaseOperation();
+    }
   }
 
-  if (shouldRefreshConversation) {
+  if (shouldRefreshConversation && refs.activeOperationRef.current === null) {
     await loadConversation(activeConversationId, { silent: true });
   }
 }
@@ -304,11 +346,6 @@ async function handleStreamFailureRecovery({
     return;
   }
 
-  const recoveredPromptStatus = findRecoveredPromptStatus(
-    recoveredDetail?.messages ?? [],
-    nextPrompt,
-  );
-
   if (!recoveredDetail) {
     const targetId = streamStarted
       ? (refs.pendingAssistantIdRef.current ?? tempAssistantId)
@@ -316,7 +353,7 @@ async function handleStreamFailureRecovery({
     markAssistantMessageFailed(setters, targetId, submitFailure);
   }
 
-  if (recoveredPromptStatus !== "completed") {
+  if (recoveryOutcome !== "recovered_completed") {
     if (!streamStarted) {
       setters.setPrompt(nextPrompt);
     }
@@ -376,33 +413,4 @@ function isPreflightAPIError(error: unknown): error is { message: string } {
     "message" in error &&
     typeof (error as { message?: unknown }).message === "string"
   );
-}
-
-function findRecoveredPromptStatus(
-  messages: AIChatMessage[],
-  prompt: string,
-): AIChatMessage["status"] | null {
-  const normalizedPrompt = prompt.trim();
-  if (!normalizedPrompt) {
-    return null;
-  }
-
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (
-      message.role !== "user" ||
-      message.content.trim() !== normalizedPrompt
-    ) {
-      continue;
-    }
-
-    const assistant = messages[index + 1];
-    if (assistant?.role === "assistant") {
-      return assistant.status;
-    }
-
-    return null;
-  }
-
-  return null;
 }

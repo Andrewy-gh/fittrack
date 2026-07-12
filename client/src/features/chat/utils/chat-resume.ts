@@ -112,7 +112,7 @@ export function updateStreamingMessageWithDone(
       ? {
           ...message,
           id: event.message_id ?? message.id,
-          status: "completed",
+          status: event.status === "stopped" ? "stopped" : "completed",
           content: event.text,
           completed_at: new Date().toISOString(),
         }

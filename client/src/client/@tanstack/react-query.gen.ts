@@ -34,6 +34,7 @@ import {
   postAiConversations,
   postAiConversationsByIdLatestWorkoutDraftSave,
   postAiConversationsByIdMessagesRecover,
+  postAiConversationsByIdRunsByRunIdStop,
   postExercises,
   postWorkouts,
   putTrainingProfile,
@@ -105,6 +106,9 @@ import type {
   PostAiConversationsByIdMessagesRecoverData,
   PostAiConversationsByIdMessagesRecoverError,
   PostAiConversationsByIdMessagesRecoverResponse,
+  PostAiConversationsByIdRunsByRunIdStopData,
+  PostAiConversationsByIdRunsByRunIdStopError,
+  PostAiConversationsByIdRunsByRunIdStopResponse,
   PostAiConversationsData,
   PostAiConversationsError,
   PostAiConversationsResponse,
@@ -385,6 +389,35 @@ export const postAiConversationsByIdMessagesRecoverMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await postAiConversationsByIdMessagesRecover({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Stop an AI chat run
+ *
+ * Idempotently stops the authenticated user's exact streaming run while preserving partial output.
+ */
+export const postAiConversationsByIdRunsByRunIdStopMutation = (
+  options?: Partial<Options<PostAiConversationsByIdRunsByRunIdStopData>>,
+): UseMutationOptions<
+  PostAiConversationsByIdRunsByRunIdStopResponse,
+  PostAiConversationsByIdRunsByRunIdStopError,
+  Options<PostAiConversationsByIdRunsByRunIdStopData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostAiConversationsByIdRunsByRunIdStopResponse,
+    PostAiConversationsByIdRunsByRunIdStopError,
+    Options<PostAiConversationsByIdRunsByRunIdStopData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await postAiConversationsByIdRunsByRunIdStop({
         ...options,
         ...fnOptions,
         throwOnError: true,

@@ -75,6 +75,15 @@ export type AichatSendMessageRequest = {
   prompt?: string;
 };
 
+export type AichatStopRunResponse = {
+  conversation_id?: number;
+  message_id?: number;
+  run_id?: number;
+  sequence?: number;
+  status?: string;
+  text?: string;
+};
+
 export type AichatStreamEvent = {
   conversation_id?: number;
   delta?: string;
@@ -874,6 +883,54 @@ export type GetAiConversationsByIdMessagesStreamResumeResponses = {
 
 export type GetAiConversationsByIdMessagesStreamResumeResponse =
   GetAiConversationsByIdMessagesStreamResumeResponses[keyof GetAiConversationsByIdMessagesStreamResumeResponses];
+
+export type PostAiConversationsByIdRunsByRunIdStopData = {
+  body?: never;
+  path: {
+    /**
+     * Conversation ID
+     */
+    id: number;
+    /**
+     * Run ID
+     */
+    runID: number;
+  };
+  query?: never;
+  url: "/ai/conversations/{id}/runs/{runID}/stop";
+};
+
+export type PostAiConversationsByIdRunsByRunIdStopErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseError;
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Forbidden
+   */
+  403: ResponseError;
+  /**
+   * Not Found
+   */
+  404: ResponseError;
+};
+
+export type PostAiConversationsByIdRunsByRunIdStopError =
+  PostAiConversationsByIdRunsByRunIdStopErrors[keyof PostAiConversationsByIdRunsByRunIdStopErrors];
+
+export type PostAiConversationsByIdRunsByRunIdStopResponses = {
+  /**
+   * OK
+   */
+  200: AichatStopRunResponse;
+};
+
+export type PostAiConversationsByIdRunsByRunIdStopResponse =
+  PostAiConversationsByIdRunsByRunIdStopResponses[keyof PostAiConversationsByIdRunsByRunIdStopResponses];
 
 export type GetExercisesData = {
   body?: never;

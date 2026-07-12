@@ -1240,6 +1240,16 @@ FROM ai_chat_run
 WHERE id = $1
   AND user_id = $2;
 
+-- name: GetAIChatRunForUpdate :one
+SELECT id, conversation_id, user_id, user_message_id, assistant_message_id,
+       model, status, request_id, error_message, workout_draft,
+       generation_status, generation_owner, generation_lease_expires_at,
+       generation_heartbeat_at, generation_attempt, interrupted_at,
+       interruption_reason, created_at, updated_at, started_at, completed_at
+FROM ai_chat_run
+WHERE id = $1 AND conversation_id = $2 AND user_id = $3
+FOR UPDATE;
+
 -- name: GetLatestAIChatStreamChunkSequence :one
 SELECT COALESCE(MAX(sequence), 0)::INTEGER
 FROM ai_chat_stream_chunk
@@ -1457,6 +1467,28 @@ RETURNING
     updated_at,
     completed_at;
 
+-- name: UpdateAIChatMessageStopped :one
+UPDATE ai_chat_message
+SET status = 'stopped', error_message = NULL, completed_at = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND status = 'streaming'
+RETURNING id, conversation_id, user_id, role, content, status, error_message,
+          created_at, updated_at, completed_at;
+
+-- name: UpdateAIChatRunStopped :one
+UPDATE ai_chat_run
+SET status = 'stopped', error_message = NULL, completed_at = $3,
+    workout_draft = NULL, generation_status = 'stopped',
+    generation_owner = NULL, generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL, interrupted_at = NULL,
+    interruption_reason = NULL, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND status = 'streaming'
+RETURNING id, conversation_id, user_id, user_message_id, assistant_message_id,
+          model, status, request_id, error_message, workout_draft,
+          generation_status, generation_owner, generation_lease_expires_at,
+          generation_heartbeat_at, generation_attempt, interrupted_at,
+          interruption_reason, created_at, updated_at, started_at, completed_at;
+
 -- name: UpdateAIChatRunCompleted :one
 UPDATE ai_chat_run
 SET status = 'completed',
@@ -1472,6 +1504,7 @@ SET status = 'completed',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
+  AND status = 'streaming'
   AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
@@ -1558,6 +1591,17 @@ WHERE id = $1
   AND generation_status = 'generating'
   AND generation_owner = $5;
 
+-- name: OwnsAIChatRunGeneration :one
+SELECT EXISTS (
+    SELECT 1
+    FROM ai_chat_run
+    WHERE id = $1
+      AND user_id = $2
+      AND status = 'streaming'
+      AND generation_status = 'generating'
+      AND generation_owner = $3
+);
+
 -- name: UpdateAIChatRunFailed :one
 UPDATE ai_chat_run
 SET status = 'failed',
@@ -1573,6 +1617,7 @@ SET status = 'failed',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
+  AND status = 'streaming'
   AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,

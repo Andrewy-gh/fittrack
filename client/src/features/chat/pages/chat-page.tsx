@@ -124,6 +124,8 @@ export function ChatPage({
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
+    stopRun,
+    canStop,
   } = useAIChatSession({
     conversationId,
     initialPrompt,
@@ -293,6 +295,7 @@ export function ChatPage({
       value={prompt}
       onChange={setPrompt}
       onSubmit={handleSubmit}
+      onStop={canStop ? () => void stopRun() : undefined}
       disabled={isComposerDisabled}
       isSubmitting={isSubmitting}
       placeholder={COMPOSER_PLACEHOLDER}
@@ -556,6 +559,7 @@ function MessageBubble({
 
   const isStreaming = message.status === "streaming";
   const isFailed = message.status === "failed";
+  const isStopped = message.status === "stopped";
   const showActions =
     !isStreaming && (message.content.trim().length > 0 || isFailed);
 
@@ -575,6 +579,10 @@ function MessageBubble({
 
       {message.error_message ? (
         <div className="text-xs text-destructive">{message.error_message}</div>
+      ) : null}
+
+      {isStopped ? (
+        <div className="text-xs text-muted-foreground">Stopped</div>
       ) : null}
 
       {showActions ? (

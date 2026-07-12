@@ -796,6 +796,52 @@ func (q *Queries) GetAIChatRun(ctx context.Context, arg GetAIChatRunParams) (AiC
 	return i, err
 }
 
+const getAIChatRunForUpdate = `-- name: GetAIChatRunForUpdate :one
+SELECT id, conversation_id, user_id, user_message_id, assistant_message_id,
+       model, status, request_id, error_message, workout_draft,
+       generation_status, generation_owner, generation_lease_expires_at,
+       generation_heartbeat_at, generation_attempt, interrupted_at,
+       interruption_reason, created_at, updated_at, started_at, completed_at
+FROM ai_chat_run
+WHERE id = $1 AND conversation_id = $2 AND user_id = $3
+FOR UPDATE
+`
+
+type GetAIChatRunForUpdateParams struct {
+	ID             int32  `json:"id"`
+	ConversationID int32  `json:"conversation_id"`
+	UserID         string `json:"user_id"`
+}
+
+func (q *Queries) GetAIChatRunForUpdate(ctx context.Context, arg GetAIChatRunForUpdateParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, getAIChatRunForUpdate, arg.ID, arg.ConversationID, arg.UserID)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const getAIChatTrialPromptUsage = `-- name: GetAIChatTrialPromptUsage :one
 SELECT user_id, stripe_subscription_id, prompt_count, created_at, updated_at
 FROM ai_chat_trial_prompt_usage
@@ -3057,6 +3103,31 @@ func (q *Queries) MarkStripeWebhookEventProcessed(ctx context.Context, arg MarkS
 	return err
 }
 
+const ownsAIChatRunGeneration = `-- name: OwnsAIChatRunGeneration :one
+SELECT EXISTS (
+    SELECT 1
+    FROM ai_chat_run
+    WHERE id = $1
+      AND user_id = $2
+      AND status = 'streaming'
+      AND generation_status = 'generating'
+      AND generation_owner = $3
+)
+`
+
+type OwnsAIChatRunGenerationParams struct {
+	ID              int32       `json:"id"`
+	UserID          string      `json:"user_id"`
+	GenerationOwner pgtype.Text `json:"generation_owner"`
+}
+
+func (q *Queries) OwnsAIChatRunGeneration(ctx context.Context, arg OwnsAIChatRunGenerationParams) (bool, error) {
+	row := q.db.QueryRow(ctx, ownsAIChatRunGeneration, arg.ID, arg.UserID, arg.GenerationOwner)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const revokeStripeFeatureAccess = `-- name: RevokeStripeFeatureAccess :exec
 UPDATE user_feature_access
 SET revoked_at = GREATEST(CURRENT_TIMESTAMP, starts_at)
@@ -3297,6 +3368,39 @@ func (q *Queries) UpdateAIChatMessageFailed(ctx context.Context, arg UpdateAICha
 	return i, err
 }
 
+const updateAIChatMessageStopped = `-- name: UpdateAIChatMessageStopped :one
+UPDATE ai_chat_message
+SET status = 'stopped', error_message = NULL, completed_at = $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND status = 'streaming'
+RETURNING id, conversation_id, user_id, role, content, status, error_message,
+          created_at, updated_at, completed_at
+`
+
+type UpdateAIChatMessageStoppedParams struct {
+	ID          int32              `json:"id"`
+	UserID      string             `json:"user_id"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+}
+
+func (q *Queries) UpdateAIChatMessageStopped(ctx context.Context, arg UpdateAIChatMessageStoppedParams) (AiChatMessage, error) {
+	row := q.db.QueryRow(ctx, updateAIChatMessageStopped, arg.ID, arg.UserID, arg.CompletedAt)
+	var i AiChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.Role,
+		&i.Content,
+		&i.Status,
+		&i.ErrorMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const updateAIChatMessageStreaming = `-- name: UpdateAIChatMessageStreaming :one
 UPDATE ai_chat_message
 SET content = $3,
@@ -3356,6 +3460,7 @@ SET status = 'completed',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
+  AND status = 'streaming'
   AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
@@ -3439,6 +3544,7 @@ SET status = 'failed',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND user_id = $2
+  AND status = 'streaming'
   AND (NULLIF($5::text, '') IS NULL OR generation_owner = $5)
 RETURNING
     id,
@@ -3575,6 +3681,56 @@ func (q *Queries) UpdateAIChatRunInterrupted(ctx context.Context, arg UpdateAICh
 		arg.ExpectedGenerationLeaseExpiresAt,
 		arg.ExpectedGenerationAttempt,
 	)
+	var i AiChatRun
+	err := row.Scan(
+		&i.ID,
+		&i.ConversationID,
+		&i.UserID,
+		&i.UserMessageID,
+		&i.AssistantMessageID,
+		&i.Model,
+		&i.Status,
+		&i.RequestID,
+		&i.ErrorMessage,
+		&i.WorkoutDraft,
+		&i.GenerationStatus,
+		&i.GenerationOwner,
+		&i.GenerationLeaseExpiresAt,
+		&i.GenerationHeartbeatAt,
+		&i.GenerationAttempt,
+		&i.InterruptedAt,
+		&i.InterruptionReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const updateAIChatRunStopped = `-- name: UpdateAIChatRunStopped :one
+UPDATE ai_chat_run
+SET status = 'stopped', error_message = NULL, completed_at = $3,
+    workout_draft = NULL, generation_status = 'stopped',
+    generation_owner = NULL, generation_lease_expires_at = NULL,
+    generation_heartbeat_at = NULL, interrupted_at = NULL,
+    interruption_reason = NULL, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND status = 'streaming'
+RETURNING id, conversation_id, user_id, user_message_id, assistant_message_id,
+          model, status, request_id, error_message, workout_draft,
+          generation_status, generation_owner, generation_lease_expires_at,
+          generation_heartbeat_at, generation_attempt, interrupted_at,
+          interruption_reason, created_at, updated_at, started_at, completed_at
+`
+
+type UpdateAIChatRunStoppedParams struct {
+	ID          int32              `json:"id"`
+	UserID      string             `json:"user_id"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+}
+
+func (q *Queries) UpdateAIChatRunStopped(ctx context.Context, arg UpdateAIChatRunStoppedParams) (AiChatRun, error) {
+	row := q.db.QueryRow(ctx, updateAIChatRunStopped, arg.ID, arg.UserID, arg.CompletedAt)
 	var i AiChatRun
 	err := row.Scan(
 		&i.ID,

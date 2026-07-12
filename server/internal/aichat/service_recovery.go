@@ -115,14 +115,22 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 	}
 
 	owner := newInngestRunOwner(prepared.Run.ID)
-	if err := s.repo.ClaimRunGeneration(ctx, prepared.Run, owner, now); err != nil {
+	claimCtx, claimCancel := s.registerRunCancellation(ctx, prepared.Run.ID, owner)
+	if err := s.repo.ClaimRunGeneration(claimCtx, prepared.Run, owner, now); err != nil {
+		s.unregisterRunCancellation(prepared.Run.ID, owner)
+		claimCancel()
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		return err
 	}
+	generationCtx, timeoutCancel := context.WithTimeout(claimCtx, chatGenerationTimeout)
+	cancel := func() {
+		timeoutCancel()
+		claimCancel()
+	}
 
-	_, err = s.executeOwnedRun(ctx, prepared, owner)
+	_, err = s.executeOwnedRun(generationCtx, prepared, owner, cancel)
 	return err
 }
 

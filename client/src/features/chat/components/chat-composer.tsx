@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ type ChatComposerProps = {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onStop?: () => void;
   disabled?: boolean;
   isSubmitting?: boolean;
   placeholder?: string;
@@ -19,6 +20,7 @@ export function ChatComposer({
   value,
   onChange,
   onSubmit,
+  onStop,
   disabled = false,
   isSubmitting = false,
   placeholder,
@@ -85,13 +87,18 @@ export function ChatComposer({
           )}
         />
         <Button
-          type="submit"
+          type={isSubmitting ? "button" : "submit"}
           size="icon"
-          aria-label="Send"
-          disabled={!canSend}
+          aria-label={isSubmitting ? "Stop response" : "Send"}
+          onClick={isSubmitting ? onStop : undefined}
+          disabled={isSubmitting ? !onStop : !canSend}
           className="size-9 shrink-0 rounded-full"
         >
-          <ArrowUp className="size-4" />
+          {isSubmitting ? (
+            <Square className="size-4 fill-current" />
+          ) : (
+            <ArrowUp className="size-4" />
+          )}
         </Button>
       </div>
     </form>

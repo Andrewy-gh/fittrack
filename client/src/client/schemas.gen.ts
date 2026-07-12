@@ -186,6 +186,30 @@ export const aichat_SendMessageRequestSchema = {
   },
 } as const;
 
+export const aichat_StopRunResponseSchema = {
+  type: "object",
+  properties: {
+    conversation_id: {
+      type: "integer",
+    },
+    message_id: {
+      type: "integer",
+    },
+    run_id: {
+      type: "integer",
+    },
+    sequence: {
+      type: "integer",
+    },
+    status: {
+      type: "string",
+    },
+    text: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const aichat_StreamEventSchema = {
   type: "object",
   properties: {

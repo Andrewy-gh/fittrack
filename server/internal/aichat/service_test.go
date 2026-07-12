@@ -180,6 +180,11 @@ func (m *mockRepository) HeartbeatRunGeneration(ctx context.Context, run *ChatRu
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *mockRepository) OwnsRunGeneration(ctx context.Context, run *ChatRun, owner runOwner) (bool, error) {
+	args := m.Called(ctx, run, owner)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *mockRepository) AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error) {
 	args := m.Called(ctx, prepared, delta, partialText, updatedAt)
 	return args.Get(0).(int32), args.Error(1)
@@ -200,6 +205,12 @@ func (m *mockRepository) CompleteRun(ctx context.Context, prepared *PreparedMess
 func (m *mockRepository) FailRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error, completedAt time.Time) error {
 	args := m.Called(ctx, prepared, partialText, failure, completedAt)
 	return args.Error(0)
+}
+
+func (m *mockRepository) StopRun(ctx context.Context, conversationID, runID int32, userID string, stoppedAt time.Time) (*StopRunResponse, error) {
+	args := m.Called(ctx, conversationID, runID, userID, stoppedAt)
+	result, _ := args.Get(0).(*StopRunResponse)
+	return result, args.Error(1)
 }
 
 type mockRecoveryDispatcher struct {
@@ -987,6 +998,26 @@ func TestServiceStreamMessage_CompletesRun(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestToRuntimeHistory_IncludesVisibleStoppedAssistantOutput(t *testing.T) {
+	history := []ChatMessage{
+		{Role: roleUser, Content: " first prompt ", Status: statusCompleted},
+		{Role: roleAssistant, Content: " first answer ", Status: statusCompleted},
+		{Role: roleUser, Content: "second prompt", Status: statusCompleted},
+		{Role: roleAssistant, Content: " partial stopped answer ", Status: statusStopped},
+		{Role: roleAssistant, Content: "failed answer", Status: statusFailed},
+		{Role: roleAssistant, Content: "streaming answer", Status: statusStreaming},
+		{Role: roleAssistant, Content: "   ", Status: statusStopped},
+		{Role: roleUser, Content: "stopped user input", Status: statusStopped},
+	}
+
+	assert.Equal(t, []RuntimeChatMessage{
+		{Role: roleUser, Text: "first prompt"},
+		{Role: roleAssistant, Text: "first answer"},
+		{Role: roleUser, Text: "second prompt"},
+		{Role: roleAssistant, Text: "partial stopped answer"},
+	}, toRuntimeHistory(history))
+}
+
 func TestServiceStreamMessage_FailsRunOnDisconnect(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)
@@ -1146,6 +1177,93 @@ func TestServiceStartMessageGeneration_ContinuesAfterCallerContextCanceled(t *te
 		t.Fatal("generation did not complete after caller context cancellation")
 	}
 
+	runtime.AssertExpectations(t)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceStartMessageGeneration_StopDuringClaimCancelsBeforeRuntimeStarts(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:               51,
+			ConversationID:   41,
+			UserID:           "user-123",
+			Status:           statusStreaming,
+			GenerationStatus: generationStatusQueued,
+		},
+		AssistantMessage: &ChatMessage{ID: 61, ConversationID: 41, UserID: "user-123", Status: statusStreaming},
+		Prompt:           "new prompt",
+	}
+	claimStarted := make(chan struct{})
+	releaseClaim := make(chan struct{})
+	startResult := make(chan error, 1)
+
+	repo.On("ClaimRunGeneration", mock.Anything, prepared.Run, mock.Anything, mock.AnythingOfType("time.Time")).Run(func(args mock.Arguments) {
+		close(claimStarted)
+		<-releaseClaim
+	}).Return(context.Canceled).Once()
+	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
+	repo.On("StopRun", mock.Anything, int32(41), int32(51), "user-123", mock.AnythingOfType("time.Time")).Return(&StopRunResponse{
+		ConversationID: 41,
+		RunID:          51,
+		MessageID:      61,
+		Status:         statusStopped,
+	}, nil).Once()
+
+	go func() {
+		startResult <- service.StartMessageGeneration(context.Background(), prepared)
+	}()
+	<-claimStarted
+
+	_, err := service.StopRun(user.WithContext(context.Background(), "user-123"), 41, 51)
+	require.NoError(t, err)
+	close(releaseClaim)
+	require.ErrorIs(t, <-startResult, context.Canceled)
+	runtime.AssertNotCalled(t, "StreamChat", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	repo.AssertExpectations(t)
+}
+
+func TestServiceStartMessageGeneration_RemoteStopCancelsOnOwnershipPoll(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	featureAccess := new(mockFeatureAccessService)
+	runtime := new(mockRuntime)
+	repo := new(mockRepository)
+	service := NewService(logger, featureAccess, runtime, repo, nil)
+	prepared := &PreparedMessageStream{
+		Conversation: &Conversation{ID: 41, UserID: "user-123"},
+		Run: &ChatRun{
+			ID:               51,
+			ConversationID:   41,
+			UserID:           "user-123",
+			Status:           statusStreaming,
+			GenerationStatus: generationStatusQueued,
+		},
+		AssistantMessage: &ChatMessage{ID: 61, ConversationID: 41, UserID: "user-123", Status: statusStreaming},
+		Prompt:           "new prompt",
+	}
+	canceled := make(chan struct{})
+
+	repo.On("ClaimRunGeneration", mock.Anything, prepared.Run, mock.Anything, mock.AnythingOfType("time.Time")).Run(func(args mock.Arguments) {
+		prepared.Run.GenerationStatus = generationStatusGenerating
+		prepared.Run.GenerationOwner = stringPtr(args.Get(2).(runOwner).Value())
+	}).Return(nil).Once()
+	repo.On("OwnsRunGeneration", mock.Anything, prepared.Run, mock.Anything).Return(false, nil).Once()
+	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{}, mock.Anything).Run(func(args mock.Arguments) {
+		<-args.Get(0).(context.Context).Done()
+		close(canceled)
+	}).Return((*StreamDone)(nil), context.Canceled).Once()
+
+	require.NoError(t, service.StartMessageGeneration(context.Background(), prepared))
+	select {
+	case <-canceled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("generation was not canceled after durable ownership was cleared")
+	}
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }

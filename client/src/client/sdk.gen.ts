@@ -86,6 +86,9 @@ import type {
   PostAiConversationsByIdMessagesStreamErrors,
   PostAiConversationsByIdMessagesStreamResponse,
   PostAiConversationsByIdMessagesStreamResponses,
+  PostAiConversationsByIdRunsByRunIdStopData,
+  PostAiConversationsByIdRunsByRunIdStopErrors,
+  PostAiConversationsByIdRunsByRunIdStopResponses,
   PostAiConversationsData,
   PostAiConversationsErrors,
   PostAiConversationsResponses,
@@ -355,6 +358,26 @@ export const getAiConversationsByIdMessagesStreamResume = <
   >({
     security: [{ name: "x-stack-access-token", type: "apiKey" }],
     url: "/ai/conversations/{id}/messages/stream/resume",
+    ...options,
+  });
+
+/**
+ * Stop an AI chat run
+ *
+ * Idempotently stops the authenticated user's exact streaming run while preserving partial output.
+ */
+export const postAiConversationsByIdRunsByRunIdStop = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<PostAiConversationsByIdRunsByRunIdStopData, ThrowOnError>,
+) =>
+  (options.client ?? client).post<
+    PostAiConversationsByIdRunsByRunIdStopResponses,
+    PostAiConversationsByIdRunsByRunIdStopErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/ai/conversations/{id}/runs/{runID}/stop",
     ...options,
   });
 

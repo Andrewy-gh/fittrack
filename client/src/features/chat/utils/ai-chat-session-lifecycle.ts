@@ -15,7 +15,11 @@ import {
   resumeConversation as resumeConversationRequest,
 } from "./chat-session-recovery";
 import { submitPrompt as submitPromptRequest } from "./chat-session-submit";
-import type { ChatSessionRefs, ChatSessionSetters } from "./chat-session-types";
+import type {
+  ChatSessionOperation,
+  ChatSessionRefs,
+  ChatSessionSetters,
+} from "./chat-session-types";
 
 type AIChatSessionLifecycleOptions = {
   refs: ChatSessionRefs;
@@ -56,14 +60,38 @@ export function createAIChatSessionLifecycle({
     opts?: Parameters<typeof recoverConversationRequest>[1],
   ) => recoverConversationRequest(id, opts, { refs, setters });
 
-  const resumeConversation = (detail: AIChatConversationDetail) =>
-    resumeConversationRequest(detail, loadConversation, { refs, setters });
+  const resumeConversation = (
+    detail: AIChatConversationDetail,
+    operation: ChatSessionOperation,
+  ) =>
+    resumeConversationRequest(
+      detail,
+      loadConversation,
+      { refs, setters },
+      operation,
+    );
 
   const abortActiveRequests = () => {
+    refs.activeOperationRef.current = null;
     refs.loadAbortRef.current?.abort();
     refs.recoveryAbortRef.current?.abort();
     refs.resumeAbortRef.current?.abort();
     refs.streamAbortRef.current?.abort();
+  };
+
+  const acceptCreatedConversationRoute = (conversationId: number) => {
+    const operation = refs.activeOperationRef.current;
+    if (operation?.routeHandoffConversationId !== conversationId) {
+      return false;
+    }
+
+    operation.routeHandoffConversationId = null;
+    return true;
+  };
+
+  const isCreatedConversationRoutePending = () => {
+    const operation = refs.activeOperationRef.current;
+    return operation !== null && operation.routeHandoffConversationId !== null;
   };
 
   const resetConversation = (prompt = "") => {
@@ -72,11 +100,16 @@ export function createAIChatSessionLifecycle({
     setters.setMessages([]);
     setters.setPrompt(prompt);
     setters.setLatestWorkoutDraftMessageId(null);
+    setters.setActiveRunId(null);
+    setters.setIsSubmitting(false);
     setters.setLoadError(null);
     setters.setIsLoadingConversation(false);
   };
 
   const loadRouteConversation = async (conversationId: number) => {
+    abortActiveRequests();
+    setters.setIsSubmitting(false);
+    setters.setActiveRunId(null);
     const loadResult = await loadConversation(conversationId);
     recordTelemetry({
       category: "load",
@@ -86,7 +119,27 @@ export function createAIChatSessionLifecycle({
     });
 
     if (loadResult.detail?.active_run) {
-      await resumeOrRecoverActiveRun(conversationId, loadResult.detail);
+      const operation: ChatSessionOperation = {
+        conversationId,
+        runId: loadResult.detail.active_run.id,
+        routeHandoffConversationId: null,
+      };
+      refs.activeOperationRef.current = operation;
+      setters.setActiveRunId(loadResult.detail.active_run.id);
+      setters.setIsSubmitting(true);
+      try {
+        await resumeOrRecoverActiveRun(
+          conversationId,
+          loadResult.detail,
+          operation,
+        );
+      } finally {
+        if (refs.activeOperationRef.current === operation) {
+          refs.activeOperationRef.current = null;
+          setters.setIsSubmitting(false);
+          setters.setActiveRunId(null);
+        }
+      }
       return;
     }
 
@@ -121,8 +174,9 @@ export function createAIChatSessionLifecycle({
   async function resumeOrRecoverActiveRun(
     conversationId: number,
     detail: AIChatConversationDetail,
+    operation: ChatSessionOperation,
   ) {
-    const resumeResult = await resumeConversation(detail);
+    const resumeResult = await resumeConversation(detail, operation);
     if (!resumeResult.aborted && resumeResult.detail) {
       const resumeOutcome = classifyRecoveryOutcome({
         messages: resumeResult.detail.messages,
@@ -170,7 +224,9 @@ export function createAIChatSessionLifecycle({
   }
 
   return {
+    acceptCreatedConversationRoute,
     abortActiveRequests,
+    isCreatedConversationRoutePending,
     loadRouteConversation,
     resetConversation,
     submitPrompt,

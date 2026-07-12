@@ -37,14 +37,22 @@ func (s *Service) StreamMessage(ctx context.Context, prepared *PreparedMessageSt
 func (s *Service) StartMessageGeneration(ctx context.Context, prepared *PreparedMessageStream) error {
 	owner := newAPIRunOwner()
 	now := time.Now().UTC()
-	if err := s.repo.ClaimRunGeneration(context.WithoutCancel(ctx), prepared.Run, owner, now); err != nil {
+	claimCtx, claimCancel := s.registerRunCancellation(context.WithoutCancel(ctx), prepared.Run.ID, owner)
+	if err := s.repo.ClaimRunGeneration(claimCtx, prepared.Run, owner, now); err != nil {
+		s.unregisterRunCancellation(prepared.Run.ID, owner)
+		claimCancel()
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrConversationBusy
 		}
 		return err
 	}
+	generationCtx, timeoutCancel := context.WithTimeout(claimCtx, chatGenerationTimeout)
+	cancel := func() {
+		timeoutCancel()
+		claimCancel()
+	}
 
-	go s.runOwnedGeneration(context.WithoutCancel(ctx), prepared, owner)
+	go s.runOwnedGeneration(generationCtx, prepared, owner, cancel)
 	return nil
 }
 
@@ -97,7 +105,7 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 		prepared = refreshed
 
 		if prepared.Run.Status != statusStreaming {
-			if prepared.Run.Status == statusCompleted {
+			if prepared.Run.Status == statusCompleted || prepared.Run.Status == statusStopped {
 				return &StreamDone{
 					ConversationID: prepared.Conversation.ID,
 					RunID:          prepared.Run.ID,
@@ -106,6 +114,7 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 					Text:           prepared.AssistantMessage.Content,
 					Sequence:       prepared.LastSequence,
 					WorkoutDraft:   prepared.Run.WorkoutDraft,
+					Status:         prepared.Run.Status,
 				}, nil
 			}
 
@@ -130,8 +139,12 @@ func (s *Service) ResumeMessageStream(ctx context.Context, prepared *PreparedRes
 	}
 }
 
-func (s *Service) runOwnedGeneration(ctx context.Context, prepared *PreparedMessageStream, owner runOwner) {
-	if _, err := s.executeOwnedRun(ctx, prepared, owner); err != nil {
+func (s *Service) runOwnedGeneration(ctx context.Context, prepared *PreparedMessageStream, owner runOwner, cancel context.CancelFunc) {
+	if _, err := s.executeOwnedRun(ctx, prepared, owner, cancel); err != nil {
+		if errors.Is(err, context.Canceled) {
+			s.logger.Info("ai chat generation canceled", "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID, "owner", owner.Value())
+			return
+		}
 		s.logger.Error("failed to complete owned ai chat generation",
 			"error", err,
 			"conversation_id", prepared.Conversation.ID,
@@ -141,9 +154,9 @@ func (s *Service) runOwnedGeneration(ctx context.Context, prepared *PreparedMess
 	}
 }
 
-func (s *Service) executeOwnedRun(ctx context.Context, prepared *PreparedMessageStream, owner runOwner) (*StreamDone, error) {
-	generationCtx, cancel := context.WithTimeout(ctx, chatGenerationTimeout)
+func (s *Service) executeOwnedRun(generationCtx context.Context, prepared *PreparedMessageStream, owner runOwner, cancel context.CancelFunc) (*StreamDone, error) {
 	defer cancel()
+	defer s.unregisterRunCancellation(prepared.Run.ID, owner)
 
 	heartbeatDone := make(chan struct{})
 	go s.heartbeatRunGeneration(generationCtx, cancel, prepared, owner, heartbeatDone)
@@ -154,17 +167,55 @@ func (s *Service) executeOwnedRun(ctx context.Context, prepared *PreparedMessage
 	return done, err
 }
 
+func (s *Service) registerRunCancellation(ctx context.Context, runID int32, owner runOwner) (context.Context, context.CancelFunc) {
+	generationCtx, cancel := context.WithCancel(ctx)
+	s.cancelMu.Lock()
+	s.runCancels[runID] = runCancellation{owner: owner.Value(), cancel: cancel}
+	s.cancelMu.Unlock()
+	return generationCtx, cancel
+}
+
+func (s *Service) unregisterRunCancellation(runID int32, owner runOwner) {
+	s.cancelMu.Lock()
+	defer s.cancelMu.Unlock()
+	if registration, ok := s.runCancels[runID]; ok && registration.owner == owner.Value() {
+		delete(s.runCancels, runID)
+	}
+}
+
 func (s *Service) heartbeatRunGeneration(ctx context.Context, cancel context.CancelFunc, prepared *PreparedMessageStream, owner runOwner, done chan<- struct{}) {
 	defer close(done)
 
-	ticker := time.NewTicker(generationHeartbeatInterval)
-	defer ticker.Stop()
+	stopTicker := time.NewTicker(generationStopPollInterval)
+	defer stopTicker.Stop()
+	heartbeatTicker := time.NewTicker(generationHeartbeatInterval)
+	defer heartbeatTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case now := <-ticker.C:
+		case <-stopTicker.C:
+			owned, err := s.repo.OwnsRunGeneration(context.WithoutCancel(ctx), prepared.Run, owner)
+			if err != nil {
+				s.logger.Error("failed to check ai chat generation ownership",
+					"error", err,
+					"conversation_id", prepared.Conversation.ID,
+					"run_id", prepared.Run.ID,
+					"owner", owner.Value(),
+				)
+				continue
+			}
+			if !owned {
+				s.logger.Warn("ai chat generation lost ownership",
+					"conversation_id", prepared.Conversation.ID,
+					"run_id", prepared.Run.ID,
+					"owner", owner.Value(),
+				)
+				cancel()
+				return
+			}
+		case now := <-heartbeatTicker.C:
 			ok, err := s.repo.HeartbeatRunGeneration(context.WithoutCancel(ctx), prepared.Run, owner, now.UTC())
 			if err != nil {
 				s.logger.Error("failed to heartbeat ai chat generation",
@@ -230,6 +281,9 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, err
+		}
 		if failErr := s.failPreparedRun(persistCtx, prepared, partial.String(), err); failErr != nil {
 			s.logger.Error("failed to persist ai chat run failure", "error", failErr, "conversation_id", prepared.Conversation.ID, "run_id", prepared.Run.ID)
 		}
@@ -346,7 +400,9 @@ func normalizeStreamFailure(err error) error {
 func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {
 	messages := make([]RuntimeChatMessage, 0, len(history))
 	for _, message := range history {
-		if message.Status != statusCompleted {
+		isVisibleStoppedAssistant := message.Role == roleAssistant &&
+			message.Status == statusStopped
+		if message.Status != statusCompleted && !isVisibleStoppedAssistant {
 			continue
 		}
 		if message.Role != roleUser && message.Role != roleAssistant {

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   AIChatConversation,
   AIChatMessage,
@@ -9,6 +16,9 @@ import type {
   ChatSessionSetters,
 } from "../utils/chat-session-types";
 import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../utils/chat-session-workout-draft";
+import { stopAIChatRun } from "@/features/chat/api/ai-chat";
+import { clearResumeCursor } from "../utils/chat-resume";
+import { showErrorToast } from "@/lib/errors";
 
 type UseAIChatSessionOptions = {
   conversationId: number | null;
@@ -38,12 +48,17 @@ export function useAIChatSession({
   const [isSavingWorkoutDraft, setIsSavingWorkoutDraft] = useState(false);
   const [latestWorkoutDraftMessageId, setLatestWorkoutDraftMessageId] =
     useState<number | null>(null);
+  const [activeRunId, setActiveRunId] = useState<number | null>(null);
 
+  const activeOperationRef =
+    useRef<ChatSessionRefs["activeOperationRef"]["current"]>(null);
   const pendingAssistantIdRef = useRef<number | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const recoveryAbortRef = useRef<AbortController | null>(null);
   const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const stopTargetRef = useRef({ conversationId, activeRunId });
+  const acceptedCreatedConversationRouteRef = useRef(false);
   const callbacksRef = useRef({
     onPromptChange,
     onPromptStarted,
@@ -57,6 +72,7 @@ export function useAIChatSession({
 
   const refs = useMemo<ChatSessionRefs>(
     () => ({
+      activeOperationRef,
       pendingAssistantIdRef,
       loadAbortRef,
       recoveryAbortRef,
@@ -76,9 +92,14 @@ export function useAIChatSession({
       setLoadError,
       setIsSavingWorkoutDraft,
       setLatestWorkoutDraftMessageId,
+      setActiveRunId,
     }),
     [],
   );
+
+  useLayoutEffect(() => {
+    stopTargetRef.current = { conversationId, activeRunId };
+  }, [activeRunId, conversationId]);
 
   useEffect(() => {
     callbacksRef.current = {
@@ -130,18 +151,38 @@ export function useAIChatSession({
     ],
   );
 
+  useLayoutEffect(() => {
+    acceptedCreatedConversationRouteRef.current =
+      conversationId !== null &&
+      lifecycle.acceptCreatedConversationRoute(conversationId);
+  }, [conversationId, lifecycle]);
+
+  useEffect(
+    () => () => {
+      lifecycle.abortActiveRequests();
+    },
+    [lifecycle],
+  );
+
   useEffect(() => {
     setters.setPrompt(initialPrompt);
+    const acceptedCreatedConversationRoute =
+      acceptedCreatedConversationRouteRef.current;
+    acceptedCreatedConversationRouteRef.current = false;
+
+    if (acceptedCreatedConversationRoute) {
+      return;
+    }
+
     if (!conversationId) {
+      if (lifecycle.isCreatedConversationRoutePending()) {
+        return;
+      }
       lifecycle.resetConversation(initialPrompt);
       return;
     }
 
     void lifecycle.loadRouteConversation(conversationId);
-
-    return () => {
-      lifecycle.abortActiveRequests();
-    };
   }, [conversationId, initialPrompt, lifecycle]);
 
   const submitPrompt = useCallback(
@@ -173,6 +214,59 @@ export function useAIChatSession({
     [conversation, setters],
   );
 
+  const stopRun = useCallback(async () => {
+    if (!conversationId) return;
+    if (!activeRunId) return;
+    try {
+      const result = await stopAIChatRun(conversationId, activeRunId);
+      const currentTarget = stopTargetRef.current;
+      if (
+        currentTarget.conversationId !== conversationId ||
+        currentTarget.activeRunId !== activeRunId
+      ) {
+        return;
+      }
+      const activeOperation = activeOperationRef.current;
+      if (
+        activeOperation?.conversationId === conversationId &&
+        activeOperation.runId === activeRunId
+      ) {
+        activeOperationRef.current = null;
+      }
+      streamAbortRef.current?.abort();
+      resumeAbortRef.current?.abort();
+      recoveryAbortRef.current?.abort();
+      clearResumeCursor(conversationId);
+      setIsSubmitting(false);
+      setActiveRunId(null);
+      if (result.status === "stopped") {
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === result.message_id
+              ? {
+                  ...message,
+                  content: result.text,
+                  status: "stopped",
+                  completed_at: new Date().toISOString(),
+                }
+              : message,
+          ),
+        );
+      } else {
+        await lifecycle.loadRouteConversation(conversationId);
+      }
+    } catch (error) {
+      const currentTarget = stopTargetRef.current;
+      if (
+        currentTarget.conversationId !== conversationId ||
+        currentTarget.activeRunId !== activeRunId
+      ) {
+        return;
+      }
+      showErrorToast(error, "Failed to stop AI chat response");
+    }
+  }, [activeRunId, conversationId, lifecycle]);
+
   return {
     conversation,
     messages,
@@ -187,5 +281,7 @@ export function useAIChatSession({
     submitPrompt,
     submitPromptValue,
     saveLatestWorkoutDraft,
+    stopRun,
+    canStop: activeRunId !== null,
   };
 }

@@ -295,6 +295,21 @@ func (r *repository) HeartbeatRunGeneration(ctx context.Context, run *ChatRun, o
 	return rows > 0, nil
 }
 
+func (r *repository) OwnsRunGeneration(ctx context.Context, run *ChatRun, owner runOwner) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	owned, err := r.queries.OwnsAIChatRunGeneration(ctx, db.OwnsAIChatRunGenerationParams{
+		ID:              run.ID,
+		UserID:          run.UserID,
+		GenerationOwner: pgtype.Text{String: owner.Value(), Valid: true},
+	})
+	if err != nil {
+		return false, fmt.Errorf("check ai chat run generation ownership: %w", err)
+	}
+	return owned, nil
+}
+
 func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMessageStream, delta string, partialText string, updatedAt time.Time) (int32, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -306,6 +321,15 @@ func (r *repository) AppendStreamChunk(ctx context.Context, prepared *PreparedMe
 	defer tx.Rollback(ctx)
 
 	qtx := r.queries.WithTx(tx)
+	// Transactions that mutate both rows lock the run before the assistant
+	// message so StopRun and stream persistence cannot deadlock each other.
+	if _, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
+		ID:             prepared.Run.ID,
+		ConversationID: prepared.Conversation.ID,
+		UserID:         prepared.Run.UserID,
+	}); err != nil {
+		return 0, fmt.Errorf("lock ai chat run before appending stream chunk: %w", err)
+	}
 	nextSequence := prepared.LastSequence + 1
 	if _, err := qtx.CreateAIChatStreamChunk(ctx, db.CreateAIChatStreamChunkParams{
 		RunID:           prepared.Run.ID,
@@ -357,6 +381,13 @@ func (r *repository) InterruptRun(ctx context.Context, prepared *PreparedMessage
 	qtx := r.queries.WithTx(tx)
 	completedTS := pgtype.Timestamptz{Time: completedAt.UTC(), Valid: true}
 	errorText := truncateForStorage(streamInterruptedFailureMessage, 512)
+	if _, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
+		ID:             prepared.Run.ID,
+		ConversationID: prepared.Conversation.ID,
+		UserID:         prepared.Run.UserID,
+	}); err != nil {
+		return fmt.Errorf("lock ai chat run before interruption: %w", err)
+	}
 
 	if _, err := qtx.UpdateAIChatMessageFailed(ctx, db.UpdateAIChatMessageFailedParams{
 		ID:           prepared.AssistantMessage.ID,
@@ -412,6 +443,13 @@ func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageS
 	workoutDraftJSON, err := marshalWorkoutDraft(workoutDraft)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal ai chat workout draft: %w", err)
+	}
+	if _, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
+		ID:             prepared.Run.ID,
+		ConversationID: prepared.Conversation.ID,
+		UserID:         prepared.Run.UserID,
+	}); err != nil {
+		return nil, nil, fmt.Errorf("lock ai chat run before completion: %w", err)
 	}
 
 	messageRow, err := qtx.UpdateAIChatMessageCompleted(ctx, db.UpdateAIChatMessageCompletedParams{
@@ -487,6 +525,13 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 	qtx := r.queries.WithTx(tx)
 	completedTS := pgtype.Timestamptz{Time: completedAt.UTC(), Valid: true}
 	errorText := truncateForStorage(strings.TrimSpace(failure.Error()), 512)
+	if _, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
+		ID:             prepared.Run.ID,
+		ConversationID: prepared.Conversation.ID,
+		UserID:         prepared.Run.UserID,
+	}); err != nil {
+		return fmt.Errorf("lock ai chat run before failure: %w", err)
+	}
 
 	if _, err := qtx.UpdateAIChatMessageFailed(ctx, db.UpdateAIChatMessageFailedParams{
 		ID:           prepared.AssistantMessage.ID,
@@ -524,6 +569,29 @@ func (r *repository) FailRun(ctx context.Context, prepared *PreparedMessageStrea
 }
 
 func (r *repository) failStaleRun(ctx context.Context, qtx *db.Queries, conversation *Conversation, activeRun *ChatRun) error {
+	lockedRunRow, err := qtx.GetAIChatRunForUpdate(ctx, db.GetAIChatRunForUpdateParams{
+		ID:             activeRun.ID,
+		ConversationID: conversation.ID,
+		UserID:         activeRun.UserID,
+	})
+	if err != nil {
+		return fmt.Errorf("lock stale ai chat run before failure: %w", err)
+	}
+	lockedRun, err := mapRun(lockedRunRow)
+	if err != nil {
+		return err
+	}
+	switch newChatRunLifecycle(lockedRun, time.Now().UTC()).State() {
+	case chatRunLifecycleTerminal:
+		return nil
+	case chatRunLifecycleRecoverableStaleRun:
+		activeRun = lockedRun
+	case chatRunLifecycleQueued, chatRunLifecycleOwnedGeneration:
+		return ErrConversationBusy
+	case chatRunLifecycleInvalid:
+		return fmt.Errorf("stale ai chat run entered an invalid lifecycle state while waiting for its lock")
+	}
+
 	assistantRow, err := qtx.GetAIChatMessage(ctx, db.GetAIChatMessageParams{
 		ID:     activeRun.AssistantMessageID,
 		UserID: activeRun.UserID,

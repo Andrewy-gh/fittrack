@@ -28,6 +28,40 @@ type chatService interface {
 	PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error)
 	ResumeMessageStream(ctx context.Context, prepared *PreparedResumeStream, onChunk func(StreamChunk) error) (*StreamDone, error)
 	AbortPreparedMessageStream(ctx context.Context, prepared *PreparedMessageStream, failure error) error
+	StopRun(ctx context.Context, conversationID, runID int32) (*StopRunResponse, error)
+}
+
+// StopRun godoc
+// @Summary Stop an AI chat run
+// @Description Idempotently stops the authenticated user's exact streaming run while preserving partial output.
+// @Tags ai-chat
+// @Produce json
+// @Security StackAuth
+// @Param id path int true "Conversation ID"
+// @Param runID path int true "Run ID"
+// @Success 200 {object} aichat.StopRunResponse
+// @Failure 400 {object} response.Error
+// @Failure 401 {object} response.Error
+// @Failure 403 {object} response.Error
+// @Failure 404 {object} response.Error
+// @Router /ai/conversations/{id}/runs/{runID}/stop [post]
+func (h *Handler) StopRun(w http.ResponseWriter, r *http.Request) {
+	conversationID, ok := h.decodeConversationID(w, r)
+	if !ok {
+		return
+	}
+	runID, ok := h.decodePositivePathID(w, r, "runID", "run ID")
+	if !ok {
+		return
+	}
+	result, err := h.service.StopRun(r.Context(), conversationID, runID)
+	if err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to stop ai chat run")
+		return
+	}
+	if err := response.JSON(w, http.StatusOK, result); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
+	}
 }
 
 type Handler struct {
@@ -462,6 +496,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 
 	if err := sse.write("done", StreamEvent{
 		Type:           "done",
+		Status:         done.Status,
 		ConversationID: done.ConversationID,
 		RunID:          done.RunID,
 		MessageID:      done.MessageID,
@@ -556,6 +591,7 @@ func (h *Handler) ResumeMessageStream(w http.ResponseWriter, r *http.Request) {
 
 	if err := sse.write("done", StreamEvent{
 		Type:           "done",
+		Status:         done.Status,
 		ConversationID: done.ConversationID,
 		RunID:          done.RunID,
 		MessageID:      done.MessageID,

@@ -126,6 +126,12 @@ func (m *mockChatService) StartMessageGeneration(ctx context.Context, prepared *
 	return args.Error(0)
 }
 
+func (m *mockChatService) StopRun(ctx context.Context, conversationID, runID int32) (*StopRunResponse, error) {
+	args := m.Called(ctx, conversationID, runID)
+	result, _ := args.Get(0).(*StopRunResponse)
+	return result, args.Error(1)
+}
+
 func (m *mockChatService) PrepareResumeMessageStream(ctx context.Context, conversationID int32, runID int32, afterSequence int32) (*PreparedResumeStream, error) {
 	args := m.Called(ctx, conversationID, runID, afterSequence)
 	prepared, _ := args.Get(0).(*PreparedResumeStream)

@@ -72,6 +72,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("POST /api/ai/conversations/{id}/messages/stream", ah.StreamMessage)
 	mux.HandleFunc("GET /api/ai/conversations/{id}/messages/stream/resume", ah.ResumeMessageStream)
 	mux.HandleFunc("POST /api/ai/conversations/{id}/messages/recover", ah.RecoverMessage)
+	mux.HandleFunc("POST /api/ai/conversations/{id}/runs/{runID}/stop", ah.StopRun)
 	mux.HandleFunc("POST /api/ai/chat/telemetry", ah.RecordTelemetry)
 	if api.inngestHandler != nil {
 		mux.Handle("GET /inngest", api.inngestHandler)

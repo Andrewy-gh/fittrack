@@ -39,7 +39,7 @@ export type AIChatMessage = {
   conversation_id: number;
   role: "user" | "assistant";
   content: string;
-  status: "streaming" | "completed" | "failed";
+  status: "streaming" | "completed" | "failed" | "stopped";
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -49,7 +49,7 @@ export type AIChatMessage = {
 export type AIChatActiveRun = {
   id: number;
   assistant_message_id: number;
-  status: "streaming" | "completed" | "failed";
+  status: "streaming" | "completed" | "failed" | "stopped";
   latest_sequence: number;
 };
 
@@ -64,6 +64,27 @@ export type AIChatRecoveryResponse = {
   run_id?: number;
   status: "queued" | "not_needed";
 };
+
+export type AIChatStopResponse = {
+  conversation_id: number;
+  run_id: number;
+  message_id: number;
+  status: "stopped" | "completed" | "failed";
+  text: string;
+  sequence: number;
+};
+
+export async function stopAIChatRun(
+  conversationId: number,
+  runId: number,
+): Promise<AIChatStopResponse> {
+  const response = await fetch(
+    `${BASE_URL}/ai/conversations/${conversationId}/runs/${runId}/stop`,
+    { method: "POST", headers: await getAuthHeaders() },
+  );
+  if (!response.ok) throw await readApiError(response);
+  return (await response.json()) as AIChatStopResponse;
+}
 
 export type AISaveLatestWorkoutDraftResponse = {
   conversation: AIChatConversation;
@@ -109,6 +130,7 @@ export type AIChatStreamDeltaEvent = {
 export type AIChatStreamDoneEvent = {
   type: "done";
   text: string;
+  status?: "completed" | "stopped";
   workout_draft?: AIWorkoutDraft;
 } & AIChatStreamEventContext;
 
@@ -480,6 +502,9 @@ function parseAIChatStreamEvent(rawEventJson: string): AIChatStreamEvent {
       return {
         type,
         text: parseOptionalStringValue(event, "text") ?? "",
+        ...(parseOptionalStringValue(event, "status") === "stopped"
+          ? { status: "stopped" as const }
+          : {}),
         ...parseDoneEventContext(event),
         ...(workoutDraft === undefined ? {} : { workout_draft: workoutDraft }),
       };
