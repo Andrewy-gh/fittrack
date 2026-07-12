@@ -9,6 +9,7 @@ const {
   mockReportTelemetry,
   mockRequestRecovery,
   mockSaveLatestWorkoutDraft,
+  mockStopRun,
   mockStreamMessage,
   mockShowErrorToast,
   mockToastSuccess,
@@ -20,6 +21,7 @@ const {
   mockReportTelemetry: vi.fn(),
   mockRequestRecovery: vi.fn(),
   mockSaveLatestWorkoutDraft: vi.fn(),
+  mockStopRun: vi.fn(),
   mockStreamMessage: vi.fn(),
   mockShowErrorToast: vi.fn(),
   mockToastSuccess: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock("@/features/chat/api/ai-chat", () => ({
   reportAIChatTelemetry: mockReportTelemetry,
   requestAIChatMessageRecovery: mockRequestRecovery,
   saveAIChatLatestWorkoutDraft: mockSaveLatestWorkoutDraft,
+  stopAIChatRun: mockStopRun,
   streamAIChatMessage: mockStreamMessage,
 }));
 
@@ -94,6 +97,7 @@ describe("useAIChatSession", () => {
     mockReportTelemetry.mockReset();
     mockRequestRecovery.mockReset();
     mockSaveLatestWorkoutDraft.mockReset();
+    mockStopRun.mockReset();
     mockStreamMessage.mockReset();
     mockShowErrorToast.mockReset();
     mockToastSuccess.mockReset();
@@ -337,5 +341,95 @@ describe("useAIChatSession", () => {
         signal: expect.any(AbortSignal),
       }),
     );
+  });
+
+  it("ignores a Stop response after navigating to a different active run", async () => {
+    let resolveStop: ((value: Record<string, unknown>) => void) | undefined;
+    mockStopRun.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveStop = resolve;
+        }),
+    );
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce({
+        ...conversationDetail(
+          [
+            {
+              id: 82,
+              conversation_id: 42,
+              role: "assistant",
+              content: "new response",
+              status: "streaming",
+              created_at: "2026-03-26T17:01:00Z",
+              updated_at: "2026-03-26T17:01:01Z",
+            },
+          ],
+          {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+        conversation: {
+          id: 42,
+          created_at: "2026-03-26T17:01:00Z",
+          updated_at: "2026-03-26T17:01:00Z",
+        },
+      });
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+
+    const { result, rerender } = renderSession();
+
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+    });
+
+    let stopPromise: Promise<void> | undefined;
+    act(() => {
+      stopPromise = result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledWith(41, 91);
+
+    rerender({ id: 42 });
+    await waitFor(() => {
+      expect(mockResumeStream).toHaveBeenCalledTimes(2);
+      expect(result.current.canStop).toBe(true);
+      expect(result.current.isSubmitting).toBe(true);
+    });
+    const newRunSignal = mockResumeStream.mock.calls[1]?.[3]?.signal;
+    expect(newRunSignal).toBeInstanceOf(AbortSignal);
+    expect(newRunSignal.aborted).toBe(false);
+
+    await act(async () => {
+      resolveStop?.({
+        conversation_id: 41,
+        run_id: 91,
+        message_id: 61,
+        status: "stopped",
+        text: "old response",
+        sequence: 2,
+      });
+      await stopPromise;
+    });
+
+    expect(newRunSignal.aborted).toBe(false);
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.messages).toEqual([
+      expect.objectContaining({
+        id: 82,
+        content: "new response",
+        status: "streaming",
+      }),
+    ]);
   });
 });

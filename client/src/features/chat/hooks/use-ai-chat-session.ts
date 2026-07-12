@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   AIChatConversation,
   AIChatMessage,
@@ -48,6 +55,7 @@ export function useAIChatSession({
   const recoveryAbortRef = useRef<AbortController | null>(null);
   const resumeAbortRef = useRef<AbortController | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const stopTargetRef = useRef({ conversationId, activeRunId });
   const callbacksRef = useRef({
     onPromptChange,
     onPromptStarted,
@@ -84,6 +92,10 @@ export function useAIChatSession({
     }),
     [],
   );
+
+  useLayoutEffect(() => {
+    stopTargetRef.current = { conversationId, activeRunId };
+  }, [activeRunId, conversationId]);
 
   useEffect(() => {
     callbacksRef.current = {
@@ -183,6 +195,13 @@ export function useAIChatSession({
     if (!activeRunId) return;
     try {
       const result = await stopAIChatRun(conversationId, activeRunId);
+      const currentTarget = stopTargetRef.current;
+      if (
+        currentTarget.conversationId !== conversationId ||
+        currentTarget.activeRunId !== activeRunId
+      ) {
+        return;
+      }
       if (result.status === "stopped") {
         streamAbortRef.current?.abort();
         resumeAbortRef.current?.abort();

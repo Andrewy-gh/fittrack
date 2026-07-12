@@ -786,6 +786,7 @@ func cleanupAIChatRepositoryTestUsers(t *testing.T, pool *pgxpool.Pool) {
 
 	testUserIDs := []string{
 		"aichat-complete-run-user",
+		"aichat-stop-completion-race-user",
 		"aichat-complete-run-nil-draft-user",
 		"aichat-complete-run-null-byte-draft-user",
 		"aichat-interrupt-snapshot-user",
