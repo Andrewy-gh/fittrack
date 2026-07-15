@@ -19,17 +19,26 @@ import {
   updateStreamingMessageWithError,
 } from "./chat-resume";
 import type {
-  ChatSessionRefs,
-  ChatSessionSetters,
-  ChatSessionOperation,
+  ChatOperation,
+  ChatOperationAttempt,
+  ChatOperationController,
+} from "./chat-operation-controller";
+import type {
+  ChatSessionState,
   ConversationRequestOptions,
   ConversationRequestResult,
   RecordChatTelemetry,
 } from "./chat-session-types";
 
-type SessionStateContext = {
-  refs: ChatSessionRefs;
-  setters: ChatSessionSetters;
+type RequestContext = {
+  state: ChatSessionState;
+  signal: AbortSignal;
+  isCurrent: () => boolean;
+};
+
+type ResumeContext = {
+  controller: ChatOperationController;
+  state: ChatSessionState;
 };
 
 export type LoadConversation = (
@@ -45,133 +54,94 @@ export type RecoverConversation = (
 export async function loadConversation(
   id: number,
   opts: ConversationRequestOptions | undefined,
-  { refs, setters }: SessionStateContext,
+  { state, signal, isCurrent }: RequestContext,
 ): Promise<ConversationRequestResult> {
-  refs.loadAbortRef.current?.abort();
-  const controller = new AbortController();
-  refs.loadAbortRef.current = controller;
-
-  if (!opts?.silent) {
-    setters.setIsLoadingConversation(true);
-  }
-
   try {
-    const detail = await getAIChatConversation(id, {
-      signal: controller.signal,
-    });
-    if (controller.signal.aborted) {
+    const detail = await getAIChatConversation(id, { signal });
+    if (signal.aborted || !isCurrent()) {
       return { detail: null, aborted: true };
     }
-    setters.setConversation(detail.conversation);
-    setters.setMessages(detail.messages);
+    state.setConversation(detail.conversation);
+    state.setMessages(detail.messages);
     if (!opts?.silent) {
-      setters.setLatestWorkoutDraftMessageId(null);
+      state.setLatestWorkoutDraftMessageId(null);
     }
     if (!detail.active_run) {
       clearResumeCursor(id);
     }
-    setters.setLoadError(null);
+    state.setLoadError(null);
     return { detail, aborted: false, error: undefined };
   } catch (error) {
-    if (controller.signal.aborted || isAbortError(error)) {
+    if (signal.aborted || !isCurrent() || isAbortError(error)) {
       return { detail: null, aborted: true, error };
     }
-    setters.setLoadError(getErrorMessage(error));
+    state.setLoadError(getErrorMessage(error));
     return { detail: null, aborted: false, error };
-  } finally {
-    if (refs.loadAbortRef.current === controller) {
-      refs.loadAbortRef.current = null;
-      if (!opts?.silent) {
-        setters.setIsLoadingConversation(false);
-      }
-    }
   }
 }
 
 export async function recoverConversation(
   id: number,
   opts: ConversationRequestOptions | undefined,
-  { refs, setters }: SessionStateContext,
+  { state, signal, isCurrent }: RequestContext,
 ): Promise<ConversationRequestResult> {
-  refs.recoveryAbortRef.current?.abort();
-  const controller = new AbortController();
-  refs.recoveryAbortRef.current = controller;
   let recoveryRequestError: unknown = null;
   let shouldRetryRecovery = false;
 
   const requestRecovery = async () => {
     try {
-      const response = await requestAIChatMessageRecovery(id, {
-        signal: controller.signal,
-      });
+      const response = await requestAIChatMessageRecovery(id, { signal });
       shouldRetryRecovery = response.status === "not_needed";
     } catch (error) {
-      if (controller.signal.aborted || isAbortError(error)) {
-        throw error;
-      }
+      if (signal.aborted || isAbortError(error)) throw error;
       recoveryRequestError = recoveryRequestError ?? error;
       shouldRetryRecovery = false;
     }
   };
 
-  const retryRecoveryIfNeeded = async () => {
-    if (!shouldRetryRecovery) {
-      return;
-    }
-    await requestRecovery();
-  };
-
   try {
     await requestRecovery();
-
     const detail = await pollAIChatConversationUntilSettled(id, {
-      signal: controller.signal,
-      onStreaming: retryRecoveryIfNeeded,
+      signal,
+      onStreaming: async () => {
+        if (shouldRetryRecovery) await requestRecovery();
+      },
     });
-    if (controller.signal.aborted) {
+    if (signal.aborted || !isCurrent()) {
       return { detail: null, aborted: true };
     }
-    setters.setConversation(detail.conversation);
-    setters.setMessages(detail.messages);
-    setters.setLatestWorkoutDraftMessageId(null);
-    setters.setLoadError(null);
+    state.setConversation(detail.conversation);
+    state.setMessages(detail.messages);
+    state.setLatestWorkoutDraftMessageId(null);
+    state.setLoadError(null);
     return { detail, aborted: false, error: undefined };
   } catch (error) {
-    if (controller.signal.aborted || isAbortError(error)) {
+    if (signal.aborted || !isCurrent() || isAbortError(error)) {
       return { detail: null, aborted: true, error };
     }
     if (!opts?.silent) {
-      setters.setLoadError(getErrorMessage(recoveryRequestError ?? error));
+      state.setLoadError(getErrorMessage(recoveryRequestError ?? error));
     }
     return {
       detail: null,
       aborted: false,
       error: recoveryRequestError ?? error,
     };
-  } finally {
-    if (refs.recoveryAbortRef.current === controller) {
-      refs.recoveryAbortRef.current = null;
-    }
   }
 }
 
 export async function resumeConversation(
   detail: AIChatConversationDetail,
   loadConversation: LoadConversation,
-  { refs, setters }: SessionStateContext,
-  operation: ChatSessionOperation,
+  { controller, state }: ResumeContext,
+  operation: ChatOperation,
+  attempt: ChatOperationAttempt,
 ): Promise<ConversationRequestResult> {
   const activeRun = detail.active_run;
-  if (!activeRun) {
-    return { detail, aborted: false };
-  }
+  if (!activeRun) return { detail, aborted: false };
 
-  refs.resumeAbortRef.current?.abort();
-  const controller = new AbortController();
-  refs.resumeAbortRef.current = controller;
-  refs.pendingAssistantIdRef.current = activeRun.assistant_message_id;
   const afterSequence = getResumeAfterSequence(detail);
-  const ownsOperation = () => refs.activeOperationRef.current === operation;
+  const ownsAttempt = () => controller.ownsAttempt(operation, attempt);
 
   try {
     const streamResult = await resumeAIChatMessageStream(
@@ -180,10 +150,15 @@ export async function resumeConversation(
       afterSequence,
       {
         onStart: (event) => {
-          if (!ownsOperation()) return;
+          if (!ownsAttempt()) return;
           const assistantMessageId =
             event.message_id ?? activeRun.assistant_message_id;
-          refs.pendingAssistantIdRef.current = assistantMessageId;
+          controller.markStreaming(
+            operation,
+            attempt,
+            activeRun.id,
+            assistantMessageId,
+          );
           if (event.sequence !== undefined) {
             saveResumeCursor(detail.conversation.id, {
               runId: activeRun.id,
@@ -193,11 +168,10 @@ export async function resumeConversation(
           }
         },
         onDelta: (event) => {
-          if (!ownsOperation()) return;
+          if (!ownsAttempt()) return;
           const targetId =
-            refs.pendingAssistantIdRef.current ??
-            activeRun.assistant_message_id;
-          setters.setMessages((current) =>
+            operation.assistantMessageId ?? activeRun.assistant_message_id;
+          state.setMessages((current) =>
             updateStreamingMessageWithDelta(
               current,
               targetId,
@@ -213,15 +187,14 @@ export async function resumeConversation(
           }
         },
         onDone: (event) => {
-          if (!ownsOperation()) return;
+          if (!ownsAttempt()) return;
           const targetId =
-            refs.pendingAssistantIdRef.current ??
-            activeRun.assistant_message_id;
-          setters.setMessages((current) =>
+            operation.assistantMessageId ?? activeRun.assistant_message_id;
+          state.setMessages((current) =>
             updateStreamingMessageWithDone(current, targetId, event),
           );
           if (event.workout_draft) {
-            setters.setConversation((current) =>
+            state.setConversation((current) =>
               current
                 ? {
                     ...current,
@@ -230,35 +203,30 @@ export async function resumeConversation(
                   }
                 : current,
             );
-            setters.setLatestWorkoutDraftMessageId(
-              event.message_id ?? targetId,
-            );
+            state.setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
           }
           clearResumeCursor(detail.conversation.id);
         },
         onErrorEvent: (event) => {
-          if (!ownsOperation()) return;
+          if (!ownsAttempt()) return;
           const targetId =
-            refs.pendingAssistantIdRef.current ??
-            activeRun.assistant_message_id;
-          setters.setMessages((current) =>
+            operation.assistantMessageId ?? activeRun.assistant_message_id;
+          state.setMessages((current) =>
             updateStreamingMessageWithError(current, targetId, event),
           );
           clearResumeCursor(detail.conversation.id);
         },
-        signal: controller.signal,
+        signal: attempt.controller.signal,
       },
     );
-    if (controller.signal.aborted) {
+    if (attempt.controller.signal.aborted || !ownsAttempt()) {
       return { detail: null, aborted: true };
     }
 
     const refreshed = await loadConversation(detail.conversation.id, {
       silent: true,
     });
-    if (!streamResult.endedWithError) {
-      return refreshed;
-    }
+    if (!streamResult.endedWithError) return refreshed;
 
     return {
       detail: refreshed.detail,
@@ -272,17 +240,14 @@ export async function resumeConversation(
         ),
     };
   } catch (error) {
-    if (controller.signal.aborted || isAbortError(error)) {
+    if (
+      attempt.controller.signal.aborted ||
+      !ownsAttempt() ||
+      isAbortError(error)
+    ) {
       return { detail: null, aborted: true, error };
     }
     return { detail: null, aborted: false, error };
-  } finally {
-    if (refs.resumeAbortRef.current === controller) {
-      refs.resumeAbortRef.current = null;
-    }
-    if (refs.activeOperationRef.current === operation) {
-      refs.pendingAssistantIdRef.current = null;
-    }
   }
 }
 
@@ -295,7 +260,7 @@ export async function recoverLoadedConversation({
   id: number;
   recoverConversation: RecoverConversation;
   recordTelemetry: RecordChatTelemetry;
-  setLoadError: ChatSessionSetters["setLoadError"];
+  setLoadError: ChatSessionState["setLoadError"];
 }) {
   const recoveryResult = await recoverConversation(id, { silent: true });
   const recoveryOutcome = classifyRecoveryOutcome({
@@ -303,10 +268,7 @@ export async function recoverLoadedConversation({
     aborted: recoveryResult.aborted,
     error: recoveryResult.error,
   });
-  recordTelemetry({
-    category: "recovery",
-    outcome: recoveryOutcome,
-  });
+  recordTelemetry({ category: "recovery", outcome: recoveryOutcome });
 
   if (
     recoveryOutcome === "recovered_completed" ||
@@ -317,10 +279,7 @@ export async function recoverLoadedConversation({
 
   const recoveryError =
     recoveryResult.error ?? new Error("Failed to recover AI chat conversation");
-  recordTelemetry({
-    category: "ux",
-    outcome: "failure_toast_shown",
-  });
+  recordTelemetry({ category: "ux", outcome: "failure_toast_shown" });
   if (!recoveryResult.detail) {
     setLoadError(
       getErrorMessage(recoveryError, "Failed to recover AI chat conversation"),

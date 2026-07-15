@@ -442,7 +442,7 @@ export function ChatPage({
                 <div className="flex flex-col gap-6">
                   {messages.map((message) => (
                     <MessageBubble
-                      key={`${message.id}-${message.updated_at}`}
+                      key={message.id}
                       message={message}
                       isLastAssistant={message.id === lastAssistantMessageId}
                       onRetry={handleRetry}
