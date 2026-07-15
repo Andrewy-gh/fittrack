@@ -16,99 +16,61 @@ import {
   updateStreamingMessageWithError,
 } from "./chat-resume";
 import type {
-  ChatSessionRefs,
-  ChatSessionSetters,
-  ChatSessionOperation,
+  ChatOperation,
+  ChatOperationAttempt,
+  ChatOperationController,
+} from "./chat-operation-controller";
+import type {
+  ChatSessionState,
   RecordChatTelemetry,
 } from "./chat-session-types";
-import type {
-  LoadConversation,
-  RecoverConversation,
-} from "./chat-session-recovery";
 
 type SubmitPromptOptions = {
   conversationId: number | null;
   prompt: string;
-  isSubmitting: boolean;
-  onConversationCreated: (conversationId: number) => Promise<void>;
-  onPromptStarted: (conversationId: number) => void;
-  onNewConversationCreated: (conversationId: number) => void;
-  loadConversation: LoadConversation;
-  recoverConversation: RecoverConversation;
+  controller: ChatOperationController;
   recordTelemetry: RecordChatTelemetry;
-  refs: ChatSessionRefs;
-  setters: ChatSessionSetters;
+  state: ChatSessionState;
 };
 
 export async function submitPrompt({
   conversationId,
   prompt,
-  isSubmitting,
-  onConversationCreated,
-  onPromptStarted,
-  onNewConversationCreated,
-  loadConversation,
-  recoverConversation,
+  controller,
   recordTelemetry,
-  refs,
-  setters,
-}: SubmitPromptOptions) {
+  state,
+}: SubmitPromptOptions): Promise<void> {
   const nextPrompt = prompt.trim();
-  if (!nextPrompt || isSubmitting || refs.activeOperationRef.current) {
-    return;
-  }
+  if (!nextPrompt) return;
 
-  const operation: ChatSessionOperation = {
-    conversationId,
-    runId: null,
-    routeHandoffConversationId: null,
-  };
-  refs.activeOperationRef.current = operation;
-  refs.loadAbortRef.current?.abort();
-  const ownsOperation = () => refs.activeOperationRef.current === operation;
-  const releaseOperation = () => {
-    if (!ownsOperation()) {
-      return;
-    }
-    refs.activeOperationRef.current = null;
-    setters.setIsSubmitting(false);
-    setters.setActiveRunId(null);
-  };
-
-  setters.setIsSubmitting(true);
-  setters.setPrompt("");
-
+  const operation = controller.beginOperation(conversationId);
+  if (!operation) return;
+  controller.cancelRouteLoad();
+  state.setPrompt("");
   let activeConversationId = conversationId;
 
   try {
     if (!activeConversationId) {
       const createdConversation = await createAIChatConversation();
-      if (!ownsOperation()) {
-        return;
-      }
+      if (!controller.ownsOperation(operation)) return;
       activeConversationId = createdConversation.id;
-      operation.conversationId = activeConversationId;
-      operation.routeHandoffConversationId = activeConversationId;
-      onNewConversationCreated(activeConversationId);
-      setters.setConversation(createdConversation);
-      await onConversationCreated(activeConversationId);
-      if (!ownsOperation()) {
-        return;
-      }
+      controller.adoptConversation(operation, activeConversationId);
+      controller.onNewConversationCreated(activeConversationId);
+      state.setConversation(createdConversation);
+      await controller.onConversationCreated(activeConversationId);
+      if (!controller.ownsOperation(operation)) return;
     }
   } catch (error) {
-    if (!ownsOperation()) {
-      return;
-    }
-    setters.setPrompt(nextPrompt);
-    releaseOperation();
+    if (!controller.ownsOperation(operation)) return;
+    state.setPrompt(nextPrompt);
+    controller.finishOperation(operation);
     showErrorToast(error, "Failed to create chat conversation");
     return;
   }
 
   if (!activeConversationId) {
-    setters.setPrompt(nextPrompt);
-    releaseOperation();
+    state.setPrompt(nextPrompt);
+    controller.finishOperation(operation);
     return;
   }
 
@@ -117,12 +79,12 @@ export async function submitPrompt({
   const tempAssistantId = tempUserId - 1;
   let streamStarted = false;
   let shouldRefreshConversation = false;
-  const streamController = new AbortController();
-  refs.pendingAssistantIdRef.current = tempAssistantId;
-  refs.streamAbortRef.current = streamController;
+  operation.assistantMessageId = tempAssistantId;
+  const attempt = controller.beginAttempt(operation, "stream");
+  if (!attempt) return;
   clearResumeCursor(activeConversationId);
 
-  setters.setMessages((current) => [
+  state.setMessages((current) => [
     ...current,
     {
       id: tempUserId,
@@ -151,12 +113,17 @@ export async function submitPrompt({
       nextPrompt,
       {
         onStart: (event) => {
-          if (!ownsOperation()) return;
+          if (!controller.ownsAttempt(operation, attempt)) return;
           streamStarted = true;
-          onPromptStarted(activeConversationId);
+          controller.onPromptStarted(activeConversationId);
           const assistantMessageId = event.message_id ?? tempAssistantId;
-          refs.pendingAssistantIdRef.current = assistantMessageId;
-          setters.setMessages((current) =>
+          controller.markStreaming(
+            operation,
+            attempt,
+            event.run_id ?? null,
+            assistantMessageId,
+          );
+          state.setMessages((current) =>
             current.map((message) =>
               message.id === tempAssistantId
                 ? { ...message, id: assistantMessageId }
@@ -168,14 +135,11 @@ export async function submitPrompt({
             sequence: event.sequence ?? 0,
             assistantMessageId,
           });
-          operation.runId = event.run_id ?? null;
-          setters.setActiveRunId(operation.runId);
         },
         onDelta: (event) => {
-          if (!ownsOperation()) return;
-          const targetId =
-            refs.pendingAssistantIdRef.current ?? tempAssistantId;
-          setters.setMessages((current) =>
+          if (!controller.ownsAttempt(operation, attempt)) return;
+          const targetId = operation.assistantMessageId ?? tempAssistantId;
+          state.setMessages((current) =>
             updateStreamingMessageWithDelta(
               current,
               targetId,
@@ -191,14 +155,13 @@ export async function submitPrompt({
           }
         },
         onDone: (event) => {
-          if (!ownsOperation()) return;
-          const targetId =
-            refs.pendingAssistantIdRef.current ?? tempAssistantId;
-          setters.setMessages((current) =>
+          if (!controller.ownsAttempt(operation, attempt)) return;
+          const targetId = operation.assistantMessageId ?? tempAssistantId;
+          state.setMessages((current) =>
             updateStreamingMessageWithDone(current, targetId, event),
           );
           if (event.workout_draft) {
-            setters.setConversation((current) =>
+            state.setConversation((current) =>
               current
                 ? {
                     ...current,
@@ -207,17 +170,14 @@ export async function submitPrompt({
                   }
                 : current,
             );
-            setters.setLatestWorkoutDraftMessageId(
-              event.message_id ?? targetId,
-            );
+            state.setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
           }
           clearResumeCursor(activeConversationId);
         },
         onErrorEvent: (event) => {
-          if (!ownsOperation()) return;
-          const targetId =
-            refs.pendingAssistantIdRef.current ?? tempAssistantId;
-          setters.setMessages((current) =>
+          if (!controller.ownsAttempt(operation, attempt)) return;
+          const targetId = operation.assistantMessageId ?? tempAssistantId;
+          state.setMessages((current) =>
             updateStreamingMessageWithError(current, targetId, event),
           );
           clearResumeCursor(activeConversationId);
@@ -226,41 +186,31 @@ export async function submitPrompt({
             "AI chat streaming failed",
           );
         },
-        signal: streamController.signal,
+        signal: attempt.controller.signal,
       },
     );
 
-    if (!ownsOperation()) {
-      return;
-    }
+    if (!controller.ownsAttempt(operation, attempt)) return;
     recordTelemetry({
       category: "stream",
       outcome: streamResult.endedWithError ? "server_error" : "completed",
       stage: terminalStreamStage(),
     });
     if (streamResult.endedWithError) {
-      recordTelemetry({
-        category: "ux",
-        outcome: "failure_toast_shown",
-      });
+      recordTelemetry({ category: "ux", outcome: "failure_toast_shown" });
     }
     shouldRefreshConversation = true;
   } catch (error) {
-    if (!ownsOperation()) {
-      return;
-    }
+    if (!controller.ownsAttempt(operation, attempt)) return;
     if (!streamStarted && isPreflightAPIError(error)) {
-      removeOptimisticMessages(setters, tempUserId, tempAssistantId);
-      setters.setPrompt(nextPrompt);
+      removeOptimisticMessages(state, tempUserId, tempAssistantId);
+      state.setPrompt(nextPrompt);
       recordTelemetry({
         category: "stream",
         outcome: "server_error",
         stage: "pre_start",
       });
-      recordTelemetry({
-        category: "ux",
-        outcome: "failure_toast_shown",
-      });
+      recordTelemetry({ category: "ux", outcome: "failure_toast_shown" });
       showErrorToast(error, "Failed to stream AI chat response");
       return;
     }
@@ -271,10 +221,7 @@ export async function submitPrompt({
       outcome: streamTelemetry.outcome,
       stage: streamTelemetry.stage,
     });
-
-    if (streamTelemetry.outcome === "client_aborted") {
-      return;
-    }
+    if (streamTelemetry.outcome === "client_aborted") return;
 
     await handleStreamFailureRecovery({
       activeConversationId,
@@ -282,24 +229,19 @@ export async function submitPrompt({
       streamStarted,
       tempAssistantId,
       error,
-      recoverConversation,
-      onPromptStarted,
+      controller,
+      operation,
+      streamAttempt: attempt,
       recordTelemetry,
-      refs,
-      setters,
+      state,
     });
   } finally {
-    if (refs.streamAbortRef.current === streamController) {
-      refs.streamAbortRef.current = null;
-    }
-    if (ownsOperation()) {
-      refs.pendingAssistantIdRef.current = null;
-      releaseOperation();
-    }
+    controller.finishAttempt(operation, attempt);
+    controller.finishOperation(operation);
   }
 
-  if (shouldRefreshConversation && refs.activeOperationRef.current === null) {
-    await loadConversation(activeConversationId, { silent: true });
+  if (shouldRefreshConversation) {
+    await controller.loadConversation(activeConversationId, { silent: true });
   }
 }
 
@@ -309,28 +251,34 @@ async function handleStreamFailureRecovery({
   streamStarted,
   tempAssistantId,
   error,
-  recoverConversation,
-  onPromptStarted,
+  controller,
+  operation,
+  streamAttempt,
   recordTelemetry,
-  refs,
-  setters,
+  state,
 }: {
   activeConversationId: number;
   nextPrompt: string;
   streamStarted: boolean;
   tempAssistantId: number;
   error: unknown;
-  recoverConversation: RecoverConversation;
-  onPromptStarted: (conversationId: number) => void;
+  controller: ChatOperationController;
+  operation: ChatOperation;
+  streamAttempt: ChatOperationAttempt;
   recordTelemetry: RecordChatTelemetry;
-  refs: ChatSessionRefs;
-  setters: ChatSessionSetters;
+  state: ChatSessionState;
 }) {
+  if (!controller.ownsAttempt(operation, streamAttempt)) return;
+  const recoveryPromise = controller.recoverConversation(
+    activeConversationId,
+    operation,
+    { silent: true },
+  );
   const {
     detail: recoveredDetail,
     aborted: recoveryAborted,
     error: recoveryError,
-  } = await recoverConversation(activeConversationId, { silent: true });
+  } = await recoveryPromise;
   const submitFailure = recoveryError ?? error;
   const recoveryOutcome = classifyRecoveryOutcome({
     messages: recoveredDetail?.messages,
@@ -338,37 +286,24 @@ async function handleStreamFailureRecovery({
     aborted: recoveryAborted,
     error: recoveryError,
   });
-  recordTelemetry({
-    category: "recovery",
-    outcome: recoveryOutcome,
-  });
-  if (recoveryAborted) {
-    return;
-  }
+  recordTelemetry({ category: "recovery", outcome: recoveryOutcome });
+  if (recoveryAborted || !controller.ownsOperation(operation)) return;
 
   if (!recoveredDetail) {
     const targetId = streamStarted
-      ? (refs.pendingAssistantIdRef.current ?? tempAssistantId)
+      ? (operation.assistantMessageId ?? tempAssistantId)
       : tempAssistantId;
-    markAssistantMessageFailed(setters, targetId, submitFailure);
+    markAssistantMessageFailed(state, targetId, submitFailure);
   }
 
   if (recoveryOutcome !== "recovered_completed") {
-    if (!streamStarted) {
-      setters.setPrompt(nextPrompt);
-    }
-    recordTelemetry({
-      category: "ux",
-      outcome: "failure_toast_shown",
-    });
+    if (!streamStarted) state.setPrompt(nextPrompt);
+    recordTelemetry({ category: "ux", outcome: "failure_toast_shown" });
     showErrorToast(submitFailure, "Failed to stream AI chat response");
     return;
   }
 
-  if (!streamStarted) {
-    onPromptStarted(activeConversationId);
-  }
-
+  if (!streamStarted) controller.onPromptStarted(activeConversationId);
   recordTelemetry({
     category: "ux",
     outcome: "failure_toast_suppressed_due_to_successful_recovery",
@@ -376,11 +311,11 @@ async function handleStreamFailureRecovery({
 }
 
 function removeOptimisticMessages(
-  setters: ChatSessionSetters,
+  state: ChatSessionState,
   tempUserId: number,
   tempAssistantId: number,
 ) {
-  setters.setMessages((current) =>
+  state.setMessages((current) =>
     current.filter(
       (message) => message.id !== tempUserId && message.id !== tempAssistantId,
     ),
@@ -388,11 +323,11 @@ function removeOptimisticMessages(
 }
 
 function markAssistantMessageFailed(
-  setters: ChatSessionSetters,
+  state: ChatSessionState,
   messageId: number,
   error: unknown,
 ) {
-  setters.setMessages((current) =>
+  state.setMessages((current) =>
     current.map((message) =>
       message.id === messageId
         ? {
