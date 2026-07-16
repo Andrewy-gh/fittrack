@@ -688,6 +688,91 @@ describe("useAIChatSession", () => {
     );
   });
 
+  it("immediately hides typing, stays busy, and disables duplicate Stop", async () => {
+    let resumeSignal: AbortSignal | undefined;
+    let resolveStop!: (value: Record<string, unknown>) => void;
+    mockGetConversation.mockResolvedValue(
+      conversationDetail(
+        [
+          {
+            id: 61,
+            conversation_id: 41,
+            role: "assistant",
+            content: "partial",
+            status: "streaming",
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-03-26T17:00:01Z",
+          },
+        ],
+        {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        },
+      ),
+    );
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: { signal?: AbortSignal },
+      ) => {
+        resumeSignal = handlers.signal;
+        return new Promise(() => undefined);
+      },
+    );
+    mockStopRun.mockReturnValue(
+      new Promise((resolve) => {
+        resolveStop = resolve;
+      }),
+    );
+
+    const { result } = renderSession();
+    await waitFor(() => {
+      expect(result.current.canStop).toBe(true);
+    });
+
+    let stopPromise: Promise<void> | undefined;
+    act(() => {
+      stopPromise = result.current.stopRun();
+    });
+
+    expect(mockStopRun).toHaveBeenCalledWith(41, 91);
+    expect(resumeSignal?.aborted).toBe(true);
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ status: "stopped", content: "partial" }),
+    );
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveStop({
+        conversation_id: 41,
+        run_id: 91,
+        message_id: 61,
+        status: "stopped",
+        text: "authoritative partial",
+        sequence: 2,
+      });
+      await stopPromise;
+    });
+
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        status: "stopped",
+        content: "authoritative partial",
+      }),
+    );
+  });
+
   it.each(["completed", "failed"] as const)(
     "releases a hung active request when Stop reports an already %s run",
     async (status) => {
@@ -745,6 +830,488 @@ describe("useAIChatSession", () => {
       ]);
     },
   );
+
+  it("falls back to a terminal Stop response when its reload fails", async () => {
+    const reloadError = new Error("Terminal reload failed");
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: "partial",
+              status: "streaming",
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:01Z",
+            },
+          ],
+          {
+            id: 91,
+            assistant_message_id: 61,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      )
+      .mockRejectedValueOnce(reloadError);
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "completed",
+      text: "completed while Stop raced",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(result.current.loadError).toBe(reloadError.message);
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        status: "completed",
+        content: "completed while Stop raced",
+      }),
+    );
+  });
+
+  it("recovers an orphaned streaming message loaded after a terminal Stop race", async () => {
+    const streamingMessage = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([streamingMessage], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(conversationDetail([streamingMessage]));
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "completed",
+      text: "terminal response",
+      sequence: 2,
+    });
+    mockPollConversation.mockResolvedValue(
+      conversationDetail([
+        {
+          ...streamingMessage,
+          content: "recovered terminal response",
+          status: "completed",
+          updated_at: "2026-03-26T17:00:02Z",
+          completed_at: "2026-03-26T17:00:02Z",
+        },
+      ]),
+    );
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(mockRequestRecovery).toHaveBeenCalledWith(
+      41,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        status: "completed",
+        content: "recovered terminal response",
+      }),
+    );
+  });
+
+  it.each(["completed", "failed"] as const)(
+    "releases a replacement run after authoritative %s SSE when refresh fails",
+    async (terminalStatus) => {
+      const refreshError = new Error("Terminal refresh failed");
+      const initialMessage = {
+        id: 61,
+        conversation_id: 41,
+        role: "assistant",
+        content: "old partial",
+        status: "streaming",
+        created_at: "2026-03-26T17:00:00Z",
+        updated_at: "2026-03-26T17:00:01Z",
+      };
+      const replacementMessage = {
+        ...initialMessage,
+        id: 82,
+        content: "new partial",
+        updated_at: "2026-03-26T17:01:01Z",
+      };
+      mockGetConversation
+        .mockResolvedValueOnce(
+          conversationDetail([initialMessage], {
+            id: 91,
+            assistant_message_id: 61,
+            status: "streaming",
+            latest_sequence: 1,
+          }),
+        )
+        .mockResolvedValueOnce(
+          conversationDetail([replacementMessage], {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          }),
+        )
+        .mockRejectedValueOnce(refreshError);
+      mockResumeStream
+        .mockImplementationOnce(
+          (
+            _conversationId: number,
+            _runId: number,
+            _afterSequence: number,
+            handlers: { signal?: AbortSignal },
+          ) =>
+            new Promise((_resolve, reject) => {
+              handlers.signal?.addEventListener(
+                "abort",
+                () => reject(new DOMException("Aborted", "AbortError")),
+                { once: true },
+              );
+            }),
+        )
+        .mockImplementationOnce(
+          async (
+            _conversationId: number,
+            _runId: number,
+            _afterSequence: number,
+            handlers: {
+              onDone?: (event: Record<string, unknown>) => void;
+              onErrorEvent?: (event: Record<string, unknown>) => void;
+            },
+          ) => {
+            if (terminalStatus === "completed") {
+              const doneEvent = {
+                type: "done",
+                message_id: 82,
+                status: "completed",
+                text: "new complete response",
+              };
+              handlers.onDone?.(doneEvent);
+              return { doneEvent, endedWithError: false };
+            }
+            const errorEvent = {
+              type: "error",
+              message_id: 82,
+              message: "new run failed",
+            };
+            handlers.onErrorEvent?.(errorEvent);
+            return { doneEvent: errorEvent, endedWithError: true };
+          },
+        );
+      mockStopRun.mockResolvedValue({
+        conversation_id: 41,
+        run_id: 91,
+        message_id: 61,
+        status: "completed",
+        text: "old run completed",
+        sequence: 2,
+      });
+
+      const { result } = renderSession();
+      await waitFor(() => expect(result.current.canStop).toBe(true));
+
+      await act(async () => {
+        await result.current.stopRun();
+      });
+
+      expect(mockPollConversation).not.toHaveBeenCalled();
+      expect(result.current.isSubmitting).toBe(false);
+      expect(result.current.canStop).toBe(false);
+      expect(result.current.loadError).toBe(refreshError.message);
+      expect(result.current.messages[0]).toEqual(
+        expect.objectContaining({ id: 82, status: terminalStatus }),
+      );
+    },
+  );
+
+  it("adopts a newer active run returned after replacement-run terminal SSE", async () => {
+    const message = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "old partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([message], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [{ ...message, id: 82, content: "replacement partial" }],
+          {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [{ ...message, id: 103, content: "newest partial" }],
+          {
+            id: 93,
+            assistant_message_id: 103,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      );
+    mockResumeStream
+      .mockImplementationOnce(
+        (
+          _conversationId: number,
+          _runId: number,
+          _afterSequence: number,
+          handlers: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            handlers.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      )
+      .mockImplementationOnce(
+        async (
+          _conversationId: number,
+          _runId: number,
+          _afterSequence: number,
+          handlers: { onDone?: (event: Record<string, unknown>) => void },
+        ) => {
+          const doneEvent = {
+            type: "done",
+            message_id: 82,
+            status: "completed",
+            text: "replacement completed",
+          };
+          handlers.onDone?.(doneEvent);
+          return { doneEvent, endedWithError: false };
+        },
+      )
+      .mockRejectedValueOnce(new Error("Newest resume failed"));
+    mockPollConversation.mockRejectedValue(
+      new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    );
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "completed",
+      text: "old run completed",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(mockResumeStream).toHaveBeenNthCalledWith(
+      3,
+      41,
+      93,
+      expect.any(Number),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        id: 103,
+        status: "streaming",
+        content: "newest partial",
+      }),
+    );
+  });
+
+  it("keeps a different active run unresolved when terminal Stop reconciliation times out", async () => {
+    const initialMessage = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "old partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    const replacementMessage = {
+      ...initialMessage,
+      id: 82,
+      content: "new partial",
+      updated_at: "2026-03-26T17:01:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([initialMessage], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail([replacementMessage], {
+          id: 92,
+          assistant_message_id: 82,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      );
+    mockResumeStream
+      .mockImplementationOnce(
+        (
+          _conversationId: number,
+          _runId: number,
+          _afterSequence: number,
+          handlers: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            handlers.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      )
+      .mockRejectedValueOnce(new Error("Replacement resume failed"));
+    mockPollConversation.mockRejectedValue(
+      new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    );
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "completed",
+      text: "old run completed",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        id: 82,
+        status: "streaming",
+        content: "new partial",
+      }),
+    );
+  });
+
+  it("keeps an orphaned stream busy and Stop-retryable when terminal reconciliation times out", async () => {
+    const streamingMessage = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([streamingMessage], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(conversationDetail([streamingMessage]));
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: { signal?: AbortSignal },
+      ) =>
+        new Promise((_resolve, reject) => {
+          handlers.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    mockPollConversation.mockRejectedValue(
+      new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    );
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "failed",
+      text: "old run failed",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(mockStopRun).toHaveBeenCalledWith(41, 91);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ status: "streaming", content: "partial" }),
+    );
+  });
 
   it("keeps a newly loaded Stop target when an aborted route resume settles late", async () => {
     const resolveResume: Array<
@@ -1313,17 +1880,487 @@ describe("useAIChatSession", () => {
     expect(result.current.isSubmitting).toBe(true);
   });
 
-  it("reports a rejected Stop request for the current active run", async () => {
-    const error = new Error("Stop request failed");
-    mockStopRun.mockRejectedValue(error);
-    mockGetConversation.mockResolvedValue(
-      conversationDetail([], {
+  it("keeps same-run recovery timeouts unresolved and stoppable", async () => {
+    const stopError = new Error("Stop request failed");
+    const timeoutError = new Error(
+      "AI chat recovery timed out while waiting for persisted conversation state",
+    );
+    const activeDetail = conversationDetail(
+      [
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "assistant",
+          content: "partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:01Z",
+        },
+      ],
+      {
         id: 91,
         assistant_message_id: 61,
         status: "streaming",
         latest_sequence: 1,
+      },
+    );
+    mockGetConversation
+      .mockResolvedValueOnce(activeDetail)
+      .mockResolvedValueOnce(activeDetail);
+    mockResumeStream
+      .mockImplementationOnce(
+        (
+          _conversationId: number,
+          _runId: number,
+          _afterSequence: number,
+          handlers: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            handlers.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      )
+      .mockRejectedValueOnce(new Error("Resume failed"));
+    mockStopRun.mockRejectedValue(stopError);
+    mockPollConversation.mockRejectedValue(timeoutError);
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ status: "streaming" }),
+    );
+    expect(result.current.loadError).toBe(timeoutError.message);
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovery_timeout",
+    });
+  });
+
+  it("adopts a different active run after Stop failure and targets retries to it", async () => {
+    const firstDetail = conversationDetail(
+      [
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "assistant",
+          content: "old partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:01Z",
+        },
+      ],
+      {
+        id: 91,
+        assistant_message_id: 61,
+        status: "streaming",
+        latest_sequence: 1,
+      },
+    );
+    const replacementDetail = conversationDetail(
+      [
+        {
+          id: 82,
+          conversation_id: 41,
+          role: "assistant",
+          content: "new partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:01:00Z",
+          updated_at: "2026-03-26T17:01:01Z",
+        },
+      ],
+      {
+        id: 92,
+        assistant_message_id: 82,
+        status: "streaming",
+        latest_sequence: 1,
+      },
+    );
+    mockGetConversation
+      .mockResolvedValueOnce(firstDetail)
+      .mockResolvedValueOnce(replacementDetail);
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: { signal?: AbortSignal },
+      ) =>
+        new Promise((_resolve, reject) => {
+          handlers.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    mockStopRun
+      .mockRejectedValueOnce(new Error("Old Stop failed"))
+      .mockResolvedValueOnce({
+        conversation_id: 41,
+        run_id: 92,
+        message_id: 82,
+        status: "stopped",
+        text: "new authoritative partial",
+        sequence: 2,
+      });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    let firstStop: Promise<void> | undefined;
+    act(() => {
+      firstStop = result.current.stopRun();
+    });
+    await waitFor(() => {
+      expect(mockResumeStream).toHaveBeenCalledTimes(2);
+      expect(result.current.canStop).toBe(true);
+      expect(result.current.messages[0]?.id).toBe(82);
+    });
+
+    await act(async () => {
+      await result.current.stopRun();
+      await firstStop;
+    });
+
+    expect(mockStopRun).toHaveBeenNthCalledWith(1, 41, 91);
+    expect(mockStopRun).toHaveBeenNthCalledWith(2, 41, 92);
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        id: 82,
+        status: "stopped",
+        content: "new authoritative partial",
       }),
     );
+  });
+
+  it("does not let an aborted reconciliation re-enable Stop during a retry", async () => {
+    const streamingMessage = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([streamingMessage], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(conversationDetail([streamingMessage]));
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: { signal?: AbortSignal },
+      ) =>
+        new Promise((_resolve, reject) => {
+          handlers.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    mockPollConversation.mockImplementation(
+      (_conversationId: number, options: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    let resolveRetry!: (value: Record<string, unknown>) => void;
+    mockStopRun
+      .mockRejectedValueOnce(new Error("First Stop failed"))
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRetry = resolve;
+        }),
+      );
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    let firstStop: Promise<void> | undefined;
+    act(() => {
+      firstStop = result.current.stopRun();
+    });
+    await waitFor(() => {
+      expect(mockPollConversation).toHaveBeenCalledTimes(1);
+      expect(result.current.canStop).toBe(true);
+    });
+
+    let retryStop: Promise<void> | undefined;
+    act(() => {
+      retryStop = result.current.stopRun();
+    });
+    await act(async () => {
+      await firstStop;
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ status: "stopped" }),
+    );
+    expect(mockStopRun).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveRetry({
+        conversation_id: 41,
+        run_id: 91,
+        message_id: 61,
+        status: "stopped",
+        text: "authoritative partial",
+        sequence: 2,
+      });
+      await retryStop;
+    });
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it("recovers an orphaned streaming message after Stop failure", async () => {
+    const initialDetail = conversationDetail(
+      [
+        {
+          id: 61,
+          conversation_id: 41,
+          role: "assistant",
+          content: "partial",
+          status: "streaming",
+          created_at: "2026-03-26T17:00:00Z",
+          updated_at: "2026-03-26T17:00:01Z",
+        },
+      ],
+      {
+        id: 91,
+        assistant_message_id: 61,
+        status: "streaming",
+        latest_sequence: 1,
+      },
+    );
+    const orphanedDetail = conversationDetail([
+      {
+        id: 61,
+        conversation_id: 41,
+        role: "assistant",
+        content: "partial",
+        status: "streaming",
+        created_at: "2026-03-26T17:00:00Z",
+        updated_at: "2026-03-26T17:00:01Z",
+      },
+    ]);
+    const recoveredDetail = conversationDetail([
+      {
+        id: 61,
+        conversation_id: 41,
+        role: "assistant",
+        content: "completed elsewhere",
+        status: "completed",
+        created_at: "2026-03-26T17:00:00Z",
+        updated_at: "2026-03-26T17:00:02Z",
+        completed_at: "2026-03-26T17:00:02Z",
+      },
+    ]);
+    mockGetConversation
+      .mockResolvedValueOnce(initialDetail)
+      .mockResolvedValueOnce(orphanedDetail);
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: { signal?: AbortSignal },
+      ) =>
+        new Promise((_resolve, reject) => {
+          handlers.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    mockStopRun.mockRejectedValue(new Error("Stop failed"));
+    mockPollConversation.mockResolvedValue(recoveredDetail);
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(mockRequestRecovery).toHaveBeenCalledWith(
+      41,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        status: "completed",
+        content: "completed elsewhere",
+      }),
+    );
+  });
+
+  it("keeps an orphaned-message recovery timeout unresolved and stoppable", async () => {
+    const streamingMessage = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([streamingMessage], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(conversationDetail([streamingMessage]));
+    mockResumeStream.mockImplementation(
+      (
+        _conversationId: number,
+        _runId: number,
+        _afterSequence: number,
+        handlers: { signal?: AbortSignal },
+      ) =>
+        new Promise((_resolve, reject) => {
+          handlers.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        }),
+    );
+    mockStopRun.mockRejectedValue(new Error("Stop failed"));
+    mockPollConversation.mockRejectedValue(
+      new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    );
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ status: "streaming" }),
+    );
+    expect(mockReportTelemetry).toHaveBeenCalledWith({
+      category: "recovery",
+      outcome: "recovery_timeout",
+    });
+  });
+
+  it("releases a failed Stop target when reconciliation loads a terminal run", async () => {
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail([
+          {
+            id: 61,
+            conversation_id: 41,
+            role: "assistant",
+            content: "failed elsewhere",
+            status: "failed",
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-03-26T17:00:02Z",
+            completed_at: "2026-03-26T17:00:02Z",
+          },
+        ]),
+      );
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+    mockStopRun.mockRejectedValue(new Error("Stop failed"));
+
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.canStop).toBe(true));
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        content: "failed elsewhere",
+      }),
+    );
+  });
+
+  it("keeps Stop retryable when both Stop and its reconciliation reload fail", async () => {
+    const error = new Error("Stop request failed");
+    const reloadError = new Error("Reload failed");
+    mockStopRun.mockRejectedValueOnce(error).mockResolvedValueOnce({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "stopped",
+      text: "authoritative partial",
+      sequence: 2,
+    });
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: "partial",
+              status: "streaming",
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:01Z",
+            },
+          ],
+          {
+            id: 91,
+            assistant_message_id: 61,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      )
+      .mockRejectedValueOnce(reloadError);
     mockResumeStream.mockImplementation(() => new Promise(() => undefined));
 
     const { result } = renderSession();
@@ -1339,6 +2376,25 @@ describe("useAIChatSession", () => {
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       error,
       "Failed to stop AI chat response",
+    );
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ status: "streaming" }),
+    );
+    expect(result.current.loadError).toBe("Reload failed");
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenNthCalledWith(2, 41, 91);
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.loadError).toBeNull();
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({
+        status: "stopped",
+        content: "authoritative partial",
+      }),
     );
   });
 });

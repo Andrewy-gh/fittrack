@@ -14,8 +14,10 @@ import {
   mockPollConversation,
   mockReportTelemetry,
   mockRequestRecovery,
+  mockResumeStream,
   mockSearch,
   mockShowErrorToast,
+  mockStopRun,
   mockStreamMessage,
   resetChatRouteMocks,
 } from "../test/chat-page-test-utils";
@@ -434,6 +436,72 @@ describe("ChatRouteComponent", () => {
 
     expect(await screen.findByText("Hello anybody there?")).toBeInTheDocument();
     expect(screen.getByTestId("chat-conversation-body")).toHaveClass("pt-4");
+  });
+
+  it("removes typing immediately while durable Stop is pending", async () => {
+    const user = userEvent.setup();
+    const stopRequest = deferredPromise<Record<string, unknown>>();
+    mockGetConversation.mockResolvedValue(
+      conversationDetail(
+        [
+          {
+            id: 61,
+            conversation_id: 41,
+            role: "assistant",
+            content: "partial response",
+            status: "streaming",
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-03-26T17:00:01Z",
+          },
+        ],
+        {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        },
+      ),
+    );
+    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
+    mockStopRun.mockReturnValue(stopRequest.promise);
+
+    render(<ChatRouteComponent />);
+
+    expect(
+      await screen.findByRole("status", { name: "Assistant is typing" }),
+    ).toBeInTheDocument();
+    const stopButton = screen.getByRole("button", { name: "Stop response" });
+    expect(stopButton).toBeEnabled();
+
+    await user.click(stopButton);
+
+    expect(mockStopRun).toHaveBeenCalledWith(41, 91);
+    expect(
+      screen.queryByRole("status", { name: "Assistant is typing" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Stopped")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Stop response" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toBeDisabled();
+
+    stopRequest.resolve({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "stopped",
+      text: "authoritative partial response",
+      sequence: 2,
+    });
+
+    expect(
+      await screen.findByText("authoritative partial response"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 
   it("recovers a completed reply when the stream dies before the start event reaches the client", async () => {
