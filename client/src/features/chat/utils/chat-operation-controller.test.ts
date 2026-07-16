@@ -130,7 +130,120 @@ describe("ChatOperationController", () => {
     expect(secondAttachment.active).toBe(true);
   });
 
-  it("preserves visible Stop timing until the existing request resolves", async () => {
+  it("cannot publish a pending Stop result into a later attachment", async () => {
+    let resolveStop!: (value: {
+      conversation_id: number;
+      run_id: number;
+      message_id: number;
+      status: "stopped";
+      text: string;
+      sequence: number;
+    }) => void;
+    mockStopRun.mockReturnValue(
+      new Promise((resolve) => {
+        resolveStop = resolve;
+      }),
+    );
+    const { controller, state } = createController();
+    const firstAttachment = controller.attach();
+    const oldOperation = controller.beginOperation(41)!;
+    const oldAttempt = controller.beginAttempt(oldOperation, "stream")!;
+    controller.markStreaming(oldOperation, oldAttempt, 91, 61);
+
+    const stopPromise = controller.stopRun();
+    controller.detach(firstAttachment);
+    controller.attach();
+    const nextOperation = controller.beginOperation(42)!;
+    const nextAttempt = controller.beginAttempt(nextOperation, "stream")!;
+    controller.markStreaming(nextOperation, nextAttempt, 92, 82);
+
+    resolveStop({
+      conversation_id: 41,
+      run_id: 91,
+      message_id: 61,
+      status: "stopped",
+      text: "old response",
+      sequence: 2,
+    });
+    await stopPromise;
+
+    expect(controller.getSnapshot()).toEqual({
+      phase: "streaming",
+      conversationId: 42,
+      runId: 92,
+      assistantMessageId: 82,
+    });
+    expect(state.setMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves a hung Stop request to retryable recovery after its deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      mockStopRun.mockReturnValue(new Promise(() => undefined));
+      mockGetConversation.mockRejectedValue(new Error("Reload failed"));
+      const { controller } = createController();
+      controller.attach();
+      const operation = controller.beginOperation(41)!;
+      const attempt = controller.beginAttempt(operation, "stream")!;
+      controller.markStreaming(operation, attempt, 91, 61);
+
+      const stopPromise = controller.stopRun();
+      await vi.advanceTimersByTimeAsync(15_000);
+      await stopPromise;
+
+      expect(controller.getSnapshot()).toEqual({
+        phase: "recovering",
+        conversationId: 41,
+        runId: 91,
+        assistantMessageId: 61,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    { stopRejects: false, expectedPhase: "idle" },
+    { stopRejects: true, expectedPhase: "recovering" },
+  ] as const)(
+    "bounds reconciliation reloads after Stop (rejects: $stopRejects)",
+    async ({ stopRejects, expectedPhase }) => {
+      vi.useFakeTimers();
+      try {
+        if (stopRejects) {
+          mockStopRun.mockRejectedValue(new Error("Stop failed"));
+        } else {
+          mockStopRun.mockResolvedValue({
+            conversation_id: 41,
+            run_id: 91,
+            message_id: 61,
+            status: "completed",
+            text: "completed response",
+            sequence: 2,
+          });
+        }
+        mockGetConversation.mockReturnValue(new Promise(() => undefined));
+        const { controller } = createController();
+        controller.attach();
+        const operation = controller.beginOperation(41)!;
+        const attempt = controller.beginAttempt(operation, "stream")!;
+        controller.markStreaming(operation, attempt, 91, 61);
+
+        const stopPromise = controller.stopRun();
+        await vi.waitFor(() => {
+          expect(mockGetConversation).toHaveBeenCalledTimes(1);
+        });
+        await vi.advanceTimersByTimeAsync(15_000);
+        await stopPromise;
+
+        expect(controller.getSnapshot().phase).toBe(expectedPhase);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it("enters stopping, aborts local work, and ignores late cleanup immediately", async () => {
     let resolveStop!: (value: {
       conversation_id: number;
       run_id: number;
@@ -152,8 +265,14 @@ describe("ChatOperationController", () => {
 
     const stopPromise = controller.stopRun();
     expect(mockStopRun).toHaveBeenCalledWith(41, 91);
-    expect(controller.getSnapshot().phase).toBe("streaming");
-    expect(attempt.controller.signal.aborted).toBe(false);
+    expect(controller.getSnapshot().phase).toBe("stopping");
+    expect(attempt.controller.signal.aborted).toBe(true);
+    expect(controller.finishAttempt(operation, attempt)).toBe(false);
+    expect(controller.finishOperation(operation)).toBe(false);
+    expect(state.setMessages).toHaveBeenCalledTimes(1);
+
+    await controller.stopRun();
+    expect(mockStopRun).toHaveBeenCalledTimes(1);
 
     resolveStop({
       conversation_id: 41,
@@ -165,8 +284,7 @@ describe("ChatOperationController", () => {
     });
     await stopPromise;
 
-    expect(attempt.controller.signal.aborted).toBe(true);
     expect(controller.getSnapshot().phase).toBe("idle");
-    expect(state.setMessages).toHaveBeenCalledTimes(1);
+    expect(state.setMessages).toHaveBeenCalledTimes(2);
   });
 });

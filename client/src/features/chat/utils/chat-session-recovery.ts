@@ -226,7 +226,15 @@ export async function resumeConversation(
     const refreshed = await loadConversation(detail.conversation.id, {
       silent: true,
     });
-    if (!streamResult.endedWithError) return refreshed;
+    const terminalStatus =
+      streamResult.doneEvent?.type === "done"
+        ? (streamResult.doneEvent.status ?? "completed")
+        : streamResult.doneEvent?.type === "error"
+          ? "failed"
+          : undefined;
+    if (!streamResult.endedWithError) {
+      return { ...refreshed, terminalStatus };
+    }
 
     return {
       detail: refreshed.detail,
@@ -238,6 +246,7 @@ export async function resumeConversation(
             ? streamResult.doneEvent.message
             : "AI chat resume failed",
         ),
+      terminalStatus,
     };
   } catch (error) {
     if (
@@ -271,19 +280,23 @@ export async function recoverLoadedConversation({
   recordTelemetry({ category: "recovery", outcome: recoveryOutcome });
 
   if (
-    recoveryOutcome === "recovered_completed" ||
-    recoveryOutcome === "recovery_aborted"
+    recoveryOutcome !== "recovered_completed" &&
+    recoveryOutcome !== "recovery_aborted"
   ) {
-    return;
+    const recoveryError =
+      recoveryResult.error ??
+      new Error("Failed to recover AI chat conversation");
+    recordTelemetry({ category: "ux", outcome: "failure_toast_shown" });
+    if (!recoveryResult.detail) {
+      setLoadError(
+        getErrorMessage(
+          recoveryError,
+          "Failed to recover AI chat conversation",
+        ),
+      );
+    }
+    showErrorToast(recoveryError, "Failed to recover AI chat conversation");
   }
 
-  const recoveryError =
-    recoveryResult.error ?? new Error("Failed to recover AI chat conversation");
-  recordTelemetry({ category: "ux", outcome: "failure_toast_shown" });
-  if (!recoveryResult.detail) {
-    setLoadError(
-      getErrorMessage(recoveryError, "Failed to recover AI chat conversation"),
-    );
-  }
-  showErrorToast(recoveryError, "Failed to recover AI chat conversation");
+  return recoveryResult;
 }

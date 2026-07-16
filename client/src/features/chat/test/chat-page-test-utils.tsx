@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   mockReportTelemetry: vi.fn(),
   mockRequestRecovery: vi.fn(),
   mockSaveLatestWorkoutDraft: vi.fn(),
+  mockStopRun: vi.fn(),
   mockStreamMessage: vi.fn(),
   mockShowErrorToast: vi.fn(),
   mockToastSuccess: vi.fn(),
@@ -59,6 +60,7 @@ export const {
   mockReportTelemetry,
   mockRequestRecovery,
   mockSaveLatestWorkoutDraft,
+  mockStopRun,
   mockStreamMessage,
   mockShowErrorToast,
   mockToastSuccess,
@@ -99,6 +101,7 @@ vi.mock("@/features/chat/api/ai-chat", () => ({
   reportAIChatTelemetry: mockReportTelemetry,
   requestAIChatMessageRecovery: mockRequestRecovery,
   saveAIChatLatestWorkoutDraft: mockSaveLatestWorkoutDraft,
+  stopAIChatRun: mockStopRun,
   streamAIChatMessage: mockStreamMessage,
 }));
 
@@ -227,6 +230,7 @@ export function resetChatRouteMocks() {
   mockReportTelemetry.mockReset();
   mockRequestRecovery.mockReset();
   mockSaveLatestWorkoutDraft.mockReset();
+  mockStopRun.mockReset();
   mockStreamMessage.mockReset();
   mockShowErrorToast.mockReset();
   mockToastSuccess.mockReset();

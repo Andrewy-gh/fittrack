@@ -10,10 +10,12 @@ export type ConversationRequestResult = {
   detail: AIChatConversationDetail | null;
   aborted: boolean;
   error?: unknown;
+  terminalStatus?: Exclude<AIChatMessage["status"], "streaming">;
 };
 
 export type ConversationRequestOptions = {
   silent?: boolean;
+  timeoutMs?: number;
 };
 
 /** React state owned by useAIChatSession and updated by chat workflows. */
