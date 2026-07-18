@@ -107,9 +107,8 @@ export function useAIChatSession({
   }, [controller]);
 
   useEffect(() => {
-    state.setPrompt(initialPrompt);
     controller.handleRoute(conversationId, initialPrompt);
-  }, [conversationId, controller, initialPrompt, state]);
+  }, [conversationId, controller, initialPrompt]);
 
   const submitPrompt = useCallback(
     () => controller.submitPrompt({ conversationId, prompt }),

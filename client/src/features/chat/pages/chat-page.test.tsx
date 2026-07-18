@@ -210,10 +210,12 @@ describe("ChatRouteComponent", () => {
     });
   });
 
-  it("refreshes chat history after the first prompt creates a conversation", async () => {
+  it("clears the composer after the first prompt creates and routes to a conversation", async () => {
     const user = userEvent.setup();
+    const navigation = deferredPromise<void>();
     mockSearch.conversationId = undefined;
     mockSearch.createChat = true;
+    mockNavigate.mockReturnValue(navigation.promise);
     mockListConversations
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -277,7 +279,7 @@ describe("ChatRouteComponent", () => {
       },
     );
 
-    render(<ChatRouteComponent />);
+    const view = render(<ChatRouteComponent />);
 
     await user.type(
       await screen.findByPlaceholderText(
@@ -285,20 +287,42 @@ describe("ChatRouteComponent", () => {
       ),
       "What should we train?",
     );
-    await user.click(screen.getByRole("button", { name: "Send" }));
+    const submitClick = user.click(
+      screen.getByRole("button", { name: "Send" }),
+    );
 
-    expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockCreateConversation).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { conversationId: "73" },
+        replace: true,
+      });
+    });
+    mockSearch.conversationId = "73";
+    mockSearch.createChat = undefined;
+    view.rerender(<ChatRouteComponent />);
+    navigation.resolve();
+    await submitClick;
+
+    await waitFor(() => {
+      expect(mockStreamMessage).toHaveBeenCalledWith(
+        73,
+        "What should we train?",
+        expect.any(Object),
+      );
+    });
     expect(
       getRenderedChatDraftStore().getDraft({
         type: "conversation",
         conversationId: 73,
       }),
     ).toBe("");
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/chat",
-      search: { conversationId: "73" },
-      replace: true,
-    });
+    expect(
+      screen.getByPlaceholderText(
+        "Ask about training, recovery, exercise choices, or FitTrack usage...",
+      ),
+    ).toHaveValue("");
     expect(await screen.findByText("What should we train")).toBeInTheDocument();
     await waitFor(() => {
       expect(mockListConversations).toHaveBeenCalledTimes(3);
