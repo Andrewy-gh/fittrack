@@ -340,6 +340,7 @@ export class ChatOperationController {
       this.resetConversation(prompt);
       return;
     }
+    this.state.setPrompt(prompt);
     void this.loadRouteConversation(conversationId);
   };
 
