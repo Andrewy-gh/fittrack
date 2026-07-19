@@ -233,6 +233,8 @@ export function ChatPage({
       );
       chatDraftStore.startNewChat();
       await navigate({ to: "/chat", search: { createChat: true } });
+      historyEntry.setIsMobileOpen(false);
+      await historyEntry.refreshConversations();
       return;
     }
 

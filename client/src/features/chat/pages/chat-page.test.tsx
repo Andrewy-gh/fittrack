@@ -24,6 +24,8 @@ import {
   resetChatRouteMocks,
 } from "../test/chat-page-test-utils";
 
+HTMLElement.prototype.setPointerCapture ??= () => {};
+
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
 
@@ -56,8 +58,11 @@ describe("ChatRouteComponent", () => {
 
     render(<ChatRouteComponent />);
 
+    await screen.findByText("Leg day plan");
+    await user.click(screen.getByRole("button", { name: "Open chat history" }));
+    const drawer = await screen.findByRole("dialog", { name: "Chat history" });
     await user.click(
-      await screen.findByRole("button", {
+      within(drawer).getByRole("button", {
         name: "More options for Leg day plan",
       }),
     );
@@ -70,10 +75,13 @@ describe("ChatRouteComponent", () => {
     await waitFor(() =>
       expect(mockDeleteConversation).toHaveBeenCalledWith(72),
     );
-    expect(await screen.findByText("Current plan")).toBeInTheDocument();
+    expect(within(drawer).getByText("Current plan")).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.queryByText("Leg day plan")).not.toBeInTheDocument(),
+      expect(
+        within(drawer).queryByText("Leg day plan"),
+      ).not.toBeInTheDocument(),
     );
+    expect(drawer).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockStopRun).not.toHaveBeenCalled();
   });
@@ -144,22 +152,28 @@ describe("ChatRouteComponent", () => {
   it("clears the active chat draft and opens a blank new chat after deletion", async () => {
     const user = userEvent.setup();
     mockGetConversation.mockResolvedValue(conversationDetail([]));
-    mockListConversations.mockResolvedValue([
-      {
-        id: 41,
-        title: "Current plan",
-        created_at: "2026-06-25T17:00:00Z",
-        updated_at: "2026-06-25T17:05:00Z",
-      },
-    ]);
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          title: "Current plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([]);
 
     render(<ChatRouteComponent />);
     await screen.findByText("Current plan");
     const store = getRenderedChatDraftStore();
     store.setDraft({ type: "conversation", conversationId: 41 }, "private");
 
+    await user.click(screen.getByRole("button", { name: "Open chat history" }));
+    const drawer = await screen.findByRole("dialog", { name: "Chat history" });
     await user.click(
-      screen.getByRole("button", { name: "More options for Current plan" }),
+      within(drawer).getByRole("button", {
+        name: "More options for Current plan",
+      }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
     await user.click(screen.getByRole("button", { name: "Delete chat" }));
@@ -174,7 +188,11 @@ describe("ChatRouteComponent", () => {
       "",
     );
     expect(store.resolveMainDestination()).toEqual({ type: "new" });
-    expect(mockListConversations).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.queryByText("Current plan")).not.toBeInTheDocument();
+      expect(drawer).toHaveAttribute("data-state", "closed");
+    });
+    expect(mockListConversations).toHaveBeenCalledTimes(2);
     expect(mockStopRun).not.toHaveBeenCalled();
   });
 
