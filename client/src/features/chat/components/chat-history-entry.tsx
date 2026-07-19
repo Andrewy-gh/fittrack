@@ -1,12 +1,31 @@
+import { useState } from "react";
 import {
   History,
   MessageSquare,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   SquarePen,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Drawer,
   DrawerContent,
@@ -46,6 +65,7 @@ type ChatHistoryEntryProps = {
   onMobileOpenChange: (open: boolean) => void;
   onToggleCollapsed: () => void;
   onResumeConversation: (conversationId: number) => void;
+  onDeleteConversation?: (conversationId: number) => Promise<void>;
   onNewChat: () => void;
   isNewChatDisabled?: boolean;
 };
@@ -83,9 +103,14 @@ export function ChatHistoryEntry({
   onMobileOpenChange,
   onToggleCollapsed,
   onResumeConversation,
+  onDeleteConversation,
   onNewChat,
   isNewChatDisabled,
 }: ChatHistoryEntryProps) {
+  const [deleteCandidate, setDeleteCandidate] =
+    useState<AIChatConversationSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   function handleResumeConversation(conversationId: number) {
     onResumeConversation(conversationId);
     onMobileOpenChange(false);
@@ -96,6 +121,22 @@ export function ChatHistoryEntry({
     onMobileOpenChange(false);
   }
 
+  async function handleConfirmDelete() {
+    if (!deleteCandidate || !onDeleteConversation || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      await onDeleteConversation(deleteCandidate.id);
+      setDeleteCandidate(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  const deleteCandidateTitle = deleteCandidate
+    ? getConversationTitle(deleteCandidate)
+    : "this chat";
+
   return (
     <>
       <DesktopHistoryPanel
@@ -103,6 +144,8 @@ export function ChatHistoryEntry({
         isCollapsed={isCollapsed}
         onToggleCollapsed={onToggleCollapsed}
         onResumeConversation={onResumeConversation}
+        onDeleteConversation={onDeleteConversation}
+        onRequestDelete={setDeleteCandidate}
         onNewChat={onNewChat}
         isNewChatDisabled={isNewChatDisabled}
       />
@@ -121,6 +164,8 @@ export function ChatHistoryEntry({
             <HistoryList
               historyState={historyState}
               onResumeConversation={handleResumeConversation}
+              onDeleteConversation={onDeleteConversation}
+              onRequestDelete={setDeleteCandidate}
             />
             <Button
               type="button"
@@ -135,6 +180,35 @@ export function ChatHistoryEntry({
           </div>
         </DrawerContent>
       </Drawer>
+      <AlertDialog
+        open={deleteCandidate !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteCandidate(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete “{deleteCandidateTitle}”? This permanently removes the chat
+              and its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={isDeleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmDelete();
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Delete chat"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -144,9 +218,13 @@ function DesktopHistoryPanel({
   isCollapsed,
   onToggleCollapsed,
   onResumeConversation,
+  onDeleteConversation,
+  onRequestDelete,
   onNewChat,
   isNewChatDisabled,
-}: Omit<ChatHistoryEntryProps, "isMobileOpen" | "onMobileOpenChange">) {
+}: Omit<ChatHistoryEntryProps, "isMobileOpen" | "onMobileOpenChange"> & {
+  onRequestDelete: (conversation: AIChatConversationSummary) => void;
+}) {
   if (isCollapsed) {
     return (
       <aside
@@ -201,6 +279,8 @@ function DesktopHistoryPanel({
         <HistoryList
           historyState={historyState}
           onResumeConversation={onResumeConversation}
+          onDeleteConversation={onDeleteConversation}
+          onRequestDelete={onRequestDelete}
         />
       </div>
       <div className="border-t p-3">
@@ -222,9 +302,13 @@ function DesktopHistoryPanel({
 function HistoryList({
   historyState,
   onResumeConversation,
+  onDeleteConversation,
+  onRequestDelete,
 }: {
   historyState: ChatHistoryListState;
   onResumeConversation: (conversationId: number) => void;
+  onDeleteConversation?: (conversationId: number) => Promise<void>;
+  onRequestDelete: (conversation: AIChatConversationSummary) => void;
 }) {
   switch (historyState.status) {
     case "loading":
@@ -252,31 +336,59 @@ function HistoryList({
             const isActive =
               conversation.id === historyState.activeConversationId;
 
+            const title = getConversationTitle(conversation);
+
             return (
-              <button
+              <div
                 key={conversation.id}
-                type="button"
-                onClick={() => onResumeConversation(conversation.id)}
-                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-accent hover:text-accent-foreground",
+                  "group flex w-full items-stretch rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
                   isActive && "bg-accent text-accent-foreground",
                 )}
               >
-                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <MessageSquare className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">
-                    {conversation.title?.trim() || `Chat #${conversation.id}`}
+                <button
+                  type="button"
+                  onClick={() => onResumeConversation(conversation.id)}
+                  aria-current={isActive ? "page" : undefined}
+                  className="flex min-w-0 flex-1 items-start gap-3 rounded-l-md px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <MessageSquare className="size-4" />
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {isActive
-                      ? "Current conversation"
-                      : formatConversationTimestamp(conversation)}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {title}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {isActive
+                        ? "Current conversation"
+                        : formatConversationTimestamp(conversation)}
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+                {onDeleteConversation ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`More options for ${title}`}
+                        className="my-1 mr-1 flex w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => onRequestDelete(conversation)}
+                      >
+                        <Trash2 />
+                        Delete chat
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
             );
           })}
         </div>
@@ -285,6 +397,10 @@ function HistoryList({
 
   const exhaustiveCheck: never = historyState;
   return exhaustiveCheck;
+}
+
+function getConversationTitle(conversation: AIChatConversationSummary): string {
+  return conversation.title?.trim() || `Chat #${conversation.id}`;
 }
 
 function formatConversationTimestamp(

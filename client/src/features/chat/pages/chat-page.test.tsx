@@ -8,6 +8,7 @@ import {
   deferredPromise,
   getRenderedChatDraftStore,
   mockCreateConversation,
+  mockDeleteConversation,
   mockGetConversation,
   mockListConversations,
   mockNavigate,
@@ -18,12 +19,200 @@ import {
   mockSearch,
   mockShowErrorToast,
   mockStopRun,
+  mockToastError,
   mockStreamMessage,
   resetChatRouteMocks,
 } from "../test/chat-page-test-utils";
 
 describe("ChatRouteComponent", () => {
   beforeEach(resetChatRouteMocks);
+
+  it("deletes an inactive chat only after confirmation and refreshes history", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          title: "Current plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+        },
+        {
+          id: 72,
+          title: "Leg day plan",
+          created_at: "2026-06-24T17:00:00Z",
+          updated_at: "2026-06-24T17:05:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 41,
+          title: "Current plan",
+          created_at: "2026-06-25T17:00:00Z",
+          updated_at: "2026-06-25T17:05:00Z",
+        },
+      ]);
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "More options for Leg day plan",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    expect(mockDeleteConversation).not.toHaveBeenCalled();
+    expect(screen.getByText(/Delete “Leg day plan”/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Delete chat" }));
+
+    await waitFor(() =>
+      expect(mockDeleteConversation).toHaveBeenCalledWith(72),
+    );
+    expect(await screen.findByText("Current plan")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText("Leg day plan")).not.toBeInTheDocument(),
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockStopRun).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when chat deletion is cancelled", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 72,
+        title: "Leg day plan",
+        created_at: "2026-06-24T17:00:00Z",
+        updated_at: "2026-06-24T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "More options for Leg day plan",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(mockDeleteConversation).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Leg day plan")).toBeInTheDocument();
+  });
+
+  it("keeps a chat when deletion conflicts with an active response", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 72,
+        title: "Streaming plan",
+        created_at: "2026-06-24T17:00:00Z",
+        updated_at: "2026-06-24T17:05:00Z",
+      },
+    ]);
+    mockDeleteConversation.mockRejectedValue({
+      status: 409,
+      message: "conversation has an active run",
+    });
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "More options for Streaming plan",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    await user.click(screen.getByRole("button", { name: "Delete chat" }));
+
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith(
+        "Stop the response before deleting this chat, then try again.",
+      ),
+    );
+    expect(screen.getByText("Streaming plan")).toBeInTheDocument();
+    expect(mockListConversations).toHaveBeenCalledTimes(1);
+    expect(mockStopRun).not.toHaveBeenCalled();
+  });
+
+  it("clears the active chat draft and opens a blank new chat after deletion", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 41,
+        title: "Current plan",
+        created_at: "2026-06-25T17:00:00Z",
+        updated_at: "2026-06-25T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+    await screen.findByText("Current plan");
+    const store = getRenderedChatDraftStore();
+    store.setDraft({ type: "conversation", conversationId: 41 }, "private");
+
+    await user.click(
+      screen.getByRole("button", { name: "More options for Current plan" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    await user.click(screen.getByRole("button", { name: "Delete chat" }));
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/chat",
+        search: { createChat: true },
+      }),
+    );
+    expect(store.getDraft({ type: "conversation", conversationId: 41 })).toBe(
+      "",
+    );
+    expect(store.resolveMainDestination()).toEqual({ type: "new" });
+    expect(mockListConversations).toHaveBeenCalledTimes(1);
+    expect(mockStopRun).not.toHaveBeenCalled();
+  });
+
+  it("quietly refreshes history when a deleted chat is already missing", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations
+      .mockResolvedValueOnce([
+        {
+          id: 72,
+          title: "Already gone",
+          created_at: "2026-06-24T17:00:00Z",
+          updated_at: "2026-06-24T17:05:00Z",
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    mockDeleteConversation.mockRejectedValue({
+      status: 404,
+      message: "conversation not found",
+    });
+
+    render(<ChatRouteComponent />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "More options for Already gone",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    await user.click(screen.getByRole("button", { name: "Delete chat" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Already gone")).not.toBeInTheDocument(),
+    );
+    expect(mockToastError).not.toHaveBeenCalled();
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledTimes(2);
+  });
 
   it("opens blank New Chat when entering without an eligible draft", async () => {
     mockSearch.conversationId = undefined;

@@ -1,4 +1,5 @@
 import {
+  deleteAiConversationsById,
   getAiConversations,
   getAiConversationsById,
   postAiChatTelemetry,
@@ -257,6 +258,23 @@ export async function listAIChatConversations(
   });
 
   return response.data as AIChatConversationSummary[];
+}
+
+export type AIChatDeleteError = ApiError & { status: number };
+
+export async function deleteAIChatConversation(
+  conversationId: number,
+): Promise<void> {
+  const response = await deleteAiConversationsById({
+    path: { id: conversationId },
+  });
+
+  if (response.error) {
+    throw {
+      ...(response.error as ApiError),
+      status: response.response?.status ?? 0,
+    } satisfies AIChatDeleteError;
+  }
 }
 
 export async function reportAIChatTelemetry(
