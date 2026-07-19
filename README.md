@@ -52,6 +52,7 @@ See [API Type Workflow](docs/development.md#api-type-workflow) for the full type
 - [Backend Setup](server/README.md) - detailed backend development guide
 - [Frontend Setup](client/README.md) - React/TanStack development guide
 - [AI Chat Observability](docs/ai-chat-observability.md) - observability notes for the AI chat slice
+- [AI Chat Health Triage](docs/ai-chat-health-triage.md) - read-only health triage for the AI chat slice
 
 ## Project Structure
 
