@@ -3,11 +3,14 @@ import { History } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type {
-  AIChatMessage,
-  AIWorkoutDraft,
+import {
+  deleteAIChatConversation,
+  type AIChatDeleteError,
+  type AIChatMessage,
+  type AIWorkoutDraft,
 } from "@/features/chat/api/ai-chat";
 import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
+import { showErrorToast } from "@/lib/errors";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -202,6 +205,40 @@ export function ChatPage({
   function handleResumeConversation(selectedConversationId: number) {
     chatDraftStore.openConversation(selectedConversationId);
     openConversation(selectedConversationId);
+  }
+
+  async function handleDeleteConversation(selectedConversationId: number) {
+    try {
+      await deleteAIChatConversation(selectedConversationId);
+    } catch (error: unknown) {
+      if (isAIChatDeleteError(error, 404)) {
+        await historyEntry.refreshConversations();
+        return;
+      }
+      if (isAIChatDeleteError(error, 409)) {
+        toast.error(
+          "Stop the response before deleting this chat, then try again.",
+        );
+        return;
+      }
+
+      showErrorToast(error, "Could not delete this chat.");
+      return;
+    }
+
+    if (selectedConversationId === conversationId) {
+      chatDraftStore.setDraft(
+        { type: "conversation", conversationId: selectedConversationId },
+        "",
+      );
+      chatDraftStore.startNewChat();
+      await navigate({ to: "/chat", search: { createChat: true } });
+      historyEntry.setIsMobileOpen(false);
+      await historyEntry.refreshConversations();
+      return;
+    }
+
+    await historyEntry.refreshConversations();
   }
 
   async function handleSubmit() {
@@ -404,6 +441,9 @@ export function ChatPage({
             historyEntry.setIsCollapsed((value) => !value)
           }
           onResumeConversation={handleResumeConversation}
+          onDeleteConversation={
+            hasChatAccess ? handleDeleteConversation : undefined
+          }
           onNewChat={handleNewChat}
           isNewChatDisabled={billingAccess.isCheckingAccess || !hasChatAccess}
         />
@@ -486,6 +526,18 @@ export function ChatPage({
         </div>
       </div>
     </div>
+  );
+}
+
+function isAIChatDeleteError(
+  error: unknown,
+  status: number,
+): error is AIChatDeleteError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === status
   );
 }
 

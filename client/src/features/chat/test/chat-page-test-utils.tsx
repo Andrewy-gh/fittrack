@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   },
   mockNavigate: vi.fn(),
   mockCreateConversation: vi.fn(),
+  mockDeleteConversation: vi.fn(),
   mockGetConversation: vi.fn(),
   mockListConversations: vi.fn(),
   mockPollConversation: vi.fn(),
@@ -29,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   mockStopRun: vi.fn(),
   mockStreamMessage: vi.fn(),
   mockShowErrorToast: vi.fn(),
+  mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockBillingStatusQueryOptions: vi.fn(),
   mockFeatureAccessQueryOptions: vi.fn(),
@@ -53,6 +55,7 @@ export const {
   mockSearch,
   mockNavigate,
   mockCreateConversation,
+  mockDeleteConversation,
   mockGetConversation,
   mockListConversations,
   mockPollConversation,
@@ -63,6 +66,7 @@ export const {
   mockStopRun,
   mockStreamMessage,
   mockShowErrorToast,
+  mockToastError,
   mockToastSuccess,
   mockBillingStatusQueryOptions,
   mockFeatureAccessQueryOptions,
@@ -94,6 +98,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/features/chat/api/ai-chat", () => ({
   createAIChatConversation: mockCreateConversation,
+  deleteAIChatConversation: mockDeleteConversation,
   getAIChatConversation: mockGetConversation,
   listAIChatConversations: mockListConversations,
   pollAIChatConversationUntilSettled: mockPollConversation,
@@ -136,6 +141,7 @@ vi.mock("@/lib/errors", () => ({
 
 vi.mock("sonner", () => ({
   toast: {
+    error: mockToastError,
     success: mockToastSuccess,
   },
 }));
@@ -223,6 +229,7 @@ export function resetChatRouteMocks() {
   mockSearch.billing = undefined;
   mockNavigate.mockReset();
   mockCreateConversation.mockReset();
+  mockDeleteConversation.mockReset();
   mockGetConversation.mockReset();
   mockListConversations.mockReset();
   mockPollConversation.mockReset();
@@ -233,6 +240,7 @@ export function resetChatRouteMocks() {
   mockStopRun.mockReset();
   mockStreamMessage.mockReset();
   mockShowErrorToast.mockReset();
+  mockToastError.mockReset();
   mockToastSuccess.mockReset();
   mockBillingStatusQueryOptions.mockReset();
   mockFeatureAccessQueryOptions.mockReset();
@@ -348,6 +356,7 @@ export function resetChatRouteMocks() {
     }),
   );
   mockReportTelemetry.mockResolvedValue(undefined);
+  mockDeleteConversation.mockResolvedValue(undefined);
   mockListConversations.mockResolvedValue([]);
   mockResumeStream.mockResolvedValue({
     doneEvent: {
