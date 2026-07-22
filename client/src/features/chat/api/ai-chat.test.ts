@@ -24,6 +24,7 @@ vi.mock("@/lib/local-dev-auth", () => ({
 import "@/lib/api/client-config";
 import {
   createAIChatConversation,
+  deleteAllAIChatHistory,
   listAIChatConversations,
   pollAIChatConversationUntilSettled,
   reportAIChatTelemetry,
@@ -52,6 +53,19 @@ describe("ai chat api wrapper", () => {
     getUser.mockResolvedValue({
       getAuthJson: vi.fn().mockResolvedValue({ accessToken: "token-123" }),
     });
+  });
+
+  it("deletes the authenticated user's complete AI chat collection", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204 }),
+    );
+
+    await deleteAllAIChatHistory();
+
+    const request = latestRequest();
+    expect(request.method).toBe("DELETE");
+    expect(request.url).toBe("http://localhost/api/ai/conversations");
+    expect(request.headers.get("x-stack-access-token")).toBe("token-123");
   });
 
   it("falls back to the local dev auth header when Stack has no user", async () => {

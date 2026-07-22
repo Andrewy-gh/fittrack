@@ -301,6 +301,41 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Permanently deletes every AI chat conversation owned by the authenticated user without requiring current AI chat feature access. Training profile values and saved workouts remain.",
+                "tags": [
+                    "ai-chat"
+                ],
+                "summary": "Delete all AI chat history",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    }
+                }
             }
         },
         "/ai/conversations/{id}": {
@@ -2092,6 +2127,9 @@ const docTemplate = `{
                 },
                 "sequence": {
                     "type": "integer"
+                },
+                "status": {
+                    "type": "string"
                 },
                 "text": {
                     "type": "string"

@@ -28,6 +28,7 @@ export type SeededConversationRequest = {
       }>;
     }>;
   };
+  expire_ai_chat_access_after_seed?: boolean;
 };
 
 export async function seedLocalAIChatConversation(
@@ -50,4 +51,20 @@ export async function seedLocalAIChatConversation(
   }
 
   return (await response.json()) as { conversation_id: number };
+}
+
+export async function restoreLocalAIChatAccess(): Promise<void> {
+  const apiBaseUrl =
+    process.env.E2E_LOCAL_AUTH_API_BASE_URL ?? "http://localhost:8080";
+  const response = await fetch(`${apiBaseUrl}/dev/e2e/auth/bootstrap`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to restore local AI chat access: ${response.status} ${await response.text()}`,
+    );
+  }
 }

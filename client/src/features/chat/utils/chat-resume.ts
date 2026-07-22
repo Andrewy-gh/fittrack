@@ -67,6 +67,23 @@ export function clearResumeCursor(conversationId: number): void {
   window.sessionStorage.removeItem(storageKey(conversationId));
 }
 
+export function clearAllResumeCursors(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const keysToRemove: string[] = [];
+  for (let index = 0; index < window.sessionStorage.length; index += 1) {
+    const key = window.sessionStorage.key(index);
+    if (key?.startsWith(`${storageKeyPrefix}:`)) {
+      keysToRemove.push(key);
+    }
+  }
+  for (const key of keysToRemove) {
+    window.sessionStorage.removeItem(key);
+  }
+}
+
 export function getResumeAfterSequence(
   detail: AIChatConversationDetail,
 ): number {

@@ -21,6 +21,7 @@ type chatService interface {
 	ListConversations(ctx context.Context) ([]ConversationSummary, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
 	DeleteConversation(ctx context.Context, conversationID int32) error
+	DeleteAllConversations(ctx context.Context) (*DeleteAllConversationsResult, error)
 	SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error)
 	RequestMessageRecovery(ctx context.Context, conversationID int32, reason string) (*RecoverMessageResponse, error)
 	PrepareMessageStream(ctx context.Context, conversationID int32, prompt string, requestID string) (*PreparedMessageStream, error)
@@ -272,6 +273,24 @@ func (h *Handler) DeleteConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteAllConversations godoc
+// @Summary Delete all AI chat history
+// @Description Permanently deletes every AI chat conversation owned by the authenticated user without requiring current AI chat feature access. Training profile values and saved workouts remain.
+// @Tags ai-chat
+// @Security StackAuth
+// @Success 204 "No Content"
+// @Failure 401 {object} response.Error
+// @Failure 409 {object} response.Error
+// @Failure 500 {object} response.Error
+// @Router /ai/conversations [delete]
+func (h *Handler) DeleteAllConversations(w http.ResponseWriter, r *http.Request) {
+	if _, err := h.service.DeleteAllConversations(r.Context()); err != nil {
+		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to delete ai chat history")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

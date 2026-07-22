@@ -30,6 +30,7 @@ type Repository interface {
 	ListConversations(ctx context.Context, userID string, limit int32) ([]ConversationSummary, error)
 	GetConversation(ctx context.Context, conversationID int32, userID string) (*Conversation, error)
 	DeleteConversation(ctx context.Context, conversationID int32, userID string) error
+	DeleteAllConversations(ctx context.Context, userID string, stoppedAt time.Time) (*DeleteAllConversationsResult, error)
 	SaveLatestWorkoutDraft(ctx context.Context, request SaveLatestWorkoutDraftRequest) (*SavedLatestWorkoutDraft, error)
 	ListMessages(ctx context.Context, conversationID int32, userID string) ([]ChatMessage, error)
 	GetActiveRunForConversation(ctx context.Context, conversationID int32, userID string) (*ChatRun, error)

@@ -1,4 +1,5 @@
 import {
+  deleteAiConversations,
   deleteAiConversationsById,
   getAiConversations,
   getAiConversationsById,
@@ -268,6 +269,17 @@ export async function deleteAIChatConversation(
   const response = await deleteAiConversationsById({
     path: { id: conversationId },
   });
+
+  if (response.error) {
+    throw {
+      ...(response.error as ApiError),
+      status: response.response?.status ?? 0,
+    } satisfies AIChatDeleteError;
+  }
+}
+
+export async function deleteAllAIChatHistory(): Promise<void> {
+  const response = await deleteAiConversations();
 
   if (response.error) {
     throw {

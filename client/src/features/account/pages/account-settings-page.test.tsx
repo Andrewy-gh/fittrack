@@ -13,6 +13,10 @@ const { mockCreateBillingCustomerPortalSession, mockRedirectToBillingPortal } =
 const { mockDeleteAccount } = vi.hoisted(() => ({
   mockDeleteAccount: vi.fn(),
 }));
+const { mockDeleteAllAIChatHistory, mockChatDraftStore } = vi.hoisted(() => ({
+  mockDeleteAllAIChatHistory: vi.fn(),
+  mockChatDraftStore: { clear: vi.fn() },
+}));
 const { mockClearCurrentDeviceAccountState } = vi.hoisted(() => ({
   mockClearCurrentDeviceAccountState: vi.fn(),
 }));
@@ -50,6 +54,14 @@ vi.mock("@/features/account/utils/current-device-state", () => ({
   clearCurrentDeviceAccountState: mockClearCurrentDeviceAccountState,
 }));
 
+vi.mock("@/features/chat/api/ai-chat", () => ({
+  deleteAllAIChatHistory: mockDeleteAllAIChatHistory,
+}));
+
+vi.mock("@/features/chat/utils/chat-draft-context", () => ({
+  useChatDraftStore: () => mockChatDraftStore,
+}));
+
 import { AccountSettingsPage } from "@/features/account/pages/account-settings-page";
 
 const testUserSignOut = vi.fn();
@@ -67,6 +79,7 @@ describe("AccountSettingsPage", () => {
       url: "https://billing.stripe.test/session",
     });
     mockDeleteAccount.mockResolvedValue(undefined);
+    mockDeleteAllAIChatHistory.mockResolvedValue(undefined);
   });
 
   it("separates billing management from checkbox-confirmed account deletion", async () => {
@@ -122,7 +135,7 @@ describe("AccountSettingsPage", () => {
     );
 
     expect(deleteButton).toBeEnabled();
-  });
+  }, 10_000);
 
   it("opens the Stripe billing portal from account settings", async () => {
     const user = userEvent.setup();
@@ -137,6 +150,85 @@ describe("AccountSettingsPage", () => {
     expect(mockRedirectToBillingPortal).toHaveBeenCalledWith(
       "https://billing.stripe.test/session",
     );
+  });
+
+  it("lets a signed-in former subscriber permanently delete all AI chat history without signing out", async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.setItem(
+      "fittrack.ai-chat.resume:41",
+      JSON.stringify({ runId: 2, sequence: 3, assistantMessageId: 4 }),
+    );
+    window.sessionStorage.setItem("unrelated", "keep");
+
+    render(<AccountSettingsPage user={testUser} />);
+
+    const privacySection = screen
+      .getByRole("heading", { name: "Data & Privacy" })
+      .closest("section");
+    expect(privacySection).not.toBeNull();
+    const privacy = within(privacySection as HTMLElement);
+    const trainingProfileLink = privacy.getByRole("link", {
+      name: /Training Profile/i,
+    });
+    expect(trainingProfileLink.closest("p")).toHaveTextContent(
+      /keeps your Training Profile values, saved workouts, copied workout-form draft, billing details, and account/i,
+    );
+    expect(trainingProfileLink).toHaveAttribute(
+      "href",
+      "/settings/training-profile",
+    );
+
+    await user.click(
+      privacy.getByRole("checkbox", {
+        name: /I understand this permanently deletes all of my AI chat history/i,
+      }),
+    );
+    await user.click(
+      privacy.getByRole("button", { name: "Delete all AI chat history" }),
+    );
+
+    expect(mockDeleteAllAIChatHistory).toHaveBeenCalledOnce();
+    expect(mockChatDraftStore.clear).toHaveBeenCalledOnce();
+    expect(
+      window.sessionStorage.getItem("fittrack.ai-chat.resume:41"),
+    ).toBeNull();
+    expect(window.sessionStorage.getItem("unrelated")).toBe("keep");
+    expect(testUserSignOut).not.toHaveBeenCalled();
+    expect(
+      await privacy.findByText("All AI chat history deleted."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps local chat state when the server cannot atomically delete history", async () => {
+    const user = userEvent.setup();
+    mockDeleteAllAIChatHistory.mockRejectedValueOnce({ status: 409 });
+    window.sessionStorage.setItem("fittrack.ai-chat.resume:41", "cursor");
+
+    render(<AccountSettingsPage user={testUser} />);
+    const privacySection = screen
+      .getByRole("heading", { name: "Data & Privacy" })
+      .closest("section");
+    const privacy = within(privacySection as HTMLElement);
+
+    await user.click(
+      privacy.getByRole("checkbox", {
+        name: /I understand this permanently deletes all of my AI chat history/i,
+      }),
+    );
+    await user.click(
+      privacy.getByRole("button", { name: "Delete all AI chat history" }),
+    );
+
+    expect(
+      await privacy.findByText(
+        "Could not delete your AI chat history. Please try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockChatDraftStore.clear).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("fittrack.ai-chat.resume:41")).toBe(
+      "cursor",
+    );
+    expect(testUserSignOut).not.toHaveBeenCalled();
   });
 
   it("clears local app state, signs out, and navigates home after account deletion succeeds", async () => {

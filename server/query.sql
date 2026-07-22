@@ -1131,6 +1131,32 @@ FOR UPDATE;
 DELETE FROM ai_chat_conversation
 WHERE id = $1 AND user_id = $2;
 
+-- name: LockAIChatConversationsByUser :many
+SELECT id
+FROM ai_chat_conversation
+WHERE user_id = $1
+ORDER BY id
+FOR UPDATE;
+
+-- name: LockAIChatRunsByUser :many
+SELECT id, conversation_id, assistant_message_id, status
+FROM ai_chat_run
+WHERE user_id = $1
+ORDER BY conversation_id, id
+FOR UPDATE;
+
+-- name: ClearUserTrainingProfileSourcesByUser :exec
+UPDATE user_training_profile
+SET
+    source_conversation_id = NULL,
+    source_message_id = NULL
+WHERE user_id = $1
+  AND (source_conversation_id IS NOT NULL OR source_message_id IS NOT NULL);
+
+-- name: DeleteAIChatConversationsByUser :execrows
+DELETE FROM ai_chat_conversation
+WHERE user_id = $1;
+
 -- name: ClearUserTrainingProfileConversationSource :exec
 UPDATE user_training_profile
 SET

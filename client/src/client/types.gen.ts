@@ -93,6 +93,7 @@ export type AichatStreamEvent = {
   request_id?: string;
   run_id?: number;
   sequence?: number;
+  status?: string;
   text?: string;
   type?: string;
   workout_draft?: WorkoutCreateWorkoutRequest;
@@ -496,6 +497,38 @@ export type PostAiChatValidateStreamResponses = {
 
 export type PostAiChatValidateStreamResponse =
   PostAiChatValidateStreamResponses[keyof PostAiChatValidateStreamResponses];
+
+export type DeleteAiConversationsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/ai/conversations";
+};
+
+export type DeleteAiConversationsErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseError;
+  /**
+   * Conflict
+   */
+  409: ResponseError;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseError;
+};
+
+export type DeleteAiConversationsError =
+  DeleteAiConversationsErrors[keyof DeleteAiConversationsErrors];
+
+export type DeleteAiConversationsResponses = {
+  /**
+   * No Content
+   */
+  204: unknown;
+};
 
 export type GetAiConversationsData = {
   body?: never;

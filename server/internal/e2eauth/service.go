@@ -45,6 +45,15 @@ WHERE NOT EXISTS (
 	  AND (expires_at IS NULL OR expires_at > NOW())
 )`
 
+const expireLocalAIChatAccessQuery = `
+UPDATE user_feature_access
+SET expires_at = NOW() - INTERVAL '1 second'
+WHERE user_id = $1
+  AND feature_key = $2
+  AND source = $3
+  AND revoked_at IS NULL
+  AND (expires_at IS NULL OR expires_at > NOW())`
+
 type userService interface {
 	EnsureUser(ctx context.Context, userID string) (db.Users, error)
 }
@@ -67,10 +76,11 @@ type BootstrapResponse struct {
 }
 
 type SeedConversationRequest struct {
-	Title              string                       `json:"title"`
-	UserPrompt         string                       `json:"user_prompt"`
-	AssistantText      string                       `json:"assistant_text"`
-	LatestWorkoutDraft workout.CreateWorkoutRequest `json:"latest_workout_draft"`
+	Title                       string                       `json:"title"`
+	UserPrompt                  string                       `json:"user_prompt"`
+	AssistantText               string                       `json:"assistant_text"`
+	LatestWorkoutDraft          workout.CreateWorkoutRequest `json:"latest_workout_draft"`
+	ExpireAIChatAccessAfterSeed bool                         `json:"expire_ai_chat_access_after_seed,omitempty"`
 }
 
 type SeedConversationResponse struct {
@@ -186,6 +196,12 @@ func (s *Service) SeedConversation(
 		LastMessageAt: completedTS,
 	}); err != nil {
 		return nil, fmt.Errorf("touch seeded ai chat conversation: %w", err)
+	}
+
+	if request.ExpireAIChatAccessAfterSeed {
+		if _, err := tx.Exec(ctx, expireLocalAIChatAccessQuery, s.userID, FeatureKeyAIChatbot, featureAccessSource); err != nil {
+			return nil, fmt.Errorf("expire local e2e ai chat access: %w", err)
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

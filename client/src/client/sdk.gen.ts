@@ -6,6 +6,9 @@ import type {
   DeleteAiConversationsByIdData,
   DeleteAiConversationsByIdErrors,
   DeleteAiConversationsByIdResponses,
+  DeleteAiConversationsData,
+  DeleteAiConversationsErrors,
+  DeleteAiConversationsResponses,
   DeleteExercisesByIdData,
   DeleteExercisesByIdErrors,
   DeleteExercisesByIdResponses,
@@ -192,6 +195,24 @@ export const postAiChatValidateStream = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+
+/**
+ * Delete all AI chat history
+ *
+ * Permanently deletes every AI chat conversation owned by the authenticated user without requiring current AI chat feature access. Training profile values and saved workouts remain.
+ */
+export const deleteAiConversations = <ThrowOnError extends boolean = false>(
+  options?: Options<DeleteAiConversationsData, ThrowOnError>,
+) =>
+  (options?.client ?? client).delete<
+    DeleteAiConversationsResponses,
+    DeleteAiConversationsErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/ai/conversations",
+    ...options,
   });
 
 /**

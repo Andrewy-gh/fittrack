@@ -8,6 +8,7 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
@@ -139,6 +140,54 @@ func (s *Service) DeleteConversation(ctx context.Context, conversationID int32) 
 		return err
 	}
 	return nil
+}
+
+func (s *Service) DeleteAllConversations(ctx context.Context) (result *DeleteAllConversationsResult, err error) {
+	startedAt := time.Now()
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		s.logDeleteAllConversations(ctx, "", "failed", startedAt, nil)
+		return nil, err
+	}
+
+	result, err = s.repo.DeleteAllConversations(ctx, userID, time.Now().UTC())
+	if err != nil {
+		s.logDeleteAllConversations(ctx, userID, "failed", startedAt, nil)
+		return nil, err
+	}
+
+	s.cancelMu.Lock()
+	cancels := make([]context.CancelFunc, 0, len(result.StoppedRunIDs))
+	for _, runID := range result.StoppedRunIDs {
+		if registration := s.runCancels[runID]; registration.cancel != nil {
+			cancels = append(cancels, registration.cancel)
+		}
+	}
+	s.cancelMu.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+
+	s.logDeleteAllConversations(ctx, userID, "succeeded", startedAt, result)
+	return result, nil
+}
+
+func (s *Service) logDeleteAllConversations(ctx context.Context, userID, outcome string, startedAt time.Time, result *DeleteAllConversationsResult) {
+	var conversationsDeleted int64
+	var runsStopped int
+	if result != nil {
+		conversationsDeleted = result.ConversationsDeleted
+		runsStopped = len(result.StoppedRunIDs)
+	}
+	s.logger.Info("ai chat history deletion",
+		"action", "delete_all_ai_chat_history",
+		"actor_id", userID,
+		"request_id", request.GetRequestID(ctx),
+		"outcome", outcome,
+		"duration_ms", time.Since(startedAt).Milliseconds(),
+		"conversations_deleted", conversationsDeleted,
+		"runs_stopped", runsStopped,
+	)
 }
 
 func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {

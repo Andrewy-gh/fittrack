@@ -120,6 +120,20 @@ func (q *Queries) ClearUserTrainingProfileConversationSource(ctx context.Context
 	return err
 }
 
+const clearUserTrainingProfileSourcesByUser = `-- name: ClearUserTrainingProfileSourcesByUser :exec
+UPDATE user_training_profile
+SET
+    source_conversation_id = NULL,
+    source_message_id = NULL
+WHERE user_id = $1
+  AND (source_conversation_id IS NOT NULL OR source_message_id IS NOT NULL)
+`
+
+func (q *Queries) ClearUserTrainingProfileSourcesByUser(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, clearUserTrainingProfileSourcesByUser, userID)
+	return err
+}
+
 const consumeAIChatTrialPrompt = `-- name: ConsumeAIChatTrialPrompt :one
 INSERT INTO ai_chat_trial_prompt_usage (
     user_id,
@@ -534,6 +548,19 @@ type DeleteAIChatConversationParams struct {
 
 func (q *Queries) DeleteAIChatConversation(ctx context.Context, arg DeleteAIChatConversationParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteAIChatConversation, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteAIChatConversationsByUser = `-- name: DeleteAIChatConversationsByUser :execrows
+DELETE FROM ai_chat_conversation
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteAIChatConversationsByUser(ctx context.Context, userID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAIChatConversationsByUser, userID)
 	if err != nil {
 		return 0, err
 	}
@@ -3016,6 +3043,74 @@ func (q *Queries) ListWorkoutsWithSetsForChat(ctx context.Context, arg ListWorko
 			&i.Weight,
 			&i.Reps,
 			&i.SetType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockAIChatConversationsByUser = `-- name: LockAIChatConversationsByUser :many
+SELECT id
+FROM ai_chat_conversation
+WHERE user_id = $1
+ORDER BY id
+FOR UPDATE
+`
+
+func (q *Queries) LockAIChatConversationsByUser(ctx context.Context, userID string) ([]int32, error) {
+	rows, err := q.db.Query(ctx, lockAIChatConversationsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var id int32
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockAIChatRunsByUser = `-- name: LockAIChatRunsByUser :many
+SELECT id, conversation_id, assistant_message_id, status
+FROM ai_chat_run
+WHERE user_id = $1
+ORDER BY conversation_id, id
+FOR UPDATE
+`
+
+type LockAIChatRunsByUserRow struct {
+	ID                 int32  `json:"id"`
+	ConversationID     int32  `json:"conversation_id"`
+	AssistantMessageID int32  `json:"assistant_message_id"`
+	Status             string `json:"status"`
+}
+
+func (q *Queries) LockAIChatRunsByUser(ctx context.Context, userID string) ([]LockAIChatRunsByUserRow, error) {
+	rows, err := q.db.Query(ctx, lockAIChatRunsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LockAIChatRunsByUserRow
+	for rows.Next() {
+		var i LockAIChatRunsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConversationID,
+			&i.AssistantMessageID,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}

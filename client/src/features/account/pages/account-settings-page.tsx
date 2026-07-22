@@ -5,10 +5,13 @@ import { CreditCard, Dumbbell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { deleteAccount } from "@/features/account/api/account";
 import { clearCurrentDeviceAccountState } from "@/features/account/utils/current-device-state";
+import { deleteAllAIChatHistory } from "@/features/chat/api/ai-chat";
 import {
   createBillingCustomerPortalSession,
   redirectToBillingPortal,
 } from "@/features/chat/api/billing";
+import { useChatDraftStore } from "@/features/chat/utils/chat-draft-context";
+import { clearDeletedAIChatClientState } from "@/features/chat/utils/chat-history-deletion";
 
 type AccountSettingsPageProps = {
   user: CurrentUser | CurrentInternalUser;
@@ -19,12 +22,20 @@ export const accountDeletionBillingCopy =
 
 export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
   const navigate = useNavigate();
+  const chatDraftStore = useChatDraftStore();
   const [isDeletionConfirmed, setIsDeletionConfirmed] = useState(false);
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isAccountDeleted, setIsAccountDeleted] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isChatHistoryDeletionConfirmed, setIsChatHistoryDeletionConfirmed] =
+    useState(false);
+  const [isDeletingChatHistory, setIsDeletingChatHistory] = useState(false);
+  const [isChatHistoryDeleted, setIsChatHistoryDeleted] = useState(false);
+  const [chatHistoryDeleteError, setChatHistoryDeleteError] = useState<
+    string | null
+  >(null);
 
   async function handleManageBilling() {
     setIsOpeningBilling(true);
@@ -91,6 +102,27 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
     setIsDeletingAccount(false);
   }
 
+  async function handleDeleteAllAIChatHistory() {
+    if (!isChatHistoryDeletionConfirmed) {
+      return;
+    }
+
+    setIsDeletingChatHistory(true);
+    setChatHistoryDeleteError(null);
+    try {
+      await deleteAllAIChatHistory();
+      clearDeletedAIChatClientState(chatDraftStore);
+      setIsChatHistoryDeleted(true);
+      setIsChatHistoryDeletionConfirmed(false);
+    } catch {
+      setChatHistoryDeleteError(
+        "Could not delete your AI chat history. Please try again.",
+      );
+    } finally {
+      setIsDeletingChatHistory(false);
+    }
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
       <header className="space-y-2">
@@ -146,6 +178,75 @@ export function AccountSettingsPage({ user }: AccountSettingsPageProps) {
         {billingError ? (
           <p className="mt-3 text-sm text-destructive">{billingError}</p>
         ) : null}
+      </section>
+
+      <section className="rounded-lg border border-destructive/30 bg-card p-4">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Data &amp; Privacy
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Permanently delete every AI chat conversation, message, chat
+              draft, run, and generated stream chunk in your account. You can do
+              this without an active AI chat subscription.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              This keeps your{" "}
+              <Link
+                to="/settings/training-profile"
+                className="underline underline-offset-4"
+              >
+                Training Profile
+              </Link>{" "}
+              values, saved workouts, copied workout-form draft, billing
+              details, and account. Links showing which chat informed your
+              Training Profile are removed.
+            </p>
+          </div>
+
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={isChatHistoryDeletionConfirmed}
+              disabled={isDeletingChatHistory || isChatHistoryDeleted}
+              onChange={(event) =>
+                setIsChatHistoryDeletionConfirmed(event.currentTarget.checked)
+              }
+            />
+            <span>
+              I understand this permanently deletes all of my AI chat history
+              and cannot be undone.
+            </span>
+          </label>
+
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleDeleteAllAIChatHistory}
+            disabled={
+              !isChatHistoryDeletionConfirmed ||
+              isDeletingChatHistory ||
+              isChatHistoryDeleted
+            }
+          >
+            <Trash2 className="size-4" />
+            {isChatHistoryDeleted
+              ? "AI chat history deleted"
+              : isDeletingChatHistory
+                ? "Deleting AI chat history..."
+                : "Delete all AI chat history"}
+          </Button>
+          {isChatHistoryDeleted ? (
+            <p className="text-sm text-muted-foreground">
+              All AI chat history deleted.
+            </p>
+          ) : null}
+          {chatHistoryDeleteError ? (
+            <p className="text-sm text-destructive">{chatHistoryDeleteError}</p>
+          ) : null}
+        </div>
       </section>
 
       <section className="rounded-lg border border-destructive/30 bg-card p-4">

@@ -1,6 +1,7 @@
 package aichat
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/jackc/pgx/v5"
@@ -115,6 +117,12 @@ func (m *mockRepository) GetConversation(ctx context.Context, conversationID int
 func (m *mockRepository) DeleteConversation(ctx context.Context, conversationID int32, userID string) error {
 	args := m.Called(ctx, conversationID, userID)
 	return args.Error(0)
+}
+
+func (m *mockRepository) DeleteAllConversations(ctx context.Context, userID string, stoppedAt time.Time) (*DeleteAllConversationsResult, error) {
+	args := m.Called(ctx, userID, stoppedAt)
+	result, _ := args.Get(0).(*DeleteAllConversationsResult)
+	return result, args.Error(1)
 }
 
 func (m *mockRepository) ListConversations(ctx context.Context, userID string, limit int32) ([]ConversationSummary, error) {
@@ -451,6 +459,71 @@ func TestServiceDeleteConversation(t *testing.T) {
 		repo.On("DeleteConversation", mock.Anything, int32(41), "user-123").Return(ErrConversationBusy).Once()
 
 		assert.ErrorIs(t, service.DeleteConversation(ctx, 41), ErrConversationBusy)
+	})
+}
+
+func TestServiceDeleteAllConversations(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("deletes the authenticated owner's complete history without feature access", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, new(mockRuntime), repo, nil)
+		ctx := user.WithContext(context.Background(), "former-subscriber")
+		wasCanceled := false
+		service.runCancels[91] = runCancellation{cancel: func() { wasCanceled = true }}
+
+		repo.On("DeleteAllConversations", mock.Anything, "former-subscriber", mock.AnythingOfType("time.Time")).Return(&DeleteAllConversationsResult{
+			ConversationsDeleted: 73,
+			StoppedRunIDs:        []int32{91},
+		}, nil).Once()
+
+		result, err := service.DeleteAllConversations(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, int64(73), result.ConversationsDeleted)
+		assert.True(t, wasCanceled)
+		featureAccess.AssertNotCalled(t, "HasCurrentUserFeatureAccess", mock.Anything, mock.Anything)
+		repo.AssertExpectations(t)
+	})
+
+	t.Run("requires an authenticated owner without consulting feature access", func(t *testing.T) {
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(logger, featureAccess, new(mockRuntime), repo, nil)
+
+		_, err := service.DeleteAllConversations(context.Background())
+
+		var unauthorized *apperrors.Unauthorized
+		require.ErrorAs(t, err, &unauthorized)
+		featureAccess.AssertNotCalled(t, "HasCurrentUserFeatureAccess", mock.Anything, mock.Anything)
+		repo.AssertNotCalled(t, "DeleteAllConversations", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("writes one content-free structured audit event", func(t *testing.T) {
+		var logs bytes.Buffer
+		featureAccess := new(mockFeatureAccessService)
+		repo := new(mockRepository)
+		service := NewService(slog.New(slog.NewJSONHandler(&logs, nil)), featureAccess, new(mockRuntime), repo, nil)
+		ctx := request.WithRequestID(user.WithContext(context.Background(), "audit-user"), "request-250")
+		repo.On("DeleteAllConversations", mock.Anything, "audit-user", mock.AnythingOfType("time.Time")).Return(&DeleteAllConversationsResult{
+			ConversationsDeleted: 2,
+			StoppedRunIDs:        []int32{91},
+		}, nil).Once()
+
+		_, err := service.DeleteAllConversations(ctx)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, bytes.Count(logs.Bytes(), []byte("\n")))
+		assert.Contains(t, logs.String(), `"action":"delete_all_ai_chat_history"`)
+		assert.Contains(t, logs.String(), `"actor_id":"audit-user"`)
+		assert.Contains(t, logs.String(), `"request_id":"request-250"`)
+		assert.Contains(t, logs.String(), `"outcome":"succeeded"`)
+		assert.Contains(t, logs.String(), `"conversations_deleted":2`)
+		assert.Contains(t, logs.String(), `"runs_stopped":1`)
+		assert.NotContains(t, logs.String(), "title")
+		assert.NotContains(t, logs.String(), "prompt")
+		assert.NotContains(t, logs.String(), "token")
 	})
 }
 

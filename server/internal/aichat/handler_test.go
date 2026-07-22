@@ -103,6 +103,12 @@ func (m *mockChatService) DeleteConversation(ctx context.Context, conversationID
 	return args.Error(0)
 }
 
+func (m *mockChatService) DeleteAllConversations(ctx context.Context) (*DeleteAllConversationsResult, error) {
+	args := m.Called(ctx)
+	result, _ := args.Get(0).(*DeleteAllConversationsResult)
+	return result, args.Error(1)
+}
+
 func (m *mockChatService) SaveLatestWorkoutDraft(ctx context.Context, conversationID int32) (*SaveLatestWorkoutDraftResponse, error) {
 	args := m.Called(ctx, conversationID)
 	resp, _ := args.Get(0).(*SaveLatestWorkoutDraftResponse)
@@ -484,6 +490,36 @@ func TestHandlerDeleteConversation(t *testing.T) {
 
 		require.Equal(t, http.StatusConflict, rr.Code)
 		assert.Contains(t, rr.Body.String(), "active run")
+	})
+}
+
+func TestHandlerDeleteAllConversations(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("returns no content for an empty or populated owner scope", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("DeleteAllConversations", mock.Anything).Return(&DeleteAllConversationsResult{}, nil).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/api/ai/conversations", nil)
+		rr := httptest.NewRecorder()
+
+		handler.DeleteAllConversations(rr, req)
+
+		require.Equal(t, http.StatusNoContent, rr.Code)
+		assert.Empty(t, rr.Body.String())
+		service.AssertExpectations(t)
+	})
+
+	t.Run("maps a run quiescence timeout to conflict", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("DeleteAllConversations", mock.Anything).Return((*DeleteAllConversationsResult)(nil), ErrConversationBusy).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/api/ai/conversations", nil)
+		rr := httptest.NewRecorder()
+
+		handler.DeleteAllConversations(rr, req)
+
+		require.Equal(t, http.StatusConflict, rr.Code)
 	})
 }
 

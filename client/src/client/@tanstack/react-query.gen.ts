@@ -8,6 +8,7 @@ import {
 
 import { client } from "../client.gen";
 import {
+  deleteAiConversations,
   deleteAiConversationsById,
   deleteExercisesById,
   deleteWorkoutsById,
@@ -43,6 +44,8 @@ import {
 import type {
   DeleteAiConversationsByIdData,
   DeleteAiConversationsByIdError,
+  DeleteAiConversationsData,
+  DeleteAiConversationsError,
   DeleteExercisesByIdData,
   DeleteExercisesByIdError,
   DeleteWorkoutsByIdData,
@@ -173,6 +176,35 @@ export const postAiChatValidateMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await postAiChatValidate({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Delete all AI chat history
+ *
+ * Permanently deletes every AI chat conversation owned by the authenticated user without requiring current AI chat feature access. Training profile values and saved workouts remain.
+ */
+export const deleteAiConversationsMutation = (
+  options?: Partial<Options<DeleteAiConversationsData>>,
+): UseMutationOptions<
+  unknown,
+  DeleteAiConversationsError,
+  Options<DeleteAiConversationsData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    DeleteAiConversationsError,
+    Options<DeleteAiConversationsData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await deleteAiConversations({
         ...options,
         ...fnOptions,
         throwOnError: true,

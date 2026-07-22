@@ -237,6 +237,9 @@ export const aichat_StreamEventSchema = {
     sequence: {
       type: "integer",
     },
+    status: {
+      type: "string",
+    },
     text: {
       type: "string",
     },

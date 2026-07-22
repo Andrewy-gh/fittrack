@@ -261,6 +261,11 @@ type StopRunResponse struct {
 	Sequence       int32  `json:"sequence"`
 }
 
+type DeleteAllConversationsResult struct {
+	ConversationsDeleted int64
+	StoppedRunIDs        []int32
+}
+
 type StreamChunk struct {
 	Delta    string
 	Sequence int32
