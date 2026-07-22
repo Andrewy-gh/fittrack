@@ -15,6 +15,10 @@ test.describe("Authenticated - former subscriber AI chat privacy", () => {
       !hasAuthState(),
       "Missing auth state. Enable local E2E auth for the former-subscriber fixture.",
     );
+    test.skip(
+      !process.env.CI && process.env.E2E_EXCLUSIVE_MUTATION !== "true",
+      "This destructive shared-user fixture requires E2E_EXCLUSIVE_MUTATION=true so Playwright uses one worker.",
+    );
   });
 
   test.afterEach(async () => {

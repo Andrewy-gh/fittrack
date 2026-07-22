@@ -3122,6 +3122,16 @@ func (q *Queries) LockAIChatRunsByUser(ctx context.Context, userID string) ([]Lo
 	return items, nil
 }
 
+const lockAIChatUserMutation = `-- name: LockAIChatUserMutation :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 250))
+`
+
+// Serializes conversation creation, stream start, and deletion for one owner.
+func (q *Queries) LockAIChatUserMutation(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, lockAIChatUserMutation, userID)
+	return err
+}
+
 const markAIChatConversationLatestWorkoutDraftSaved = `-- name: MarkAIChatConversationLatestWorkoutDraftSaved :one
 UPDATE ai_chat_conversation
 SET latest_workout_draft_saved_workout_id = $4,

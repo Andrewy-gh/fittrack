@@ -28,13 +28,16 @@ func (r *repository) DeleteAllConversations(ctx context.Context, userID string, 
 	}
 
 	qtx := r.queries.WithTx(tx)
-	conversationIDs, err := qtx.LockAIChatConversationsByUser(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("lock ai chat conversations for history delete: %w", err)
+	if err := qtx.LockAIChatUserMutation(ctx, userID); err != nil {
+		return nil, fmt.Errorf("serialize ai chat history delete: %w", err)
 	}
 	runs, err := qtx.LockAIChatRunsByUser(ctx, userID)
 	if err != nil {
 		return nil, mapDeleteAllLockError("lock ai chat runs for history delete", err)
+	}
+	conversationIDs, err := qtx.LockAIChatConversationsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("lock ai chat conversations for history delete: %w", err)
 	}
 
 	stoppedRunIDs := make([]int32, 0)

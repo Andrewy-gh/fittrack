@@ -1078,6 +1078,10 @@ FROM workout_totals wt
 GROUP BY DATE_TRUNC('day', wt.date)
 ORDER BY date;
 
+-- name: LockAIChatUserMutation :exec
+-- Serializes conversation creation, stream start, and deletion for one owner.
+SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(user_id)::text, 250));
+
 -- name: CreateAIChatConversation :one
 INSERT INTO ai_chat_conversation (
     user_id,

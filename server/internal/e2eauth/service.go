@@ -47,7 +47,9 @@ WHERE NOT EXISTS (
 
 const expireLocalAIChatAccessQuery = `
 UPDATE user_feature_access
-SET expires_at = NOW() - INTERVAL '1 second'
+SET
+  starts_at = LEAST(starts_at, NOW() - INTERVAL '2 seconds'),
+  expires_at = NOW() - INTERVAL '1 second'
 WHERE user_id = $1
   AND feature_key = $2
   AND source = $3
@@ -147,6 +149,9 @@ func (s *Service) SeedConversation(
 	defer tx.Rollback(ctx)
 
 	qtx := s.queries.WithTx(tx)
+	if err := qtx.LockAIChatUserMutation(ctx, s.userID); err != nil {
+		return nil, fmt.Errorf("serialize seeded ai chat conversation creation: %w", err)
+	}
 	conversationRow, err := qtx.CreateAIChatConversation(ctx, db.CreateAIChatConversationParams{
 		UserID: s.userID,
 		Title:  textToPg(request.Title),

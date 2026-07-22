@@ -4,6 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
  * See https://playwright.dev/docs/test-configuration.
  */
 const isCI = Boolean(process.env.CI);
+const runsExclusiveMutationTests =
+  process.env.E2E_EXCLUSIVE_MUTATION === "true";
 const e2ePort = Number(process.env.E2E_PORT ?? "5173");
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${e2ePort}`;
 
@@ -28,7 +30,7 @@ export default defineConfig({
   retries: isCI ? 2 : 0,
 
   /* Prefer stability over throughput in shared CI runners. */
-  workers: isCI ? 1 : undefined,
+  workers: isCI || runsExclusiveMutationTests ? 1 : undefined,
 
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: isCI ? [["line"], ["html", { open: "never" }]] : "html",

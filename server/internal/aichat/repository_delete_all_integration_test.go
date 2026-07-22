@@ -175,6 +175,12 @@ func TestRepositoryDeleteAllConversations_SerializesWithActiveRunWriter(t *testi
 		t.Fatalf("history deletion returned before the active writer released its run lock: result=%v err=%v", premature.result, premature.err)
 	case <-time.After(200 * time.Millisecond):
 	}
+	_, err = writerTx.Exec(ctx, `
+		UPDATE ai_chat_conversation
+		SET updated_at = NOW()
+		WHERE id = $1 AND user_id = $2
+	`, conversation.ID, userID)
+	require.NoError(t, err, "an active run writer must be able to finish its run-first, conversation-second lock order")
 	require.NoError(t, writerTx.Commit(ctx))
 
 	select {
@@ -184,6 +190,90 @@ func TestRepositoryDeleteAllConversations_SerializesWithActiveRunWriter(t *testi
 		assert.Equal(t, []int32{prepared.Run.ID}, completed.result.StoppedRunIDs)
 	case <-time.After(10 * time.Second):
 		t.Fatal("history deletion did not finish after the active writer released its run lock")
+	}
+}
+
+func TestRepositoryDeleteAllConversations_SerializesConcurrentConversationCreation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping database-backed AI chat repository test in short mode")
+	}
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		return
+	}
+	defer cleanup()
+
+	const userID = "aichat-delete-all-create-race"
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, userID)
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	_, err := repo.CreateConversation(ctx, userID)
+	require.NoError(t, err)
+
+	triggerSuffix := time.Now().UnixNano()
+	triggerFunction := fmt.Sprintf("aichat_delete_all_pause_%d", triggerSuffix)
+	triggerName := fmt.Sprintf("aichat_delete_all_pause_trigger_%d", triggerSuffix)
+	_, err = pool.Exec(ctx, fmt.Sprintf(`
+		CREATE FUNCTION %s() RETURNS trigger AS $$
+		BEGIN
+			IF OLD.user_id = '%s' THEN
+				PERFORM pg_sleep(1);
+			END IF;
+			RETURN OLD;
+		END;
+		$$ LANGUAGE plpgsql;
+		CREATE TRIGGER %s BEFORE DELETE ON ai_chat_conversation
+		FOR EACH ROW EXECUTE FUNCTION %s();
+	`, triggerFunction, userID, triggerName, triggerFunction))
+	require.NoError(t, err)
+	defer func() {
+		_, _ = pool.Exec(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON ai_chat_conversation", triggerName))
+		_, _ = pool.Exec(context.Background(), fmt.Sprintf("DROP FUNCTION IF EXISTS %s()", triggerFunction))
+	}()
+
+	type deletionOutcome struct {
+		result *DeleteAllConversationsResult
+		err    error
+	}
+	deleteOutcome := make(chan deletionOutcome, 1)
+	go func() {
+		result, deleteErr := repo.DeleteAllConversations(context.Background(), userID, time.Now().UTC())
+		deleteOutcome <- deletionOutcome{result: result, err: deleteErr}
+	}()
+	time.Sleep(200 * time.Millisecond)
+
+	type creationOutcome struct {
+		conversation *Conversation
+		err          error
+	}
+	createOutcome := make(chan creationOutcome, 1)
+	go func() {
+		conversation, createErr := repo.CreateConversation(context.Background(), userID)
+		createOutcome <- creationOutcome{conversation: conversation, err: createErr}
+	}()
+
+	select {
+	case premature := <-createOutcome:
+		t.Fatalf("conversation creation crossed an in-flight history deletion: conversation=%v err=%v", premature.conversation, premature.err)
+	case <-time.After(250 * time.Millisecond):
+	}
+
+	var deleted deletionOutcome
+	select {
+	case deleted = <-deleteOutcome:
+		require.NoError(t, deleted.err)
+		assert.Equal(t, int64(1), deleted.result.ConversationsDeleted)
+	case <-time.After(10 * time.Second):
+		t.Fatal("history deletion did not finish")
+	}
+
+	select {
+	case created := <-createOutcome:
+		require.NoError(t, created.err)
+		require.NotNil(t, created.conversation)
+		assert.Equal(t, 1, countAIChatRowsForUser(t, pool, "ai_chat_conversation", userID))
+	case <-time.After(10 * time.Second):
+		t.Fatal("conversation creation did not resume after history deletion committed")
 	}
 }
 

@@ -15,7 +15,17 @@ func (r *repository) CreateConversation(ctx context.Context, userID string) (*Co
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	row, err := r.queries.CreateAIChatConversation(ctx, db.CreateAIChatConversationParams{
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin ai chat conversation create transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+	if err := qtx.LockAIChatUserMutation(ctx, userID); err != nil {
+		return nil, fmt.Errorf("serialize ai chat conversation creation: %w", err)
+	}
+	row, err := qtx.CreateAIChatConversation(ctx, db.CreateAIChatConversationParams{
 		UserID: userID,
 		Title:  pgtype.Text{},
 	})
@@ -26,6 +36,9 @@ func (r *repository) CreateConversation(ctx context.Context, userID string) (*Co
 	conversation, err := mapConversation(row)
 	if err != nil {
 		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit ai chat conversation create transaction: %w", err)
 	}
 
 	return conversation, nil
@@ -89,6 +102,9 @@ func (r *repository) DeleteConversation(ctx context.Context, conversationID int3
 	defer tx.Rollback(ctx)
 
 	qtx := r.queries.WithTx(tx)
+	if err := qtx.LockAIChatUserMutation(ctx, userID); err != nil {
+		return fmt.Errorf("serialize ai chat conversation deletion: %w", err)
+	}
 	if _, err := qtx.GetAIChatConversationForUpdate(ctx, db.GetAIChatConversationForUpdateParams{
 		ID: conversationID, UserID: userID,
 	}); err != nil {

@@ -921,6 +921,7 @@ func cleanupAIChatRepositoryTestUsers(t *testing.T, pool *pgxpool.Pool) {
 		"aichat-delete-all-other",
 		"aichat-delete-all-rollback",
 		"aichat-delete-all-active-run-race",
+		"aichat-delete-all-create-race",
 	}
 	for _, userID := range testUserIDs {
 		_, err := pool.Exec(context.Background(), "DELETE FROM users WHERE user_id = $1", userID)

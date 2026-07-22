@@ -63,6 +63,9 @@ func (r *repository) PrepareMessageStream(ctx context.Context, conversationID in
 	defer tx.Rollback(ctx)
 
 	qtx := r.queries.WithTx(tx)
+	if err := qtx.LockAIChatUserMutation(ctx, userID); err != nil {
+		return nil, fmt.Errorf("serialize ai chat stream start: %w", err)
+	}
 
 	conversationRow, err := qtx.GetAIChatConversationForUpdate(ctx, db.GetAIChatConversationForUpdateParams{
 		ID:     conversationID,
