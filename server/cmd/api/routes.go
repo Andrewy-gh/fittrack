@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"mime"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/account"
@@ -84,7 +87,8 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 		mux.HandleFunc("POST /dev/e2e/auth/bootstrap", e2eh.Bootstrap)
 		mux.HandleFunc("POST /dev/e2e/ai-chat/conversations", e2eh.SeedConversation)
 	}
-	// Swagger documentation
+	// Public API discovery and documentation
+	mux.HandleFunc("GET /.well-known/api-catalog", api.handleAPICatalog)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 	mux.HandleFunc("GET /", api.handleStaticFiles())
 
@@ -98,10 +102,62 @@ func (api *api) metricsHandler() http.Handler {
 	})
 }
 
+type linkTarget struct {
+	Href string `json:"href"`
+	Type string `json:"type,omitempty"`
+}
+
+type apiCatalogLinkset struct {
+	Anchor      string       `json:"anchor"`
+	ServiceDesc []linkTarget `json:"service-desc"`
+	ServiceDoc  []linkTarget `json:"service-doc"`
+	Status      []linkTarget `json:"status"`
+}
+
+type apiCatalogDocument struct {
+	Linkset []apiCatalogLinkset `json:"linkset"`
+}
+
+func (api *api) handleAPICatalog(w http.ResponseWriter, r *http.Request) {
+	setAPIDiscoveryLinks(w)
+	w.Header().Set("Content-Type", `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`)
+
+	document := apiCatalogDocument{Linkset: []apiCatalogLinkset{{
+		Anchor: "/api",
+		ServiceDesc: []linkTarget{{
+			Href: "/swagger/doc.json",
+			Type: "application/json",
+		}},
+		ServiceDoc: []linkTarget{{
+			Href: "/swagger/",
+			Type: "text/html",
+		}},
+		Status: []linkTarget{{
+			Href: "/health",
+			Type: "application/json",
+		}},
+	}}}
+
+	if err := json.NewEncoder(w).Encode(document); err != nil {
+		api.logger.Error("failed to encode API catalog", "error", err)
+	}
+}
+
 func (api *api) handleStaticFiles() http.HandlerFunc {
 	fs := http.FileServer(http.Dir("./dist"))
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			setAPIDiscoveryLinks(w)
+			w.Header().Add("Vary", "Accept")
+			if prefersMarkdown(r.Header.Get("Accept")) {
+				setStaticCacheHeader(w, "/")
+				w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+				_, _ = w.Write([]byte(fitTrackMarkdownOverview))
+				return
+			}
+		}
+
 		file, err := http.Dir("./dist").Open(r.URL.Path)
 		if err == nil {
 			_ = file.Close()
@@ -128,6 +184,81 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 
 		http.NotFound(w, r)
 	}
+}
+
+const fitTrackMarkdownOverview = `# FitTrack
+
+FitTrack is a fitness tracking application for recording workouts, exercises, sets, and training progress.
+
+## Public API resources
+
+- [API description](/swagger/doc.json)
+- [Interactive API documentation](/swagger/)
+- [Service health](/health)
+- [API catalog](/.well-known/api-catalog)
+
+Product data under /api requires authentication; this public overview does not expose user data.
+`
+
+func setAPIDiscoveryLinks(w http.ResponseWriter) {
+	w.Header().Add("Link", `</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`)
+	w.Header().Add("Link", `</swagger/doc.json>; rel="service-desc"; type="application/json"`)
+	w.Header().Add("Link", `</swagger/>; rel="service-doc"; type="text/html"`)
+}
+
+func prefersMarkdown(accept string) bool {
+	markdownQuality, markdownExplicit := representationQuality(accept, "text/markdown")
+	if !markdownExplicit || markdownQuality <= 0 {
+		return false
+	}
+
+	htmlQuality, _ := representationQuality(accept, "text/html")
+	return markdownQuality >= htmlQuality
+}
+
+func representationQuality(accept, representation string) (float64, bool) {
+	quality := 0.0
+	bestSpecificity := -1
+	explicit := false
+	representationParts := strings.SplitN(representation, "/", 2)
+
+	for _, item := range strings.Split(accept, ",") {
+		mediaType, params, err := mime.ParseMediaType(strings.TrimSpace(item))
+		if err != nil {
+			continue
+		}
+		mediaParts := strings.SplitN(mediaType, "/", 2)
+		if len(mediaParts) != 2 || (mediaParts[0] != "*" && mediaParts[0] != representationParts[0]) || (mediaParts[1] != "*" && mediaParts[1] != representationParts[1]) {
+			continue
+		}
+
+		specificity := 0
+		if mediaParts[0] != "*" {
+			specificity++
+		}
+		if mediaParts[1] != "*" {
+			specificity++
+		}
+		if mediaType == representation {
+			explicit = true
+		}
+		if specificity < bestSpecificity {
+			continue
+		}
+
+		itemQuality := 1.0
+		if rawQuality, ok := params["q"]; ok {
+			parsedQuality, err := strconv.ParseFloat(rawQuality, 64)
+			if err != nil || parsedQuality < 0 || parsedQuality > 1 {
+				continue
+			}
+			itemQuality = parsedQuality
+		}
+		bestSpecificity = specificity
+		quality = itemQuality
+	}
+
+	return quality, explicit
 }
 
 func setStaticCacheHeader(w http.ResponseWriter, requestPath string) {
