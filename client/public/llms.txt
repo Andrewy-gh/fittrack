@@ -1,0 +1,13 @@
+# FitTrack
+
+> FitTrack is a web app for logging weightlifting workouts and reviewing exercise history, progress, notes, and training consistency.
+
+## Public resources
+
+- [FitTrack home](https://fittrack.fly.dev/): Product overview and entry point to the app.
+- [Privacy Policy](https://fittrack.fly.dev/privacy): How FitTrack handles account, workout, AI chat, billing, and technical information.
+- [API documentation](https://fittrack.fly.dev/swagger/): Publicly readable API reference.
+- [OpenAPI specification](https://fittrack.fly.dev/swagger/doc.json): Machine-readable API reference.
+- [API health](https://fittrack.fly.dev/health): Public service-health endpoint.
+
+Interactive application data is private to authenticated users. Publishing the API documentation does not provide unauthenticated access to workout or account data.

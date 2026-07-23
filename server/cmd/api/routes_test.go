@@ -267,6 +267,9 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 	writeStaticTestFile(t, "index.html", "<!doctype html>")
 	writeStaticTestFile(t, "sw.js", "self.skipWaiting()")
 	writeStaticTestFile(t, "manifest.webmanifest", "{}")
+	writeStaticTestFile(t, "robots.txt", "User-agent: *\nDisallow:\n")
+	writeStaticTestFile(t, "sitemap.xml", "<urlset></urlset>")
+	writeStaticTestFile(t, "llms.txt", "# FitTrack\n")
 	writeStaticTestFile(t, filepath.Join("assets", "index-abc123.js"), "console.log('ok')")
 
 	api := &api{}
@@ -278,6 +281,7 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 		accept     string
 		wantStatus int
 		wantCache  string
+		wantBody   string
 	}{
 		{
 			name:       "app shell fallback is revalidated",
@@ -297,6 +301,27 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 			path:       "/manifest.webmanifest",
 			wantStatus: http.StatusOK,
 			wantCache:  "no-cache",
+		},
+		{
+			name:       "robots policy is served as a static asset",
+			path:       "/robots.txt",
+			wantStatus: http.StatusOK,
+			wantCache:  "public, max-age=3600",
+			wantBody:   "User-agent: *\nDisallow:\n",
+		},
+		{
+			name:       "sitemap is served as a static asset",
+			path:       "/sitemap.xml",
+			wantStatus: http.StatusOK,
+			wantCache:  "public, max-age=3600",
+			wantBody:   "<urlset></urlset>",
+		},
+		{
+			name:       "llms document is served as a static asset",
+			path:       "/llms.txt",
+			wantStatus: http.StatusOK,
+			wantCache:  "public, max-age=3600",
+			wantBody:   "# FitTrack\n",
 		},
 		{
 			name:       "hashed assets are immutable",
@@ -327,6 +352,9 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 			}
 			if got := rr.Header().Get("Cache-Control"); got != tt.wantCache {
 				t.Fatalf("expected Cache-Control %q, got %q", tt.wantCache, got)
+			}
+			if tt.wantBody != "" && rr.Body.String() != tt.wantBody {
+				t.Fatalf("expected body %q, got %q", tt.wantBody, rr.Body.String())
 			}
 		})
 	}
