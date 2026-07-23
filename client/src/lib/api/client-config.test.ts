@@ -54,6 +54,14 @@ describe("client auth request interceptor", () => {
     mocks.setConfig.mockClear();
   });
 
+  it("configures the generated client with the local test API base URL", async () => {
+    await loadRequestInterceptor();
+
+    expect(mocks.setConfig).toHaveBeenCalledWith({
+      baseUrl: "http://localhost/api",
+    });
+  });
+
   it("adds the Stack access token when the session is available", async () => {
     mocks.getUser.mockResolvedValue({
       getAuthJson: vi.fn().mockResolvedValue({ accessToken: "token-123" }),

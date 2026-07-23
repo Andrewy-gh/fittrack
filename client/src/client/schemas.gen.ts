@@ -252,39 +252,6 @@ export const aichat_StreamEventSchema = {
   },
 } as const;
 
-export const aichat_ValidateRequestSchema = {
-  type: "object",
-  properties: {
-    prompt: {
-      type: "string",
-    },
-  },
-} as const;
-
-export const aichat_ValidateResponseSchema = {
-  type: "object",
-  properties: {
-    model: {
-      type: "string",
-    },
-    output: {
-      $ref: "#/definitions/aichat.ValidationOutput",
-    },
-  },
-} as const;
-
-export const aichat_ValidationOutputSchema = {
-  type: "object",
-  properties: {
-    next_step: {
-      type: "string",
-    },
-    summary: {
-      type: "string",
-    },
-  },
-} as const;
-
 export const exercise_CreateExerciseRequestSchema = {
   type: "object",
   required: ["name"],
@@ -626,39 +593,6 @@ export const featureaccess_FeatureAccessResponseSchema = {
     starts_at: {
       type: "string",
       example: "2026-03-25T12:00:00Z",
-    },
-  },
-} as const;
-
-export const health_HealthResponseSchema = {
-  type: "object",
-  properties: {
-    status: {
-      type: "string",
-    },
-    timestamp: {
-      type: "string",
-    },
-    version: {
-      type: "string",
-    },
-  },
-} as const;
-
-export const health_ReadyResponseSchema = {
-  type: "object",
-  properties: {
-    checks: {
-      type: "object",
-      additionalProperties: {
-        type: "string",
-      },
-    },
-    status: {
-      type: "string",
-    },
-    timestamp: {
-      type: "string",
     },
   },
 } as const;

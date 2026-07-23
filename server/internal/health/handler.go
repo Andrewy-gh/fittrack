@@ -42,13 +42,7 @@ type HealthResponse struct {
 	Version   string `json:"version"`
 }
 
-// Health godoc
-// @Summary Health check
-// @Description Returns the health status of the API
-// @Tags health
-// @Produce json
-// @Success 200 {object} health.HealthResponse
-// @Router /health [get]
+// Health returns the live service health status.
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	response := HealthResponse{
 		Status:    "healthy",
@@ -74,14 +68,7 @@ type ReadyResponse struct {
 	Checks    map[string]string `json:"checks"`
 }
 
-// Ready godoc
-// @Summary Readiness check
-// @Description Returns the readiness status of the API including database connectivity
-// @Tags health
-// @Produce json
-// @Success 200 {object} health.ReadyResponse
-// @Failure 503 {object} health.ReadyResponse
-// @Router /ready [get]
+// Ready returns service readiness, including database connectivity.
 func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]string)
 

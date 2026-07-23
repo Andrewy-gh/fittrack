@@ -156,25 +156,6 @@ definitions:
       workout_draft:
         $ref: '#/definitions/workout.CreateWorkoutRequest'
     type: object
-  aichat.ValidateRequest:
-    properties:
-      prompt:
-        type: string
-    type: object
-  aichat.ValidateResponse:
-    properties:
-      model:
-        type: string
-      output:
-        $ref: '#/definitions/aichat.ValidationOutput'
-    type: object
-  aichat.ValidationOutput:
-    properties:
-      next_step:
-        type: string
-      summary:
-        type: string
-    type: object
   exercise.CreateExerciseRequest:
     properties:
       name:
@@ -446,26 +427,6 @@ definitions:
     - feature_key
     - source
     - starts_at
-    type: object
-  health.HealthResponse:
-    properties:
-      status:
-        type: string
-      timestamp:
-        type: string
-      version:
-        type: string
-    type: object
-  health.ReadyResponse:
-    properties:
-      checks:
-        additionalProperties:
-          type: string
-        type: object
-      status:
-        type: string
-      timestamp:
-        type: string
     type: object
   response.Error:
     properties:
@@ -795,7 +756,6 @@ definitions:
     - workout_date
     - workout_id
     type: object
-host: localhost:8080
 info:
   contact:
     email: support@swagger.io
@@ -842,95 +802,6 @@ paths:
       security:
       - StackAuth: []
       summary: Record AI chat telemetry
-      tags:
-      - ai-chat
-  /ai/chat/validate:
-    post:
-      consumes:
-      - application/json
-      description: Phase-0 validation endpoint for FitTrack AI chat architecture.
-      parameters:
-      - description: Validation request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/aichat.ValidateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/aichat.ValidateResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Error'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Error'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Error'
-        "502":
-          description: Bad Gateway
-          schema:
-            $ref: '#/definitions/response.Error'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/response.Error'
-      security:
-      - StackAuth: []
-      summary: Validate AI chat architecture
-      tags:
-      - ai-chat
-  /ai/chat/validate/stream:
-    post:
-      consumes:
-      - application/json
-      description: Phase-0 validation stream endpoint. Preflight failures return JSON;
-        successful requests upgrade to SSE.
-      parameters:
-      - description: Validation request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/aichat.ValidateRequest'
-      produces:
-      - text/event-stream
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/aichat.StreamEvent'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Error'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Error'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Error'
-        "502":
-          description: Bad Gateway
-          schema:
-            $ref: '#/definitions/response.Error'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/response.Error'
-      security:
-      - StackAuth: []
-      summary: Stream AI chat architecture validation
       tags:
       - ai-chat
   /ai/conversations:
@@ -1686,36 +1557,6 @@ paths:
       summary: List active feature access grants
       tags:
       - feature-access
-  /health:
-    get:
-      description: Returns the health status of the API
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/health.HealthResponse'
-      summary: Health check
-      tags:
-      - health
-  /ready:
-    get:
-      description: Returns the readiness status of the API including database connectivity
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/health.ReadyResponse'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/health.ReadyResponse'
-      summary: Readiness check
-      tags:
-      - health
   /training-profile:
     get:
       description: Returns the authenticated user's durable AI training profile. First-time
@@ -2039,8 +1880,6 @@ paths:
       summary: Get new workout context
       tags:
       - workouts
-schemes:
-- http
 securityDefinitions:
   StackAuth:
     in: header

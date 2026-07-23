@@ -40,11 +40,6 @@ import type {
   GetFeaturesAccessData,
   GetFeaturesAccessErrors,
   GetFeaturesAccessResponses,
-  GetHealthData,
-  GetHealthResponses,
-  GetReadyData,
-  GetReadyErrors,
-  GetReadyResponses,
   GetTrainingProfileData,
   GetTrainingProfileErrors,
   GetTrainingProfileResponses,
@@ -72,13 +67,6 @@ import type {
   PostAiChatTelemetryData,
   PostAiChatTelemetryErrors,
   PostAiChatTelemetryResponses,
-  PostAiChatValidateData,
-  PostAiChatValidateErrors,
-  PostAiChatValidateResponses,
-  PostAiChatValidateStreamData,
-  PostAiChatValidateStreamErrors,
-  PostAiChatValidateStreamResponse,
-  PostAiChatValidateStreamResponses,
   PostAiConversationsByIdLatestWorkoutDraftSaveData,
   PostAiConversationsByIdLatestWorkoutDraftSaveErrors,
   PostAiConversationsByIdLatestWorkoutDraftSaveResponses,
@@ -142,54 +130,6 @@ export const postAiChatTelemetry = <ThrowOnError extends boolean = false>(
   >({
     security: [{ name: "x-stack-access-token", type: "apiKey" }],
     url: "/ai/chat/telemetry",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-/**
- * Validate AI chat architecture
- *
- * Phase-0 validation endpoint for FitTrack AI chat architecture.
- */
-export const postAiChatValidate = <ThrowOnError extends boolean = false>(
-  options: Options<PostAiChatValidateData, ThrowOnError>,
-) =>
-  (options.client ?? client).post<
-    PostAiChatValidateResponses,
-    PostAiChatValidateErrors,
-    ThrowOnError
-  >({
-    security: [{ name: "x-stack-access-token", type: "apiKey" }],
-    url: "/ai/chat/validate",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-/**
- * Stream AI chat architecture validation
- *
- * Phase-0 validation stream endpoint. Preflight failures return JSON; successful requests upgrade to SSE.
- */
-export const postAiChatValidateStream = <ThrowOnError extends boolean = false>(
-  options: Options<
-    PostAiChatValidateStreamData,
-    ThrowOnError,
-    PostAiChatValidateStreamResponse
-  >,
-) =>
-  (options.client ?? client).sse.post<
-    PostAiChatValidateStreamResponses,
-    PostAiChatValidateStreamErrors,
-    ThrowOnError
-  >({
-    security: [{ name: "x-stack-access-token", type: "apiKey" }],
-    url: "/ai/chat/validate/stream",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -581,33 +521,6 @@ export const getFeaturesAccess = <ThrowOnError extends boolean = false>(
     url: "/features/access",
     ...options,
   });
-
-/**
- * Health check
- *
- * Returns the health status of the API
- */
-export const getHealth = <ThrowOnError extends boolean = false>(
-  options?: Options<GetHealthData, ThrowOnError>,
-) =>
-  (options?.client ?? client).get<GetHealthResponses, unknown, ThrowOnError>({
-    url: "/health",
-    ...options,
-  });
-
-/**
- * Readiness check
- *
- * Returns the readiness status of the API including database connectivity
- */
-export const getReady = <ThrowOnError extends boolean = false>(
-  options?: Options<GetReadyData, ThrowOnError>,
-) =>
-  (options?.client ?? client).get<
-    GetReadyResponses,
-    GetReadyErrors,
-    ThrowOnError
-  >({ url: "/ready", ...options });
 
 /**
  * Get training profile

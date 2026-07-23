@@ -77,21 +77,7 @@ func NewHandler(logger *slog.Logger, service chatService) *Handler {
 	}
 }
 
-// Validate godoc
-// @Summary Validate AI chat architecture
-// @Description Phase-0 validation endpoint for FitTrack AI chat architecture.
-// @Tags ai-chat
-// @Accept json
-// @Produce json
-// @Security StackAuth
-// @Param request body aichat.ValidateRequest true "Validation request"
-// @Success 200 {object} aichat.ValidateResponse
-// @Failure 400 {object} response.Error
-// @Failure 401 {object} response.Error
-// @Failure 403 {object} response.Error
-// @Failure 503 {object} response.Error
-// @Failure 502 {object} response.Error
-// @Router /ai/chat/validate [post]
+// Validate runs the unrouted Phase-0 AI chat validation flow.
 func (h *Handler) Validate(w http.ResponseWriter, r *http.Request) {
 	req, ok := h.decodePromptRequest(w, r)
 	if !ok {
@@ -109,21 +95,7 @@ func (h *Handler) Validate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// StreamValidate godoc
-// @Summary Stream AI chat architecture validation
-// @Description Phase-0 validation stream endpoint. Preflight failures return JSON; successful requests upgrade to SSE.
-// @Tags ai-chat
-// @Accept json
-// @Produce text/event-stream
-// @Security StackAuth
-// @Param request body aichat.ValidateRequest true "Validation request"
-// @Success 200 {object} aichat.StreamEvent
-// @Failure 400 {object} response.Error
-// @Failure 401 {object} response.Error
-// @Failure 403 {object} response.Error
-// @Failure 503 {object} response.Error
-// @Failure 502 {object} response.Error
-// @Router /ai/chat/validate/stream [post]
+// StreamValidate runs the unrouted Phase-0 streaming validation flow.
 func (h *Handler) StreamValidate(w http.ResponseWriter, r *http.Request) {
 	req, ok := h.decodePromptRequest(w, r)
 	if !ok {

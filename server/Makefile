@@ -81,7 +81,7 @@ sqlc:
 	sqlc generate
 
 swagger:
-	swag init -g cmd/api/main.go -o docs
+	swag init -g cmd/api/main.go -o docs --outputTypes json,yaml
 
 test:
 	$(GOTEST) -v ./...
