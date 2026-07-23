@@ -183,8 +183,8 @@ test-short: test-db-ready ## Start local DB and run short test suite (integratio
 
 test-integration: test-db-ready ## Start local DB and run full server suite with integration tests
 	@. "$(TEST_DB_ENV_FILE)"; \
-	echo "==> Running go test ./..."; \
-	DATABASE_URL="$$DATABASE_URL" $(GOTEST) ./...
+	echo "==> Running go test -p 1 ./..."; \
+	DATABASE_URL="$$DATABASE_URL" $(GOTEST) -p 1 ./...
 
 vet:
 	$(GOCMD) vet -v ./...

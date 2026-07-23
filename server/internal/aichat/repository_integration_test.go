@@ -908,6 +908,8 @@ func cleanupAIChatRepositoryTestUsers(t *testing.T, pool *pgxpool.Pool) {
 		"aichat-list-conversations-user",
 		"aichat-list-conversations-other-user",
 		"aichat-list-conversations-limit-user",
+		"aichat-delete-conversation-user",
+		"aichat-delete-conversation-other-user",
 		"aichat-trial-cap-user",
 		"aichat-trial-failed-start-user",
 		"aichat-data-reader-user",
