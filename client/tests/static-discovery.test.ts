@@ -42,8 +42,9 @@ describe("static agent-discovery assets", () => {
     expect(llms).toContain(`[Privacy Policy](${canonicalOrigin}/privacy)`);
     expect(llms).toContain(`[API documentation](${canonicalOrigin}/swagger/)`);
     expect(llms).toContain(
-      `[OpenAPI specification](${canonicalOrigin}/swagger/doc.json)`,
+      `[Read-only agent API specification](${canonicalOrigin}/.well-known/agent-openapi.json)`,
     );
+    expect(llms).not.toContain(`${canonicalOrigin}/swagger/doc.json`);
     expect(llms).toContain(`[API health](${canonicalOrigin}/health)`);
     expect(llms).toContain(
       "Interactive application data is private to authenticated users.",

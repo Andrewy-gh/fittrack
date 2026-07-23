@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Andrewy-gh/fittrack/server/docs"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
@@ -62,9 +63,50 @@ func TestRoutes_APICatalogAdvertisesPublicProductAPI(t *testing.T) {
 	}
 
 	assertSameOriginCatalogURL(t, req.URL, entry["anchor"], "/api")
-	assertCatalogRelation(t, req.URL, entry, "service-desc", "/swagger/doc.json", "application/json")
+	assertCatalogRelation(t, req.URL, entry, "service-desc", "/.well-known/agent-openapi.json", docs.AgentSwaggerContentType)
 	assertCatalogRelation(t, req.URL, entry, "service-doc", "/swagger/", "text/html")
 	assertCatalogRelation(t, req.URL, entry, "status", "/health", "application/json")
+}
+
+func TestRoutes_AgentSwaggerArtifactSupportsGetAndHead(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := &api{logger: logger, cfg: &config.Config{}}
+	mux := api.routes(
+		&workout.WorkoutHandler{},
+		&exercise.ExerciseHandler{},
+		&featureaccess.Handler{},
+		health.NewHandler(logger, nil),
+		aichat.NewHandler(logger, nil),
+		nil, nil, nil, nil,
+	)
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		t.Run(method, func(t *testing.T) {
+			req := httptest.NewRequest(method, "https://fittrack.example/.well-known/agent-openapi.json", nil)
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d; body = %s", rr.Code, http.StatusOK, rr.Body.String())
+			}
+			if got := rr.Header().Get("Content-Type"); got != docs.AgentSwaggerContentType {
+				t.Fatalf("Content-Type = %q, want %q", got, docs.AgentSwaggerContentType)
+			}
+			if method == http.MethodHead {
+				if rr.Body.Len() != 0 {
+					t.Fatalf("HEAD body length = %d, want 0", rr.Body.Len())
+				}
+				return
+			}
+			var document map[string]any
+			if err := json.Unmarshal(rr.Body.Bytes(), &document); err != nil {
+				t.Fatalf("decode artifact: %v", err)
+			}
+			if document["swagger"] != "2.0" || document["basePath"] != "/api" {
+				t.Fatalf("unexpected Swagger identity: %#v", document)
+			}
+		})
+	}
 }
 
 func TestHomepage_DiscoveryHeadersAndMarkdownNegotiation(t *testing.T) {
@@ -75,7 +117,7 @@ func TestHomepage_DiscoveryHeadersAndMarkdownNegotiation(t *testing.T) {
 	handler := (&api{}).handleStaticFiles()
 	wantLinks := []string{
 		`</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`,
-		`</swagger/doc.json>; rel="service-desc"; type="application/json"`,
+		`</.well-known/agent-openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=2.0"`,
 		`</swagger/>; rel="service-doc"; type="text/html"`,
 	}
 

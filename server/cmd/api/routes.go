@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Andrewy-gh/fittrack/server/docs"
 	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
@@ -89,6 +90,7 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	}
 	// Public API discovery and documentation
 	mux.HandleFunc("GET /.well-known/api-catalog", api.handleAPICatalog)
+	mux.HandleFunc("GET /.well-known/agent-openapi.json", api.handleAgentSwagger)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 	mux.HandleFunc("GET /", api.handleStaticFiles())
 
@@ -125,8 +127,8 @@ func (api *api) handleAPICatalog(w http.ResponseWriter, r *http.Request) {
 	document := apiCatalogDocument{Linkset: []apiCatalogLinkset{{
 		Anchor: "/api",
 		ServiceDesc: []linkTarget{{
-			Href: "/swagger/doc.json",
-			Type: "application/json",
+			Href: "/.well-known/agent-openapi.json",
+			Type: docs.AgentSwaggerContentType,
 		}},
 		ServiceDoc: []linkTarget{{
 			Href: "/swagger/",
@@ -141,6 +143,16 @@ func (api *api) handleAPICatalog(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(document); err != nil {
 		api.logger.Error("failed to encode API catalog", "error", err)
 	}
+}
+
+func (api *api) handleAgentSwagger(w http.ResponseWriter, r *http.Request) {
+	artifact := docs.AgentSwaggerJSON()
+	w.Header().Set("Content-Type", docs.AgentSwaggerContentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(artifact)))
+	if r.Method == http.MethodHead {
+		return
+	}
+	_, _ = w.Write(artifact)
 }
 
 func (api *api) handleStaticFiles() http.HandlerFunc {
@@ -192,7 +204,7 @@ FitTrack is a fitness tracking application for recording workouts, exercises, se
 
 ## Public API resources
 
-- [API description](/swagger/doc.json)
+- [Read-only agent API description](/.well-known/agent-openapi.json)
 - [Interactive API documentation](/swagger/)
 - [Service health](/health)
 - [API catalog](/.well-known/api-catalog)
@@ -202,7 +214,7 @@ Product data under /api requires authentication; this public overview does not e
 
 func setAPIDiscoveryLinks(w http.ResponseWriter) {
 	w.Header().Add("Link", `</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"`)
-	w.Header().Add("Link", `</swagger/doc.json>; rel="service-desc"; type="application/json"`)
+	w.Header().Add("Link", `</.well-known/agent-openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=2.0"`)
 	w.Header().Add("Link", `</swagger/>; rel="service-doc"; type="text/html"`)
 }
 
