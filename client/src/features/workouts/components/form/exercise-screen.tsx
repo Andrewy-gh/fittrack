@@ -1,7 +1,7 @@
 import { withForm } from "@/hooks/form";
 import { useState } from "react";
 import { AddSetDialog } from "@/features/workouts/components/form/add-set-dialog";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft, Plus, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MOCK_VALUES } from "@/features/workouts/components/form/form-options";
@@ -61,6 +61,12 @@ export const ExerciseSets = withForm({
         name={`exercises[${exerciseIndex}].sets`}
         mode="array"
         children={(setsField) => {
+          const sets = setsField.state.value || [];
+          // Skip blank placeholder sets so Repeat never clones an empty row
+          const lastSet = [...sets]
+            .reverse()
+            .find((set) => (set.reps ?? 0) > 0);
+
           return (
             // MARK: Stats
             <>
@@ -70,7 +76,7 @@ export const ExerciseSets = withForm({
               {/* Sets List */}
               <div>
                 <div className="space-y-3">
-                  {(setsField.state.value || []).map((set, setIndex) => {
+                  {sets.map((set, setIndex) => {
                     // MARK: Dialog
                     const isDialogOpen = dialogOpenIndex === setIndex;
                     if (isDialogOpen) {
@@ -153,9 +159,9 @@ export const ExerciseSets = withForm({
                 </div>
               </div>
               {/* Add Set Button */}
-              <div className="pt-4">
+              <div className="pt-4 flex items-stretch gap-2">
                 <Button
-                  className="hover:bg-primary/90 w-full py-4 text-base font-semibold"
+                  className="hover:bg-primary/90 flex-1 py-4 text-base font-semibold"
                   onClick={() => {
                     setsField.pushValue({
                       weight: 0,
@@ -169,6 +175,21 @@ export const ExerciseSets = withForm({
                   <Plus className="w-5 h-5 mr-2" />
                   Add Set
                 </Button>
+                {lastSet ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-label="Repeat last set"
+                    title="Repeat last set"
+                    data-testid="repeat-set"
+                    className="h-auto w-12 shrink-0 px-0"
+                    onClick={() => {
+                      setsField.pushValue({ ...lastSet });
+                    }}
+                  >
+                    <Repeat className="w-5 h-5" />
+                  </Button>
+                ) : null}
               </div>
             </>
           );
