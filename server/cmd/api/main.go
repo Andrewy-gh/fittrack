@@ -21,298 +21,35 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
-	"time"
 
-	"github.com/Andrewy-gh/fittrack/server/internal/account"
-	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
-	"github.com/Andrewy-gh/fittrack/server/internal/auth"
-	"github.com/Andrewy-gh/fittrack/server/internal/billing"
+	"github.com/Andrewy-gh/fittrack/server/internal/app"
 	"github.com/Andrewy-gh/fittrack/server/internal/config"
-	db "github.com/Andrewy-gh/fittrack/server/internal/database"
-	"github.com/Andrewy-gh/fittrack/server/internal/e2eauth"
-	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
-	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
-	"github.com/Andrewy-gh/fittrack/server/internal/health"
-	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
-	"github.com/Andrewy-gh/fittrack/server/internal/trainingprofile"
-	"github.com/Andrewy-gh/fittrack/server/internal/user"
-	"github.com/Andrewy-gh/fittrack/server/internal/workout"
-	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	_ "github.com/Andrewy-gh/fittrack/server/docs" // This line is necessary for go-swagger to find docs
 )
 
-type api struct {
-	logger         *slog.Logger
-	queries        *db.Queries
-	pool           *pgxpool.Pool
-	cfg            *config.Config
-	inngestHandler http.Handler
-}
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(fmt.Sprintf("invalid duration: %s", s))
-	}
-	return d
-}
-
-func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
-	return &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-}
-
-func newMetricsServer(cfg *config.Config, handler http.Handler) *http.Server {
-	mux := http.NewServeMux()
-	mux.Handle("GET /metrics", handler)
-
-	return &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.MetricsPort),
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-}
-
 func main() {
-	// Load and validate configuration
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "application error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "configuration error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("load configuration: %w", err)
 	}
 
-	// Parse log level
-	var logLevel slog.Level
-	switch cfg.LogLevel {
-	case "debug":
-		logLevel = slog.LevelDebug
-	case "info":
-		logLevel = slog.LevelInfo
-	case "warn":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	default:
-		logLevel = slog.LevelInfo
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
-
-	ctx := context.Background()
-
-	// Log startup configuration summary
-	logger.Info("starting application",
-		"environment", cfg.Environment,
-		"port", cfg.Port,
-		"metrics_port", cfg.MetricsPort,
-		"log_level", cfg.LogLevel,
-		"db_max_conns", cfg.DBMaxConns,
-		"rate_limit_rpm", cfg.RateLimitRPM,
-	)
-
-	logger.Info("connecting to database")
-	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	application, err := app.New(ctx, cfg)
 	if err != nil {
-		logger.Error("failed to parse database config", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("initialize application: %w", err)
 	}
-	// Disable prepared statements (simple protocol) for PgBouncer transaction pooling / Supabase pooler
-	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	defer application.Close()
 
-	// Configure pool caps from config
-	poolConfig.MaxConns = cfg.DBMaxConns
-	poolConfig.MinConns = cfg.DBMinConns
-	poolConfig.MaxConnIdleTime = mustParseDuration(cfg.DBMaxConnIdle)
-	poolConfig.MaxConnLifetime = mustParseDuration(cfg.DBMaxConnLife)
-	poolConfig.HealthCheckPeriod = mustParseDuration(cfg.DBHealthCheck)
-
-	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
-	if err != nil {
-		logger.Error("failed to connect to database", "error", err)
-		os.Exit(1)
-	}
-	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		logger.Error("failed to ping database", "error", err)
-		os.Exit(1)
-	}
-	logger.Info("database connection successful")
-
-	validator := validator.New()
-
-	// Initialize database queries
-	queries := db.New(pool)
-
-	// Initialize repositories
-	exerciseRepo := exercise.NewRepository(logger, queries, pool)
-	featureAccessRepo := featureaccess.NewRepository(logger, queries)
-	accountRepo := account.NewRepository(logger, queries)
-	billingRepo := billing.NewRepository(logger, queries, pool)
-	trainingProfileRepo := trainingprofile.NewRepository(logger, queries, pool)
-	workoutRepo := workout.NewRepository(logger, queries, pool, exerciseRepo)
-	userRepo := user.NewRepository(logger, queries, pool)
-	workoutTxSaver := workout.NewTxSaver(logger, exerciseRepo)
-
-	// Initialize services
-	workoutService := workout.NewService(logger, workoutRepo)
-	exerciseService := exercise.NewService(logger, exerciseRepo)
-	featureAccessService := featureaccess.NewService(logger, featureAccessRepo)
-	billingService := billing.NewService(
-		logger,
-		billingRepo,
-		cfg.StripeSecretKey,
-		cfg.StripeWebhookSecret,
-		cfg.StripePremiumPriceID,
-		cfg.AppBaseURL,
-		cfg.AIChatTrialPromptCap,
-	)
-	trainingProfileService := trainingprofile.NewService(logger, trainingProfileRepo)
-	accountService := account.NewService(logger, accountRepo, billingService)
-	userService := user.NewService(logger, userRepo)
-	aiChatRepo := aichat.NewRepository(logger, queries, pool, cfg.AIChatTrialPromptCap)
-	aiChatRuntime := aichat.NewGenkitRuntime(ctx, aiChatRepo)
-	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutTxSaver)
-	var inngestRecovery *aichat.InngestRecovery
-	switch {
-	case cfg.AIChatRecoveryConfigured():
-		inngestRecovery, err = aichat.NewInngestRecovery(logger, aiChatService)
-		if err != nil {
-			logger.Error("failed to initialize inngest recovery", "error", err)
-			os.Exit(1)
-		}
-		aiChatService.SetRecoveryDispatcher(inngestRecovery)
-	case strings.TrimSpace(cfg.InngestEventKey) != "" || strings.TrimSpace(cfg.InngestSigningKey) != "":
-		logger.Warn("ai chat recovery disabled because both INNGEST_EVENT_KEY and INNGEST_SIGNING_KEY are required")
-	default:
-		logger.Info("ai chat recovery disabled because Inngest is not configured")
-	}
-
-	// Initialize handlers
-	workoutHandler := workout.NewHandler(logger, validator, workoutService)
-	exerciseHandler := exercise.NewHandler(logger, validator, exerciseService)
-	featureAccessHandler := featureaccess.NewHandler(logger, featureAccessService)
-	accountHandler := account.NewHandler(logger, accountService)
-	billingHandler := billing.NewHandler(logger, billingService)
-	trainingProfileHandler := trainingprofile.NewHandler(logger, trainingProfileService)
-	healthHandler := health.NewHandler(logger, pool)
-	aiChatHandler := aichat.NewHandler(logger, aiChatService)
-	var e2eAuthHandler *e2eauth.Handler
-	if cfg.LocalE2EAuthConfigured() {
-		e2eAuthHandler = e2eauth.NewHandler(logger, e2eauth.NewService(
-			logger,
-			queries,
-			pool,
-			userService,
-			cfg.LocalE2EAuthUserID,
-			cfg.LocalE2EAuthEmail,
-			cfg.LocalE2EAuthDisplayName,
-		))
-	}
-
-	api := &api{
-		logger:         logger,
-		queries:        queries,
-		pool:           pool,
-		cfg:            cfg,
-		inngestHandler: nil,
-	}
-	if inngestRecovery != nil {
-		api.inngestHandler = inngestRecovery.Handler()
-	}
-
-	jwks, err := auth.NewJWKSCache(ctx, cfg.ProjectID)
-	if err != nil {
-		logger.Error("failed to create JWKS cache", "error", err)
-		os.Exit(1)
-	}
-
-	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
-	if cfg.LocalE2EAuthConfigured() {
-		authenticator.WithLocalE2EAuth(auth.LocalE2EAuthConfig{
-			Enabled: true,
-			UserID:  cfg.LocalE2EAuthUserID,
-		})
-	}
-	router := api.routes(workoutHandler, exerciseHandler, featureAccessHandler, healthHandler, aiChatHandler, billingHandler, trainingProfileHandler, accountHandler, e2eAuthHandler)
-
-	// Apply middleware in order: SecurityHeaders → CORS → RequestID → RequestLog → Metrics → Authentication → RateLimit
-	var handler http.Handler = router
-	handler = middleware.RateLimit(logger, int64(cfg.RateLimitRPM))(handler)
-	handler = authenticator.Middleware(handler)
-	handler = middleware.Metrics()(handler)
-	handler = middleware.RequestLog(logger)(handler)
-	handler = middleware.RequestID()(handler)
-	handler = middleware.CORS(cfg.GetAllowedOrigins(), logger)(handler)
-	handler = middleware.SecurityHeaders()(handler)
-
-	// Configure HTTP server with timeouts
-	srv := newHTTPServer(cfg, handler)
-	metricsSrv := newMetricsServer(cfg, api.metricsHandler())
-
-	// Set up signal handling for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-
-	// Start server in a goroutine
-	serverErrors := make(chan error, 2)
-	go func() {
-		logger.Info("starting server", "addr", srv.Addr)
-		serverErrors <- srv.ListenAndServe()
-	}()
-	go func() {
-		logger.Info("starting metrics server", "addr", metricsSrv.Addr)
-		serverErrors <- metricsSrv.ListenAndServe()
-	}()
-
-	// Block until we receive a signal or server error
-	select {
-	case err := <-serverErrors:
-		if err != nil && err != http.ErrServerClosed {
-			logger.Error("server failed", "error", err)
-			os.Exit(1)
-		}
-	case sig := <-sigChan:
-		logger.Info("shutdown signal received", "signal", sig.String())
-
-		// Create context with 30-second timeout for graceful shutdown
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		logger.Info("draining connections")
-
-		// Attempt graceful shutdown
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			logger.Error("forced shutdown", "error", err)
-			pool.Close()
-			os.Exit(1)
-		}
-		if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
-			logger.Error("forced metrics shutdown", "error", err)
-			pool.Close()
-			os.Exit(1)
-		}
-
-		// Close database connections cleanly
-		pool.Close()
-		logger.Info("shutdown complete")
-	}
+	return application.Run(ctx)
 }
