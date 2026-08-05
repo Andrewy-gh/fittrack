@@ -102,6 +102,25 @@ describe("AddSetDialog", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("dismisses a weight-only invalid set by removing it", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onRemoveSet = vi.fn();
+
+    render(
+      <AddSetDialogHarness
+        initialSet={{ weight: 135, reps: 0, setType: "working" }}
+        onClose={onClose}
+        onRemoveSet={onRemoveSet}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Close" }));
+
+    expect(onRemoveSet).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("dismisses a populated set without removing it", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

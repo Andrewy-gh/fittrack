@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hasWorkoutDraftContent,
-  isSetEmptyForDismiss,
+  shouldDiscardSetOnDismiss,
   shouldShowRecentFocusAreaCard,
   shouldDiscardNewExerciseAfterSetRemoval,
   validateSetReps,
@@ -18,10 +18,10 @@ describe("workout-form-helpers", () => {
     });
   });
 
-  describe("isSetEmptyForDismiss", () => {
-    it("treats default zeroed working set as empty", () => {
+  describe("shouldDiscardSetOnDismiss", () => {
+    it("discards a default zeroed working set", () => {
       expect(
-        isSetEmptyForDismiss({
+        shouldDiscardSetOnDismiss({
           reps: 0,
           weight: 0,
           setType: "working",
@@ -29,9 +29,9 @@ describe("workout-form-helpers", () => {
       ).toBe(true);
     });
 
-    it("treats zeroed warmup set as empty", () => {
+    it("discards a zeroed warmup set", () => {
       expect(
-        isSetEmptyForDismiss({
+        shouldDiscardSetOnDismiss({
           reps: 0,
           weight: 0,
           setType: "warmup",
@@ -39,9 +39,19 @@ describe("workout-form-helpers", () => {
       ).toBe(true);
     });
 
-    it("treats set with reps as non-empty", () => {
+    it("discards a weight-only set with zero reps", () => {
       expect(
-        isSetEmptyForDismiss({
+        shouldDiscardSetOnDismiss({
+          reps: 0,
+          weight: 135,
+          setType: "working",
+        }),
+      ).toBe(true);
+    });
+
+    it("keeps a valid set with reps", () => {
+      expect(
+        shouldDiscardSetOnDismiss({
           reps: 5,
           weight: 0,
           setType: "working",
