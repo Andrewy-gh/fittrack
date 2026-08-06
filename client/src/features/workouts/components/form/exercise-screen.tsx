@@ -13,6 +13,19 @@ type ExerciseScreenProps = {
   onBack: () => void;
 };
 
+type WorkoutSet = (typeof MOCK_VALUES)["exercises"][number]["sets"][number];
+
+type SetDialogState =
+  | {
+      kind: "existing";
+      setIndex: number;
+      initialSet: WorkoutSet;
+    }
+  | {
+      kind: "new";
+      setIndex: number;
+    };
+
 // MARK: Header
 export const ExerciseHeader = withForm({
   defaultValues: MOCK_VALUES,
@@ -54,7 +67,7 @@ export const ExerciseSets = withForm({
     isNewExercise,
     onDiscardNewExercise,
   }) {
-    const [dialogOpenIndex, setDialogOpenIndex] = useState<number | null>(null);
+    const [dialogState, setDialogState] = useState<SetDialogState | null>(null);
 
     return (
       <form.AppField
@@ -67,6 +80,19 @@ export const ExerciseSets = withForm({
             .reverse()
             .find((set) => (set.reps ?? 0) > 0);
 
+          const removeSet = (setIndex: number) => {
+            const shouldDiscardExercise =
+              shouldDiscardNewExerciseAfterSetRemoval(
+                isNewExercise,
+                setsField.state.value?.length ?? 0,
+              );
+            setsField.removeValue(setIndex);
+            setDialogState(null);
+            if (shouldDiscardExercise) {
+              onDiscardNewExercise?.();
+            }
+          };
+
           return (
             // MARK: Stats
             <>
@@ -78,7 +104,7 @@ export const ExerciseSets = withForm({
                 <div className="space-y-3">
                   {sets.map((set, setIndex) => {
                     // MARK: Dialog
-                    const isDialogOpen = dialogOpenIndex === setIndex;
+                    const isDialogOpen = dialogState?.setIndex === setIndex;
                     if (isDialogOpen) {
                       return (
                         <AddSetDialog
@@ -87,22 +113,29 @@ export const ExerciseSets = withForm({
                           exerciseIndex={exerciseIndex}
                           setIndex={setIndex}
                           onSaveSet={() => {
-                            setDialogOpenIndex(null);
+                            setDialogState(null);
                           }}
                           onClose={() => {
-                            setDialogOpenIndex(null);
+                            setDialogState(null);
+                          }}
+                          onDiscardInvalidSet={() => {
+                            if (dialogState.kind === "new") {
+                              removeSet(setIndex);
+                              return;
+                            }
+
+                            const currentSets = setsField.state.value ?? [];
+                            setsField.handleChange(
+                              currentSets.map((currentSet, currentSetIndex) =>
+                                currentSetIndex === setIndex
+                                  ? dialogState.initialSet
+                                  : currentSet,
+                              ),
+                            );
+                            setDialogState(null);
                           }}
                           onRemoveSet={() => {
-                            const shouldDiscardExercise =
-                              shouldDiscardNewExerciseAfterSetRemoval(
-                                isNewExercise,
-                                setsField.state.value?.length ?? 0,
-                              );
-                            setsField.removeValue(setIndex);
-                            setDialogOpenIndex(null);
-                            if (shouldDiscardExercise) {
-                              onDiscardNewExercise?.();
-                            }
+                            removeSet(setIndex);
                           }}
                         />
                       );
@@ -120,7 +153,11 @@ export const ExerciseSets = withForm({
                           data-testid="exercise-card"
                           className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           onClick={() => {
-                            setDialogOpenIndex(setIndex);
+                            setDialogState({
+                              kind: "existing",
+                              setIndex,
+                              initialSet: { ...set },
+                            });
                           }}
                         >
                           <div className="flex items-center justify-between">
@@ -169,7 +206,10 @@ export const ExerciseSets = withForm({
                       setType: "working",
                     });
                     const updatedSets = setsField.state.value || [];
-                    setDialogOpenIndex(updatedSets.length - 1);
+                    setDialogState({
+                      kind: "new",
+                      setIndex: updatedSets.length - 1,
+                    });
                   }}
                 >
                   <Plus className="w-5 h-5 mr-2" />

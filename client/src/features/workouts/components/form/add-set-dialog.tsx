@@ -23,6 +23,7 @@ type AddSetDialogProps = {
   setIndex: number;
   onSaveSet: () => void;
   onClose: () => void;
+  onDiscardInvalidSet: () => void;
   onRemoveSet: () => void;
 };
 
@@ -35,6 +36,7 @@ export const AddSetDialog = withForm({
     setIndex,
     onSaveSet,
     onClose,
+    onDiscardInvalidSet,
     onRemoveSet,
   }) {
     const shouldDiscardSet = (values: typeof form.state.values) => {
@@ -44,7 +46,7 @@ export const AddSetDialog = withForm({
 
     const handleDismiss = () => {
       if (shouldDiscardSet(form.state.values)) {
-        onRemoveSet();
+        onDiscardInvalidSet();
         return;
       }
       onClose();
@@ -136,7 +138,7 @@ export const AddSetDialog = withForm({
                 <Button
                   variant="outline"
                   className="w-full mt-6 text-base font-semibold rounded-lg"
-                  onClick={onRemoveSet}
+                  onClick={shouldDiscard ? onDiscardInvalidSet : onRemoveSet}
                 >
                   {shouldDiscard ? "Cancel" : "Remove Set"}
                 </Button>
