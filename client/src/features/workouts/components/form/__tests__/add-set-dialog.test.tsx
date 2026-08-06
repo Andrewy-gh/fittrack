@@ -13,11 +13,13 @@ type SetValue = {
 function AddSetDialogHarness({
   initialSet,
   onClose = vi.fn(),
+  onDiscardInvalidSet = vi.fn(),
   onRemoveSet = vi.fn(),
   onSaveSet = vi.fn(),
 }: {
   initialSet: SetValue;
   onClose?: ReturnType<typeof vi.fn>;
+  onDiscardInvalidSet?: ReturnType<typeof vi.fn>;
   onRemoveSet?: ReturnType<typeof vi.fn>;
   onSaveSet?: ReturnType<typeof vi.fn>;
 }) {
@@ -42,6 +44,7 @@ function AddSetDialogHarness({
       exerciseIndex={0}
       setIndex={0}
       onClose={onClose}
+      onDiscardInvalidSet={onDiscardInvalidSet}
       onRemoveSet={onRemoveSet}
       onSaveSet={onSaveSet}
     />
@@ -83,34 +86,61 @@ describe("AddSetDialog", () => {
     expect(onSaveSet).toHaveBeenCalledTimes(1);
   });
 
-  it("dismisses an empty set by removing it", async () => {
+  it("dismisses an empty set by discarding it", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
+    const onDiscardInvalidSet = vi.fn();
     const onRemoveSet = vi.fn();
 
     render(
       <AddSetDialogHarness
         initialSet={{ weight: 0, reps: 0, setType: "working" }}
         onClose={onClose}
+        onDiscardInvalidSet={onDiscardInvalidSet}
         onRemoveSet={onRemoveSet}
       />,
     );
 
     await user.click(await screen.findByRole("button", { name: "Close" }));
 
-    expect(onRemoveSet).toHaveBeenCalledTimes(1);
+    expect(onDiscardInvalidSet).toHaveBeenCalledTimes(1);
+    expect(onRemoveSet).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("dismisses a weight-only invalid set by discarding it", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onDiscardInvalidSet = vi.fn();
+    const onRemoveSet = vi.fn();
+
+    render(
+      <AddSetDialogHarness
+        initialSet={{ weight: 135, reps: 0, setType: "working" }}
+        onClose={onClose}
+        onDiscardInvalidSet={onDiscardInvalidSet}
+        onRemoveSet={onRemoveSet}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Close" }));
+
+    expect(onDiscardInvalidSet).toHaveBeenCalledTimes(1);
+    expect(onRemoveSet).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
 
   it("dismisses a populated set without removing it", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
+    const onDiscardInvalidSet = vi.fn();
     const onRemoveSet = vi.fn();
 
     render(
       <AddSetDialogHarness
         initialSet={{ weight: 135, reps: 5, setType: "working" }}
         onClose={onClose}
+        onDiscardInvalidSet={onDiscardInvalidSet}
         onRemoveSet={onRemoveSet}
       />,
     );
@@ -122,6 +152,7 @@ describe("AddSetDialog", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onDiscardInvalidSet).not.toHaveBeenCalled();
     expect(onRemoveSet).not.toHaveBeenCalled();
   });
 });

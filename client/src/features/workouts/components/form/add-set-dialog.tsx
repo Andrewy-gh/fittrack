@@ -13,13 +13,17 @@ import {
   ErrorBoundary,
   InlineErrorFallback,
 } from "@/components/error-boundary";
-import { isSetEmptyForDismiss, validateSetReps } from "./workout-form-helpers";
+import {
+  shouldDiscardSetOnDismiss,
+  validateSetReps,
+} from "./workout-form-helpers";
 
 type AddSetDialogProps = {
   exerciseIndex: number;
   setIndex: number;
   onSaveSet: () => void;
   onClose: () => void;
+  onDiscardInvalidSet: () => void;
   onRemoveSet: () => void;
 };
 
@@ -32,16 +36,17 @@ export const AddSetDialog = withForm({
     setIndex,
     onSaveSet,
     onClose,
+    onDiscardInvalidSet,
     onRemoveSet,
   }) {
-    const isSetEmpty = (values: typeof form.state.values) => {
+    const shouldDiscardSet = (values: typeof form.state.values) => {
       const set = values.exercises?.[exerciseIndex]?.sets?.[setIndex];
-      return isSetEmptyForDismiss(set);
+      return shouldDiscardSetOnDismiss(set);
     };
 
     const handleDismiss = () => {
-      if (isSetEmpty(form.state.values)) {
-        onRemoveSet();
+      if (shouldDiscardSet(form.state.values)) {
+        onDiscardInvalidSet();
         return;
       }
       onClose();
@@ -128,14 +133,14 @@ export const AddSetDialog = withForm({
               }}
             />
             <form.Subscribe
-              selector={(state) => isSetEmpty(state.values)}
-              children={(isEmpty) => (
+              selector={(state) => shouldDiscardSet(state.values)}
+              children={(shouldDiscard) => (
                 <Button
                   variant="outline"
                   className="w-full mt-6 text-base font-semibold rounded-lg"
-                  onClick={onRemoveSet}
+                  onClick={shouldDiscard ? onDiscardInvalidSet : onRemoveSet}
                 >
-                  {isEmpty ? "Cancel" : "Remove Set"}
+                  {shouldDiscard ? "Cancel" : "Remove Set"}
                 </Button>
               )}
             />
