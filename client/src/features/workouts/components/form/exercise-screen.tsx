@@ -93,6 +93,26 @@ export const ExerciseSets = withForm({
             }
           };
 
+          const discardDialogChanges = (
+            setIndex: number,
+            openDialog: SetDialogState,
+          ) => {
+            if (openDialog.kind === "new") {
+              removeSet(setIndex);
+              return;
+            }
+
+            const currentSets = setsField.state.value ?? [];
+            setsField.handleChange(
+              currentSets.map((currentSet, currentSetIndex) =>
+                currentSetIndex === setIndex
+                  ? openDialog.initialSet
+                  : currentSet,
+              ),
+            );
+            setDialogState(null);
+          };
+
           return (
             // MARK: Stats
             <>
@@ -116,23 +136,10 @@ export const ExerciseSets = withForm({
                             setDialogState(null);
                           }}
                           onClose={() => {
-                            setDialogState(null);
+                            discardDialogChanges(setIndex, dialogState);
                           }}
                           onDiscardInvalidSet={() => {
-                            if (dialogState.kind === "new") {
-                              removeSet(setIndex);
-                              return;
-                            }
-
-                            const currentSets = setsField.state.value ?? [];
-                            setsField.handleChange(
-                              currentSets.map((currentSet, currentSetIndex) =>
-                                currentSetIndex === setIndex
-                                  ? dialogState.initialSet
-                                  : currentSet,
-                              ),
-                            );
-                            setDialogState(null);
+                            discardDialogChanges(setIndex, dialogState);
                           }}
                           onRemoveSet={() => {
                             removeSet(setIndex);

@@ -106,7 +106,7 @@ describe("ExerciseSets in an existing workout", () => {
     ).toHaveTextContent("135lb × 5");
   });
 
-  it("keeps an existing valid set when the dialog is dismissed", async () => {
+  it("discards valid edits when an existing set dialog is dismissed", async () => {
     const user = userEvent.setup();
 
     render(
@@ -116,7 +116,13 @@ describe("ExerciseSets in an existing workout", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Edit set 1" }));
-    await user.click(await screen.findByRole("button", { name: "Close" }));
+    const weightInput = await screen.findByLabelText("Weight");
+    const repsInput = screen.getByLabelText("Reps");
+    await user.clear(weightInput);
+    await user.type(weightInput, "185");
+    await user.clear(repsInput);
+    await user.type(repsInput, "8");
+    await user.click(screen.getByRole("button", { name: "Close" }));
 
     expect(
       screen.getByRole("button", { name: "Edit set 1" }),
@@ -142,6 +148,25 @@ describe("ExerciseSets in an existing workout", () => {
     expect(
       screen.getByRole("button", { name: "Edit set 1" }),
     ).toHaveTextContent("135lb × 5");
+  });
+
+  it("removes a newly added valid set when dismissed", async () => {
+    const user = userEvent.setup();
+
+    render(<ExerciseSetsHarness initialSets={[]} />);
+
+    await user.click(screen.getByRole("button", { name: "Add Set" }));
+    const weightInput = await screen.findByLabelText("Weight");
+    const repsInput = screen.getByLabelText("Reps");
+    await user.clear(weightInput);
+    await user.type(weightInput, "185");
+    await user.clear(repsInput);
+    await user.type(repsInput, "5");
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(
+      screen.queryByRole("button", { name: /Edit set/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("still removes an existing valid set through Remove Set", async () => {
