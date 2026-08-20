@@ -10,12 +10,8 @@ type WorkoutSetLike = {
 export const validateSetReps = (value: unknown) =>
   compose(minValue(1), maxValue(1000))(value, "Reps");
 
-export const isSetEmptyForDismiss = (set?: WorkoutSetLike): boolean => {
-  const weight = Number(set?.weight ?? 0);
-  const reps = Number(set?.reps ?? 0);
-
-  return weight <= 0 && reps <= 0;
-};
+export const shouldDiscardSetOnDismiss = (set?: WorkoutSetLike): boolean =>
+  validateSetReps(set?.reps) !== undefined;
 
 export const shouldDiscardNewExerciseAfterSetRemoval = (
   isNewExercise: boolean | undefined,
