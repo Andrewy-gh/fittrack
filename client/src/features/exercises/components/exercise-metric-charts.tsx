@@ -18,7 +18,6 @@ import {
   ChartBarMetric,
   type MetricPoint,
 } from "@/components/charts/chart-bar-metric";
-import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 
 function toMetricPoints(
@@ -177,11 +176,9 @@ function MetricChartsBody({
 
   if (points.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-6 text-sm text-muted-foreground">
-          No working-set sessions in this range.
-        </CardContent>
-      </Card>
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        No working-set sessions in this range.
+      </p>
     );
   }
 
