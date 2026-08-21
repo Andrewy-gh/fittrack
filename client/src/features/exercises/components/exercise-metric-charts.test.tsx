@@ -43,7 +43,7 @@ describe("ExerciseMetricCharts", () => {
       isPending: true,
     });
 
-    render(
+    const { container } = render(
       <ExerciseMetricCharts
         exerciseId={1}
         exerciseSets={[]}
@@ -52,7 +52,117 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(screen.getByText("Loading session metrics...")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading session metrics...",
+    );
+    expect(
+      container.querySelector(".animate-spin.text-primary"),
+    ).not.toBeNull();
     expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state when the range has no working-set sessions", () => {
+    mockUseQuery.mockReturnValue({
+      data: { points: [] },
+      isFetching: false,
+      isPending: false,
+    });
+
+    render(
+      <ExerciseMetricCharts
+        exerciseId={1}
+        exerciseSets={[]}
+        isDemoMode={false}
+      />,
+    );
+
+    expect(
+      screen.getByText("No working-set sessions in this range."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state when every weighted metric is zero", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        points: [
+          {
+            x: "1",
+            date: "2026-03-01",
+            workout_id: 42,
+            session_best_e1rm: 0,
+            session_avg_e1rm: 0,
+            session_avg_intensity: 0,
+            session_best_intensity: 0,
+            total_volume_working: 0,
+          },
+          {
+            x: "2",
+            date: "2026-03-08",
+            workout_id: 43,
+          },
+        ],
+      },
+      isFetching: false,
+      isPending: false,
+    });
+
+    render(
+      <ExerciseMetricCharts
+        exerciseId={1}
+        exerciseSets={[]}
+        isDemoMode={false}
+      />,
+    );
+
+    expect(
+      screen.getByText("No weighted metrics for this exercise/range."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
+  });
+
+  it("shows charts when any session has a weighted metric", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        points: [
+          {
+            x: "1",
+            date: "2026-03-01",
+            workout_id: 42,
+            session_best_e1rm: 0,
+            session_avg_e1rm: 0,
+            session_avg_intensity: 0,
+            session_best_intensity: 0,
+            total_volume_working: 0,
+          },
+          {
+            x: "2",
+            date: "2026-03-08",
+            workout_id: 43,
+            session_best_e1rm: 225,
+            session_avg_e1rm: 220,
+            session_avg_intensity: 84.5,
+            session_best_intensity: 91.2,
+            total_volume_working: 5400,
+          },
+        ],
+      },
+      isFetching: false,
+      isPending: false,
+    });
+
+    render(
+      <ExerciseMetricCharts
+        exerciseId={1}
+        exerciseSets={[]}
+        isDemoMode={false}
+      />,
+    );
+
+    expect(screen.getByText("Session Best 1RM")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No weighted metrics for this exercise/range."),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the current chart visible while a new range is fetching", () => {

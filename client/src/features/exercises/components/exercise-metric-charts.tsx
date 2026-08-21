@@ -19,6 +19,7 @@ import {
   type MetricPoint,
 } from "@/components/charts/chart-bar-metric";
 import { Card, CardContent } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 
 function toMetricPoints(
   points: ExerciseExerciseMetricsHistoryPoint[],
@@ -32,6 +33,19 @@ function toMetricPoints(
       value: pick(p) ?? 0,
     }))
     .filter((p) => p.x && p.date);
+}
+
+function hasWeightedMetrics(
+  points: ExerciseExerciseMetricsHistoryPoint[],
+): boolean {
+  return points.some(
+    (point) =>
+      (point.session_best_e1rm ?? 0) > 0 ||
+      (point.session_avg_e1rm ?? 0) > 0 ||
+      (point.session_avg_intensity ?? 0) > 0 ||
+      (point.session_best_intensity ?? 0) > 0 ||
+      (point.total_volume_working ?? 0) > 0,
+  );
 }
 
 export function ExerciseMetricCharts({
@@ -161,7 +175,23 @@ function MetricChartsBody({
     },
   ] as const;
 
-  if (points.length === 0) return null;
+  if (points.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-sm text-muted-foreground">
+          No working-set sessions in this range.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!hasWeightedMetrics(points)) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        No weighted metrics for this exercise/range.
+      </p>
+    );
+  }
 
   const safeIndex = Math.min(activeChartIndex, charts.length - 1);
   const activeChart = charts[safeIndex];
@@ -238,11 +268,17 @@ function AuthedCharts({
   }
   if (isPending && !data) {
     return (
-      <Card>
-        <CardContent className="py-6 text-sm text-muted-foreground">
-          Loading session metrics...
-        </CardContent>
-      </Card>
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
+      >
+        <Spinner
+          size="small"
+          className="text-primary"
+        />
+        <span>Loading session metrics...</span>
+      </div>
     );
   }
 
