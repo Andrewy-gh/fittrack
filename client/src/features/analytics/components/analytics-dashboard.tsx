@@ -6,6 +6,7 @@ import type {
 import { ExerciseMetricCharts } from "@/features/exercises/components/exercise-metric-charts";
 import { GenericCombobox } from "@/components/generic-combobox";
 import { Card, CardContent } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { WorkoutContributionGraph } from "@/features/workouts/components/workout-contribution-graph";
 import { getWorkoutSummary } from "@/features/analytics/utils/analytics-workouts";
 import { AnalyticsSummaryCards } from "@/features/analytics/components/analytics-summary-cards";
@@ -115,11 +116,17 @@ export function AnalyticsDashboard({
         </section>
 
         {isLoadingDetails || !selectedExerciseId ? (
-          <Card>
-            <CardContent className="py-6 text-sm text-muted-foreground">
-              Loading exercise metrics...
-            </CardContent>
-          </Card>
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
+          >
+            <Spinner
+              size="small"
+              className="text-primary"
+            />
+            <span>Loading exercise metrics...</span>
+          </div>
         ) : (
           <ExerciseMetricCharts
             exerciseId={selectedExerciseId}
