@@ -1,10 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Toggle } from "@/components/ui/toggle";
 import {
@@ -16,12 +15,9 @@ import {
 } from "@/components/ui/select";
 import { PaginationControl } from "@/components/ui/pagination-control";
 import { ArrowDownAz, ArrowUpAz, Clock, Plus } from "lucide-react";
-import { contributionDataQueryOptions } from "@/features/workouts/api/workouts";
 import { getWorkoutListQueryOptions } from "@/features/workouts/api/workout-query-options";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { WorkoutSummaryCards } from "@/features/workouts/components/workout-summary-cards";
-import { WorkoutContributionGraph } from "@/features/workouts/components/workout-contribution-graph";
-import { ContributionGraphError } from "@/features/workouts/components/contribution-graph-error";
 import { RecentWorkoutsCard } from "@/features/workouts/components/recent-workouts-card";
 import { WorkoutDistributionCard } from "@/features/workouts/components/workout-distribution-card";
 import {
@@ -50,17 +46,8 @@ export function WorkoutsPage({
 
   const { data: workouts } = useSuspenseQuery(getWorkoutListQueryOptions(user));
 
-  const contributionQuery = useQuery({
-    ...contributionDataQueryOptions(),
-    enabled: !!user,
-  });
-
   // Check for workout in progress (pass user.id if authenticated, undefined for demo)
   const hasWorkoutInProgress = workoutDraftStorage.load(user?.id) !== null;
-
-  // Determine default open state for contribution graph (desktop vs mobile)
-  const defaultContributionGraphOpen =
-    typeof window !== "undefined" && window.innerWidth >= 768;
 
   const newWorkoutLink = "/workouts/new";
   const normalizedFocusArea = focusArea ?? "all";
@@ -108,22 +95,6 @@ export function WorkoutsPage({
 
         {/* Summary Cards */}
         <WorkoutSummaryCards workouts={workouts} />
-
-        {/* Contribution Graph (authenticated users only) */}
-        {user && contributionQuery.isLoading && (
-          <Card>
-            <CardContent className="py-6 text-sm text-muted-foreground">
-              Loading contribution graph...
-            </CardContent>
-          </Card>
-        )}
-        {user && contributionQuery.isError && <ContributionGraphError />}
-        {user && contributionQuery.isSuccess && (
-          <WorkoutContributionGraph
-            data={contributionQuery.data}
-            defaultOpen={defaultContributionGraphOpen}
-          />
-        )}
 
         <div className="grid grid-cols-2 gap-3 px-1">
           <div className="space-y-1.5">

@@ -92,6 +92,33 @@ export function AnalyticsDashboard({
 
         <AnalyticsSummaryCards summary={summary} />
 
+        {workoutContributionData ? (
+          <WorkoutContributionGraph
+            data={workoutContributionData}
+            defaultOpen
+            variant="inline"
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Loading workout trends...
+            </CardContent>
+          </Card>
+        )}
+
+        {workoutContributionData ? (
+          <WorkoutVolumeChart
+            data={workoutContributionData}
+            focusValues={workoutFocusValues}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Loading workout volume...
+            </CardContent>
+          </Card>
+        )}
+
         <section className="space-y-4">
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold tracking-tight">
@@ -133,33 +160,6 @@ export function AnalyticsDashboard({
             exerciseSets={exerciseSets}
             isDemoMode={isDemoMode}
           />
-        )}
-
-        {workoutContributionData ? (
-          <WorkoutVolumeChart
-            data={workoutContributionData}
-            focusValues={workoutFocusValues}
-          />
-        ) : (
-          <Card>
-            <CardContent className="py-6 text-sm text-muted-foreground">
-              Loading workout volume...
-            </CardContent>
-          </Card>
-        )}
-
-        {workoutContributionData ? (
-          <WorkoutContributionGraph
-            data={workoutContributionData}
-            defaultOpen
-            variant="inline"
-          />
-        ) : (
-          <Card>
-            <CardContent className="py-6 text-sm text-muted-foreground">
-              Loading workout trends...
-            </CardContent>
-          </Card>
         )}
       </div>
     </main>

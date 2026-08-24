@@ -45,7 +45,7 @@ export function WorkoutVolumeChart({
     <section className="space-y-6">
       <div className="space-y-3">
         <div>
-          <h2 className="text-xl font-semibold">Workout Volume</h2>
+          <h2 className="text-2xl font-semibold">Workout Volume</h2>
           <p className="text-sm text-muted-foreground">
             Separate from exercise metrics: this tracks total working-set volume
             by time range and focus.
