@@ -123,7 +123,7 @@ func (h *WorkoutHandler) GetNewWorkoutContext(w http.ResponseWriter, r *http.Req
 // MARK: GetContributionData
 // GetContributionData godoc
 // @Summary Get contribution graph data
-// @Description Get workout contribution data for the past 52 weeks, including daily working set counts and intensity levels (0-4) for visualization in a contribution graph
+// @Description Get complete workout contribution history, including daily working set counts and intensity levels (0-4) for analytics visualizations
 // @Tags workouts
 // @Accept json
 // @Produce json

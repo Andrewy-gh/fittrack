@@ -19,7 +19,9 @@ import {
   type HTMLAttributes,
   type ReactNode,
   useContext,
+  useLayoutEffect,
   useMemo,
+  useRef,
 } from "react";
 import { cn } from "@/lib/utils";
 
@@ -369,14 +371,24 @@ export const ContributionGraphCalendar = ({
 }: ContributionGraphCalendarProps) => {
   const { weeks, width, height, blockSize, blockMargin, labels } =
     useContributionGraph();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const monthLabels = useMemo(
     () => getMonthLabels(weeks, labels.months),
     [weeks, labels.months],
   );
 
+  useLayoutEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+
+    if (scrollContainer) {
+      scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+    }
+  }, [width]);
+
   return (
     <div
+      ref={scrollContainerRef}
       className={cn("max-w-full overflow-x-auto overflow-y-hidden", className)}
       {...props}
     >

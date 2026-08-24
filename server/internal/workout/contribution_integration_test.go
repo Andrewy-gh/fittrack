@@ -153,7 +153,7 @@ func TestContributionData_Integration(t *testing.T) {
 	// Test data
 	userID := "test-user-integration-contrib"
 
-	t.Run("VerifyDateRangeFiltering", func(t *testing.T) {
+	t.Run("VerifyCompleteHistory", func(t *testing.T) {
 		// Create workouts at different time points
 		now := time.Now()
 		ctx := setTestUserContext(context.Background(), t, pool, userID)
@@ -165,7 +165,7 @@ func TestContributionData_Integration(t *testing.T) {
 			withinRangeDate, "Within range", userID)
 		require.NoError(t, err)
 
-		// Workout outside 52 weeks (should not appear)
+		// Older workout should remain available for historical analytics
 		outsideRangeDate := now.AddDate(0, 0, -400) // Over a year ago
 		_, err = pool.Exec(ctx,
 			"INSERT INTO workout (date, notes, user_id) VALUES ($1, $2, $3)",
@@ -195,7 +195,7 @@ func TestContributionData_Integration(t *testing.T) {
 		}
 		assert.True(t, foundWithinRange, "Workout within 52 weeks should appear in contribution data")
 
-		// Check that the outside-range workout does NOT appear
+		// Check that the older workout appears
 		outsideRangeDateStr := getDatabaseDateString(t, pool, outsideRangeDate)
 		var foundOutsideRange bool
 		for _, day := range result.Days {
@@ -204,7 +204,7 @@ func TestContributionData_Integration(t *testing.T) {
 				break
 			}
 		}
-		assert.False(t, foundOutsideRange, "Workout outside 52 weeks should NOT appear in contribution data")
+		assert.True(t, foundOutsideRange, "Older workouts should appear in contribution history")
 	})
 
 	t.Run("VerifyMultipleWorkoutsPerDay", func(t *testing.T) {
