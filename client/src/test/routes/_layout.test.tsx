@@ -1,11 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@stackframe/react";
-import { LayoutComponent } from "@/routes/_layout";
-
-const routeContextMock = vi.hoisted(() => ({
-  user: null as CurrentUser | null,
-}));
+import { LayoutComponent } from "@/components/nav/layout-component";
 
 const routerMock = vi.hoisted(() => ({
   pathname: "/workouts",
@@ -16,10 +12,6 @@ const displayModeMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (config: unknown) => ({
-    ...(config as object),
-    useRouteContext: () => ({ user: routeContextMock.user }),
-  }),
   Outlet: () => <main data-testid="route-outlet" />,
   useRouterState: ({
     select,
@@ -56,15 +48,14 @@ vi.mock("@/components/pwa-install-prompt", () => ({
 
 describe("LayoutComponent", () => {
   beforeEach(() => {
-    routeContextMock.user = null;
     routerMock.pathname = "/workouts";
     displayModeMock.displayMode = "web";
   });
 
   it("renders a single app shell for the current user and route outlet", () => {
-    routeContextMock.user = { id: "user_1" } as CurrentUser;
+    const user = { id: "user_1" } as CurrentUser;
 
-    render(<LayoutComponent />);
+    render(<LayoutComponent user={user} />);
 
     expect(screen.getByTestId("app-shell")).toHaveTextContent("authed");
     expect(screen.getAllByTestId("app-shell")).toHaveLength(1);
@@ -72,7 +63,7 @@ describe("LayoutComponent", () => {
   });
 
   it("does not reserve bottom-nav space for web sessions", () => {
-    const { container } = render(<LayoutComponent />);
+    const { container } = render(<LayoutComponent user={null} />);
 
     expect(container.firstElementChild).not.toHaveClass(
       "pb-[calc(5rem+env(safe-area-inset-bottom))]",
@@ -85,7 +76,7 @@ describe("LayoutComponent", () => {
   it("reserves safe-area space for PWA sessions only", () => {
     displayModeMock.displayMode = "pwa";
 
-    const { container } = render(<LayoutComponent />);
+    const { container } = render(<LayoutComponent user={null} />);
 
     expect(container.firstElementChild).toHaveClass(
       "pt-[env(safe-area-inset-top)]",
@@ -94,10 +85,10 @@ describe("LayoutComponent", () => {
   });
 
   it("passes route, display mode, and user state to the install prompt", () => {
-    routeContextMock.user = { id: "user_1" } as CurrentUser;
+    const user = { id: "user_1" } as CurrentUser;
     routerMock.pathname = "/chat/sessions/today";
 
-    render(<LayoutComponent />);
+    render(<LayoutComponent user={user} />);
 
     expect(screen.getByTestId("install-prompt-props")).toHaveTextContent(
       "web:/chat/sessions/today:authed",
