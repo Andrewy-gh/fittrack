@@ -66,6 +66,7 @@ export function ChartBarMetric({
   unit,
   barColorVar = "var(--color-primary)",
   onWorkoutClick,
+  visibleBarCount,
 }: {
   title: string;
   description?: string;
@@ -75,6 +76,7 @@ export function ChartBarMetric({
   unit: Unit;
   barColorVar?: string;
   onWorkoutClick?: (workoutId: number) => void;
+  visibleBarCount?: number;
 }) {
   const breakpoint = useBreakpoint();
   const isWorkoutNavigationEnabled = breakpoint !== "mobile";
@@ -174,6 +176,7 @@ export function ChartBarMetric({
             barWidth={barWidth}
             height={chartHeight}
             resetKey={range}
+            visibleBarCount={visibleBarCount}
           >
             <ResponsiveContainer
               width="100%"

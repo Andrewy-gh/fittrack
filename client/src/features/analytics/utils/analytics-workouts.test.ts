@@ -66,10 +66,40 @@ describe("analytics workout helpers", () => {
       ),
     ).toEqual([
       {
+        x: "2026-03-17",
+        date: "2026-03-17",
+        focusType: undefined,
+        value: 0,
+      },
+      {
+        x: "2026-03-18",
+        date: "2026-03-18",
+        focusType: undefined,
+        value: 0,
+      },
+      {
+        x: "2026-03-19",
+        date: "2026-03-19",
+        focusType: undefined,
+        value: 0,
+      },
+      {
+        x: "2026-03-20",
+        date: "2026-03-20",
+        focusType: undefined,
+        value: 0,
+      },
+      {
         x: "2026-03-21",
         date: "2026-03-21",
         focusType: undefined,
         value: 1800,
+      },
+      {
+        x: "2026-03-22",
+        date: "2026-03-22",
+        focusType: undefined,
+        value: 0,
       },
       {
         x: "2026-03-23",
@@ -132,6 +162,15 @@ describe("analytics workout helpers", () => {
         undefined,
         new Date("2026-03-23T12:00:00.000Z"),
       ),
+    ).toHaveLength(7);
+
+    expect(
+      buildWorkoutVolumeChartData(
+        days,
+        "W",
+        undefined,
+        new Date("2026-03-23T12:00:00.000Z"),
+      ).filter((point) => point.value > 0),
     ).toEqual([
       {
         x: "2026-03-21",
@@ -280,6 +319,35 @@ describe("analytics workout helpers", () => {
     expect(chartData.at(-1)?.date).toBe("2026-04-01");
   });
 
+  it("starts bounded-range timelines at the first workout while keeping their default visible spans", () => {
+    const days = contributionDays([
+      {
+        date: "2025-01-15",
+        count: 1,
+        level: 1,
+        workouts: [
+          {
+            id: 1,
+            focus: "Push",
+            time: "2025-01-15T08:00:00.000Z",
+            volume: 1800,
+          },
+        ],
+      },
+    ]);
+    const today = new Date("2026-04-05T12:00:00.000Z");
+
+    expect(
+      buildWorkoutVolumeChartData(days, "W", undefined, today)[0]?.date,
+    ).toBe("2025-01-15");
+    expect(
+      buildWorkoutVolumeChartData(days, "M", undefined, today)[0]?.date,
+    ).toBe("2025-01-15");
+    expect(
+      buildWorkoutVolumeChartData(days, "6M", undefined, today)[0]?.date,
+    ).toBe("2025-01-13");
+  });
+
   it("starts the yearly timeline at the first workout month for recent and filtered data", () => {
     const days = contributionDays([
       {
@@ -321,13 +389,13 @@ describe("analytics workout helpers", () => {
 
   it("returns explicit bucket labels for each workout volume range", () => {
     expect(getWorkoutVolumeBucketLabel("W")).toBe(
-      "Daily bars for the last 7 days",
+      "Daily bars from your first workout, 7 visible at a time",
     );
     expect(getWorkoutVolumeBucketLabel("M")).toBe(
-      "Daily bars for the last 30 days",
+      "Daily bars from your first workout, 30 visible at a time",
     );
     expect(getWorkoutVolumeBucketLabel("6M")).toBe(
-      "Weekly bars for the last 26 weeks",
+      "Weekly bars from your first workout, 26 visible at a time",
     );
     expect(getWorkoutVolumeBucketLabel("Y")).toBe(
       "Monthly bars from your first workout",

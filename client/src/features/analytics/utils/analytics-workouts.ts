@@ -154,12 +154,22 @@ export function buildWorkoutVolumeChartData(
   today: Date = new Date(),
 ): MetricPoint[] {
   const volumeByDate = buildDailyVolumeMap(days, focus);
+  const firstWorkoutDate = (days ?? [])
+    .flatMap((day) =>
+      day?.date && (day.workouts?.length ?? 0) > 0 ? [day.date] : [],
+    )
+    .sort()[0];
 
   if (range === "W" || range === "M") {
     const span = range === "W" ? 7 : 30;
-    const start = addDays(today, -(span - 1));
+    const defaultStart = addDays(today, -(span - 1));
+    const historyStart = firstWorkoutDate
+      ? new Date(`${firstWorkoutDate}T00:00:00`)
+      : defaultStart;
+    const start = historyStart < defaultStart ? historyStart : defaultStart;
+    const dayCount = differenceInCalendarDays(today, start) + 1;
 
-    return Array.from({ length: span }, (_, index) => {
+    const points = Array.from({ length: dayCount }, (_, index) => {
       const date = addDays(start, index);
       const isoDate = toIsoDate(date);
       const dayVolume = volumeByDate.get(isoDate);
@@ -169,14 +179,27 @@ export function buildWorkoutVolumeChartData(
         focusType: focus ? undefined : dayVolume?.focusType,
         value: Math.round(dayVolume?.volume ?? 0),
       };
-    }).filter((point) => point.value > 0);
+    });
+
+    return points;
   }
 
   if (range === "6M") {
     const currentWeekStart = startOfWeek(today);
-    const firstWeekStart = addDays(currentWeekStart, -(25 * 7));
+    const defaultFirstWeekStart = addDays(currentWeekStart, -(25 * 7));
+    const historyWeekStart = firstWorkoutDate
+      ? startOfWeek(new Date(`${firstWorkoutDate}T00:00:00`))
+      : defaultFirstWeekStart;
+    const firstWeekStart =
+      historyWeekStart < defaultFirstWeekStart
+        ? historyWeekStart
+        : defaultFirstWeekStart;
+    const weekCount =
+      Math.floor(
+        differenceInCalendarDays(currentWeekStart, firstWeekStart) / 7,
+      ) + 1;
 
-    return Array.from({ length: 26 }, (_, index) => {
+    return Array.from({ length: weekCount }, (_, index) => {
       const weekStart = addDays(firstWeekStart, index * 7);
       let total = 0;
 
@@ -197,11 +220,6 @@ export function buildWorkoutVolumeChartData(
   }
 
   const currentMonthStart = startOfMonth(today);
-  const firstWorkoutDate = (days ?? [])
-    .flatMap((day) =>
-      day?.date && (day.workouts?.length ?? 0) > 0 ? [day.date] : [],
-    )
-    .sort()[0];
   const firstMonthStart = firstWorkoutDate
     ? startOfMonth(new Date(`${firstWorkoutDate}T00:00:00`))
     : currentMonthStart;
@@ -238,11 +256,11 @@ export function buildWorkoutVolumeChartData(
 export function getWorkoutVolumeBucketLabel(range: RangeType): string {
   switch (range) {
     case "W":
-      return "Daily bars for the last 7 days";
+      return "Daily bars from your first workout, 7 visible at a time";
     case "M":
-      return "Daily bars for the last 30 days";
+      return "Daily bars from your first workout, 30 visible at a time";
     case "6M":
-      return "Weekly bars for the last 26 weeks";
+      return "Weekly bars from your first workout, 26 visible at a time";
     case "Y":
       return "Monthly bars from your first workout";
     default:

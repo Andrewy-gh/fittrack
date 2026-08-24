@@ -65,6 +65,7 @@ interface ScrollableChartProps {
   barWidth?: number;
   height?: number;
   resetKey?: string | number;
+  visibleBarCount?: number;
 }
 
 export function ScrollableChart({
@@ -73,6 +74,7 @@ export function ScrollableChart({
   barWidth,
   height = 320,
   resetKey,
+  visibleBarCount,
 }: ScrollableChartProps) {
   const breakpoint = useBreakpoint();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -83,7 +85,11 @@ export function ScrollableChart({
 
   const effectiveBarWidth =
     barWidth ?? getResponsiveValue(responsiveConfig.barWidth, breakpoint);
-  const minChartWidth = dataLength * effectiveBarWidth;
+  const fittedBarWidth =
+    visibleBarCount && containerWidth > 0
+      ? containerWidth / visibleBarCount
+      : effectiveBarWidth;
+  const minChartWidth = dataLength * fittedBarWidth;
   const chartWidth = Math.max(minChartWidth, containerWidth || 0);
   const buttonConfig = responsiveConfig.scrollButton[breakpoint];
 
