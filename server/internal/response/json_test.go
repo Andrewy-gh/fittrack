@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestSanitizeErrorMessage(t *testing.T) {
@@ -201,67 +201,125 @@ func TestContainsJWTError(t *testing.T) {
 	}
 }
 
-func TestErrorJSON_NoSensitiveDataInResponse(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+func TestErrorJSON_WritesSanitizedHTTPResponse(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+	req = req.WithContext(request.WithRequestID(req.Context(), "req-http-response"))
+	w := httptest.NewRecorder()
 
+	ErrorJSON(
+		w,
+		req,
+		logger,
+		http.StatusInternalServerError,
+		"failed to create user",
+		errors.New("pq: duplicate key value violates unique constraint \"users_pkey\" SQLSTATE 23505"),
+	)
+
+	if got, want := w.Code, http.StatusInternalServerError; got != want {
+		t.Errorf("status = %d, want %d", got, want)
+	}
+	if got, want := w.Header().Get("Content-Type"), "application/json"; got != want {
+		t.Errorf("Content-Type = %q, want %q", got, want)
+	}
+	if got, want := w.Body.String(), `{"message":"internal error","request_id":"req-http-response"}`; got != want {
+		t.Errorf("serialized response = %s, want %s", got, want)
+	}
+}
+
+func TestErrorJSON_DoesNotLeakSensitiveData(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	tests := []struct {
-		name                string
-		message             string
-		err                 error
-		expectedResponseMsg string
-		description         string
+		name             string
+		message          string
+		err              error
+		expectedResponse string
+		forbidden        []string
 	}{
 		{
-			name:                "PostgreSQL constraint violation",
-			message:             "failed to create user",
-			err:                 errors.New("pq: duplicate key value violates unique constraint \"users_pkey\" SQLSTATE 23505"),
-			expectedResponseMsg: "internal error",
-			description:         "Database errors should be sanitized in response",
+			name:    "PostgreSQL constraint details",
+			message: "failed to create user",
+			err: &pgconn.PgError{
+				Code:    "23505",
+				Message: "duplicate key value violates unique constraint \"users_pkey\" DETAIL: Key (user_id)=(test) already exists",
+			},
+			expectedResponse: "internal error",
+			forbidden:        []string{"duplicate key", "users_pkey", "SQLSTATE", "23505"},
 		},
 		{
-			name:                "pgx connection error",
-			message:             "database unavailable",
-			err:                 errors.New("pgx: failed to connect to database pool"),
-			expectedResponseMsg: "internal error",
-			description:         "pgx errors should be sanitized in response",
+			name:             "pgx connection details",
+			message:          "database unavailable",
+			err:              errors.New("pgx: failed to connect to database pool"),
+			expectedResponse: "internal error",
+			forbidden:        []string{"pgx:", "connect", "database pool"},
 		},
 		{
-			name:                "JWT token error",
-			message:             "authentication failed",
-			err:                 errors.New("failed to parse token: invalid signature algorithm RS256"),
-			expectedResponseMsg: "unauthorized",
-			description:         "JWT errors should be sanitized to 'unauthorized'",
+			name:             "relation and table details",
+			message:          "operation failed",
+			err:              errors.New("pq: relation \"users\" does not exist"),
+			expectedResponse: "internal error",
+			forbidden:        []string{"pq:", "relation", "users"},
 		},
+		{
+			name:             "JWT token details",
+			message:          "authentication failed",
+			err:              errors.New("failed to parse token: invalid signature algorithm RS256 token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"),
+			expectedResponse: "unauthorized",
+			forbidden:        []string{"token:", "signature", "RS256", "eyJhbGci"},
+		},
+	}
+
+	for _, code := range []string{
+		"23503", "42501", "42P01", "42703", "08006", "57P01",
+	} {
+		tests = append(tests, struct {
+			name             string
+			message          string
+			err              error
+			expectedResponse string
+			forbidden        []string
+		}{
+			name:    "PostgreSQL status code " + code,
+			message: "operation failed",
+			err: &pgconn.PgError{
+				Code:    code,
+				Message: "query failed",
+			},
+			expectedResponse: "internal error",
+			forbidden:        []string{code, "SQLSTATE"},
+		})
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a test HTTP request and response
-			req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
 			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
 
-			// Call ErrorJSON
-			ErrorJSON(w, req, logger, http.StatusInternalServerError, tt.message, tt.err)
+			ErrorJSON(
+				w,
+				req,
+				logger,
+				http.StatusInternalServerError,
+				tt.message,
+				tt.err,
+			)
 
-			// Check that the HTTP response contains the sanitized message
-			responseBody := w.Body.String()
-			if !strings.Contains(responseBody, fmt.Sprintf(`"message":"%s"`, tt.expectedResponseMsg)) {
-				t.Errorf("Response body should contain sanitized message '%s', got: %s",
-					tt.expectedResponseMsg, responseBody)
+			if got, want := w.Code, http.StatusInternalServerError; got != want {
+				t.Errorf("status = %d, want %d", got, want)
 			}
 
-			// Verify that sensitive information is NOT in the response
-			if tt.err != nil {
-				sensitiveContent := tt.err.Error()
-				if strings.Contains(responseBody, sensitiveContent) {
-					t.Errorf("Response body should NOT contain sensitive error details: %s\nResponse: %s",
-						sensitiveContent, responseBody)
+			var response Error
+			if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+				t.Fatalf("failed to decode response: %v", err)
+			}
+			if got := response.Message; got != tt.expectedResponse {
+				t.Errorf("response message = %q, want %q", got, tt.expectedResponse)
+			}
+
+			for _, forbidden := range tt.forbidden {
+				if strings.Contains(w.Body.String(), forbidden) {
+					t.Errorf("response leaked sensitive detail %q: %s", forbidden, w.Body.String())
 				}
-			}
-
-			// Check status code
-			if w.Code != http.StatusInternalServerError {
-				t.Errorf("Expected status code %d, got %d", http.StatusInternalServerError, w.Code)
 			}
 		})
 	}
@@ -313,57 +371,5 @@ func TestErrorJSON_LogsSafeErrorSummary(t *testing.T) {
 	}
 	if got := logEntry["error_type"]; got != "*errors.errorString" {
 		t.Fatalf("expected stable error_type field, got %v", got)
-	}
-}
-
-// TestNoPostgreSQLErrorCodesInResponse is the main test required by the task
-func TestNoPostgreSQLErrorCodesInResponse(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-
-	// Common PostgreSQL error codes that should never appear in HTTP responses
-	pgErrorCodes := []string{
-		"23505", // unique_violation
-		"23503", // foreign_key_violation
-		"42501", // insufficient_privilege
-		"42P01", // undefined_table
-		"42703", // undefined_column
-		"08006", // connection_failure
-		"57P01", // admin_shutdown
-	}
-
-	pgxErrors := []string{
-		"pgx: connection",
-		"pq: duplicate key",
-		"SQLSTATE",
-		"constraint violation",
-		"relation does not exist",
-	}
-
-	allSensitiveErrors := append(pgErrorCodes, pgxErrors...)
-
-	for _, errorCode := range allSensitiveErrors {
-		t.Run(fmt.Sprintf("ErrorCode_%s", errorCode), func(t *testing.T) {
-			// Create an error that contains the sensitive code/message
-			testErr := errors.New(fmt.Sprintf("Database error with code: %s and additional context", errorCode))
-
-			req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
-			w := httptest.NewRecorder()
-
-			// Call ErrorJSON with the sensitive error
-			ErrorJSON(w, req, logger, http.StatusInternalServerError, "operation failed", testErr)
-
-			responseBody := w.Body.String()
-
-			// Assert that the sensitive error code/message does NOT appear in the HTTP response
-			if strings.Contains(responseBody, errorCode) {
-				t.Errorf("HTTP response contains sensitive database error code '%s'.\nResponse body: %s",
-					errorCode, responseBody)
-			}
-
-			// Assert that we get a generic error message instead
-			if !strings.Contains(responseBody, `"message":"internal error"`) {
-				t.Errorf("Expected sanitized 'internal error' message in response, got: %s", responseBody)
-			}
-		})
 	}
 }

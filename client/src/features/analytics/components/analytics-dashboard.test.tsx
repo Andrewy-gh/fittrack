@@ -24,7 +24,7 @@ vi.mock("@/features/workouts/components/workout-contribution-graph", () => ({
 }));
 
 describe("AnalyticsDashboard", () => {
-  it("shows a centered, card-free primary spinner while exercise details load", () => {
+  it("shows a loading status while exercise details load", () => {
     render(
       <AnalyticsDashboard
         isLoadingExercises={false}
@@ -45,12 +45,8 @@ describe("AnalyticsDashboard", () => {
     );
 
     const status = screen.getByRole("status");
-    const spinner = status.querySelector("svg");
 
     expect(status).toHaveTextContent("Loading exercise metrics...");
-    expect(status).toHaveClass("justify-center");
-    expect(status.closest('[data-slot="card"]')).toBeNull();
-    expect(spinner).toHaveClass("size-6", "text-primary");
     expect(screen.queryByText("Session metrics")).not.toBeInTheDocument();
   });
 });

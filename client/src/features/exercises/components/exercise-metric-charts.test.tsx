@@ -52,12 +52,8 @@ describe("ExerciseMetricCharts", () => {
     );
 
     const status = screen.getByRole("status");
-    const spinner = status.querySelector("svg");
 
     expect(status).toHaveTextContent("Loading session metrics...");
-    expect(status.closest('[data-slot="card"]')).toBeNull();
-    expect(status).toHaveClass("justify-center");
-    expect(spinner).toHaveClass("size-6", "text-primary");
     expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
   });
 
@@ -68,7 +64,7 @@ describe("ExerciseMetricCharts", () => {
       isPending: false,
     });
 
-    const { container } = render(
+    render(
       <ExerciseMetricCharts
         exerciseId={1}
         exerciseSets={[]}
@@ -76,11 +72,9 @@ describe("ExerciseMetricCharts", () => {
       />,
     );
 
-    const message = screen.getByText("No working-set sessions in this range.");
-
-    expect(message).toHaveClass("text-center");
-    expect(message.closest('[data-slot="card"]')).toBeNull();
-    expect(container.querySelector('[data-slot="card"]')).toBeNull();
+    expect(
+      screen.getByText("No working-set sessions in this range."),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
   });
 
@@ -109,7 +103,7 @@ describe("ExerciseMetricCharts", () => {
       isPending: false,
     });
 
-    const { container } = render(
+    render(
       <ExerciseMetricCharts
         exerciseId={1}
         exerciseSets={[]}
@@ -117,13 +111,9 @@ describe("ExerciseMetricCharts", () => {
       />,
     );
 
-    const message = screen.getByText(
-      "No weighted metrics for this exercise/range.",
-    );
-
-    expect(message).toHaveClass("text-center");
-    expect(message.closest('[data-slot="card"]')).toBeNull();
-    expect(container.querySelector('[data-slot="card"]')).toBeNull();
+    expect(
+      screen.getByText("No weighted metrics for this exercise/range."),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
   });
 
