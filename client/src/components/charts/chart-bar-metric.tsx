@@ -9,7 +9,7 @@ import {
   YAxis,
   type TooltipProps,
 } from "recharts";
-import { format, parseISO } from "date-fns";
+import { addDays, format, isSameMonth, parseISO } from "date-fns";
 
 import {
   getResponsiveValue,
@@ -35,6 +35,20 @@ function formatValue(unit: Unit, value: number) {
   if (unit === "%") return `${value.toFixed(1)}%`;
   if (unit === "vol") return `${Math.round(value).toLocaleString()} vol`;
   return `${Math.round(value).toLocaleString()} lb`;
+}
+
+/** Formats the date heading shown for a chart bucket tooltip. */
+export function formatTooltipDateLabel(
+  date: Date,
+  bucket: MetricsChartBucket,
+): string {
+  if (bucket === "month") return format(date, "MMM yyyy");
+  if (bucket !== "week") return format(date, "PPP");
+
+  const weekEnd = addDays(date, 6);
+  return isSameMonth(date, weekEnd)
+    ? `${format(date, "MMM d")} - ${format(weekEnd, "d yyyy")}`
+    : `${format(date, "MMM d")} - ${format(weekEnd, "MMM d yyyy")}`;
 }
 
 export function formatTooltipFocusType(focusType?: string) {
@@ -67,7 +81,10 @@ export function ChartBarMetric({
   const resolvedBucket =
     bucket ?? (range === "Y" ? "month" : range === "6M" ? "week" : "workout");
 
-  const barWidth = getResponsiveValue(responsiveConfig.barWidth, breakpoint);
+  const barWidth = getResponsiveValue(
+    range === "Y" ? responsiveConfig.yearBarWidth : responsiveConfig.barWidth,
+    breakpoint,
+  );
   const yAxisWidth = getResponsiveValue(
     responsiveConfig.yAxisWidth,
     breakpoint,
@@ -92,8 +109,7 @@ export function ChartBarMetric({
   >["labelFormatter"] = (x) => {
     const date = dateByX.get(String(x));
     if (!date) return "";
-    const dateFormat = resolvedBucket === "month" ? "MMM yyyy" : "PPP";
-    return format(parseISO(date), dateFormat);
+    return formatTooltipDateLabel(parseISO(date), resolvedBucket);
   };
 
   return (

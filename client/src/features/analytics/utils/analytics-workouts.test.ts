@@ -68,16 +68,25 @@ describe("analytics workout helpers", () => {
       {
         x: "2026-03-21",
         date: "2026-03-21",
-        focusType: "Push",
+        focusType: undefined,
         value: 1800,
       },
       {
         x: "2026-03-23",
         date: "2026-03-23",
-        focusType: "Push",
+        focusType: undefined,
         value: 2600,
       },
     ]);
+
+    expect(
+      buildWorkoutVolumeChartData(
+        days,
+        "M",
+        "Push",
+        new Date("2026-03-23T12:00:00.000Z"),
+      ).every((point) => point.focusType === undefined),
+    ).toBe(true);
   });
 
   it("adds focus types to all-focus daily workout volume buckets", () => {
@@ -139,7 +148,7 @@ describe("analytics workout helpers", () => {
     ]);
   });
 
-  it("adds focus types to all-focus weekly and monthly volume buckets", () => {
+  it("omits focus types from weekly and monthly volume buckets", () => {
     const days = contributionDays([
       {
         date: "2026-03-16",
@@ -193,13 +202,13 @@ describe("analytics workout helpers", () => {
       {
         x: "2026-03-16",
         date: "2026-03-16",
-        focusType: "Pull, Push",
+        focusType: undefined,
         value: 4000,
       },
       {
         x: "2026-03-30",
         date: "2026-03-30",
-        focusType: "Legs",
+        focusType: undefined,
         value: 2600,
       },
     ]);
@@ -215,16 +224,99 @@ describe("analytics workout helpers", () => {
       {
         x: "2026-03-01",
         date: "2026-03-01",
-        focusType: "Pull, Push",
+        focusType: undefined,
         value: 4000,
       },
       {
         x: "2026-04-01",
         date: "2026-04-01",
-        focusType: "Legs",
+        focusType: undefined,
         value: 2600,
       },
     ]);
+
+    for (const range of ["6M", "Y"] as const) {
+      const pushBuckets = buildWorkoutVolumeChartData(
+        days,
+        range,
+        "Push",
+        new Date("2026-04-05T12:00:00.000Z"),
+      ).filter((point) => point.value > 0);
+
+      expect(pushBuckets).toHaveLength(1);
+      expect(pushBuckets[0]?.focusType).toBeUndefined();
+    }
+  });
+
+  it("builds a continuous yearly timeline back to the first workout month", () => {
+    const chartData = buildWorkoutVolumeChartData(
+      contributionDays([
+        {
+          date: "2024-01-15",
+          count: 1,
+          level: 1,
+          workouts: [
+            {
+              id: 1,
+              focus: "Push",
+              time: "2024-01-15T08:00:00.000Z",
+              volume: 1800,
+            },
+          ],
+        },
+      ]),
+      "Y",
+      undefined,
+      new Date("2026-04-05T12:00:00.000Z"),
+    );
+
+    expect(chartData).toHaveLength(28);
+    expect(chartData[0]).toEqual({
+      x: "2024-01-01",
+      date: "2024-01-01",
+      focusType: undefined,
+      value: 1800,
+    });
+    expect(chartData.at(-1)?.date).toBe("2026-04-01");
+  });
+
+  it("starts the yearly timeline at the first workout month for recent and filtered data", () => {
+    const days = contributionDays([
+      {
+        date: "2026-03-15",
+        count: 1,
+        level: 1,
+        workouts: [
+          {
+            id: 1,
+            focus: "Pull",
+            time: "2026-03-15T08:00:00.000Z",
+            volume: 1800,
+          },
+        ],
+      },
+      {
+        date: "2026-04-01",
+        count: 1,
+        level: 1,
+        workouts: [
+          {
+            id: 2,
+            focus: "Push",
+            time: "2026-04-01T08:00:00.000Z",
+            volume: 2200,
+          },
+        ],
+      },
+    ]);
+    const today = new Date("2026-04-05T12:00:00.000Z");
+
+    expect(
+      buildWorkoutVolumeChartData(days, "Y", undefined, today),
+    ).toHaveLength(2);
+    expect(buildWorkoutVolumeChartData(days, "Y", "Push", today)[0]?.date).toBe(
+      "2026-03-01",
+    );
   });
 
   it("returns explicit bucket labels for each workout volume range", () => {
@@ -238,7 +330,7 @@ describe("analytics workout helpers", () => {
       "Weekly bars for the last 26 weeks",
     );
     expect(getWorkoutVolumeBucketLabel("Y")).toBe(
-      "Monthly bars for the last 12 months",
+      "Monthly bars from your first workout",
     );
   });
 

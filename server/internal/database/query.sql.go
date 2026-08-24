@@ -1012,7 +1012,6 @@ WITH workout_totals AS (
     FROM workout w
     LEFT JOIN "set" s ON s.workout_id = w.id
     WHERE w.user_id = $1
-      AND w.date >= CURRENT_DATE - INTERVAL '52 weeks'
     GROUP BY w.id, w.date, w.workout_focus
 )
 SELECT
