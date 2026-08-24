@@ -66,10 +66,40 @@ describe("analytics workout helpers", () => {
       ),
     ).toEqual([
       {
+        x: "2026-03-17",
+        date: "2026-03-17",
+        focusType: undefined,
+        value: 0,
+      },
+      {
+        x: "2026-03-18",
+        date: "2026-03-18",
+        focusType: undefined,
+        value: 0,
+      },
+      {
+        x: "2026-03-19",
+        date: "2026-03-19",
+        focusType: undefined,
+        value: 0,
+      },
+      {
+        x: "2026-03-20",
+        date: "2026-03-20",
+        focusType: undefined,
+        value: 0,
+      },
+      {
         x: "2026-03-21",
         date: "2026-03-21",
         focusType: undefined,
         value: 1800,
+      },
+      {
+        x: "2026-03-22",
+        date: "2026-03-22",
+        focusType: undefined,
+        value: 0,
       },
       {
         x: "2026-03-23",
@@ -132,6 +162,15 @@ describe("analytics workout helpers", () => {
         undefined,
         new Date("2026-03-23T12:00:00.000Z"),
       ),
+    ).toHaveLength(7);
+
+    expect(
+      buildWorkoutVolumeChartData(
+        days,
+        "W",
+        undefined,
+        new Date("2026-03-23T12:00:00.000Z"),
+      ).filter((point) => point.value > 0),
     ).toEqual([
       {
         x: "2026-03-21",

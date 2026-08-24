@@ -159,7 +159,7 @@ export function buildWorkoutVolumeChartData(
     const span = range === "W" ? 7 : 30;
     const start = addDays(today, -(span - 1));
 
-    return Array.from({ length: span }, (_, index) => {
+    const points = Array.from({ length: span }, (_, index) => {
       const date = addDays(start, index);
       const isoDate = toIsoDate(date);
       const dayVolume = volumeByDate.get(isoDate);
@@ -169,7 +169,9 @@ export function buildWorkoutVolumeChartData(
         focusType: focus ? undefined : dayVolume?.focusType,
         value: Math.round(dayVolume?.volume ?? 0),
       };
-    }).filter((point) => point.value > 0);
+    });
+
+    return range === "W" ? points : points.filter((point) => point.value > 0);
   }
 
   if (range === "6M") {
