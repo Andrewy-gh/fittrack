@@ -105,6 +105,7 @@ export function WorkoutVolumeChart({
           }
           data={chartData}
           unit="vol"
+          fitToWidth={selectedRange === "M" || selectedRange === "6M"}
         />
       )}
     </section>
