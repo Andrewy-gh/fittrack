@@ -166,7 +166,7 @@ export function buildWorkoutVolumeChartData(
       return {
         x: isoDate,
         date: isoDate,
-        focusType: dayVolume?.focusType,
+        focusType: focus ? undefined : dayVolume?.focusType,
         value: Math.round(dayVolume?.volume ?? 0),
       };
     }).filter((point) => point.value > 0);
@@ -178,38 +178,42 @@ export function buildWorkoutVolumeChartData(
 
     return Array.from({ length: 26 }, (_, index) => {
       const weekStart = addDays(firstWeekStart, index * 7);
-      const focusTypes = new Set<string>();
       let total = 0;
 
       for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
         const day = addDays(weekStart, dayOffset);
         const dayVolume = volumeByDate.get(toIsoDate(day));
         total += dayVolume?.volume ?? 0;
-
-        if (dayVolume?.volume) {
-          for (const focusType of dayVolume.focusTypes) {
-            focusTypes.add(focusType);
-          }
-        }
       }
 
       const isoDate = toIsoDate(weekStart);
       return {
         x: isoDate,
         date: isoDate,
-        focusType: formatFocusTypes(focusTypes),
+        focusType: undefined,
         value: Math.round(total),
       };
     });
   }
 
   const currentMonthStart = startOfMonth(today);
-  const firstMonthStart = addMonths(currentMonthStart, -11);
+  const firstWorkoutDate = (days ?? [])
+    .flatMap((day) =>
+      day?.date && (day.workouts?.length ?? 0) > 0 ? [day.date] : [],
+    )
+    .sort()[0];
+  const firstMonthStart = firstWorkoutDate
+    ? startOfMonth(new Date(`${firstWorkoutDate}T00:00:00`))
+    : currentMonthStart;
+  const monthCount =
+    (currentMonthStart.getFullYear() - firstMonthStart.getFullYear()) * 12 +
+    currentMonthStart.getMonth() -
+    firstMonthStart.getMonth() +
+    1;
 
-  return Array.from({ length: 12 }, (_, index) => {
+  return Array.from({ length: monthCount }, (_, index) => {
     const monthStart = addMonths(firstMonthStart, index);
     const nextMonthStart = addMonths(monthStart, 1);
-    const focusTypes = new Set<string>();
     let total = 0;
 
     for (
@@ -219,19 +223,13 @@ export function buildWorkoutVolumeChartData(
     ) {
       const dayVolume = volumeByDate.get(toIsoDate(cursor));
       total += dayVolume?.volume ?? 0;
-
-      if (dayVolume?.volume) {
-        for (const focusType of dayVolume.focusTypes) {
-          focusTypes.add(focusType);
-        }
-      }
     }
 
     const isoDate = toIsoDate(monthStart);
     return {
       x: isoDate,
       date: isoDate,
-      focusType: formatFocusTypes(focusTypes),
+      focusType: undefined,
       value: Math.round(total),
     };
   });
@@ -246,7 +244,7 @@ export function getWorkoutVolumeBucketLabel(range: RangeType): string {
     case "6M":
       return "Weekly bars for the last 26 weeks";
     case "Y":
-      return "Monthly bars for the last 12 months";
+      return "Monthly bars from your first workout";
     default:
       return "Volume by time period";
   }

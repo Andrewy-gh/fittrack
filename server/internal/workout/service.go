@@ -217,7 +217,7 @@ func (ws *WorkoutService) ListWorkoutFocusValues(ctx context.Context) ([]string,
 	return focusValues, nil
 }
 
-// GetContributionData retrieves contribution graph data for the past 52 weeks
+// GetContributionData retrieves complete contribution history for analytics.
 func (ws *WorkoutService) GetContributionData(ctx context.Context) (*ContributionDataResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {

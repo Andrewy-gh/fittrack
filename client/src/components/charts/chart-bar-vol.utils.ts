@@ -21,6 +21,11 @@ export const responsiveConfig = {
     tablet: 40,
     desktop: 50,
   },
+  yearBarWidth: {
+    mobile: 20,
+    tablet: 28,
+    desktop: 36,
+  },
   fontSize: {
     mobile: 10,
     tablet: 11,

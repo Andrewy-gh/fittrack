@@ -1803,9 +1803,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get workout contribution data for the past 52 weeks, including
-        daily working set counts and intensity levels (0-4) for visualization in a
-        contribution graph
+      description: Get complete workout contribution history, including daily working
+        set counts and intensity levels (0-4) for analytics visualizations
       produces:
       - application/json
       responses:

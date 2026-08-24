@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ChartBarMetric,
+  formatTooltipDateLabel,
   formatTooltipFocusType,
   getAxisDateFormat,
 } from "./chart-bar-metric";
@@ -103,6 +104,20 @@ describe("ChartBarMetric", () => {
 describe("getAxisDateFormat", () => {
   it("uses single-letter labels for monthly axis ticks", () => {
     expect(getAxisDateFormat("month")).toBe("MMMMM");
+  });
+});
+
+describe("formatTooltipDateLabel", () => {
+  it("formats a weekly range within one month", () => {
+    expect(formatTooltipDateLabel(new Date(2026, 2, 2), "week")).toBe(
+      "Mar 2 - 8 2026",
+    );
+  });
+
+  it("formats both month names when a weekly range crosses months", () => {
+    expect(formatTooltipDateLabel(new Date(2026, 2, 30), "week")).toBe(
+      "Mar 30 - Apr 5 2026",
+    );
   });
 });
 
