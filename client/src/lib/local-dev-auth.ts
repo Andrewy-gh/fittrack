@@ -98,7 +98,7 @@ export function getLocalDevRouteUser():
       clearLocalDevAuthSession();
       window.location.assign("/");
     },
-  } as unknown as CurrentUser;
+  } as CurrentUser;
 }
 
 export function clearLocalDevAuthSession(): void {

@@ -7,6 +7,10 @@ export const PWA_INSTALL_PROMPT_DISMISS_KEY = "fittrack:pwa-install-prompt:v1";
 
 type DevicePlatform = "ios" | "android" | "other";
 type PromptUser = CurrentUser | CurrentInternalUser | null;
+type InstallPromptCopy = {
+  title: string;
+  body: string;
+};
 
 interface PwaInstallPromptProps {
   displayMode: DisplayMode;
@@ -42,7 +46,7 @@ function isMobileTouch(platform: DevicePlatform): boolean {
   return isTouch && (mobileViewport || platformKnown);
 }
 
-function getCopy(platform: DevicePlatform): { title: string; body: string } {
+function getCopy(platform: DevicePlatform): InstallPromptCopy {
   if (platform === "ios") {
     return {
       title: "Install FitTrack",

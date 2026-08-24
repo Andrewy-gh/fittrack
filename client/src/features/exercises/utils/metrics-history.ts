@@ -16,14 +16,16 @@ export type MetricsHistoryPoint = {
   total_volume_working: number;
 };
 
-export function computeDemoMetricsHistory(
-  exerciseSets: ExerciseExerciseWithSetsResponse[],
-  range: MetricsHistoryRange,
-): {
+type MetricsHistoryResult = {
   range: MetricsHistoryRange;
   bucket: Bucket;
   points: MetricsHistoryPoint[];
-} {
+};
+
+export function computeDemoMetricsHistory(
+  exerciseSets: ExerciseExerciseWithSetsResponse[],
+  range: MetricsHistoryRange,
+): MetricsHistoryResult {
   const byWorkout = new Map<
     number,
     { date: string; sets: ExerciseExerciseWithSetsResponse[] }
