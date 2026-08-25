@@ -89,6 +89,7 @@ function CommandList({
   return (
     <CommandPrimitive.List
       data-slot="command-list"
+      data-vaul-no-drag
       className={cn(
         "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch]",
         className,

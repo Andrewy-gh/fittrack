@@ -118,6 +118,15 @@ async function renderGenericCombobox({
 }
 
 describe("GenericCombobox touch activation", () => {
+  it("keeps mobile list gestures from dragging the drawer", async () => {
+    await renderGenericCombobox();
+
+    const option = await screen.findByRole("option", { name: "Squat" });
+    const list = option.closest('[data-slot="command-list"]');
+
+    expect(list).toHaveAttribute("data-vaul-no-drag");
+  });
+
   it("selects an existing option on touch release in the mobile drawer path", async () => {
     const onChange = vi.fn();
     await renderGenericCombobox({ onChange });
