@@ -79,10 +79,6 @@ function WorkoutDetailBase({
   );
 }
 
-export function WorkoutDetail({ workout }: WorkoutDetailProps) {
-  return <WorkoutDetailBase workout={workout} />;
-}
-
 export function WorkoutDetailEditable({
   workout,
   draftStorage = workoutDraftStorage,

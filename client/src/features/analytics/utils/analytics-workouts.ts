@@ -130,17 +130,17 @@ function buildDailyVolumeMap(
 ) {
   const volumeByDate = new Map<
     string,
-    { focusType?: string; focusTypes: string[]; volume: number }
+    { focusType?: string; volume: number }
   >();
 
   for (const day of days ?? []) {
     if (!day?.date) continue;
-    const volume = sumVolumeForDay(day, focus);
-    const focusTypes = focus ? [focus] : getFocusTypesForDay(day);
+    const focusType = focus
+      ? undefined
+      : formatFocusTypes(new Set(getFocusTypesForDay(day)));
     volumeByDate.set(day.date, {
-      focusType: formatFocusTypes(new Set(focusTypes)),
-      focusTypes,
-      volume,
+      focusType,
+      volume: sumVolumeForDay(day, focus),
     });
   }
 

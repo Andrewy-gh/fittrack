@@ -10,10 +10,18 @@ import {
 } from "./chart-bar-metric";
 import { useBreakpoint } from "./chart-bar-vol.utils";
 
+const { mockScrollableChart } = vi.hoisted(() => ({
+  mockScrollableChart: vi.fn(),
+}));
+
 vi.mock("./chart-bar-vol.components", () => ({
-  ScrollableChart: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  ScrollableChart: (props: {
+    children: React.ReactNode;
+    visibleBarCount?: number;
+  }) => {
+    mockScrollableChart(props);
+    return <div>{props.children}</div>;
+  },
 }));
 
 vi.mock("recharts", () => ({
@@ -54,6 +62,7 @@ vi.mock("./chart-bar-vol.utils", async () => {
 
 describe("ChartBarMetric", () => {
   beforeEach(() => {
+    mockScrollableChart.mockClear();
     vi.mocked(useBreakpoint).mockReturnValue("desktop");
   });
 
@@ -74,6 +83,21 @@ describe("ChartBarMetric", () => {
     await user.click(screen.getByTestId("metric-bar"));
 
     expect(onWorkoutClick).toHaveBeenCalledWith(42);
+  });
+
+  it("derives the visible bar count from the selected range", () => {
+    render(
+      <ChartBarMetric
+        title="Session Best 1RM"
+        range="6M"
+        data={[{ x: "1", date: "2026-03-01", value: 225 }]}
+        unit="lb"
+      />,
+    );
+
+    expect(mockScrollableChart).toHaveBeenCalledWith(
+      expect.objectContaining({ visibleBarCount: 26 }),
+    );
   });
 
   it("does not navigate when the chart is rendered on mobile", async () => {

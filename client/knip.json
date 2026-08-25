@@ -1,6 +1,14 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  "include": ["files", "dependencies", "unlisted"],
+  "include": ["files", "dependencies", "unlisted", "exports"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/client/**": ["exports"],
+    "src/components/kibo-ui/**": ["exports"],
+    "src/components/ui/**": ["exports"],
+    "src/features/**/test/**": ["exports"],
+    "tests/e2e/helpers/**": ["exports"]
+  },
   "ignoreFiles": [
     "src/client/schemas.gen.ts",
     "src/components/date-picker-base.tsx",

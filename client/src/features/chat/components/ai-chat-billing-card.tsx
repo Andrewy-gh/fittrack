@@ -511,12 +511,6 @@ function getCancellationMessage(
   return `Access continues until ${formatBillingDate(subscription.access_ends_at)}.`;
 }
 
-export function isSubscriptionCancellationScheduled(
-  subscription: BillingSubscription,
-): boolean {
-  return subscription.cancellation_scheduled;
-}
-
 function formatBillingDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {

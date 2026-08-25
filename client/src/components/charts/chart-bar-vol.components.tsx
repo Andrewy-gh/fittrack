@@ -68,6 +68,10 @@ interface ScrollableChartProps {
   visibleBarCount?: number;
 }
 
+function getMaxScrollLeft(minChartWidth: number, clientWidth: number): number {
+  return Math.max(0, minChartWidth - clientWidth);
+}
+
 export function ScrollableChart({
   children,
   dataLength,
@@ -82,6 +86,13 @@ export function ScrollableChart({
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const previousMaxScrollLeftRef = useRef<number | null>(null);
+  const previousScrollResetRef = useRef({
+    resetKey,
+    dataLength,
+    barWidth,
+    height,
+  });
 
   const effectiveBarWidth =
     barWidth ?? getResponsiveValue(responsiveConfig.barWidth, breakpoint);
@@ -93,15 +104,40 @@ export function ScrollableChart({
   const chartWidth = Math.max(minChartWidth, containerWidth || 0);
   const buttonConfig = responsiveConfig.scrollButton[breakpoint];
 
+  const updateScrollControls = (
+    element: HTMLDivElement,
+    maxScrollLeft: number,
+  ) => {
+    setCanScrollLeft(element.scrollLeft > 0);
+    setCanScrollRight(element.scrollLeft < maxScrollLeft - 1);
+  };
+
+  const reconcileScrollPosition = (
+    element: HTMLDivElement,
+    maxScrollLeft: number,
+    mode: "preserve" | "reset",
+  ) => {
+    const previousMaxScrollLeft = previousMaxScrollLeftRef.current;
+    const wasAtLatest =
+      previousMaxScrollLeft === null ||
+      element.scrollLeft >= previousMaxScrollLeft - 1;
+
+    if (mode === "reset" || wasAtLatest) {
+      element.scrollLeft = maxScrollLeft;
+    } else if (element.scrollLeft > maxScrollLeft) {
+      element.scrollLeft = maxScrollLeft;
+    }
+
+    previousMaxScrollLeftRef.current = maxScrollLeft;
+    updateScrollControls(element, maxScrollLeft);
+  };
+
   const checkScrollPosition = () => {
     const element = scrollRef.current;
     if (!element) return;
 
-    const { scrollLeft, clientWidth } = element;
-    const expectedWidth = Math.max(minChartWidth, clientWidth);
-    const maxScrollLeft = Math.max(0, expectedWidth - clientWidth);
-    setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft < maxScrollLeft - 1);
+    const maxScrollLeft = getMaxScrollLeft(minChartWidth, element.clientWidth);
+    updateScrollControls(element, maxScrollLeft);
   };
 
   useEffect(() => {
@@ -124,11 +160,6 @@ export function ScrollableChart({
     const element = scrollRef.current;
     if (!element) return;
     const updateScroll = () => {
-      const expectedWidth = Math.max(minChartWidth, element.clientWidth);
-      const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
-      if (element.scrollLeft > maxScrollLeft) {
-        element.scrollLeft = maxScrollLeft;
-      }
       checkScrollPosition();
     };
     const raf = requestAnimationFrame(updateScroll);
@@ -142,43 +173,62 @@ export function ScrollableChart({
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    const expectedWidth = Math.max(minChartWidth, element.clientWidth);
-    const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
-    element.scrollLeft = maxScrollLeft;
-    checkScrollPosition();
+
+    const maxScrollLeft = getMaxScrollLeft(minChartWidth, element.clientWidth);
+    const previousReset = previousScrollResetRef.current;
+    const shouldReset =
+      previousReset.resetKey !== resetKey ||
+      previousReset.dataLength !== dataLength ||
+      previousReset.barWidth !== barWidth ||
+      previousReset.height !== height;
+    reconcileScrollPosition(
+      element,
+      maxScrollLeft,
+      shouldReset ? "reset" : "preserve",
+    );
+    previousScrollResetRef.current = {
+      resetKey,
+      dataLength,
+      barWidth,
+      height,
+    };
   }, [resetKey, dataLength, barWidth, height, minChartWidth]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const clampScroll = () => {
-      const expectedWidth = Math.max(minChartWidth, element.clientWidth);
-      const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
-      if (element.scrollLeft > maxScrollLeft) {
-        element.scrollLeft = maxScrollLeft;
-      }
-      checkScrollPosition();
+    if (!element) return;
+
+    let animationFrame: number | undefined;
+    const updateLayout = () => {
+      const nextContainerWidth = element.clientWidth;
+      const nextFittedBarWidth =
+        visibleBarCount && nextContainerWidth > 0
+          ? nextContainerWidth / visibleBarCount
+          : effectiveBarWidth;
+      const nextMaxScrollLeft = getMaxScrollLeft(
+        dataLength * nextFittedBarWidth,
+        nextContainerWidth,
+      );
+      reconcileScrollPosition(element, nextMaxScrollLeft, "preserve");
+      setContainerWidth(nextContainerWidth);
     };
+
+    updateLayout();
+    if (typeof ResizeObserver === "undefined") return;
+
     const observer = new ResizeObserver(() => {
-      requestAnimationFrame(clampScroll);
+      if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(updateLayout);
     });
     observer.observe(element);
     const inner = element.firstElementChild as HTMLElement | null;
     if (inner) observer.observe(inner);
-    return () => observer.disconnect();
-  }, [minChartWidth]);
 
-  useLayoutEffect(() => {
-    const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const updateWidth = () => {
-      setContainerWidth(element.clientWidth);
+    return () => {
+      if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+      observer.disconnect();
     };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  }, [dataLength, effectiveBarWidth, minChartWidth, visibleBarCount]);
 
   const scroll = (direction: "left" | "right") => {
     const element = scrollRef.current;
