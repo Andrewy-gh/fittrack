@@ -62,23 +62,20 @@ describe("LayoutComponent", () => {
     expect(screen.getByTestId("route-outlet")).toBeInTheDocument();
   });
 
-  it("does not reserve bottom-nav space for web sessions", () => {
-    const { container } = render(<LayoutComponent user={null} />);
-
-    expect(container.firstElementChild).not.toHaveClass(
-      "pb-[calc(5rem+env(safe-area-inset-bottom))]",
-    );
-    expect(container.firstElementChild).not.toHaveClass(
-      "pt-[env(safe-area-inset-top)]",
-    );
-  });
-
-  it("reserves safe-area space for PWA sessions only", () => {
+  it("reserves safe-area space only for PWA sessions", () => {
     displayModeMock.displayMode = "pwa";
 
-    const { container } = render(<LayoutComponent user={null} />);
+    const { container, rerender } = render(<LayoutComponent user={null} />);
 
     expect(container.firstElementChild).toHaveClass(
+      "pt-[env(safe-area-inset-top)]",
+      "pb-[calc(5rem+env(safe-area-inset-bottom))]",
+    );
+
+    displayModeMock.displayMode = "web";
+    rerender(<LayoutComponent user={null} />);
+
+    expect(container.firstElementChild).not.toHaveClass(
       "pt-[env(safe-area-inset-top)]",
       "pb-[calc(5rem+env(safe-area-inset-bottom))]",
     );

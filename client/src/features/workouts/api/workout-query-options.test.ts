@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CurrentUser } from "@stackframe/react";
 import {
   getNewWorkoutContextQueryOptions,
   getWorkoutContributionQueryOptions,
@@ -9,160 +10,82 @@ import {
 import * as apiWorkouts from "@/features/workouts/api/workouts";
 import * as demoQueryOptions from "@/lib/demo-data/query-options";
 
-vi.mock("@/features/workouts/api/workouts");
-vi.mock("@/lib/demo-data/query-options");
+const workoutId = 42;
+
+// SAFETY: Query-option selectors only use the user value for its truthiness.
+const authenticatedUser = { id: "user-1" } as CurrentUser;
+
+const selectors = [
+  {
+    name: "workout list",
+    select: (user: CurrentUser | null) => getWorkoutListQueryOptions(user),
+    expectedArgs: [] as const,
+    spyOnApi: () => vi.spyOn(apiWorkouts, "workoutsQueryOptions"),
+    spyOnDemo: () => vi.spyOn(demoQueryOptions, "getDemoWorkoutsQueryOptions"),
+  },
+  {
+    name: "workout detail",
+    select: (user: CurrentUser | null) =>
+      getWorkoutByIdQueryOptions(user, workoutId),
+    expectedArgs: [workoutId] as const,
+    spyOnApi: () => vi.spyOn(apiWorkouts, "workoutQueryOptions"),
+    spyOnDemo: () =>
+      vi.spyOn(demoQueryOptions, "getDemoWorkoutsByIdQueryOptions"),
+  },
+  {
+    name: "new-workout context",
+    select: (user: CurrentUser | null) =>
+      getNewWorkoutContextQueryOptions(user),
+    expectedArgs: [] as const,
+    spyOnApi: () => vi.spyOn(apiWorkouts, "newWorkoutContextQueryOptions"),
+    spyOnDemo: () =>
+      vi.spyOn(demoQueryOptions, "getDemoNewWorkoutContextQueryOptions"),
+  },
+  {
+    name: "workout focus",
+    select: (user: CurrentUser | null) => getWorkoutsFocusQueryOptions(user),
+    expectedArgs: [] as const,
+    spyOnApi: () => vi.spyOn(apiWorkouts, "workoutsFocusValuesQueryOptions"),
+    spyOnDemo: () =>
+      vi.spyOn(demoQueryOptions, "getDemoWorkoutsFocusValuesQueryOptions"),
+  },
+  {
+    name: "workout contribution",
+    select: (user: CurrentUser | null) =>
+      getWorkoutContributionQueryOptions(user),
+    expectedArgs: [] as const,
+    spyOnApi: () => vi.spyOn(apiWorkouts, "contributionDataQueryOptions"),
+    spyOnDemo: () =>
+      vi.spyOn(demoQueryOptions, "getDemoContributionDataQueryOptions"),
+  },
+] as const;
+
+const querySources = [
+  { name: "authenticated users", user: authenticatedUser, expected: "api" },
+  { name: "demo users", user: null, expected: "demo" },
+] as const;
 
 describe("workout query options", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("uses API workout list query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["workouts"], queryFn: vi.fn() };
+  for (const selector of selectors) {
+    describe(selector.name, () => {
+      for (const source of querySources) {
+        it(`uses ${source.name} query options`, () => {
+          const apiSpy = selector.spyOnApi();
+          const demoSpy = selector.spyOnDemo();
 
-    vi.mocked(apiWorkouts.workoutsQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
+          const result = selector.select(source.user);
+          const expectedSpy = source.expected === "api" ? apiSpy : demoSpy;
+          const unusedSpy = source.expected === "api" ? demoSpy : apiSpy;
 
-    const result = getWorkoutListQueryOptions(user);
-
-    expect(apiWorkouts.workoutsQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo workout list query options for demo users", () => {
-    const demoOptions = { queryKey: ["demo_workouts"], queryFn: vi.fn() };
-
-    vi.mocked(demoQueryOptions.getDemoWorkoutsQueryOptions).mockReturnValue(
-      demoOptions as any,
-    );
-
-    const result = getWorkoutListQueryOptions(null);
-
-    expect(demoQueryOptions.getDemoWorkoutsQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(demoOptions);
-  });
-
-  it("uses API workout detail query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["workout", 42], queryFn: vi.fn() };
-
-    vi.mocked(apiWorkouts.workoutQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
-
-    const result = getWorkoutByIdQueryOptions(user, 42);
-
-    expect(apiWorkouts.workoutQueryOptions).toHaveBeenCalledWith(42);
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo workout detail query options for demo users", () => {
-    const demoOptions = { queryKey: ["demo_workout", 42], queryFn: vi.fn() };
-
-    vi.mocked(demoQueryOptions.getDemoWorkoutsByIdQueryOptions).mockReturnValue(
-      demoOptions as any,
-    );
-
-    const result = getWorkoutByIdQueryOptions(null, 42);
-
-    expect(
-      demoQueryOptions.getDemoWorkoutsByIdQueryOptions,
-    ).toHaveBeenCalledWith(42);
-    expect(result).toBe(demoOptions);
-  });
-
-  it("uses API new-workout context query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["new_workout_context"], queryFn: vi.fn() };
-
-    vi.mocked(apiWorkouts.newWorkoutContextQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
-
-    const result = getNewWorkoutContextQueryOptions(user);
-
-    expect(apiWorkouts.newWorkoutContextQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo new-workout context query options for demo users", () => {
-    const demoOptions = {
-      queryKey: ["demo_new_workout_context"],
-      queryFn: vi.fn(),
-    };
-
-    vi.mocked(
-      demoQueryOptions.getDemoNewWorkoutContextQueryOptions,
-    ).mockReturnValue(demoOptions as any);
-
-    const result = getNewWorkoutContextQueryOptions(null);
-
-    expect(
-      demoQueryOptions.getDemoNewWorkoutContextQueryOptions,
-    ).toHaveBeenCalled();
-    expect(result).toBe(demoOptions);
-  });
-
-  it("uses API focus query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["workout_focus"], queryFn: vi.fn() };
-
-    vi.mocked(apiWorkouts.workoutsFocusValuesQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
-
-    const result = getWorkoutsFocusQueryOptions(user);
-
-    expect(apiWorkouts.workoutsFocusValuesQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo focus query options for demo users", () => {
-    const demoOptions = { queryKey: ["demo_workout_focus"], queryFn: vi.fn() };
-
-    vi.mocked(
-      demoQueryOptions.getDemoWorkoutsFocusValuesQueryOptions,
-    ).mockReturnValue(demoOptions as any);
-
-    const result = getWorkoutsFocusQueryOptions(null);
-
-    expect(
-      demoQueryOptions.getDemoWorkoutsFocusValuesQueryOptions,
-    ).toHaveBeenCalled();
-    expect(result).toBe(demoOptions);
-  });
-
-  it("uses API contribution query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["workout_contribution"], queryFn: vi.fn() };
-
-    vi.mocked(apiWorkouts.contributionDataQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
-
-    const result = getWorkoutContributionQueryOptions(user);
-
-    expect(apiWorkouts.contributionDataQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo contribution query options for demo users", () => {
-    const demoOptions = {
-      queryKey: ["demo_workout_contribution"],
-      queryFn: vi.fn(),
-    };
-
-    vi.mocked(
-      demoQueryOptions.getDemoContributionDataQueryOptions,
-    ).mockReturnValue(demoOptions as any);
-
-    const result = getWorkoutContributionQueryOptions(null);
-
-    expect(
-      demoQueryOptions.getDemoContributionDataQueryOptions,
-    ).toHaveBeenCalled();
-    expect(result).toBe(demoOptions);
-  });
+          expect(expectedSpy).toHaveBeenCalledWith(...selector.expectedArgs);
+          expect(unusedSpy).not.toHaveBeenCalled();
+          expect(result).toBe(expectedSpy.mock.results[0]?.value);
+        });
+      }
+    });
+  }
 });

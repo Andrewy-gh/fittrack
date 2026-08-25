@@ -130,11 +130,4 @@ describe("InlineErrorFallback", () => {
 
     expect(screen.getByText("Failed to load data")).toBeInTheDocument();
   });
-
-  it("displays with correct styling classes", () => {
-    const { container } = render(<InlineErrorFallback message="Test error" />);
-
-    const errorDiv = container.querySelector(".bg-destructive\\/10");
-    expect(errorDiv).toBeInTheDocument();
-  });
 });

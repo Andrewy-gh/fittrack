@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CurrentUser } from "@stackframe/react";
 import {
   getExerciseDetailQueryOptions,
   getExerciseListQueryOptions,
@@ -7,101 +8,65 @@ import {
 import * as apiExercises from "@/features/exercises/api/exercises";
 import * as demoQueryOptions from "@/lib/demo-data/query-options";
 
-vi.mock("@/features/exercises/api/exercises");
-vi.mock("@/lib/demo-data/query-options");
+const exerciseId = 42;
+
+// SAFETY: Query-option selectors only use the user value for its truthiness.
+const authenticatedUser = { id: "user-1" } as CurrentUser;
+
+const selectors = [
+  {
+    name: "exercise list",
+    select: (user: CurrentUser | null) => getExerciseListQueryOptions(user),
+    expectedArgs: [] as const,
+    spyOnApi: () => vi.spyOn(apiExercises, "exercisesQueryOptions"),
+    spyOnDemo: () => vi.spyOn(demoQueryOptions, "getDemoExercisesQueryOptions"),
+  },
+  {
+    name: "exercise detail",
+    select: (user: CurrentUser | null) =>
+      getExerciseDetailQueryOptions(user, exerciseId),
+    expectedArgs: [exerciseId] as const,
+    spyOnApi: () => vi.spyOn(apiExercises, "exerciseByIdQueryOptions"),
+    spyOnDemo: () =>
+      vi.spyOn(demoQueryOptions, "getDemoExercisesByIdQueryOptions"),
+  },
+  {
+    name: "recent exercise sets",
+    select: (user: CurrentUser | null) =>
+      getRecentExerciseSetsQueryOptions(user, exerciseId),
+    expectedArgs: [exerciseId] as const,
+    spyOnApi: () => vi.spyOn(apiExercises, "recentExerciseSetsQueryOptions"),
+    spyOnDemo: () =>
+      vi.spyOn(demoQueryOptions, "getDemoExercisesByIdRecentSetsQueryOptions"),
+  },
+] as const;
+
+const querySources = [
+  { name: "authenticated users", user: authenticatedUser, expected: "api" },
+  { name: "demo users", user: null, expected: "demo" },
+] as const;
 
 describe("exercise query options", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("uses API exercise list query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["exercises"], queryFn: vi.fn() };
+  for (const selector of selectors) {
+    describe(selector.name, () => {
+      for (const source of querySources) {
+        it(`uses ${source.name} query options`, () => {
+          const apiSpy = selector.spyOnApi();
+          const demoSpy = selector.spyOnDemo();
 
-    vi.mocked(apiExercises.exercisesQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
+          const result = selector.select(source.user);
+          const expectedSpy = source.expected === "api" ? apiSpy : demoSpy;
+          const unusedSpy = source.expected === "api" ? demoSpy : apiSpy;
 
-    const result = getExerciseListQueryOptions(user);
-
-    expect(apiExercises.exercisesQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo exercise list query options for demo users", () => {
-    const demoOptions = { queryKey: ["demo_exercises"], queryFn: vi.fn() };
-
-    vi.mocked(demoQueryOptions.getDemoExercisesQueryOptions).mockReturnValue(
-      demoOptions as any,
-    );
-
-    const result = getExerciseListQueryOptions(null);
-
-    expect(demoQueryOptions.getDemoExercisesQueryOptions).toHaveBeenCalled();
-    expect(result).toBe(demoOptions);
-  });
-
-  it("uses API exercise detail query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["exercise", 42], queryFn: vi.fn() };
-
-    vi.mocked(apiExercises.exerciseByIdQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
-
-    const result = getExerciseDetailQueryOptions(user, 42);
-
-    expect(apiExercises.exerciseByIdQueryOptions).toHaveBeenCalledWith(42);
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo exercise detail query options for demo users", () => {
-    const demoOptions = { queryKey: ["demo_exercise", 42], queryFn: vi.fn() };
-
-    vi.mocked(
-      demoQueryOptions.getDemoExercisesByIdQueryOptions,
-    ).mockReturnValue(demoOptions as any);
-
-    const result = getExerciseDetailQueryOptions(null, 42);
-
-    expect(
-      demoQueryOptions.getDemoExercisesByIdQueryOptions,
-    ).toHaveBeenCalledWith(42);
-    expect(result).toBe(demoOptions);
-  });
-
-  it("uses API recent sets query options for authenticated users", () => {
-    const user = { id: "user-1" } as any;
-    const apiOptions = { queryKey: ["recent_sets", 42], queryFn: vi.fn() };
-
-    vi.mocked(apiExercises.recentExerciseSetsQueryOptions).mockReturnValue(
-      apiOptions as any,
-    );
-
-    const result = getRecentExerciseSetsQueryOptions(user, 42);
-
-    expect(apiExercises.recentExerciseSetsQueryOptions).toHaveBeenCalledWith(
-      42,
-    );
-    expect(result).toBe(apiOptions);
-  });
-
-  it("uses demo recent sets query options for demo users", () => {
-    const demoOptions = {
-      queryKey: ["demo_recent_sets", 42],
-      queryFn: vi.fn(),
-    };
-
-    vi.mocked(
-      demoQueryOptions.getDemoExercisesByIdRecentSetsQueryOptions,
-    ).mockReturnValue(demoOptions as any);
-
-    const result = getRecentExerciseSetsQueryOptions(null, 42);
-
-    expect(
-      demoQueryOptions.getDemoExercisesByIdRecentSetsQueryOptions,
-    ).toHaveBeenCalledWith(42);
-    expect(result).toBe(demoOptions);
-  });
+          expect(expectedSpy).toHaveBeenCalledWith(...selector.expectedArgs);
+          expect(unusedSpy).not.toHaveBeenCalled();
+          expect(result).toBe(expectedSpy.mock.results[0]?.value);
+        });
+      }
+    });
+  }
 });

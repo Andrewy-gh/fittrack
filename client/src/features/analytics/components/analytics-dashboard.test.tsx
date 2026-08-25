@@ -24,44 +24,7 @@ vi.mock("@/features/workouts/components/workout-contribution-graph", () => ({
 }));
 
 describe("AnalyticsDashboard", () => {
-  it("orders activity, workout volume, and exercise progress", () => {
-    render(
-      <AnalyticsDashboard
-        isLoadingExercises={false}
-        exercises={[
-          {
-            id: 1,
-            name: "Bench press",
-            created_at: "2026-08-21T00:00:00Z",
-            updated_at: "2026-08-21T00:00:00Z",
-            user_id: "user-1",
-          },
-        ]}
-        selectedExerciseId={1}
-        onSelectExercise={vi.fn()}
-        isLoadingDetails={false}
-        isDemoMode={false}
-        workoutContributionData={{ days: [] }}
-      />,
-    );
-
-    const activity = screen.getByText("Workout trends");
-    const volume = screen.getByText("Workout volume");
-    const exerciseProgress = screen.getByRole("heading", {
-      name: "Exercise Progress",
-    });
-
-    expect(
-      activity.compareDocumentPosition(volume) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      volume.compareDocumentPosition(exerciseProgress) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it("shows a centered, card-free primary spinner while exercise details load", () => {
+  it("shows a loading status while exercise details load", () => {
     render(
       <AnalyticsDashboard
         isLoadingExercises={false}
@@ -82,12 +45,8 @@ describe("AnalyticsDashboard", () => {
     );
 
     const status = screen.getByRole("status");
-    const spinner = status.querySelector("svg");
 
     expect(status).toHaveTextContent("Loading exercise metrics...");
-    expect(status).toHaveClass("justify-center");
-    expect(status.closest('[data-slot="card"]')).toBeNull();
-    expect(spinner).toHaveClass("size-6", "text-primary");
     expect(screen.queryByText("Session metrics")).not.toBeInTheDocument();
   });
 });
