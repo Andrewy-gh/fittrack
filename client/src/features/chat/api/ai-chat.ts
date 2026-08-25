@@ -528,16 +528,20 @@ function parseAIChatStreamEvent(rawEventJson: string): AIChatStreamEvent {
         ...parseStreamEventSequence(event),
       };
     case "done": {
-      const workoutDraft = parseOptionalWorkoutDraft(event.workout_draft);
-      return {
+      const doneEvent: AIChatStreamDoneEvent = {
         type,
         text: parseOptionalStringValue(event, "text") ?? "",
-        ...(parseOptionalStringValue(event, "status") === "stopped"
-          ? { status: "stopped" as const }
-          : {}),
         ...parseDoneEventContext(event),
-        ...(workoutDraft === undefined ? {} : { workout_draft: workoutDraft }),
       };
+      if (parseOptionalStringValue(event, "status") === "stopped") {
+        doneEvent.status = "stopped";
+      }
+
+      const workoutDraft = parseOptionalWorkoutDraft(event.workout_draft);
+      if (workoutDraft !== undefined) {
+        doneEvent.workout_draft = workoutDraft;
+      }
+      return doneEvent;
     }
     case "error":
       return {

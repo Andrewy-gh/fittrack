@@ -54,7 +54,6 @@ export default defineConfig({
       rules: {
         // This boundary deliberately parses an unknown-valued JSON object field by field.
         // Its generic property builders also preserve exact computed keys via assertions.
-        "anti-slop/no-conditional-empty-object-spread": "off",
         "anti-slop/no-known-value-widening": "off",
         "anti-slop/no-unsafe-dictionary-type": "off",
       },
