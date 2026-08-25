@@ -1,11 +1,11 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 
 import { ExerciseList } from "@/features/exercises/components/exercise-list";
 import { getExerciseListQueryOptions } from "@/features/exercises/api/exercise-query-options";
 
 type ExercisesPageProps = {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 };
 
 export function ExercisesPage({ user }: ExercisesPageProps) {

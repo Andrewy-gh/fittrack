@@ -8,14 +8,14 @@ export interface WorkoutDistributionCardProps {
 export function WorkoutDistributionCard({
   workouts,
 }: WorkoutDistributionCardProps) {
-  const workoutFocusValues = workouts.reduce(
+  const workoutFocusValues = workouts.reduce<Record<string, number>>(
     (acc, workout) => {
       if (workout.workout_focus) {
         acc[workout.workout_focus] = (acc[workout.workout_focus] || 0) + 1;
       }
       return acc;
     },
-    {} as Record<string, number>,
+    {},
   );
 
   return (

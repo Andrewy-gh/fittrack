@@ -85,7 +85,8 @@ export async function stopAIChatRun(
     { method: "POST", headers: await getAuthHeaders() },
   );
   if (!response.ok) throw await readApiError(response);
-  return (await response.json()) as AIChatStopResponse;
+  const body: unknown = await response.json();
+  return parseAIChatStopResponse(body);
 }
 
 export type AISaveLatestWorkoutDraftResponse = {
@@ -233,12 +234,13 @@ async function getAuthHeaders(contentType = false): Promise<Headers> {
 }
 
 async function readApiError(response: Response): Promise<ApiError> {
+  const fallbackMessage = `${response.status} ${response.statusText}`;
+
   try {
-    return (await response.json()) as ApiError;
+    const body: unknown = await response.json();
+    return parseApiError(body, fallbackMessage);
   } catch {
-    return {
-      message: `${response.status} ${response.statusText}`,
-    };
+    return { message: fallbackMessage };
   }
 }
 
@@ -247,7 +249,7 @@ export async function createAIChatConversation(): Promise<AIChatConversation> {
     throwOnError: true,
   });
 
-  return response.data as AIChatConversation;
+  return parseAIChatConversation(response.data);
 }
 
 export async function listAIChatConversations(
@@ -258,7 +260,7 @@ export async function listAIChatConversations(
     throwOnError: true,
   });
 
-  return response.data as AIChatConversationSummary[];
+  return parseAIChatConversationList(response.data);
 }
 
 export type AIChatDeleteError = ApiError & { status: number };
@@ -271,10 +273,10 @@ export async function deleteAIChatConversation(
   });
 
   if (response.error) {
-    throw {
-      ...(response.error as ApiError),
-      status: response.response?.status ?? 0,
-    } satisfies AIChatDeleteError;
+    throw createAIChatDeleteError(
+      response.error,
+      response.response?.status ?? 0,
+    );
   }
 }
 
@@ -282,10 +284,10 @@ export async function deleteAllAIChatHistory(): Promise<void> {
   const response = await deleteAiConversations();
 
   if (response.error) {
-    throw {
-      ...(response.error as ApiError),
-      status: response.response?.status ?? 0,
-    } satisfies AIChatDeleteError;
+    throw createAIChatDeleteError(
+      response.error,
+      response.response?.status ?? 0,
+    );
   }
 }
 
@@ -309,7 +311,7 @@ export async function getAIChatConversation(
     throwOnError: true,
   });
 
-  return response.data as AIChatConversationDetail;
+  return parseAIChatConversationDetail(response.data);
 }
 
 export async function requestAIChatMessageRecovery(
@@ -322,7 +324,7 @@ export async function requestAIChatMessageRecovery(
     throwOnError: true,
   });
 
-  return response.data as AIChatRecoveryResponse;
+  return parseAIChatRecoveryResponse(response.data);
 }
 
 export async function saveAIChatLatestWorkoutDraft(
@@ -335,7 +337,7 @@ export async function saveAIChatLatestWorkoutDraft(
     throwOnError: true,
   });
 
-  return (response.data as AISaveLatestWorkoutDraftResponse).conversation;
+  return parseAISaveLatestWorkoutDraftResponse(response.data).conversation;
 }
 
 export async function streamAIChatMessage(
@@ -482,6 +484,206 @@ export async function pollAIChatConversationUntilSettled(
     }
     await delay(intervalMs, options.signal);
   }
+}
+
+function parseApiError(value: unknown, fallbackMessage: string): ApiError {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    !("message" in value) ||
+    typeof value.message !== "string"
+  ) {
+    return { message: fallbackMessage };
+  }
+
+  if ("request_id" in value && typeof value.request_id === "string") {
+    return {
+      message: value.message,
+      request_id: value.request_id,
+    };
+  }
+
+  return { message: value.message };
+}
+
+function createAIChatDeleteError(
+  error: unknown,
+  status: number,
+): AIChatDeleteError {
+  return {
+    ...parseApiError(error, `AI chat deletion failed with status ${status}`),
+    status,
+  };
+}
+
+function parseAIChatStopResponse(value: unknown): AIChatStopResponse {
+  const response = parseRecord(value, "AI chat stop response");
+  const status = parseRequiredString(response, "status");
+  if (status !== "stopped" && status !== "completed" && status !== "failed") {
+    throw new Error("AI chat stop response status is invalid");
+  }
+
+  return {
+    conversation_id: parseRequiredNumber(response, "conversation_id"),
+    run_id: parseRequiredNumber(response, "run_id"),
+    message_id: parseRequiredNumber(response, "message_id"),
+    status,
+    text: parseRequiredString(response, "text"),
+    sequence: parseRequiredNumber(response, "sequence"),
+  };
+}
+
+function parseAIChatConversation(value: unknown): AIChatConversation {
+  const conversation = parseRecord(value, "AI chat conversation");
+  const workoutDraft = parseOptionalWorkoutDraft(
+    conversation.latest_workout_draft,
+  );
+  const workoutDraftStatus = parseOptionalWorkoutDraftStatus(
+    conversation.latest_workout_draft_status,
+  );
+
+  const parsed: AIChatConversation = {
+    id: parseRequiredNumber(conversation, "id"),
+    ...parseOptionalStringProperty(conversation, "title"),
+    created_at: parseRequiredString(conversation, "created_at"),
+    updated_at: parseRequiredString(conversation, "updated_at"),
+    ...parseOptionalStringProperty(conversation, "last_message_at"),
+  };
+  if (workoutDraft !== undefined) {
+    parsed.latest_workout_draft = workoutDraft;
+  }
+  if (workoutDraftStatus !== undefined) {
+    parsed.latest_workout_draft_status = workoutDraftStatus;
+  }
+
+  return parsed;
+}
+
+function parseOptionalWorkoutDraftStatus(
+  value: unknown,
+): AIWorkoutDraftStatus | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const status = parseRecord(value, "AI chat workout draft status");
+  return {
+    ...parseOptionalNumberProperty(status, "source_run_id"),
+    is_saved: parseRequiredBoolean(status, "is_saved"),
+    ...parseOptionalNumberProperty(status, "saved_workout_id"),
+    ...parseOptionalStringProperty(status, "saved_at"),
+  };
+}
+
+function parseAIChatConversationList(
+  value: unknown,
+): AIChatConversationSummary[] {
+  if (!Array.isArray(value)) {
+    throw new Error("AI chat conversation list must be an array");
+  }
+
+  return value.map((conversation) => parseAIChatConversation(conversation));
+}
+
+function parseAIChatConversationDetail(
+  value: unknown,
+): AIChatConversationDetail {
+  const detail = parseRecord(value, "AI chat conversation detail");
+  if (!Array.isArray(detail.messages)) {
+    throw new Error("AI chat conversation detail messages must be an array");
+  }
+
+  const activeRun =
+    detail.active_run === undefined
+      ? undefined
+      : parseAIChatActiveRun(detail.active_run);
+
+  const parsed: AIChatConversationDetail = {
+    conversation: parseAIChatConversation(detail.conversation),
+    messages: detail.messages.map((message) => parseAIChatMessage(message)),
+  };
+  if (activeRun !== undefined) {
+    parsed.active_run = activeRun;
+  }
+
+  return parsed;
+}
+
+function parseAIChatActiveRun(value: unknown): AIChatActiveRun {
+  const activeRun = parseRecord(value, "AI chat active run");
+  const status = parseRequiredString(activeRun, "status");
+  if (
+    status !== "streaming" &&
+    status !== "completed" &&
+    status !== "failed" &&
+    status !== "stopped"
+  ) {
+    throw new Error("AI chat active run status is invalid");
+  }
+
+  return {
+    id: parseRequiredNumber(activeRun, "id"),
+    assistant_message_id: parseRequiredNumber(
+      activeRun,
+      "assistant_message_id",
+    ),
+    status,
+    latest_sequence: parseRequiredNumber(activeRun, "latest_sequence"),
+  };
+}
+
+function parseAIChatMessage(value: unknown): AIChatMessage {
+  const message = parseRecord(value, "AI chat message");
+  const role = parseRequiredString(message, "role");
+  if (role !== "user" && role !== "assistant") {
+    throw new Error("AI chat message role is invalid");
+  }
+  const status = parseRequiredString(message, "status");
+  if (
+    status !== "streaming" &&
+    status !== "completed" &&
+    status !== "failed" &&
+    status !== "stopped"
+  ) {
+    throw new Error("AI chat message status is invalid");
+  }
+
+  return {
+    id: parseRequiredNumber(message, "id"),
+    conversation_id: parseRequiredNumber(message, "conversation_id"),
+    role,
+    content: parseRequiredString(message, "content"),
+    status,
+    ...parseOptionalStringProperty(message, "error_message"),
+    created_at: parseRequiredString(message, "created_at"),
+    updated_at: parseRequiredString(message, "updated_at"),
+    ...parseOptionalStringProperty(message, "completed_at"),
+  };
+}
+
+function parseAIChatRecoveryResponse(value: unknown): AIChatRecoveryResponse {
+  const response = parseRecord(value, "AI chat recovery response");
+  const status = parseRequiredString(response, "status");
+  if (status !== "queued" && status !== "not_needed") {
+    throw new Error("AI chat recovery response status is invalid");
+  }
+
+  return {
+    conversation_id: parseRequiredNumber(response, "conversation_id"),
+    ...parseOptionalNumberProperty(response, "run_id"),
+    status,
+  };
+}
+
+function parseAISaveLatestWorkoutDraftResponse(
+  value: unknown,
+): AISaveLatestWorkoutDraftResponse {
+  const response = parseRecord(value, "AI chat saved workout draft response");
+  return {
+    conversation: parseAIChatConversation(response.conversation),
+    workout_id: parseRequiredNumber(response, "workout_id"),
+  };
 }
 
 function parseSSEChunk(chunk: string): ParsedSSEChunk | null {
@@ -686,6 +888,15 @@ function parseRequiredNumber(record: UnknownRecord, key: string): number {
   const value = record[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`AI chat stream event ${key} must be a number`);
+  }
+
+  return value;
+}
+
+function parseRequiredBoolean(record: UnknownRecord, key: string): boolean {
+  const value = record[key];
+  if (typeof value !== "boolean") {
+    throw new Error(`AI chat response ${key} must be a boolean`);
   }
 
   return value;

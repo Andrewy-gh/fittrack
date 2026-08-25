@@ -1,7 +1,7 @@
 import { client } from "@/client/client.gen";
 import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
 import { stackClientApp } from "@/stack";
-import type { ApiError } from "@/lib/errors";
+import { isApiError, type ApiError } from "@/lib/errors";
 import { toast } from "sonner";
 
 export const AUTH_SESSION_UNAVAILABLE_MESSAGE =
@@ -53,7 +53,10 @@ client.interceptors.response.use(async (response) => {
 
   // Try to parse error response
   try {
-    const error: ApiError = await response.json();
+    const parsedError: unknown = await response.json();
+    const error = isApiError(parsedError)
+      ? parsedError
+      : { message: `${response.status} ${response.statusText}` };
 
     // Log request_id in development for debugging
     if (import.meta.env.DEV && error.request_id) {
@@ -87,13 +90,13 @@ client.interceptors.response.use(async (response) => {
     throw error;
   } catch (err) {
     // If JSON parsing fails or error already thrown, re-throw
-    if (err && typeof err === "object" && "message" in err) {
+    if (isApiError(err)) {
       throw err;
     }
 
     // Fallback error if response body isn't valid JSON
     throw {
       message: `${response.status} ${response.statusText}`,
-    } as ApiError;
+    };
   }
 });

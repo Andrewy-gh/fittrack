@@ -1,5 +1,5 @@
 import { useSuspenseQuery, type QueryClient } from "@tanstack/react-query";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import type { WorkoutUpdateWorkoutRequest } from "@/client";
 import type { DbExercise } from "@/features/exercises/api/exercises";
 import {
@@ -19,7 +19,7 @@ import {
   type WorkoutFormSearch,
 } from "@/features/workouts/pages/new-workout-page";
 
-type WorkoutRouteUser = CurrentUser | CurrentInternalUser | null;
+type WorkoutRouteUser = ApplicationUser | null;
 
 type WorkoutRouteLoaderContext = {
   queryClient: QueryClient;

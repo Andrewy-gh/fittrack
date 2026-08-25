@@ -13,6 +13,30 @@ export type StoredResumeCursor = {
   assistantMessageId: number;
 };
 
+function parseStoredResumeCursor(value: unknown): StoredResumeCursor | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    !("runId" in value) ||
+    !("sequence" in value) ||
+    !("assistantMessageId" in value)
+  ) {
+    return null;
+  }
+
+  const { runId, sequence, assistantMessageId } = value;
+  if (
+    typeof runId !== "number" ||
+    typeof sequence !== "number" ||
+    typeof assistantMessageId !== "number"
+  ) {
+    return null;
+  }
+
+  return { runId, sequence, assistantMessageId };
+}
+
 export function loadResumeCursor(
   conversationId: number,
 ): StoredResumeCursor | null {
@@ -26,20 +50,8 @@ export function loadResumeCursor(
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<StoredResumeCursor>;
-    if (
-      typeof parsed.runId !== "number" ||
-      typeof parsed.sequence !== "number" ||
-      typeof parsed.assistantMessageId !== "number"
-    ) {
-      return null;
-    }
-
-    return {
-      runId: parsed.runId,
-      sequence: parsed.sequence,
-      assistantMessageId: parsed.assistantMessageId,
-    };
+    const parsed: unknown = JSON.parse(raw);
+    return parseStoredResumeCursor(parsed);
   } catch {
     return null;
   }

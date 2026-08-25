@@ -1,4 +1,5 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
+import { normalizeQueryOptions } from "@/lib/query-option-adapter";
 import {
   contributionDataQueryOptions,
   newWorkoutContextQueryOptions,
@@ -14,45 +15,37 @@ import {
   getDemoWorkoutsQueryOptions,
 } from "@/lib/demo-data/query-options";
 
-type WorkoutQueryUser = CurrentUser | CurrentInternalUser | null;
+type WorkoutQueryUser = ApplicationUser | null;
 
 export function getWorkoutListQueryOptions(user: WorkoutQueryUser) {
-  return (
-    user ? workoutsQueryOptions() : getDemoWorkoutsQueryOptions()
-  ) as ReturnType<typeof workoutsQueryOptions>;
+  return user
+    ? normalizeQueryOptions(workoutsQueryOptions())
+    : normalizeQueryOptions(getDemoWorkoutsQueryOptions());
 }
 
 export function getWorkoutByIdQueryOptions(
   user: WorkoutQueryUser,
   workoutId: number,
 ) {
-  return (
-    user
-      ? workoutQueryOptions(workoutId)
-      : getDemoWorkoutsByIdQueryOptions(workoutId)
-  ) as ReturnType<typeof workoutQueryOptions>;
+  return user
+    ? normalizeQueryOptions(workoutQueryOptions(workoutId))
+    : normalizeQueryOptions(getDemoWorkoutsByIdQueryOptions(workoutId));
 }
 
 export function getNewWorkoutContextQueryOptions(user: WorkoutQueryUser) {
-  return (
-    user
-      ? newWorkoutContextQueryOptions()
-      : getDemoNewWorkoutContextQueryOptions()
-  ) as ReturnType<typeof newWorkoutContextQueryOptions>;
+  return user
+    ? normalizeQueryOptions(newWorkoutContextQueryOptions())
+    : normalizeQueryOptions(getDemoNewWorkoutContextQueryOptions());
 }
 
 export function getWorkoutsFocusQueryOptions(user: WorkoutQueryUser) {
-  return (
-    user
-      ? workoutsFocusValuesQueryOptions()
-      : getDemoWorkoutsFocusValuesQueryOptions()
-  ) as ReturnType<typeof workoutsFocusValuesQueryOptions>;
+  return user
+    ? normalizeQueryOptions(workoutsFocusValuesQueryOptions())
+    : normalizeQueryOptions(getDemoWorkoutsFocusValuesQueryOptions());
 }
 
 export function getWorkoutContributionQueryOptions(user: WorkoutQueryUser) {
-  return (
-    user
-      ? contributionDataQueryOptions()
-      : getDemoContributionDataQueryOptions()
-  ) as ReturnType<typeof contributionDataQueryOptions>;
+  return user
+    ? normalizeQueryOptions(contributionDataQueryOptions())
+    : normalizeQueryOptions(getDemoContributionDataQueryOptions());
 }

@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { queryClient } from "@/lib/api/api";
 import {
   getExercisesQueryKey,
@@ -19,7 +19,6 @@ import {
 } from "@/client/@tanstack/react-query.gen";
 import type {
   WorkoutUpdateExercise,
-  WorkoutUpdateSet,
   WorkoutUpdateWorkoutRequest,
   WorkoutWorkoutWithSetsResponse,
 } from "@/client";
@@ -34,7 +33,7 @@ export type WorkoutFocus = {
   name: string;
 };
 
-type WorkoutMutationUser = CurrentUser | CurrentInternalUser | null;
+type WorkoutMutationUser = ApplicationUser | null;
 
 // MARK: Get all
 export function workoutsQueryOptions() {
@@ -161,21 +160,27 @@ function groupSetsByExercise(
     const exerciseId = workout.exercise_id || 0;
     const exerciseOrder = workout.exercise_order ?? workout.exercise_id ?? 0;
 
-    if (!exercisesMap.has(exerciseId)) {
-      exercisesMap.set(exerciseId, {
+    let exerciseEntry = exercisesMap.get(exerciseId);
+    if (!exerciseEntry) {
+      exerciseEntry = {
         exercise: {
           name: workout.exercise_name || "",
           sets: [],
         },
         order: exerciseOrder,
-      });
+      };
+      exercisesMap.set(exerciseId, exerciseEntry);
     }
 
-    const exerciseEntry = exercisesMap.get(exerciseId)!;
+    const setType = workout.set_type;
+    if (setType !== "warmup" && setType !== "working") {
+      throw new Error(`Unexpected workout set type: ${setType}`);
+    }
+
     exerciseEntry.exercise.sets.push({
       weight: workout.weight || 0,
       reps: workout.reps || 0,
-      setType: workout.set_type as WorkoutUpdateSet["setType"],
+      setType,
     });
   }
 

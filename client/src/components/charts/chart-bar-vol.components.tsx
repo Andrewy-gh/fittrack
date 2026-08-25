@@ -221,7 +221,7 @@ export function ScrollableChart({
       animationFrame = requestAnimationFrame(updateLayout);
     });
     observer.observe(element);
-    const inner = element.firstElementChild as HTMLElement | null;
+    const inner = element.firstElementChild;
     if (inner) observer.observe(inner);
 
     return () => {

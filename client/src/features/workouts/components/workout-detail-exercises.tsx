@@ -12,26 +12,25 @@ export function WorkoutDetailExercises({
 }: WorkoutDetailExercisesProps) {
   const sortedWorkouts = sortByExerciseAndSetOrder(workout);
 
-  const exerciseGroups = sortedWorkouts.reduce(
-    (acc, w) => {
-      const exerciseId = w.exercise_id || 0;
-      const exerciseOrder = w.exercise_order ?? w.exercise_id ?? 0;
-
-      if (!acc[exerciseId]) {
-        acc[exerciseId] = {
-          name: w.exercise_name || "Unknown Exercise",
-          sets: [],
-          order: exerciseOrder,
-        };
-      }
-      acc[exerciseId].sets.push(w);
-      return acc;
-    },
-    {} as Record<
+  const exerciseGroups = sortedWorkouts.reduce<
+    Record<
       number,
       { name: string; sets: WorkoutWorkoutWithSetsResponse[]; order: number }
-    >,
-  );
+    >
+  >((acc, w) => {
+    const exerciseId = w.exercise_id || 0;
+    const exerciseOrder = w.exercise_order ?? w.exercise_id ?? 0;
+
+    if (!acc[exerciseId]) {
+      acc[exerciseId] = {
+        name: w.exercise_name || "Unknown Exercise",
+        sets: [],
+        order: exerciseOrder,
+      };
+    }
+    acc[exerciseId].sets.push(w);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-4">

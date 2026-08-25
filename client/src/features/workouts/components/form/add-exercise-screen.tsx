@@ -25,6 +25,8 @@ function normalizeExerciseName(name: string) {
 
 export const AddExerciseScreen = withForm({
   defaultValues: MOCK_VALUES,
+  // SAFETY: TanStack withForm spreads this empty defaults object before the props
+  // supplied by every AddExerciseScreen caller, so it is only a type witness for the generic.
   props: {} as AddExerciseScreenProps,
   render: function Render({ form, exercises, onBack, onAddExercise }) {
     const [searchQuery, setSearchQuery] = useState("");

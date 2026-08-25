@@ -1,9 +1,9 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { CustomUserButton } from "@/components/custom-user-button";
 import { GuestUserButton } from "@/components/guest-user-button";
 
 interface AccountSlotProps {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 }
 
 export function AccountSlot({ user }: AccountSlotProps) {

@@ -46,6 +46,9 @@ export type WorkoutExerciseCard = Pick<WorkoutExerciseInput, "name" | "sets">;
 type SortableHandleAttributes = ReturnType<typeof useSortable>["attributes"];
 type SortableHandleListeners = ReturnType<typeof useSortable>["listeners"];
 type SortableHandleRef = ReturnType<typeof useSortable>["setActivatorNodeRef"];
+type WorkoutCardStyle = CSSProperties & {
+  "--wiggle-index": number;
+};
 
 type WorkoutFormValues =
   | WorkoutCreateWorkoutRequest
@@ -344,6 +347,9 @@ function WorkoutExerciseCardContent({
   sortableHandleRef?: SortableHandleRef;
 }) {
   const volume = getExerciseVolume(exercise);
+  const reorderModeStyle: WorkoutCardStyle | undefined = isReorderMode
+    ? { "--wiggle-index": exerciseIndex }
+    : undefined;
 
   return (
     <Card
@@ -354,13 +360,7 @@ function WorkoutExerciseCardContent({
           : "hover:shadow-md",
         isDragging && "opacity-80 shadow-lg ring-1 ring-primary/30",
       )}
-      style={
-        isReorderMode
-          ? ({
-              "--wiggle-index": exerciseIndex,
-            } as CSSProperties)
-          : undefined
-      }
+      style={reorderModeStyle}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

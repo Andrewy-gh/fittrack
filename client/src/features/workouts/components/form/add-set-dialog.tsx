@@ -29,6 +29,8 @@ type AddSetDialogProps = {
 
 export const AddSetDialog = withForm({
   defaultValues: MOCK_VALUES,
+  // SAFETY: TanStack withForm spreads this empty defaults object before the props
+  // supplied by every AddSetDialog caller, so it is only a type witness for the generic.
   props: {} as AddSetDialogProps,
   render: function Render({
     form,

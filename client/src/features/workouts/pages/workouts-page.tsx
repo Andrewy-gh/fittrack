@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Toggle } from "@/components/ui/toggle";
@@ -38,7 +38,7 @@ export function WorkoutsPage({
   user,
   search,
 }: {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
   search: WorkoutsSearch;
 }) {
   const { focusArea, sortOrder, itemsPerPage, page } = search;

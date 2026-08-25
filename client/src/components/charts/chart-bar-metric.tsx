@@ -240,6 +240,8 @@ export function ChartBarMetric({
                   }}
                   labelFormatter={tooltipLabelFormatter}
                   formatter={(v, _name, item) => {
+                    // SAFETY: This BarChart receives only the MetricPoint[] supplied to ChartBarMetric,
+                    // so Recharts' opaque tooltip payload is one of those locally constructed points.
                     const focusType = formatTooltipFocusType(
                       (item.payload as MetricPoint | undefined)?.focusType,
                     );
@@ -262,6 +264,8 @@ export function ChartBarMetric({
                   onClick={
                     isWorkoutNavigationEnabled
                       ? (p) => {
+                          // SAFETY: This Bar uses the MetricPoint[] supplied to its BarChart, so Recharts'
+                          // opaque click payload preserves the optional workout_id from those points.
                           const workoutId = (
                             p?.payload as MetricPoint | undefined
                           )?.workout_id;

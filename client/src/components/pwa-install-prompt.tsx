@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Button } from "@/components/ui/button";
 import type { DisplayMode } from "@/hooks/use-display-mode";
 
 export const PWA_INSTALL_PROMPT_DISMISS_KEY = "fittrack:pwa-install-prompt:v1";
 
 type DevicePlatform = "ios" | "android" | "other";
-type PromptUser = CurrentUser | CurrentInternalUser | null;
+type PromptUser = ApplicationUser | null;
 type InstallPromptCopy = {
   title: string;
   body: string;

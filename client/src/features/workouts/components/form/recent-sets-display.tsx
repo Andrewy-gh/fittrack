@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import type { ExerciseRecentSetsResponse } from "@/client";
 import { formatDate } from "@/lib/utils";
 import { sortByExerciseAndSetOrder } from "@/lib/utils";
-import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { getRecentExerciseSetsQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import {
   ErrorBoundary,
@@ -15,7 +15,7 @@ import {
 
 interface RecentSetsDisplayProps {
   exerciseId: number;
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 }
 
 function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
@@ -30,20 +30,19 @@ function RecentSetsDisplay({ exerciseId, user }: RecentSetsDisplayProps) {
   const sortedRecentSets = sortByExerciseAndSetOrder(recentSets);
 
   // Group sets by workout_date, preserving order
-  const groupedSets = sortedRecentSets.reduce(
-    (acc, set) => {
-      const dateKey = set.workout_date;
-      if (!acc[dateKey]) {
-        acc[dateKey] = {
-          date: set.workout_date,
-          sets: [],
-        };
-      }
-      acc[dateKey].sets.push(set);
-      return acc;
-    },
-    {} as Record<string, { date: string; sets: ExerciseRecentSetsResponse[] }>,
-  );
+  const groupedSets = sortedRecentSets.reduce<
+    Record<string, { date: string; sets: ExerciseRecentSetsResponse[] }>
+  >((acc, set) => {
+    const dateKey = set.workout_date;
+    if (!acc[dateKey]) {
+      acc[dateKey] = {
+        date: set.workout_date,
+        sets: [],
+      };
+    }
+    acc[dateKey].sets.push(set);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-4">
@@ -110,7 +109,7 @@ export function RecentSets({
   user,
 }: {
   exerciseId: number | null;
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 }) {
   if (!exerciseId) {
     return null;

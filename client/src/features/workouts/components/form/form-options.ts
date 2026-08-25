@@ -1,6 +1,5 @@
 import type {
   WorkoutCreateWorkoutRequest,
-  WorkoutExerciseInput,
   WorkoutUpdateWorkoutRequest,
 } from "@/client";
 import {
@@ -14,7 +13,7 @@ export const MOCK_VALUES:
   | WorkoutUpdateWorkoutRequest = {
   date: new Date().toISOString(), // API expects ISO string
   notes: "",
-  exercises: [] as Array<WorkoutExerciseInput>,
+  exercises: [],
   workoutFocus: "",
 };
 

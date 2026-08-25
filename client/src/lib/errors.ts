@@ -10,7 +10,7 @@ export function isApiError(error: unknown): error is ApiError {
     typeof error === "object" &&
     error !== null &&
     "message" in error &&
-    typeof (error as ApiError).message === "string"
+    typeof error.message === "string"
   );
 }
 

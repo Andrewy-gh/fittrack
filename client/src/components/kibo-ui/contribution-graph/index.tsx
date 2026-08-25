@@ -119,10 +119,10 @@ const fillHoles = (activities: Activity[]): Activity[] => {
     activities.map((a) => [a.date, a]),
   );
 
-  const firstActivity = sortedActivities[0] as Activity;
+  const [firstActivity] = sortedActivities;
   const lastActivity = sortedActivities.at(-1);
 
-  if (!lastActivity) {
+  if (!firstActivity || !lastActivity) {
     return [];
   }
 
@@ -132,8 +132,9 @@ const fillHoles = (activities: Activity[]): Activity[] => {
   }).map((day) => {
     const date = formatISO(day, { representation: "date" });
 
-    if (calendar.has(date)) {
-      return calendar.get(date) as Activity;
+    const activity = calendar.get(date);
+    if (activity) {
+      return activity;
     }
 
     return {
@@ -153,7 +154,10 @@ const groupByWeeks = (
   }
 
   const normalizedActivities = fillHoles(activities);
-  const firstActivity = normalizedActivities[0] as Activity;
+  const [firstActivity] = normalizedActivities;
+  if (!firstActivity) {
+    return [];
+  }
   const firstDate = parseISO(firstActivity.date);
   const firstCalendarDate =
     getDay(firstDate) === weekStart

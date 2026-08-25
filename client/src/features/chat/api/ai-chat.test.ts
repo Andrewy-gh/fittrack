@@ -74,15 +74,11 @@ describe("ai chat api wrapper", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          conversation: {
-            id: 41,
-            created_at: "2026-03-26T17:00:00Z",
-            updated_at: "2026-03-26T17:00:00Z",
-          },
-          messages: [],
+          conversation_id: 41,
+          status: "queued",
         }),
         {
-          status: 200,
+          status: 202,
           headers: {
             "Content-Type": "application/json",
           },

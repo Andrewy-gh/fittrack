@@ -1,6 +1,6 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 
 import { AnalyticsDashboard } from "@/features/analytics/components/analytics-dashboard";
 import {
@@ -14,7 +14,7 @@ import {
 
 type AnalyticsPageProps = {
   exerciseId?: number;
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 };
 
 export function AnalyticsPage({ exerciseId, user }: AnalyticsPageProps) {

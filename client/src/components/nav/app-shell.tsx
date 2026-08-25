@@ -1,10 +1,10 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { useDisplayMode } from "@/hooks/use-display-mode";
 import { AppBottomBar } from "@/components/nav/app-bottom-bar";
 import { AppTopBar } from "@/components/nav/app-top-bar";
 
 interface AppShellProps {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 }
 
 export function AppShell({ user }: AppShellProps) {

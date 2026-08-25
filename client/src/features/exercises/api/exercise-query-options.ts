@@ -1,4 +1,5 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
+import { normalizeQueryOptions } from "@/lib/query-option-adapter";
 import {
   exerciseByIdQueryOptions,
   exercisesQueryOptions,
@@ -10,32 +11,30 @@ import {
   getDemoExercisesQueryOptions,
 } from "@/lib/demo-data/query-options";
 
-type ExerciseQueryUser = CurrentUser | CurrentInternalUser | null;
+type ExerciseQueryUser = ApplicationUser | null;
 
 export function getExerciseListQueryOptions(user: ExerciseQueryUser) {
-  return (
-    user ? exercisesQueryOptions() : getDemoExercisesQueryOptions()
-  ) as ReturnType<typeof exercisesQueryOptions>;
+  return user
+    ? normalizeQueryOptions(exercisesQueryOptions())
+    : normalizeQueryOptions(getDemoExercisesQueryOptions());
 }
 
 export function getExerciseDetailQueryOptions(
   user: ExerciseQueryUser,
   exerciseId: number,
 ) {
-  return (
-    user
-      ? exerciseByIdQueryOptions(exerciseId)
-      : getDemoExercisesByIdQueryOptions(exerciseId)
-  ) as ReturnType<typeof exerciseByIdQueryOptions>;
+  return user
+    ? normalizeQueryOptions(exerciseByIdQueryOptions(exerciseId))
+    : normalizeQueryOptions(getDemoExercisesByIdQueryOptions(exerciseId));
 }
 
 export function getRecentExerciseSetsQueryOptions(
   user: ExerciseQueryUser,
   exerciseId: number,
 ) {
-  return (
-    user
-      ? recentExerciseSetsQueryOptions(exerciseId)
-      : getDemoExercisesByIdRecentSetsQueryOptions(exerciseId)
-  ) as ReturnType<typeof recentExerciseSetsQueryOptions>;
+  return user
+    ? normalizeQueryOptions(recentExerciseSetsQueryOptions(exerciseId))
+    : normalizeQueryOptions(
+        getDemoExercisesByIdRecentSetsQueryOptions(exerciseId),
+      );
 }

@@ -1,5 +1,5 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import type { ApplicationUser } from "@/lib/application-user";
 import { HomePage } from "@/features/home/pages/home-page";
 
 export const Route = createFileRoute("/")({
@@ -13,7 +13,8 @@ export function isStandalone() {
     window.matchMedia("(display-mode: standalone)").matches;
   const iosStandalone =
     typeof navigator !== "undefined" &&
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    "standalone" in navigator &&
+    navigator.standalone === true;
 
   return standaloneDisplayMode || iosStandalone;
 }
@@ -21,7 +22,7 @@ export function isStandalone() {
 export function redirectPwaSignedInUser({
   context,
 }: {
-  context: { user: CurrentUser | CurrentInternalUser | null };
+  context: { user: ApplicationUser | null };
 }) {
   if (isStandalone() && context.user) {
     throw redirect({ to: "/workouts" });

@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { toast } from "sonner";
 import type { WorkoutNewWorkoutContextResponse } from "@/client";
 import type { DbExercise } from "@/features/exercises/api/exercises";
@@ -29,7 +29,7 @@ export function useNewWorkoutFormWorkflow({
   newWorkoutContext,
   draftStorage = workoutDraftStorage,
 }: {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
   exercises: DbExercise[];
   newWorkoutContext: WorkoutNewWorkoutContextResponse;
   draftStorage?: WorkoutDraftStorage;

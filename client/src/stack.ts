@@ -4,19 +4,23 @@ import {
 } from "@stackframe/react";
 import { useNavigate } from "@tanstack/react-router";
 
-const projectId = import.meta.env.VITE_PROJECT_ID as string | undefined;
-const publishableClientKey = import.meta.env.VITE_PUBLISHABLE_CLIENT_KEY as
-  | string
-  | undefined;
+function parseEnvironmentString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+const projectId = parseEnvironmentString(import.meta.env.VITE_PROJECT_ID);
+const publishableClientKey = parseEnvironmentString(
+  import.meta.env.VITE_PUBLISHABLE_CLIENT_KEY,
+);
 
 export const isStackConfigured = Boolean(projectId && publishableClientKey);
 
 export const stackClientApp: StackClientApp<true, string> | null = (() => {
-  if (!isStackConfigured) return null;
+  if (!projectId || !publishableClientKey) return null;
   try {
     return new StackClientAppCtor({
-      projectId: projectId!,
-      publishableClientKey: publishableClientKey!,
+      projectId,
+      publishableClientKey,
       tokenStore: "cookie",
       redirectMethod: {
         useNavigate: () => {
@@ -26,7 +30,7 @@ export const stackClientApp: StackClientApp<true, string> | null = (() => {
           };
         },
       },
-    }) as StackClientApp<true, string>;
+    });
   } catch (err) {
     // Missing/invalid Stack Auth config should not take down demo mode.
     console.error(

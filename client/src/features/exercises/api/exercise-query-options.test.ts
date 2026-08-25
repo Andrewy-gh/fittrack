@@ -64,7 +64,9 @@ describe("exercise query options", () => {
 
           expect(expectedSpy).toHaveBeenCalledWith(...selector.expectedArgs);
           expect(unusedSpy).not.toHaveBeenCalled();
-          expect(result).toBe(expectedSpy.mock.results[0]?.value);
+          expect(result.queryKey).toEqual(
+            expectedSpy.mock.results[0]?.value?.queryKey,
+          );
         });
       }
     });
