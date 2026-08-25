@@ -21,12 +21,6 @@ const commentOwnerKinds = new Set([
   "WithStatement",
 ]);
 
-const functionBoundaryKinds = new Set([
-  "ArrowFunctionExpression",
-  "FunctionDeclaration",
-  "FunctionExpression",
-]);
-
 function isConstAssertion(node: TypeAssertion): boolean {
   return (
     node.typeAnnotation.type === "TSTypeReference" &&
@@ -41,12 +35,11 @@ function hasSafetyComment(
 ): boolean {
   const assertionOperatorStart =
     node.type === "TSAsExpression"
-      ? (sourceCode.getTokenAfter(node.expression)?.start ?? node.start)
+      ? (sourceCode.getTokenBefore(node.typeAnnotation)?.start ?? node.start)
       : node.start;
   let current: ESTree.Node = node;
 
   while (true) {
-    if (functionBoundaryKinds.has(current.type)) return false;
     if (
       sourceCode
         .getCommentsBefore(current)
