@@ -86,6 +86,13 @@ export function ScrollableChart({
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const previousMaxScrollLeftRef = useRef<number | null>(null);
+  const previousScrollResetRef = useRef({
+    resetKey,
+    dataLength,
+    barWidth,
+    height,
+  });
 
   const effectiveBarWidth =
     barWidth ?? getResponsiveValue(responsiveConfig.barWidth, breakpoint);
@@ -97,14 +104,40 @@ export function ScrollableChart({
   const chartWidth = Math.max(minChartWidth, containerWidth || 0);
   const buttonConfig = responsiveConfig.scrollButton[breakpoint];
 
+  const updateScrollControls = (
+    element: HTMLDivElement,
+    maxScrollLeft: number,
+  ) => {
+    setCanScrollLeft(element.scrollLeft > 0);
+    setCanScrollRight(element.scrollLeft < maxScrollLeft - 1);
+  };
+
+  const reconcileScrollPosition = (
+    element: HTMLDivElement,
+    maxScrollLeft: number,
+    mode: "preserve" | "reset",
+  ) => {
+    const previousMaxScrollLeft = previousMaxScrollLeftRef.current;
+    const wasAtLatest =
+      previousMaxScrollLeft === null ||
+      element.scrollLeft >= previousMaxScrollLeft - 1;
+
+    if (mode === "reset" || wasAtLatest) {
+      element.scrollLeft = maxScrollLeft;
+    } else if (element.scrollLeft > maxScrollLeft) {
+      element.scrollLeft = maxScrollLeft;
+    }
+
+    previousMaxScrollLeftRef.current = maxScrollLeft;
+    updateScrollControls(element, maxScrollLeft);
+  };
+
   const checkScrollPosition = () => {
     const element = scrollRef.current;
     if (!element) return;
 
-    const { scrollLeft, clientWidth } = element;
-    const maxScrollLeft = getMaxScrollLeft(minChartWidth, clientWidth);
-    setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft < maxScrollLeft - 1);
+    const maxScrollLeft = getMaxScrollLeft(minChartWidth, element.clientWidth);
+    updateScrollControls(element, maxScrollLeft);
   };
 
   useEffect(() => {
@@ -127,13 +160,6 @@ export function ScrollableChart({
     const element = scrollRef.current;
     if (!element) return;
     const updateScroll = () => {
-      const maxScrollLeft = getMaxScrollLeft(
-        minChartWidth,
-        element.clientWidth,
-      );
-      if (element.scrollLeft > maxScrollLeft) {
-        element.scrollLeft = maxScrollLeft;
-      }
       checkScrollPosition();
     };
     const raf = requestAnimationFrame(updateScroll);
@@ -147,8 +173,25 @@ export function ScrollableChart({
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    element.scrollLeft = getMaxScrollLeft(minChartWidth, element.clientWidth);
-    checkScrollPosition();
+
+    const maxScrollLeft = getMaxScrollLeft(minChartWidth, element.clientWidth);
+    const previousReset = previousScrollResetRef.current;
+    const shouldReset =
+      previousReset.resetKey !== resetKey ||
+      previousReset.dataLength !== dataLength ||
+      previousReset.barWidth !== barWidth ||
+      previousReset.height !== height;
+    reconcileScrollPosition(
+      element,
+      maxScrollLeft,
+      shouldReset ? "reset" : "preserve",
+    );
+    previousScrollResetRef.current = {
+      resetKey,
+      dataLength,
+      barWidth,
+      height,
+    };
   }, [resetKey, dataLength, barWidth, height, minChartWidth]);
 
   useLayoutEffect(() => {
@@ -157,15 +200,17 @@ export function ScrollableChart({
 
     let animationFrame: number | undefined;
     const updateLayout = () => {
-      setContainerWidth(element.clientWidth);
-      const maxScrollLeft = getMaxScrollLeft(
-        minChartWidth,
-        element.clientWidth,
+      const nextContainerWidth = element.clientWidth;
+      const nextFittedBarWidth =
+        visibleBarCount && nextContainerWidth > 0
+          ? nextContainerWidth / visibleBarCount
+          : effectiveBarWidth;
+      const nextMaxScrollLeft = getMaxScrollLeft(
+        dataLength * nextFittedBarWidth,
+        nextContainerWidth,
       );
-      if (element.scrollLeft > maxScrollLeft) {
-        element.scrollLeft = maxScrollLeft;
-      }
-      checkScrollPosition();
+      reconcileScrollPosition(element, nextMaxScrollLeft, "preserve");
+      setContainerWidth(nextContainerWidth);
     };
 
     updateLayout();
@@ -183,7 +228,7 @@ export function ScrollableChart({
       if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
       observer.disconnect();
     };
-  }, [minChartWidth]);
+  }, [dataLength, effectiveBarWidth, minChartWidth, visibleBarCount]);
 
   const scroll = (direction: "left" | "right") => {
     const element = scrollRef.current;

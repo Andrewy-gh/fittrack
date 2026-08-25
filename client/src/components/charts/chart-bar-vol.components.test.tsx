@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -165,6 +165,53 @@ describe("ScrollableChart", () => {
         width: "1200px",
       });
       expect(scrollContainer.scrollLeft).toBe(900);
+    });
+  });
+
+  it("preserves a historical scroll position after resize", async () => {
+    const { container } = render(
+      <ScrollableChart
+        dataLength={20}
+        visibleBarCount={5}
+      >
+        <div>Chart</div>
+      </ScrollableChart>,
+    );
+    const scrollContainer = getScrollContainer(container);
+
+    await waitFor(() => expect(scrollContainer.scrollLeft).toBe(1500));
+    scrollContainer.scrollLeft = 200;
+    fireEvent.scroll(scrollContainer);
+
+    clientWidth = 300;
+    for (const notifyResize of resizeCallbacks) notifyResize();
+
+    await waitFor(() => {
+      expect(scrollContainer.firstElementChild).toHaveStyle({
+        width: "1200px",
+      });
+      expect(scrollContainer.scrollLeft).toBe(200);
+    });
+  });
+
+  it("keeps an unfitted chart pinned to the latest data after resize", async () => {
+    const { container } = render(
+      <ScrollableChart dataLength={24}>
+        <div>Chart</div>
+      </ScrollableChart>,
+    );
+    const scrollContainer = getScrollContainer(container);
+
+    await waitFor(() => expect(scrollContainer.scrollLeft).toBe(700));
+
+    clientWidth = 300;
+    for (const notifyResize of resizeCallbacks) notifyResize();
+
+    await waitFor(() => {
+      expect(scrollContainer.scrollLeft).toBe(900);
+      expect(
+        screen.queryByRole("button", { name: "Scroll right" }),
+      ).not.toBeInTheDocument();
     });
   });
 
