@@ -478,7 +478,11 @@ interface CreateWorkoutInput {
   }>;
 }
 
-export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
+type DemoMutationResult = {
+  success: boolean;
+};
+
+export function createWorkout(input: CreateWorkoutInput): DemoMutationResult {
   const workouts = getStoredWorkouts();
   const sets = getStoredSets();
   const exercises = getStoredExercises();
@@ -541,7 +545,7 @@ export function createWorkout(input: CreateWorkoutInput): { success: boolean } {
 export function updateWorkout(
   id: number,
   input: CreateWorkoutInput,
-): { success: boolean } {
+): DemoMutationResult {
   const workouts = getStoredWorkouts();
   const sets = getStoredSets();
   const exercises = getStoredExercises();

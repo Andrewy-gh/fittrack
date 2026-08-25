@@ -10,13 +10,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+function parseSelectedDate(value: string): Date | undefined {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 export default function DatePicker() {
-  const field = useFieldContext<Date>();
+  const field = useFieldContext<string>();
   const [open, setOpen] = useState(false);
+  const selectedDate = parseSelectedDate(field.state.value);
 
   const handleSelect = (date: Date | undefined) => {
     if (date) {
-      field.handleChange(date);
+      field.handleChange(date.toISOString());
       setOpen(false);
     }
   };
@@ -36,16 +42,14 @@ export default function DatePicker() {
               <span className="font-semibold text-sm tracking-tight">Date</span>
             </div>
             <div className="text-card-foreground font-semibold">
-              {field.state.value
-                ? format(field.state.value, "PPP")
-                : "Pick a date"}
+              {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
             </div>
           </Card>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0">
           <Calendar
             mode="single"
-            selected={field.state.value}
+            selected={selectedDate}
             onSelect={handleSelect}
           />
         </PopoverContent>

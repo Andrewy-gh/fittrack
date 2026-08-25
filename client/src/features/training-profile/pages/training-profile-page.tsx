@@ -37,7 +37,17 @@ type FormState = {
   movementLimitations: string[];
 };
 
-type FieldErrors = Partial<Record<keyof FormState | "form", string>>;
+type FieldErrors = {
+  primaryGoal?: string;
+  experienceLevel?: string;
+  preferredSessionDurationMinutes?: string;
+  usualTrainingLocation?: string;
+  availableEquipment?: string;
+  avoidedExercises?: string;
+  movementState?: string;
+  movementLimitations?: string;
+  form?: string;
+};
 
 const introCopy =
   "FitTrack's AI coach uses this profile to personalize workouts — it fills in your usual setup so you don't repeat yourself in chat. The AI updates it when you tell it something lasting; you can correct anything here.";

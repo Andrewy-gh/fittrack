@@ -20,3 +20,6 @@ client/**/*.tsx text eol=lf
 client/**/*.yml text eol=lf
 client/**/*.yaml text eol=lf
 client/bun.lock text eol=lf
+
+# Collapse vendored anti-slop rules in GitHub reviews.
+client/tools/oxlint/anti-slop/** linguist-vendored=true

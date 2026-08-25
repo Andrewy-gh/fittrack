@@ -25,7 +25,7 @@ describe("local-storage module", () => {
     expect(() =>
       module.workoutDraftStorage.save(
         {
-          date: new Date("2026-03-24T10:30:00.000Z"),
+          date: "2026-03-24T10:30:00.000Z",
           notes: "",
           workoutFocus: "",
           exercises: [],

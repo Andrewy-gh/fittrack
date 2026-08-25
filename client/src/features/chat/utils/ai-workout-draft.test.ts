@@ -69,7 +69,7 @@ describe("ai workout draft import", () => {
       ],
     });
     expect(draftStorage.load("user-123")).toEqual({
-      date: new Date("2026-04-21T12:00:00Z"),
+      date: "2026-04-21T12:00:00Z",
       notes: "Regenerated draft",
       workoutFocus: "pull",
       exercises: [
@@ -102,7 +102,7 @@ describe("ai workout draft import", () => {
     );
 
     expect(getInitialValues("user-123", draftStorage)).toEqual({
-      date: new Date("2026-04-21T12:00:00Z"),
+      date: "2026-04-21T12:00:00Z",
       notes: "Use straps if grip fades",
       workoutFocus: "back",
       exercises: [

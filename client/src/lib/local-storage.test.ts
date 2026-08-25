@@ -23,7 +23,7 @@ describe("workoutDraftStorage", () => {
   it("round-trips draft data through an injected storage backend", () => {
     const storage = createMemoryStorage();
     const draftStorage = createWorkoutDraftStorage(storage);
-    const date = new Date("2026-03-24T10:30:00.000Z");
+    const date = "2026-03-24T10:30:00.000Z";
 
     draftStorage.save(
       {
@@ -51,7 +51,7 @@ describe("workoutDraftStorage", () => {
 
     draftStorage.save(
       {
-        date: new Date("2026-03-24T10:30:00.000Z"),
+        date: "2026-03-24T10:30:00.000Z",
         notes: "User A",
         workoutFocus: "",
         exercises: [],
@@ -60,7 +60,7 @@ describe("workoutDraftStorage", () => {
     );
     draftStorage.save(
       {
-        date: new Date("2026-03-24T11:30:00.000Z"),
+        date: "2026-03-24T11:30:00.000Z",
         notes: "User B",
         workoutFocus: "",
         exercises: [],
@@ -78,7 +78,7 @@ describe("workoutDraftStorage", () => {
 
     draftStorage.save(
       {
-        date: new Date("2026-03-24T10:30:00.000Z"),
+        date: "2026-03-24T10:30:00.000Z",
         notes: "To delete",
         workoutFocus: "",
         exercises: [],
@@ -116,7 +116,7 @@ describe("workoutDraftStorage", () => {
     const draftStorage = createWorkoutDraftStorage(storage);
 
     expect(draftStorage.load("user-123")).toEqual({
-      date: new Date("2026-03-24T10:30:00.000Z"),
+      date: "2026-03-24T10:30:00.000Z",
       notes: "Saved draft",
       workoutFocus: "Upper",
       exercises: [

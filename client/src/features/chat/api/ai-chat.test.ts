@@ -244,6 +244,43 @@ describe("ai chat api wrapper", () => {
     );
   });
 
+  it("preserves a stopped done-event status without adding a draft", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            [
+              "event: done",
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"status":"stopped","text":"partial"}',
+              "",
+              "",
+            ].join("\n"),
+          ),
+        );
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(stream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
+    );
+
+    const result = await streamAIChatMessage(41, "hello");
+
+    expectDoneEvent(result.doneEvent);
+    expect(result.doneEvent).toEqual(
+      expect.objectContaining({
+        type: "done",
+        status: "stopped",
+        text: "partial",
+      }),
+    );
+    expect(result.doneEvent).not.toHaveProperty("workout_draft");
+  });
+
   it("resumes a chat stream after a sequence cursor", async () => {
     const stream = new ReadableStream({
       start(controller) {

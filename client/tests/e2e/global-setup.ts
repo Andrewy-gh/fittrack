@@ -35,7 +35,7 @@ type LocalAuthBootstrapResponse = {
   display_name: string;
 };
 
-function parseEnvFile(contents: string): Record<string, string> {
+function parseEnvFile(contents: string) {
   const result: Record<string, string> = {};
   for (const line of contents.split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -70,17 +70,17 @@ function buildStackHeaders(options: {
   publishableClientKey?: string;
   secretServerKey?: string;
 }) {
-  return {
-    "content-type": "application/json",
-    "x-stack-access-type": options.accessType,
-    "x-stack-project-id": options.projectId,
-    ...(options.publishableClientKey
-      ? { "x-stack-publishable-client-key": options.publishableClientKey }
-      : {}),
-    ...(options.secretServerKey
-      ? { "x-stack-secret-server-key": options.secretServerKey }
-      : {}),
-  } as Record<string, string>;
+  const headers: Record<string, string> = {};
+  headers["content-type"] = "application/json";
+  headers["x-stack-access-type"] = options.accessType;
+  headers["x-stack-project-id"] = options.projectId;
+  if (options.publishableClientKey) {
+    headers["x-stack-publishable-client-key"] = options.publishableClientKey;
+  }
+  if (options.secretServerKey) {
+    headers["x-stack-secret-server-key"] = options.secretServerKey;
+  }
+  return headers;
 }
 
 async function stackRequest<T>(

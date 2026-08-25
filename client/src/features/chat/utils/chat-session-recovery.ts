@@ -41,6 +41,10 @@ type ResumeContext = {
   state: ChatSessionState;
 };
 
+type RecoveryRequestFailure = {
+  readonly cause: unknown;
+};
+
 export type LoadConversation = (
   id: number,
   opts?: ConversationRequestOptions,
@@ -85,7 +89,7 @@ export async function recoverConversation(
   opts: ConversationRequestOptions | undefined,
   { state, signal, isCurrent }: RequestContext,
 ): Promise<ConversationRequestResult> {
-  let recoveryRequestError: unknown = null;
+  let recoveryRequestError: RecoveryRequestFailure | null = null;
   let shouldRetryRecovery = false;
 
   const requestRecovery = async () => {
@@ -94,7 +98,7 @@ export async function recoverConversation(
       shouldRetryRecovery = response.status === "not_needed";
     } catch (error) {
       if (signal.aborted || isAbortError(error)) throw error;
-      recoveryRequestError = recoveryRequestError ?? error;
+      recoveryRequestError = recoveryRequestError ?? { cause: error };
       shouldRetryRecovery = false;
     }
   };
@@ -119,13 +123,16 @@ export async function recoverConversation(
     if (signal.aborted || !isCurrent() || isAbortError(error)) {
       return { detail: null, aborted: true, error };
     }
+    const recoveryFailure: RecoveryRequestFailure = recoveryRequestError ?? {
+      cause: undefined,
+    };
     if (!opts?.silent) {
-      state.setLoadError(getErrorMessage(recoveryRequestError ?? error));
+      state.setLoadError(getErrorMessage(recoveryFailure.cause ?? error));
     }
     return {
       detail: null,
       aborted: false,
-      error: recoveryRequestError ?? error,
+      error: recoveryFailure.cause ?? error,
     };
   }
 }
