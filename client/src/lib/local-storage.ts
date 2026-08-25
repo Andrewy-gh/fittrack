@@ -140,14 +140,6 @@ function getBrowserStorage(): StorageLike | undefined {
 export const workoutDraftStorage =
   createWorkoutDraftStorage(getBrowserStorage());
 
-export const saveToLocalStorage = (
-  data: FormDataType,
-  userId?: string,
-  draftStorage: WorkoutDraftStorage = workoutDraftStorage,
-) => {
-  draftStorage.save(data, userId);
-};
-
 export const loadFromLocalStorage = (
   userId?: string,
   draftStorage: WorkoutDraftStorage = workoutDraftStorage,

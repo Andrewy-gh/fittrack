@@ -30,14 +30,6 @@ export function isLocalDevAuthEnabled(): boolean {
   );
 }
 
-export function getLocalDevAuthStorageKey(): string {
-  return STORAGE_KEY;
-}
-
-export function getLocalDevAuthHeaderName(): string {
-  return DEV_AUTH_HEADER;
-}
-
 export function getLocalDevAuthSession(): LocalDevAuthSession | null {
   if (!isLocalDevAuthEnabled() || typeof window === "undefined") {
     return null;

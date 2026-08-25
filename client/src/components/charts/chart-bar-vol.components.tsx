@@ -68,6 +68,10 @@ interface ScrollableChartProps {
   visibleBarCount?: number;
 }
 
+function getMaxScrollLeft(minChartWidth: number, clientWidth: number): number {
+  return Math.max(0, minChartWidth - clientWidth);
+}
+
 export function ScrollableChart({
   children,
   dataLength,
@@ -98,8 +102,7 @@ export function ScrollableChart({
     if (!element) return;
 
     const { scrollLeft, clientWidth } = element;
-    const expectedWidth = Math.max(minChartWidth, clientWidth);
-    const maxScrollLeft = Math.max(0, expectedWidth - clientWidth);
+    const maxScrollLeft = getMaxScrollLeft(minChartWidth, clientWidth);
     setCanScrollLeft(scrollLeft > 0);
     setCanScrollRight(scrollLeft < maxScrollLeft - 1);
   };
@@ -124,8 +127,10 @@ export function ScrollableChart({
     const element = scrollRef.current;
     if (!element) return;
     const updateScroll = () => {
-      const expectedWidth = Math.max(minChartWidth, element.clientWidth);
-      const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
+      const maxScrollLeft = getMaxScrollLeft(
+        minChartWidth,
+        element.clientWidth,
+      );
       if (element.scrollLeft > maxScrollLeft) {
         element.scrollLeft = maxScrollLeft;
       }
@@ -142,43 +147,43 @@ export function ScrollableChart({
   useLayoutEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    const expectedWidth = Math.max(minChartWidth, element.clientWidth);
-    const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
-    element.scrollLeft = maxScrollLeft;
+    element.scrollLeft = getMaxScrollLeft(minChartWidth, element.clientWidth);
     checkScrollPosition();
   }, [resetKey, dataLength, barWidth, height, minChartWidth]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const clampScroll = () => {
-      const expectedWidth = Math.max(minChartWidth, element.clientWidth);
-      const maxScrollLeft = Math.max(0, expectedWidth - element.clientWidth);
+    if (!element) return;
+
+    let animationFrame: number | undefined;
+    const updateLayout = () => {
+      setContainerWidth(element.clientWidth);
+      const maxScrollLeft = getMaxScrollLeft(
+        minChartWidth,
+        element.clientWidth,
+      );
       if (element.scrollLeft > maxScrollLeft) {
         element.scrollLeft = maxScrollLeft;
       }
       checkScrollPosition();
     };
+
+    updateLayout();
+    if (typeof ResizeObserver === "undefined") return;
+
     const observer = new ResizeObserver(() => {
-      requestAnimationFrame(clampScroll);
+      if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(updateLayout);
     });
     observer.observe(element);
     const inner = element.firstElementChild as HTMLElement | null;
     if (inner) observer.observe(inner);
-    return () => observer.disconnect();
-  }, [minChartWidth]);
 
-  useLayoutEffect(() => {
-    const element = scrollRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const updateWidth = () => {
-      setContainerWidth(element.clientWidth);
+    return () => {
+      if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+      observer.disconnect();
     };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  }, [minChartWidth]);
 
   const scroll = (direction: "left" | "right") => {
     const element = scrollRef.current;
