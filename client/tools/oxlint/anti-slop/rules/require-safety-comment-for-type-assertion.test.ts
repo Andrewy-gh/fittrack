@@ -36,6 +36,31 @@ tester.run(
         // SAFETY: the adapter owns the conversion from its validated protocol record.
         const id = (raw as User).id;
       `,
+      `
+        type User = { readonly id: string };
+        function hasUserId(raw: unknown): boolean {
+          // SAFETY: the caller parsed the value before this condition.
+          if ((raw as User).id) return true;
+          return false;
+        }
+      `,
+      `
+        type User = { readonly id: string };
+        function hasUserId(raw: unknown): boolean {
+          // SAFETY: the caller parsed the value before this loop condition.
+          while ((raw as User).id) return true;
+          return false;
+        }
+      `,
+      `
+        type User = { readonly id: string };
+        const user = raw /* SAFETY: parseUser checked the boundary value. */ as User;
+      `,
+      `
+        type User = { readonly id: string };
+        // SAFETY: parseUser checked the boundary value before this angle assertion.
+        const user = <User>raw;
+      `,
     ],
     invalid: [
       {
@@ -59,6 +84,31 @@ tester.run(
           type User = { readonly id: string };
           // This is expected to be a user.
           const user = raw as User;
+        `,
+        errors: [error],
+      },
+      {
+        code: `
+          type User = { readonly id: string };
+          // SAFETY: a function-level comment must not cover its control-flow body.
+          function hasUserId(raw: unknown): boolean {
+            if ((raw as User).id) return true;
+            return false;
+          }
+        `,
+        errors: [error],
+      },
+      {
+        code: `
+          type User = { readonly id: string };
+          const user = raw as /* SAFETY: too late. */ User;
+        `,
+        errors: [error],
+      },
+      {
+        code: `
+          type User = { readonly id: string };
+          const user = <User> /* SAFETY: too late. */ raw;
         `,
         errors: [error],
       },

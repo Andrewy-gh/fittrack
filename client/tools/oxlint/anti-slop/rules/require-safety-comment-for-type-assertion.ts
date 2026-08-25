@@ -5,11 +5,26 @@ import type { ESTree, SourceCode } from "@oxlint/plugins";
 type TypeAssertion = ESTree.TSAsExpression | ESTree.TSTypeAssertion;
 
 const commentOwnerKinds = new Set([
+  "DoWhileStatement",
   "ExpressionStatement",
+  "ForInStatement",
+  "ForOfStatement",
+  "ForStatement",
+  "IfStatement",
   "PropertyDefinition",
   "ReturnStatement",
+  "SwitchStatement",
   "ThrowStatement",
+  "TryStatement",
   "VariableDeclaration",
+  "WhileStatement",
+  "WithStatement",
+]);
+
+const functionBoundaryKinds = new Set([
+  "ArrowFunctionExpression",
+  "FunctionDeclaration",
+  "FunctionExpression",
 ]);
 
 function isConstAssertion(node: TypeAssertion): boolean {
@@ -20,17 +35,44 @@ function isConstAssertion(node: TypeAssertion): boolean {
   );
 }
 
-function hasSafetyComment(sourceCode: SourceCode, node: TypeAssertion): boolean {
+function hasSafetyComment(
+  sourceCode: SourceCode,
+  node: TypeAssertion,
+): boolean {
+  const assertionOperatorStart =
+    node.type === "TSAsExpression"
+      ? (sourceCode.getTokenAfter(node.expression)?.start ?? node.start)
+      : node.start;
   let current: ESTree.Node = node;
+
   while (true) {
+    if (functionBoundaryKinds.has(current.type)) return false;
     if (
       sourceCode
         .getCommentsBefore(current)
-        .some((comment) => comment.end <= node.start && /\bSAFETY\s*:/u.test(comment.value))
+        .some(
+          (comment) =>
+            comment.end <= assertionOperatorStart &&
+            /\bSAFETY\s*:/u.test(comment.value),
+        ) ||
+      (current === node &&
+        node.type === "TSAsExpression" &&
+        sourceCode
+          .getCommentsInside(node)
+          .some(
+            (comment) =>
+              comment.end <= assertionOperatorStart &&
+              /\bSAFETY\s*:/u.test(comment.value),
+          ))
     ) {
       return true;
     }
-    if (commentOwnerKinds.has(current.type) || current.parent.type === "Program") return false;
+
+    if (
+      commentOwnerKinds.has(current.type) ||
+      current.parent.type === "Program"
+    )
+      return false;
     current = current.parent;
   }
 }
@@ -50,7 +92,8 @@ export const requireSafetyCommentForTypeAssertionRule = defineRule({
   },
   createOnce(context) {
     const checkAssertion = (node: TypeAssertion) => {
-      if (isConstAssertion(node) || hasSafetyComment(context.sourceCode, node)) return;
+      if (isConstAssertion(node) || hasSafetyComment(context.sourceCode, node))
+        return;
       context.report({ node, messageId: "missingSafetyComment" });
     };
 
