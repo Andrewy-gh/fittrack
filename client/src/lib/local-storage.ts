@@ -9,13 +9,8 @@ const getStorageKey = (userId?: string): string => {
   return userId ? `${STORAGE_KEY}-${userId}` : STORAGE_KEY;
 };
 
-// Type for form data that may contain Date objects
-export type FormDataType = Omit<WorkoutCreateWorkoutRequest, "date"> & {
-  date: Date | string;
-};
-
 export type WorkoutDraftStorage = {
-  save: (data: FormDataType, userId?: string) => void;
+  save: (data: WorkoutCreateWorkoutRequest, userId?: string) => void;
   load: (userId?: string) => WorkoutCreateWorkoutRequest | null;
   clear: (userId?: string) => void;
 };
@@ -37,13 +32,6 @@ const WorkoutDraftSchema = v.object({
   workoutFocus: v.optional(v.string()),
   exercises: v.array(WorkoutExerciseSchema),
 });
-
-function serializeDraft(data: FormDataType): WorkoutCreateWorkoutRequest {
-  return {
-    ...data,
-    date: data.date instanceof Date ? data.date.toISOString() : data.date,
-  };
-}
 
 function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
   const result = v.safeParse(WorkoutDraftSchema, input);
@@ -86,10 +74,7 @@ export function createWorkoutDraftStorage(
       }
 
       try {
-        storage.setItem(
-          getStorageKey(userId),
-          JSON.stringify(serializeDraft(data)),
-        );
+        storage.setItem(getStorageKey(userId), JSON.stringify(data));
       } catch (error) {
         console.warn("Failed to save to localStorage:", error);
       }
