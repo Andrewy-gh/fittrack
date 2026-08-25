@@ -142,6 +142,27 @@ tester.run(
       {
         code: `
           type User = { readonly id: string };
+          const user = raw as /* SAFETY: too late. */ (User);
+        `,
+        errors: [error],
+      },
+      {
+        code: `
+          type User = { readonly id: string };
+          const user = parse(/* SAFETY: inside the expression is not an assertion invariant. */ raw) as User;
+        `,
+        errors: [error],
+      },
+      {
+        code: `
+          type User = { readonly id: string };
+          const user = (raw /* SAFETY: inside the parentheses is not an assertion invariant. */) as User;
+        `,
+        errors: [error],
+      },
+      {
+        code: `
+          type User = { readonly id: string };
           const user = <User> /* SAFETY: too late. */ raw;
         `,
         errors: [error],

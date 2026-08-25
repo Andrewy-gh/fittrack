@@ -29,14 +29,23 @@ function isConstAssertion(node: TypeAssertion): boolean {
   );
 }
 
+function getAsOperatorToken(sourceCode: SourceCode, node: TypeAssertion) {
+  if (node.type === "TSTypeAssertion") return null;
+  return (
+    sourceCode
+      .getTokensBetween(node.expression, node.typeAnnotation)
+      .find((token) => token.value === "as") ?? null
+  );
+}
+
 function hasSafetyComment(
   sourceCode: SourceCode,
   node: TypeAssertion,
 ): boolean {
-  const assertionOperatorStart =
-    node.type === "TSAsExpression"
-      ? (sourceCode.getTokenBefore(node.typeAnnotation)?.start ?? node.start)
-      : node.start;
+  const asOperator = getAsOperatorToken(sourceCode, node);
+  const assertionOperatorStart = asOperator?.start ?? node.start;
+  const tokenBeforeAs =
+    asOperator === null ? null : sourceCode.getTokenBefore(asOperator);
   let current: ESTree.Node = node;
 
   while (true) {
@@ -54,6 +63,8 @@ function hasSafetyComment(
           .getCommentsInside(node)
           .some(
             (comment) =>
+              tokenBeforeAs !== null &&
+              comment.start >= tokenBeforeAs.end &&
               comment.end <= assertionOperatorStart &&
               /\bSAFETY\s*:/u.test(comment.value),
           ))
