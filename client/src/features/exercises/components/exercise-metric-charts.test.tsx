@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ExerciseMetricCharts } from "./exercise-metric-charts";
 
-const { mockUseQuery } = vi.hoisted(() => ({
+const { mockChartBarMetric, mockUseQuery } = vi.hoisted(() => ({
+  mockChartBarMetric: vi.fn(),
   mockUseQuery: vi.fn(),
 }));
 
@@ -24,7 +25,10 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/components/charts/chart-bar-metric", () => ({
-  ChartBarMetric: ({ title }: { title: string }) => <div>{title}</div>,
+  ChartBarMetric: (props: { title: string; visibleBarCount?: number }) => {
+    mockChartBarMetric(props);
+    return <div>{props.title}</div>;
+  },
 }));
 
 vi.mock("@/components/charts/chart-bar-vol.components", () => ({
@@ -33,6 +37,7 @@ vi.mock("@/components/charts/chart-bar-vol.components", () => ({
 
 describe("ExerciseMetricCharts", () => {
   beforeEach(() => {
+    mockChartBarMetric.mockClear();
     mockUseQuery.mockReset();
   });
 
@@ -159,6 +164,9 @@ describe("ExerciseMetricCharts", () => {
     expect(
       screen.queryByText("No weighted metrics for this exercise/range."),
     ).not.toBeInTheDocument();
+    expect(mockChartBarMetric).toHaveBeenCalledWith(
+      expect.objectContaining({ visibleBarCount: 30 }),
+    );
   });
 
   it("keeps the current chart visible while a new range is fetching", () => {

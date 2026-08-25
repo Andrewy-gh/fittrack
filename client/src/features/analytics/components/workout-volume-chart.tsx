@@ -2,7 +2,10 @@ import { useState } from "react";
 import type { WorkoutContributionDataResponse } from "@/client";
 import { ChartBarMetric } from "@/components/charts/chart-bar-metric";
 import { RangeSelector } from "@/components/charts/chart-bar-vol.components";
-import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
+import {
+  getVisibleBarCount,
+  type RangeType,
+} from "@/components/charts/chart-bar-vol.utils";
 import {
   Select,
   SelectContent,
@@ -105,15 +108,7 @@ export function WorkoutVolumeChart({
           }
           data={chartData}
           unit="vol"
-          visibleBarCount={
-            selectedRange === "W"
-              ? 7
-              : selectedRange === "M"
-                ? 30
-                : selectedRange === "6M"
-                  ? 26
-                  : undefined
-          }
+          visibleBarCount={getVisibleBarCount(selectedRange)}
         />
       )}
     </section>

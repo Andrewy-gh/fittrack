@@ -13,7 +13,10 @@ import {
 } from "@/features/exercises/api/exercises";
 import { computeDemoMetricsHistory } from "@/features/exercises/utils/metrics-history";
 import { RangeSelector } from "@/components/charts/chart-bar-vol.components";
-import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
+import {
+  getVisibleBarCount,
+  type RangeType,
+} from "@/components/charts/chart-bar-vol.utils";
 import {
   ChartBarMetric,
   type MetricPoint,
@@ -213,6 +216,7 @@ function MetricChartsBody({
         data={activeChart.data}
         unit={activeChart.unit}
         onWorkoutClick={onWorkoutClick}
+        visibleBarCount={getVisibleBarCount(range)}
       />
 
       <div className="flex items-center justify-center gap-4 pb-1">

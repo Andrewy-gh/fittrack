@@ -74,6 +74,13 @@ export const ranges: Array<{ value: RangeType; label: string }> = [
   { value: "Y", label: "Y" },
 ];
 
+export function getVisibleBarCount(range: RangeType): number | undefined {
+  if (range === "W") return 7;
+  if (range === "M") return 30;
+  if (range === "6M") return 26;
+  return undefined;
+}
+
 export function getResponsiveValue<T>(
   values: ResponsiveValue<T>,
   breakpoint: Breakpoint,
