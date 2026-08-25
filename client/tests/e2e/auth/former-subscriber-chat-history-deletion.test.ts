@@ -56,7 +56,7 @@ test.describe("Authenticated - former subscriber AI chat privacy", () => {
       if (!session?.userId) {
         throw new Error("Local E2E auth session is missing");
       }
-      const headers: Record<string, string> = {
+      const headers = {
         "x-fittrack-dev-e2e-user": session.userId,
       };
       const [features, conversations] = await Promise.all([

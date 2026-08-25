@@ -15,6 +15,11 @@ type ExerciseGoalLookup = {
   exerciseName?: string | null;
 };
 
+type ExerciseGoalParseResult = {
+  value?: number;
+  error?: string;
+};
+
 const STORAGE_KEY = "fittrack-exercise-goals-v1";
 
 const ExerciseGoalSchema = v.object({
@@ -138,7 +143,7 @@ export function parseExerciseGoalInput(
   value: string,
   label: string,
   options: ExerciseGoalParseOptions = {},
-): { value?: number; error?: string } {
+): ExerciseGoalParseResult {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
     return {};

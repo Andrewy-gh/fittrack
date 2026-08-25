@@ -38,7 +38,7 @@ describe("workoutDraftStorage", () => {
     const loaded = draftStorage.load("user-123");
 
     expect(loaded).toEqual({
-      date,
+      date: date.toISOString(),
       notes: "Heavy day",
       workoutFocus: "Upper",
       exercises: [],
@@ -116,7 +116,7 @@ describe("workoutDraftStorage", () => {
     const draftStorage = createWorkoutDraftStorage(storage);
 
     expect(draftStorage.load("user-123")).toEqual({
-      date: new Date("2026-03-24T10:30:00.000Z"),
+      date: "2026-03-24T10:30:00.000Z",
       notes: "Saved draft",
       workoutFocus: "Upper",
       exercises: [

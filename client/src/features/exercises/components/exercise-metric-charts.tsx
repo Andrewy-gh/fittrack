@@ -311,8 +311,7 @@ function DemoCharts({
     () => computeDemoMetricsHistory(exerciseSets, range),
     [exerciseSets, range],
   );
-  const points = (demo.points ??
-    []) as any as ExerciseExerciseMetricsHistoryPoint[];
+  const points = demo.points;
   return (
     <MetricChartsBody
       points={points}

@@ -34,15 +34,17 @@ export function sortWorkoutsByCreatedAt(
   });
 }
 
+type PaginatedWorkouts = {
+  pagedWorkouts: WorkoutWorkoutResponse[];
+  totalPages: number;
+  currentPage: number;
+};
+
 export function paginateWorkouts(
   workouts: WorkoutWorkoutResponse[],
   itemsPerPage: number,
   page: number | undefined,
-): {
-  pagedWorkouts: WorkoutWorkoutResponse[];
-  totalPages: number;
-  currentPage: number;
-} {
+): PaginatedWorkouts {
   const safeItemsPerPage = itemsPerPage > 0 ? itemsPerPage : 10;
   const totalPages = Math.max(1, Math.ceil(workouts.length / safeItemsPerPage));
   const currentPage = Math.min(Math.max(1, page ?? 1), totalPages);

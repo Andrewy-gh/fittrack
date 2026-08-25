@@ -1,6 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { CurrentUser } from "@stackframe/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,10 +66,8 @@ import { AccountSettingsPage } from "@/features/account/pages/account-settings-p
 const testUserSignOut = vi.fn();
 const testUser = {
   id: "user-123",
-  displayName: "Andy",
-  primaryEmail: "andy@example.com",
   signOut: testUserSignOut,
-} as unknown as CurrentUser;
+};
 
 describe("AccountSettingsPage", () => {
   beforeEach(() => {

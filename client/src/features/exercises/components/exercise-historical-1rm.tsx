@@ -26,6 +26,11 @@ import {
   setDemoExerciseHistorical1RmManual,
 } from "@/lib/demo-data/historical-1rm";
 
+type BestE1rmDisplay = {
+  best: number | null;
+  workoutId: number | null;
+};
+
 function computeBestE1rmFromSets(
   sets: ExerciseExerciseWithSetsResponse[],
 ): { best: number; workoutId: number } | null {
@@ -54,7 +59,7 @@ export function resolveBestE1rmForDisplay({
   isDemoMode: boolean;
   apiBestE1RM: number | null | undefined;
   exerciseSets: ExerciseExerciseWithSetsResponse[];
-}): { best: number | null; workoutId: number | null } {
+}): BestE1rmDisplay {
   const shouldFallbackFromSets = isDemoMode || apiBestE1RM == null;
   const bestFromSets = shouldFallbackFromSets
     ? computeBestE1rmFromSets(exerciseSets)

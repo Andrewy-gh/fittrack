@@ -58,10 +58,7 @@ function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
   }
 
   return {
-    // SAFETY: Existing draft consumers expect storage to rehydrate the saved
-    // ISO string into a Date for the date picker, while the generated request
-    // type still represents the submitted JSON payload.
-    date: date as unknown as string,
+    date: result.output.date,
     notes: result.output.notes,
     workoutFocus: result.output.workoutFocus,
     exercises: result.output.exercises,

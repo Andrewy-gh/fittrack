@@ -10,6 +10,7 @@
     "playwright-report/**",
     "src/routeTree.gen.ts",
     "test-results/**",
-    "tests/e2e/.auth/**"
+    "tests/e2e/.auth/**",
+    "tools/oxlint/anti-slop/**"
   ]
 }

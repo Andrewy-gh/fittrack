@@ -10,11 +10,27 @@ import {
 } from "@/lib/touch-activation";
 import { describe, expect, it, vi } from "vitest";
 
-function createTouchEvent(x: number, y: number) {
+function createTouchEvent(
+  x: number,
+  y: number,
+): Parameters<typeof beginTouchTapTracking>[1] {
   return {
     touches: [{ clientX: x, clientY: y }],
     changedTouches: [{ clientX: x, clientY: y }],
-  } as unknown as TouchEvent;
+  };
+}
+
+function createTouchEndEvent(
+  x: number,
+  y: number,
+  timeStamp: number,
+  preventDefault = vi.fn(),
+): Parameters<typeof activateTouchTap>[1] {
+  return {
+    ...createTouchEvent(x, y),
+    preventDefault,
+    timeStamp,
+  };
 }
 
 function dispatchClick(element: HTMLElement, timeStamp: number) {
@@ -98,11 +114,10 @@ describe("touch activation helpers", () => {
     beginTouchTapTracking(element, createTouchEvent(10, 20));
 
     expect(
-      activateTouchTap(element, {
-        ...createTouchEvent(10, 20),
-        preventDefault,
-        timeStamp: 100,
-      } as unknown as TouchEvent),
+      activateTouchTap(
+        element,
+        createTouchEndEvent(10, 20, 100, preventDefault),
+      ),
     ).toBe(true);
     expect(preventDefault).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -113,11 +128,10 @@ describe("touch activation helpers", () => {
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
     expect(
-      activateTouchTap(element, {
-        ...createTouchEvent(10, 20),
-        preventDefault,
-        timeStamp: 250,
-      } as unknown as TouchEvent),
+      activateTouchTap(
+        element,
+        createTouchEndEvent(10, 20, 250, preventDefault),
+      ),
     ).toBe(true);
     expect(clickSpy).toHaveBeenCalledTimes(2);
   });
@@ -126,21 +140,13 @@ describe("touch activation helpers", () => {
     const { clickSpy, element } = createTouchTarget("div");
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
-    activateTouchTap(element, {
-      ...createTouchEvent(10, 20),
-      preventDefault: vi.fn(),
-      timeStamp: 100,
-    } as unknown as TouchEvent);
+    activateTouchTap(element, createTouchEndEvent(10, 20, 100));
 
     dispatchClick(element, 200);
     expect(clickSpy).toHaveBeenCalledTimes(1);
 
     beginTouchTapTracking(element, createTouchEvent(10, 20));
-    activateTouchTap(element, {
-      ...createTouchEvent(10, 20),
-      preventDefault: vi.fn(),
-      timeStamp: 250,
-    } as unknown as TouchEvent);
+    activateTouchTap(element, createTouchEndEvent(10, 20, 250));
 
     expect(clickSpy).toHaveBeenCalledTimes(2);
   });

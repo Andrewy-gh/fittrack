@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CreditCard, Dumbbell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +12,13 @@ import {
 import { useChatDraftStore } from "@/features/chat/utils/chat-draft-context";
 import { clearDeletedAIChatClientState } from "@/features/chat/utils/chat-history-deletion";
 
+type AccountSettingsUser = {
+  id: string;
+  signOut: () => Promise<void>;
+};
+
 type AccountSettingsPageProps = {
-  user: CurrentUser | CurrentInternalUser;
+  user: AccountSettingsUser;
 };
 
 export const accountDeletionBillingCopy =
