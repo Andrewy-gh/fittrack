@@ -16,10 +16,10 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
     loweredMessage.includes("mime type");
 
   // Extract request_id if it's an API error
-  const errorAsUnknown = error as unknown;
+  const errorValue: unknown = error;
   let requestId: string | undefined = undefined;
-  if (isApiError(errorAsUnknown)) {
-    requestId = errorAsUnknown.request_id;
+  if (isApiError(errorValue)) {
+    requestId = errorValue.request_id;
   }
 
   return (

@@ -15,16 +15,12 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import { type CurrentInternalUser, type CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { AppBottomBar } from "@/components/nav/app-bottom-bar";
 import { LandingTopBar } from "@/components/nav/landing-top-bar";
 import { useDisplayMode } from "@/hooks/use-display-mode";
 
-export function HomePage({
-  user,
-}: {
-  user: CurrentUser | CurrentInternalUser | null;
-}) {
+export function HomePage({ user }: { user: ApplicationUser | null }) {
   const displayMode = useDisplayMode();
 
   const features = [

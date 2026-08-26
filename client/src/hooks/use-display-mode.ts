@@ -11,9 +11,7 @@ function isStandaloneDisplayMode() {
 function isIosStandalone() {
   if (typeof navigator === "undefined") return false;
 
-  return (
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
+  return "standalone" in navigator && navigator.standalone === true;
 }
 
 function getDisplayMode(): DisplayMode {

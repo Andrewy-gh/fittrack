@@ -29,6 +29,8 @@ type SetDialogState =
 // MARK: Header
 export const ExerciseHeader = withForm({
   defaultValues: MOCK_VALUES,
+  // SAFETY: TanStack withForm spreads this empty defaults object before the props
+  // supplied by every ExerciseHeader caller, so it is only a type witness for the generic.
   props: {} as ExerciseScreenProps,
   render: function Render({ form, exerciseIndex, onBack }) {
     return (
@@ -57,6 +59,8 @@ export const ExerciseHeader = withForm({
 
 export const ExerciseSets = withForm({
   defaultValues: MOCK_VALUES,
+  // SAFETY: TanStack withForm spreads this empty defaults object before the props
+  // supplied by every ExerciseSets caller, so it is only a type witness for the generic.
   props: {} as Pick<ExerciseScreenProps, "exerciseIndex"> & {
     isNewExercise?: boolean;
     onDiscardNewExercise?: () => void;

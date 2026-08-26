@@ -4,7 +4,7 @@ import {
   useUpdateWorkoutForUserMutation,
   type WorkoutFocus,
 } from "@/features/workouts/api/workouts";
-import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Suspense } from "react";
 import { useAppForm } from "@/hooks/form";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ export function EditWorkoutPage({
   workoutsFocus,
   search,
 }: {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
   exercises: ExerciseExerciseResponse[];
   workout: WorkoutUpdateWorkoutRequest;
   workoutId: number;

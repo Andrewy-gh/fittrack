@@ -1,4 +1,4 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AccountSlot } from "@/components/nav/account-slot";
 import { isActivePath } from "@/components/nav/use-active-path";
@@ -7,7 +7,7 @@ import { navItems } from "@/components/nav/nav-items";
 import { cn } from "@/lib/utils";
 
 interface AppTopBarProps {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 }
 
 export function AppTopBar({ user }: AppTopBarProps) {

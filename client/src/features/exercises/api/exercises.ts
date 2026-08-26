@@ -48,6 +48,28 @@ export function exerciseMetricsHistoryQueryOptions(
   });
 }
 
+function isMetricsHistoryQueryForExercise(
+  value: unknown,
+  exerciseId: number,
+): boolean {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    !("_id" in value) ||
+    value._id !== "getExercisesByIdMetricsHistory" ||
+    !("path" in value) ||
+    typeof value.path !== "object" ||
+    value.path === null ||
+    Array.isArray(value.path) ||
+    !("id" in value.path)
+  ) {
+    return false;
+  }
+
+  return value.path.id === exerciseId;
+}
+
 function invalidateExerciseDetail(id: number) {
   queryClient.invalidateQueries({
     queryKey: getExercisesQueryKey(),
@@ -119,13 +141,8 @@ export function useUpdateExerciseHistorical1RmMutation() {
 
       // historical 1RM affects metrics-history intensity calculations; invalidate all ranges.
       queryClient.invalidateQueries({
-        predicate: (q) => {
-          const key0 = q.queryKey?.[0] as any;
-          return (
-            key0?._id === "getExercisesByIdMetricsHistory" &&
-            key0?.path?.id === id
-          );
-        },
+        predicate: (query) =>
+          isMetricsHistoryQueryForExercise(query.queryKey?.[0], id),
       });
     },
   });

@@ -1,3 +1,5 @@
+import type { ApplicationUser } from "@/lib/application-user";
+
 const STORAGE_KEY = "fittrack-local-e2e-auth";
 const DEV_AUTH_HEADER = "x-fittrack-dev-e2e-user";
 
@@ -30,6 +32,30 @@ export function isLocalDevAuthEnabled(): boolean {
   );
 }
 
+function parseLocalDevAuthSession(value: unknown): LocalDevAuthSession | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    !("userId" in value) ||
+    !("email" in value) ||
+    !("displayName" in value)
+  ) {
+    return null;
+  }
+
+  const { userId, email, displayName } = value;
+  if (
+    typeof userId !== "string" ||
+    typeof email !== "string" ||
+    typeof displayName !== "string"
+  ) {
+    return null;
+  }
+
+  return { userId, email, displayName };
+}
+
 export function getLocalDevAuthSession(): LocalDevAuthSession | null {
   if (!isLocalDevAuthEnabled() || typeof window === "undefined") {
     return null;
@@ -41,20 +67,8 @@ export function getLocalDevAuthSession(): LocalDevAuthSession | null {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as Partial<LocalDevAuthSession>;
-    if (
-      typeof parsed.userId !== "string" ||
-      typeof parsed.email !== "string" ||
-      typeof parsed.displayName !== "string"
-    ) {
-      return null;
-    }
-
-    return {
-      userId: parsed.userId,
-      email: parsed.email,
-      displayName: parsed.displayName,
-    };
+    const parsed: unknown = JSON.parse(raw);
+    return parseLocalDevAuthSession(parsed);
   } catch {
     return null;
   }
@@ -72,10 +86,7 @@ export function applyLocalDevAuthHeader(headers: Headers): Headers {
   return headers;
 }
 
-export function getLocalDevRouteUser():
-  | CurrentUser
-  | CurrentInternalUser
-  | null {
+export function getLocalDevRouteUser(): ApplicationUser | null {
   const session = getLocalDevAuthSession();
   if (!session) {
     return null;
@@ -90,7 +101,7 @@ export function getLocalDevRouteUser():
       clearLocalDevAuthSession();
       window.location.assign("/");
     },
-  } as CurrentUser;
+  };
 }
 
 export function clearLocalDevAuthSession(): void {
@@ -104,4 +115,3 @@ export function clearLocalDevAuthSession(): void {
     // Ignore local-only cleanup failures.
   }
 }
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";

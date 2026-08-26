@@ -1,4 +1,4 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -17,7 +17,7 @@ import { navItems } from "@/components/nav/nav-items";
 import { cn } from "@/lib/utils";
 
 interface NavSideDrawerProps {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
   children?: ReactNode;
 }
 

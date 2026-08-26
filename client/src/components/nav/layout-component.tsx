@@ -1,4 +1,4 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ChatDraftProvider } from "@/features/chat/utils/chat-draft-context";
@@ -6,7 +6,7 @@ import { useDisplayMode } from "@/hooks/use-display-mode";
 import { AppShell } from "./app-shell";
 
 type LayoutComponentProps = {
-  readonly user: CurrentUser | CurrentInternalUser | null;
+  readonly user: ApplicationUser | null;
 };
 
 /** Renders the shared authenticated application layout. */

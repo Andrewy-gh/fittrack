@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { MiniChart } from "@/features/workouts/components/form/mini-chart";
 import { X } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import type { CurrentUser, CurrentInternalUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import {
   type WorkoutDraftStorage,
   workoutDraftStorage,
@@ -123,7 +123,7 @@ export function NewWorkoutPage({
   search,
   draftStorage = workoutDraftStorage,
 }: {
-  user: CurrentUser | CurrentInternalUser | null; // need user for localStorage
+  user: ApplicationUser | null; // need user for localStorage
   exercises: DbExercise[];
   newWorkoutContext: WorkoutNewWorkoutContextResponse;
   workoutsFocus: WorkoutFocus[];

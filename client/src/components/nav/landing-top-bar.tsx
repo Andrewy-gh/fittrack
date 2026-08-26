@@ -1,4 +1,4 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { Link } from "@tanstack/react-router";
 import { AccountSlot } from "@/components/nav/account-slot";
 import { navItems } from "@/components/nav/nav-items";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface LandingTopBarProps {
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
 }
 
 export function LandingTopBar({ user }: LandingTopBarProps) {

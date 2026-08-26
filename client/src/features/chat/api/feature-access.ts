@@ -9,10 +9,6 @@ export const AI_CHAT_FEATURE_KEY = "ai_chatbot";
 
 export type FeatureAccessGrant = FeatureaccessFeatureAccessResponse;
 
-type FeatureAccessResponses = {
-  200: FeatureAccessGrant[];
-};
-
 export function featureAccessQueryOptions(userId?: string) {
   return queryOptions({
     queryKey: ["feature-access", userId],
@@ -30,7 +26,11 @@ export async function getFeatureAccess(
     throwOnError: true,
   });
 
-  return response.data as FeatureAccessResponses[200];
+  if (!response.data) {
+    throw new Error("Feature access response did not include a grant list");
+  }
+
+  return response.data;
 }
 
 export function hasAIChatFeatureAccess(grants?: FeatureAccessGrant[]): boolean {

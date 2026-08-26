@@ -47,6 +47,7 @@ export default defineConfig({
       ],
       rules: {
         "anti-slop/no-unsafe-dictionary-type": "error",
+        "anti-slop/require-safety-comment-for-type-assertion": "error",
       },
     },
     {

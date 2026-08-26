@@ -1,13 +1,13 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 
 import { ExerciseDetail } from "@/features/exercises/components/exercise-detail";
 import { getExerciseDetailQueryOptions } from "@/features/exercises/api/exercise-query-options";
 
 type ExerciseDetailPageProps = {
   exerciseId: number;
-  user: CurrentUser | CurrentInternalUser | null;
+  user: ApplicationUser | null;
   sortOrder?: "asc" | "desc";
   itemsPerPage?: number;
   page?: number;

@@ -84,13 +84,13 @@ export function ExerciseMetricCharts({
       {isDemoMode ? (
         <DemoCharts
           exerciseSets={exerciseSets}
-          range={selectedRange as MetricsHistoryRange}
+          range={selectedRange}
           onWorkoutClick={onWorkoutClick}
         />
       ) : (
         <AuthedCharts
           exerciseId={exerciseId}
-          range={selectedRange as MetricsHistoryRange}
+          range={selectedRange}
           onWorkoutClick={onWorkoutClick}
         />
       )}
@@ -279,7 +279,7 @@ function AuthedCharts({
     );
   }
 
-  const points = (data?.points ?? []) as ExerciseExerciseMetricsHistoryPoint[];
+  const points = data?.points ?? [];
   const bucket = data?.bucket ?? "workout";
   const statusMessage =
     error && data

@@ -1,4 +1,4 @@
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 import { ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/nav/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { useDisplayMode } from "@/hooks/use-display-mode";
 import { effectiveDate, getPolicySections } from "./privacy-content";
 
 type PrivacyPageProps = {
-  readonly user: CurrentUser | CurrentInternalUser | null;
+  readonly user: ApplicationUser | null;
 };
 
 /** Renders FitTrack's privacy policy. */

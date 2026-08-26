@@ -6,13 +6,9 @@ import "./lib/api/client-config.ts";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ReloadPrompt } from "./components/reload-prompt";
 import { Toaster } from "@/components/ui/sonner";
-import type { CurrentInternalUser, CurrentUser } from "@stackframe/react";
+import type { ApplicationUser } from "@/lib/application-user";
 
-export function App({
-  user,
-}: {
-  user: CurrentUser | CurrentInternalUser | null;
-}) {
+export function App({ user }: { user: ApplicationUser | null }) {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider
