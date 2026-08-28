@@ -21,26 +21,34 @@ describe("session metric buckets", () => {
     expect(getSessionMetricPeriodLabel("6M")).toBe("Weekly");
     expect(getSessionMetricPeriodLabel("M")).toBe("Daily");
     expect(getSessionMetricBucketLabel("Y")).toBe(
-      "Monthly bars for the last 12 months",
+      "Monthly bars from your first exercise session",
     );
     expect(getSessionMetricBucketLabel("6M")).toBe(
-      "Weekly bars for the last 26 weeks",
+      "Weekly bars from your first exercise session, 26 visible at a time",
     );
-    expect(getSessionMetricBucketLabel("M")).toContain("last 30 days");
-    expect(getSessionMetricBucketLabel("W")).toContain("last 7 days");
+    expect(getSessionMetricBucketLabel("M")).toBe(
+      "Daily bars from your first exercise session, 26 visible at a time",
+    );
+    expect(getSessionMetricBucketLabel("W")).toBe(
+      "Daily bars from your first exercise session, 7 visible at a time",
+    );
   });
 
-  it("builds one bar for every month in the yearly range", () => {
+  it("builds a continuous yearly timeline from the first exercise session", () => {
     const data = buildSessionMetricChartData(
-      points,
+      [
+        { date: "2024-01-15", workout_id: 1, value: 10 },
+        { date: "2026-03-02", workout_id: 2, value: 20 },
+      ],
       "Y",
       (point) => point.value,
       "sum",
       today,
     );
 
-    expect(data).toHaveLength(12);
-    expect(data.at(-1)).toMatchObject({ date: "2026-03-01", value: 30 });
+    expect(data).toHaveLength(27);
+    expect(data[0]).toMatchObject({ date: "2024-01-01", value: 10 });
+    expect(data.at(-1)).toMatchObject({ date: "2026-03-01", value: 20 });
   });
 
   it("combines sessions into weekly bars for six months", () => {
@@ -55,6 +63,27 @@ describe("session metric buckets", () => {
     expect(data).toHaveLength(26);
     expect(data.find((point) => point.date === "2026-03-02")?.value).toBe(15);
   });
+
+  it.each([
+    ["W", "2025-01-15"],
+    ["M", "2025-01-15"],
+    ["6M", "2025-01-13"],
+  ] as const)(
+    "starts the %s timeline at the first exercise session",
+    (range, expectedStart) => {
+      const data = buildSessionMetricChartData(
+        [{ date: "2025-01-15", workout_id: 1, value: 10 }],
+        range,
+        (point) => point.value,
+        "maximum",
+        today,
+      );
+
+      expect(data[0]?.date).toBe(expectedStart);
+      expect(data[0]?.value).toBe(10);
+      expect(data.length).toBeGreaterThan(range === "6M" ? 26 : 30);
+    },
+  );
 
   it.each(["6M", "Y"] as const)(
     "excludes future sessions from the current %s bucket",

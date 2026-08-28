@@ -2,6 +2,7 @@ import {
   addDays,
   addMonths,
   differenceInCalendarDays,
+  differenceInCalendarMonths,
   format,
   startOfMonth,
   startOfWeek,
@@ -29,11 +30,13 @@ export function getSessionMetricPeriodLabel(range: RangeType): string {
 }
 
 export function getSessionMetricBucketLabel(range: RangeType): string {
-  if (range === "Y") return "Monthly bars for the last 12 months";
-  if (range === "6M") return "Weekly bars for the last 26 weeks";
+  if (range === "Y") return "Monthly bars from your first exercise session";
+  if (range === "6M") {
+    return "Weekly bars from your first exercise session, 26 visible at a time";
+  }
   return range === "M"
-    ? "Daily bars for the last 30 days, including days without a session"
-    : "Daily bars for the last 7 days, including days without a session";
+    ? "Daily bars from your first exercise session, 26 visible at a time"
+    : "Daily bars from your first exercise session, 7 visible at a time";
 }
 
 export function buildSessionMetricChartData<T extends SessionMetricPoint>(
@@ -52,11 +55,13 @@ export function buildSessionMetricChartData<T extends SessionMetricPoint>(
     today.getMonth(),
     today.getDate(),
   );
+  let firstSessionDate: Date | undefined;
 
   for (const point of points) {
     if (!point.date) continue;
     const date = new Date(`${point.date.split("T")[0]}T00:00:00`);
-    if (date > todayStart) continue;
+    if (Number.isNaN(date.getTime()) || date > todayStart) continue;
+    if (!firstSessionDate || date < firstSessionDate) firstSessionDate = date;
     const bucketDate =
       range === "Y" ? startOfMonth(date) : range === "6M" ? monday(date) : date;
     const key = toIsoDate(bucketDate);
@@ -71,17 +76,25 @@ export function buildSessionMetricChartData<T extends SessionMetricPoint>(
       : range === "6M"
         ? monday(todayStart)
         : todayStart;
-  const start =
+  const defaultStart =
     range === "Y"
-      ? addMonths(end, -11)
+      ? end
       : range === "6M"
         ? addDays(end, -25 * 7)
         : addDays(end, range === "M" ? -29 : -6);
+  const historyStart = firstSessionDate
+    ? range === "Y"
+      ? startOfMonth(firstSessionDate)
+      : range === "6M"
+        ? monday(firstSessionDate)
+        : firstSessionDate
+    : defaultStart;
+  const start = historyStart < defaultStart ? historyStart : defaultStart;
   const count =
     range === "Y"
-      ? 12
+      ? differenceInCalendarMonths(end, start) + 1
       : range === "6M"
-        ? 26
+        ? Math.floor(differenceInCalendarDays(end, start) / 7) + 1
         : differenceInCalendarDays(end, start) + 1;
 
   return Array.from({ length: count }, (_, index) => {
