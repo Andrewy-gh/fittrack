@@ -5,6 +5,7 @@ import {
   type RangeType,
 } from "@/components/charts/chart-bar-vol.utils";
 import type { MetricPoint } from "@/components/charts/chart-bar-metric";
+import { buildHistoricalRangeTimeline } from "@/components/charts/historical-range-timeline";
 
 export interface AnalyticsWorkoutSummary {
   totalWorkouts30d: number;
@@ -74,31 +75,11 @@ export function getWorkoutSummary(
   };
 }
 
-function toIsoDate(date: Date) {
-  return format(date, "yyyy-MM-dd");
-}
+type ContributionDay = NonNullable<
+  WorkoutContributionDataResponse["days"]
+>[number];
 
-function startOfWeek(date: Date) {
-  const result = new Date(date);
-  const day = result.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  result.setDate(result.getDate() + diff);
-  result.setHours(0, 0, 0, 0);
-  return result;
-}
-
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function addMonths(date: Date, amount: number) {
-  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
-}
-
-function sumVolumeForDay(
-  day: NonNullable<WorkoutContributionDataResponse["days"]>[number],
-  focus?: string,
-) {
+function sumVolumeForDay(day: ContributionDay, focus?: string) {
   return (day.workouts ?? []).reduce((sum, workout) => {
     if (focus && workout.focus !== focus) {
       return sum;
@@ -107,9 +88,7 @@ function sumVolumeForDay(
   }, 0);
 }
 
-function getFocusTypesForDay(
-  day: NonNullable<WorkoutContributionDataResponse["days"]>[number],
-) {
+function getFocusTypesForDay(day: ContributionDay) {
   const focusTypes = new Set<string>();
 
   for (const workout of day.workouts ?? []) {
@@ -127,131 +106,44 @@ function formatFocusTypes(focusTypes: Set<string>) {
     .join(", ");
 }
 
-function buildDailyVolumeMap(
-  days: WorkoutContributionDataResponse["days"] = [],
-  focus?: string,
-) {
-  const volumeByDate = new Map<
-    string,
-    { focusType?: string; volume: number }
-  >();
-
-  for (const day of days ?? []) {
-    if (!day?.date) continue;
-    const focusType = focus
-      ? undefined
-      : formatFocusTypes(new Set(getFocusTypesForDay(day)));
-    volumeByDate.set(day.date, {
-      focusType,
-      volume: sumVolumeForDay(day, focus),
-    });
-  }
-
-  return volumeByDate;
-}
-
 export function buildWorkoutVolumeChartData(
   days: WorkoutContributionDataResponse["days"] = [],
   range: RangeType,
   focus?: string,
   today: Date = new Date(),
 ): MetricPoint[] {
-  const volumeByDate = buildDailyVolumeMap(days, focus);
-  const firstWorkoutDate = (days ?? [])
-    .flatMap((day) =>
-      day?.date && (day.workouts?.length ?? 0) > 0 ? [day.date] : [],
-    )
-    .sort()[0];
+  const workoutDays = (days ?? []).filter(
+    (day) => day.date && (day.workouts?.length ?? 0) > 0,
+  );
+  const timeline = buildHistoricalRangeTimeline({
+    range,
+    items: workoutDays,
+    dateOf: (day) => day.date,
+    today,
+  });
 
-  if (range === "W" || range === "M") {
-    const span = range === "W" ? 7 : 30;
-    const defaultStart = addDays(today, -(span - 1));
-    const historyStart = firstWorkoutDate
-      ? new Date(`${firstWorkoutDate}T00:00:00`)
-      : defaultStart;
-    const start = historyStart < defaultStart ? historyStart : defaultStart;
-    const dayCount = differenceInCalendarDays(today, start) + 1;
+  return timeline.buckets.map(({ date, items }) => {
+    const volume = items.reduce(
+      (total, day) => total + sumVolumeForDay(day, focus),
+      0,
+    );
+    let focusType: string | undefined;
 
-    const points = Array.from({ length: dayCount }, (_, index) => {
-      const date = addDays(start, index);
-      const isoDate = toIsoDate(date);
-      const dayVolume = volumeByDate.get(isoDate);
-      return {
-        x: isoDate,
-        date: isoDate,
-        focusType: focus ? undefined : dayVolume?.focusType,
-        value: Math.round(dayVolume?.volume ?? 0),
-      };
-    });
-
-    return points;
-  }
-
-  if (range === "6M") {
-    const currentWeekStart = startOfWeek(today);
-    const defaultFirstWeekStart = addDays(currentWeekStart, -(25 * 7));
-    const historyWeekStart = firstWorkoutDate
-      ? startOfWeek(new Date(`${firstWorkoutDate}T00:00:00`))
-      : defaultFirstWeekStart;
-    const firstWeekStart =
-      historyWeekStart < defaultFirstWeekStart
-        ? historyWeekStart
-        : defaultFirstWeekStart;
-    const weekCount =
-      Math.floor(
-        differenceInCalendarDays(currentWeekStart, firstWeekStart) / 7,
-      ) + 1;
-
-    return Array.from({ length: weekCount }, (_, index) => {
-      const weekStart = addDays(firstWeekStart, index * 7);
-      let total = 0;
-
-      for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
-        const day = addDays(weekStart, dayOffset);
-        const dayVolume = volumeByDate.get(toIsoDate(day));
-        total += dayVolume?.volume ?? 0;
+    if (!focus && timeline.bucket === "day" && items.length > 0) {
+      const focusTypes = new Set<string>();
+      for (const day of items) {
+        for (const dayFocus of getFocusTypesForDay(day)) {
+          focusTypes.add(dayFocus);
+        }
       }
-
-      const isoDate = toIsoDate(weekStart);
-      return {
-        x: isoDate,
-        date: isoDate,
-        focusType: undefined,
-        value: Math.round(total),
-      };
-    });
-  }
-
-  const currentMonthStart = startOfMonth(today);
-  const firstMonthStart = firstWorkoutDate
-    ? startOfMonth(new Date(`${firstWorkoutDate}T00:00:00`))
-    : currentMonthStart;
-  const monthCount =
-    (currentMonthStart.getFullYear() - firstMonthStart.getFullYear()) * 12 +
-    currentMonthStart.getMonth() -
-    firstMonthStart.getMonth() +
-    1;
-
-  return Array.from({ length: monthCount }, (_, index) => {
-    const monthStart = addMonths(firstMonthStart, index);
-    const nextMonthStart = addMonths(monthStart, 1);
-    let total = 0;
-
-    for (
-      let cursor = new Date(monthStart);
-      cursor < nextMonthStart;
-      cursor = addDays(cursor, 1)
-    ) {
-      const dayVolume = volumeByDate.get(toIsoDate(cursor));
-      total += dayVolume?.volume ?? 0;
+      focusType = formatFocusTypes(focusTypes);
     }
 
-    const isoDate = toIsoDate(monthStart);
     return {
-      x: isoDate,
-      date: isoDate,
-      focusType: undefined,
-      value: Math.round(total),
+      x: date,
+      date,
+      focusType,
+      value: Math.round(volume),
     };
   });
 }
