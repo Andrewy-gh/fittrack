@@ -13,8 +13,6 @@ const publishableClientKey = parseEnvironmentString(
   import.meta.env.VITE_PUBLISHABLE_CLIENT_KEY,
 );
 
-export const isStackConfigured = Boolean(projectId && publishableClientKey);
-
 export const stackClientApp: StackClientApp<true, string> | null = (() => {
   if (!projectId || !publishableClientKey) return null;
   try {
