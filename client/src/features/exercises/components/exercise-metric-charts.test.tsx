@@ -54,7 +54,9 @@ describe("ExerciseMetricCharts", () => {
     const status = screen.getByRole("status");
 
     expect(status).toHaveTextContent("Loading session metrics...");
-    expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Daily Session Best 1RM"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an empty state when the range has no working-set sessions", () => {
@@ -75,7 +77,9 @@ describe("ExerciseMetricCharts", () => {
     expect(
       screen.getByText("No working-set sessions in this range."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Daily Session Best 1RM"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an empty state when every weighted metric is zero", () => {
@@ -114,7 +118,9 @@ describe("ExerciseMetricCharts", () => {
     expect(
       screen.getByText("No weighted metrics for this exercise/range."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Session Best 1RM")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Daily Session Best 1RM"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows charts when any session has a weighted metric", () => {
@@ -155,7 +161,7 @@ describe("ExerciseMetricCharts", () => {
       />,
     );
 
-    expect(screen.getByText("Session Best 1RM")).toBeInTheDocument();
+    expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
     expect(
       screen.queryByText("No weighted metrics for this exercise/range."),
     ).not.toBeInTheDocument();
@@ -190,7 +196,7 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(screen.getByText("Updating chart...")).toBeInTheDocument();
-    expect(screen.getByText("Session Best 1RM")).toBeInTheDocument();
+    expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
   });
 
   it("rethrows the initial load error when no chart data is available", () => {
@@ -251,7 +257,7 @@ describe("ExerciseMetricCharts", () => {
     expect(
       screen.getByText("Couldn't update chart. Showing previous data."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Session Best 1RM")).toBeInTheDocument();
+    expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
   });
 
   it("labels the metrics section as working-set based", () => {
@@ -284,7 +290,7 @@ describe("ExerciseMetricCharts", () => {
 
     expect(
       screen.getByText(
-        "Each bar represents one workout session. e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.",
+        "Bars group exercise sessions by the selected time range. e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.",
       ),
     ).toBeInTheDocument();
   });
