@@ -12,6 +12,13 @@ import {
   type MetricsHistoryRange,
 } from "@/features/exercises/api/exercises";
 import { computeDemoMetricsHistory } from "@/features/exercises/utils/metrics-history";
+import {
+  buildSessionMetricChartData,
+  getSessionMetricBucket,
+  getSessionMetricBucketLabel,
+  getSessionMetricPeriodLabel,
+  type SessionMetricAggregation,
+} from "@/features/exercises/utils/session-metric-buckets";
 import { RangeSelector } from "@/components/charts/chart-bar-vol.components";
 import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
 import {
@@ -19,20 +26,6 @@ import {
   type MetricPoint,
 } from "@/components/charts/chart-bar-metric";
 import { Spinner } from "@/components/ui/spinner";
-
-function toMetricPoints(
-  points: ExerciseExerciseMetricsHistoryPoint[],
-  pick: (p: ExerciseExerciseMetricsHistoryPoint) => number,
-): MetricPoint[] {
-  return points
-    .map((p) => ({
-      x: p.x ?? "",
-      date: (p.date ?? "").split("T")[0],
-      workout_id: p.workout_id,
-      value: pick(p) ?? 0,
-    }))
-    .filter((p) => p.x && p.date);
-}
 
 function hasWeightedMetrics(
   points: ExerciseExerciseMetricsHistoryPoint[],
@@ -68,8 +61,9 @@ export function ExerciseMetricCharts({
         <div>
           <h2 className="text-xl font-semibold">Session Metrics</h2>
           <p className="text-sm text-muted-foreground">
-            Each bar represents one workout session. e1RM, intensity, and volume
-            are computed from working sets. Intensity can exceed 100%.
+            Bars group exercise sessions by the selected time range. e1RM,
+            intensity, and volume are computed from working sets. Intensity can
+            exceed 100%.
           </p>
         </div>
 
@@ -101,74 +95,77 @@ export function ExerciseMetricCharts({
 function MetricChartsBody({
   points,
   range,
-  bucket,
   onWorkoutClick,
   statusMessage,
 }: {
   points: ExerciseExerciseMetricsHistoryPoint[];
   range: RangeType;
-  bucket: "workout";
   onWorkoutClick: (workoutId: number) => void;
   statusMessage?: string;
 }) {
   const [activeChartIndex, setActiveChartIndex] = useState(0);
 
+  const buildChart = (
+    pick: (point: ExerciseExerciseMetricsHistoryPoint) => number,
+    aggregation: SessionMetricAggregation,
+  ) => buildSessionMetricChartData(points, range, pick, aggregation);
+
   const best1rm = useMemo(
-    () => toMetricPoints(points, (p) => p.session_best_e1rm ?? 0),
-    [points],
+    () => buildChart((p) => p.session_best_e1rm ?? 0, "maximum"),
+    [points, range],
   );
   const avg1rm = useMemo(
-    () => toMetricPoints(points, (p) => p.session_avg_e1rm ?? 0),
-    [points],
+    () => buildChart((p) => p.session_avg_e1rm ?? 0, "average"),
+    [points, range],
   );
   const avgIntensity = useMemo(
-    () => toMetricPoints(points, (p) => p.session_avg_intensity ?? 0),
-    [points],
+    () => buildChart((p) => p.session_avg_intensity ?? 0, "average"),
+    [points, range],
   );
   const bestIntensity = useMemo(
-    () => toMetricPoints(points, (p) => p.session_best_intensity ?? 0),
-    [points],
+    () => buildChart((p) => p.session_best_intensity ?? 0, "maximum"),
+    [points, range],
   );
   const volumeWorking = useMemo(
-    () => toMetricPoints(points, (p) => p.total_volume_working ?? 0),
-    [points],
+    () => buildChart((p) => p.total_volume_working ?? 0, "sum"),
+    [points, range],
   );
+  const bucketLabel = getSessionMetricBucketLabel(range);
+  const periodLabel = getSessionMetricPeriodLabel(range);
 
   const charts: Array<{
     title: string;
     data: MetricPoint[];
     unit: "lb" | "%" | "vol";
-    description?: string;
+    description: string;
   }> = [
     {
-      title: "Session Best 1RM",
-      description: "Highest estimated 1RM from any working set in the session.",
+      title: `${periodLabel} Session Best 1RM`,
+      description: `${bucketLabel}. Highest estimated 1RM from any working set in the period.`,
       data: best1rm,
       unit: "lb",
     },
     {
-      title: "Session Average 1RM",
-      description:
-        "Average estimated 1RM across all working sets in the session.",
+      title: `${periodLabel} Average Session 1RM`,
+      description: `${bucketLabel}. Average estimated 1RM across working-set sessions in the period.`,
       data: avg1rm,
       unit: "lb",
     },
     {
-      title: "Session Average Intensity",
-      description:
-        "Average intensity of working sets versus your historical 1RM.",
+      title: `${periodLabel} Average Session Intensity`,
+      description: `${bucketLabel}. Average intensity of working sets versus your historical 1RM.`,
       data: avgIntensity,
       unit: "%",
     },
     {
-      title: "Session Best Intensity",
-      description: "Highest single-set intensity versus your historical 1RM.",
+      title: `${periodLabel} Session Best Intensity`,
+      description: `${bucketLabel}. Highest single-set intensity versus your historical 1RM.`,
       data: bestIntensity,
       unit: "%",
     },
     {
-      title: "Working-Set Volume",
-      description: "Total volume from working sets.",
+      title: `${periodLabel} Working-Set Volume`,
+      description: `${bucketLabel}. Total volume from working sets in the period.`,
       data: volumeWorking,
       unit: "vol",
     },
@@ -209,7 +206,7 @@ function MetricChartsBody({
         title={activeChart.title}
         description={activeChart.description}
         range={range}
-        bucket={bucket}
+        bucket={getSessionMetricBucket(range)}
         data={activeChart.data}
         unit={activeChart.unit}
         onWorkoutClick={onWorkoutClick}
@@ -280,7 +277,6 @@ function AuthedCharts({
   }
 
   const points = data?.points ?? [];
-  const bucket = data?.bucket ?? "workout";
   const statusMessage =
     error && data
       ? "Couldn't update chart. Showing previous data."
@@ -291,7 +287,6 @@ function AuthedCharts({
     <MetricChartsBody
       points={points}
       range={range}
-      bucket={bucket}
       onWorkoutClick={onWorkoutClick}
       statusMessage={statusMessage}
     />
@@ -316,7 +311,6 @@ function DemoCharts({
     <MetricChartsBody
       points={points}
       range={range}
-      bucket={demo.bucket}
       onWorkoutClick={onWorkoutClick}
     />
   );
