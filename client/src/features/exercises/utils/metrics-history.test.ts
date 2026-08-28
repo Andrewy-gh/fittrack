@@ -48,4 +48,16 @@ describe("computeDemoMetricsHistory", () => {
       "2026-03-24",
     ]);
   });
+
+  it("keeps every historical session available in short ranges", () => {
+    const history = computeDemoMetricsHistory(
+      [
+        set({ workout_id: 11, workout_date: "2024-01-01T08:00:00.000Z" }),
+        set({ workout_id: 22, workout_date: "2026-03-24T08:00:00.000Z" }),
+      ],
+      "W",
+    );
+
+    expect(history.points.map((point) => point.workout_id)).toEqual([11, 22]);
+  });
 });

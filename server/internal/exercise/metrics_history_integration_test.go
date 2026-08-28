@@ -65,6 +65,35 @@ func TestExerciseRepository_GetExerciseMetricsHistory_PreservesSameDaySessions(t
 	})
 }
 
+func TestExerciseRepository_GetExerciseMetricsHistory_ShortRangeIncludesFirstRecordedSession(t *testing.T) {
+	if testing.Short() && os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed metrics history regression without DATABASE_URL")
+	}
+
+	pool, cleanup := setupTestDatabase(t)
+	defer cleanup()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := NewRepository(logger, db.New(pool), pool)
+	userID := exerciseTestUserA
+	exerciseID := setupTestExercise(t, pool, userID, "Deadlift")
+	ctx := testutils.SetTestUserContext(context.Background(), t, pool, userID)
+
+	firstWorkout := insertMetricsHistoryWorkout(t, ctx, pool, userID, time.Date(2024, 1, 1, 8, 0, 0, 0, time.UTC))
+	latestWorkout := insertMetricsHistoryWorkout(t, ctx, pool, userID, time.Date(2026, 3, 24, 8, 0, 0, 0, time.UTC))
+	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, firstWorkout, 185, 5, 925)
+	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, latestWorkout, 225, 3, 675)
+
+	points, _, err := repo.GetExerciseMetricsHistory(ctx, GetExerciseMetricsHistoryRequest{
+		ExerciseID: exerciseID,
+		Range:      "W",
+	}, userID)
+	require.NoError(t, err)
+	require.Len(t, points, 2)
+	assert.Equal(t, firstWorkout, *points[0].WorkoutID)
+	assert.Equal(t, latestWorkout, *points[1].WorkoutID)
+}
+
 func insertMetricsHistoryWorkout(
 	t *testing.T,
 	ctx context.Context,

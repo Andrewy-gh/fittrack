@@ -290,12 +290,12 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 	switch req.Range {
 	case "W":
 		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawWeek(ctx, db.GetExerciseMetricsHistoryRawWeekParams{
+			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
 				ExerciseID: req.ExerciseID,
 				UserID:     userID,
 			})
 			if err != nil {
-				return nil, "", fmt.Errorf("get exercise metrics history raw week query failed: %w", err)
+				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
 			}
 
 			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
@@ -319,12 +319,12 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 		}
 	case "M":
 		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawMonth(ctx, db.GetExerciseMetricsHistoryRawMonthParams{
+			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
 				ExerciseID: req.ExerciseID,
 				UserID:     userID,
 			})
 			if err != nil {
-				return nil, "", fmt.Errorf("get exercise metrics history raw month query failed: %w", err)
+				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
 			}
 
 			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
@@ -348,12 +348,12 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 		}
 	case "6M":
 		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRaw6M(ctx, db.GetExerciseMetricsHistoryRaw6MParams{
+			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
 				ExerciseID: req.ExerciseID,
 				UserID:     userID,
 			})
 			if err != nil {
-				return nil, "", fmt.Errorf("get exercise metrics history raw 6M query failed: %w", err)
+				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
 			}
 
 			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
@@ -377,12 +377,12 @@ func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req
 		}
 	case "Y":
 		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawYear(ctx, db.GetExerciseMetricsHistoryRawYearParams{
+			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
 				ExerciseID: req.ExerciseID,
 				UserID:     userID,
 			})
 			if err != nil {
-				return nil, "", fmt.Errorf("get exercise metrics history raw year query failed: %w", err)
+				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
 			}
 
 			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
