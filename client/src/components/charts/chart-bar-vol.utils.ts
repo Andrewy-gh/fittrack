@@ -69,10 +69,10 @@ export const ranges: Array<{ value: RangeType; label: string }> = [
   { value: "Y", label: "Y" },
 ];
 
+/** Returns the shared number of bars shown for a chart range. */
 export function getVisibleBarCount(range: RangeType): number | undefined {
   if (range === "W") return 7;
-  if (range === "M") return 30;
-  if (range === "6M") return 26;
+  if (range === "M" || range === "6M") return 26;
   return undefined;
 }
 

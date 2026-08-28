@@ -1,6 +1,9 @@
 import { addDays, differenceInCalendarDays, format } from "date-fns";
 import type { WorkoutContributionDataResponse } from "@/client";
-import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
+import {
+  getVisibleBarCount,
+  type RangeType,
+} from "@/components/charts/chart-bar-vol.utils";
 import type { MetricPoint } from "@/components/charts/chart-bar-metric";
 
 export interface AnalyticsWorkoutSummary {
@@ -254,13 +257,14 @@ export function buildWorkoutVolumeChartData(
 }
 
 export function getWorkoutVolumeBucketLabel(range: RangeType): string {
+  const visibleBarCount = getVisibleBarCount(range);
+
   switch (range) {
     case "W":
-      return "Daily bars from your first workout, 7 visible at a time";
     case "M":
-      return "Daily bars from your first workout, 30 visible at a time";
+      return `Daily bars from your first workout, ${visibleBarCount} visible at a time`;
     case "6M":
-      return "Weekly bars from your first workout, 26 visible at a time";
+      return `Weekly bars from your first workout, ${visibleBarCount} visible at a time`;
     case "Y":
       return "Monthly bars from your first workout";
     default:

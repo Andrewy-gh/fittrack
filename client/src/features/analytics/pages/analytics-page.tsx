@@ -46,7 +46,10 @@ export function AnalyticsPage({ exerciseId, user }: AnalyticsPageProps) {
       exercises={exercises}
       selectedExerciseId={selectedExerciseId}
       onSelectExercise={(id) =>
-        navigate({ search: (prev) => ({ ...prev, exerciseId: id }) })
+        navigate({
+          search: (prev) => ({ ...prev, exerciseId: id }),
+          resetScroll: false,
+        })
       }
       isLoadingDetails={exerciseDetailQuery.isLoading}
       exerciseSets={exerciseDetailQuery.data?.sets}

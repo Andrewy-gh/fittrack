@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from "react";
+
 import type {
   ExerciseExerciseResponse,
   ExerciseExerciseWithSetsResponse,
@@ -35,7 +37,23 @@ export function AnalyticsDashboard({
   workoutContributionData,
   workoutFocusValues = [],
 }: AnalyticsDashboardProps) {
+  const pendingScrollPosition = useRef<{ x: number; y: number } | null>(null);
   const summary = getWorkoutSummary(workoutContributionData?.days);
+
+  useLayoutEffect(() => {
+    if (isLoadingDetails || !selectedExerciseId) return;
+
+    const position = pendingScrollPosition.current;
+    if (!position) return;
+
+    window.scrollTo({ left: position.x, top: position.y, behavior: "auto" });
+    pendingScrollPosition.current = null;
+  }, [isLoadingDetails, selectedExerciseId]);
+
+  const handleSelectExercise = (id: number) => {
+    pendingScrollPosition.current = { x: window.scrollX, y: window.scrollY };
+    onSelectExercise(id);
+  };
 
   if (isLoadingExercises) {
     return (
@@ -137,7 +155,7 @@ export function AnalyticsDashboard({
               ariaLabel="Exercise options"
               inputAriaLabel="Search exercises"
               placeholder="Select an exercise"
-              onChange={(exercise) => onSelectExercise(exercise.id)}
+              onChange={(exercise) => handleSelectExercise(exercise.id)}
             />
           </div>
         </section>

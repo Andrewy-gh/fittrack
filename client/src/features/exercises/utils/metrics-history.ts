@@ -1,5 +1,3 @@
-import { parseISO, subDays, subMonths, subYears } from "date-fns";
-
 import type { ExerciseExerciseWithSetsResponse } from "@/client";
 import type { MetricsHistoryRange } from "@/features/exercises/api/exercises";
 
@@ -80,22 +78,5 @@ export function computeDemoMetricsHistory(
     return { range, bucket: "workout", points: [] };
   }
 
-  const endDate = parseISO(workoutPoints[workoutPoints.length - 1].date);
-  const startDate = getRangeStartDate(endDate, range);
-
-  const filtered = workoutPoints.filter((p) => parseISO(p.date) >= startDate);
-  return { range, bucket: "workout", points: filtered };
-}
-
-function getRangeStartDate(endDate: Date, range: MetricsHistoryRange): Date {
-  switch (range) {
-    case "W":
-      return subDays(endDate, 7);
-    case "M":
-      return subDays(endDate, 30);
-    case "6M":
-      return subMonths(endDate, 6);
-    case "Y":
-      return subYears(endDate, 1);
-  }
+  return { range, bucket: "workout", points: workoutPoints };
 }

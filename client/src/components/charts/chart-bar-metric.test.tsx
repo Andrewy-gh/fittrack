@@ -85,20 +85,27 @@ describe("ChartBarMetric", () => {
     expect(onWorkoutClick).toHaveBeenCalledWith(42);
   });
 
-  it("derives the visible bar count from the selected range", () => {
-    render(
-      <ChartBarMetric
-        title="Session Best 1RM"
-        range="6M"
-        data={[{ x: "1", date: "2026-03-01", value: 225 }]}
-        unit="lb"
-      />,
-    );
+  it.each([
+    ["W", 7],
+    ["M", 26],
+    ["6M", 26],
+  ] as const)(
+    "shows %s session bars in the initial viewport",
+    (range, count) => {
+      render(
+        <ChartBarMetric
+          title="Session Best 1RM"
+          range={range}
+          data={[{ x: "1", date: "2026-03-01", value: 225 }]}
+          unit="lb"
+        />,
+      );
 
-    expect(mockScrollableChart).toHaveBeenCalledWith(
-      expect.objectContaining({ visibleBarCount: 26 }),
-    );
-  });
+      expect(mockScrollableChart).toHaveBeenCalledWith(
+        expect.objectContaining({ visibleBarCount: count }),
+      );
+    },
+  );
 
   it("does not navigate when the chart is rendered on mobile", async () => {
     const user = userEvent.setup();

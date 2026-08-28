@@ -392,7 +392,7 @@ describe("analytics workout helpers", () => {
       "Daily bars from your first workout, 7 visible at a time",
     );
     expect(getWorkoutVolumeBucketLabel("M")).toBe(
-      "Daily bars from your first workout, 30 visible at a time",
+      "Daily bars from your first workout, 26 visible at a time",
     );
     expect(getWorkoutVolumeBucketLabel("6M")).toBe(
       "Weekly bars from your first workout, 26 visible at a time",
