@@ -1049,7 +1049,7 @@
                         "StackAuth": []
                     }
                 ],
-                "description": "Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.",
+                "description": "Get the complete time-series of per-workout session metrics for an exercise. The range selects client-side presentation only.",
                 "consumes": [
                     "application/json"
                 ],

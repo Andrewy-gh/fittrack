@@ -200,7 +200,7 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 // MARK: GetExerciseMetricsHistory
 // GetExerciseMetricsHistory godoc
 // @Summary Get exercise metrics history
-// @Description Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.
+// @Description Get the complete time-series of per-workout session metrics for an exercise. The range selects client-side presentation only.
 // @Tags exercises
 // @Accept json
 // @Produce json
