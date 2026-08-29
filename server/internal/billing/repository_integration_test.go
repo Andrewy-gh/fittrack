@@ -693,6 +693,36 @@ func requireStripeWebhookEventSecurity(t *testing.T, pool *pgxpool.Pool) {
 	require.NoError(t, err)
 	require.Zero(t, policyCount)
 
+	var publicCanAccessTable bool
+	var dataAPIRoleCanAccessTable bool
+	err = pool.QueryRow(context.Background(), `
+		SELECT
+			has_table_privilege('public', 'public.stripe_webhook_events', 'SELECT')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'INSERT')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'UPDATE')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'DELETE')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'TRUNCATE')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'REFERENCES')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'TRIGGER'),
+			EXISTS (
+				SELECT 1
+				FROM pg_roles AS api_role
+				WHERE api_role.rolname IN ('anon', 'authenticated', 'service_role')
+				  AND (
+					has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'SELECT')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'INSERT')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'UPDATE')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'DELETE')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'TRUNCATE')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'REFERENCES')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'TRIGGER')
+				  )
+			)
+	`).Scan(&publicCanAccessTable, &dataAPIRoleCanAccessTable)
+	require.NoError(t, err)
+	require.False(t, publicCanAccessTable)
+	require.False(t, dataAPIRoleCanAccessTable)
+
 	var publicCanCheck bool
 	var publicCanRecord bool
 	err = pool.QueryRow(context.Background(), `

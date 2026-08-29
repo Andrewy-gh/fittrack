@@ -69,8 +69,38 @@ BEGIN
     IF has_table_privilege(current_user, webhook_events, 'SELECT')
        OR has_table_privilege(current_user, webhook_events, 'INSERT')
        OR has_table_privilege(current_user, webhook_events, 'UPDATE')
-       OR has_table_privilege(current_user, webhook_events, 'DELETE') THEN
+       OR has_table_privilege(current_user, webhook_events, 'DELETE')
+       OR has_table_privilege(current_user, webhook_events, 'TRUNCATE')
+       OR has_table_privilege(current_user, webhook_events, 'REFERENCES')
+       OR has_table_privilege(current_user, webhook_events, 'TRIGGER') THEN
         RAISE EXCEPTION 'runtime role can access stripe_webhook_events directly';
+    END IF;
+
+    IF has_table_privilege('public', webhook_events, 'SELECT')
+       OR has_table_privilege('public', webhook_events, 'INSERT')
+       OR has_table_privilege('public', webhook_events, 'UPDATE')
+       OR has_table_privilege('public', webhook_events, 'DELETE')
+       OR has_table_privilege('public', webhook_events, 'TRUNCATE')
+       OR has_table_privilege('public', webhook_events, 'REFERENCES')
+       OR has_table_privilege('public', webhook_events, 'TRIGGER') THEN
+        RAISE EXCEPTION 'PUBLIC can access stripe_webhook_events directly';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM pg_roles AS api_role
+        WHERE api_role.rolname IN ('anon', 'authenticated', 'service_role')
+          AND (
+              has_table_privilege(api_role.rolname, webhook_events, 'SELECT')
+              OR has_table_privilege(api_role.rolname, webhook_events, 'INSERT')
+              OR has_table_privilege(api_role.rolname, webhook_events, 'UPDATE')
+              OR has_table_privilege(api_role.rolname, webhook_events, 'DELETE')
+              OR has_table_privilege(api_role.rolname, webhook_events, 'TRUNCATE')
+              OR has_table_privilege(api_role.rolname, webhook_events, 'REFERENCES')
+              OR has_table_privilege(api_role.rolname, webhook_events, 'TRIGGER')
+          )
+    ) THEN
+        RAISE EXCEPTION 'a Supabase Data API role can access stripe_webhook_events directly';
     END IF;
 
     webhook_check_function := to_regprocedure('public.has_processed_stripe_webhook_event(text)');

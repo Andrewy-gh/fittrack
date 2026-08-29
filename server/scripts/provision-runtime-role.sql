@@ -111,6 +111,10 @@ BEGIN
         LOOP
             IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = api_role) THEN
                 EXECUTE format(
+                    'REVOKE ALL PRIVILEGES ON TABLE public.stripe_webhook_events FROM %I',
+                    api_role
+                );
+                EXECUTE format(
                     'REVOKE ALL PRIVILEGES ON FUNCTION public.has_processed_stripe_webhook_event(TEXT), public.record_stripe_webhook_event(TEXT, TEXT) FROM %I',
                     api_role
                 );

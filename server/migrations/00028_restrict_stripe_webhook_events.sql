@@ -40,11 +40,13 @@ AS $$
     ON CONFLICT (stripe_event_id) DO NOTHING
 $$;
 
+REVOKE ALL PRIVILEGES ON TABLE public.stripe_webhook_events FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON FUNCTION public.has_processed_stripe_webhook_event(TEXT) FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON FUNCTION public.record_stripe_webhook_event(TEXT, TEXT) FROM PUBLIC;
 
--- Supabase may grant public-schema functions directly to its Data API roles through
--- role-specific default privileges. Those grants are independent of PUBLIC.
+-- Supabase may grant public-schema tables and functions directly to its Data API
+-- roles through role-specific default privileges. Those grants are independent of
+-- PUBLIC.
 DO $$
 DECLARE
     api_role TEXT;
@@ -52,6 +54,10 @@ BEGIN
     FOREACH api_role IN ARRAY ARRAY['anon', 'authenticated', 'service_role']
     LOOP
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = api_role) THEN
+            EXECUTE format(
+                'REVOKE ALL PRIVILEGES ON TABLE public.stripe_webhook_events FROM %I',
+                api_role
+            );
             EXECUTE format(
                 'REVOKE ALL PRIVILEGES ON FUNCTION public.has_processed_stripe_webhook_event(TEXT), public.record_stripe_webhook_event(TEXT, TEXT) FROM %I',
                 api_role
