@@ -711,6 +711,29 @@ func requireStripeWebhookEventSecurity(t *testing.T, pool *pgxpool.Pool) {
 	require.NoError(t, err)
 	require.False(t, publicCanCheck)
 	require.False(t, publicCanRecord)
+
+	var dataAPIRoleCanExecute bool
+	err = pool.QueryRow(context.Background(), `
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_roles AS api_role
+			WHERE api_role.rolname IN ('anon', 'authenticated', 'service_role')
+			  AND (
+				has_function_privilege(
+					api_role.rolname,
+					'public.has_processed_stripe_webhook_event(text)'::regprocedure,
+					'EXECUTE'
+				)
+				OR has_function_privilege(
+					api_role.rolname,
+					'public.record_stripe_webhook_event(text, text)'::regprocedure,
+					'EXECUTE'
+				)
+			  )
+		)
+	`).Scan(&dataAPIRoleCanExecute)
+	require.NoError(t, err)
+	require.False(t, dataAPIRoleCanExecute)
 }
 
 func subscriptionEventPayloadForUser(

@@ -89,6 +89,18 @@ BEGIN
         RAISE EXCEPTION 'Stripe webhook idempotency functions are executable by PUBLIC';
     END IF;
 
+    IF EXISTS (
+        SELECT 1
+        FROM pg_roles AS api_role
+        WHERE api_role.rolname IN ('anon', 'authenticated', 'service_role')
+          AND (
+              has_function_privilege(api_role.rolname, webhook_check_function, 'EXECUTE')
+              OR has_function_privilege(api_role.rolname, webhook_record_function, 'EXECUTE')
+          )
+    ) THEN
+        RAISE EXCEPTION 'Stripe webhook idempotency functions are executable by a Supabase Data API role';
+    END IF;
+
     IF NOT has_table_privilege(current_user, 'workout', 'SELECT')
        OR NOT has_function_privilege(current_user, 'current_user_id()', 'EXECUTE')
        OR NOT has_function_privilege(current_user, 'lookup_stripe_customer_user_id(text)', 'EXECUTE') THEN

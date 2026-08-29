@@ -98,16 +98,26 @@ TO fittrack_app;
 
 GRANT EXECUTE ON FUNCTION current_user_id() TO fittrack_app;
 DO $$
+DECLARE
+    api_role TEXT;
 BEGIN
     IF to_regprocedure('public.lookup_stripe_customer_user_id(text)') IS NOT NULL THEN
         GRANT EXECUTE ON FUNCTION lookup_stripe_customer_user_id(TEXT) TO fittrack_app;
     END IF;
 
-    IF to_regprocedure('public.has_processed_stripe_webhook_event(text)') IS NOT NULL THEN
-        GRANT EXECUTE ON FUNCTION public.has_processed_stripe_webhook_event(TEXT) TO fittrack_app;
-    END IF;
+    IF to_regprocedure('public.has_processed_stripe_webhook_event(text)') IS NOT NULL
+       AND to_regprocedure('public.record_stripe_webhook_event(text, text)') IS NOT NULL THEN
+        FOREACH api_role IN ARRAY ARRAY['anon', 'authenticated', 'service_role']
+        LOOP
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = api_role) THEN
+                EXECUTE format(
+                    'REVOKE ALL PRIVILEGES ON FUNCTION public.has_processed_stripe_webhook_event(TEXT), public.record_stripe_webhook_event(TEXT, TEXT) FROM %I',
+                    api_role
+                );
+            END IF;
+        END LOOP;
 
-    IF to_regprocedure('public.record_stripe_webhook_event(text, text)') IS NOT NULL THEN
+        GRANT EXECUTE ON FUNCTION public.has_processed_stripe_webhook_event(TEXT) TO fittrack_app;
         GRANT EXECUTE ON FUNCTION public.record_stripe_webhook_event(TEXT, TEXT) TO fittrack_app;
     END IF;
 END $$;
