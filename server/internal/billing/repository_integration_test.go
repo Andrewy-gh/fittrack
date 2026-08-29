@@ -18,6 +18,35 @@ import (
 	"github.com/stripe/stripe-go/v83"
 )
 
+func TestRepositoryGetStripeCustomerUserIDByCustomerID_ForWebhookContext(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed billing integration test without DATABASE_URL")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	require.NoError(t, err)
+	defer pool.Close()
+	require.NoError(t, pool.Ping(ctx))
+
+	userID := "billing-webhook-lookup-user"
+	customerID := "cus_webhook_lookup"
+	cleanupBillingSourceScopeTest(t, pool, userID, "sub_webhook_lookup", customerID)
+	defer cleanupBillingSourceScopeTest(t, pool, userID, "sub_webhook_lookup", customerID)
+	seedBillingUser(t, pool, userID)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	_, err = repo.UpsertStripeCustomer(ctx, userID, customerID)
+	require.NoError(t, err)
+
+	got, err := repo.GetStripeCustomerUserIDByCustomerID(context.Background(), customerID)
+	require.NoError(t, err)
+	assert.Equal(t, userID, got)
+}
+
 func TestRepositoryUpsertSubscriptionFromWebhook_SourceScopedFeatureAccess(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

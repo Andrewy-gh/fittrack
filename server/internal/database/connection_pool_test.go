@@ -178,8 +178,9 @@ func setupTestData(t *testing.T, pool *pgxpool.Pool) {
 	_, err = pool.Exec(ctx, "INSERT INTO workout (id, date, user_id) VALUES (2, NOW(), $1) ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id", "test-user-2")
 	require.NoError(t, err, "Failed to create workout 2 for user 2")
 
-	// Re-enable RLS for testing
-	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY;")
+	// Re-enable RLS for testing. FORCE makes the local table owner exercise the
+	// same policies as production's non-owner runtime role.
+	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY; ALTER TABLE users FORCE ROW LEVEL SECURITY; ALTER TABLE workout FORCE ROW LEVEL SECURITY;")
 	require.NoError(t, err, "Failed to re-enable RLS after setup")
 }
 
@@ -204,8 +205,8 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 		t.Logf("Warning: Failed to clean up user data: %v", err)
 	}
 
-	// Re-enable RLS
-	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY;")
+	// Re-enable RLS and restore the migrated owner behavior.
+	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY; ALTER TABLE users NO FORCE ROW LEVEL SECURITY; ALTER TABLE workout NO FORCE ROW LEVEL SECURITY;")
 	if err != nil {
 		t.Logf("Warning: Failed to re-enable RLS after cleanup: %v", err)
 	}

@@ -44,7 +44,7 @@ jobs:
             goose -dir server/migrations postgres "$GOOSE_DB_URL" up
           else
             echo "Database is already up to date, checking for new migrations..."
-            goose -dir server/migrations postgres "$GOOSE_DB_URL" up || echo "No new migrations to apply"
+            goose -dir server/migrations postgres "$GOOSE_DB_URL" up
           fi
       - name: Build and deploy to Fly.io
         run: |

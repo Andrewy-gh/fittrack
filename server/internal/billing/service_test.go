@@ -28,10 +28,9 @@ func (m *mockRepository) GetStripeCustomerByUserID(ctx context.Context, userID s
 	return row, args.Error(1)
 }
 
-func (m *mockRepository) GetStripeCustomerByCustomerID(ctx context.Context, stripeCustomerID string) (db.StripeCustomers, error) {
+func (m *mockRepository) GetStripeCustomerUserIDByCustomerID(ctx context.Context, stripeCustomerID string) (string, error) {
 	args := m.Called(ctx, stripeCustomerID)
-	row, _ := args.Get(0).(db.StripeCustomers)
-	return row, args.Error(1)
+	return args.String(0), args.Error(1)
 }
 
 func (m *mockRepository) UpsertStripeCustomer(ctx context.Context, userID string, stripeCustomerID string) (db.StripeCustomers, error) {
@@ -257,6 +256,49 @@ func TestServiceHandleWebhook_DoesNotGrantAccessForWrongOrMissingPrice(t *testin
 	}
 }
 
+func TestServiceHandleWebhook_ResolvesSubscriptionUserWithoutMetadata(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := new(mockRepository)
+	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
+	now := time.Now().UTC().Truncate(time.Second)
+	eventCreatedAt := now.Add(time.Minute)
+	periodEnd := now.Add(24 * time.Hour)
+	raw := subscriptionEventPayloadWithoutUserMetadata(t, "sub_without_metadata", "active", now, periodEnd)
+
+	service.constructEvent = func(payload []byte, header string, secret string) (stripe.Event, error) {
+		return stripe.Event{
+			ID:      "evt_subscription_without_metadata",
+			Type:    "customer.subscription.updated",
+			Created: eventCreatedAt.Unix(),
+			Data:    &stripe.EventData{Raw: raw},
+		}, nil
+	}
+
+	expectedSnapshot := StripeSubscriptionSnapshot{
+		StripeSubscriptionID: "sub_without_metadata",
+		UserID:               "user-from-customer",
+		StripeCustomerID:     "cus_123",
+		StripePriceID:        "price_premium",
+		StripeEventCreatedAt: &eventCreatedAt,
+		Status:               "active",
+		CurrentPeriodStart:   &now,
+		CurrentPeriodEnd:     &periodEnd,
+		TrialStart:           &now,
+		TrialEnd:             &periodEnd,
+		GrantAIChatAccess:    true,
+	}
+
+	repo.On("HasProcessedWebhookEvent", mock.Anything, "evt_subscription_without_metadata").Return(false, nil).Once()
+	repo.On("GetStripeCustomerUserIDByCustomerID", mock.Anything, "cus_123").Return("user-from-customer", nil).Once()
+	repo.On("UpsertSubscriptionFromWebhook", mock.Anything, expectedSnapshot).Return(db.StripeSubscriptions{}, nil).Once()
+	repo.On("MarkWebhookEventProcessed", mock.Anything, "evt_subscription_without_metadata", "customer.subscription.updated").Return(nil).Once()
+
+	err := service.HandleWebhook(context.Background(), []byte("payload"), "sig")
+
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+}
+
 func TestServiceHandleWebhook_AcknowledgesDeletedAccountSubscriptionEvent(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := new(mockRepository)
@@ -275,7 +317,7 @@ func TestServiceHandleWebhook_AcknowledgesDeletedAccountSubscriptionEvent(t *tes
 	}
 
 	repo.On("HasProcessedWebhookEvent", mock.Anything, "evt_deleted_account_subscription").Return(false, nil).Once()
-	repo.On("GetStripeCustomerByCustomerID", mock.Anything, "cus_123").Return(db.StripeCustomers{}, pgx.ErrNoRows).Once()
+	repo.On("GetStripeCustomerUserIDByCustomerID", mock.Anything, "cus_123").Return("", pgx.ErrNoRows).Once()
 	repo.On("MarkWebhookEventProcessed", mock.Anything, "evt_deleted_account_subscription", "customer.subscription.deleted").Return(nil).Once()
 
 	err := service.HandleWebhook(context.Background(), []byte("payload"), "sig")

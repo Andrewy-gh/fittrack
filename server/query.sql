@@ -641,10 +641,10 @@ SELECT user_id, stripe_customer_id, created_at, updated_at
 FROM stripe_customers
 WHERE user_id = $1;
 
--- name: GetStripeCustomerByCustomerID :one
-SELECT user_id, stripe_customer_id, created_at, updated_at
-FROM stripe_customers
-WHERE stripe_customer_id = $1;
+-- name: GetStripeCustomerUserIDByCustomerID :one
+SELECT user_id::text
+FROM (SELECT lookup_stripe_customer_user_id($1::text) AS user_id) AS lookup
+WHERE user_id IS NOT NULL;
 
 -- name: GetBillingUserForUpdate :one
 SELECT id, user_id, created_at

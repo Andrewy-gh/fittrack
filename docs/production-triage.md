@@ -52,6 +52,23 @@ Use Doppler for production secrets:
 doppler run --project fittrack --config prd -- <read-only command>
 ```
 
+## Production Database Roles And RLS
+
+Keep two database credentials separate:
+
+- GitHub's migration `DATABASE_URL` uses the owning/admin role for Goose.
+- Doppler `prd` `DATABASE_URL` uses a separately provisioned restricted `fittrack_app` runtime role.
+
+The runtime URL must use Supabase's session pooler on port `5432`. Port `6543` is the transaction pooler and cannot safely preserve FitTrack's per-connection RLS user setting. During the staged cutover, `RLS_ENFORCEMENT_REQUIRED=false` lets the new binary deploy while the old privileged URL is still active. The final runtime secret must set it to `true`; startup then rejects transaction pooling and any role that is a superuser, has `BYPASSRLS`, owns an RLS table, or can assume such a role.
+
+Activation order:
+
+1. Deploy the RLS-aware binary and migration 27 while the existing runtime URL remains active and `RLS_ENFORCEMENT_REQUIRED=false`. Migration 27 only adds the narrow Stripe customer-to-user lookup needed by unauthenticated webhooks; it does not enable or force RLS.
+2. Run `server/scripts/provision-runtime-role.sql` with the same owning/admin role used by Goose after migration 27, then configure `fittrack_app` as `LOGIN` with a generated password. The script enforces role safety, removes earlier broad `PUBLIC` grants, and grants only the current runtime operations. It intentionally does not handle the password. Do not store that password in Git or a shell script.
+3. Test the candidate `fittrack_app` session-pooler URL directly without changing Doppler. Run `server/scripts/verify-runtime-role.sql` with that URL, then verify two distinct user contexts and the Stripe lookup function.
+4. Update Doppler's runtime `DATABASE_URL` to the tested URL and set `RLS_ENFORCEMENT_REQUIRED=true` in the same cutover. Set `ENVIRONMENT=production` as normal environment metadata.
+5. Confirm readiness, run a two-user API isolation smoke test, and verify a metadata-free Stripe subscription webhook can resolve its customer. Keep the previous runtime secret version available for rollback; rollback must restore the old URL and set `RLS_ENFORCEMENT_REQUIRED=false` together.
+
 If a scheduled cancellation exists in Stripe but not in FitTrack, check whether the Stripe event was processed before the deploy that added the stored field. Processed Stripe event IDs are intentionally idempotent, so replaying the same event may not update the row.
 
 ## Stripe Backfills

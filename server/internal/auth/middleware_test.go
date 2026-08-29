@@ -17,8 +17,6 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
@@ -43,23 +41,6 @@ type MockUserService struct {
 func (m *MockUserService) EnsureUser(ctx context.Context, userID string) (db.Users, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(db.Users), args.Error(1)
-}
-
-type MockDBTX struct {
-	mock.Mock
-}
-
-func (m *MockDBTX) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
-	args := m.Called(ctx, sql, arguments[0])
-	return args.Get(0).(pgconn.CommandTag), args.Error(1)
-}
-
-func (m *MockDBTX) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
-	return nil, nil
-}
-
-func (m *MockDBTX) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	return nil
 }
 
 func TestAuthenticator_Middleware(t *testing.T) {
@@ -211,110 +192,24 @@ func TestAuthenticator_Middleware(t *testing.T) {
 	}
 }
 
-func TestAuthenticator_Middleware_SessionUserID(t *testing.T) {
+func TestAuthenticator_Middleware_ProvidesUserContextBeforeEnsureUser(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	tests := []struct {
-		name           string
-		setupMocks     func(*MockDBTX, *MockJWKSCache, *MockUserService)
-		expectedStatus int
-		expectContext  bool
-		expectedUserID string
-	}{
-		{
-			name: "successfully set session user ID",
-			setupMocks: func(mockDB *MockDBTX, mockJWKS *MockJWKSCache, mockUserSvc *MockUserService) {
-				mockJWKS.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
-				mockUserSvc.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{UserID: "user-123"}, nil)
-				tag := pgconn.NewCommandTag("SET")
-				mockDB.On("Exec", mock.Anything, setUserIDQuery, "user-123").Return(tag, nil)
-			},
-			expectedStatus: http.StatusOK,
-			expectContext:  true,
-			expectedUserID: "user-123",
-		},
-		{
-			name: "error setting session user ID",
-			setupMocks: func(mockDB *MockDBTX, mockJWKS *MockJWKSCache, mockUserSvc *MockUserService) {
-				err := fmt.Errorf("database error")
-				mockJWKS.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
-				mockUserSvc.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{UserID: "user-123"}, nil)
-				tag := pgconn.NewCommandTag("SET")
-				mockDB.On("Exec", mock.Anything, setUserIDQuery, "user-123").Return(tag, err)
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectContext:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockDB := &MockDBTX{}
-			mockJWKSCache := &MockJWKSCache{}
-			mockUserService := &MockUserService{}
-
-			if tt.setupMocks != nil {
-				tt.setupMocks(mockDB, mockJWKSCache, mockUserService)
-			}
-
-			auth := &Authenticator{
-				logger:      logger,
-				jwkCache:    mockJWKSCache,
-				userService: mockUserService,
-				dbPool:      mockDB,
-			}
-
-			var capturedContext context.Context
-			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				capturedContext = r.Context()
-				w.WriteHeader(http.StatusOK)
-			})
-
-			req := httptest.NewRequest("GET", "/api/test", nil)
-			req.Header.Set("x-stack-access-token", "valid-token")
-
-			w := httptest.NewRecorder()
-
-			auth.Middleware(nextHandler).ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			if tt.expectContext {
-				userID, ok := user.Current(capturedContext)
-				assert.True(t, ok, "Expected user ID in context")
-				assert.Equal(t, tt.expectedUserID, userID)
-			}
-
-			mockJWKSCache.AssertExpectations(t)
-			mockUserService.AssertExpectations(t)
-			mockDB.AssertExpectations(t)
-		})
-	}
-}
-
-func TestAuthenticator_Middleware_NilDBPool(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
 	mockJWKSCache := &MockJWKSCache{}
 	mockUserService := &MockUserService{}
 
 	mockJWKSCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
-	mockUserService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{UserID: "user-123"}, nil)
+	contextHasUser := mock.MatchedBy(func(ctx context.Context) bool {
+		userID, ok := user.Current(ctx)
+		return ok && userID == "user-123"
+	})
+	mockUserService.On("EnsureUser", contextHasUser, "user-123").Return(db.Users{UserID: "user-123"}, nil)
 
-	auth := &Authenticator{
-		logger:      logger,
-		jwkCache:    mockJWKSCache,
-		userService: mockUserService,
-		dbPool:      nil, // Explicitly nil DB pool
-	}
-
+	auth := &Authenticator{logger: logger, jwkCache: mockJWKSCache, userService: mockUserService}
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-
-	req := httptest.NewRequest("GET", "/api/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
 	req.Header.Set("x-stack-access-token", "valid-token")
-
 	w := httptest.NewRecorder()
 
 	auth.Middleware(nextHandler).ServeHTTP(w, req)
@@ -327,14 +222,14 @@ func TestAuthenticator_Middleware_NilDBPool(t *testing.T) {
 func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 	tests := []struct {
 		name         string
-		setup        func(*MockJWKSCache, *MockUserService, *MockDBTX)
+		setup        func(*MockJWKSCache, *MockUserService)
 		wantStatus   int
 		wantCategory string
 		forbidden    []string
 	}{
 		{
 			name: "invalid access token",
-			setup: func(jwkCache *MockJWKSCache, userService *MockUserService, dbPool *MockDBTX) {
+			setup: func(jwkCache *MockJWKSCache, _ *MockUserService) {
 				jwkCache.On("GetUserIDFromToken", "invalid-token").Return("", fmt.Errorf("failed to parse token for project secret-project-id: SQLSTATE 42501"))
 			},
 			wantStatus:   http.StatusUnauthorized,
@@ -348,7 +243,7 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 		},
 		{
 			name: "ensure user database error",
-			setup: func(jwkCache *MockJWKSCache, userService *MockUserService, dbPool *MockDBTX) {
+			setup: func(jwkCache *MockJWKSCache, userService *MockUserService) {
 				jwkCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
 				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{}, fmt.Errorf("pq: duplicate key value violates unique constraint \"users_email_key\" DETAIL: Key (email)=(andy@example.com) already exists. SQLSTATE 23505"))
 			},
@@ -362,24 +257,6 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 				"23505",
 			},
 		},
-		{
-			name: "session user database error",
-			setup: func(jwkCache *MockJWKSCache, userService *MockUserService, dbPool *MockDBTX) {
-				jwkCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
-				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{UserID: "user-123"}, nil)
-				tag := pgconn.NewCommandTag("SET")
-				dbPool.On("Exec", mock.Anything, setUserIDQuery, "user-123").Return(tag, fmt.Errorf("pq: permission denied for relation users SQLSTATE 42501"))
-			},
-			wantStatus:   http.StatusInternalServerError,
-			wantCategory: `"error_category":"database"`,
-			forbidden: []string{
-				"pq:",
-				"permission denied",
-				"relation users",
-				"SQLSTATE",
-				"42501",
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -388,14 +265,12 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 			logger := slog.New(slog.NewJSONHandler(&logs, nil))
 			mockJWKSCache := &MockJWKSCache{}
 			mockUserService := &MockUserService{}
-			mockDB := &MockDBTX{}
-			tt.setup(mockJWKSCache, mockUserService, mockDB)
+			tt.setup(mockJWKSCache, mockUserService)
 
 			auth := &Authenticator{
 				logger:      logger,
 				jwkCache:    mockJWKSCache,
 				userService: mockUserService,
-				dbPool:      mockDB,
 			}
 
 			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -423,7 +298,6 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 
 			mockJWKSCache.AssertExpectations(t)
 			mockUserService.AssertExpectations(t)
-			mockDB.AssertExpectations(t)
 		})
 	}
 }
