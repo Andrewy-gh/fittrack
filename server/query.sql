@@ -754,19 +754,18 @@ ORDER BY
 LIMIT 1;
 
 -- name: HasProcessedStripeWebhookEvent :one
-SELECT EXISTS (
-    SELECT 1
-    FROM stripe_webhook_events
-    WHERE stripe_event_id = $1
-);
+SELECT webhook_event.processed::boolean
+FROM (
+    SELECT public.has_processed_stripe_webhook_event(
+        sqlc.arg(stripe_event_id)::TEXT
+    ) AS processed
+) AS webhook_event;
 
 -- name: MarkStripeWebhookEventProcessed :exec
-INSERT INTO stripe_webhook_events (
-    stripe_event_id,
-    event_type
-)
-VALUES ($1, $2)
-ON CONFLICT (stripe_event_id) DO NOTHING;
+SELECT public.record_stripe_webhook_event(
+    sqlc.arg(stripe_event_id)::TEXT,
+    sqlc.arg(event_type)::TEXT
+);
 
 -- name: RevokeStripeFeatureAccess :exec
 UPDATE user_feature_access

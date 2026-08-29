@@ -63,9 +63,9 @@ The runtime URL must use Supabase's session pooler on port `5432`. Port `6543` i
 
 Activation order:
 
-1. Deploy the RLS-aware binary and migration 27 while the existing runtime URL remains active and `RLS_ENFORCEMENT_REQUIRED=false`. Migration 27 only adds the narrow Stripe customer-to-user lookup needed by unauthenticated webhooks; it does not enable or force RLS.
-2. Run `server/scripts/provision-runtime-role.sql` with the same owning/admin role used by Goose after migration 27, then configure `fittrack_app` as `LOGIN` with a generated password. The script enforces role safety, removes earlier broad `PUBLIC` grants, and grants only the current runtime operations. It intentionally does not handle the password. Do not store that password in Git or a shell script.
-3. Test the candidate `fittrack_app` session-pooler URL directly without changing Doppler. Run `server/scripts/verify-runtime-role.sql` with that URL, then verify two distinct user contexts and the Stripe lookup function.
+1. Deploy the RLS-aware binary and migrations 27 and 28 while the existing runtime URL remains active and `RLS_ENFORCEMENT_REQUIRED=false`. Migration 27 adds the narrow Stripe customer-to-user lookup needed by unauthenticated webhooks. Migration 28 enables RLS on the webhook idempotency log and moves its check and record operations behind owner-backed functions; it does not force RLS.
+2. Run `server/scripts/provision-runtime-role.sql` with the same owning/admin role used by Goose after migration 28, then configure `fittrack_app` as `LOGIN` with a generated password. The script enforces role safety, removes earlier broad `PUBLIC` grants, and grants only the current runtime operations. It intentionally does not handle the password. Do not store that password in Git or a shell script.
+3. Test the candidate `fittrack_app` session-pooler URL directly without changing Doppler. Run `server/scripts/verify-runtime-role.sql` with that URL, then verify two distinct user contexts and the Stripe lookup and webhook idempotency functions.
 4. Update Doppler's runtime `DATABASE_URL` to the tested URL and set `RLS_ENFORCEMENT_REQUIRED=true` in the same cutover. Set `ENVIRONMENT=production` as normal environment metadata.
 5. Confirm readiness, run a two-user API isolation smoke test, and verify a metadata-free Stripe subscription webhook can resolve its customer. Keep the previous runtime secret version available for rollback; rollback must restore the old URL and set `RLS_ENFORCEMENT_REQUIRED=false` together.
 

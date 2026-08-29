@@ -2180,18 +2180,19 @@ func (q *Queries) HasActiveFeatureAccess(ctx context.Context, arg HasActiveFeatu
 }
 
 const hasProcessedStripeWebhookEvent = `-- name: HasProcessedStripeWebhookEvent :one
-SELECT EXISTS (
-    SELECT 1
-    FROM stripe_webhook_events
-    WHERE stripe_event_id = $1
-)
+SELECT webhook_event.processed::boolean
+FROM (
+    SELECT public.has_processed_stripe_webhook_event(
+        $1::TEXT
+    ) AS processed
+) AS webhook_event
 `
 
 func (q *Queries) HasProcessedStripeWebhookEvent(ctx context.Context, stripeEventID string) (bool, error) {
 	row := q.db.QueryRow(ctx, hasProcessedStripeWebhookEvent, stripeEventID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+	var webhook_event_processed bool
+	err := row.Scan(&webhook_event_processed)
+	return webhook_event_processed, err
 }
 
 const heartbeatAIChatRunGeneration = `-- name: HeartbeatAIChatRunGeneration :execrows
@@ -2990,12 +2991,10 @@ func (q *Queries) MarkAIChatConversationLatestWorkoutDraftSaved(ctx context.Cont
 }
 
 const markStripeWebhookEventProcessed = `-- name: MarkStripeWebhookEventProcessed :exec
-INSERT INTO stripe_webhook_events (
-    stripe_event_id,
-    event_type
+SELECT public.record_stripe_webhook_event(
+    $1::TEXT,
+    $2::TEXT
 )
-VALUES ($1, $2)
-ON CONFLICT (stripe_event_id) DO NOTHING
 `
 
 type MarkStripeWebhookEventProcessedParams struct {

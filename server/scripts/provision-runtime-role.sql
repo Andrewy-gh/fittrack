@@ -86,7 +86,9 @@ GRANT SELECT, INSERT, DELETE ON ai_chat_stream_chunk TO fittrack_app;
 GRANT SELECT, INSERT, UPDATE ON TABLE
     stripe_customers, stripe_subscriptions, ai_chat_trial_prompt_usage
 TO fittrack_app;
-GRANT SELECT, INSERT ON stripe_webhook_events TO fittrack_app;
+
+-- Webhook idempotency is reachable only through the owner-backed functions below.
+REVOKE ALL PRIVILEGES ON TABLE public.stripe_webhook_events FROM fittrack_app;
 
 GRANT USAGE ON SEQUENCE
     users_id_seq, workout_id_seq, exercise_id_seq, set_id_seq,
@@ -99,5 +101,13 @@ DO $$
 BEGIN
     IF to_regprocedure('public.lookup_stripe_customer_user_id(text)') IS NOT NULL THEN
         GRANT EXECUTE ON FUNCTION lookup_stripe_customer_user_id(TEXT) TO fittrack_app;
+    END IF;
+
+    IF to_regprocedure('public.has_processed_stripe_webhook_event(text)') IS NOT NULL THEN
+        GRANT EXECUTE ON FUNCTION public.has_processed_stripe_webhook_event(TEXT) TO fittrack_app;
+    END IF;
+
+    IF to_regprocedure('public.record_stripe_webhook_event(text, text)') IS NOT NULL THEN
+        GRANT EXECUTE ON FUNCTION public.record_stripe_webhook_event(TEXT, TEXT) TO fittrack_app;
     END IF;
 END $$;
