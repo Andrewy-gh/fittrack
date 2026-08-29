@@ -283,18 +283,12 @@ func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id i
 	return sets, nil
 }
 
-func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
+func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, exerciseID int32, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	switch req.Range {
-	case "W", "M", "6M", "Y":
-	default:
-		return nil, "", fmt.Errorf("invalid range: %q", req.Range)
-	}
-
 	rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
-		ExerciseID: req.ExerciseID,
+		ExerciseID: exerciseID,
 		UserID:     userID,
 	})
 	if err != nil {

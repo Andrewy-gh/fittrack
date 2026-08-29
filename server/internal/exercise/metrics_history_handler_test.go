@@ -23,21 +23,7 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 	userID := "user-123"
 	ctx := context.WithValue(context.Background(), user.UserIDKey, userID)
 
-	t.Run("400 invalid range", func(t *testing.T) {
-		mockRepo := new(MockExerciseRepository)
-		service := NewService(logger, mockRepo)
-		handler := NewHandler(logger, validate, service)
-
-		req := httptest.NewRequest(http.MethodGet, "/api/exercises/1/metrics-history?range=BAD", nil).WithContext(ctx)
-		req.SetPathValue("id", "1")
-
-		w := httptest.NewRecorder()
-		handler.GetExerciseMetricsHistory(w, req)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("200 default range M", func(t *testing.T) {
+	t.Run("200 complete history", func(t *testing.T) {
 		mockRepo := new(MockExerciseRepository)
 		service := NewService(logger, mockRepo)
 		handler := NewHandler(logger, validate, service)
@@ -45,7 +31,6 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		exerciseID := int32(1)
 		mockRepo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{ID: exerciseID, Name: "Bench"}, nil)
 
-		wantReq := GetExerciseMetricsHistoryRequest{ExerciseID: exerciseID, Range: "M"}
 		points := []ExerciseMetricsHistoryPoint{
 			{
 				X:                    "1",
@@ -60,7 +45,7 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		}
 
 		mockRepo.
-			On("GetExerciseMetricsHistory", mock.Anything, wantReq, userID).
+			On("GetExerciseMetricsHistory", mock.Anything, exerciseID, userID).
 			Return(points, MetricsHistoryBucketWorkout, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/exercises/1/metrics-history", nil).WithContext(ctx)
@@ -70,6 +55,7 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		handler.GetExerciseMetricsHistory(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+		assert.NotContains(t, w.Body.String(), `"range"`)
 		mockRepo.AssertExpectations(t)
 	})
 
@@ -81,7 +67,7 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		exerciseID := int32(99)
 		mockRepo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{}, errors.New("missing"))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/exercises/99/metrics-history?range=W", nil).WithContext(ctx)
+		req := httptest.NewRequest(http.MethodGet, "/api/exercises/99/metrics-history", nil).WithContext(ctx)
 		req.SetPathValue("id", "99")
 
 		w := httptest.NewRecorder()

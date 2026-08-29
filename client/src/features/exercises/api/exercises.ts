@@ -36,16 +36,8 @@ export function recentExerciseSetsQueryOptions(id: number) {
   return getExercisesByIdRecentSetsQueryOptions({ path: { id } });
 }
 
-export type MetricsHistoryRange = "W" | "M" | "6M" | "Y";
-
-export function exerciseMetricsHistoryQueryOptions(
-  id: number,
-  range: MetricsHistoryRange,
-) {
-  return getExercisesByIdMetricsHistoryQueryOptions({
-    path: { id },
-    query: { range },
-  });
+export function exerciseMetricsHistoryQueryOptions(id: number) {
+  return getExercisesByIdMetricsHistoryQueryOptions({ path: { id } });
 }
 
 function isMetricsHistoryQueryForExercise(
@@ -139,7 +131,7 @@ export function useUpdateExerciseHistorical1RmMutation() {
         queryKey: getExercisesByIdQueryKey({ path: { id } }),
       });
 
-      // historical 1RM affects metrics-history intensity calculations; invalidate all ranges.
+      // Historical 1RM affects metrics-history intensity calculations.
       queryClient.invalidateQueries({
         predicate: (query) =>
           isMetricsHistoryQueryForExercise(query.queryKey?.[0], id),

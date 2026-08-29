@@ -47,10 +47,7 @@ func TestExerciseRepository_GetExerciseMetricsHistory_PreservesSameDaySessions(t
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, workoutA, 185, 5, 925)
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, workoutB, 205, 3, 615)
 
-	points, bucket, err := repo.GetExerciseMetricsHistory(ctx, GetExerciseMetricsHistoryRequest{
-		ExerciseID: exerciseID,
-		Range:      "Y",
-	}, userID)
+	points, bucket, err := repo.GetExerciseMetricsHistory(ctx, exerciseID, userID)
 	require.NoError(t, err)
 
 	assert.Equal(t, MetricsHistoryBucketWorkout, bucket)
@@ -65,7 +62,7 @@ func TestExerciseRepository_GetExerciseMetricsHistory_PreservesSameDaySessions(t
 	})
 }
 
-func TestExerciseRepository_GetExerciseMetricsHistory_AllRangesIncludeFirstRecordedSession(t *testing.T) {
+func TestExerciseRepository_GetExerciseMetricsHistory_IncludesFirstRecordedSession(t *testing.T) {
 	if testing.Short() && os.Getenv("DATABASE_URL") == "" {
 		t.Skip("Skipping database-backed metrics history regression without DATABASE_URL")
 	}
@@ -84,18 +81,11 @@ func TestExerciseRepository_GetExerciseMetricsHistory_AllRangesIncludeFirstRecor
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, firstWorkout, 185, 5, 925)
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, latestWorkout, 225, 3, 675)
 
-	for _, metricsRange := range []string{"W", "M", "6M", "Y"} {
-		t.Run(metricsRange, func(t *testing.T) {
-			points, _, err := repo.GetExerciseMetricsHistory(ctx, GetExerciseMetricsHistoryRequest{
-				ExerciseID: exerciseID,
-				Range:      metricsRange,
-			}, userID)
-			require.NoError(t, err)
-			require.Len(t, points, 2)
-			assert.Equal(t, firstWorkout, *points[0].WorkoutID)
-			assert.Equal(t, latestWorkout, *points[1].WorkoutID)
-		})
-	}
+	points, _, err := repo.GetExerciseMetricsHistory(ctx, exerciseID, userID)
+	require.NoError(t, err)
+	require.Len(t, points, 2)
+	assert.Equal(t, firstWorkout, *points[0].WorkoutID)
+	assert.Equal(t, latestWorkout, *points[1].WorkoutID)
 }
 
 func insertMetricsHistoryWorkout(

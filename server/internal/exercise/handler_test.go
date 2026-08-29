@@ -77,8 +77,8 @@ func (m *MockExerciseRepository) GetRecentSetsForExercise(ctx context.Context, i
 	return args.Get(0).([]db.GetRecentSetsForExerciseRow), args.Error(1)
 }
 
-func (m *MockExerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
-	args := m.Called(ctx, req, userID)
+func (m *MockExerciseRepository) GetExerciseMetricsHistory(ctx context.Context, exerciseID int32, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
+	args := m.Called(ctx, exerciseID, userID)
 	return args.Get(0).([]ExerciseMetricsHistoryPoint), args.Get(1).(MetricsHistoryBucket), args.Error(2)
 }
 

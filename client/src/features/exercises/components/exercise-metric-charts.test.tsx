@@ -13,7 +13,6 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   return {
     ...actual,
     useQuery: mockUseQuery,
-    keepPreviousData: (previousData: unknown) => previousData,
   };
 });
 
@@ -54,12 +53,15 @@ describe("ExerciseMetricCharts", () => {
     const status = screen.getByRole("status");
 
     expect(status).toHaveTextContent("Loading session metrics...");
+    expect(mockUseQuery.mock.calls[0]?.[0].queryKey[0]).not.toHaveProperty(
+      "query",
+    );
     expect(
       screen.queryByText("Daily Session Best 1RM"),
     ).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when the range has no working-set sessions", () => {
+  it("shows an empty state when the exercise has no working-set sessions", () => {
     mockUseQuery.mockReturnValue({
       data: { points: [] },
       isFetching: false,
@@ -75,7 +77,7 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(
-      screen.getByText("No working-set sessions in this range."),
+      screen.getByText("No working-set sessions for this exercise."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Daily Session Best 1RM"),
@@ -116,7 +118,7 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(
-      screen.getByText("No weighted metrics for this exercise/range."),
+      screen.getByText("No weighted metrics for this exercise."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Daily Session Best 1RM"),
@@ -163,11 +165,11 @@ describe("ExerciseMetricCharts", () => {
 
     expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
     expect(
-      screen.queryByText("No weighted metrics for this exercise/range."),
+      screen.queryByText("No weighted metrics for this exercise."),
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the current chart visible while a new range is fetching", () => {
+  it("keeps the current chart visible while history refreshes", () => {
     mockUseQuery.mockReturnValue({
       data: {
         points: [

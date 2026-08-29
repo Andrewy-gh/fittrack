@@ -1,16 +1,13 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 
 import type {
   ExerciseExerciseMetricsHistoryPoint,
   ExerciseExerciseWithSetsResponse,
 } from "@/client";
-import {
-  exerciseMetricsHistoryQueryOptions,
-  type MetricsHistoryRange,
-} from "@/features/exercises/api/exercises";
+import { exerciseMetricsHistoryQueryOptions } from "@/features/exercises/api/exercises";
 import { computeDemoMetricsHistory } from "@/features/exercises/utils/metrics-history";
 import {
   buildSessionMetricChartData,
@@ -174,7 +171,7 @@ function MetricChartsBody({
   if (points.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        No working-set sessions in this range.
+        No working-set sessions for this exercise.
       </p>
     );
   }
@@ -182,7 +179,7 @@ function MetricChartsBody({
   if (!hasWeightedMetrics(points)) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        No weighted metrics for this exercise/range.
+        No weighted metrics for this exercise.
       </p>
     );
   }
@@ -249,13 +246,12 @@ function AuthedCharts({
   onWorkoutClick,
 }: {
   exerciseId: number;
-  range: MetricsHistoryRange;
+  range: RangeType;
   onWorkoutClick: (workoutId: number) => void;
 }) {
-  const { data, error, isFetching, isPending } = useQuery({
-    ...exerciseMetricsHistoryQueryOptions(exerciseId, range),
-    placeholderData: keepPreviousData,
-  });
+  const { data, error, isFetching, isPending } = useQuery(
+    exerciseMetricsHistoryQueryOptions(exerciseId),
+  );
 
   if (error && !data) {
     throw error;
@@ -299,12 +295,12 @@ function DemoCharts({
   onWorkoutClick,
 }: {
   exerciseSets: ExerciseExerciseWithSetsResponse[];
-  range: MetricsHistoryRange;
+  range: RangeType;
   onWorkoutClick: (workoutId: number) => void;
 }) {
   const demo = useMemo(
-    () => computeDemoMetricsHistory(exerciseSets, range),
-    [exerciseSets, range],
+    () => computeDemoMetricsHistory(exerciseSets),
+    [exerciseSets],
   );
   const points = demo.points;
   return (

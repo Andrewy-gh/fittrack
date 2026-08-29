@@ -27,12 +27,11 @@ type ExerciseMetricsHistoryPoint struct {
 }
 
 type ExerciseMetricsHistoryResponse struct {
-	Range  string                        `json:"range"`
 	Bucket MetricsHistoryBucket          `json:"bucket"`
 	Points []ExerciseMetricsHistoryPoint `json:"points"`
 }
 
-func (es *ExerciseService) GetExerciseMetricsHistory(ctx context.Context, exerciseID int32, r string) (*ExerciseMetricsHistoryResponse, error) {
+func (es *ExerciseService) GetExerciseMetricsHistory(ctx context.Context, exerciseID int32) (*ExerciseMetricsHistoryResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "exercise", UserID: ""}
@@ -43,23 +42,12 @@ func (es *ExerciseService) GetExerciseMetricsHistory(ctx context.Context, exerci
 		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", exerciseID)}
 	}
 
-	req := GetExerciseMetricsHistoryRequest{
-		ExerciseID: exerciseID,
-		Range:      r,
-	}
-
-	// Handler validates, but keep this safe for internal callers.
-	if req.Range == "" {
-		req.Range = "M"
-	}
-
-	points, bucket, err := es.repo.GetExerciseMetricsHistory(ctx, req, userID)
+	points, bucket, err := es.repo.GetExerciseMetricsHistory(ctx, exerciseID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get exercise metrics history: %w", err)
 	}
 
 	return &ExerciseMetricsHistoryResponse{
-		Range:  req.Range,
 		Bucket: bucket,
 		Points: points,
 	}, nil

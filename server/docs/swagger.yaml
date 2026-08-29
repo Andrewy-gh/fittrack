@@ -262,8 +262,6 @@ definitions:
         items:
           $ref: '#/definitions/exercise.ExerciseMetricsHistoryPoint'
         type: array
-      range:
-        type: string
     type: object
   exercise.ExerciseResponse:
     properties:
@@ -1447,23 +1445,13 @@ paths:
       consumes:
       - application/json
       description: Get the complete time-series of per-workout session metrics for
-        an exercise. The range selects client-side presentation only.
+        an exercise.
       parameters:
       - description: Exercise ID
         in: path
         name: id
         required: true
         type: integer
-      - default: M
-        description: Range selector
-        enum:
-        - W
-        - M
-        - 6M
-        - "Y"
-        in: query
-        name: range
-        type: string
       produces:
       - application/json
       responses:

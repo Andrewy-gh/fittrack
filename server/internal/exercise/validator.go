@@ -12,11 +12,6 @@ type GetRecentSetsRequest struct {
 	ExerciseID int32 `json:"exercise_id" validate:"required,min=1"`
 }
 
-type GetExerciseMetricsHistoryRequest struct {
-	ExerciseID int32  `json:"exercise_id" validate:"required,min=1"`
-	Range      string `json:"range" validate:"required,oneof=W M 6M Y"`
-}
-
 type UpdateExerciseNameRequest struct {
 	Name string `json:"name" validate:"required,max=256"`
 }
