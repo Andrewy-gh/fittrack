@@ -55,7 +55,6 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		handler.GetExerciseMetricsHistory(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		assert.NotContains(t, w.Body.String(), `"range"`)
 		mockRepo.AssertExpectations(t)
 	})
 

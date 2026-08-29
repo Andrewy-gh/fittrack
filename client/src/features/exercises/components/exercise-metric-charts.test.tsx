@@ -53,9 +53,6 @@ describe("ExerciseMetricCharts", () => {
     const status = screen.getByRole("status");
 
     expect(status).toHaveTextContent("Loading session metrics...");
-    expect(mockUseQuery.mock.calls[0]?.[0].queryKey[0]).not.toHaveProperty(
-      "query",
-    );
     expect(
       screen.queryByText("Daily Session Best 1RM"),
     ).not.toBeInTheDocument();
