@@ -1,14 +1,6 @@
-import {
-  addDays,
-  addMonths,
-  differenceInCalendarDays,
-  format,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
-
 import type { RangeType } from "@/components/charts/chart-bar-vol.utils";
 import type { MetricPoint } from "@/components/charts/chart-bar-metric";
+import { buildHistoricalRangeTimeline } from "@/components/charts/historical-range-timeline";
 
 export type SessionMetricAggregation = "average" | "maximum" | "sum";
 
@@ -16,9 +8,6 @@ type SessionMetricPoint = {
   date?: string | null;
   workout_id?: number;
 };
-
-const toIsoDate = (date: Date) => format(date, "yyyy-MM-dd");
-const monday = (date: Date) => startOfWeek(date, { weekStartsOn: 1 });
 
 export function getSessionMetricBucket(range: RangeType) {
   return range === "Y" ? "month" : range === "6M" ? "week" : "day";
@@ -29,11 +18,13 @@ export function getSessionMetricPeriodLabel(range: RangeType): string {
 }
 
 export function getSessionMetricBucketLabel(range: RangeType): string {
-  if (range === "Y") return "Monthly bars for the last 12 months";
-  if (range === "6M") return "Weekly bars for the last 26 weeks";
+  if (range === "Y") return "Monthly bars from your first exercise session";
+  if (range === "6M") {
+    return "Weekly bars from your first exercise session, 26 visible at a time";
+  }
   return range === "M"
-    ? "Daily bars for the last 30 days, including days without a session"
-    : "Daily bars for the last 7 days, including days without a session";
+    ? "Daily bars from your first exercise session, 26 visible at a time"
+    : "Daily bars from your first exercise session, 7 visible at a time";
 }
 
 export function buildSessionMetricChartData<T extends SessionMetricPoint>(
@@ -43,70 +34,29 @@ export function buildSessionMetricChartData<T extends SessionMetricPoint>(
   aggregation: SessionMetricAggregation,
   today: Date = new Date(),
 ): MetricPoint[] {
-  const valuesByBucket = new Map<
-    string,
-    Array<{ value: number; workout_id?: number }>
-  >();
-  const todayStart = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  );
+  const timeline = buildHistoricalRangeTimeline({
+    range,
+    items: points,
+    dateOf: (point) => point.date,
+    today,
+  });
 
-  for (const point of points) {
-    if (!point.date) continue;
-    const date = new Date(`${point.date.split("T")[0]}T00:00:00`);
-    if (date > todayStart) continue;
-    const bucketDate =
-      range === "Y" ? startOfMonth(date) : range === "6M" ? monday(date) : date;
-    const key = toIsoDate(bucketDate);
-    const values = valuesByBucket.get(key) ?? [];
-    values.push({ value: pick(point) ?? 0, workout_id: point.workout_id });
-    valuesByBucket.set(key, values);
-  }
-
-  const end =
-    range === "Y"
-      ? startOfMonth(todayStart)
-      : range === "6M"
-        ? monday(todayStart)
-        : todayStart;
-  const start =
-    range === "Y"
-      ? addMonths(end, -11)
-      : range === "6M"
-        ? addDays(end, -25 * 7)
-        : addDays(end, range === "M" ? -29 : -6);
-  const count =
-    range === "Y"
-      ? 12
-      : range === "6M"
-        ? 26
-        : differenceInCalendarDays(end, start) + 1;
-
-  return Array.from({ length: count }, (_, index) => {
-    const date =
-      range === "Y"
-        ? addMonths(start, index)
-        : addDays(start, index * (range === "6M" ? 7 : 1));
-    const isoDate = toIsoDate(date);
-    const entries = valuesByBucket.get(isoDate) ?? [];
-    const rawValues = entries.map((entry) => entry.value);
+  return timeline.buckets.map(({ date, items }) => {
+    const values = items.map(pick);
     const value =
-      rawValues.length === 0
+      values.length === 0
         ? 0
         : aggregation === "sum"
-          ? rawValues.reduce((sum, current) => sum + current, 0)
+          ? values.reduce((sum, current) => sum + current, 0)
           : aggregation === "maximum"
-            ? Math.max(...rawValues)
-            : rawValues.reduce((sum, current) => sum + current, 0) /
-              rawValues.length;
+            ? Math.max(...values)
+            : values.reduce((sum, current) => sum + current, 0) / values.length;
 
     return {
-      x: isoDate,
-      date: isoDate,
+      x: date,
+      date,
       value,
-      workout_id: entries.length === 1 ? entries[0].workout_id : undefined,
+      workout_id: items.length === 1 ? items[0].workout_id : undefined,
     };
   });
 }

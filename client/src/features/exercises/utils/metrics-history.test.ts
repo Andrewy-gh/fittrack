@@ -19,26 +19,23 @@ function set(
 }
 
 describe("computeDemoMetricsHistory", () => {
-  it("keeps same-day workouts as separate session points for yearly range", () => {
-    const history = computeDemoMetricsHistory(
-      [
-        set({
-          workout_id: 11,
-          workout_date: "2026-03-24T08:00:00.000Z",
-          weight: 100,
-          reps: 5,
-          volume: 500,
-        }),
-        set({
-          workout_id: 22,
-          workout_date: "2026-03-24T18:00:00.000Z",
-          weight: 135,
-          reps: 3,
-          volume: 405,
-        }),
-      ],
-      "Y",
-    );
+  it("keeps same-day workouts as separate session points", () => {
+    const history = computeDemoMetricsHistory([
+      set({
+        workout_id: 11,
+        workout_date: "2026-03-24T08:00:00.000Z",
+        weight: 100,
+        reps: 5,
+        volume: 500,
+      }),
+      set({
+        workout_id: 22,
+        workout_date: "2026-03-24T18:00:00.000Z",
+        weight: 135,
+        reps: 3,
+        volume: 405,
+      }),
+    ]);
 
     expect(history.bucket).toBe("workout");
     expect(history.points).toHaveLength(2);
@@ -49,14 +46,11 @@ describe("computeDemoMetricsHistory", () => {
     ]);
   });
 
-  it("keeps every historical session available in short ranges", () => {
-    const history = computeDemoMetricsHistory(
-      [
-        set({ workout_id: 11, workout_date: "2024-01-01T08:00:00.000Z" }),
-        set({ workout_id: 22, workout_date: "2026-03-24T08:00:00.000Z" }),
-      ],
-      "W",
-    );
+  it("keeps every historical session available", () => {
+    const history = computeDemoMetricsHistory([
+      set({ workout_id: 11, workout_date: "2024-01-01T08:00:00.000Z" }),
+      set({ workout_id: 22, workout_date: "2026-03-24T08:00:00.000Z" }),
+    ]);
 
     expect(history.points.map((point) => point.workout_id)).toEqual([11, 22]);
   });

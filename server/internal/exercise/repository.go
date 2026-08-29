@@ -283,130 +283,38 @@ func (er *exerciseRepository) GetRecentSetsForExercise(ctx context.Context, id i
 	return sets, nil
 }
 
-func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, req GetExerciseMetricsHistoryRequest, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
+func (er *exerciseRepository) GetExerciseMetricsHistory(ctx context.Context, exerciseID int32, userID string) ([]ExerciseMetricsHistoryPoint, MetricsHistoryBucket, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	switch req.Range {
-	case "W":
-		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
-				ExerciseID: req.ExerciseID,
-				UserID:     userID,
-			})
-			if err != nil {
-				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
-			}
-
-			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
-			for _, row := range rows {
-				workoutID := row.WorkoutID
-				if !row.WorkoutDay.Valid {
-					continue
-				}
-				points = append(points, ExerciseMetricsHistoryPoint{
-					X:                    fmt.Sprintf("%d", workoutID),
-					Date:                 row.WorkoutDay.Time,
-					WorkoutID:            &workoutID,
-					SessionBestE1RM:      row.SessionBestE1rm,
-					SessionAvgE1RM:       row.SessionAvgE1rm,
-					SessionAvgIntensity:  row.SessionAvgIntensity,
-					SessionBestIntensity: row.SessionBestIntensity,
-					TotalVolumeWorking:   row.TotalVolumeWorking,
-				})
-			}
-			return points, MetricsHistoryBucketWorkout, nil
-		}
-	case "M":
-		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
-				ExerciseID: req.ExerciseID,
-				UserID:     userID,
-			})
-			if err != nil {
-				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
-			}
-
-			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
-			for _, row := range rows {
-				workoutID := row.WorkoutID
-				if !row.WorkoutDay.Valid {
-					continue
-				}
-				points = append(points, ExerciseMetricsHistoryPoint{
-					X:                    fmt.Sprintf("%d", workoutID),
-					Date:                 row.WorkoutDay.Time,
-					WorkoutID:            &workoutID,
-					SessionBestE1RM:      row.SessionBestE1rm,
-					SessionAvgE1RM:       row.SessionAvgE1rm,
-					SessionAvgIntensity:  row.SessionAvgIntensity,
-					SessionBestIntensity: row.SessionBestIntensity,
-					TotalVolumeWorking:   row.TotalVolumeWorking,
-				})
-			}
-			return points, MetricsHistoryBucketWorkout, nil
-		}
-	case "6M":
-		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
-				ExerciseID: req.ExerciseID,
-				UserID:     userID,
-			})
-			if err != nil {
-				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
-			}
-
-			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
-			for _, row := range rows {
-				workoutID := row.WorkoutID
-				if !row.WorkoutDay.Valid {
-					continue
-				}
-				points = append(points, ExerciseMetricsHistoryPoint{
-					X:                    fmt.Sprintf("%d", workoutID),
-					Date:                 row.WorkoutDay.Time,
-					WorkoutID:            &workoutID,
-					SessionBestE1RM:      row.SessionBestE1rm,
-					SessionAvgE1RM:       row.SessionAvgE1rm,
-					SessionAvgIntensity:  row.SessionAvgIntensity,
-					SessionBestIntensity: row.SessionBestIntensity,
-					TotalVolumeWorking:   row.TotalVolumeWorking,
-				})
-			}
-			return points, MetricsHistoryBucketWorkout, nil
-		}
-	case "Y":
-		{
-			rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
-				ExerciseID: req.ExerciseID,
-				UserID:     userID,
-			})
-			if err != nil {
-				return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
-			}
-
-			points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
-			for _, row := range rows {
-				workoutID := row.WorkoutID
-				if !row.WorkoutDay.Valid {
-					continue
-				}
-				points = append(points, ExerciseMetricsHistoryPoint{
-					X:                    fmt.Sprintf("%d", workoutID),
-					Date:                 row.WorkoutDay.Time,
-					WorkoutID:            &workoutID,
-					SessionBestE1RM:      row.SessionBestE1rm,
-					SessionAvgE1RM:       row.SessionAvgE1rm,
-					SessionAvgIntensity:  row.SessionAvgIntensity,
-					SessionBestIntensity: row.SessionBestIntensity,
-					TotalVolumeWorking:   row.TotalVolumeWorking,
-				})
-			}
-			return points, MetricsHistoryBucketWorkout, nil
-		}
-	default:
-		return nil, "", fmt.Errorf("invalid range: %q", req.Range)
+	rows, err := er.queries.GetExerciseMetricsHistoryRawAll(ctx, db.GetExerciseMetricsHistoryRawAllParams{
+		ExerciseID: exerciseID,
+		UserID:     userID,
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("get all exercise metrics history query failed: %w", err)
 	}
+
+	points := make([]ExerciseMetricsHistoryPoint, 0, len(rows))
+	for _, row := range rows {
+		if !row.WorkoutDay.Valid {
+			continue
+		}
+
+		workoutID := row.WorkoutID
+		points = append(points, ExerciseMetricsHistoryPoint{
+			X:                    fmt.Sprintf("%d", workoutID),
+			Date:                 row.WorkoutDay.Time,
+			WorkoutID:            &workoutID,
+			SessionBestE1RM:      row.SessionBestE1rm,
+			SessionAvgE1RM:       row.SessionAvgE1rm,
+			SessionAvgIntensity:  row.SessionAvgIntensity,
+			SessionBestIntensity: row.SessionBestIntensity,
+			TotalVolumeWorking:   row.TotalVolumeWorking,
+		})
+	}
+
+	return points, MetricsHistoryBucketWorkout, nil
 }
 
 func (er *exerciseRepository) UpdateExerciseName(ctx context.Context, id int32, name, userID string) error {

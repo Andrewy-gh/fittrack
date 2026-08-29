@@ -47,10 +47,7 @@ func TestExerciseRepository_GetExerciseMetricsHistory_PreservesSameDaySessions(t
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, workoutA, 185, 5, 925)
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, workoutB, 205, 3, 615)
 
-	points, bucket, err := repo.GetExerciseMetricsHistory(ctx, GetExerciseMetricsHistoryRequest{
-		ExerciseID: exerciseID,
-		Range:      "Y",
-	}, userID)
+	points, bucket, err := repo.GetExerciseMetricsHistory(ctx, exerciseID, userID)
 	require.NoError(t, err)
 
 	assert.Equal(t, MetricsHistoryBucketWorkout, bucket)
@@ -65,7 +62,7 @@ func TestExerciseRepository_GetExerciseMetricsHistory_PreservesSameDaySessions(t
 	})
 }
 
-func TestExerciseRepository_GetExerciseMetricsHistory_ShortRangeIncludesFirstRecordedSession(t *testing.T) {
+func TestExerciseRepository_GetExerciseMetricsHistory_IncludesFirstRecordedSession(t *testing.T) {
 	if testing.Short() && os.Getenv("DATABASE_URL") == "" {
 		t.Skip("Skipping database-backed metrics history regression without DATABASE_URL")
 	}
@@ -84,10 +81,7 @@ func TestExerciseRepository_GetExerciseMetricsHistory_ShortRangeIncludesFirstRec
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, firstWorkout, 185, 5, 925)
 	insertMetricsHistorySet(t, ctx, pool, userID, exerciseID, latestWorkout, 225, 3, 675)
 
-	points, _, err := repo.GetExerciseMetricsHistory(ctx, GetExerciseMetricsHistoryRequest{
-		ExerciseID: exerciseID,
-		Range:      "W",
-	}, userID)
+	points, _, err := repo.GetExerciseMetricsHistory(ctx, exerciseID, userID)
 	require.NoError(t, err)
 	require.Len(t, points, 2)
 	assert.Equal(t, firstWorkout, *points[0].WorkoutID)

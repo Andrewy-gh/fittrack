@@ -142,7 +142,6 @@ export type ExerciseExerciseMetricsHistoryPoint = {
 export type ExerciseExerciseMetricsHistoryResponse = {
   bucket?: ExerciseMetricsHistoryBucket;
   points?: Array<ExerciseExerciseMetricsHistoryPoint>;
-  range?: string;
 };
 
 export type ExerciseExerciseResponse = {
@@ -1097,12 +1096,7 @@ export type GetExercisesByIdMetricsHistoryData = {
      */
     id: number;
   };
-  query?: {
-    /**
-     * Range selector
-     */
-    range?: "W" | "M" | "6M" | "Y";
-  };
+  query?: never;
   url: "/exercises/{id}/metrics-history";
 };
 

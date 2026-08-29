@@ -1,6 +1,4 @@
 import type { ExerciseExerciseWithSetsResponse } from "@/client";
-import type { MetricsHistoryRange } from "@/features/exercises/api/exercises";
-
 type Bucket = "workout";
 
 export type MetricsHistoryPoint = {
@@ -15,14 +13,12 @@ export type MetricsHistoryPoint = {
 };
 
 type MetricsHistoryResult = {
-  range: MetricsHistoryRange;
   bucket: Bucket;
   points: MetricsHistoryPoint[];
 };
 
 export function computeDemoMetricsHistory(
   exerciseSets: ExerciseExerciseWithSetsResponse[],
-  range: MetricsHistoryRange,
 ): MetricsHistoryResult {
   const byWorkout = new Map<
     number,
@@ -75,8 +71,8 @@ export function computeDemoMetricsHistory(
     .sort((a, b) => a.date.localeCompare(b.date));
 
   if (workoutPoints.length === 0) {
-    return { range, bucket: "workout", points: [] };
+    return { bucket: "workout", points: [] };
   }
 
-  return { range, bucket: "workout", points: workoutPoints };
+  return { bucket: "workout", points: workoutPoints };
 }

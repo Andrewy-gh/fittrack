@@ -467,7 +467,7 @@ export const patchExercisesByIdHistorical1Rm = <
 /**
  * Get exercise metrics history
  *
- * Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.
+ * Get the complete time-series of per-workout session metrics for an exercise.
  */
 export const getExercisesByIdMetricsHistory = <
   ThrowOnError extends boolean = false,
@@ -605,7 +605,7 @@ export const postWorkouts = <ThrowOnError extends boolean = false>(
 /**
  * Get contribution graph data
  *
- * Get workout contribution data for the past 52 weeks, including daily working set counts and intensity levels (0-4) for visualization in a contribution graph
+ * Get complete workout contribution history, including daily working set counts and intensity levels (0-4) for analytics visualizations
  */
 export const getWorkoutsContributionData = <
   ThrowOnError extends boolean = false,

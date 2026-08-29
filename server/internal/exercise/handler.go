@@ -200,13 +200,12 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 // MARK: GetExerciseMetricsHistory
 // GetExerciseMetricsHistory godoc
 // @Summary Get exercise metrics history
-// @Description Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.
+// @Description Get the complete time-series of per-workout session metrics for an exercise.
 // @Tags exercises
 // @Accept json
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Exercise ID"
-// @Param range query string false "Range selector" Enums(W,M,6M,Y) default(M)
 // @Success 200 {object} exercise.ExerciseMetricsHistoryResponse
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
@@ -219,22 +218,7 @@ func (h *ExerciseHandler) GetExerciseMetricsHistory(w http.ResponseWriter, r *ht
 		return
 	}
 
-	rng := r.URL.Query().Get("range")
-	if rng == "" {
-		rng = "M"
-	}
-
-	req := GetExerciseMetricsHistoryRequest{
-		ExerciseID: exerciseID,
-		Range:      rng,
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid request", err)
-		return
-	}
-
-	history, err := h.exerciseService.GetExerciseMetricsHistory(r.Context(), req.ExerciseID, req.Range)
+	history, err := h.exerciseService.GetExerciseMetricsHistory(r.Context(), exerciseID)
 	if err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound

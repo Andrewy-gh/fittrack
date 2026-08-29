@@ -1049,7 +1049,7 @@
                         "StackAuth": []
                     }
                 ],
-                "description": "Get time-series session metrics for an exercise. All ranges return per-workout session points filtered to the selected window.",
+                "description": "Get the complete time-series of per-workout session metrics for an exercise.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1067,19 +1067,6 @@
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "enum": [
-                            "W",
-                            "M",
-                            "6M",
-                            "Y"
-                        ],
-                        "type": "string",
-                        "default": "M",
-                        "description": "Range selector",
-                        "name": "range",
-                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2100,9 +2087,6 @@
                     "items": {
                         "$ref": "#/definitions/exercise.ExerciseMetricsHistoryPoint"
                     }
-                },
-                "range": {
-                    "type": "string"
                 }
             }
         },

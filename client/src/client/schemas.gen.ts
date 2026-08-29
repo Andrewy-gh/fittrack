@@ -390,9 +390,6 @@ export const exercise_ExerciseMetricsHistoryResponseSchema = {
         $ref: "#/definitions/exercise.ExerciseMetricsHistoryPoint",
       },
     },
-    range: {
-      type: "string",
-    },
   },
 } as const;
 
