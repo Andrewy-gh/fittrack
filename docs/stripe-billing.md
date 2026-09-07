@@ -52,7 +52,7 @@ FitTrack handles these Stripe events:
 
 Unsupported Stripe events are ignored after signature verification.
 
-Webhook processing is idempotent. Processed Stripe event IDs are stored in `stripe_webhook_events`, so Stripe retries should not duplicate access changes.
+Webhook processing is idempotent. Processed Stripe event IDs are stored in `stripe_webhook_events`, so Stripe retries should not duplicate access changes. The restricted runtime role reaches that log only through its narrow database functions; `PUBLIC` and Supabase Data API roles have neither direct table access nor permission to execute those functions.
 
 ## Stored Data
 

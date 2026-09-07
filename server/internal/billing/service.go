@@ -394,7 +394,7 @@ func (s *Service) applySubscriptionEvent(ctx context.Context, subscription strip
 	snapshot := subscriptionSnapshot(subscription)
 	snapshot.StripeEventCreatedAt = eventCreatedAt
 	if snapshot.UserID == "" && snapshot.StripeCustomerID != "" {
-		customerRow, err := s.repo.GetStripeCustomerByCustomerID(ctx, snapshot.StripeCustomerID)
+		customerUserID, err := s.repo.GetStripeCustomerUserIDByCustomerID(ctx, snapshot.StripeCustomerID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Info("ignoring stripe subscription event for deleted or unknown customer", "stripe_customer_id", snapshot.StripeCustomerID, "stripe_subscription_id", snapshot.StripeSubscriptionID)
 			return nil
@@ -402,7 +402,7 @@ func (s *Service) applySubscriptionEvent(ctx context.Context, subscription strip
 		if err != nil {
 			return fmt.Errorf("find user for stripe customer: %w", err)
 		}
-		snapshot.UserID = customerRow.UserID
+		snapshot.UserID = customerUserID
 	}
 	snapshot.GrantAIChatAccess = s.snapshotGrantsAccess(snapshot)
 	return s.ApplySubscriptionSnapshot(ctx, snapshot)

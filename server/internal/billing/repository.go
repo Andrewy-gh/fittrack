@@ -15,7 +15,7 @@ import (
 
 type Repository interface {
 	GetStripeCustomerByUserID(ctx context.Context, userID string) (db.StripeCustomers, error)
-	GetStripeCustomerByCustomerID(ctx context.Context, stripeCustomerID string) (db.StripeCustomers, error)
+	GetStripeCustomerUserIDByCustomerID(ctx context.Context, stripeCustomerID string) (string, error)
 	UpsertStripeCustomer(ctx context.Context, userID string, stripeCustomerID string) (db.StripeCustomers, error)
 	GetCurrentSubscriptionByUserID(ctx context.Context, userID string) (db.StripeSubscriptions, error)
 	UpsertSubscriptionFromWebhook(ctx context.Context, snapshot StripeSubscriptionSnapshot) (db.StripeSubscriptions, error)
@@ -46,11 +46,11 @@ func (r *repository) GetStripeCustomerByUserID(ctx context.Context, userID strin
 	return r.queries.GetStripeCustomerByUserID(ctx, userID)
 }
 
-func (r *repository) GetStripeCustomerByCustomerID(ctx context.Context, stripeCustomerID string) (db.StripeCustomers, error) {
+func (r *repository) GetStripeCustomerUserIDByCustomerID(ctx context.Context, stripeCustomerID string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	return r.queries.GetStripeCustomerByCustomerID(ctx, stripeCustomerID)
+	return r.queries.GetStripeCustomerUserIDByCustomerID(ctx, stripeCustomerID)
 }
 
 func (r *repository) UpsertStripeCustomer(ctx context.Context, userID string, stripeCustomerID string) (db.StripeCustomers, error) {

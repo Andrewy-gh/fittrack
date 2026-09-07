@@ -89,7 +89,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
         run: |
-          go test -v ./...
+          # Database-backed packages share one schema, and RLS tests acquire
+          # table-level locks while toggling enforcement. Run packages serially
+          # to prevent unrelated cleanup transactions from deadlocking with DDL.
+          go test -p 1 -v ./...
 
   frontend-test:
     name: Run Frontend Tests

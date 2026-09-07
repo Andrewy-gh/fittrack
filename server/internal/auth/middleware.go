@@ -20,7 +20,6 @@ import (
 
 const (
 	jwksUrlTemplate           = "https://api.stack-auth.com/api/v1/projects/%s/.well-known/jwks.json"
-	setUserIDQuery            = "SELECT set_config('app.current_user_id', $1, false) WHERE $1 IS NOT NULL"
 	stackAccessTokenClockSkew = time.Minute
 )
 
@@ -36,7 +35,6 @@ type Authenticator struct {
 	logger      *slog.Logger
 	jwkCache    JWKSProvider
 	userService UserServiceProvider
-	dbPool      db.DBTX
 	localE2E    *LocalE2EAuthConfig
 }
 
@@ -45,12 +43,11 @@ type LocalE2EAuthConfig struct {
 	UserID  string
 }
 
-func NewAuthenticator(logger *slog.Logger, jwkCache JWKSProvider, userService UserServiceProvider, dbPool db.DBTX) *Authenticator {
+func NewAuthenticator(logger *slog.Logger, jwkCache JWKSProvider, userService UserServiceProvider) *Authenticator {
 	return &Authenticator{
 		logger:      logger,
 		jwkCache:    jwkCache,
 		userService: userService,
-		dbPool:      dbPool,
 	}
 }
 
@@ -60,36 +57,6 @@ func (a *Authenticator) WithLocalE2EAuth(config LocalE2EAuthConfig) *Authenticat
 		UserID:  strings.TrimSpace(config.UserID),
 	}
 	return a
-}
-
-func (a *Authenticator) setSessionUserID(ctx context.Context, userID string) error {
-	if a.dbPool == nil {
-		return nil
-	}
-	_, err := a.dbPool.Exec(ctx,
-		setUserIDQuery,
-		userID)
-	if err != nil {
-		// Check if this is an RLS context error
-		if db.IsRLSContextError(err) {
-			a.logger.Error("RLS context setup failed",
-				"userID", userID,
-				"error_category", "rls_context",
-				"error_present", true,
-				"error_type", fmt.Sprintf("%T", err))
-		} else {
-			a.logger.Error("failed to set session variable",
-				"userID", userID,
-				"error_category", "database",
-				"error_present", true,
-				"error_type", fmt.Sprintf("%T", err))
-		}
-		return fmt.Errorf("failed to set user context: %w", err)
-	}
-
-	a.logger.Debug("RLS context set successfully",
-		"userID", userID)
-	return nil
 }
 
 func (a *Authenticator) Middleware(next http.Handler) http.Handler {
@@ -136,7 +103,11 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 }
 
 func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request, next http.Handler, userID string) bool {
-	dbUser, err := a.userService.EnsureUser(r.Context(), userID)
+	// Put the authenticated identity on the context before the first database call.
+	// The connection pool uses it to establish the RLS session for every acquired
+	// connection, including the EnsureUser query below.
+	authCtx := user.WithContext(r.Context(), userID)
+	dbUser, err := a.userService.EnsureUser(authCtx, userID)
 	if err != nil {
 		a.logger.Error("failed to ensure user",
 			"userID", userID,
@@ -151,27 +122,7 @@ func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request,
 		return false
 	}
 
-	// Set the current user ID as a session variable for RLS
-	if a.dbPool != nil {
-		if err := a.setSessionUserID(r.Context(), userID); err != nil {
-			a.logger.Error("failed to set user context",
-				"userID", userID,
-				"path", r.URL.Path,
-				"method", r.Method,
-				"status", http.StatusInternalServerError,
-				"request_id", request.GetRequestID(r.Context()),
-				"error_category", "database",
-				"error_present", true,
-				"error_type", fmt.Sprintf("%T", err))
-			response.ErrorJSON(w, r, a.logger,
-				http.StatusInternalServerError,
-				"failed to set user context",
-				err)
-			return false
-		}
-	}
-
-	ctx := user.WithContext(r.Context(), dbUser.UserID)
+	ctx := user.WithContext(authCtx, dbUser.UserID)
 	next.ServeHTTP(w, r.WithContext(ctx))
 	return true
 }

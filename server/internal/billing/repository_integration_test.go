@@ -18,6 +18,79 @@ import (
 	"github.com/stripe/stripe-go/v83"
 )
 
+func TestRepositoryGetStripeCustomerUserIDByCustomerID_ForWebhookContext(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed billing integration test without DATABASE_URL")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	require.NoError(t, err)
+	defer pool.Close()
+	require.NoError(t, pool.Ping(ctx))
+
+	userID := "billing-webhook-lookup-user"
+	customerID := "cus_webhook_lookup"
+	cleanupBillingSourceScopeTest(t, pool, userID, "sub_webhook_lookup", customerID)
+	defer cleanupBillingSourceScopeTest(t, pool, userID, "sub_webhook_lookup", customerID)
+	seedBillingUser(t, pool, userID)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	_, err = repo.UpsertStripeCustomer(ctx, userID, customerID)
+	require.NoError(t, err)
+
+	got, err := repo.GetStripeCustomerUserIDByCustomerID(context.Background(), customerID)
+	require.NoError(t, err)
+	assert.Equal(t, userID, got)
+}
+
+func TestRepositoryWebhookEventFunctionsAreRestrictedAndIdempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("Skipping database-backed billing integration test without DATABASE_URL")
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	require.NoError(t, err)
+	defer pool.Close()
+	require.NoError(t, pool.Ping(ctx))
+
+	eventID := "evt_webhook_function_idempotency"
+	cleanupStripeWebhookEvent(t, pool, eventID)
+	defer cleanupStripeWebhookEvent(t, pool, eventID)
+	requireStripeWebhookEventSecurity(t, pool)
+
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	processed, err := repo.HasProcessedWebhookEvent(ctx, eventID)
+	require.NoError(t, err)
+	assert.False(t, processed)
+
+	require.NoError(t, repo.MarkWebhookEventProcessed(ctx, eventID, "customer.subscription.updated"))
+	processed, err = repo.HasProcessedWebhookEvent(ctx, eventID)
+	require.NoError(t, err)
+	assert.True(t, processed)
+
+	// A replay with a different type must retain the first record, matching the
+	// original ON CONFLICT DO NOTHING idempotency behavior.
+	require.NoError(t, repo.MarkWebhookEventProcessed(ctx, eventID, "checkout.session.completed"))
+	assert.Equal(t, int64(1), processedStripeWebhookEventCount(t, pool, eventID))
+
+	var eventType string
+	err = pool.QueryRow(ctx, `
+		SELECT event_type
+		FROM public.stripe_webhook_events
+		WHERE stripe_event_id = $1
+	`, eventID).Scan(&eventType)
+	require.NoError(t, err)
+	assert.Equal(t, "customer.subscription.updated", eventType)
+}
+
 func TestRepositoryUpsertSubscriptionFromWebhook_SourceScopedFeatureAccess(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -592,6 +665,105 @@ func processedStripeWebhookEventCount(t *testing.T, pool *pgxpool.Pool, eventID 
 	`, eventID).Scan(&count)
 	require.NoError(t, err)
 	return count
+}
+
+func requireStripeWebhookEventSecurity(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+
+	var rlsEnabled bool
+	var rlsForced bool
+	err := pool.QueryRow(context.Background(), `
+		SELECT c.relrowsecurity, c.relforcerowsecurity
+		FROM pg_class AS c
+		JOIN pg_namespace AS n ON n.oid = c.relnamespace
+		WHERE n.nspname = 'public'
+		  AND c.relname = 'stripe_webhook_events'
+	`).Scan(&rlsEnabled, &rlsForced)
+	require.NoError(t, err)
+	require.True(t, rlsEnabled)
+	require.False(t, rlsForced)
+
+	var policyCount int
+	err = pool.QueryRow(context.Background(), `
+		SELECT COUNT(*)
+		FROM pg_policies
+		WHERE schemaname = 'public'
+		  AND tablename = 'stripe_webhook_events'
+	`).Scan(&policyCount)
+	require.NoError(t, err)
+	require.Zero(t, policyCount)
+
+	var publicCanAccessTable bool
+	var dataAPIRoleCanAccessTable bool
+	err = pool.QueryRow(context.Background(), `
+		SELECT
+			has_table_privilege('public', 'public.stripe_webhook_events', 'SELECT')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'INSERT')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'UPDATE')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'DELETE')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'TRUNCATE')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'REFERENCES')
+			OR has_table_privilege('public', 'public.stripe_webhook_events', 'TRIGGER'),
+			EXISTS (
+				SELECT 1
+				FROM pg_roles AS api_role
+				WHERE api_role.rolname IN ('anon', 'authenticated', 'service_role')
+				  AND (
+					has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'SELECT')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'INSERT')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'UPDATE')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'DELETE')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'TRUNCATE')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'REFERENCES')
+					OR has_table_privilege(api_role.rolname, 'public.stripe_webhook_events', 'TRIGGER')
+				  )
+			)
+	`).Scan(&publicCanAccessTable, &dataAPIRoleCanAccessTable)
+	require.NoError(t, err)
+	require.False(t, publicCanAccessTable)
+	require.False(t, dataAPIRoleCanAccessTable)
+
+	var publicCanCheck bool
+	var publicCanRecord bool
+	err = pool.QueryRow(context.Background(), `
+		SELECT
+			has_function_privilege(
+				'public',
+				'public.has_processed_stripe_webhook_event(text)'::regprocedure,
+				'EXECUTE'
+			),
+			has_function_privilege(
+				'public',
+				'public.record_stripe_webhook_event(text, text)'::regprocedure,
+				'EXECUTE'
+			)
+	`).Scan(&publicCanCheck, &publicCanRecord)
+	require.NoError(t, err)
+	require.False(t, publicCanCheck)
+	require.False(t, publicCanRecord)
+
+	var dataAPIRoleCanExecute bool
+	err = pool.QueryRow(context.Background(), `
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_roles AS api_role
+			WHERE api_role.rolname IN ('anon', 'authenticated', 'service_role')
+			  AND (
+				has_function_privilege(
+					api_role.rolname,
+					'public.has_processed_stripe_webhook_event(text)'::regprocedure,
+					'EXECUTE'
+				)
+				OR has_function_privilege(
+					api_role.rolname,
+					'public.record_stripe_webhook_event(text, text)'::regprocedure,
+					'EXECUTE'
+				)
+			  )
+		)
+	`).Scan(&dataAPIRoleCanExecute)
+	require.NoError(t, err)
+	require.False(t, dataAPIRoleCanExecute)
 }
 
 func subscriptionEventPayloadForUser(

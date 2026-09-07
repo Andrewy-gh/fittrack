@@ -23,6 +23,8 @@ func TestUserTrainingProfileSchemaAndRLS(t *testing.T) {
 	defer cleanupUserTrainingProfileTestData(t, pool)
 
 	requireUserTrainingProfilePolicies(t, pool)
+	forceUserTrainingProfileRLSTables(t, pool)
+	defer restoreUserTrainingProfileRLSTables(t, pool)
 
 	userA := "training-profile-test-user-a"
 	userB := "training-profile-test-user-b"
@@ -127,6 +129,26 @@ func TestUserTrainingProfileSchemaAndRLS(t *testing.T) {
 	err = connB.QueryRow(ctxB, "SELECT COUNT(*) FROM user_training_profile WHERE user_id = $1", userA).Scan(&visibleToOtherUser)
 	require.NoError(t, err)
 	require.Equal(t, 0, visibleToOtherUser)
+}
+
+func forceUserTrainingProfileRLSTables(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(), `
+		ALTER TABLE user_training_profile FORCE ROW LEVEL SECURITY;
+		ALTER TABLE ai_chat_conversation FORCE ROW LEVEL SECURITY;
+		ALTER TABLE ai_chat_message FORCE ROW LEVEL SECURITY;
+	`)
+	require.NoError(t, err)
+}
+
+func restoreUserTrainingProfileRLSTables(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(), `
+		ALTER TABLE user_training_profile NO FORCE ROW LEVEL SECURITY;
+		ALTER TABLE ai_chat_conversation NO FORCE ROW LEVEL SECURITY;
+		ALTER TABLE ai_chat_message NO FORCE ROW LEVEL SECURITY;
+	`)
+	require.NoError(t, err)
 }
 
 func requireUserTrainingProfileTable(t *testing.T, pool *pgxpool.Pool) {

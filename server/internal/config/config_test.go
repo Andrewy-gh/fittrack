@@ -11,6 +11,7 @@ func TestLoad_ValidConfig(t *testing.T) {
 	// Set required environment variables
 	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
 	os.Setenv("PROJECT_ID", "test-project-123")
+	os.Setenv("RLS_ENFORCEMENT_REQUIRED", "true")
 	defer cleanupEnv()
 
 	cfg, err := Load()
@@ -24,6 +25,9 @@ func TestLoad_ValidConfig(t *testing.T) {
 
 	if cfg.ProjectID != "test-project-123" {
 		t.Errorf("expected ProjectID to be 'test-project-123', got: %s", cfg.ProjectID)
+	}
+	if !cfg.RLSEnforcementRequired {
+		t.Error("expected RLS enforcement to be required")
 	}
 }
 
@@ -494,6 +498,7 @@ func cleanupEnv() {
 	os.Unsetenv("DB_MAX_CONN_IDLE")
 	os.Unsetenv("DB_MAX_CONN_LIFE")
 	os.Unsetenv("DB_HEALTHCHECK")
+	os.Unsetenv("RLS_ENFORCEMENT_REQUIRED")
 	os.Unsetenv("METRICS_USERNAME")
 	os.Unsetenv("METRICS_PASSWORD")
 	os.Unsetenv("INNGEST_EVENT_KEY")

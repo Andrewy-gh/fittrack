@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -54,6 +55,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		"metrics_port", cfg.MetricsPort,
 		"log_level", cfg.LogLevel,
 		"db_max_conns", cfg.DBMaxConns,
+		"rls_enforcement_required", cfg.RLSEnforcementRequired,
 		"rate_limit_rpm", cfg.RateLimitRPM,
 	)
 
@@ -94,6 +96,10 @@ func newLogger(level string) *slog.Logger {
 
 func openDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*pgxpool.Pool, error) {
 	logger.Info("connecting to database")
+	if err := validateRLSCompatibleDatabaseURL(cfg.DatabaseURL, cfg.RLSEnforcementRequired); err != nil {
+		return nil, err
+	}
+
 	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database config: %w", err)
@@ -112,8 +118,14 @@ func openDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logger) 
 		return nil, fmt.Errorf("parse DB_HEALTHCHECK: %w", err)
 	}
 
-	// Supabase's PgBouncer transaction pooler does not support prepared statements.
 	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	poolConfig.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
+		userID, _ := user.Current(ctx)
+		if _, err := conn.Exec(ctx, "SELECT set_config('app.current_user_id', $1, false)", userID); err != nil {
+			return true, fmt.Errorf("set RLS user context: %w", err)
+		}
+		return true, nil
+	}
 	poolConfig.MaxConns = cfg.DBMaxConns
 	poolConfig.MinConns = cfg.DBMinConns
 	poolConfig.MaxConnIdleTime = maxIdle
@@ -128,9 +140,68 @@ func openDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logger) 
 		pool.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
+	if cfg.RLSEnforcementRequired {
+		if err := validateProductionDatabaseRole(ctx, pool); err != nil {
+			pool.Close()
+			return nil, err
+		}
+	}
 
 	logger.Info("database connection successful")
 	return pool, nil
+}
+
+func validateRLSCompatibleDatabaseURL(databaseURL string, enforcementRequired bool) error {
+	parsed, err := url.Parse(databaseURL)
+	if err != nil {
+		return fmt.Errorf("parse database URL for RLS compatibility: %w", err)
+	}
+	if enforcementRequired && (!strings.HasSuffix(strings.ToLower(parsed.Hostname()), ".pooler.supabase.com") || parsed.Port() != "5432") {
+		return errors.New("database RLS enforcement requires Supabase's session pooler hostname on port 5432")
+	}
+	return nil
+}
+
+func validateProductionDatabaseRole(ctx context.Context, pool *pgxpool.Pool) error {
+	var role string
+	var superuser, bypassRLS, ownsRLSTable, canAssumeBypassRole bool
+	err := pool.QueryRow(ctx, `
+		SELECT
+			current_user,
+			r.rolsuper,
+			r.rolbypassrls,
+			EXISTS (
+				SELECT 1
+				FROM pg_class c
+				WHERE c.relowner = r.oid
+				  AND c.relrowsecurity
+			),
+			EXISTS (
+				SELECT 1
+				FROM pg_roles inherited
+				WHERE inherited.oid <> r.oid
+				  AND pg_has_role(r.oid, inherited.oid, 'MEMBER')
+				  AND (
+					inherited.rolsuper
+					OR inherited.rolbypassrls
+					OR EXISTS (
+						SELECT 1
+						FROM pg_class owned
+						WHERE owned.relowner = inherited.oid
+						  AND owned.relrowsecurity
+					)
+				  )
+			)
+		FROM pg_roles r
+		WHERE r.rolname = current_user
+	`).Scan(&role, &superuser, &bypassRLS, &ownsRLSTable, &canAssumeBypassRole)
+	if err != nil {
+		return fmt.Errorf("inspect production database role: %w", err)
+	}
+	if superuser || bypassRLS || ownsRLSTable || canAssumeBypassRole {
+		return fmt.Errorf("production database role %q can bypass row-level security (superuser=%t, bypassrls=%t, owns_rls_table=%t, can_assume_bypass_role=%t)", role, superuser, bypassRLS, ownsRLSTable, canAssumeBypassRole)
+	}
+	return nil
 }
 
 func buildHandlers(ctx context.Context, cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) (http.Handler, http.Handler, error) {
@@ -216,7 +287,7 @@ func buildHandlers(ctx context.Context, cfg *config.Config, logger *slog.Logger,
 	if err != nil {
 		return nil, nil, fmt.Errorf("create JWKS cache: %w", err)
 	}
-	authenticator := auth.NewAuthenticator(logger, jwks, userService, pool)
+	authenticator := auth.NewAuthenticator(logger, jwks, userService)
 	if cfg.LocalE2EAuthConfigured() {
 		authenticator.WithLocalE2EAuth(auth.LocalE2EAuthConfig{
 			Enabled: true,

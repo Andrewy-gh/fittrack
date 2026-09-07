@@ -1877,24 +1877,6 @@ func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (GetSetRow, erro
 	return i, err
 }
 
-const getStripeCustomerByCustomerID = `-- name: GetStripeCustomerByCustomerID :one
-SELECT user_id, stripe_customer_id, created_at, updated_at
-FROM stripe_customers
-WHERE stripe_customer_id = $1
-`
-
-func (q *Queries) GetStripeCustomerByCustomerID(ctx context.Context, stripeCustomerID string) (StripeCustomers, error) {
-	row := q.db.QueryRow(ctx, getStripeCustomerByCustomerID, stripeCustomerID)
-	var i StripeCustomers
-	err := row.Scan(
-		&i.UserID,
-		&i.StripeCustomerID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getStripeCustomerByUserID = `-- name: GetStripeCustomerByUserID :one
 SELECT user_id, stripe_customer_id, created_at, updated_at
 FROM stripe_customers
@@ -1912,6 +1894,19 @@ func (q *Queries) GetStripeCustomerByUserID(ctx context.Context, userID string) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getStripeCustomerUserIDByCustomerID = `-- name: GetStripeCustomerUserIDByCustomerID :one
+SELECT user_id::text
+FROM (SELECT lookup_stripe_customer_user_id($1::text) AS user_id) AS lookup
+WHERE user_id IS NOT NULL
+`
+
+func (q *Queries) GetStripeCustomerUserIDByCustomerID(ctx context.Context, dollar_1 string) (string, error) {
+	row := q.db.QueryRow(ctx, getStripeCustomerUserIDByCustomerID, dollar_1)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -2185,18 +2180,19 @@ func (q *Queries) HasActiveFeatureAccess(ctx context.Context, arg HasActiveFeatu
 }
 
 const hasProcessedStripeWebhookEvent = `-- name: HasProcessedStripeWebhookEvent :one
-SELECT EXISTS (
-    SELECT 1
-    FROM stripe_webhook_events
-    WHERE stripe_event_id = $1
-)
+SELECT webhook_event.processed::boolean
+FROM (
+    SELECT public.has_processed_stripe_webhook_event(
+        $1::TEXT
+    ) AS processed
+) AS webhook_event
 `
 
 func (q *Queries) HasProcessedStripeWebhookEvent(ctx context.Context, stripeEventID string) (bool, error) {
 	row := q.db.QueryRow(ctx, hasProcessedStripeWebhookEvent, stripeEventID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+	var webhook_event_processed bool
+	err := row.Scan(&webhook_event_processed)
+	return webhook_event_processed, err
 }
 
 const heartbeatAIChatRunGeneration = `-- name: HeartbeatAIChatRunGeneration :execrows
@@ -2995,12 +2991,10 @@ func (q *Queries) MarkAIChatConversationLatestWorkoutDraftSaved(ctx context.Cont
 }
 
 const markStripeWebhookEventProcessed = `-- name: MarkStripeWebhookEventProcessed :exec
-INSERT INTO stripe_webhook_events (
-    stripe_event_id,
-    event_type
+SELECT public.record_stripe_webhook_event(
+    $1::TEXT,
+    $2::TEXT
 )
-VALUES ($1, $2)
-ON CONFLICT (stripe_event_id) DO NOTHING
 `
 
 type MarkStripeWebhookEventProcessedParams struct {
