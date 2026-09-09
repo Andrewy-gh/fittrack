@@ -8,6 +8,9 @@ primary_region = 'ewr'
 
 [build]
 
+[env]
+  ENVIRONMENT = 'production'
+
 [metrics]
   port = 9091
   path = "/metrics"

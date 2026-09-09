@@ -57,26 +57,25 @@ type Config struct {
 // Load reads configuration from environment variables and validates it
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL:            os.Getenv("DATABASE_URL"),
-		ProjectID:              os.Getenv("PROJECT_ID"),
-		Port:                   getEnvInt("PORT", 8080),
-		MetricsPort:            getEnvInt("METRICS_PORT", 9091),
-		LogLevel:               getEnvString("LOG_LEVEL", "info"),
-		Environment:            getEnvString("ENVIRONMENT", "development"),
-		RateLimitRPM:           getEnvInt("RATE_LIMIT_RPM", 100),
-		AllowedOrigins:         os.Getenv("ALLOWED_ORIGINS"),
-		DBMaxConns:             int32(getEnvInt("DB_MAX_CONNS", 15)),
-		DBMinConns:             int32(getEnvInt("DB_MIN_CONNS", 2)),
-		DBMaxConnIdle:          getEnvString("DB_MAX_CONN_IDLE", "30s"),
-		DBMaxConnLife:          getEnvString("DB_MAX_CONN_LIFE", "30m"),
-		DBHealthCheck:          getEnvString("DB_HEALTHCHECK", "30s"),
-		RLSEnforcementRequired: getEnvBool("RLS_ENFORCEMENT_REQUIRED", false),
-		MetricsUsername:        os.Getenv("METRICS_USERNAME"),
-		MetricsPassword:        os.Getenv("METRICS_PASSWORD"),
-		InngestEventKey:        os.Getenv("INNGEST_EVENT_KEY"),
-		InngestSigningKey:      os.Getenv("INNGEST_SIGNING_KEY"),
-		StripeSecretKey:        os.Getenv("STRIPE_SECRET_KEY"),
-		StripeWebhookSecret:    os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		ProjectID:           os.Getenv("PROJECT_ID"),
+		Port:                getEnvInt("PORT", 8080),
+		MetricsPort:         getEnvInt("METRICS_PORT", 9091),
+		LogLevel:            getEnvString("LOG_LEVEL", "info"),
+		Environment:         getEnvString("ENVIRONMENT", "development"),
+		RateLimitRPM:        getEnvInt("RATE_LIMIT_RPM", 100),
+		AllowedOrigins:      os.Getenv("ALLOWED_ORIGINS"),
+		DBMaxConns:          int32(getEnvInt("DB_MAX_CONNS", 15)),
+		DBMinConns:          int32(getEnvInt("DB_MIN_CONNS", 2)),
+		DBMaxConnIdle:       getEnvString("DB_MAX_CONN_IDLE", "30s"),
+		DBMaxConnLife:       getEnvString("DB_MAX_CONN_LIFE", "30m"),
+		DBHealthCheck:       getEnvString("DB_HEALTHCHECK", "30s"),
+		MetricsUsername:     os.Getenv("METRICS_USERNAME"),
+		MetricsPassword:     os.Getenv("METRICS_PASSWORD"),
+		InngestEventKey:     os.Getenv("INNGEST_EVENT_KEY"),
+		InngestSigningKey:   os.Getenv("INNGEST_SIGNING_KEY"),
+		StripeSecretKey:     os.Getenv("STRIPE_SECRET_KEY"),
+		StripeWebhookSecret: os.Getenv("STRIPE_WEBHOOK_SECRET"),
 		StripePremiumPriceID: os.Getenv(
 			"STRIPE_PREMIUM_PRICE_ID",
 		),
@@ -92,6 +91,21 @@ func Load() (*Config, error) {
 			"E2E_LOCAL_AUTH_DISPLAY_NAME",
 			"Local E2E User",
 		),
+	}
+
+	// Production cannot opt out of RLS safety checks. Other environments may
+	// opt in, but malformed security configuration must never silently disable it.
+	cfg.RLSEnforcementRequired = cfg.Environment == "production"
+	switch os.Getenv("RLS_ENFORCEMENT_REQUIRED") {
+	case "":
+	case "true":
+		cfg.RLSEnforcementRequired = true
+	case "false":
+		if cfg.Environment == "production" {
+			return nil, fmt.Errorf("RLS_ENFORCEMENT_REQUIRED cannot be disabled in production")
+		}
+	default:
+		return nil, fmt.Errorf("RLS_ENFORCEMENT_REQUIRED must be 'true' or 'false'")
 	}
 
 	// Validate configuration

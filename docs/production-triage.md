@@ -61,13 +61,15 @@ Keep two database credentials separate:
 
 For an admin operation, use `doppler run --project fittrack --config prd_ci -- <command>` and have the command read `MIGRATION_DATABASE_URL`, not the inherited runtime `DATABASE_URL`. Never print either URL.
 
-The runtime URL must use Supabase's session pooler on port `5432`. Port `6543` is the transaction pooler and cannot safely preserve FitTrack's per-connection RLS user setting. During the staged cutover, `RLS_ENFORCEMENT_REQUIRED=false` lets the new binary deploy while the old privileged URL is still active. The final runtime secret must set it to `true`; startup then rejects transaction pooling and any role that is a superuser, has `BYPASSRLS`, owns an RLS table, or can assume such a role.
+The runtime URL must use Supabase's session pooler on port `5432`. Port `6543` is the transaction pooler and cannot safely preserve FitTrack's per-connection RLS user setting. With `ENVIRONMENT=production`, RLS enforcement is mandatory: startup rejects transaction pooling and any role that is a superuser, has `BYPASSRLS`, owns an RLS table, or can assume such a role. `fly.toml` explicitly declares the production environment. Confirm no runtime secret overrides it with a different environment before deploying.
+
+`RLS_ENFORCEMENT_REQUIRED` may remain `true` or be omitted in production; an explicit false value is a configuration error. Only literal lowercase `true` and `false` are accepted; aliases, uppercase, and whitespace-padded values fail startup in every environment. Unset or empty values use the environment default. Development and staging retain the optional flag (default false). This does not restrict separate admin/migration connections.
 
 ### Completed Cutover (2026-09-08)
 
 PR #277 was deployed and the restricted runtime role activated in both Doppler and Fly with `RLS_ENFORCEMENT_REQUIRED=true`. Readiness, startup role checks, database-level isolation, two authenticated accounts (including cross-user workout denial), and the narrow Stripe customer lookup were verified. The admin credential was subsequently rotated and the migration/deploy workflow rerun successfully. Temporary credential files were removed.
 
-This records the completed rollout, not a substitute for checking current deploy state. Retain the staged override until the rollback window is explicitly closed. Do not repeat provisioning or rotate credentials merely to perform triage.
+This records the completed rollout, not a substitute for checking current deploy state. The staged privileged-role rollback path is retired in the hardened code: production must keep the restricted role. Roll back only to application versions compatible with that role, without disabling enforcement. This hardening takes effect when deployed; #277 itself still supported the staged override. Do not repeat provisioning or rotate credentials merely to perform triage.
 
 ### Recovery Precautions
 
