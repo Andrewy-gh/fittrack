@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,7 +55,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		"metrics_port", cfg.MetricsPort,
 		"log_level", cfg.LogLevel,
 		"db_max_conns", cfg.DBMaxConns,
-		"rls_enforcement_required", cfg.RLSEnforcementRequired,
+		"rls_enforcement_required", cfg.Environment == "production" || cfg.RLSEnforcementRequired,
 		"rate_limit_rpm", cfg.RateLimitRPM,
 	)
 
@@ -96,13 +96,14 @@ func newLogger(level string) *slog.Logger {
 
 func openDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logger) (*pgxpool.Pool, error) {
 	logger.Info("connecting to database")
-	if err := validateRLSCompatibleDatabaseURL(cfg.DatabaseURL, cfg.RLSEnforcementRequired); err != nil {
-		return nil, err
-	}
-
+	// Enforce production safety even when callers construct Config without Load.
+	enforcementRequired := cfg.Environment == "production" || cfg.RLSEnforcementRequired
 	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database config: %w", err)
+	}
+	if err := validateRLSCompatibleDatabaseConfig(poolConfig.ConnConfig, enforcementRequired); err != nil {
+		return nil, err
 	}
 
 	maxIdle, err := time.ParseDuration(cfg.DBMaxConnIdle)
@@ -140,7 +141,7 @@ func openDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logger) 
 		pool.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
-	if cfg.RLSEnforcementRequired {
+	if enforcementRequired {
 		if err := validateProductionDatabaseRole(ctx, pool); err != nil {
 			pool.Close()
 			return nil, err
@@ -151,13 +152,23 @@ func openDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logger) 
 	return pool, nil
 }
 
-func validateRLSCompatibleDatabaseURL(databaseURL string, enforcementRequired bool) error {
-	parsed, err := url.Parse(databaseURL)
-	if err != nil {
-		return fmt.Errorf("parse database URL for RLS compatibility: %w", err)
+func validateRLSCompatibleDatabaseConfig(connConfig *pgx.ConnConfig, enforcementRequired bool) error {
+	if !enforcementRequired {
+		return nil
 	}
-	if enforcementRequired && (!strings.HasSuffix(strings.ToLower(parsed.Hostname()), ".pooler.supabase.com") || parsed.Port() != "5432") {
+	// pgx resolves query-string overrides and multi-host fallback endpoints.
+	// Check every endpoint it may dial, not just the original URL authority.
+	isSessionPooler := func(host string, port uint16) bool {
+		network, _ := pgconn.NetworkAddress(host, port)
+		return network == "tcp" && strings.HasSuffix(strings.ToLower(host), ".pooler.supabase.com") && port == 5432
+	}
+	if !isSessionPooler(connConfig.Host, connConfig.Port) {
 		return errors.New("database RLS enforcement requires Supabase's session pooler hostname on port 5432")
+	}
+	for _, fallback := range connConfig.Fallbacks {
+		if !isSessionPooler(fallback.Host, fallback.Port) {
+			return errors.New("database RLS enforcement requires every fallback to use Supabase's session pooler hostname on port 5432")
+		}
 	}
 	return nil
 }

@@ -7,6 +7,98 @@ import (
 	"testing"
 )
 
+func TestLoad_RLSEnforcementDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
+	t.Setenv("PROJECT_ID", "test-project")
+
+	for _, tt := range []struct {
+		environment string
+		want        bool
+	}{
+		{environment: "development", want: false},
+		{environment: "staging", want: false},
+		{environment: "production", want: true},
+	} {
+		t.Run(tt.environment, func(t *testing.T) {
+			t.Setenv("ENVIRONMENT", tt.environment)
+			for _, state := range []string{"unset", "empty"} {
+				t.Run(state, func(t *testing.T) {
+					t.Setenv("RLS_ENFORCEMENT_REQUIRED", "")
+					if state == "unset" {
+						if err := os.Unsetenv("RLS_ENFORCEMENT_REQUIRED"); err != nil {
+							t.Fatal(err)
+						}
+					}
+					cfg, err := Load()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if cfg.RLSEnforcementRequired != tt.want {
+						t.Fatalf("RLSEnforcementRequired = %t, want %t", cfg.RLSEnforcementRequired, tt.want)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestLoad_RLSEnforcementExplicitValues(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
+	t.Setenv("PROJECT_ID", "test-project")
+
+	for _, tt := range []struct {
+		environment string
+		flag        string
+		want        bool
+		wantError   string
+	}{
+		{environment: "development", flag: "true", want: true},
+		{environment: "development", flag: "false", want: false},
+		{environment: "staging", flag: "true", want: true},
+		{environment: "staging", flag: "false", want: false},
+		{environment: "production", flag: "true", want: true},
+		{environment: "production", flag: "false", wantError: "RLS_ENFORCEMENT_REQUIRED cannot be disabled in production"},
+	} {
+		t.Run(tt.environment+"/"+tt.flag, func(t *testing.T) {
+			t.Setenv("ENVIRONMENT", tt.environment)
+			t.Setenv("RLS_ENFORCEMENT_REQUIRED", tt.flag)
+			cfg, err := Load()
+			if tt.wantError != "" {
+				if err == nil || err.Error() != tt.wantError {
+					t.Fatalf("expected %q, got %v", tt.wantError, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.RLSEnforcementRequired != tt.want {
+				t.Fatalf("RLSEnforcementRequired = %t, want %t", cfg.RLSEnforcementRequired, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_RLSEnforcementRejectsInvalidValues(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
+	t.Setenv("PROJECT_ID", "test-project")
+
+	for _, environment := range []string{"development", "staging", "production"} {
+		t.Run(environment, func(t *testing.T) {
+			t.Setenv("ENVIRONMENT", environment)
+			for _, flag := range []string{"   ", "TRUE", "FALSE", " true ", " false ", "1", "yes", "on", "0", "no", "off", "tru", "2"} {
+				t.Run(flag, func(t *testing.T) {
+					t.Setenv("RLS_ENFORCEMENT_REQUIRED", flag)
+					_, err := Load()
+					if err == nil || err.Error() != "RLS_ENFORCEMENT_REQUIRED must be 'true' or 'false'" {
+						t.Fatalf("expected strict boolean parsing error, got %v", err)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestLoad_ValidConfig(t *testing.T) {
 	// Set required environment variables
 	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")

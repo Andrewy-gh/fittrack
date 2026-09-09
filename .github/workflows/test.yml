@@ -94,6 +94,23 @@ jobs:
           # to prevent unrelated cleanup transactions from deadlocking with DDL.
           go test -p 1 -v ./...
 
+      - name: Verify restricted runtime role
+        working-directory: server
+        env:
+          # Disposable CI credentials, never production secrets.
+          ADMIN_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_rls_test?sslmode=disable
+          DATABASE_URL: postgresql://fittrack_app:runtime_test_password@localhost:5432/fittrack_rls_test?sslmode=disable
+          PGPASSWORD: test_password
+        run: |
+          # Keep provisioning's deny-by-default grants separate from the shared suite.
+          createdb -h localhost -U test_user fittrack_rls_test
+          goose -dir migrations postgres "$ADMIN_DATABASE_URL" up
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/provision-runtime-role.sql
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "ALTER ROLE fittrack_app LOGIN PASSWORD 'runtime_test_password'"
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/verify-runtime-role.sql
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/test-runtime-role.sql
+          go test ./internal/app -run '^TestOpenDatabaseSetsRLSContextForEveryAcquisition$' -count=1
+
   frontend-test:
     name: Run Frontend Tests
     runs-on: ubuntu-latest

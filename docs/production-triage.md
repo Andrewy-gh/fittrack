@@ -56,18 +56,24 @@ doppler run --project fittrack --config prd -- <read-only command>
 
 Keep two database credentials separate:
 
-- GitHub's migration `DATABASE_URL` uses the owning/admin role for Goose.
-- Doppler `prd` `DATABASE_URL` uses a separately provisioned restricted `fittrack_app` runtime role.
+- GitHub's migration `DATABASE_URL` uses the owning/admin role for Goose. A retrievable backup is stored as masked `MIGRATION_DATABASE_URL` in Doppler `fittrack/prd_ci`; GitHub Actions still reads its own repository secret, not Doppler. Keep both copies synchronized when rotating the admin credential.
+- Doppler `prd` and Fly's `DATABASE_URL` use the separately provisioned restricted `fittrack_app` runtime role. Fly secrets are separate: changing Doppler alone does not update the running application.
 
-The runtime URL must use Supabase's session pooler on port `5432`. Port `6543` is the transaction pooler and cannot safely preserve FitTrack's per-connection RLS user setting. During the staged cutover, `RLS_ENFORCEMENT_REQUIRED=false` lets the new binary deploy while the old privileged URL is still active. The final runtime secret must set it to `true`; startup then rejects transaction pooling and any role that is a superuser, has `BYPASSRLS`, owns an RLS table, or can assume such a role.
+For an admin operation, use `doppler run --project fittrack --config prd_ci -- <command>` and have the command read `MIGRATION_DATABASE_URL`, not the inherited runtime `DATABASE_URL`. Never print either URL.
 
-Activation order:
+The runtime URL must use Supabase's session pooler on port `5432`. Port `6543` is the transaction pooler and cannot safely preserve FitTrack's per-connection RLS user setting. With `ENVIRONMENT=production`, RLS enforcement is mandatory: startup rejects transaction pooling and any role that is a superuser, has `BYPASSRLS`, owns an RLS table, or can assume such a role. `fly.toml` explicitly declares the production environment. Confirm no runtime secret overrides it with a different environment before deploying.
 
-1. Deploy the RLS-aware binary and migrations 27 and 28 while the existing runtime URL remains active and `RLS_ENFORCEMENT_REQUIRED=false`. Migration 27 adds the narrow Stripe customer-to-user lookup needed by unauthenticated webhooks. Migration 28 enables RLS on the webhook idempotency log and moves its check and record operations behind owner-backed functions; it does not force RLS.
-2. Run `server/scripts/provision-runtime-role.sql` with the same owning/admin role used by Goose after migration 28, then configure `fittrack_app` as `LOGIN` with a generated password. The script enforces role safety, removes earlier broad `PUBLIC` grants, and grants only the current runtime operations. It intentionally does not handle the password. Do not store that password in Git or a shell script.
-3. Test the candidate `fittrack_app` session-pooler URL directly without changing Doppler. Run `server/scripts/verify-runtime-role.sql` with that URL, then verify two distinct user contexts and the Stripe lookup and webhook idempotency functions.
-4. Update Doppler's runtime `DATABASE_URL` to the tested URL and set `RLS_ENFORCEMENT_REQUIRED=true` in the same cutover. Set `ENVIRONMENT=production` as normal environment metadata.
-5. Confirm readiness, run a two-user API isolation smoke test, and verify a metadata-free Stripe subscription webhook can resolve its customer. Keep the previous runtime secret version available for rollback; rollback must restore the old URL and set `RLS_ENFORCEMENT_REQUIRED=false` together.
+`RLS_ENFORCEMENT_REQUIRED` may remain `true` or be omitted in production; an explicit false value is a configuration error. Only literal lowercase `true` and `false` are accepted; aliases, uppercase, and whitespace-padded values fail startup in every environment. Unset or empty values use the environment default. Development and staging retain the optional flag (default false). This does not restrict separate admin/migration connections.
+
+### Completed Cutover (2026-09-08)
+
+PR #277 was deployed and the restricted runtime role activated in both Doppler and Fly with `RLS_ENFORCEMENT_REQUIRED=true`. Readiness, startup role checks, database-level isolation, two authenticated accounts (including cross-user workout denial), and the narrow Stripe customer lookup were verified. The admin credential was subsequently rotated and the migration/deploy workflow rerun successfully. Temporary credential files were removed.
+
+This records the completed rollout, not a substitute for checking current deploy state. The staged privileged-role rollback path is retired in the hardened code: production must keep the restricted role. Roll back only to application versions compatible with that role, without disabling enforcement. This hardening takes effect when deployed; #277 itself still supported the staged override. Do not repeat provisioning or rotate credentials merely to perform triage.
+
+### Recovery Precautions
+
+Coordinate any runtime credential or enforcement-setting change in both Doppler and Fly, then verify readiness and user isolation. Do not disable enforcement as a routine troubleshooting step. The pre-cutover admin password has been rotated; its old secret version is no longer a usable rollback credential. Use `server/scripts/verify-runtime-role.sql` to validate a candidate restricted connection before changing runtime secrets.
 
 If a scheduled cancellation exists in Stripe but not in FitTrack, check whether the Stripe event was processed before the deploy that added the stored field. Processed Stripe event IDs are intentionally idempotent, so replaying the same event may not update the row.
 
