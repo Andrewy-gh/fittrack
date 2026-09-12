@@ -27,7 +27,7 @@ type SelectOption = {
 type MovementState = "unspecified" | "none" | "list";
 
 type FormState = {
-  primaryGoal: string;
+  goals: string[];
   experienceLevel: string;
   preferredSessionDurationMinutes: string;
   usualTrainingLocation: string;
@@ -82,6 +82,7 @@ const locationOptions: SelectOption[] = [
 
 const emptyProfile: TrainingProfile = {
   primary_goal: null,
+  goals: [],
   experience_level: null,
   preferred_session_duration_minutes: null,
   usual_training_location: null,
@@ -90,9 +91,10 @@ const emptyProfile: TrainingProfile = {
   movement_limitations: null,
 };
 
-export function TrainingProfilePage() {
-  const profileQuery = useQuery(trainingProfileQueryOptions());
-  const mutation = useUpdateTrainingProfileMutation();
+/** Loads and edits the signed-in account's optional training profile. */
+export function TrainingProfilePage({ userId }: { userId: string }) {
+  const profileQuery = useQuery(trainingProfileQueryOptions(userId));
+  const mutation = useUpdateTrainingProfileMutation(userId);
   const [form, setForm] = useState<FormState>(() =>
     formStateFromProfile(emptyProfile),
   );
@@ -217,14 +219,37 @@ export function TrainingProfilePage() {
         onSubmit={handleSubmit}
       >
         <section className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
-          <SelectField
-            id="primary-goal"
-            label="Primary goal"
-            value={form.primaryGoal}
-            options={goalOptions}
-            error={errors.primaryGoal}
-            onChange={(primaryGoal) => updateForm({ primaryGoal })}
-          />
+          <fieldset className="space-y-3 sm:col-span-2">
+            <legend className="text-sm font-medium">Training goals</legend>
+            <p className="text-sm text-muted-foreground">
+              Select all that apply. Leave unchecked if you have no goals to
+              specify.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {goalOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className="flex items-center gap-3 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.goals.includes(option.value)}
+                    onChange={(event) =>
+                      updateForm({
+                        goals: event.currentTarget.checked
+                          ? [...form.goals, option.value]
+                          : form.goals.filter((goal) => goal !== option.value),
+                      })
+                    }
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            {errors.primaryGoal ? (
+              <p className="text-sm text-destructive">{errors.primaryGoal}</p>
+            ) : null}
+          </fieldset>
           <SelectField
             id="experience-level"
             label="Experience level"
@@ -510,7 +535,8 @@ function RadioOption({
 
 function formStateFromProfile(profile: TrainingProfile): FormState {
   return {
-    primaryGoal: profile.primary_goal ?? "",
+    goals:
+      profile.goals ?? (profile.primary_goal ? [profile.primary_goal] : []),
     experienceLevel: profile.experience_level ?? "",
     preferredSessionDurationMinutes:
       profile.preferred_session_duration_minutes?.toString() ?? "",
@@ -529,7 +555,8 @@ function formStateFromProfile(profile: TrainingProfile): FormState {
 
 function payloadFromForm(form: FormState): UpdateTrainingProfileRequest {
   return {
-    primary_goal: form.primaryGoal || null,
+    primary_goal: form.goals[0] ?? null,
+    goals: form.goals,
     experience_level: form.experienceLevel || null,
     preferred_session_duration_minutes:
       form.preferredSessionDurationMinutes.trim() === ""
@@ -572,6 +599,9 @@ function fieldErrorsFromApiError(error: unknown): FieldErrors {
   const message = getErrorMessage(error, "Could not save training profile.");
   if (!isApiError(error)) {
     return { form: message };
+  }
+  if (message.startsWith("goals:")) {
+    return { primaryGoal: message.replace("goals: ", "") };
   }
   if (message.startsWith("primary_goal:")) {
     return { primaryGoal: message.replace("primary_goal: ", "") };

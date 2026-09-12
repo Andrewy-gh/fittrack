@@ -63,6 +63,7 @@ import { TrainingProfilePage } from "@/features/training-profile/pages/training-
 
 const emptyProfile: TrainingProfile = {
   primary_goal: null,
+  goals: [],
   experience_level: null,
   preferred_session_duration_minutes: null,
   usual_training_location: null,
@@ -83,7 +84,7 @@ function renderPage(profile: TrainingProfile = emptyProfile) {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <TrainingProfilePage />
+      <TrainingProfilePage userId="test-user" />
     </QueryClientProvider>,
   );
 }
@@ -106,8 +107,7 @@ describe("TrainingProfilePage", () => {
       ),
     ).toBeInTheDocument();
 
-    const primaryGoal = screen.getByLabelText("Primary goal");
-    expect(within(primaryGoal).getByRole("option", { name: "Not set" }));
+    const primaryGoal = screen.getByRole("group", { name: "Training goals" });
     for (const option of [
       "Strength",
       "Hypertrophy",
@@ -116,7 +116,7 @@ describe("TrainingProfilePage", () => {
       "Weight loss",
       "Mobility",
     ]) {
-      expect(within(primaryGoal).getByRole("option", { name: option }));
+      expect(within(primaryGoal).getByRole("checkbox", { name: option }));
     }
 
     const experience = screen.getByLabelText("Experience level");
@@ -132,13 +132,17 @@ describe("TrainingProfilePage", () => {
     const save = await screen.findByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
 
-    await user.selectOptions(screen.getByLabelText("Primary goal"), "strength");
+    await user.click(screen.getByRole("checkbox", { name: "Strength" }));
+    await user.click(screen.getByRole("checkbox", { name: "Mobility" }));
     expect(save).toBeEnabled();
     await user.click(save);
 
     await waitFor(() => {
       expect(latestUpdatePayload()).toEqual(
-        expect.objectContaining({ primary_goal: "strength" }),
+        expect.objectContaining({
+          primary_goal: "strength",
+          goals: ["strength", "mobility"],
+        }),
       );
     });
     expect(mockToastSuccess).toHaveBeenCalledWith("Training profile saved");

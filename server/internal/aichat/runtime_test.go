@@ -363,3 +363,10 @@ func (f fakeTool) Respond(*ai.Part, any, *ai.RespondOptions) *ai.Part { return n
 func (f fakeTool) Restart(*ai.Part, *ai.RestartOptions) *ai.Part { return nil }
 
 func (f fakeTool) Register(api.Registry) {}
+
+func TestTrainingProfilePromptIncludesEveryGoal(t *testing.T) {
+	prompt := buildChatSystemPrompt(nil, &TrainingProfile{PrimaryGoal: "strength", Goals: []string{"strength", "mobility"}}, time.Date(2026, 9, 12, 12, 0, 0, 0, time.UTC), true)
+	if !strings.Contains(prompt, "Goals: strength, mobility") {
+		t.Fatalf("missing selected goals in prompt: %s", prompt)
+	}
+}

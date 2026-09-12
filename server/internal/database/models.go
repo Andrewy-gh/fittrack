@@ -146,6 +146,7 @@ type UserFeatureAccess struct {
 type UserTrainingProfile struct {
 	UserID                          string             `json:"user_id"`
 	PrimaryGoal                     pgtype.Text        `json:"primary_goal"`
+	Goals                           []string           `json:"goals"`
 	ExperienceLevel                 pgtype.Text        `json:"experience_level"`
 	PreferredSessionDurationMinutes pgtype.Int4        `json:"preferred_session_duration_minutes"`
 	UsualTrainingLocation           pgtype.Text        `json:"usual_training_location"`

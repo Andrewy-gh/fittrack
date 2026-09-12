@@ -74,3 +74,33 @@ func ptrString(value string) *string {
 func ptrInt32(value int32) *int32 {
 	return &value
 }
+
+func TestMultipleGoals(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		goals   []string
+		want    []string
+		invalid bool
+	}{
+		{"multiple", []string{"strength", "mobility"}, []string{"strength", "mobility"}, false},
+		{"deduplicate", []string{"strength", "strength"}, []string{"strength"}, false},
+		{"clear", []string{}, []string{}, false},
+		{"invalid", []string{"strength", "power"}, nil, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := validateProfileRequest(UpdateProfileRequest{Goals: tc.goals, PrimaryGoal: ptrString("endurance")})
+			if tc.invalid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got.Goals)
+			if len(tc.want) == 0 {
+				assert.Nil(t, got.PrimaryGoal)
+			} else {
+				require.NotNil(t, got.PrimaryGoal)
+				assert.Equal(t, tc.want[0], *got.PrimaryGoal)
+			}
+		})
+	}
+}

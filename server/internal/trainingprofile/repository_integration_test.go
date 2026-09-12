@@ -155,3 +155,44 @@ func trainingProfileRepositoryTestDatabaseURL() string {
 	}
 	return "postgres://postgres:password@localhost:5432/fittrack_test?sslmode=disable"
 }
+
+func TestRepositoryMultipleGoalsPersistAndClear(t *testing.T) {
+	if testing.Short() {
+		t.Skip("database-backed test")
+	}
+	pool, cleanup := setupTrainingProfileRepositoryTestDatabase(t)
+	defer cleanup()
+	const userID = "training-profile-upsert-user"
+	seedTrainingProfileRepositoryTestUser(t, pool, userID)
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	req, err := validateProfileRequest(UpdateProfileRequest{Goals: []string{"strength", "mobility"}})
+	require.NoError(t, err)
+	_, err = repo.Upsert(context.Background(), userID, *req)
+	require.NoError(t, err)
+	saved, err := repo.Get(context.Background(), userID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"strength", "mobility"}, saved.Goals)
+	// An older settings client resubmits primary_goal when editing another field.
+	legacyGoal := "strength"
+	legacyReq, err := validateProfileRequest(UpdateProfileRequest{PrimaryGoal: &legacyGoal})
+	require.NoError(t, err)
+	_, err = repo.Upsert(context.Background(), userID, *legacyReq)
+	require.NoError(t, err)
+	saved, err = repo.Get(context.Background(), userID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"strength", "mobility"}, saved.Goals)
+	// An unrelated AI profile patch must retain the complete manual goal selection.
+	_, err = db.New(pool).UpsertUserTrainingProfileForChat(context.Background(), db.UpsertUserTrainingProfileForChatParams{UserID: userID})
+	require.NoError(t, err)
+	saved, err = repo.Get(context.Background(), userID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"strength", "mobility"}, saved.Goals)
+	req, err = validateProfileRequest(UpdateProfileRequest{Goals: []string{}})
+	require.NoError(t, err)
+	_, err = repo.Upsert(context.Background(), userID, *req)
+	require.NoError(t, err)
+	saved, err = repo.Get(context.Background(), userID)
+	require.NoError(t, err)
+	assert.Empty(t, saved.Goals)
+	assert.Nil(t, saved.PrimaryGoal)
+}

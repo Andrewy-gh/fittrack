@@ -326,6 +326,7 @@ LIMIT 5;
 SELECT
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -343,6 +344,7 @@ WHERE user_id = $1;
 INSERT INTO user_training_profile (
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -355,6 +357,7 @@ INSERT INTO user_training_profile (
 VALUES (
     sqlc.arg(user_id),
     NULLIF(sqlc.narg(primary_goal)::text, ''),
+    COALESCE(sqlc.narg(goals)::text[], CASE WHEN NULLIF(sqlc.narg(primary_goal)::text, '') IS NULL THEN '{}'::text[] ELSE ARRAY[sqlc.narg(primary_goal)::text] END),
     NULLIF(sqlc.narg(experience_level)::text, ''),
     CASE
         WHEN sqlc.narg(preferred_session_duration_minutes)::integer IS NULL THEN NULL
@@ -369,6 +372,14 @@ VALUES (
     sqlc.narg(source_message_id)
 )
 ON CONFLICT (user_id) DO UPDATE SET
+    -- Omitted or unchanged legacy goals preserve a newer multi-goal selection.
+    goals = CASE
+        WHEN sqlc.narg(goals)::text[] IS NOT NULL THEN sqlc.narg(goals)::text[]
+        WHEN sqlc.narg(primary_goal)::text IS NULL THEN user_training_profile.goals
+        WHEN sqlc.narg(primary_goal)::text = user_training_profile.primary_goal THEN user_training_profile.goals
+        WHEN sqlc.narg(primary_goal)::text = '' THEN '{}'::text[]
+        ELSE ARRAY[sqlc.narg(primary_goal)::text]
+    END,
     primary_goal = CASE
         WHEN sqlc.narg(primary_goal)::text IS NULL THEN user_training_profile.primary_goal
         ELSE NULLIF(sqlc.narg(primary_goal)::text, '')
@@ -395,6 +406,7 @@ ON CONFLICT (user_id) DO UPDATE SET
 RETURNING
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -410,6 +422,7 @@ RETURNING
 INSERT INTO user_training_profile (
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -422,6 +435,7 @@ INSERT INTO user_training_profile (
 VALUES (
     sqlc.arg(user_id),
     NULLIF(sqlc.narg(primary_goal)::text, ''),
+    COALESCE(sqlc.narg(goals)::text[], CASE WHEN NULLIF(sqlc.narg(primary_goal)::text, '') IS NULL THEN '{}'::text[] ELSE ARRAY[sqlc.narg(primary_goal)::text] END),
     NULLIF(sqlc.narg(experience_level)::text, ''),
     sqlc.narg(preferred_session_duration_minutes)::integer,
     NULLIF(sqlc.narg(usual_training_location)::text, ''),
@@ -433,6 +447,12 @@ VALUES (
     NULL
 )
 ON CONFLICT (user_id) DO UPDATE SET
+    goals = CASE
+        WHEN sqlc.narg(goals)::text[] IS NOT NULL THEN sqlc.narg(goals)::text[]
+        WHEN sqlc.narg(primary_goal)::text = user_training_profile.primary_goal THEN user_training_profile.goals
+        WHEN NULLIF(sqlc.narg(primary_goal)::text, '') IS NULL THEN '{}'::text[]
+        ELSE ARRAY[sqlc.narg(primary_goal)::text]
+    END,
     primary_goal = NULLIF(sqlc.narg(primary_goal)::text, ''),
     experience_level = NULLIF(sqlc.narg(experience_level)::text, ''),
     preferred_session_duration_minutes = sqlc.narg(preferred_session_duration_minutes)::integer,
@@ -447,6 +467,7 @@ ON CONFLICT (user_id) DO UPDATE SET
 RETURNING
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,

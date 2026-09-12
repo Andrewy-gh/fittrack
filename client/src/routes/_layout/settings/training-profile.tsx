@@ -21,5 +21,10 @@ function TrainingProfileRoute() {
     );
   }
 
-  return <TrainingProfilePage />;
+  return (
+    <TrainingProfilePage
+      key={user.id}
+      userId={user.id}
+    />
+  );
 }

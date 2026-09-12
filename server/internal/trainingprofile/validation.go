@@ -44,6 +44,24 @@ func validateProfileRequest(req UpdateProfileRequest) (*UpdateProfileRequest, er
 		MovementLimitations:             nil,
 	}
 
+	if req.Goals != nil {
+		normalized.Goals = cleanStringList(req.Goals)
+	}
+	for _, goal := range normalized.Goals {
+		if _, ok := allowedGoals[goal]; !ok {
+			field := "goals"
+			if req.Goals == nil {
+				field = "primary_goal"
+			}
+			return nil, &ValidationError{Field: field, Message: "contains an unsupported training goal"}
+		}
+	}
+	if req.Goals != nil {
+		normalized.PrimaryGoal = nil
+		if len(normalized.Goals) > 0 {
+			normalized.PrimaryGoal = &normalized.Goals[0]
+		}
+	}
 	if normalized.PrimaryGoal != nil {
 		if _, ok := allowedGoals[*normalized.PrimaryGoal]; !ok {
 			return nil, &ValidationError{Field: "primary_goal", Message: "must be strength, hypertrophy, endurance, general_fitness, weight_loss, mobility, or null"}

@@ -17,6 +17,7 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutChatRouteImport } from './routes/_layout/chat'
 import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
 import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
+import { Route as LayoutSettingsIndexRouteImport } from './routes/_layout/settings/index'
 import { Route as LayoutExercisesIndexRouteImport } from './routes/_layout/exercises/index'
 import { Route as LayoutWorkoutsNewRouteImport } from './routes/_layout/workouts/new'
 import { Route as LayoutSettingsTrainingProfileRouteImport } from './routes/_layout/settings/training-profile'
@@ -62,6 +63,11 @@ const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexRouteImport.update({
   id: '/workouts/',
   path: '/workouts/',
   getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSettingsIndexRoute = LayoutSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LayoutSettingsRoute,
 } as any)
 const LayoutExercisesIndexRoute = LayoutExercisesIndexRouteImport.update({
   id: '/exercises/',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/settings/training-profile': typeof LayoutSettingsTrainingProfileRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
   '/exercises/': typeof LayoutExercisesIndexRoute
+  '/settings/': typeof LayoutSettingsIndexRoute
   '/workouts/': typeof LayoutWorkoutsIndexRoute
   '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
   '/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
@@ -118,12 +125,12 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/analytics': typeof LayoutAnalyticsRoute
   '/chat': typeof LayoutChatRoute
-  '/settings': typeof LayoutSettingsRouteWithChildren
   '/handler/$': typeof HandlerSplatRoute
   '/exercises/$exerciseId': typeof LayoutExercisesExerciseIdRoute
   '/settings/training-profile': typeof LayoutSettingsTrainingProfileRoute
   '/workouts/new': typeof LayoutWorkoutsNewRoute
   '/exercises': typeof LayoutExercisesIndexRoute
+  '/settings': typeof LayoutSettingsIndexRoute
   '/workouts': typeof LayoutWorkoutsIndexRoute
   '/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
   '/workouts/$workoutId': typeof LayoutWorkoutsWorkoutIdIndexRoute
@@ -141,6 +148,7 @@ export interface FileRoutesById {
   '/_layout/settings/training-profile': typeof LayoutSettingsTrainingProfileRoute
   '/_layout/workouts/new': typeof LayoutWorkoutsNewRoute
   '/_layout/exercises/': typeof LayoutExercisesIndexRoute
+  '/_layout/settings/': typeof LayoutSettingsIndexRoute
   '/_layout/workouts/': typeof LayoutWorkoutsIndexRoute
   '/_layout/workouts/$workoutId/edit': typeof LayoutWorkoutsWorkoutIdEditRoute
   '/_layout/workouts/$workoutId/': typeof LayoutWorkoutsWorkoutIdIndexRoute
@@ -158,6 +166,7 @@ export interface FileRouteTypes {
     | '/settings/training-profile'
     | '/workouts/new'
     | '/exercises/'
+    | '/settings/'
     | '/workouts/'
     | '/workouts/$workoutId/edit'
     | '/workouts/$workoutId/'
@@ -167,12 +176,12 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/analytics'
     | '/chat'
-    | '/settings'
     | '/handler/$'
     | '/exercises/$exerciseId'
     | '/settings/training-profile'
     | '/workouts/new'
     | '/exercises'
+    | '/settings'
     | '/workouts'
     | '/workouts/$workoutId/edit'
     | '/workouts/$workoutId'
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/_layout/settings/training-profile'
     | '/_layout/workouts/new'
     | '/_layout/exercises/'
+    | '/_layout/settings/'
     | '/_layout/workouts/'
     | '/_layout/workouts/$workoutId/edit'
     | '/_layout/workouts/$workoutId/'
@@ -259,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWorkoutsIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/settings/': {
+      id: '/_layout/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof LayoutSettingsIndexRouteImport
+      parentRoute: typeof LayoutSettingsRoute
+    }
     '/_layout/exercises/': {
       id: '/_layout/exercises/'
       path: '/exercises'
@@ -306,10 +323,12 @@ declare module '@tanstack/react-router' {
 
 interface LayoutSettingsRouteChildren {
   LayoutSettingsTrainingProfileRoute: typeof LayoutSettingsTrainingProfileRoute
+  LayoutSettingsIndexRoute: typeof LayoutSettingsIndexRoute
 }
 
 const LayoutSettingsRouteChildren: LayoutSettingsRouteChildren = {
   LayoutSettingsTrainingProfileRoute: LayoutSettingsTrainingProfileRoute,
+  LayoutSettingsIndexRoute: LayoutSettingsIndexRoute,
 }
 
 const LayoutSettingsRouteWithChildren = LayoutSettingsRoute._addFileChildren(

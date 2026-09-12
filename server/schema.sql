@@ -177,6 +177,8 @@ CREATE TABLE ai_chat_stream_chunk (
 CREATE TABLE user_training_profile (
     user_id VARCHAR(256) PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
     primary_goal VARCHAR(64),
+    goals TEXT[] NOT NULL DEFAULT '{}',
+    CONSTRAINT user_training_profile_goals_valid CHECK (goals <@ ARRAY['strength', 'hypertrophy', 'endurance', 'general_fitness', 'weight_loss', 'mobility']::text[] AND array_position(goals, NULL) IS NULL AND cardinality(goals) <= 6),
     experience_level VARCHAR(32),
     preferred_session_duration_minutes INTEGER,
     usual_training_location VARCHAR(64),

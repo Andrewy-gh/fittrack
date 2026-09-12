@@ -1936,6 +1936,7 @@ const getUserTrainingProfile = `-- name: GetUserTrainingProfile :one
 SELECT
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -1956,6 +1957,7 @@ func (q *Queries) GetUserTrainingProfile(ctx context.Context, userID string) (Us
 	err := row.Scan(
 		&i.UserID,
 		&i.PrimaryGoal,
+		&i.Goals,
 		&i.ExperienceLevel,
 		&i.PreferredSessionDurationMinutes,
 		&i.UsualTrainingLocation,
@@ -3944,6 +3946,7 @@ const upsertUserTrainingProfileForChat = `-- name: UpsertUserTrainingProfileForC
 INSERT INTO user_training_profile (
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -3956,46 +3959,56 @@ INSERT INTO user_training_profile (
 VALUES (
     $1,
     NULLIF($2::text, ''),
-    NULLIF($3::text, ''),
+    COALESCE($3::text[], CASE WHEN NULLIF($2::text, '') IS NULL THEN '{}'::text[] ELSE ARRAY[$2::text] END),
+    NULLIF($4::text, ''),
     CASE
-        WHEN $4::integer IS NULL THEN NULL
-        WHEN $4::integer <= 0 THEN NULL
-        ELSE $4::integer
+        WHEN $5::integer IS NULL THEN NULL
+        WHEN $5::integer <= 0 THEN NULL
+        ELSE $5::integer
     END,
-    NULLIF($5::text, ''),
-    COALESCE($6::jsonb, '[]'::jsonb),
+    NULLIF($6::text, ''),
     COALESCE($7::jsonb, '[]'::jsonb),
-    $8::jsonb,
-    $9,
-    $10
+    COALESCE($8::jsonb, '[]'::jsonb),
+    $9::jsonb,
+    $10,
+    $11
 )
 ON CONFLICT (user_id) DO UPDATE SET
+    -- Omitted or unchanged legacy goals preserve a newer multi-goal selection.
+    goals = CASE
+        WHEN $3::text[] IS NOT NULL THEN $3::text[]
+        WHEN $2::text IS NULL THEN user_training_profile.goals
+        WHEN $2::text = user_training_profile.primary_goal THEN user_training_profile.goals
+        WHEN $2::text = '' THEN '{}'::text[]
+        ELSE ARRAY[$2::text]
+    END,
     primary_goal = CASE
         WHEN $2::text IS NULL THEN user_training_profile.primary_goal
         ELSE NULLIF($2::text, '')
     END,
     experience_level = CASE
-        WHEN $3::text IS NULL THEN user_training_profile.experience_level
-        ELSE NULLIF($3::text, '')
+        WHEN $4::text IS NULL THEN user_training_profile.experience_level
+        ELSE NULLIF($4::text, '')
     END,
     preferred_session_duration_minutes = CASE
-        WHEN $4::integer IS NULL THEN user_training_profile.preferred_session_duration_minutes
-        WHEN $4::integer <= 0 THEN NULL
-        ELSE $4::integer
+        WHEN $5::integer IS NULL THEN user_training_profile.preferred_session_duration_minutes
+        WHEN $5::integer <= 0 THEN NULL
+        ELSE $5::integer
     END,
     usual_training_location = CASE
-        WHEN $5::text IS NULL THEN user_training_profile.usual_training_location
-        ELSE NULLIF($5::text, '')
+        WHEN $6::text IS NULL THEN user_training_profile.usual_training_location
+        ELSE NULLIF($6::text, '')
     END,
-    available_equipment = COALESCE($6::jsonb, user_training_profile.available_equipment),
-    avoided_exercises = COALESCE($7::jsonb, user_training_profile.avoided_exercises),
-    movement_limitations = COALESCE($8::jsonb, user_training_profile.movement_limitations),
-    source_conversation_id = COALESCE($9, user_training_profile.source_conversation_id),
-    source_message_id = COALESCE($10, user_training_profile.source_message_id),
+    available_equipment = COALESCE($7::jsonb, user_training_profile.available_equipment),
+    avoided_exercises = COALESCE($8::jsonb, user_training_profile.avoided_exercises),
+    movement_limitations = COALESCE($9::jsonb, user_training_profile.movement_limitations),
+    source_conversation_id = COALESCE($10, user_training_profile.source_conversation_id),
+    source_message_id = COALESCE($11, user_training_profile.source_message_id),
     updated_at = CURRENT_TIMESTAMP
 RETURNING
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -4011,6 +4024,7 @@ RETURNING
 type UpsertUserTrainingProfileForChatParams struct {
 	UserID                          string      `json:"user_id"`
 	PrimaryGoal                     pgtype.Text `json:"primary_goal"`
+	Goals                           []string    `json:"goals"`
 	ExperienceLevel                 pgtype.Text `json:"experience_level"`
 	PreferredSessionDurationMinutes pgtype.Int4 `json:"preferred_session_duration_minutes"`
 	UsualTrainingLocation           pgtype.Text `json:"usual_training_location"`
@@ -4025,6 +4039,7 @@ func (q *Queries) UpsertUserTrainingProfileForChat(ctx context.Context, arg Upse
 	row := q.db.QueryRow(ctx, upsertUserTrainingProfileForChat,
 		arg.UserID,
 		arg.PrimaryGoal,
+		arg.Goals,
 		arg.ExperienceLevel,
 		arg.PreferredSessionDurationMinutes,
 		arg.UsualTrainingLocation,
@@ -4038,6 +4053,7 @@ func (q *Queries) UpsertUserTrainingProfileForChat(ctx context.Context, arg Upse
 	err := row.Scan(
 		&i.UserID,
 		&i.PrimaryGoal,
+		&i.Goals,
 		&i.ExperienceLevel,
 		&i.PreferredSessionDurationMinutes,
 		&i.UsualTrainingLocation,
@@ -4056,6 +4072,7 @@ const upsertUserTrainingProfileForSettings = `-- name: UpsertUserTrainingProfile
 INSERT INTO user_training_profile (
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -4068,24 +4085,31 @@ INSERT INTO user_training_profile (
 VALUES (
     $1,
     NULLIF($2::text, ''),
-    NULLIF($3::text, ''),
-    $4::integer,
-    NULLIF($5::text, ''),
-    $6::jsonb,
+    COALESCE($3::text[], CASE WHEN NULLIF($2::text, '') IS NULL THEN '{}'::text[] ELSE ARRAY[$2::text] END),
+    NULLIF($4::text, ''),
+    $5::integer,
+    NULLIF($6::text, ''),
     $7::jsonb,
     $8::jsonb,
+    $9::jsonb,
     -- Manual settings saves supersede AI-written profile provenance.
     NULL,
     NULL
 )
 ON CONFLICT (user_id) DO UPDATE SET
+    goals = CASE
+        WHEN $3::text[] IS NOT NULL THEN $3::text[]
+        WHEN $2::text = user_training_profile.primary_goal THEN user_training_profile.goals
+        WHEN NULLIF($2::text, '') IS NULL THEN '{}'::text[]
+        ELSE ARRAY[$2::text]
+    END,
     primary_goal = NULLIF($2::text, ''),
-    experience_level = NULLIF($3::text, ''),
-    preferred_session_duration_minutes = $4::integer,
-    usual_training_location = NULLIF($5::text, ''),
-    available_equipment = $6::jsonb,
-    avoided_exercises = $7::jsonb,
-    movement_limitations = $8::jsonb,
+    experience_level = NULLIF($4::text, ''),
+    preferred_session_duration_minutes = $5::integer,
+    usual_training_location = NULLIF($6::text, ''),
+    available_equipment = $7::jsonb,
+    avoided_exercises = $8::jsonb,
+    movement_limitations = $9::jsonb,
     -- These columns only reference the chat message that last wrote the profile via AI.
     source_conversation_id = NULL,
     source_message_id = NULL,
@@ -4093,6 +4117,7 @@ ON CONFLICT (user_id) DO UPDATE SET
 RETURNING
     user_id,
     primary_goal,
+    goals,
     experience_level,
     preferred_session_duration_minutes,
     usual_training_location,
@@ -4108,6 +4133,7 @@ RETURNING
 type UpsertUserTrainingProfileForSettingsParams struct {
 	UserID                          string      `json:"user_id"`
 	PrimaryGoal                     pgtype.Text `json:"primary_goal"`
+	Goals                           []string    `json:"goals"`
 	ExperienceLevel                 pgtype.Text `json:"experience_level"`
 	PreferredSessionDurationMinutes pgtype.Int4 `json:"preferred_session_duration_minutes"`
 	UsualTrainingLocation           pgtype.Text `json:"usual_training_location"`
@@ -4120,6 +4146,7 @@ func (q *Queries) UpsertUserTrainingProfileForSettings(ctx context.Context, arg 
 	row := q.db.QueryRow(ctx, upsertUserTrainingProfileForSettings,
 		arg.UserID,
 		arg.PrimaryGoal,
+		arg.Goals,
 		arg.ExperienceLevel,
 		arg.PreferredSessionDurationMinutes,
 		arg.UsualTrainingLocation,
@@ -4131,6 +4158,7 @@ func (q *Queries) UpsertUserTrainingProfileForSettings(ctx context.Context, arg 
 	err := row.Scan(
 		&i.UserID,
 		&i.PrimaryGoal,
+		&i.Goals,
 		&i.ExperienceLevel,
 		&i.PreferredSessionDurationMinutes,
 		&i.UsualTrainingLocation,

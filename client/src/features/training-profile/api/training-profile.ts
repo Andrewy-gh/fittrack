@@ -1,11 +1,15 @@
-import { queryOptions, useMutation } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { client } from "@/client/client.gen";
 import type { ApiError } from "@/lib/errors";
-import { queryClient } from "@/lib/api/api";
 import "@/lib/api/client-config";
 
 export type TrainingProfile = {
   primary_goal: string | null;
+  goals: string[];
   experience_level: string | null;
   preferred_session_duration_minutes: number | null;
   usual_training_location: string | null;
@@ -20,11 +24,10 @@ type TrainingProfileResponses = {
   200: TrainingProfile;
 };
 
-const trainingProfileQueryKey = ["training-profile"] as const;
-
-export function trainingProfileQueryOptions() {
+/** Keeps authenticated profile reads scoped to the current account. */
+export function trainingProfileQueryOptions(userId: string) {
   return queryOptions({
-    queryKey: trainingProfileQueryKey,
+    queryKey: ["training-profile", userId],
     queryFn: ({ signal }) => getTrainingProfile({ signal }),
   });
 }
@@ -55,7 +58,10 @@ export async function updateTrainingProfile(
   return response.data;
 }
 
-export function useUpdateTrainingProfileMutation() {
+/** Updates the current provider's cache for the account whose form was saved. */
+export function useUpdateTrainingProfileMutation(userId: string) {
+  const queryClient = useQueryClient();
+  const trainingProfileQueryKey = ["training-profile", userId];
   return useMutation({
     mutationFn: updateTrainingProfile,
     meta: { skipGlobalErrorHandler: true },
