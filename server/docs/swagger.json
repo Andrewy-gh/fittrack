@@ -2361,6 +2361,12 @@
                 "experience_level": {
                     "type": "string"
                 },
+                "goals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "movement_limitations": {
                     "type": "array",
                     "items": {
@@ -2396,6 +2402,12 @@
                 },
                 "experience_level": {
                     "type": "string"
+                },
+                "goals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "movement_limitations": {
                     "type": "array",

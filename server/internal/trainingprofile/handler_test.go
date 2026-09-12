@@ -48,6 +48,7 @@ func TestHandlerGet(t *testing.T) {
 		require.Equal(t, http.StatusOK, rr.Code)
 		assert.JSONEq(t, `{
 			"primary_goal": null,
+ "goals": [],
 			"experience_level": null,
 			"preferred_session_duration_minutes": null,
 			"usual_training_location": null,
@@ -160,6 +161,7 @@ func TestHandlerUpsert(t *testing.T) {
 		})
 		req := httptest.NewRequest(http.MethodPut, "/api/training-profile", strings.NewReader(`{
 			"primary_goal": null,
+ "goals": [],
 			"experience_level": null,
 			"preferred_session_duration_minutes": null,
 			"usual_training_location": null,

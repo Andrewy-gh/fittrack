@@ -9,6 +9,7 @@ import (
 )
 
 type ProfileResponse struct {
+	Goals                           []string  `json:"goals"`
 	PrimaryGoal                     *string   `json:"primary_goal"`
 	ExperienceLevel                 *string   `json:"experience_level"`
 	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes"`
@@ -19,6 +20,7 @@ type ProfileResponse struct {
 }
 
 type UpdateProfileRequest struct {
+	Goals                           []string  `json:"goals"`
 	PrimaryGoal                     *string   `json:"primary_goal"`
 	ExperienceLevel                 *string   `json:"experience_level"`
 	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes"`
@@ -42,6 +44,7 @@ func (e *ValidationError) Error() string {
 
 func emptyProfileResponse() *ProfileResponse {
 	return &ProfileResponse{
+		Goals:               []string{},
 		AvailableEquipment:  []string{},
 		AvoidedExercises:    []string{},
 		MovementLimitations: nil,
@@ -51,6 +54,10 @@ func emptyProfileResponse() *ProfileResponse {
 func profileResponseFromRow(row db.UserTrainingProfile) (*ProfileResponse, error) {
 	profile := emptyProfileResponse()
 	profile.PrimaryGoal = pgTextPtr(row.PrimaryGoal)
+	profile.Goals = row.Goals
+	if profile.Goals == nil {
+		profile.Goals = []string{}
+	}
 	profile.ExperienceLevel = pgTextPtr(row.ExperienceLevel)
 	profile.UsualTrainingLocation = pgTextPtr(row.UsualTrainingLocation)
 	if row.PreferredSessionDurationMinutes.Valid {

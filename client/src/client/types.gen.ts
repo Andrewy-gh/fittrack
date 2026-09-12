@@ -226,6 +226,7 @@ export type TrainingprofileProfileResponse = {
   available_equipment?: Array<string>;
   avoided_exercises?: Array<string>;
   experience_level?: string;
+  goals?: Array<string>;
   movement_limitations?: Array<string> | null;
   preferred_session_duration_minutes?: number;
   primary_goal?: string;
@@ -236,6 +237,7 @@ export type TrainingprofileUpdateProfileRequest = {
   available_equipment?: Array<string>;
   avoided_exercises?: Array<string>;
   experience_level?: string;
+  goals?: Array<string>;
   movement_limitations?: Array<string> | null;
   preferred_session_duration_minutes?: number;
   primary_goal?: string;

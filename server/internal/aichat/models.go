@@ -212,6 +212,7 @@ type ExerciseStatsTrendPoint struct {
 }
 
 type TrainingProfile struct {
+	Goals                           []string `json:"goals,omitempty"`
 	PrimaryGoal                     string   `json:"primary_goal,omitempty"`
 	ExperienceLevel                 string   `json:"experience_level,omitempty"`
 	PreferredSessionDurationMinutes int32    `json:"preferred_session_duration_minutes,omitempty"`
@@ -223,6 +224,7 @@ type TrainingProfile struct {
 }
 
 type TrainingProfileUpdate struct {
+	Goals                           *[]string `json:"goals,omitempty"`
 	PrimaryGoal                     *string   `json:"primary_goal,omitempty"`
 	ExperienceLevel                 *string   `json:"experience_level,omitempty"`
 	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes,omitempty"`

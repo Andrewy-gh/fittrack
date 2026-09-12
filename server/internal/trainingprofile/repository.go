@@ -66,6 +66,7 @@ func (r *repository) Upsert(ctx context.Context, userID string, req UpdateProfil
 
 	row, err := r.queries.UpsertUserTrainingProfileForSettings(ctx, db.UpsertUserTrainingProfileForSettingsParams{
 		UserID:                          userID,
+		Goals:                           req.Goals,
 		PrimaryGoal:                     optionalText(req.PrimaryGoal),
 		ExperienceLevel:                 optionalText(req.ExperienceLevel),
 		PreferredSessionDurationMinutes: optionalInt(req.PreferredSessionDurationMinutes),

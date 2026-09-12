@@ -48,6 +48,7 @@ type GetExerciseStatsToolResult struct {
 }
 
 type UpdateTrainingProfileToolInput struct {
+	Goals                           *[]string `json:"goals,omitempty" jsonschema:"description=Complete durable training goal selection. Allowed: strength, hypertrophy, endurance, general_fitness, weight_loss, mobility. Include all goals to retain. Empty array clears goals. Prefer this over primaryGoal."`
 	PrimaryGoal                     *string   `json:"primaryGoal,omitempty" jsonschema:"description=Durable primary goal. Allowed: strength, hypertrophy, endurance, general_fitness, weight_loss, mobility. Empty string clears it."`
 	ExperienceLevel                 *string   `json:"experienceLevel,omitempty" jsonschema:"description=Durable experience level. Allowed: beginner, intermediate, advanced. Empty string clears it."`
 	PreferredSessionDurationMinutes *int32    `json:"preferredSessionDurationMinutes,omitempty" jsonschema:"description=Durable preferred session duration in minutes, 10 to 240. Zero clears it."`
@@ -220,12 +221,36 @@ func buildTrainingProfileUpdate(ctx context.Context, input UpdateTrainingProfile
 	var fields []string
 	var notes []string
 
-	if input.PrimaryGoal != nil {
+	if input.PrimaryGoal != nil && input.Goals == nil {
 		if goal, ok := normalizeProfileEnum(*input.PrimaryGoal, profileGoalAliases); ok {
 			update.PrimaryGoal = &goal
 			fields = append(fields, "primary_goal")
 		} else {
 			notes = append(notes, fmt.Sprintf("Ignored unsupported primary goal %q.", strings.TrimSpace(*input.PrimaryGoal)))
+		}
+	}
+	if input.Goals != nil {
+		goals := []string{}
+		valid := true
+		for _, raw := range *input.Goals {
+			goal, ok := normalizeProfileEnum(raw, profileGoalAliases)
+			if !ok || goal == "" {
+				valid = false
+				break
+			}
+			goals = append(goals, goal)
+		}
+		if valid {
+			goals = cleanProfileStringList(goals)
+			update.Goals = &goals
+			primary := ""
+			if len(goals) > 0 {
+				primary = goals[0]
+			}
+			update.PrimaryGoal = &primary
+			fields = append(fields, "goals")
+		} else {
+			notes = append(notes, "Ignored unsupported training goals.")
 		}
 	}
 	if input.ExperienceLevel != nil {

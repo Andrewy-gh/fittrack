@@ -648,6 +648,12 @@ export const trainingprofile_ProfileResponseSchema = {
     experience_level: {
       type: "string",
     },
+    goals: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
     movement_limitations: {
       type: "array",
       items: {
@@ -684,6 +690,12 @@ export const trainingprofile_UpdateProfileRequestSchema = {
     },
     experience_level: {
       type: "string",
+    },
+    goals: {
+      type: "array",
+      items: {
+        type: "string",
+      },
     },
     movement_limitations: {
       type: "array",

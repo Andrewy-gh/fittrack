@@ -460,6 +460,10 @@ definitions:
         type: array
       experience_level:
         type: string
+      goals:
+        items:
+          type: string
+        type: array
       movement_limitations:
         items:
           type: string
@@ -484,6 +488,10 @@ definitions:
         type: array
       experience_level:
         type: string
+      goals:
+        items:
+          type: string
+        type: array
       movement_limitations:
         items:
           type: string

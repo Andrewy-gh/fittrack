@@ -263,6 +263,16 @@ func TestRepositoryChatDataReader_UpdateTrainingProfilePartialUpsert(t *testing.
 	assert.False(t, profile.MovementLimitationsRecorded)
 	assert.Empty(t, profile.MovementLimitations)
 
+	goals := []string{"strength", "mobility"}
+	profile, err = repo.UpdateTrainingProfile(ctx, userID, TrainingProfileUpdate{Goals: &goals})
+	require.NoError(t, err)
+	assert.Equal(t, goals, profile.Goals)
+	assert.Equal(t, "strength", profile.PrimaryGoal)
+	clearedGoals := []string{}
+	profile, err = repo.UpdateTrainingProfile(ctx, userID, TrainingProfileUpdate{Goals: &clearedGoals})
+	require.NoError(t, err)
+	assert.Empty(t, profile.Goals)
+	assert.Empty(t, profile.PrimaryGoal)
 	experience := "intermediate"
 	clearedGoal := ""
 	limitations := []string{}

@@ -267,3 +267,20 @@ func (s *stubChatDataReader) ExerciseStats(ctx context.Context, userID string, e
 	s.statsExerciseName = exerciseName
 	return s.stats, nil
 }
+
+func TestTrainingProfileToolMultipleGoals(t *testing.T) {
+	for _, goals := range [][]string{{"strength", "mobility"}, {}} {
+		update, fields, notes := buildTrainingProfileUpdate(context.Background(), UpdateTrainingProfileToolInput{Goals: &goals})
+		if update.Goals == nil || !reflect.DeepEqual(*update.Goals, goals) {
+			t.Fatalf("goals = %#v, want %#v", update.Goals, goals)
+		}
+		if len(fields) == 0 || len(notes) != 0 {
+			t.Fatalf("fields=%v notes=%v", fields, notes)
+		}
+	}
+	invalid := []string{"strength", "unsupported"}
+	update, fields, notes := buildTrainingProfileUpdate(context.Background(), UpdateTrainingProfileToolInput{Goals: &invalid})
+	if update.Goals != nil || len(fields) != 0 || len(notes) == 0 {
+		t.Fatalf("invalid goals must not replace profile: %#v %v %v", update, fields, notes)
+	}
+}

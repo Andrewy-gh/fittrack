@@ -136,6 +136,14 @@ func (r *repository) UpdateTrainingProfile(ctx context.Context, userID string, u
 		SourceMessageID:                 optionalProfileInt(update.SourceMessageID),
 	}
 
+	if update.Goals != nil {
+		params.Goals = append([]string{}, (*update.Goals)...)
+		primary := ""
+		if len(params.Goals) > 0 {
+			primary = params.Goals[0]
+		}
+		params.PrimaryGoal = optionalProfileText(&primary)
+	}
 	var err error
 	params.AvailableEquipment, err = optionalProfileStringArray(update.AvailableEquipment)
 	if err != nil {
@@ -272,6 +280,7 @@ func optionalProfileStringArray(value *[]string) ([]byte, error) {
 func trainingProfileFromRow(row db.UserTrainingProfile) (*TrainingProfile, error) {
 	profile := &TrainingProfile{
 		PrimaryGoal:           pgTextString(row.PrimaryGoal),
+		Goals:                 row.Goals,
 		ExperienceLevel:       pgTextString(row.ExperienceLevel),
 		UsualTrainingLocation: pgTextString(row.UsualTrainingLocation),
 	}
@@ -337,7 +346,7 @@ func hasTrainingProfileContent(profile *TrainingProfile) bool {
 	if profile == nil {
 		return false
 	}
-	return strings.TrimSpace(profile.PrimaryGoal) != "" ||
+	return len(profile.Goals) > 0 || strings.TrimSpace(profile.PrimaryGoal) != "" ||
 		strings.TrimSpace(profile.ExperienceLevel) != "" ||
 		profile.PreferredSessionDurationMinutes > 0 ||
 		strings.TrimSpace(profile.UsualTrainingLocation) != "" ||
