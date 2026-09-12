@@ -1,3 +1,4 @@
+import { transferableAbortController } from "node:util";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
@@ -7,14 +8,27 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { client } from "@/client/client.gen";
 import { TrainingProfilePage, emptyProfile } from "./training-profile-page";
 
 const initialConfig = client.getConfig();
-afterEach(() => client.setConfig(initialConfig));
+afterEach(() => {
+  client.setConfig(initialConfig);
+  vi.unstubAllGlobals();
+});
 
 it("persists multiple goals across reload, supports clearing, and isolates cached accounts", async () => {
+  // jsdom supplies a different AbortSignal realm than Node 24's native Request.
+  // Keep cancellation real while using the signal implementation that fetch accepts.
+  vi.stubGlobal(
+    "AbortController",
+    class {
+      constructor() {
+        return transferableAbortController();
+      }
+    },
+  );
   let persisted = JSON.stringify(emptyProfile);
   client.setConfig({
     baseUrl: "http://localhost/api",
