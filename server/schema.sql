@@ -254,6 +254,7 @@ CREATE TABLE workout (
     date TIMESTAMPTZ NOT NULL,
     notes VARCHAR(256),
     workout_focus VARCHAR(256),
+    recommendation_context JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
@@ -270,6 +271,14 @@ CREATE TABLE exercise (
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name)
+);
+
+CREATE TABLE exercise_prescription (
+    exercise_id INTEGER PRIMARY KEY REFERENCES exercise(id) ON DELETE CASCADE,
+    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    min_sets INTEGER NOT NULL CHECK (min_sets BETWEEN 1 AND 20),
+    max_sets INTEGER NOT NULL CHECK (max_sets BETWEEN min_sets AND 20),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Sets table

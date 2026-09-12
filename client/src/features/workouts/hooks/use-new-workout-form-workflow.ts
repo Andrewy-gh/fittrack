@@ -1,8 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ApplicationUser } from "@/lib/application-user";
 import { toast } from "sonner";
-import type { WorkoutNewWorkoutContextResponse } from "@/client";
+import type {
+  RecommendationResult,
+  WorkoutNewWorkoutContextResponse,
+} from "@/client";
+import type { ExerciseFeedback } from "@/features/workouts/utils/recommendation-context";
 import type { DbExercise } from "@/features/exercises/api/exercises";
 import {
   formatExerciseGoalSummary,
@@ -51,6 +55,11 @@ export function useNewWorkoutFormWorkflow({
     onSubmit: async ({ value }) => {
       const trimmedValue = {
         ...value,
+        recommendations: value.recommendations?.filter((snapshot) =>
+          value.exercises.some(
+            (exercise) => exercise.name === snapshot.exerciseName,
+          ),
+        ),
         notes: value.notes?.trim() || undefined,
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };
@@ -68,6 +77,25 @@ export function useNewWorkoutFormWorkflow({
       );
     },
   });
+
+  const recordRecommendation = useCallback(
+    (
+      exerciseName: string,
+      recommendation: RecommendationResult | null,
+      feedback: ExerciseFeedback,
+    ) => {
+      const others = (form.state.values.recommendations ?? []).filter(
+        (snapshot) => snapshot.exerciseName !== exerciseName,
+      );
+      form.setFieldValue(
+        "recommendations",
+        recommendation
+          ? [...others, { exerciseName, recommendation, feedback }]
+          : others,
+      );
+    },
+    [form],
+  );
 
   const exerciseIdsByName = useMemo(() => {
     return new Map(exercises.map((exercise) => [exercise.name, exercise.id]));
@@ -158,6 +186,7 @@ export function useNewWorkoutFormWorkflow({
   };
 
   return {
+    recordRecommendation,
     form,
     latestWorkoutNote,
     focusAreaTemplates,

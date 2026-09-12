@@ -85,6 +85,14 @@ type Exercise struct {
 	UserID                       string             `json:"user_id"`
 }
 
+type ExercisePrescription struct {
+	ExerciseID int32              `json:"exercise_id"`
+	UserID     string             `json:"user_id"`
+	MinSets    int32              `json:"min_sets"`
+	MaxSets    int32              `json:"max_sets"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Set struct {
 	ID            int32              `json:"id"`
 	ExerciseID    int32              `json:"exercise_id"`
@@ -166,11 +174,12 @@ type Users struct {
 }
 
 type Workout struct {
-	ID           int32              `json:"id"`
-	Date         pgtype.Timestamptz `json:"date"`
-	Notes        pgtype.Text        `json:"notes"`
-	WorkoutFocus pgtype.Text        `json:"workout_focus"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-	UserID       string             `json:"user_id"`
+	ID                    int32              `json:"id"`
+	Date                  pgtype.Timestamptz `json:"date"`
+	Notes                 pgtype.Text        `json:"notes"`
+	WorkoutFocus          pgtype.Text        `json:"workout_focus"`
+	RecommendationContext []byte             `json:"recommendation_context"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	UserID                string             `json:"user_id"`
 }

@@ -20,6 +20,52 @@ function createMemoryStorage(
 }
 
 describe("workoutDraftStorage", () => {
+  it("preserves recommendation snapshots separately from sets and isolates them by account", () => {
+    const draftStorage = createWorkoutDraftStorage(createMemoryStorage());
+    const recommendations = [
+      {
+        exerciseName: "Press",
+        recommendation: {
+          exerciseId: 1,
+          readiness: "sluggish",
+          range: { min: 2, max: 3 },
+          baseline: { min: 3, max: 4 },
+          source: "prescription",
+          explanation: "Reduced work",
+          policyVersion: "working-sets-v1",
+        },
+        feedback: "about_right",
+      },
+    ];
+    draftStorage.save(
+      {
+        date: "2026-09-11T12:00:00Z",
+        exercises: [{ name: "Press", sets: [] }],
+        recommendations,
+      },
+      "user-a",
+    );
+    expect(draftStorage.load("user-a")?.recommendations).toEqual(
+      recommendations,
+    );
+    expect(draftStorage.load("user-a")?.exercises[0]?.sets).toEqual([]);
+    expect(draftStorage.load("user-b")).toBeNull();
+  });
+
+  it("drops malformed guidance without discarding actual workout data", () => {
+    const storage = createMemoryStorage({
+      "workout-entry-form-data-user-a": JSON.stringify({
+        date: "2026-09-11T12:00:00Z",
+        exercises: [{ name: "Press", sets: [{ reps: 5, setType: "working" }] }],
+        recommendations: [{ invalid: true }],
+      }),
+    });
+    const loaded = createWorkoutDraftStorage(storage).load("user-a");
+    expect(loaded?.exercises[0]?.sets).toEqual([
+      { reps: 5, setType: "working" },
+    ]);
+    expect(loaded?.recommendations).toEqual([]);
+  });
   it("round-trips draft data through an injected storage backend", () => {
     const storage = createMemoryStorage();
     const draftStorage = createWorkoutDraftStorage(storage);

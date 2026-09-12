@@ -3,15 +3,17 @@ package workout
 import (
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Request/Response types
 type CreateWorkoutRequest struct {
-	Date         string          `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes        *string         `json:"notes,omitempty" validate:"omitempty,max=256"`
-	WorkoutFocus *string         `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
-	Exercises    []ExerciseInput `json:"exercises" validate:"required,min=1,dive"`
+	Recommendations []recommendation.Snapshot `json:"recommendations,omitempty" validate:"max=100"`
+	Date            string                    `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
+	Notes           *string                   `json:"notes,omitempty" validate:"omitempty,max=256"`
+	WorkoutFocus    *string                   `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
+	Exercises       []ExerciseInput           `json:"exercises" validate:"required,min=1,dive"`
 }
 
 type ExerciseInput struct {
@@ -100,9 +102,10 @@ type SetData struct {
 	SetType      string
 }
 type ReformattedRequest struct {
-	Workout   WorkoutData
-	Exercises []ExerciseData
-	Sets      []SetData
+	Recommendations []recommendation.Snapshot
+	Workout         WorkoutData
+	Exercises       []ExerciseData
+	Sets            []SetData
 }
 
 // UPDATE endpoint types for PUT /api/workouts/{id}

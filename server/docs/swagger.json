@@ -1103,6 +1103,63 @@
                 }
             }
         },
+        "/exercises/{id}/prescription": {
+            "put": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recommendations"
+                ],
+                "summary": "Save or clear an optional user-entered working-set baseline",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Baseline; null clears it",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/recommendation.PrescriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/exercises/{id}/recent-sets": {
             "get": {
                 "security": [
@@ -1154,6 +1211,57 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/exercises/{id}/recommendation": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recommendations"
+                ],
+                "summary": "Recommend today's working sets for an owned exercise",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "normal, great, or sluggish",
+                        "name": "readiness",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/recommendation.Result"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -1689,6 +1797,54 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/workouts/{id}/recommendations": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "recommendations"
+                ],
+                "summary": "Read the recommendation context recorded when a workout was saved",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Workout ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/recommendation.Snapshot"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -2310,6 +2466,122 @@
                 }
             }
         },
+        "recommendation.PrescriptionRequest": {
+            "type": "object",
+            "properties": {
+                "baseline": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/recommendation.Range"
+                        }
+                    ],
+                    "x-nullable": true
+                }
+            }
+        },
+        "recommendation.Range": {
+            "type": "object",
+            "required": [
+                "max",
+                "min"
+            ],
+            "properties": {
+                "max": {
+                    "type": "integer"
+                },
+                "min": {
+                    "type": "integer"
+                }
+            }
+        },
+        "recommendation.Result": {
+            "type": "object",
+            "required": [
+                "exerciseId",
+                "explanation",
+                "policyVersion",
+                "readiness",
+                "source"
+            ],
+            "properties": {
+                "baseline": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/recommendation.Range"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "exerciseId": {
+                    "type": "integer"
+                },
+                "explanation": {
+                    "type": "string"
+                },
+                "policyVersion": {
+                    "type": "string"
+                },
+                "previous": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/recommendation.Session"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "range": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/recommendation.Range"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "readiness": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "recommendation.Session": {
+            "type": "object",
+            "required": [
+                "date",
+                "workingSets",
+                "workoutId"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "workingSets": {
+                    "type": "integer"
+                },
+                "workoutId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "recommendation.Snapshot": {
+            "type": "object",
+            "required": [
+                "exerciseName",
+                "recommendation"
+            ],
+            "properties": {
+                "exerciseName": {
+                    "type": "string"
+                },
+                "feedback": {
+                    "type": "string"
+                },
+                "recommendation": {
+                    "$ref": "#/definitions/recommendation.Result"
+                }
+            }
+        },
         "response.Error": {
             "type": "object",
             "properties": {
@@ -2478,6 +2750,13 @@
                 "notes": {
                     "type": "string",
                     "maxLength": 256
+                },
+                "recommendations": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                        "$ref": "#/definitions/recommendation.Snapshot"
+                    }
                 },
                 "workoutFocus": {
                     "type": "string",

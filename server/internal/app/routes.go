@@ -7,6 +7,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/docs"
 	"github.com/Andrewy-gh/fittrack/server/internal/account"
@@ -17,6 +18,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/featureaccess"
 	"github.com/Andrewy-gh/fittrack/server/internal/health"
 	"github.com/Andrewy-gh/fittrack/server/internal/middleware"
+	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
 	"github.com/Andrewy-gh/fittrack/server/internal/trainingprofile"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,6 +27,10 @@ import (
 
 func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, bh *billing.Handler, tph *trainingprofile.Handler, accountHandler *account.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
+	recommendations := recommendation.NewHandler(recommendation.NewService(recommendation.NewRepository(api.queries), time.Now), api.logger)
+	mux.HandleFunc("GET /api/exercises/{id}/recommendation", recommendations.Get)
+	mux.HandleFunc("PUT /api/exercises/{id}/prescription", recommendations.Prescribe)
+	mux.HandleFunc("GET /api/workouts/{id}/recommendations", recommendations.Saved)
 
 	// Health endpoints (no authentication required)
 	mux.HandleFunc("GET /health", hh.Health)

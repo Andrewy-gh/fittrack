@@ -15,7 +15,8 @@ env:
 
 jobs:
   review_app:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    # Allow review-only PRs to opt out before any preview database writes.
+    if: ${{ github.actor != 'dependabot[bot]' && !contains(github.event.pull_request.body, '<!-- skip-preview -->') }}
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}

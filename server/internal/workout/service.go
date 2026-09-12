@@ -441,7 +441,12 @@ func transformWorkoutRequest(logger *slog.Logger, request workoutRequestDraft) (
 }
 
 func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*ReformattedRequest, error) {
-	return transformWorkoutRequest(ws.logger, newCreateWorkoutDraft(request))
+	reformatted, err := transformWorkoutRequest(ws.logger, newCreateWorkoutDraft(request))
+	if err != nil {
+		return nil, err
+	}
+	reformatted.Recommendations = request.Recommendations
+	return reformatted, nil
 }
 
 func (ws *WorkoutService) transformUpdateRequest(request UpdateWorkoutRequest) (*ReformattedRequest, error) {
