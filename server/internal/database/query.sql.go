@@ -4089,9 +4089,9 @@ VALUES (
     NULLIF($4::text, ''),
     $5::integer,
     NULLIF($6::text, ''),
-    $7::jsonb,
-    $8::jsonb,
-    $9::jsonb,
+    $7::text::jsonb,
+    $8::text::jsonb,
+    $9::text::jsonb,
     -- Manual settings saves supersede AI-written profile provenance.
     NULL,
     NULL
@@ -4137,9 +4137,9 @@ type UpsertUserTrainingProfileForSettingsParams struct {
 	ExperienceLevel                 pgtype.Text `json:"experience_level"`
 	PreferredSessionDurationMinutes pgtype.Int4 `json:"preferred_session_duration_minutes"`
 	UsualTrainingLocation           pgtype.Text `json:"usual_training_location"`
-	AvailableEquipment              []byte      `json:"available_equipment"`
-	AvoidedExercises                []byte      `json:"avoided_exercises"`
-	MovementLimitations             []byte      `json:"movement_limitations"`
+	AvailableEquipment              string      `json:"available_equipment"`
+	AvoidedExercises                string      `json:"avoided_exercises"`
+	MovementLimitations             pgtype.Text `json:"movement_limitations"`
 }
 
 func (q *Queries) UpsertUserTrainingProfileForSettings(ctx context.Context, arg UpsertUserTrainingProfileForSettingsParams) (UserTrainingProfile, error) {

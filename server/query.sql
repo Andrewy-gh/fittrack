@@ -439,9 +439,9 @@ VALUES (
     NULLIF(sqlc.narg(experience_level)::text, ''),
     sqlc.narg(preferred_session_duration_minutes)::integer,
     NULLIF(sqlc.narg(usual_training_location)::text, ''),
-    sqlc.arg(available_equipment)::jsonb,
-    sqlc.arg(avoided_exercises)::jsonb,
-    sqlc.narg(movement_limitations)::jsonb,
+    sqlc.arg(available_equipment)::text::jsonb,
+    sqlc.arg(avoided_exercises)::text::jsonb,
+    sqlc.narg(movement_limitations)::text::jsonb,
     -- Manual settings saves supersede AI-written profile provenance.
     NULL,
     NULL

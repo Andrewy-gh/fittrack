@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -102,7 +103,10 @@ func setupTrainingProfileRepositoryTestDatabase(t *testing.T) (*pgxpool.Pool, fu
 		t.Skip("Skipping database-backed training profile repository test without DATABASE_URL")
 	}
 
-	pool, err := pgxpool.New(context.Background(), dbURL)
+	poolConfig, err := pgxpool.ParseConfig(dbURL)
+	require.NoError(t, err)
+	poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	require.NoError(t, err)
 
 	if err := pool.Ping(context.Background()); err != nil {

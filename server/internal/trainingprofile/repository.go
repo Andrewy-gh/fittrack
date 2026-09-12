@@ -96,18 +96,23 @@ func optionalInt(value *int32) pgtype.Int4 {
 	return pgtype.Int4{Int32: *value, Valid: true}
 }
 
-func encodeStringArray(values []string) ([]byte, error) {
+func encodeStringArray(values []string) (string, error) {
 	if values == nil {
 		values = []string{}
 	}
-	return json.Marshal(values)
+	encoded, err := json.Marshal(values)
+	return string(encoded), err
 }
 
-func encodeOptionalStringArray(values *[]string) ([]byte, error) {
+func encodeOptionalStringArray(values *[]string) (pgtype.Text, error) {
 	if values == nil {
-		return nil, nil
+		return pgtype.Text{}, nil
 	}
-	return encodeStringArray(*values)
+	encoded, err := encodeStringArray(*values)
+	if err != nil {
+		return pgtype.Text{}, err
+	}
+	return pgtype.Text{String: encoded, Valid: true}, nil
 }
 
 var _ Repository = (*repository)(nil)
