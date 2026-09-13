@@ -305,10 +305,10 @@ export const putDemoWorkoutsByIdMutation = (): UseMutationOptions<
     queryClient.invalidateQueries({
       queryKey: getDemoWorkoutsQueryKey(),
     });
-    queryClient.setQueryData(
-      getDemoWorkoutsByIdQueryKey(id),
-      getWorkoutById(id),
-    );
+    queryClient.setQueryData(getDemoWorkoutsByIdQueryKey(id), {
+      sets: getWorkoutById(id),
+      recommendations: [],
+    });
     invalidateDemoWorkoutAnalyticsQueries();
   },
 });
