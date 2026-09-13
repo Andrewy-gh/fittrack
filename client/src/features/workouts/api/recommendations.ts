@@ -17,7 +17,7 @@ import {
 class RecommendationRequestFailed extends Error {
   readonly _tag = "RecommendationRequestFailed";
   constructor() {
-    super("Could not load or save exercise guidance. Please try again.");
+    super("We couldn’t load or save your set suggestions. Please try again.");
   }
 }
 type Outcome<T> =

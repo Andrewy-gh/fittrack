@@ -69,31 +69,25 @@ describe("exercise recommendation controls", () => {
         </QueryClientProvider>,
       );
     const first = view();
-    expect(
-      await screen.findByText("No recommended range yet"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No suggestion yet")).toBeInTheDocument();
     await user.type(
-      screen.getByRole("spinbutton", { name: "Baseline minimum sets" }),
+      screen.getByRole("spinbutton", { name: "Minimum sets" }),
       "3",
     );
     await user.type(
-      screen.getByRole("spinbutton", { name: "Baseline maximum sets" }),
+      screen.getByRole("spinbutton", { name: "Maximum sets" }),
       "4",
     );
-    await user.click(screen.getByRole("button", { name: "Save baseline" }));
-    expect(
-      await screen.findByText("Recommended: 3–4 working sets"),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save my range" }));
+    expect(await screen.findByText("Try 3–4 working sets")).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "Great" }));
-    expect(
-      await screen.findByText("Recommended: 3–4 working sets"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Try 3–4 working sets")).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "Sluggish" }));
-    expect(
-      await screen.findByText("Recommended: 2–3 working sets"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Try 2–3 working sets")).toBeInTheDocument();
     await user.selectOptions(
-      screen.getByRole("combobox", { name: "After this exercise (optional)" }),
+      screen.getByRole("combobox", {
+        name: "How did that amount feel? (optional)",
+      }),
       "about_right",
     );
     await waitFor(() =>
@@ -110,16 +104,12 @@ describe("exercise recommendation controls", () => {
     );
     first.unmount();
     view();
+    expect(await screen.findByText("Try 3–4 working sets")).toBeInTheDocument();
     expect(
-      await screen.findByText("Recommended: 3–4 working sets"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("spinbutton", { name: "Baseline minimum sets" }),
+      screen.getByRole("spinbutton", { name: "Minimum sets" }),
     ).toHaveValue(3);
-    await user.click(screen.getByRole("button", { name: "Clear baseline" }));
-    expect(
-      await screen.findByText("No recommended range yet"),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Use recent sets" }));
+    expect(await screen.findByText("No suggestion yet")).toBeInTheDocument();
   });
 
   it("rejects invalid baseline ranges while leaving guidance available", async () => {
@@ -135,19 +125,19 @@ describe("exercise recommendation controls", () => {
       </QueryClientProvider>,
     );
     const user = userEvent.setup();
-    await screen.findByText("No recommended range yet");
+    await screen.findByText("No suggestion yet");
     await user.type(
-      screen.getByRole("spinbutton", { name: "Baseline minimum sets" }),
+      screen.getByRole("spinbutton", { name: "Minimum sets" }),
       "5",
     );
     await user.type(
-      screen.getByRole("spinbutton", { name: "Baseline maximum sets" }),
+      screen.getByRole("spinbutton", { name: "Maximum sets" }),
       "2",
     );
-    await user.click(screen.getByRole("button", { name: "Save baseline" }));
+    await user.click(screen.getByRole("button", { name: "Save my range" }));
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Enter an ordered range between 1 and 20",
+      "Choose 1–20 sets. The maximum must be at least the minimum.",
     );
-    expect(screen.getByText("No recommended range yet")).toBeInTheDocument();
+    expect(screen.getByText("No suggestion yet")).toBeInTheDocument();
   });
 });

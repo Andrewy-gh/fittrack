@@ -86,7 +86,7 @@ export function ExerciseRecommendationPanel({
         baseline.max < baseline.min ||
         baseline.max > 20)
     ) {
-      setMessage("Enter an ordered range between 1 and 20 working sets.");
+      setMessage("Choose 1–20 sets. The maximum must be at least the minimum.");
       return;
     }
     setSaving(true);
@@ -96,8 +96,8 @@ export function ExerciseRecommendationPanel({
       setEdited(false);
       setMessage(
         clear
-          ? "Baseline cleared; recent history can be used."
-          : "Baseline saved.",
+          ? "Your range was cleared. Suggestions will use recent sets when available."
+          : "Your set range is saved.",
       );
     } else {
       setMessage(outcome.error.message);
@@ -108,20 +108,20 @@ export function ExerciseRecommendationPanel({
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <h2 className="font-semibold">Today’s working sets</h2>
+        <h2 className="font-semibold">How many sets today?</h2>
         <p className="text-sm text-muted-foreground">
-          Guidance only. Log the sets you actually perform below.
+          We suggest sets from your last workout, unless you save your own
+          range. Warm-ups don’t count. Log what you actually do below.
         </p>
         {result?.previous && (
           <p className="text-sm">
-            Previous session:{" "}
-            {new Date(result.previous.date).toLocaleDateString()} ·{" "}
+            Last time: {new Date(result.previous.date).toLocaleDateString()} ·{" "}
             {result.previous.workingSets} working sets
           </p>
         )}
         {result && !result.previous && (
           <p className="text-sm text-muted-foreground">
-            No previous session for this exercise.
+            You haven’t logged this exercise yet.
           </p>
         )}
         <fieldset
@@ -129,17 +129,16 @@ export function ExerciseRecommendationPanel({
           disabled={saving}
         >
           <legend className="text-sm font-medium">
-            Optional baseline working-set range
+            Want to use your own set range?
           </legend>
           <p className="text-xs text-muted-foreground">
-            Your prescription, or one your coach gave you. Saved to your
-            account.
+            Save a range to use instead of your recent sets. This is optional.
           </p>
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
               Minimum sets
               <Input
-                aria-label="Baseline minimum sets"
+                aria-label="Minimum sets"
                 type="number"
                 min={1}
                 max={20}
@@ -153,7 +152,7 @@ export function ExerciseRecommendationPanel({
             <label className="text-sm">
               Maximum sets
               <Input
-                aria-label="Baseline maximum sets"
+                aria-label="Maximum sets"
                 type="number"
                 min={1}
                 max={20}
@@ -171,7 +170,7 @@ export function ExerciseRecommendationPanel({
               size="sm"
               onClick={() => void saveBaseline(false)}
             >
-              Save baseline
+              Save my range
             </Button>
             <Button
               type="button"
@@ -179,7 +178,7 @@ export function ExerciseRecommendationPanel({
               variant="outline"
               onClick={() => void saveBaseline(true)}
             >
-              Clear baseline
+              Use recent sets
             </Button>
           </div>
         </fieldset>
@@ -195,7 +194,9 @@ export function ExerciseRecommendationPanel({
           className="space-y-2"
           disabled={saving}
         >
-          <legend className="text-sm font-medium">Today’s readiness</legend>
+          <legend className="text-sm font-medium">
+            How do you feel today?
+          </legend>
           <div className="flex flex-wrap gap-2">
             {(["sluggish", "normal", "great"] as const).map((value) => (
               <label
@@ -223,21 +224,21 @@ export function ExerciseRecommendationPanel({
           className="space-y-1 rounded-md bg-muted p-3"
         >
           {query.isPending ? (
-            <p>Loading recommendation…</p>
+            <p>Finding a suggestion…</p>
           ) : result ? (
             <>
               <p className="font-semibold">
                 {result.range
-                  ? `Recommended: ${result.range.min}–${result.range.max} working sets`
-                  : "No recommended range yet"}
+                  ? `Try ${result.range.min}–${result.range.max} working sets`
+                  : "No suggestion yet"}
               </p>
               <p className="text-sm">{result.explanation}</p>
               <p className="text-xs text-muted-foreground">
-                Baseline source:{" "}
+                Based on:{" "}
                 {result.source === "prescription"
-                  ? "Your saved prescription"
+                  ? "Your saved range"
                   : result.source === "history"
-                    ? "Recent exercise history"
+                    ? "Your last workout"
                     : "None"}
                 {result.baseline
                   ? ` (${result.baseline.min}–${result.baseline.max} sets)`
@@ -246,22 +247,20 @@ export function ExerciseRecommendationPanel({
             </>
           ) : (
             <>
-              <p>
-                Recommendation unavailable. You can still log your actual sets.
-              </p>
+              <p>We couldn’t load a suggestion. You can still log your sets.</p>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => void query.refetch()}
               >
-                Retry guidance
+                Try again
               </Button>
             </>
           )}
         </div>
         <label className="block space-y-1 text-sm">
-          After this exercise (optional)
+          How did that amount feel? (optional)
           <select
             className="w-full rounded-md border bg-background p-2"
             value={feedback}
@@ -276,7 +275,7 @@ export function ExerciseRecommendationPanel({
                 setFeedback(value);
             }}
           >
-            <option value="">Not recorded</option>
+            <option value="">Skip for now</option>
             <option value="too_little">Too little</option>
             <option value="about_right">About right</option>
             <option value="too_much">Too much</option>

@@ -15,16 +15,16 @@ export function SavedRecommendations({
     queryFn: ({ signal }) => recommendationApi.saved(workoutId, signal),
   });
   if (query.isPending)
-    return <p className="text-sm">Loading recorded guidance…</p>;
+    return <p className="text-sm">Loading saved suggestions…</p>;
   if (!query.data?.ok)
-    return <p className="text-sm">Recorded guidance could not be loaded.</p>;
+    return <p className="text-sm">We couldn’t load the saved suggestions.</p>;
   if (query.data.value.length === 0) return null;
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <h2 className="font-semibold">Guidance recorded with this workout</h2>
+        <h2 className="font-semibold">Suggestions for this workout</h2>
         <p className="text-xs text-muted-foreground">
-          Actual sets above remain the record of work performed.
+          These are the suggestions you saw. The sets you logged are above.
         </p>
         {query.data.value.map(
           ({ exerciseName, recommendation: result, feedback }) => (
@@ -33,19 +33,18 @@ export function SavedRecommendations({
               className="space-y-1 text-sm"
             >
               <h3 className="font-medium">{exerciseName}</h3>
-              <p>Readiness: {result.readiness}</p>
+              <p>How you felt: {result.readiness}</p>
               <p>
                 {result.range
-                  ? `Recommendation shown: ${result.range.min}–${result.range.max} working sets`
-                  : "No range was recommended"}
+                  ? `Suggested: ${result.range.min}–${result.range.max} working sets`
+                  : "No sets were suggested"}
               </p>
-              <p>{result.explanation}</p>
               <p>
-                Baseline:{" "}
+                Based on:{" "}
                 {result.source === "prescription"
-                  ? "Your saved prescription"
+                  ? "Your saved range"
                   : result.source === "history"
-                    ? "Exercise history"
+                    ? "Your last workout"
                     : "None"}
                 {result.baseline
                   ? ` · ${result.baseline.min}–${result.baseline.max} sets`
@@ -53,7 +52,7 @@ export function SavedRecommendations({
               </p>
               {feedback && (
                 <p>
-                  Feedback:{" "}
+                  How the amount felt:{" "}
                   {feedback === "too_little"
                     ? "Too little"
                     : feedback === "too_much"
@@ -61,9 +60,6 @@ export function SavedRecommendations({
                       : "About right"}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Policy: {result.policyVersion}
-              </p>
             </section>
           ),
         )}

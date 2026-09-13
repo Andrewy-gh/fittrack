@@ -246,8 +246,8 @@ export function NewWorkoutPage({
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     {user
-                      ? "Save this new exercise before adding a durable baseline."
-                      : "Sign in to save baseline prescriptions and get exercise guidance."}
+                      ? "Log this exercise once to get set suggestions next time."
+                      : "Sign in to get set suggestions from your past workouts."}
                   </p>
                 )}
               </div>

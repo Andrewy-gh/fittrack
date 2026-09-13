@@ -46,12 +46,12 @@ type Snapshot struct {
 func Recommend(now time.Time, prescription *Range, previous *Session, readiness string) Result {
 	result := Result{Readiness: readiness, Previous: previous, Source: "none", PolicyVersion: PolicyVersion}
 	if readiness != "normal" && readiness != "great" && readiness != "sluggish" {
-		result.Explanation = "Unsupported readiness; no recommendation available."
+		result.Explanation = "Choose how you feel today to get a suggestion."
 		return result
 	}
 	if prescription != nil {
 		if !prescription.Valid() {
-			result.Explanation = "The prescription is outside supported bounds (1–20 working sets)."
+			result.Explanation = "Your saved range must be between 1 and 20 working sets."
 			return result
 		}
 		baseline := *prescription
@@ -61,15 +61,15 @@ func Recommend(now time.Time, prescription *Range, previous *Session, readiness 
 		result.Source = "history"
 	}
 	if result.Baseline == nil {
-		result.Explanation = "No eligible recent working-set history. Enter an optional baseline or choose your own sets."
+		result.Explanation = "We don’t have recent sets we can use. Save your own range or log sets without a suggestion."
 		return result
 	}
 	proposed := *result.Baseline
-	result.Explanation = "Use your baseline; Normal and Great do not increase volume."
+	result.Explanation = "Stick with the same number of sets today."
 	if readiness == "sluggish" {
 		proposed.Min = max(1, proposed.Min-1)
 		proposed.Max = max(1, proposed.Max-1)
-		result.Explanation = "Sluggish: one fewer working set at each bound, with a minimum of one. You can also rest."
+		result.Explanation = "It’s okay to do less today, or rest if you need to."
 	}
 	result.Range = &proposed
 	return result
