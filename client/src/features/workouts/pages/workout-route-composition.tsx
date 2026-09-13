@@ -108,7 +108,7 @@ export function EditWorkoutRouteComposition({
   );
 
   const workoutFormValues: WorkoutUpdateWorkoutRequest =
-    transformToWorkoutFormValues(workout);
+    transformToWorkoutFormValues(workout.sets);
 
   return (
     <EditWorkoutPage

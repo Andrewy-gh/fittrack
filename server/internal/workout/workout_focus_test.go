@@ -512,12 +512,11 @@ func TestWorkoutFocus_Integration(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-		var workout []db.GetWorkoutWithSetsRow
+		var workout WorkoutDetailResponse
 		err = json.Unmarshal(w.Body.Bytes(), &workout)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, workout)
-		assert.Equal(t, "Leg Day Focus", workout[0].WorkoutFocus.String)
-		assert.True(t, workout[0].WorkoutFocus.Valid)
+		assert.NotEmpty(t, workout.Sets)
+		assert.Equal(t, "Leg Day Focus", *workout.Sets[0].WorkoutFocus)
 	})
 }
 

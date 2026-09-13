@@ -22,12 +22,6 @@ func (r *repository) Load(ctx context.Context, owner string, id int32, now time.
 	if err != nil {
 		return result, lookupError(err)
 	}
-	row, err := r.queries.GetExercisePrescription(ctx, db.GetExercisePrescriptionParams{ExerciseID: id, UserID: owner})
-	if err == nil {
-		result.Baseline = &Range{Min: int(row.MinSets), Max: int(row.MaxSets)}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return result, err
-	}
 	profile, err := r.queries.GetUserTrainingProfile(ctx, owner)
 	if err == nil {
 		result.Goal, result.Experience = profile.PrimaryGoal.String, profile.ExperienceLevel.String
@@ -50,64 +44,39 @@ func (r *repository) Load(ctx context.Context, owner string, id int32, now time.
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return result, err
 	}
-	history, err := r.queries.GetRecommendationHistory(ctx, db.GetRecommendationHistoryParams{ExerciseID: id, UserID: owner, AsOf: pgtype.Timestamptz{Time: now, Valid: true}})
+
+	history, err := r.queries.GetRecommendationTrainingHistory(ctx, db.GetRecommendationTrainingHistoryParams{
+		ExerciseID: id,
+		UserID:     owner,
+		AsOf:       pgtype.Timestamptz{Time: now, Valid: true},
+	})
 	if err != nil {
 		return result, err
 	}
-	for i, session := range history {
-		if i == 0 {
-			result.Previous = &Session{WorkoutID: session.WorkoutID, Date: session.Date.Time.UTC(), WorkingSets: int(session.WorkingSets)}
+	var currentWorkoutID int32
+	for _, row := range history {
+		if len(result.Sessions) == 0 || row.WorkoutID != currentWorkoutID {
+			if row.Date.Time.After(now) || now.Sub(row.Date.Time) > Recency {
+				break
+			}
+			result.Sessions = append(result.Sessions, Session{Date: row.Date.Time.UTC()})
+			currentWorkoutID = row.WorkoutID
 		}
-		if now.Sub(session.Date.Time) > Recency {
-			break
+		if !row.WorkingSetID.Valid {
+			continue
 		}
-		if i > 0 && !session.Date.Time.Before(history[0].Date.Time) {
-			break
-		}
-		rows, err := r.queries.GetWorkoutWithSets(ctx, db.GetWorkoutWithSetsParams{ID: session.WorkoutID, UserID: owner})
+		var weight *float64
+		value, err := row.Weight.Float64Value()
 		if err != nil {
 			return result, err
 		}
-		sets := []WorkingSet{}
-		for _, row := range rows {
-			if row.ExerciseID != id || row.SetType != "working" {
-				continue
-			}
-			var weight *float64
-			value, err := row.Weight.Float64Value()
-			if err != nil {
-				return result, err
-			}
-			if value.Valid {
-				weight = &value.Float64
-			}
-			sets = append(sets, WorkingSet{Weight: weight, Reps: int(row.Reps)})
+		if value.Valid {
+			weight = &value.Float64
 		}
-		result.Sessions = append(result.Sessions, sets)
+		latest := &result.Sessions[len(result.Sessions)-1]
+		latest.Sets = append(latest.Sets, WorkingSet{Weight: weight, Reps: int(row.Reps.Int32)})
 	}
 	return result, nil
-}
-
-func (r *repository) SavePrescription(ctx context.Context, owner string, id int32, baseline *Range) error {
-	if _, err := r.queries.GetExercise(ctx, db.GetExerciseParams{ID: id, UserID: owner}); err != nil {
-		return lookupError(err)
-	}
-	if baseline == nil {
-		return r.queries.DeleteExercisePrescription(ctx, db.DeleteExercisePrescriptionParams{ExerciseID: id, UserID: owner})
-	}
-	return r.queries.UpsertExercisePrescription(ctx, db.UpsertExercisePrescriptionParams{ExerciseID: id, UserID: owner, MinSets: int32(baseline.Min), MaxSets: int32(baseline.Max)})
-}
-
-func (r *repository) Saved(ctx context.Context, owner string, workoutID int32) ([]Snapshot, error) {
-	raw, err := r.queries.GetWorkoutRecommendationContext(ctx, db.GetWorkoutRecommendationContextParams{ID: workoutID, UserID: owner})
-	if err != nil {
-		return nil, lookupError(err)
-	}
-	snapshots := []Snapshot{}
-	if err := json.Unmarshal(raw, &snapshots); err != nil {
-		return nil, fmt.Errorf("read recommendation context: %w", err)
-	}
-	return snapshots, nil
 }
 
 func lookupError(err error) error {
@@ -131,11 +100,6 @@ func SaveContext(ctx context.Context, qtx *db.Queries, owner string, workoutID i
 			return fmt.Errorf("%w: recommendation does not match logged exercise", ErrInvalidContext)
 		}
 		seen[snapshot.ExerciseName] = true
-		if previous := snapshot.Recommendation.Previous; previous != nil {
-			if _, err := qtx.GetWorkout(ctx, db.GetWorkoutParams{ID: previous.WorkoutID, UserID: owner}); err != nil {
-				return fmt.Errorf("%w: invalid history reference", ErrInvalidContext)
-			}
-		}
 	}
 	raw, err := json.Marshal(snapshots)
 	if err != nil {

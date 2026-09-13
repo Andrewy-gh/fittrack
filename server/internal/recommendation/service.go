@@ -9,13 +9,11 @@ import (
 )
 
 var ErrUnauthorized = errors.New("authentication required")
-var ErrNotFound = errors.New("exercise or workout not found")
-var ErrInvalid = errors.New("working-set baseline must be an ordered range from 1 to 20")
+var ErrNotFound = errors.New("exercise not found")
+var ErrInvalid = errors.New("readiness must be normal, great, or sluggish")
 
 type Repository interface {
 	Load(context.Context, string, int32, time.Time) (TrainingContext, error)
-	SavePrescription(context.Context, string, int32, *Range) error
-	Saved(context.Context, string, int32) ([]Snapshot, error)
 }
 
 type Service struct {
@@ -32,31 +30,15 @@ func (s *Service) Get(ctx context.Context, exerciseID int32, readiness string) (
 	if !ok || owner == "" {
 		return Result{}, ErrUnauthorized
 	}
+	if !validReadiness(readiness) {
+		return Result{}, ErrInvalid
+	}
 	now := s.now()
-	context, err := s.repo.Load(ctx, owner, exerciseID, now)
+	trainingContext, err := s.repo.Load(ctx, owner, exerciseID, now)
 	if err != nil {
 		return Result{}, err
 	}
-	result := RecommendTraining(now, context, readiness)
+	result := RecommendTraining(now, trainingContext, readiness)
 	result.ExerciseID = exerciseID
 	return result, nil
-}
-
-func (s *Service) Prescribe(ctx context.Context, exerciseID int32, baseline *Range) error {
-	owner, ok := user.Current(ctx)
-	if !ok || owner == "" {
-		return ErrUnauthorized
-	}
-	if baseline != nil && !baseline.Valid() {
-		return ErrInvalid
-	}
-	return s.repo.SavePrescription(ctx, owner, exerciseID, baseline)
-}
-
-func (s *Service) Saved(ctx context.Context, workoutID int32) ([]Snapshot, error) {
-	owner, ok := user.Current(ctx)
-	if !ok || owner == "" {
-		return nil, ErrUnauthorized
-	}
-	return s.repo.Saved(ctx, owner, workoutID)
 }

@@ -511,13 +511,13 @@ func TestWorkoutHandler_UpdateWorkout_Integration(t *testing.T) {
 		getW := httptest.NewRecorder()
 		handler.GetWorkoutWithSets(getW, getReq)
 
-		var workout []db.GetWorkoutWithSetsRow
+		var workout WorkoutDetailResponse
 		err := json.Unmarshal(getW.Body.Bytes(), &workout)
 		assert.NoError(t, err)
 
 		// Group sets by exercise
-		exerciseSets := make(map[string][]db.GetWorkoutWithSetsRow)
-		for _, row := range workout {
+		exerciseSets := make(map[string][]WorkoutWithSetsResponse)
+		for _, row := range workout.Sets {
 			if row.ExerciseName != "" {
 				exerciseSets[row.ExerciseName] = append(
 					exerciseSets[row.ExerciseName], row)

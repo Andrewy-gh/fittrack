@@ -1,24 +1,28 @@
 -- Basic SELECT queries
--- name: GetExercisePrescription :one
-SELECT min_sets, max_sets FROM exercise_prescription WHERE exercise_id = $1 AND user_id = $2;
-
--- name: UpsertExercisePrescription :exec
-INSERT INTO exercise_prescription (exercise_id, user_id, min_sets, max_sets)
-SELECT e.id, e.user_id, sqlc.arg(min_sets), sqlc.arg(max_sets)
-FROM exercise e WHERE e.id = sqlc.arg(exercise_id) AND e.user_id = sqlc.arg(user_id)
-ON CONFLICT (exercise_id) DO UPDATE SET min_sets = EXCLUDED.min_sets, max_sets = EXCLUDED.max_sets, updated_at = CURRENT_TIMESTAMP
-WHERE exercise_prescription.user_id = EXCLUDED.user_id;
-
--- name: DeleteExercisePrescription :exec
-DELETE FROM exercise_prescription WHERE exercise_id = $1 AND user_id = $2;
-
--- name: GetRecommendationHistory :many
-SELECT w.id AS workout_id, w.date, COUNT(*) FILTER (WHERE s.set_type = 'working')::integer AS working_sets
-FROM workout w JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
-WHERE s.exercise_id = sqlc.arg(exercise_id) AND w.user_id = sqlc.arg(user_id) AND w.date <= sqlc.arg(as_of)
-GROUP BY w.id, w.date
-ORDER BY w.date DESC, w.id DESC
-LIMIT 2;
+-- name: GetRecommendationTrainingHistory :many
+WITH recent_sessions AS (
+    SELECT DISTINCT w.id AS workout_id, w.date
+    FROM workout w
+    JOIN "set" observed ON observed.workout_id = w.id AND observed.user_id = w.user_id
+    WHERE observed.exercise_id = sqlc.arg(exercise_id)
+      AND w.user_id = sqlc.arg(user_id)
+      AND w.date <= sqlc.arg(as_of)
+    ORDER BY w.date DESC, w.id DESC
+    LIMIT 2
+)
+SELECT
+    recent_sessions.workout_id,
+    recent_sessions.date,
+    working.id AS working_set_id,
+    working.weight,
+    working.reps
+FROM recent_sessions
+LEFT JOIN "set" working
+    ON working.workout_id = recent_sessions.workout_id
+    AND working.exercise_id = sqlc.arg(exercise_id)
+    AND working.user_id = sqlc.arg(user_id)
+    AND working.set_type = 'working'
+ORDER BY recent_sessions.date DESC, recent_sessions.workout_id DESC, working.set_order, working.id;
 
 -- name: SaveWorkoutRecommendationContext :exec
 UPDATE workout SET recommendation_context = sqlc.arg(recommendation_context)::text::jsonb

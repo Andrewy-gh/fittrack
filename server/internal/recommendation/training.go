@@ -6,15 +6,20 @@ import (
 	"time"
 )
 
-// TrainingContext contains only the owner's exercise history and relevant profile facts.
+const Recency = 28 * 24 * time.Hour
+
+// TrainingContext contains only the owner's recent exercise sessions and relevant profile facts.
 type TrainingContext struct {
-	Baseline       *Range
-	Previous       *Session
-	Sessions       [][]WorkingSet
+	Sessions       []Session
 	Goal           string
 	Experience     string
 	Avoided        bool
 	HasLimitations bool
+}
+
+type Session struct {
+	Date time.Time
+	Sets []WorkingSet
 }
 
 type WorkingSet struct {
@@ -24,105 +29,123 @@ type WorkingSet struct {
 
 // Plan is a starting point, separate from the actual sets recorded by the user.
 type Plan struct {
-	Sets       int      `json:"sets" validate:"required"`
-	Reps       int      `json:"reps" validate:"required"`
-	Weight     *float64 `json:"weight" extensions:"x-nullable"`
-	Goal       string   `json:"goal"`
-	Experience string   `json:"experience"`
+	Sets   int      `json:"sets" validate:"required"`
+	Reps   int      `json:"reps" validate:"required"`
+	Weight *float64 `json:"weight" extensions:"x-nullable"`
 }
 
 func RecommendTraining(now time.Time, context TrainingContext, readiness string) Result {
-	r := Recommend(now, context.Baseline, context.Previous, readiness)
-	r.PolicyVersion = "exercise-plan-v2"
-	if readiness != "normal" && readiness != "great" && readiness != "sluggish" {
-		return r
+	result := Result{
+		Readiness:     readiness,
+		Explanation:   "Choose how you feel today to get a suggestion.",
+		PolicyVersion: PolicyVersion,
+	}
+	if !validReadiness(readiness) {
+		return result
 	}
 	if context.Avoided || context.HasLimitations {
-		r.Range = nil
-		r.Baseline = nil
-		r.Source = "none"
-		r.Explanation = "Your profile lists an exercise to avoid or a movement limitation. Choose a suitable exercise or review your profile first."
-		return r
+		result.Explanation = "Your profile lists an exercise to avoid or a movement limitation. Choose a suitable exercise or review your profile first."
+		return result
 	}
+
 	low, high := 8, 12
 	if context.Goal == "strength" && (context.Experience == "intermediate" || context.Experience == "advanced") {
 		low, high = 5, 8
-	}
-	if context.Goal == "endurance" {
+	} else if context.Goal == "endurance" {
 		low, high = 12, 15
 	}
-	p := &Plan{Sets: 2, Reps: low, Goal: context.Goal, Experience: context.Experience}
+	plan := &Plan{Sets: 2, Reps: low}
 	if context.Experience == "intermediate" || context.Experience == "advanced" {
-		p.Sets = 3
+		plan.Sets = 3
 	}
-	if r.Range != nil {
-		p.Sets = r.Range.Min
+
+	latest, hasRecentHistory := recentSession(now, context.Sessions)
+	if hasRecentHistory {
+		plan.Sets = len(latest.Sets)
 	}
 	if readiness == "sluggish" {
-		// A saved range was already adjusted by Recommend; only reduce default sets here.
-		if r.Range == nil {
-			p.Sets = max(1, p.Sets-1)
-		}
-		p.Reps = max(1, p.Reps-2)
+		plan.Sets = max(1, plan.Sets-1)
+		plan.Reps = max(1, plan.Reps-2)
 	}
-	r.Plan = p
-	r.Explanation = "Choose a comfortable starting weight; we don’t have recent working sets to use."
-	previous := context.Previous
-	if previous == nil || previous.Date.After(now) || now.Sub(previous.Date) > Recency || previous.WorkingSets < 1 || previous.WorkingSets > MaxSets || len(context.Sessions) == 0 || len(context.Sessions[0]) == 0 {
-		return r
+	result.Plan = plan
+	result.Explanation = "Choose a comfortable starting weight; we don’t have recent working sets to use."
+	if !hasRecentHistory {
+		return result
 	}
-	sets := context.Sessions[0]
+
+	sets := latest.Sets
 	reps := sets[0].Reps
 	weight := sets[0].Weight
-	uniform := weight != nil && !math.IsNaN(*weight) && !math.IsInf(*weight, 0) && *weight >= 0 && *weight <= 10000
+	uniform := validWeight(weight)
 	for _, set := range sets {
 		if set.Reps < 1 || set.Reps > 100 {
-			r.Plan = nil
-			r.Explanation = "Log a working set with valid reps to get a suggestion."
-			return r
+			result.Plan = nil
+			result.Explanation = "Log a working set with valid reps to get a suggestion."
+			return result
 		}
 		reps = min(reps, set.Reps)
 		if set.Weight == nil || weight == nil || *set.Weight != *weight {
 			uniform = false
 		}
 	}
-	p.Reps = reps
+	plan.Reps = reps
 	if uniform {
 		value := *weight
-		p.Weight = &value
+		plan.Weight = &value
 	}
-	r.Explanation = "Repeat your last working sets."
-	if r.Source == "prescription" {
-		r.Explanation = "Using your saved set count and last weight and reps."
-	}
+	result.Explanation = "Repeat your last working sets."
 	if !uniform {
-		r.Explanation = "Your last weights varied or weren’t recorded. Choose the weight for these reps."
+		result.Explanation = "Your last weights varied or weren’t recorded. Choose the weight for these reps."
 	}
 	if readiness == "sluggish" {
-		p.Reps = max(1, reps-2)
-		r.Explanation = "An easier day: fewer reps and, where possible, one fewer set."
-		return r
+		plan.Reps = max(1, reps-2)
+		result.Explanation = "An easier day: fewer reps and, where possible, one fewer set."
+		return result
 	}
-	// Require two distinct recent sessions at one load before suggesting a small increase.
-	progress := uniform && len(context.Sessions) > 1 && len(sets) >= 2 && len(context.Sessions[1]) >= len(sets) && reps >= high && p.Sets <= len(sets)
-	if progress {
-		for _, set := range context.Sessions[1] {
-			if set.Weight == nil || *set.Weight != *weight || set.Reps < high {
-				progress = false
-			}
-		}
-	}
+
+	progress := uniform && reps >= high && reachedTarget(context.Sessions, len(sets), high)
 	if progress && *weight >= 50 && *weight <= 2000 {
 		value := math.Round((*weight+2.5)*10) / 10
-		p.Weight, p.Reps = &value, low
-		r.Explanation = "You reached the rep target in two workouts. Try a small weight increase, using the closest available weight."
-	} else if readiness == "great" && uniform && reps < high && p.Sets <= len(sets) {
-		p.Reps = reps + 1
-		r.Explanation = "Try one extra rep at the same weight."
+		plan.Weight, plan.Reps = &value, low
+		result.Explanation = "You reached the rep target in two workouts. Try a small weight increase, using the closest available weight."
+	} else if readiness == "great" && uniform && reps < high {
+		plan.Reps = reps + 1
+		result.Explanation = "Try one extra rep at the same weight."
 	} else if readiness == "great" {
-		r.Explanation += " There isn’t enough evidence to increase it yet."
+		result.Explanation += " There isn’t enough evidence to increase it yet."
 	}
-	return r
+	return result
+}
+
+func recentSession(now time.Time, sessions []Session) (Session, bool) {
+	if len(sessions) == 0 {
+		return Session{}, false
+	}
+	latest := sessions[0]
+	if latest.Date.After(now) || now.Sub(latest.Date) > Recency || len(latest.Sets) < 1 || len(latest.Sets) > MaxSets {
+		return Session{}, false
+	}
+	return latest, true
+}
+
+func reachedTarget(sessions []Session, latestSetCount, target int) bool {
+	if len(sessions) < 2 || latestSetCount < 2 || len(sessions[1].Sets) < latestSetCount {
+		return false
+	}
+	if !sessions[1].Date.Before(sessions[0].Date) {
+		return false
+	}
+	weight := sessions[0].Sets[0].Weight
+	for _, set := range sessions[1].Sets {
+		if set.Weight == nil || weight == nil || *set.Weight != *weight || set.Reps < target {
+			return false
+		}
+	}
+	return true
+}
+
+func validWeight(weight *float64) bool {
+	return weight != nil && !math.IsNaN(*weight) && !math.IsInf(*weight, 0) && *weight >= 0 && *weight <= 10000
 }
 
 func matchesExercise(names []string, name string) bool {

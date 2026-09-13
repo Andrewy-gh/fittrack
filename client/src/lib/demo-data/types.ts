@@ -5,6 +5,7 @@ export type {
   // Workout types
   WorkoutWorkoutResponse,
   WorkoutContributionDataResponse,
+  WorkoutWorkoutDetailResponse,
   WorkoutWorkoutWithSetsResponse,
   WorkoutNewWorkoutContextResponse,
   WorkoutCreateWorkoutRequest,

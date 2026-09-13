@@ -11,6 +11,7 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/jackc/pgx/v5"
 )
@@ -21,6 +22,7 @@ type WorkoutRepository interface {
 	GetLatestWorkoutNote(ctx context.Context, userID string) (db.GetLatestWorkoutNoteRow, error)
 	GetWorkout(ctx context.Context, id int32, userID string) (db.Workout, error)
 	GetWorkoutWithSets(ctx context.Context, id int32, userID string) ([]db.GetWorkoutWithSetsRow, error)
+	GetWorkoutRecommendationContext(ctx context.Context, id int32, userID string) ([]byte, error)
 	ListWorkoutFocusValues(ctx context.Context, userID string) ([]string, error)
 	GetContributionData(ctx context.Context, userID string) ([]db.GetContributionDataRow, error)
 	SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error
@@ -96,7 +98,7 @@ func (ws *WorkoutService) GetNewWorkoutContext(ctx context.Context) (*NewWorkout
 	return response, nil
 }
 
-func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]WorkoutWithSetsResponse, error) {
+func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) (*WorkoutDetailResponse, error) {
 	userID, ok := user.Current(ctx)
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
@@ -105,14 +107,25 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) ([]W
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workout with sets: %w", err)
 	}
-
-	// Convert database rows to response type
-	response, err := ws.convertWorkoutWithSetsRows(workoutWithSets)
+	sets, err := ws.convertWorkoutWithSetsRows(workoutWithSets)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert workout with sets rows: %w", err)
 	}
-
-	return response, nil
+	if len(sets) == 0 {
+		return &WorkoutDetailResponse{Sets: sets, Recommendations: []recommendation.Snapshot{}}, nil
+	}
+	rawRecommendations, err := ws.repo.GetWorkoutRecommendationContext(ctx, id, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workout recommendations: %w", err)
+	}
+	var recommendations []recommendation.Snapshot
+	if err := json.Unmarshal(rawRecommendations, &recommendations); err != nil {
+		return nil, fmt.Errorf("failed to read workout recommendations: %w", err)
+	}
+	if recommendations == nil {
+		recommendations = []recommendation.Snapshot{}
+	}
+	return &WorkoutDetailResponse{Sets: sets, Recommendations: recommendations}, nil
 }
 
 func (ws *WorkoutService) CreateWorkout(ctx context.Context, requestBody CreateWorkoutRequest) error {

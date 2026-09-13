@@ -209,43 +209,21 @@ export type FeatureaccessFeatureAccessResponse = {
 };
 
 export type RecommendationPlan = {
-  experience?: string;
-  goal?: string;
   reps: number;
   sets: number;
   weight?: number | null;
 };
 
-export type RecommendationPrescriptionRequest = {
-  baseline?: RecommendationRange | null;
-};
-
-export type RecommendationRange = {
-  max: number;
-  min: number;
-};
-
 export type RecommendationResult = {
-  baseline?: RecommendationRange | null;
   exerciseId: number;
   explanation: string;
   plan?: RecommendationPlan;
   policyVersion: string;
-  previous?: RecommendationSession | null;
-  range?: RecommendationRange | null;
   readiness: string;
-  source: string;
-};
-
-export type RecommendationSession = {
-  date: string;
-  workingSets: number;
-  workoutId: number;
 };
 
 export type RecommendationSnapshot = {
   exerciseName: string;
-  feedback?: string;
   recommendation: RecommendationResult;
 };
 
@@ -348,6 +326,11 @@ export type WorkoutUpdateWorkoutRequest = {
   exercises: Array<WorkoutUpdateExercise>;
   notes?: string;
   workoutFocus?: string;
+};
+
+export type WorkoutWorkoutDetailResponse = {
+  recommendations: Array<RecommendationSnapshot>;
+  sets: Array<WorkoutWorkoutWithSetsResponse>;
 };
 
 /**
@@ -1176,46 +1159,6 @@ export type GetExercisesByIdMetricsHistoryResponses = {
 export type GetExercisesByIdMetricsHistoryResponse =
   GetExercisesByIdMetricsHistoryResponses[keyof GetExercisesByIdMetricsHistoryResponses];
 
-export type PutExercisesByIdPrescriptionData = {
-  /**
-   * Baseline; null clears it
-   */
-  body: RecommendationPrescriptionRequest;
-  path: {
-    /**
-     * Exercise ID
-     */
-    id: number;
-  };
-  query?: never;
-  url: "/exercises/{id}/prescription";
-};
-
-export type PutExercisesByIdPrescriptionErrors = {
-  /**
-   * Bad Request
-   */
-  400: ResponseErrorResponse;
-  /**
-   * Unauthorized
-   */
-  401: ResponseErrorResponse;
-  /**
-   * Not Found
-   */
-  404: ResponseErrorResponse;
-};
-
-export type PutExercisesByIdPrescriptionError =
-  PutExercisesByIdPrescriptionErrors[keyof PutExercisesByIdPrescriptionErrors];
-
-export type PutExercisesByIdPrescriptionResponses = {
-  /**
-   * No Content
-   */
-  204: unknown;
-};
-
 export type GetExercisesByIdRecentSetsData = {
   body?: never;
   path: {
@@ -1274,6 +1217,10 @@ export type GetExercisesByIdRecommendationData = {
 };
 
 export type GetExercisesByIdRecommendationErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
   /**
    * Unauthorized
    */
@@ -1632,7 +1579,7 @@ export type GetWorkoutsByIdResponses = {
   /**
    * OK
    */
-  200: Array<WorkoutWorkoutWithSetsResponse>;
+  200: WorkoutWorkoutDetailResponse;
 };
 
 export type GetWorkoutsByIdResponse =
@@ -1681,39 +1628,3 @@ export type PutWorkoutsByIdResponses = {
    */
   204: unknown;
 };
-
-export type GetWorkoutsByIdRecommendationsData = {
-  body?: never;
-  path: {
-    /**
-     * Workout ID
-     */
-    id: number;
-  };
-  query?: never;
-  url: "/workouts/{id}/recommendations";
-};
-
-export type GetWorkoutsByIdRecommendationsErrors = {
-  /**
-   * Unauthorized
-   */
-  401: ResponseErrorResponse;
-  /**
-   * Not Found
-   */
-  404: ResponseErrorResponse;
-};
-
-export type GetWorkoutsByIdRecommendationsError =
-  GetWorkoutsByIdRecommendationsErrors[keyof GetWorkoutsByIdRecommendationsErrors];
-
-export type GetWorkoutsByIdRecommendationsResponses = {
-  /**
-   * OK
-   */
-  200: Array<RecommendationSnapshot>;
-};
-
-export type GetWorkoutsByIdRecommendationsResponse =
-  GetWorkoutsByIdRecommendationsResponses[keyof GetWorkoutsByIdRecommendationsResponses];

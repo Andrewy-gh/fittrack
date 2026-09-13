@@ -118,10 +118,10 @@ func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 
 		// Should succeed but return empty results due to RLS
 		assert.Equal(t, http.StatusOK, w.Code)
-		var result []db.GetWorkoutWithSetsRow
+		var result WorkoutDetailResponse
 		err := json.Unmarshal(w.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Empty(t, result, "User B should not see User A's workout data")
+		assert.Empty(t, result.Sets, "User B should not see User A's workout data")
 	})
 
 	t.Run("Scenario5_ConcurrentRequests_ProperIsolation", func(t *testing.T) {

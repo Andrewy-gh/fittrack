@@ -160,7 +160,7 @@ func (h *WorkoutHandler) GetContributionData(w http.ResponseWriter, r *http.Requ
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Workout ID"
-// @Success 200 {array} workout.WorkoutWithSetsResponse
+// @Success 200 {object} workout.WorkoutDetailResponse
 // @Failure 400 {object} response.ErrorResponse "Bad Request"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
