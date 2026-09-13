@@ -89,7 +89,7 @@ describe("demo workout mutation cache invalidation", () => {
     });
     expect(setQueryData).toHaveBeenCalledWith(
       [{ _id: "demo_getWorkoutsById", path: { id: 42 } }],
-      [{ id: 42 }],
+      { sets: [{ id: 42 }], recommendations: [] },
     );
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: [{ _id: "demo_getWorkoutsContributionData" }],
