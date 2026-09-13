@@ -29,8 +29,6 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux := http.NewServeMux()
 	recommendations := recommendation.NewHandler(recommendation.NewService(recommendation.NewRepository(api.queries), time.Now), api.logger)
 	mux.HandleFunc("GET /api/exercises/{id}/recommendation", recommendations.Get)
-	mux.HandleFunc("PUT /api/exercises/{id}/prescription", recommendations.Prescribe)
-	mux.HandleFunc("GET /api/workouts/{id}/recommendations", recommendations.Saved)
 
 	// Health endpoints (no authentication required)
 	mux.HandleFunc("GET /health", hh.Health)

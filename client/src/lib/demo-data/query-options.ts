@@ -2,7 +2,7 @@ import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import { queryClient } from "../api/api";
 import type {
   WorkoutWorkoutResponse,
-  WorkoutWorkoutWithSetsResponse,
+  WorkoutWorkoutDetailResponse,
   WorkoutNewWorkoutContextResponse,
   WorkoutContributionDataResponse,
   ExerciseExerciseResponse,
@@ -127,9 +127,9 @@ export const getDemoWorkoutsQueryOptions = () => {
 export const getDemoWorkoutsByIdQueryOptions = (id: number) => {
   return queryOptions({
     queryKey: getDemoWorkoutsByIdQueryKey(id),
-    queryFn: async (): Promise<WorkoutWorkoutWithSetsResponse[]> => {
+    queryFn: async (): Promise<WorkoutWorkoutDetailResponse> => {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      return getWorkoutById(id);
+      return { sets: getWorkoutById(id), recommendations: [] };
     },
   });
 };
@@ -305,10 +305,10 @@ export const putDemoWorkoutsByIdMutation = (): UseMutationOptions<
     queryClient.invalidateQueries({
       queryKey: getDemoWorkoutsQueryKey(),
     });
-    queryClient.setQueryData(
-      getDemoWorkoutsByIdQueryKey(id),
-      getWorkoutById(id),
-    );
+    queryClient.setQueryData(getDemoWorkoutsByIdQueryKey(id), {
+      sets: getWorkoutById(id),
+      recommendations: [],
+    });
     invalidateDemoWorkoutAnalyticsQueries();
   },
 });

@@ -88,25 +88,18 @@ describe("useNewWorkoutFormWorkflow", () => {
       result.current.form.state.values.exercises,
     );
     await act(async () => {
-      result.current.recordRecommendation(
-        "Press",
-        {
-          exerciseId: 1,
-          readiness: "sluggish",
-          range: { min: 2, max: 3 },
-          baseline: { min: 3, max: 4 },
-          source: "prescription",
-          explanation: "Reduced work",
-          policyVersion: "working-sets-v1",
-        },
-        "too_much",
-      );
+      result.current.recordRecommendation("Press", {
+        exerciseId: 1,
+        readiness: "sluggish",
+        plan: { sets: 2, reps: 6, weight: 50 },
+        explanation: "Reduced work",
+        policyVersion: "exercise-plan-v2",
+      });
     });
     expect(result.current.form.state.values.exercises).toEqual(actualSets);
     expect(result.current.form.state.values.recommendations).toMatchObject([
       {
-        feedback: "too_much",
-        recommendation: { readiness: "sluggish", range: { min: 2, max: 3 } },
+        recommendation: { readiness: "sluggish", plan: { sets: 2, reps: 6 } },
       },
     ]);
     await act(async () => {
@@ -117,13 +110,13 @@ describe("useNewWorkoutFormWorkflow", () => {
         body: expect.objectContaining({
           exercises: actualSets,
           recommendations: expect.arrayContaining([
-            expect.objectContaining({ feedback: "too_much" }),
+            expect.objectContaining({ exerciseName: "Press" }),
           ]),
         }),
       }),
       expect.anything(),
     );
-    mockFetchQuery.mockResolvedValue([]);
+    mockFetchQuery.mockResolvedValue({ sets: [], recommendations: [] });
     await act(async () => {
       await result.current.repeatWorkout(42);
     });
@@ -181,23 +174,26 @@ describe("useNewWorkoutFormWorkflow", () => {
       exercises: [],
       workoutFocus: "",
     });
-    mockFetchQuery.mockResolvedValue([
-      {
-        exercise_id: 1,
-        exercise_name: "Bench Press",
-        exercise_order: 0,
-        reps: 5,
-        set_id: 10,
-        set_order: 0,
-        set_type: "working",
-        volume: 500,
-        weight: 100,
-        workout_date: "2026-06-12",
-        workout_id: 42,
-        workout_notes: "",
-        workout_focus: "Push",
-      },
-    ]);
+    mockFetchQuery.mockResolvedValue({
+      recommendations: [],
+      sets: [
+        {
+          exercise_id: 1,
+          exercise_name: "Bench Press",
+          exercise_order: 0,
+          reps: 5,
+          set_id: 10,
+          set_order: 0,
+          set_type: "working",
+          volume: 500,
+          weight: 100,
+          workout_date: "2026-06-12",
+          workout_id: 42,
+          workout_notes: "",
+          workout_focus: "Push",
+        },
+      ],
+    });
 
     const { result } = renderHook(() =>
       useNewWorkoutFormWorkflow({

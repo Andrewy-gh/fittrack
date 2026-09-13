@@ -8,10 +8,7 @@ import {
   recommendationApi,
   type RecommendationApi,
 } from "@/features/workouts/api/recommendations";
-import type {
-  Readiness,
-  ExerciseFeedback,
-} from "@/features/workouts/utils/recommendation-context";
+import type { Readiness } from "@/features/workouts/utils/recommendation-context";
 
 const feelings = [
   { value: "sluggish", number: 1, label: "Low energy", Icon: Frown },
@@ -35,7 +32,6 @@ export function ExerciseRecommendationPanel({
   onChange: (
     exerciseName: string,
     recommendation: RecommendationResult | null,
-    feedback: ExerciseFeedback,
   ) => void;
   api?: RecommendationApi;
 }) {
@@ -45,13 +41,6 @@ export function ExerciseRecommendationPanel({
       ? initialReadiness
       : "normal",
   );
-  const initialFeedback = initialSnapshot?.feedback;
-  const feedback: ExerciseFeedback =
-    initialFeedback === "too_little" ||
-    initialFeedback === "about_right" ||
-    initialFeedback === "too_much"
-      ? initialFeedback
-      : "";
   const query = useQuery({
     queryKey: ["exercise-recommendation", userId, exerciseId, readiness],
     queryFn: ({ signal }) => api.get(exerciseId, readiness, signal),
@@ -59,8 +48,8 @@ export function ExerciseRecommendationPanel({
   });
   const result = query.data?.ok ? query.data.value : null;
   useEffect(() => {
-    onChange(exerciseName, result, feedback);
-  }, [exerciseName, result, feedback, onChange]);
+    onChange(exerciseName, result);
+  }, [exerciseName, result, onChange]);
 
   return (
     <Card>
@@ -77,9 +66,7 @@ export function ExerciseRecommendationPanel({
               <p className="text-lg font-semibold">
                 {result.plan
                   ? `${result.plan.sets} × ${result.plan.reps}${result.plan.weight != null ? ` at ${result.plan.weight} lb` : " · choose weight"}`
-                  : result.range
-                    ? `Try ${result.range.min}–${result.range.max} working sets`
-                    : "No suggestion yet"}
+                  : "No suggestion yet"}
               </p>
               {!result.plan && (
                 <p className="text-sm text-muted-foreground">

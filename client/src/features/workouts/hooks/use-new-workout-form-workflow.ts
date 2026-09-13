@@ -6,7 +6,6 @@ import type {
   RecommendationResult,
   WorkoutNewWorkoutContextResponse,
 } from "@/client";
-import type { ExerciseFeedback } from "@/features/workouts/utils/recommendation-context";
 import type { DbExercise } from "@/features/exercises/api/exercises";
 import {
   formatExerciseGoalSummary,
@@ -79,19 +78,13 @@ export function useNewWorkoutFormWorkflow({
   });
 
   const recordRecommendation = useCallback(
-    (
-      exerciseName: string,
-      recommendation: RecommendationResult | null,
-      feedback: ExerciseFeedback,
-    ) => {
+    (exerciseName: string, recommendation: RecommendationResult | null) => {
       const others = (form.state.values.recommendations ?? []).filter(
         (snapshot) => snapshot.exerciseName !== exerciseName,
       );
       form.setFieldValue(
         "recommendations",
-        recommendation
-          ? [...others, { exerciseName, recommendation, feedback }]
-          : others,
+        recommendation ? [...others, { exerciseName, recommendation }] : others,
       );
     },
     [form],
@@ -148,7 +141,7 @@ export function useNewWorkoutFormWorkflow({
     const workoutToRepeat = await queryClient.fetchQuery(
       getWorkoutByIdQueryOptions(user, workoutId),
     );
-    const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat);
+    const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat.sets);
 
     form.reset(nextDraft);
     draftStorage.save(nextDraft, user?.id);

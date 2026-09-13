@@ -48,9 +48,6 @@ import type {
   GetTrainingProfileResponses,
   GetWorkoutsByIdData,
   GetWorkoutsByIdErrors,
-  GetWorkoutsByIdRecommendationsData,
-  GetWorkoutsByIdRecommendationsErrors,
-  GetWorkoutsByIdRecommendationsResponses,
   GetWorkoutsByIdResponses,
   GetWorkoutsContributionDataData,
   GetWorkoutsContributionDataErrors,
@@ -95,9 +92,6 @@ import type {
   PostWorkoutsData,
   PostWorkoutsErrors,
   PostWorkoutsResponses,
-  PutExercisesByIdPrescriptionData,
-  PutExercisesByIdPrescriptionErrors,
-  PutExercisesByIdPrescriptionResponses,
   PutTrainingProfileData,
   PutTrainingProfileErrors,
   PutTrainingProfileResponses,
@@ -494,28 +488,6 @@ export const getExercisesByIdMetricsHistory = <
   });
 
 /**
- * Save or clear an optional user-entered working-set baseline
- */
-export const putExercisesByIdPrescription = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<PutExercisesByIdPrescriptionData, ThrowOnError>,
-) =>
-  (options.client ?? client).put<
-    PutExercisesByIdPrescriptionResponses,
-    PutExercisesByIdPrescriptionErrors,
-    ThrowOnError
-  >({
-    security: [{ name: "x-stack-access-token", type: "apiKey" }],
-    url: "/exercises/{id}/prescription",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-/**
  * Get recent sets for exercise
  *
  * Get the 3 most recent sets for a specific exercise. Returns empty array when exercise has no sets.
@@ -536,7 +508,7 @@ export const getExercisesByIdRecentSets = <
   });
 
 /**
- * Recommend today's working sets for an owned exercise
+ * Recommend today's sets, reps, and weight for an owned exercise
  */
 export const getExercisesByIdRecommendation = <
   ThrowOnError extends boolean = false,
@@ -765,22 +737,4 @@ export const putWorkoutsById = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
-  });
-
-/**
- * Read the recommendation context recorded when a workout was saved
- */
-export const getWorkoutsByIdRecommendations = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<GetWorkoutsByIdRecommendationsData, ThrowOnError>,
-) =>
-  (options.client ?? client).get<
-    GetWorkoutsByIdRecommendationsResponses,
-    GetWorkoutsByIdRecommendationsErrors,
-    ThrowOnError
-  >({
-    security: [{ name: "x-stack-access-token", type: "apiKey" }],
-    url: "/workouts/{id}/recommendations",
-    ...options,
   });

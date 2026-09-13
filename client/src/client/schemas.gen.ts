@@ -598,12 +598,6 @@ export const recommendation_PlanSchema = {
   type: "object",
   required: ["reps", "sets"],
   properties: {
-    experience: {
-      type: "string",
-    },
-    goal: {
-      type: "string",
-    },
     reps: {
       type: "integer",
     },
@@ -617,51 +611,10 @@ export const recommendation_PlanSchema = {
   },
 } as const;
 
-export const recommendation_PrescriptionRequestSchema = {
-  type: "object",
-  properties: {
-    baseline: {
-      allOf: [
-        {
-          $ref: "#/definitions/recommendation.Range",
-        },
-      ],
-      "x-nullable": true,
-    },
-  },
-} as const;
-
-export const recommendation_RangeSchema = {
-  type: "object",
-  required: ["max", "min"],
-  properties: {
-    max: {
-      type: "integer",
-    },
-    min: {
-      type: "integer",
-    },
-  },
-} as const;
-
 export const recommendation_ResultSchema = {
   type: "object",
-  required: [
-    "exerciseId",
-    "explanation",
-    "policyVersion",
-    "readiness",
-    "source",
-  ],
+  required: ["exerciseId", "explanation", "policyVersion", "readiness"],
   properties: {
-    baseline: {
-      allOf: [
-        {
-          $ref: "#/definitions/recommendation.Range",
-        },
-      ],
-      "x-nullable": true,
-    },
     exerciseId: {
       type: "integer",
     },
@@ -674,43 +627,8 @@ export const recommendation_ResultSchema = {
     policyVersion: {
       type: "string",
     },
-    previous: {
-      allOf: [
-        {
-          $ref: "#/definitions/recommendation.Session",
-        },
-      ],
-      "x-nullable": true,
-    },
-    range: {
-      allOf: [
-        {
-          $ref: "#/definitions/recommendation.Range",
-        },
-      ],
-      "x-nullable": true,
-    },
     readiness: {
       type: "string",
-    },
-    source: {
-      type: "string",
-    },
-  },
-} as const;
-
-export const recommendation_SessionSchema = {
-  type: "object",
-  required: ["date", "workingSets", "workoutId"],
-  properties: {
-    date: {
-      type: "string",
-    },
-    workingSets: {
-      type: "integer",
-    },
-    workoutId: {
-      type: "integer",
     },
   },
 } as const;
@@ -720,9 +638,6 @@ export const recommendation_SnapshotSchema = {
   required: ["exerciseName", "recommendation"],
   properties: {
     exerciseName: {
-      type: "string",
-    },
-    feedback: {
       type: "string",
     },
     recommendation: {
@@ -1070,6 +985,25 @@ export const workout_UpdateWorkoutRequestSchema = {
     workoutFocus: {
       type: "string",
       maxLength: 256,
+    },
+  },
+} as const;
+
+export const workout_WorkoutDetailResponseSchema = {
+  type: "object",
+  required: ["recommendations", "sets"],
+  properties: {
+    recommendations: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/recommendation.Snapshot",
+      },
+    },
+    sets: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/workout.WorkoutWithSetsResponse",
+      },
     },
   },
 } as const;

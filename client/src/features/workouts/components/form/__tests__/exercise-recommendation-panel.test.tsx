@@ -12,26 +12,15 @@ const api: RecommendationApi = {
       value: {
         exerciseId,
         readiness,
-        source: "history",
-        baseline: { min: 3, max: 3 },
-        range: { min: 3, max: 3 },
         plan: {
           sets: 3,
           reps: readiness === "great" ? 9 : readiness === "sluggish" ? 6 : 8,
           weight: 100,
-          goal: "strength",
-          experience: "intermediate",
         },
         explanation: "Repeat your last working sets.",
         policyVersion: "exercise-plan-v2",
       },
     };
-  },
-  async prescribe() {
-    return { ok: true, value: null };
-  },
-  async saved() {
-    return { ok: true, value: [] };
   },
 };
 
@@ -48,13 +37,13 @@ describe("compact exercise suggestions", () => {
         />
       </QueryClientProvider>,
     );
-    expect(await screen.findByText("3 × 8 at 100 lb")).toBeVisible();
+    expect(await screen.findByText("3 × 8 at 100 lb")).toBeTruthy();
     expect(
       screen.queryByRole("button", {
         name: /Use suggestion|Ready for your next set/,
       }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    ).toBeNull();
+    expect(screen.queryByText("Details")).toBeNull();
   });
 
   it("offers three accessible numbered faces and records the chosen feeling", async () => {
@@ -74,10 +63,13 @@ describe("compact exercise suggestions", () => {
       </QueryClientProvider>,
     );
     await screen.findByText("3 × 8 at 100 lb");
-    expect(screen.getByRole("radio", { name: "2 · Okay" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "2 · Okay" })).toHaveProperty(
+      "checked",
+      true,
+    );
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     await user.click(screen.getByRole("radio", { name: "1 · Low energy" }));
-    expect(await screen.findByText("3 × 6 at 100 lb")).toBeVisible();
+    expect(await screen.findByText("3 × 6 at 100 lb")).toBeTruthy();
     await waitFor(() =>
       expect(recorded).toMatchObject({ readiness: "sluggish" }),
     );

@@ -43,5 +43,10 @@ function RouteComponent() {
     getWorkoutByIdQueryOptions(user, workoutId),
   );
 
-  return <WorkoutDetailEditable workout={workout} />;
+  return (
+    <WorkoutDetailEditable
+      workout={workout.sets}
+      recommendations={workout.recommendations}
+    />
+  );
 }

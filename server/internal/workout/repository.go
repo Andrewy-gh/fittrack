@@ -204,6 +204,17 @@ func (wr *workoutRepository) GetWorkoutWithSets(ctx context.Context, id int32, u
 	return workoutWithSets, nil
 }
 
+func (wr *workoutRepository) GetWorkoutRecommendationContext(ctx context.Context, id int32, userID string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	raw, err := wr.queries.GetWorkoutRecommendationContext(ctx, db.GetWorkoutRecommendationContextParams{ID: id, UserID: userID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workout recommendations (id: %d): %w", id, err)
+	}
+	return raw, nil
+}
+
 // MARK: SaveWorkout
 func (wr *workoutRepository) SaveWorkout(ctx context.Context, reformatted *ReformattedRequest, userID string) error {
 	_, err := wr.SaveWorkoutWithID(ctx, reformatted, userID)

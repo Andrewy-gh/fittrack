@@ -273,14 +273,6 @@ CREATE TABLE exercise (
     CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name)
 );
 
-CREATE TABLE exercise_prescription (
-    exercise_id INTEGER PRIMARY KEY REFERENCES exercise(id) ON DELETE CASCADE,
-    user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    min_sets INTEGER NOT NULL CHECK (min_sets BETWEEN 1 AND 20),
-    max_sets INTEGER NOT NULL CHECK (max_sets BETWEEN min_sets AND 20),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Sets table
 CREATE TABLE "set" (
     id SERIAL PRIMARY KEY,

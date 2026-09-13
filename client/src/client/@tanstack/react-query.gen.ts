@@ -19,7 +19,6 @@ import {
   getTrainingProfile,
   getWorkouts,
   getWorkoutsById,
-  getWorkoutsByIdRecommendations,
   getWorkoutsContributionData,
   getWorkoutsFocusValues,
   getWorkoutsNewWorkoutContext,
@@ -33,7 +32,6 @@ import {
   postAiConversationsByIdRunsByRunIdStop,
   postExercises,
   postWorkouts,
-  putExercisesByIdPrescription,
   putTrainingProfile,
   putWorkoutsById,
 } from "../sdk.gen";
@@ -75,9 +73,6 @@ import type {
   GetTrainingProfileResponse,
   GetWorkoutsByIdData,
   GetWorkoutsByIdError,
-  GetWorkoutsByIdRecommendationsData,
-  GetWorkoutsByIdRecommendationsError,
-  GetWorkoutsByIdRecommendationsResponse,
   GetWorkoutsByIdResponse,
   GetWorkoutsContributionDataData,
   GetWorkoutsContributionDataError,
@@ -115,8 +110,6 @@ import type {
   PostWorkoutsData,
   PostWorkoutsError,
   PostWorkoutsResponse,
-  PutExercisesByIdPrescriptionData,
-  PutExercisesByIdPrescriptionError,
   PutTrainingProfileData,
   PutTrainingProfileError,
   PutTrainingProfileResponse,
@@ -633,33 +626,6 @@ export const getExercisesByIdMetricsHistoryQueryOptions = (
     queryKey: getExercisesByIdMetricsHistoryQueryKey(options),
   });
 
-/**
- * Save or clear an optional user-entered working-set baseline
- */
-export const putExercisesByIdPrescriptionMutation = (
-  options?: Partial<Options<PutExercisesByIdPrescriptionData>>,
-): UseMutationOptions<
-  unknown,
-  PutExercisesByIdPrescriptionError,
-  Options<PutExercisesByIdPrescriptionData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    unknown,
-    PutExercisesByIdPrescriptionError,
-    Options<PutExercisesByIdPrescriptionData>
-  > = {
-    mutationFn: async (fnOptions) => {
-      const { data } = await putExercisesByIdPrescription({
-        ...options,
-        ...fnOptions,
-        throwOnError: true,
-      });
-      return data;
-    },
-  };
-  return mutationOptions;
-};
-
 export const getExercisesByIdRecentSetsQueryKey = (
   options: Options<GetExercisesByIdRecentSetsData>,
 ) =>
@@ -699,7 +665,7 @@ export const getExercisesByIdRecommendationQueryKey = (
   ]);
 
 /**
- * Recommend today's working sets for an owned exercise
+ * Recommend today's sets, reps, and weight for an owned exercise
  */
 export const getExercisesByIdRecommendationQueryOptions = (
   options: Options<GetExercisesByIdRecommendationData>,
@@ -1046,34 +1012,3 @@ export const putWorkoutsByIdMutation = (
   };
   return mutationOptions;
 };
-
-export const getWorkoutsByIdRecommendationsQueryKey = (
-  options: Options<GetWorkoutsByIdRecommendationsData>,
-) =>
-  createQueryKey("getWorkoutsByIdRecommendations", options, false, [
-    "recommendations",
-  ]);
-
-/**
- * Read the recommendation context recorded when a workout was saved
- */
-export const getWorkoutsByIdRecommendationsQueryOptions = (
-  options: Options<GetWorkoutsByIdRecommendationsData>,
-) =>
-  queryOptions<
-    GetWorkoutsByIdRecommendationsResponse,
-    GetWorkoutsByIdRecommendationsError,
-    GetWorkoutsByIdRecommendationsResponse,
-    ReturnType<typeof getWorkoutsByIdRecommendationsQueryKey>
-  >({
-    queryFn: async ({ queryKey, signal }) => {
-      const { data } = await getWorkoutsByIdRecommendations({
-        ...options,
-        ...queryKey[0],
-        signal,
-        throwOnError: true,
-      });
-      return data;
-    },
-    queryKey: getWorkoutsByIdRecommendationsQueryKey(options),
-  });

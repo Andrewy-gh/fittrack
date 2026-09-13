@@ -211,9 +211,10 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 
 			if tt.expectJSON {
 				assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-				var result []db.GetWorkoutWithSetsRow
+				var result WorkoutDetailResponse
 				err := json.Unmarshal(w.Body.Bytes(), &result)
 				assert.NoError(t, err)
+				assert.Len(t, result.Sets, 1)
 			}
 
 			if tt.expectedError != "" {

@@ -88,6 +88,10 @@ func (m *MockWorkoutRepository) GetWorkoutWithSets(ctx context.Context, id int32
 	return args.Get(0).([]db.GetWorkoutWithSetsRow), args.Error(1)
 }
 
+func (m *MockWorkoutRepository) GetWorkoutRecommendationContext(context.Context, int32, string) ([]byte, error) {
+	return []byte("[]"), nil
+}
+
 func (m *MockWorkoutRepository) UpdateWorkout(ctx context.Context, id int32, reformatted *ReformattedRequest, userID string) error {
 	args := m.Called(ctx, id, reformatted, userID)
 	return args.Error(0)

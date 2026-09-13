@@ -85,14 +85,6 @@ type Exercise struct {
 	UserID                       string             `json:"user_id"`
 }
 
-type ExercisePrescription struct {
-	ExerciseID int32              `json:"exercise_id"`
-	UserID     string             `json:"user_id"`
-	MinSets    int32              `json:"min_sets"`
-	MaxSets    int32              `json:"max_sets"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-}
-
 type Set struct {
 	ID            int32              `json:"id"`
 	ExerciseID    int32              `json:"exercise_id"`

@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Copy, Edit, Trash } from "lucide-react";
 import { DeleteDialog } from "@/features/workouts/components/form/delete-dialog";
-import type { WorkoutWorkoutWithSetsResponse } from "@/client";
+import type {
+  RecommendationSnapshot,
+  WorkoutWorkoutWithSetsResponse,
+} from "@/client";
 import { WorkoutDetailExercises } from "@/features/workouts/components/workout-detail-exercises";
 import { WorkoutDetailHeader } from "@/features/workouts/components/workout-detail-header";
 import { WorkoutDetailSummaryCards } from "@/features/workouts/components/workout-detail-summary-cards";
@@ -17,21 +20,21 @@ import {
 import { toast } from "sonner";
 import { SavedRecommendations } from "@/features/workouts/components/saved-recommendations";
 
-export interface WorkoutDetailProps {
+type WorkoutDetailProps = {
   workout: WorkoutWorkoutWithSetsResponse[];
-}
+  recommendations: RecommendationSnapshot[];
+};
 
 type WorkoutDetailBaseProps = WorkoutDetailProps & {
   headerActions?: ReactNode;
   dialogSlot?: ReactNode;
-  recommendationSlot?: ReactNode;
 };
 
 function WorkoutDetailBase({
   workout,
+  recommendations,
   headerActions,
   dialogSlot,
-  recommendationSlot,
 }: WorkoutDetailBaseProps) {
   if (workout.length === 0) {
     return (
@@ -76,7 +79,7 @@ function WorkoutDetailBase({
           totalVolume={totalVolume}
         />
         <WorkoutDetailExercises workout={workout} />
-        {recommendationSlot}
+        <SavedRecommendations recommendations={recommendations} />
         {dialogSlot}
       </div>
     </main>
@@ -85,6 +88,7 @@ function WorkoutDetailBase({
 
 export function WorkoutDetailEditable({
   workout,
+  recommendations,
   draftStorage = workoutDraftStorage,
 }: WorkoutDetailProps & { draftStorage?: WorkoutDraftStorage }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -92,7 +96,12 @@ export function WorkoutDetailEditable({
   const { user } = useRouteContext({ from: "/_layout/workouts/$workoutId/" });
 
   if (workout.length === 0) {
-    return <WorkoutDetailBase workout={workout} />;
+    return (
+      <WorkoutDetailBase
+        workout={workout}
+        recommendations={recommendations}
+      />
+    );
   }
   const workoutId = workout[0]?.workout_id ?? 0;
 
@@ -118,14 +127,7 @@ export function WorkoutDetailEditable({
   return (
     <WorkoutDetailBase
       workout={workout}
-      recommendationSlot={
-        user ? (
-          <SavedRecommendations
-            workoutId={workoutId}
-            userId={user.id}
-          />
-        ) : undefined
-      }
+      recommendations={recommendations}
       headerActions={
         <>
           <Button

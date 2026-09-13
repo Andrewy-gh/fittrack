@@ -28,13 +28,10 @@ describe("workoutDraftStorage", () => {
         recommendation: {
           exerciseId: 1,
           readiness: "sluggish",
-          range: { min: 2, max: 3 },
-          baseline: { min: 3, max: 4 },
-          source: "prescription",
+          plan: { sets: 2, reps: 6, weight: 50 },
           explanation: "Reduced work",
-          policyVersion: "working-sets-v1",
+          policyVersion: "exercise-plan-v2",
         },
-        feedback: "about_right",
       },
     ];
     draftStorage.save(
