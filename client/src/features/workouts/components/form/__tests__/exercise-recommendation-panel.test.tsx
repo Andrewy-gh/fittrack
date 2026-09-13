@@ -2,142 +2,84 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import type { RecommendationRange, RecommendationSnapshot } from "@/client";
 import type { RecommendationApi } from "@/features/workouts/api/recommendations";
 import { ExerciseRecommendationPanel } from "../exercise-recommendation-panel";
 
-function memoryApi(): RecommendationApi {
-  let baseline: RecommendationRange | null = null;
-  return {
-    async get(exerciseId, readiness) {
-      return {
-        ok: true,
-        value: {
-          exerciseId,
-          readiness,
-          source: baseline ? "prescription" : "none",
-          baseline,
-          range: baseline
-            ? {
-                min:
-                  readiness === "sluggish"
-                    ? Math.max(1, baseline.min - 1)
-                    : baseline.min,
-                max:
-                  readiness === "sluggish"
-                    ? Math.max(1, baseline.max - 1)
-                    : baseline.max,
-              }
-            : null,
-          previous: null,
-          explanation: baseline
-            ? "Use your baseline."
-            : "No eligible recent working-set history.",
-          policyVersion: "working-sets-v1",
+const api: RecommendationApi = {
+  async get(exerciseId, readiness) {
+    return {
+      ok: true,
+      value: {
+        exerciseId,
+        readiness,
+        source: "history",
+        baseline: { min: 3, max: 3 },
+        range: { min: 3, max: 3 },
+        plan: {
+          sets: 3,
+          reps: readiness === "great" ? 9 : readiness === "sluggish" ? 6 : 8,
+          weight: 100,
+          goal: "strength",
+          experience: "intermediate",
         },
-      };
-    },
-    async prescribe(_id, next) {
-      baseline = next;
-      return { ok: true, value: null };
-    },
-    async saved() {
-      return { ok: true, value: [] };
-    },
-  };
-}
+        explanation: "Repeat your last working sets.",
+        policyVersion: "exercise-plan-v2",
+      },
+    };
+  },
+  async prescribe() {
+    return { ok: true, value: null };
+  },
+  async saved() {
+    return { ok: true, value: [] };
+  },
+};
 
-describe("exercise recommendation controls", () => {
-  it("persists an explicit baseline and records readiness and optional feedback independently", async () => {
-    const api = memoryApi();
-    const user = userEvent.setup();
-    let recorded: RecommendationSnapshot | null = null;
-    const view = () =>
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <ExerciseRecommendationPanel
-            exerciseId={1}
-            exerciseName="Press"
-            userId="owner"
-            api={api}
-            onChange={(exerciseName, recommendation, feedback) => {
-              recorded = recommendation
-                ? { exerciseName, recommendation, feedback }
-                : null;
-            }}
-          />
-        </QueryClientProvider>,
-      );
-    const first = view();
-    expect(await screen.findByText("No suggestion yet")).toBeInTheDocument();
-    await user.type(
-      screen.getByRole("spinbutton", { name: "Minimum sets" }),
-      "3",
-    );
-    await user.type(
-      screen.getByRole("spinbutton", { name: "Maximum sets" }),
-      "4",
-    );
-    await user.click(screen.getByRole("button", { name: "Save my range" }));
-    expect(await screen.findByText("Try 3–4 working sets")).toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: "Great" }));
-    expect(await screen.findByText("Try 3–4 working sets")).toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: "Sluggish" }));
-    expect(await screen.findByText("Try 2–3 working sets")).toBeInTheDocument();
-    await user.selectOptions(
-      screen.getByRole("combobox", {
-        name: "How did that amount feel? (optional)",
-      }),
-      "about_right",
-    );
-    await waitFor(() =>
-      expect(recorded).toMatchObject({
-        exerciseName: "Press",
-        feedback: "about_right",
-        recommendation: {
-          readiness: "sluggish",
-          range: { min: 2, max: 3 },
-          baseline: { min: 3, max: 4 },
-          source: "prescription",
-        },
-      }),
-    );
-    first.unmount();
-    view();
-    expect(await screen.findByText("Try 3–4 working sets")).toBeInTheDocument();
-    expect(
-      screen.getByRole("spinbutton", { name: "Minimum sets" }),
-    ).toHaveValue(3);
-    await user.click(screen.getByRole("button", { name: "Use recent sets" }));
-    expect(await screen.findByText("No suggestion yet")).toBeInTheDocument();
-  });
-
-  it("rejects invalid baseline ranges while leaving guidance available", async () => {
+describe("compact exercise suggestions", () => {
+  it("shows guidance without an apply button or extra details", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
         <ExerciseRecommendationPanel
           exerciseId={1}
           exerciseName="Press"
           userId="owner"
-          api={memoryApi()}
+          api={api}
           onChange={() => undefined}
         />
       </QueryClientProvider>,
     );
+    expect(await screen.findByText("3 × 8 at 100 lb")).toBeVisible();
+    expect(
+      screen.queryByRole("button", {
+        name: /Use suggestion|Ready for your next set/,
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+  });
+
+  it("offers three accessible numbered faces and records the chosen feeling", async () => {
     const user = userEvent.setup();
-    await screen.findByText("No suggestion yet");
-    await user.type(
-      screen.getByRole("spinbutton", { name: "Minimum sets" }),
-      "5",
+    let recorded: unknown;
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ExerciseRecommendationPanel
+          exerciseId={1}
+          exerciseName="Press"
+          userId="owner"
+          api={api}
+          onChange={(_name, result) => {
+            recorded = result;
+          }}
+        />
+      </QueryClientProvider>,
     );
-    await user.type(
-      screen.getByRole("spinbutton", { name: "Maximum sets" }),
-      "2",
+    await screen.findByText("3 × 8 at 100 lb");
+    expect(screen.getByRole("radio", { name: "2 · Okay" })).toBeChecked();
+    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    await user.click(screen.getByRole("radio", { name: "1 · Low energy" }));
+    expect(await screen.findByText("3 × 6 at 100 lb")).toBeVisible();
+    await waitFor(() =>
+      expect(recorded).toMatchObject({ readiness: "sluggish" }),
     );
-    await user.click(screen.getByRole("button", { name: "Save my range" }));
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Choose 1–20 sets. The maximum must be at least the minimum.",
-    );
-    expect(screen.getByText("No suggestion yet")).toBeInTheDocument();
   });
 });

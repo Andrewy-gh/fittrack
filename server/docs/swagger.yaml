@@ -426,6 +426,23 @@ definitions:
     - source
     - starts_at
     type: object
+  recommendation.Plan:
+    properties:
+      experience:
+        type: string
+      goal:
+        type: string
+      reps:
+        type: integer
+      sets:
+        type: integer
+      weight:
+        type: number
+        x-nullable: true
+    required:
+    - reps
+    - sets
+    type: object
   recommendation.PrescriptionRequest:
     properties:
       baseline:
@@ -453,6 +470,8 @@ definitions:
         type: integer
       explanation:
         type: string
+      plan:
+        $ref: '#/definitions/recommendation.Plan'
       policyVersion:
         type: string
       previous:

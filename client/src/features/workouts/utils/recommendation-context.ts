@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-/** Readiness affects working-set counts only. */
+/** How the user feels for this exercise today. */
 export type Readiness = "sluggish" | "normal" | "great";
 /** Optional retrospective feedback saved with the displayed recommendation. */
 export type ExerciseFeedback = "" | "too_little" | "about_right" | "too_much";
@@ -15,6 +15,15 @@ const rangeSchema = v.pipe(
 
 /** Parses guidance at API and draft-storage boundaries. */
 export const recommendationSchema = v.object({
+  plan: v.optional(
+    v.object({
+      sets: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(20)),
+      reps: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(100)),
+      weight: v.nullish(v.pipe(v.number(), v.minValue(0), v.maxValue(10000))),
+      goal: v.optional(v.string()),
+      experience: v.optional(v.string()),
+    }),
+  ),
   exerciseId: v.pipe(v.number(), v.integer(), v.minValue(1)),
   readiness: v.picklist(["sluggish", "normal", "great"]),
   range: v.nullish(rangeSchema),

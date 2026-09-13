@@ -208,6 +208,14 @@ export type FeatureaccessFeatureAccessResponse = {
   starts_at: string;
 };
 
+export type RecommendationPlan = {
+  experience?: string;
+  goal?: string;
+  reps: number;
+  sets: number;
+  weight?: number | null;
+};
+
 export type RecommendationPrescriptionRequest = {
   baseline?: RecommendationRange | null;
 };
@@ -221,6 +229,7 @@ export type RecommendationResult = {
   baseline?: RecommendationRange | null;
   exerciseId: number;
   explanation: string;
+  plan?: RecommendationPlan;
   policyVersion: string;
   previous?: RecommendationSession | null;
   range?: RecommendationRange | null;

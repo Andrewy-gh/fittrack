@@ -219,6 +219,7 @@ export {
   type PutWorkoutsByIdError,
   type PutWorkoutsByIdErrors,
   type PutWorkoutsByIdResponses,
+  type RecommendationPlan,
   type RecommendationPrescriptionRequest,
   type RecommendationRange,
   type RecommendationResult,

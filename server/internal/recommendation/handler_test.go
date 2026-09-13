@@ -17,11 +17,11 @@ import (
 
 type ownedRepository struct{ baseline *recommendation.Range }
 
-func (r *ownedRepository) Load(_ context.Context, owner string, id int32, _ time.Time) (*recommendation.Range, *recommendation.Session, error) {
+func (r *ownedRepository) Load(_ context.Context, owner string, id int32, _ time.Time) (recommendation.TrainingContext, error) {
 	if owner != "owner" || id != 1 {
-		return nil, nil, recommendation.ErrNotFound
+		return recommendation.TrainingContext{}, recommendation.ErrNotFound
 	}
-	return r.baseline, nil, nil
+	return recommendation.TrainingContext{Baseline: r.baseline}, nil
 }
 func (r *ownedRepository) SavePrescription(_ context.Context, owner string, id int32, baseline *recommendation.Range) error {
 	if owner != "owner" || id != 1 {

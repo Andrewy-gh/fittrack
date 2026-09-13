@@ -18,7 +18,7 @@ FROM workout w JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
 WHERE s.exercise_id = sqlc.arg(exercise_id) AND w.user_id = sqlc.arg(user_id) AND w.date <= sqlc.arg(as_of)
 GROUP BY w.id, w.date
 ORDER BY w.date DESC, w.id DESC
-LIMIT 1;
+LIMIT 2;
 
 -- name: SaveWorkoutRecommendationContext :exec
 UPDATE workout SET recommendation_context = sqlc.arg(recommendation_context)::text::jsonb

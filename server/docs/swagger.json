@@ -2466,6 +2466,31 @@
                 }
             }
         },
+        "recommendation.Plan": {
+            "type": "object",
+            "required": [
+                "reps",
+                "sets"
+            ],
+            "properties": {
+                "experience": {
+                    "type": "string"
+                },
+                "goal": {
+                    "type": "string"
+                },
+                "reps": {
+                    "type": "integer"
+                },
+                "sets": {
+                    "type": "integer"
+                },
+                "weight": {
+                    "type": "number",
+                    "x-nullable": true
+                }
+            }
+        },
         "recommendation.PrescriptionRequest": {
             "type": "object",
             "properties": {
@@ -2517,6 +2542,9 @@
                 },
                 "explanation": {
                     "type": "string"
+                },
+                "plan": {
+                    "$ref": "#/definitions/recommendation.Plan"
                 },
                 "policyVersion": {
                     "type": "string"

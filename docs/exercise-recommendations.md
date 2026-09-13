@@ -1,3 +1,21 @@
+## Review update: sets, reps, and weight
+
+The exercise card shows the suggestion and three numbered faces (1: low energy, 2: okay, 3: feeling good). There is no apply button; the user logs actual sets normally. The previous Details section, set-range editor, and feedback control are removed from this card; existing saved ranges and feedback remain preserved.
+
+The current `exercise-plan-v2` suggestion adds a compact plan to the existing saved recommendation snapshot. Existing `working-sets-v1` snapshots still load unchanged.
+
+- Uses the authenticated owner's goal, experience, avoided exercises, movement limitations, and last two exact-exercise sessions at or before now. History expires after 28 days. Warm-ups are excluded; a latest warm-up-only workout does not fall back to an older load.
+- Goal sets a progression target: strength with intermediate/advanced experience uses 5–8 reps; endurance 12–15; other/missing goals or beginner strength use 8–12. These are explicit product defaults, not an individualized training program. No-history starting count is two sets, or three for intermediate/advanced. A saved set range still wins; its minimum is the plan's count.
+- Normal repeats the minimum completed reps at the same uniform working weight. Great offers one extra rep below the target ceiling, without simultaneously increasing sets. Sluggish removes up to two reps and one set, flooring both at one.
+- Two distinct recent workouts, each with at least two working sets at the same load and all reps at the target ceiling, allow a 2.5 lb increase (only for prior loads 50–2000 lb) and a return to the lower rep target. The planned set count must not exceed the latest count. The user selects the closest available load. Mixed/unknown weights and missing/stale history require the user to choose weight; no load is inferred from body size or experience.
+- A listed movement limitation or an exact exercise-name match in avoided exercises suppresses the plan; free-text limitations are not interpreted as medical advice. Duration, equipment, location, and retrospective feedback do not currently change the calculation. This is not a whole-workout volume planner.
+- The profile's primary goal is used (first goal if the primary field is absent). The goal and experience used remain part of the stored plan.
+- Suggestions are advisory. They never insert or prefill actual sets. Saved snapshots include the complete plan separately from actual work.
+
+Progression design reference: [ACSM progression guidance](https://pubmed.ncbi.nlm.nih.gov/19204579/). The exact thresholds above are conservative product choices and are not a validated coaching algorithm.
+
+---
+
 # Exercise working-set guidance
 
 This first slice separates a durable baseline prescription, today's displayed recommendation, and the sets actually logged. It adds no reps, weights, RIR, muscle classifications, progression, or AI calls. Training Profile remains optional and is not an input to this policy.

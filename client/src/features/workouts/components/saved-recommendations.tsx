@@ -1,24 +1,34 @@
 import { useQuery } from "@tanstack/react-query";
+
 import { Card, CardContent } from "@/components/ui/card";
+
 import { recommendationApi } from "@/features/workouts/api/recommendations";
 
 /** Displays the snapshot recorded at save time, without applying the current policy again. */
+
 export function SavedRecommendations({
   workoutId,
+
   userId,
 }: {
   workoutId: number;
+
   userId: string;
 }) {
   const query = useQuery({
     queryKey: ["saved-recommendations", userId, workoutId],
+
     queryFn: ({ signal }) => recommendationApi.saved(workoutId, signal),
   });
+
   if (query.isPending)
     return <p className="text-sm">Loading saved suggestions…</p>;
+
   if (!query.data?.ok)
     return <p className="text-sm">We couldn’t load the saved suggestions.</p>;
+
   if (query.data.value.length === 0) return null;
+
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
@@ -35,9 +45,11 @@ export function SavedRecommendations({
               <h3 className="font-medium">{exerciseName}</h3>
               <p>How you felt: {result.readiness}</p>
               <p>
-                {result.range
-                  ? `Suggested: ${result.range.min}–${result.range.max} working sets`
-                  : "No sets were suggested"}
+                {result.plan
+                  ? `Suggested: ${result.plan.sets} × ${result.plan.reps}${result.plan.weight != null ? ` at ${result.plan.weight} lb` : " · choose weight"}`
+                  : result.range
+                    ? `Suggested: ${result.range.min}–${result.range.max} working sets`
+                    : "No sets were suggested"}
               </p>
               <p>
                 Based on:{" "}

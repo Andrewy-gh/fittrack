@@ -13,7 +13,7 @@ var ErrNotFound = errors.New("exercise or workout not found")
 var ErrInvalid = errors.New("working-set baseline must be an ordered range from 1 to 20")
 
 type Repository interface {
-	Load(context.Context, string, int32, time.Time) (*Range, *Session, error)
+	Load(context.Context, string, int32, time.Time) (TrainingContext, error)
 	SavePrescription(context.Context, string, int32, *Range) error
 	Saved(context.Context, string, int32) ([]Snapshot, error)
 }
@@ -33,11 +33,11 @@ func (s *Service) Get(ctx context.Context, exerciseID int32, readiness string) (
 		return Result{}, ErrUnauthorized
 	}
 	now := s.now()
-	baseline, previous, err := s.repo.Load(ctx, owner, exerciseID, now)
+	context, err := s.repo.Load(ctx, owner, exerciseID, now)
 	if err != nil {
 		return Result{}, err
 	}
-	result := Recommend(now, baseline, previous, readiness)
+	result := RecommendTraining(now, context, readiness)
 	result.ExerciseID = exerciseID
 	return result, nil
 }

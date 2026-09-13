@@ -3,6 +3,7 @@ package recommendation
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -26,6 +27,7 @@ type Session struct {
 }
 
 type Result struct {
+	Plan          *Plan    `json:"plan,omitempty"`
 	ExerciseID    int32    `json:"exerciseId" validate:"required"`
 	Readiness     string   `json:"readiness" validate:"required"`
 	Range         *Range   `json:"range" extensions:"x-nullable"`
@@ -78,8 +80,19 @@ func Recommend(now time.Time, prescription *Range, previous *Session, readiness 
 // ValidateSnapshot validates the recorded display without consulting today's prescription or history.
 func ValidateSnapshot(s Snapshot) error {
 	r := s.Recommendation
-	if s.ExerciseName == "" || r.ExerciseID <= 0 || r.PolicyVersion != PolicyVersion {
+	if s.ExerciseName == "" || r.ExerciseID <= 0 || (r.PolicyVersion != PolicyVersion && r.PolicyVersion != "exercise-plan-v2") {
 		return fmt.Errorf("invalid recommendation identity or policy")
+	}
+	if p := r.Plan; p != nil {
+		if r.PolicyVersion != "exercise-plan-v2" || p.Sets < 1 || p.Sets > MaxSets || p.Reps < 1 || p.Reps > 100 || len(p.Goal) > 64 || len(p.Experience) > 64 {
+			return fmt.Errorf("invalid plan")
+		}
+		if p.Weight != nil && (math.IsNaN(*p.Weight) || math.IsInf(*p.Weight, 0) || *p.Weight < 0 || *p.Weight > 10000) {
+			return fmt.Errorf("invalid weight")
+		}
+		if r.Range != nil && p.Sets != r.Range.Min {
+			return fmt.Errorf("plan does not match suggested set count")
+		}
 	}
 	if s.Feedback != "" && s.Feedback != "too_little" && s.Feedback != "about_right" && s.Feedback != "too_much" {
 		return fmt.Errorf("invalid exercise feedback")

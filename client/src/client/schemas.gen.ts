@@ -594,6 +594,29 @@ export const featureaccess_FeatureAccessResponseSchema = {
   },
 } as const;
 
+export const recommendation_PlanSchema = {
+  type: "object",
+  required: ["reps", "sets"],
+  properties: {
+    experience: {
+      type: "string",
+    },
+    goal: {
+      type: "string",
+    },
+    reps: {
+      type: "integer",
+    },
+    sets: {
+      type: "integer",
+    },
+    weight: {
+      type: "number",
+      "x-nullable": true,
+    },
+  },
+} as const;
+
 export const recommendation_PrescriptionRequestSchema = {
   type: "object",
   properties: {
@@ -644,6 +667,9 @@ export const recommendation_ResultSchema = {
     },
     explanation: {
       type: "string",
+    },
+    plan: {
+      $ref: "#/definitions/recommendation.Plan",
     },
     policyVersion: {
       type: "string",

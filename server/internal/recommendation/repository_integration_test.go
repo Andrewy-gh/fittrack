@@ -117,4 +117,28 @@ func TestRecommendationPersistenceWithRLS(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, result.Range, "a warm-up-only latest session is not a working baseline")
 	require.Zero(t, result.Previous.WorkingSets)
+	// Profile and complete working-set history drive the v2 plan under the same RLS boundary.
+	_, err = tx.Exec(ctx, `INSERT INTO user_training_profile(user_id,primary_goal,goals,experience_level) VALUES($1,'strength',ARRAY['strength'],'intermediate')`, owner)
+	require.NoError(t, err)
+	now = now.Add(24 * time.Hour)
+	weight := 100.0
+	loaded := workout.SetInput{Weight: &weight, Reps: 8, SetType: "working"}
+	save(now.Add(-2*time.Hour), []workout.SetInput{warmup, loaded, loaded}, nil)
+	save(now.Add(-time.Hour), []workout.SetInput{loaded, loaded}, nil)
+	result, err = service.Get(ownerContext, press.ID, "normal")
+	require.NoError(t, err)
+	require.Equal(t, "strength", result.Plan.Goal)
+	require.Equal(t, 102.5, *result.Plan.Weight)
+	require.Equal(t, 5, result.Plan.Reps)
+	snapshot = recommendation.Snapshot{ExerciseName: press.Name, Recommendation: result}
+	planID := save(now, []workout.SetInput{loaded}, []recommendation.Snapshot{snapshot})
+	recorded, err = service.Saved(ownerContext, planID)
+	require.NoError(t, err)
+	require.Equal(t, snapshot, recorded[0])
+	_, err = tx.Exec(ctx, `UPDATE user_training_profile SET movement_limitations='["shoulder discomfort"]' WHERE user_id=$1`, owner)
+	require.NoError(t, err)
+	result, err = service.Get(ownerContext, press.ID, "normal")
+	require.NoError(t, err)
+	require.Nil(t, result.Plan)
+
 }

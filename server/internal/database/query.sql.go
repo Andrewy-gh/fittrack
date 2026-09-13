@@ -1878,7 +1878,7 @@ FROM workout w JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
 WHERE s.exercise_id = $1 AND w.user_id = $2 AND w.date <= $3
 GROUP BY w.id, w.date
 ORDER BY w.date DESC, w.id DESC
-LIMIT 1
+LIMIT 2
 `
 
 type GetRecommendationHistoryParams struct {
