@@ -12,6 +12,7 @@ import {
   getAiConversationsById,
   getExercises,
   getExercisesById,
+  getExercisesByIdGoalCheck,
   getExercisesByIdMetricsHistory,
   getExercisesByIdRecentSets,
   getExercisesByIdRecommendation,
@@ -52,6 +53,9 @@ import type {
   GetAiConversationsResponse,
   GetExercisesByIdData,
   GetExercisesByIdError,
+  GetExercisesByIdGoalCheckData,
+  GetExercisesByIdGoalCheckError,
+  GetExercisesByIdGoalCheckResponse,
   GetExercisesByIdMetricsHistoryData,
   GetExercisesByIdMetricsHistoryError,
   GetExercisesByIdMetricsHistoryResponse,
@@ -563,6 +567,34 @@ export const patchExercisesByIdMutation = (
   };
   return mutationOptions;
 };
+
+export const getExercisesByIdGoalCheckQueryKey = (
+  options: Options<GetExercisesByIdGoalCheckData>,
+) => createQueryKey("getExercisesByIdGoalCheck", options, false, ["exercises"]);
+
+/**
+ * Compare logged exercise training with general strength references
+ */
+export const getExercisesByIdGoalCheckQueryOptions = (
+  options: Options<GetExercisesByIdGoalCheckData>,
+) =>
+  queryOptions<
+    GetExercisesByIdGoalCheckResponse,
+    GetExercisesByIdGoalCheckError,
+    GetExercisesByIdGoalCheckResponse,
+    ReturnType<typeof getExercisesByIdGoalCheckQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getExercisesByIdGoalCheck({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getExercisesByIdGoalCheckQueryKey(options),
+  });
 
 /**
  * Update exercise historical 1RM

@@ -1,3 +1,4 @@
+import { invalidateGoalChecks } from "@/features/exercises/api/goal-check-cache";
 import { useMutation } from "@tanstack/react-query";
 import type { ApplicationUser } from "@/lib/application-user";
 import { queryClient } from "@/lib/api/api";
@@ -60,6 +61,7 @@ export function contributionDataQueryOptions() {
 }
 
 function invalidateWorkoutAnalyticsQueries() {
+  void invalidateGoalChecks(queryClient);
   queryClient.invalidateQueries({
     queryKey: getWorkoutsContributionDataQueryKey(),
   });

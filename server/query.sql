@@ -1659,3 +1659,20 @@ RETURNING
     updated_at,
     started_at,
     completed_at;
+
+-- name: GetExerciseGoalCheck :many
+WITH recent_sets AS (
+    SELECT s.id, s.workout_id, w.date, s.weight, s.reps
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+    WHERE s.exercise_id = sqlc.arg(exercise_id) AND s.user_id = sqlc.arg(user_id)
+      AND s.set_type = 'working' AND s.reps > 0
+      AND w.date >= sqlc.arg(window_start) AND w.date <= sqlc.arg(as_of)
+)
+SELECT e.historical_1rm, e.historical_1rm_updated_at, e.historical_1rm_source_workout_id,
+       p.primary_goal, p.goals, r.id AS set_id, r.workout_id, r.date, r.weight, r.reps
+FROM exercise e
+LEFT JOIN user_training_profile p ON p.user_id = e.user_id
+LEFT JOIN recent_sets r ON TRUE
+WHERE e.id = sqlc.arg(exercise_id) AND e.user_id = sqlc.arg(user_id)
+ORDER BY r.date, r.workout_id, r.id;

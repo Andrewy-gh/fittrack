@@ -1274,6 +1274,80 @@ func (q *Queries) GetExerciseDetail(ctx context.Context, arg GetExerciseDetailPa
 	return i, err
 }
 
+const getExerciseGoalCheck = `-- name: GetExerciseGoalCheck :many
+WITH recent_sets AS (
+    SELECT s.id, s.workout_id, w.date, s.weight, s.reps
+    FROM "set" s
+    JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+    WHERE s.exercise_id = $1 AND s.user_id = $2
+      AND s.set_type = 'working' AND s.reps > 0
+      AND w.date >= $3 AND w.date <= $4
+)
+SELECT e.historical_1rm, e.historical_1rm_updated_at, e.historical_1rm_source_workout_id,
+       p.primary_goal, p.goals, r.id AS set_id, r.workout_id, r.date, r.weight, r.reps
+FROM exercise e
+LEFT JOIN user_training_profile p ON p.user_id = e.user_id
+LEFT JOIN recent_sets r ON TRUE
+WHERE e.id = $1 AND e.user_id = $2
+ORDER BY r.date, r.workout_id, r.id
+`
+
+type GetExerciseGoalCheckParams struct {
+	ExerciseID  int32              `json:"exercise_id"`
+	UserID      string             `json:"user_id"`
+	WindowStart pgtype.Timestamptz `json:"window_start"`
+	AsOf        pgtype.Timestamptz `json:"as_of"`
+}
+
+type GetExerciseGoalCheckRow struct {
+	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`
+	Historical1rmUpdatedAt       pgtype.Timestamptz `json:"historical_1rm_updated_at"`
+	Historical1rmSourceWorkoutID pgtype.Int4        `json:"historical_1rm_source_workout_id"`
+	PrimaryGoal                  pgtype.Text        `json:"primary_goal"`
+	Goals                        []string           `json:"goals"`
+	SetID                        pgtype.Int4        `json:"set_id"`
+	WorkoutID                    pgtype.Int4        `json:"workout_id"`
+	Date                         pgtype.Timestamptz `json:"date"`
+	Weight                       pgtype.Numeric     `json:"weight"`
+	Reps                         pgtype.Int4        `json:"reps"`
+}
+
+func (q *Queries) GetExerciseGoalCheck(ctx context.Context, arg GetExerciseGoalCheckParams) ([]GetExerciseGoalCheckRow, error) {
+	rows, err := q.db.Query(ctx, getExerciseGoalCheck,
+		arg.ExerciseID,
+		arg.UserID,
+		arg.WindowStart,
+		arg.AsOf,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetExerciseGoalCheckRow
+	for rows.Next() {
+		var i GetExerciseGoalCheckRow
+		if err := rows.Scan(
+			&i.Historical1rm,
+			&i.Historical1rmUpdatedAt,
+			&i.Historical1rmSourceWorkoutID,
+			&i.PrimaryGoal,
+			&i.Goals,
+			&i.SetID,
+			&i.WorkoutID,
+			&i.Date,
+			&i.Weight,
+			&i.Reps,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExerciseMetricsHistoryRaw6M = `-- name: GetExerciseMetricsHistoryRaw6M :many
 WITH working_sets AS (
     SELECT

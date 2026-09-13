@@ -1,3 +1,4 @@
+import { ExerciseGoalCheck } from "@/features/exercises/components/exercise-goal-check";
 import { useMemo, useState } from "react";
 import { ArrowDownAz, ArrowUpAz } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -157,6 +158,12 @@ export function ExerciseDetail({
         <ExerciseGoalsCard
           exerciseId={exerciseId}
           exerciseName={exerciseName}
+        />
+
+        <ExerciseGoalCheck
+          exerciseId={exerciseId}
+          userId={exercise.user_id}
+          isDemoMode={isDemoMode}
         />
 
         <ExerciseSummaryCards

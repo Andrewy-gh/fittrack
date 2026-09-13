@@ -1,3 +1,4 @@
+import { invalidateGoalChecks } from "@/features/exercises/api/goal-check-cache";
 import {
   queryOptions,
   useMutation,
@@ -66,6 +67,7 @@ export function useUpdateTrainingProfileMutation(userId: string) {
     mutationFn: updateTrainingProfile,
     meta: { skipGlobalErrorHandler: true },
     onSuccess: (profile) => {
+      void invalidateGoalChecks(queryClient);
       queryClient.setQueryData(trainingProfileQueryKey, profile);
       queryClient.invalidateQueries({ queryKey: trainingProfileQueryKey });
     },

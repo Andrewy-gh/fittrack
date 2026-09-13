@@ -167,6 +167,48 @@ export type ExerciseExerciseWithSetsResponse = {
   workout_notes?: string;
 };
 
+export type ExerciseGoalCheckFrequency = {
+  reference_min: number;
+  status: string;
+  training_days: number;
+};
+
+export type ExerciseGoalCheckLoading = {
+  percent_max?: number | null;
+  percent_min?: number | null;
+  reference?: ExerciseGoalCheckReference | null;
+  reps_max?: number | null;
+  reps_min?: number | null;
+  sets_with_load: number;
+};
+
+export type ExerciseGoalCheckReference = {
+  origin: string;
+  source_workout_id?: number | null;
+  updated_at?: string | null;
+  value: number;
+};
+
+export type ExerciseGoalCheckSession = {
+  date: string;
+  working_sets: number;
+  workout_id: number;
+};
+
+export type ExerciseGoalCheckSets = {
+  average?: number | null;
+  reference_max: number;
+  reference_min: number;
+  status: string;
+  total: number;
+};
+
+export type ExerciseGoalCheckWindow = {
+  end: string;
+  start: string;
+  timezone: string;
+};
+
 export const ExerciseMetricsHistoryBucket = {
   /**
    * MetricsHistoryBucketWorkout
@@ -186,6 +228,17 @@ export type ExerciseRecentSetsResponse = {
   weight?: number;
   workout_date: string;
   workout_id: number;
+};
+
+export type ExerciseStrengthGoalCheck = {
+  applicable: boolean;
+  exercise_id: number;
+  frequency: ExerciseGoalCheckFrequency;
+  loading: ExerciseGoalCheckLoading;
+  policy_version: string;
+  sessions: Array<ExerciseGoalCheckSession>;
+  window: ExerciseGoalCheckWindow;
+  working_sets: ExerciseGoalCheckSets;
 };
 
 export type ExerciseUpdateExerciseHistorical1RmRequest = {
@@ -1070,6 +1123,55 @@ export type PatchExercisesByIdResponses = {
    */
   204: unknown;
 };
+
+export type GetExercisesByIdGoalCheckData = {
+  body?: never;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: {
+    /**
+     * IANA timezone (default UTC)
+     */
+    timezone?: string;
+  };
+  url: "/exercises/{id}/goal-check";
+};
+
+export type GetExercisesByIdGoalCheckErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetExercisesByIdGoalCheckError =
+  GetExercisesByIdGoalCheckErrors[keyof GetExercisesByIdGoalCheckErrors];
+
+export type GetExercisesByIdGoalCheckResponses = {
+  /**
+   * OK
+   */
+  200: ExerciseStrengthGoalCheck;
+};
+
+export type GetExercisesByIdGoalCheckResponse =
+  GetExercisesByIdGoalCheckResponses[keyof GetExercisesByIdGoalCheckResponses];
 
 export type PatchExercisesByIdHistorical1RmData = {
   /**

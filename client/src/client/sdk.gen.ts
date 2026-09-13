@@ -27,6 +27,9 @@ import type {
   GetAiConversationsResponses,
   GetExercisesByIdData,
   GetExercisesByIdErrors,
+  GetExercisesByIdGoalCheckData,
+  GetExercisesByIdGoalCheckErrors,
+  GetExercisesByIdGoalCheckResponses,
   GetExercisesByIdMetricsHistoryData,
   GetExercisesByIdMetricsHistoryErrors,
   GetExercisesByIdMetricsHistoryResponses,
@@ -441,6 +444,22 @@ export const patchExercisesById = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+
+/**
+ * Compare logged exercise training with general strength references
+ */
+export const getExercisesByIdGoalCheck = <ThrowOnError extends boolean = false>(
+  options: Options<GetExercisesByIdGoalCheckData, ThrowOnError>,
+) =>
+  (options.client ?? client).get<
+    GetExercisesByIdGoalCheckResponses,
+    GetExercisesByIdGoalCheckErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/exercises/{id}/goal-check",
+    ...options,
   });
 
 /**

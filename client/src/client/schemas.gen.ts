@@ -484,6 +484,132 @@ export const exercise_ExerciseWithSetsResponseSchema = {
   },
 } as const;
 
+export const exercise_GoalCheckFrequencySchema = {
+  type: "object",
+  required: ["reference_min", "status", "training_days"],
+  properties: {
+    reference_min: {
+      type: "integer",
+    },
+    status: {
+      type: "string",
+    },
+    training_days: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const exercise_GoalCheckLoadingSchema = {
+  type: "object",
+  required: ["sets_with_load"],
+  properties: {
+    percent_max: {
+      type: "number",
+      "x-nullable": true,
+    },
+    percent_min: {
+      type: "number",
+      "x-nullable": true,
+    },
+    reference: {
+      allOf: [
+        {
+          $ref: "#/definitions/exercise.GoalCheckReference",
+        },
+      ],
+      "x-nullable": true,
+    },
+    reps_max: {
+      type: "integer",
+      "x-nullable": true,
+    },
+    reps_min: {
+      type: "integer",
+      "x-nullable": true,
+    },
+    sets_with_load: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const exercise_GoalCheckReferenceSchema = {
+  type: "object",
+  required: ["origin", "value"],
+  properties: {
+    origin: {
+      type: "string",
+    },
+    source_workout_id: {
+      type: "integer",
+      "x-nullable": true,
+    },
+    updated_at: {
+      type: "string",
+      "x-nullable": true,
+    },
+    value: {
+      type: "number",
+    },
+  },
+} as const;
+
+export const exercise_GoalCheckSessionSchema = {
+  type: "object",
+  required: ["date", "working_sets", "workout_id"],
+  properties: {
+    date: {
+      type: "string",
+    },
+    working_sets: {
+      type: "integer",
+    },
+    workout_id: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const exercise_GoalCheckSetsSchema = {
+  type: "object",
+  required: ["reference_max", "reference_min", "status", "total"],
+  properties: {
+    average: {
+      type: "number",
+      "x-nullable": true,
+    },
+    reference_max: {
+      type: "integer",
+    },
+    reference_min: {
+      type: "integer",
+    },
+    status: {
+      type: "string",
+    },
+    total: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const exercise_GoalCheckWindowSchema = {
+  type: "object",
+  required: ["end", "start", "timezone"],
+  properties: {
+    end: {
+      type: "string",
+    },
+    start: {
+      type: "string",
+    },
+    timezone: {
+      type: "string",
+    },
+  },
+} as const;
+
 export const exercise_MetricsHistoryBucketSchema = {
   type: "string",
   enum: ["workout"],
@@ -525,6 +651,49 @@ export const exercise_RecentSetsResponseSchema = {
     workout_id: {
       type: "integer",
       example: 1,
+    },
+  },
+} as const;
+
+export const exercise_StrengthGoalCheckSchema = {
+  type: "object",
+  required: [
+    "applicable",
+    "exercise_id",
+    "frequency",
+    "loading",
+    "policy_version",
+    "sessions",
+    "window",
+    "working_sets",
+  ],
+  properties: {
+    applicable: {
+      type: "boolean",
+    },
+    exercise_id: {
+      type: "integer",
+    },
+    frequency: {
+      $ref: "#/definitions/exercise.GoalCheckFrequency",
+    },
+    loading: {
+      $ref: "#/definitions/exercise.GoalCheckLoading",
+    },
+    policy_version: {
+      type: "string",
+    },
+    sessions: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/exercise.GoalCheckSession",
+      },
+    },
+    window: {
+      $ref: "#/definitions/exercise.GoalCheckWindow",
+    },
+    working_sets: {
+      $ref: "#/definitions/exercise.GoalCheckSets",
     },
   },
 } as const;

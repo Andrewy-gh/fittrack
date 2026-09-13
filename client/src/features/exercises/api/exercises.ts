@@ -1,3 +1,4 @@
+import { invalidateGoalChecks } from "@/features/exercises/api/goal-check-cache";
 import { queryClient } from "@/lib/api/api";
 import { useMutation } from "@tanstack/react-query";
 import type { ExerciseExerciseResponse } from "@/client";
@@ -63,6 +64,7 @@ function isMetricsHistoryQueryForExercise(
 }
 
 function invalidateExerciseDetail(id: number) {
+  void invalidateGoalChecks(queryClient);
   queryClient.invalidateQueries({
     queryKey: getExercisesQueryKey(),
   });
@@ -126,6 +128,7 @@ export function useUpdateExerciseHistorical1RmMutation() {
   return useMutation({
     ...patchExercisesByIdHistorical1RmMutation(),
     onSuccess: (_, { path: { id } }) => {
+      void invalidateGoalChecks(queryClient);
       // GET /exercises/{id} now carries historical_1rm fields; keep it fresh.
       queryClient.invalidateQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id } }),
