@@ -594,6 +594,143 @@ export const featureaccess_FeatureAccessResponseSchema = {
   },
 } as const;
 
+export const recommendation_PlanSchema = {
+  type: "object",
+  required: ["reps", "sets"],
+  properties: {
+    experience: {
+      type: "string",
+    },
+    goal: {
+      type: "string",
+    },
+    reps: {
+      type: "integer",
+    },
+    sets: {
+      type: "integer",
+    },
+    weight: {
+      type: "number",
+      "x-nullable": true,
+    },
+  },
+} as const;
+
+export const recommendation_PrescriptionRequestSchema = {
+  type: "object",
+  properties: {
+    baseline: {
+      allOf: [
+        {
+          $ref: "#/definitions/recommendation.Range",
+        },
+      ],
+      "x-nullable": true,
+    },
+  },
+} as const;
+
+export const recommendation_RangeSchema = {
+  type: "object",
+  required: ["max", "min"],
+  properties: {
+    max: {
+      type: "integer",
+    },
+    min: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const recommendation_ResultSchema = {
+  type: "object",
+  required: [
+    "exerciseId",
+    "explanation",
+    "policyVersion",
+    "readiness",
+    "source",
+  ],
+  properties: {
+    baseline: {
+      allOf: [
+        {
+          $ref: "#/definitions/recommendation.Range",
+        },
+      ],
+      "x-nullable": true,
+    },
+    exerciseId: {
+      type: "integer",
+    },
+    explanation: {
+      type: "string",
+    },
+    plan: {
+      $ref: "#/definitions/recommendation.Plan",
+    },
+    policyVersion: {
+      type: "string",
+    },
+    previous: {
+      allOf: [
+        {
+          $ref: "#/definitions/recommendation.Session",
+        },
+      ],
+      "x-nullable": true,
+    },
+    range: {
+      allOf: [
+        {
+          $ref: "#/definitions/recommendation.Range",
+        },
+      ],
+      "x-nullable": true,
+    },
+    readiness: {
+      type: "string",
+    },
+    source: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const recommendation_SessionSchema = {
+  type: "object",
+  required: ["date", "workingSets", "workoutId"],
+  properties: {
+    date: {
+      type: "string",
+    },
+    workingSets: {
+      type: "integer",
+    },
+    workoutId: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const recommendation_SnapshotSchema = {
+  type: "object",
+  required: ["exerciseName", "recommendation"],
+  properties: {
+    exerciseName: {
+      type: "string",
+    },
+    feedback: {
+      type: "string",
+    },
+    recommendation: {
+      $ref: "#/definitions/recommendation.Result",
+    },
+  },
+} as const;
+
 export const response_ErrorSchema = {
   type: "object",
   properties: {
@@ -766,6 +903,13 @@ export const workout_CreateWorkoutRequestSchema = {
     notes: {
       type: "string",
       maxLength: 256,
+    },
+    recommendations: {
+      type: "array",
+      maxItems: 100,
+      items: {
+        $ref: "#/definitions/recommendation.Snapshot",
+      },
     },
     workoutFocus: {
       type: "string",

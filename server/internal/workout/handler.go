@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/go-playground/validator/v10"
 )
@@ -214,6 +215,10 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.workoutService.CreateWorkout(r.Context(), req); err != nil {
+		if errors.Is(err, recommendation.ErrInvalidContext) {
+			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "invalid recommendation context", err)
+			return
+		}
 		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)

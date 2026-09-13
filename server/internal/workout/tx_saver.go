@@ -7,6 +7,7 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
+	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
 )
 
 type TxSaver interface {
@@ -54,6 +55,9 @@ func (s *txSaver) SaveWorkoutTx(ctx context.Context, qtx *db.Queries, requestBod
 		return 0, fmt.Errorf("failed to insert sets: %w", err)
 	}
 
+	if err := recommendation.SaveContext(ctx, qtx, userID, workoutRow.ID, exerciseMap, requestBody.Recommendations); err != nil {
+		return 0, fmt.Errorf("save recommendation context: %w", err)
+	}
 	if err := updateHistorical1rmFromWorkout(ctx, qtx, workoutRow.ID, userID); err != nil {
 		s.logger.Error("failed to update historical 1RM from workout", "error", err, "workout_id", workoutRow.ID)
 		return 0, fmt.Errorf("failed to update historical 1RM from workout: %w", err)

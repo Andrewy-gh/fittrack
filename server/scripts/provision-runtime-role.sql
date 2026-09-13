@@ -80,7 +80,7 @@ GRANT USAGE ON SCHEMA public TO fittrack_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
     users, workout, exercise, "set", user_feature_access,
     ai_chat_conversation, ai_chat_message, ai_chat_run,
-    user_training_profile
+    user_training_profile, exercise_prescription
 TO fittrack_app;
 GRANT SELECT, INSERT, DELETE ON ai_chat_stream_chunk TO fittrack_app;
 GRANT SELECT, INSERT, UPDATE ON TABLE

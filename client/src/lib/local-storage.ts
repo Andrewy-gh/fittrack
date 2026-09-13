@@ -1,5 +1,6 @@
 import type { WorkoutCreateWorkoutRequest } from "../client/types.gen";
 import * as v from "valibot";
+import { recommendationSnapshotSchema } from "@/features/workouts/utils/recommendation-context";
 
 const STORAGE_KEY = "workout-entry-form-data";
 
@@ -27,6 +28,9 @@ const WorkoutExerciseSchema = v.object({
 });
 
 const WorkoutDraftSchema = v.object({
+  recommendations: v.optional(
+    v.fallback(v.array(recommendationSnapshotSchema), []),
+  ),
   date: v.string(),
   notes: v.optional(v.string()),
   workoutFocus: v.optional(v.string()),
@@ -46,6 +50,7 @@ function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
   }
 
   return {
+    recommendations: result.output.recommendations,
     date: result.output.date,
     notes: result.output.notes,
     workoutFocus: result.output.workoutFocus,

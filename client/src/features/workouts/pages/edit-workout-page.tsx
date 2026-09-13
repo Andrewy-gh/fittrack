@@ -19,6 +19,7 @@ import {
 import { AddExerciseScreen } from "@/features/workouts/components/form/add-exercise-screen";
 import type {
   ExerciseExerciseResponse,
+  WorkoutCreateWorkoutRequest,
   WorkoutUpdateWorkoutRequest,
 } from "@/client";
 import {
@@ -104,11 +105,13 @@ export function EditWorkoutPage({
 
   const updateWorkoutMutation = useUpdateWorkoutForUserMutation(user);
 
+  const initialValues: WorkoutCreateWorkoutRequest = workout;
   const form = useAppForm({
-    defaultValues: workout,
+    defaultValues: initialValues,
     onSubmit: async ({ value }) => {
       const trimmedValue = {
-        ...value,
+        date: value.date,
+        exercises: value.exercises,
         notes: value.notes?.trim() || undefined,
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };

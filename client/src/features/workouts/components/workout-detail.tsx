@@ -15,6 +15,7 @@ import {
   workoutDraftStorage,
 } from "@/lib/local-storage";
 import { toast } from "sonner";
+import { SavedRecommendations } from "@/features/workouts/components/saved-recommendations";
 
 export interface WorkoutDetailProps {
   workout: WorkoutWorkoutWithSetsResponse[];
@@ -23,12 +24,14 @@ export interface WorkoutDetailProps {
 type WorkoutDetailBaseProps = WorkoutDetailProps & {
   headerActions?: ReactNode;
   dialogSlot?: ReactNode;
+  recommendationSlot?: ReactNode;
 };
 
 function WorkoutDetailBase({
   workout,
   headerActions,
   dialogSlot,
+  recommendationSlot,
 }: WorkoutDetailBaseProps) {
   if (workout.length === 0) {
     return (
@@ -73,6 +76,7 @@ function WorkoutDetailBase({
           totalVolume={totalVolume}
         />
         <WorkoutDetailExercises workout={workout} />
+        {recommendationSlot}
         {dialogSlot}
       </div>
     </main>
@@ -114,6 +118,14 @@ export function WorkoutDetailEditable({
   return (
     <WorkoutDetailBase
       workout={workout}
+      recommendationSlot={
+        user ? (
+          <SavedRecommendations
+            workoutId={workoutId}
+            userId={user.id}
+          />
+        ) : undefined
+      }
       headerActions={
         <>
           <Button

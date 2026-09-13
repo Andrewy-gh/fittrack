@@ -581,6 +581,20 @@ func (q *Queries) DeleteExercise(ctx context.Context, arg DeleteExerciseParams) 
 	return err
 }
 
+const deleteExercisePrescription = `-- name: DeleteExercisePrescription :exec
+DELETE FROM exercise_prescription WHERE exercise_id = $1 AND user_id = $2
+`
+
+type DeleteExercisePrescriptionParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+func (q *Queries) DeleteExercisePrescription(ctx context.Context, arg DeleteExercisePrescriptionParams) error {
+	_, err := q.db.Exec(ctx, deleteExercisePrescription, arg.ExerciseID, arg.UserID)
+	return err
+}
+
 const deleteSetsByWorkout = `-- name: DeleteSetsByWorkout :exec
 DELETE FROM "set" 
 WHERE workout_id = $1 AND user_id = $2
@@ -1556,6 +1570,28 @@ func (q *Queries) GetExerciseMetricsHistoryRawYear(ctx context.Context, arg GetE
 	return items, nil
 }
 
+const getExercisePrescription = `-- name: GetExercisePrescription :one
+SELECT min_sets, max_sets FROM exercise_prescription WHERE exercise_id = $1 AND user_id = $2
+`
+
+type GetExercisePrescriptionParams struct {
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+type GetExercisePrescriptionRow struct {
+	MinSets int32 `json:"min_sets"`
+	MaxSets int32 `json:"max_sets"`
+}
+
+// Basic SELECT queries
+func (q *Queries) GetExercisePrescription(ctx context.Context, arg GetExercisePrescriptionParams) (GetExercisePrescriptionRow, error) {
+	row := q.db.QueryRow(ctx, getExercisePrescription, arg.ExerciseID, arg.UserID)
+	var i GetExercisePrescriptionRow
+	err := row.Scan(&i.MinSets, &i.MaxSets)
+	return i, err
+}
+
 const getExerciseWithSets = `-- name: GetExerciseWithSets :many
 SELECT 
     s.workout_id,
@@ -1836,6 +1872,47 @@ func (q *Queries) GetRecentSetsForExercise(ctx context.Context, arg GetRecentSet
 	return items, nil
 }
 
+const getRecommendationHistory = `-- name: GetRecommendationHistory :many
+SELECT w.id AS workout_id, w.date, COUNT(*) FILTER (WHERE s.set_type = 'working')::integer AS working_sets
+FROM workout w JOIN "set" s ON s.workout_id = w.id AND s.user_id = w.user_id
+WHERE s.exercise_id = $1 AND w.user_id = $2 AND w.date <= $3
+GROUP BY w.id, w.date
+ORDER BY w.date DESC, w.id DESC
+LIMIT 2
+`
+
+type GetRecommendationHistoryParams struct {
+	ExerciseID int32              `json:"exercise_id"`
+	UserID     string             `json:"user_id"`
+	AsOf       pgtype.Timestamptz `json:"as_of"`
+}
+
+type GetRecommendationHistoryRow struct {
+	WorkoutID   int32              `json:"workout_id"`
+	Date        pgtype.Timestamptz `json:"date"`
+	WorkingSets int32              `json:"working_sets"`
+}
+
+func (q *Queries) GetRecommendationHistory(ctx context.Context, arg GetRecommendationHistoryParams) ([]GetRecommendationHistoryRow, error) {
+	rows, err := q.db.Query(ctx, getRecommendationHistory, arg.ExerciseID, arg.UserID, arg.AsOf)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecommendationHistoryRow
+	for rows.Next() {
+		var i GetRecommendationHistoryRow
+		if err := rows.Scan(&i.WorkoutID, &i.Date, &i.WorkingSets); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSet = `-- name: GetSet :one
 SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
 WHERE id = $1 AND user_id = $2
@@ -1990,7 +2067,6 @@ type GetWorkoutRow struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
-// Basic SELECT queries
 func (q *Queries) GetWorkout(ctx context.Context, arg GetWorkoutParams) (GetWorkoutRow, error) {
 	row := q.db.QueryRow(ctx, getWorkout, arg.ID, arg.UserID)
 	var i GetWorkoutRow
@@ -2044,6 +2120,22 @@ func (q *Queries) GetWorkoutBestE1rmByExercise(ctx context.Context, arg GetWorko
 		return nil, err
 	}
 	return items, nil
+}
+
+const getWorkoutRecommendationContext = `-- name: GetWorkoutRecommendationContext :one
+SELECT recommendation_context FROM workout WHERE id = $1 AND user_id = $2
+`
+
+type GetWorkoutRecommendationContextParams struct {
+	ID     int32  `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetWorkoutRecommendationContext(ctx context.Context, arg GetWorkoutRecommendationContextParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getWorkoutRecommendationContext, arg.ID, arg.UserID)
+	var recommendation_context []byte
+	err := row.Scan(&recommendation_context)
+	return recommendation_context, err
 }
 
 const getWorkoutWithSets = `-- name: GetWorkoutWithSets :many
@@ -3055,6 +3147,22 @@ func (q *Queries) RevokeStripeFeatureAccess(ctx context.Context, arg RevokeStrip
 	return err
 }
 
+const saveWorkoutRecommendationContext = `-- name: SaveWorkoutRecommendationContext :exec
+UPDATE workout SET recommendation_context = $1::text::jsonb
+WHERE id = $2 AND user_id = $3
+`
+
+type SaveWorkoutRecommendationContextParams struct {
+	RecommendationContext string `json:"recommendation_context"`
+	WorkoutID             int32  `json:"workout_id"`
+	UserID                string `json:"user_id"`
+}
+
+func (q *Queries) SaveWorkoutRecommendationContext(ctx context.Context, arg SaveWorkoutRecommendationContextParams) error {
+	_, err := q.db.Exec(ctx, saveWorkoutRecommendationContext, arg.RecommendationContext, arg.WorkoutID, arg.UserID)
+	return err
+}
+
 const setAIChatConversationLatestWorkoutDraft = `-- name: SetAIChatConversationLatestWorkoutDraft :exec
 UPDATE ai_chat_conversation
 SET latest_workout_draft = NULLIF($3::text, '')::jsonb,
@@ -3794,6 +3902,31 @@ func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (i
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const upsertExercisePrescription = `-- name: UpsertExercisePrescription :exec
+INSERT INTO exercise_prescription (exercise_id, user_id, min_sets, max_sets)
+SELECT e.id, e.user_id, $1, $2
+FROM exercise e WHERE e.id = $3 AND e.user_id = $4
+ON CONFLICT (exercise_id) DO UPDATE SET min_sets = EXCLUDED.min_sets, max_sets = EXCLUDED.max_sets, updated_at = CURRENT_TIMESTAMP
+WHERE exercise_prescription.user_id = EXCLUDED.user_id
+`
+
+type UpsertExercisePrescriptionParams struct {
+	MinSets    int32  `json:"min_sets"`
+	MaxSets    int32  `json:"max_sets"`
+	ExerciseID int32  `json:"exercise_id"`
+	UserID     string `json:"user_id"`
+}
+
+func (q *Queries) UpsertExercisePrescription(ctx context.Context, arg UpsertExercisePrescriptionParams) error {
+	_, err := q.db.Exec(ctx, upsertExercisePrescription,
+		arg.MinSets,
+		arg.MaxSets,
+		arg.ExerciseID,
+		arg.UserID,
+	)
+	return err
 }
 
 const upsertStripeCustomer = `-- name: UpsertStripeCustomer :one

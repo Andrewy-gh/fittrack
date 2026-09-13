@@ -208,6 +208,47 @@ export type FeatureaccessFeatureAccessResponse = {
   starts_at: string;
 };
 
+export type RecommendationPlan = {
+  experience?: string;
+  goal?: string;
+  reps: number;
+  sets: number;
+  weight?: number | null;
+};
+
+export type RecommendationPrescriptionRequest = {
+  baseline?: RecommendationRange | null;
+};
+
+export type RecommendationRange = {
+  max: number;
+  min: number;
+};
+
+export type RecommendationResult = {
+  baseline?: RecommendationRange | null;
+  exerciseId: number;
+  explanation: string;
+  plan?: RecommendationPlan;
+  policyVersion: string;
+  previous?: RecommendationSession | null;
+  range?: RecommendationRange | null;
+  readiness: string;
+  source: string;
+};
+
+export type RecommendationSession = {
+  date: string;
+  workingSets: number;
+  workoutId: number;
+};
+
+export type RecommendationSnapshot = {
+  exerciseName: string;
+  feedback?: string;
+  recommendation: RecommendationResult;
+};
+
 export type ResponseError = {
   message?: string;
   request_id?: string;
@@ -259,6 +300,7 @@ export type WorkoutCreateWorkoutRequest = {
   date: string;
   exercises: Array<WorkoutExerciseInput>;
   notes?: string;
+  recommendations?: Array<RecommendationSnapshot>;
   workoutFocus?: string;
 };
 
@@ -1134,6 +1176,46 @@ export type GetExercisesByIdMetricsHistoryResponses = {
 export type GetExercisesByIdMetricsHistoryResponse =
   GetExercisesByIdMetricsHistoryResponses[keyof GetExercisesByIdMetricsHistoryResponses];
 
+export type PutExercisesByIdPrescriptionData = {
+  /**
+   * Baseline; null clears it
+   */
+  body: RecommendationPrescriptionRequest;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/exercises/{id}/prescription";
+};
+
+export type PutExercisesByIdPrescriptionErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+};
+
+export type PutExercisesByIdPrescriptionError =
+  PutExercisesByIdPrescriptionErrors[keyof PutExercisesByIdPrescriptionErrors];
+
+export type PutExercisesByIdPrescriptionResponses = {
+  /**
+   * No Content
+   */
+  204: unknown;
+};
+
 export type GetExercisesByIdRecentSetsData = {
   body?: never;
   path: {
@@ -1173,6 +1255,47 @@ export type GetExercisesByIdRecentSetsResponses = {
 
 export type GetExercisesByIdRecentSetsResponse =
   GetExercisesByIdRecentSetsResponses[keyof GetExercisesByIdRecentSetsResponses];
+
+export type GetExercisesByIdRecommendationData = {
+  body?: never;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: {
+    /**
+     * normal, great, or sluggish
+     */
+    readiness?: string;
+  };
+  url: "/exercises/{id}/recommendation";
+};
+
+export type GetExercisesByIdRecommendationErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+};
+
+export type GetExercisesByIdRecommendationError =
+  GetExercisesByIdRecommendationErrors[keyof GetExercisesByIdRecommendationErrors];
+
+export type GetExercisesByIdRecommendationResponses = {
+  /**
+   * OK
+   */
+  200: RecommendationResult;
+};
+
+export type GetExercisesByIdRecommendationResponse =
+  GetExercisesByIdRecommendationResponses[keyof GetExercisesByIdRecommendationResponses];
 
 export type GetFeaturesAccessData = {
   body?: never;
@@ -1558,3 +1681,39 @@ export type PutWorkoutsByIdResponses = {
    */
   204: unknown;
 };
+
+export type GetWorkoutsByIdRecommendationsData = {
+  body?: never;
+  path: {
+    /**
+     * Workout ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/workouts/{id}/recommendations";
+};
+
+export type GetWorkoutsByIdRecommendationsErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+};
+
+export type GetWorkoutsByIdRecommendationsError =
+  GetWorkoutsByIdRecommendationsErrors[keyof GetWorkoutsByIdRecommendationsErrors];
+
+export type GetWorkoutsByIdRecommendationsResponses = {
+  /**
+   * OK
+   */
+  200: Array<RecommendationSnapshot>;
+};
+
+export type GetWorkoutsByIdRecommendationsResponse =
+  GetWorkoutsByIdRecommendationsResponses[keyof GetWorkoutsByIdRecommendationsResponses];

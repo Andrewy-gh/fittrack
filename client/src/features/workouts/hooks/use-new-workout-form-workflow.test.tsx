@@ -69,6 +69,69 @@ const newWorkoutContext: WorkoutNewWorkoutContextResponse = {
 };
 
 describe("useNewWorkoutFormWorkflow", () => {
+  it("records guidance without creating or overwriting actual sets and discards it on repeat", async () => {
+    const draftStorage = createDraftStorage({
+      date: "2026-09-11T12:00:00Z",
+      exercises: [
+        { name: "Press", sets: [{ reps: 5, weight: 50, setType: "working" }] },
+      ],
+    });
+    const { result } = renderHook(() =>
+      useNewWorkoutFormWorkflow({
+        user: null,
+        exercises: [{ id: 1, name: "Press" }],
+        newWorkoutContext,
+        draftStorage,
+      }),
+    );
+    const actualSets = structuredClone(
+      result.current.form.state.values.exercises,
+    );
+    await act(async () => {
+      result.current.recordRecommendation(
+        "Press",
+        {
+          exerciseId: 1,
+          readiness: "sluggish",
+          range: { min: 2, max: 3 },
+          baseline: { min: 3, max: 4 },
+          source: "prescription",
+          explanation: "Reduced work",
+          policyVersion: "working-sets-v1",
+        },
+        "too_much",
+      );
+    });
+    expect(result.current.form.state.values.exercises).toEqual(actualSets);
+    expect(result.current.form.state.values.recommendations).toMatchObject([
+      {
+        feedback: "too_much",
+        recommendation: { readiness: "sluggish", range: { min: 2, max: 3 } },
+      },
+    ]);
+    await act(async () => {
+      await result.current.form.handleSubmit();
+    });
+    expect(mockDemoMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          exercises: actualSets,
+          recommendations: expect.arrayContaining([
+            expect.objectContaining({ feedback: "too_much" }),
+          ]),
+        }),
+      }),
+      expect.anything(),
+    );
+    mockFetchQuery.mockResolvedValue([]);
+    await act(async () => {
+      await result.current.repeatWorkout(42);
+    });
+    await act(async () => {
+      await result.current.replaceDraftWithPendingTemplate();
+    });
+    expect(result.current.form.state.values.recommendations).toBeUndefined();
+  });
   beforeEach(() => {
     mockApiMutateAsync.mockReset();
     mockDemoMutateAsync.mockReset();

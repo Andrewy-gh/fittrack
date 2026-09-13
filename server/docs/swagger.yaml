@@ -426,6 +426,98 @@ definitions:
     - source
     - starts_at
     type: object
+  recommendation.Plan:
+    properties:
+      experience:
+        type: string
+      goal:
+        type: string
+      reps:
+        type: integer
+      sets:
+        type: integer
+      weight:
+        type: number
+        x-nullable: true
+    required:
+    - reps
+    - sets
+    type: object
+  recommendation.PrescriptionRequest:
+    properties:
+      baseline:
+        allOf:
+        - $ref: '#/definitions/recommendation.Range'
+        x-nullable: true
+    type: object
+  recommendation.Range:
+    properties:
+      max:
+        type: integer
+      min:
+        type: integer
+    required:
+    - max
+    - min
+    type: object
+  recommendation.Result:
+    properties:
+      baseline:
+        allOf:
+        - $ref: '#/definitions/recommendation.Range'
+        x-nullable: true
+      exerciseId:
+        type: integer
+      explanation:
+        type: string
+      plan:
+        $ref: '#/definitions/recommendation.Plan'
+      policyVersion:
+        type: string
+      previous:
+        allOf:
+        - $ref: '#/definitions/recommendation.Session'
+        x-nullable: true
+      range:
+        allOf:
+        - $ref: '#/definitions/recommendation.Range'
+        x-nullable: true
+      readiness:
+        type: string
+      source:
+        type: string
+    required:
+    - exerciseId
+    - explanation
+    - policyVersion
+    - readiness
+    - source
+    type: object
+  recommendation.Session:
+    properties:
+      date:
+        type: string
+      workingSets:
+        type: integer
+      workoutId:
+        type: integer
+    required:
+    - date
+    - workingSets
+    - workoutId
+    type: object
+  recommendation.Snapshot:
+    properties:
+      exerciseName:
+        type: string
+      feedback:
+        type: string
+      recommendation:
+        $ref: '#/definitions/recommendation.Result'
+    required:
+    - exerciseName
+    - recommendation
+    type: object
   response.Error:
     properties:
       message:
@@ -536,6 +628,11 @@ definitions:
       notes:
         maxLength: 256
         type: string
+      recommendations:
+        items:
+          $ref: '#/definitions/recommendation.Snapshot'
+        maxItems: 100
+        type: array
       workoutFocus:
         maxLength: 256
         type: string
@@ -1488,6 +1585,42 @@ paths:
       summary: Get exercise metrics history
       tags:
       - exercises
+  /exercises/{id}/prescription:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Baseline; null clears it
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/recommendation.PrescriptionRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Save or clear an optional user-entered working-set baseline
+      tags:
+      - recommendations
   /exercises/{id}/recent-sets:
     get:
       consumes:
@@ -1526,6 +1659,38 @@ paths:
       summary: Get recent sets for exercise
       tags:
       - exercises
+  /exercises/{id}/recommendation:
+    get:
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: normal, great, or sluggish
+        in: query
+        name: readiness
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/recommendation.Result'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Recommend today's working sets for an owned exercise
+      tags:
+      - recommendations
   /features/access:
     get:
       consumes:
@@ -1795,6 +1960,36 @@ paths:
       summary: Update an existing workout (full replacement)
       tags:
       - workouts
+  /workouts/{id}/recommendations:
+    get:
+      parameters:
+      - description: Workout ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/recommendation.Snapshot'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Read the recommendation context recorded when a workout was saved
+      tags:
+      - recommendations
   /workouts/contribution-data:
     get:
       consumes:
