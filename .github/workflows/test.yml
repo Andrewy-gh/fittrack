@@ -131,15 +131,13 @@ jobs:
         with:
           bun-version: "1.4.2"
 
-      - name: Cache Bun dependencies
+      - name: Cache Bun downloads
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
-          path: |
-            ~/.bun/install/cache
-            client/node_modules
-          key: ${{ runner.os }}-bun-1.4.2-${{ hashFiles('client/bun.lock') }}
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-downloads-1.4.2-${{ hashFiles('client/bun.lock') }}
           restore-keys: |
-            ${{ runner.os }}-bun-1.4.2-
+            ${{ runner.os }}-bun-downloads-1.4.2-
 
       - name: Install dependencies
         working-directory: client
