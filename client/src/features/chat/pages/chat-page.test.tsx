@@ -86,6 +86,49 @@ describe("ChatRouteComponent", () => {
     expect(mockStopRun).not.toHaveBeenCalled();
   });
 
+  it("dismisses only the confirmation on Escape and keeps history interactive", async () => {
+    const user = userEvent.setup();
+    mockGetConversation.mockResolvedValue(conversationDetail([]));
+    mockListConversations.mockResolvedValue([
+      {
+        id: 72,
+        title: "Leg day plan",
+        created_at: "2026-06-24T17:00:00Z",
+        updated_at: "2026-06-24T17:05:00Z",
+      },
+    ]);
+
+    render(<ChatRouteComponent />);
+    await user.click(screen.getByRole("button", { name: "Open chat history" }));
+    const drawer = await screen.findByRole("dialog", { name: "Chat history" });
+    await user.click(
+      await within(drawer).findByRole("button", {
+        name: "More options for Leg day plan",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    await screen.findByRole("alertdialog");
+
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Chat history" }),
+    ).toBeInTheDocument();
+    expect(mockDeleteConversation).not.toHaveBeenCalled();
+
+    await user.click(
+      within(drawer).getByRole("button", {
+        name: "More options for Leg day plan",
+      }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(drawer).toBeInTheDocument();
+  });
+
   it("does nothing when chat deletion is cancelled", async () => {
     const user = userEvent.setup();
     mockGetConversation.mockResolvedValue(conversationDetail([]));
