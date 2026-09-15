@@ -193,6 +193,11 @@ describe("GenericCombobox", () => {
     expect(trigger.textContent).toContain("Select exercise...");
     fireEvent.click(trigger);
 
+    expect(
+      await screen.findByRole("dialog", { name: "Select exercise" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Search and select an option.")).toBeTruthy();
+
     const searchInput = await screen.findByRole("combobox", {
       name: "Search exercises",
     });

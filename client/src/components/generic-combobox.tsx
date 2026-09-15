@@ -16,7 +16,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Popover,
   PopoverContent,
@@ -300,6 +306,12 @@ export function GenericCombobox<T extends { name: string }>({
     >
       <DrawerTrigger asChild>{triggerButton}</DrawerTrigger>
       <DrawerContent>
+        <DrawerTitle className="sr-only">
+          {ariaLabel ?? placeholder ?? "Select an option"}
+        </DrawerTitle>
+        <DrawerDescription className="sr-only">
+          Search and select an option.
+        </DrawerDescription>
         <div className="mt-4">
           <GenericList
             options={options}
