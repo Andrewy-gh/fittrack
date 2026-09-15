@@ -51,6 +51,8 @@ interface ComboboxProps<T extends { name: string }> {
   ariaLabel?: string;
   /** Accessible label for the search input */
   inputAriaLabel?: string;
+  /** Placeholder text to display in the search input */
+  searchPlaceholder?: string;
   /** Placeholder text to display when no option is selected */
   placeholder?: string;
   /** Whether the combobox is disabled */
@@ -72,6 +74,7 @@ function GenericList<T extends { name: string }>({
   onChange,
   onCreate,
   inputAriaLabel,
+  searchPlaceholder,
   touchEnabled,
 }: {
   options: T[];
@@ -84,6 +87,7 @@ function GenericList<T extends { name: string }>({
   onChange: (option: T) => void;
   onCreate?: (label: string) => void;
   inputAriaLabel?: string;
+  searchPlaceholder?: string;
   touchEnabled: boolean;
 }) {
   function handleSelect(option: T) {
@@ -129,6 +133,7 @@ function GenericList<T extends { name: string }>({
 
   return (
     <Command
+      label={inputAriaLabel ?? "Search options"}
       filter={(value, search) => {
         const v = value.toLowerCase();
         const s = search.toLowerCase();
@@ -138,8 +143,7 @@ function GenericList<T extends { name: string }>({
       className="pb-4"
     >
       <CommandInput
-        placeholder="Search options..."
-        aria-label={inputAriaLabel ?? "Search options"}
+        placeholder={searchPlaceholder ?? "Search options..."}
         value={query}
         onValueChange={(value: string) => setQuery(value)}
         onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
@@ -213,12 +217,14 @@ function GenericList<T extends { name: string }>({
   );
 }
 
+/** Renders a searchable combobox with optional option creation. */
 export function GenericCombobox<T extends { name: string }>({
   options,
   selected,
   className,
   ariaLabel,
   inputAriaLabel,
+  searchPlaceholder,
   placeholder,
   disabled,
   onChange,
@@ -279,6 +285,7 @@ export function GenericCombobox<T extends { name: string }>({
             onChange={onChange}
             onCreate={onCreate}
             inputAriaLabel={inputAriaLabel}
+            searchPlaceholder={searchPlaceholder}
             touchEnabled={false}
           />
         </PopoverContent>
@@ -305,6 +312,7 @@ export function GenericCombobox<T extends { name: string }>({
             onChange={onChange}
             onCreate={onCreate}
             inputAriaLabel={inputAriaLabel}
+            searchPlaceholder={searchPlaceholder}
             touchEnabled
           />
         </div>

@@ -1,10 +1,10 @@
+import { GenericCombobox } from "@/components/generic-combobox";
 import { Button } from "@/components/ui/button";
 import type {
   DbExercise,
   ExerciseOption,
 } from "@/features/exercises/api/exercises";
 import { Plus } from "lucide-react";
-import { ExerciseCombobox } from "@/features/exercises/components/exercise-combobox";
 import { useFieldContext } from "@/hooks/form";
 import { useState } from "react";
 import type { WorkoutExerciseInput } from "@/client";
@@ -40,9 +40,13 @@ export default function AddExerciseField({
 
   return (
     <div className="space-y-4">
-      <ExerciseCombobox
-        options={workingExercises} // Use working list that can include manually created exercises
+      <GenericCombobox
+        options={workingExercises} // Use working list that can include both DB and manually created exercises
         selected={selectedExercise?.name ?? ""}
+        ariaLabel="Select exercise"
+        inputAriaLabel="Search exercises"
+        placeholder="Select exercise..."
+        searchPlaceholder="Search exercises..."
         onChange={handleSelect}
         onCreate={handleAppendGroup}
       />
