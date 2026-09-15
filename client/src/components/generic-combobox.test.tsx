@@ -117,14 +117,14 @@ async function renderGenericCombobox({
   return { onChange, onCreate };
 }
 
-describe("GenericCombobox touch activation", () => {
+describe("GenericCombobox", () => {
   it("keeps mobile list gestures from dragging the drawer", async () => {
     await renderGenericCombobox();
 
     const option = await screen.findByRole("option", { name: "Squat" });
     const list = option.closest('[data-slot="command-list"]');
 
-    expect(list).toHaveAttribute("data-vaul-no-drag");
+    expect(list?.hasAttribute("data-vaul-no-drag")).toBe(true);
   });
 
   it("selects an existing option on touch release in the mobile drawer path", async () => {
@@ -167,12 +167,37 @@ describe("GenericCombobox touch activation", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("creates an option on touch release in the mobile drawer path", async () => {
-    const { onCreate } = await renderGenericCombobox();
+  it("uses the generic search placeholder by default", async () => {
+    await renderGenericCombobox();
 
-    fireEvent.change(screen.getByPlaceholderText("Search options..."), {
-      target: { value: "Bench" },
+    expect(screen.getByPlaceholderText("Search options...")).toBeTruthy();
+  });
+
+  it("supports exercise-specific labels, search text, and touch creation", async () => {
+    const onCreate = vi.fn();
+
+    render(
+      <GenericCombobox
+        options={[{ id: 1, name: "Squat" }]}
+        selected=""
+        ariaLabel="Select exercise"
+        inputAriaLabel="Search exercises"
+        placeholder="Select exercise..."
+        searchPlaceholder="Search exercises..."
+        onChange={vi.fn()}
+        onCreate={onCreate}
+      />,
+    );
+
+    const trigger = screen.getByRole("combobox", { name: "Select exercise" });
+    expect(trigger.textContent).toContain("Select exercise...");
+    fireEvent.click(trigger);
+
+    const searchInput = await screen.findByRole("combobox", {
+      name: "Search exercises",
     });
+    expect(searchInput.getAttribute("placeholder")).toBe("Search exercises...");
+    fireEvent.change(searchInput, { target: { value: "Bench" } });
 
     const [createRow] = await screen.findAllByRole("option", {
       name: 'Create "Bench"',
@@ -182,6 +207,31 @@ describe("GenericCombobox touch activation", () => {
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate).toHaveBeenCalledWith("Bench");
     expect(releasedTouch.defaultPrevented).toBe(true);
+  });
+
+  it("uses configured search text in the desktop popover", async () => {
+    mediaQueryMatches = true;
+
+    render(
+      <GenericCombobox
+        options={[{ name: "Squat" }]}
+        selected=""
+        ariaLabel="Select exercise"
+        inputAriaLabel="Search exercises"
+        searchPlaceholder="Search exercises..."
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Select exercise" }));
+
+    const searchInput = await screen.findByRole("combobox", {
+      name: "Search exercises",
+    });
+    expect(searchInput.getAttribute("placeholder")).toBe("Search exercises...");
+    expect(
+      document.querySelector('[data-slot="popover-content"]'),
+    ).not.toBeNull();
   });
 
   it("does not create an option after touch tracking is canceled", async () => {
