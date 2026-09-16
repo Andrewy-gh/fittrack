@@ -39,8 +39,8 @@ func TestConnectionPoolIsolation(t *testing.T) {
 	require.NoError(t, err, "Unable to ping database")
 
 	// Setup test data
-	setupTestData(t, pool)
-	defer cleanupTestData(t, pool)
+	user1WorkoutID, user2WorkoutID := setupTestData(t, pool)
+	defer cleanupTestData(t, pool, user1WorkoutID, user2WorkoutID)
 
 	// Define test cases
 	tests := []struct {
@@ -49,10 +49,10 @@ func TestConnectionPoolIsolation(t *testing.T) {
 		workoutID int
 		expected  bool
 	}{
-		{name: "User1_Workout1", userID: "test-user-1", workoutID: 1, expected: true},
-		{name: "User1_Workout2", userID: "test-user-1", workoutID: 2, expected: false},
-		{name: "User2_Workout1", userID: "test-user-2", workoutID: 1, expected: false},
-		{name: "User2_Workout2", userID: "test-user-2", workoutID: 2, expected: true},
+		{name: "User1_Workout1", userID: "test-user-1", workoutID: user1WorkoutID, expected: true},
+		{name: "User1_Workout2", userID: "test-user-1", workoutID: user2WorkoutID, expected: false},
+		{name: "User2_Workout1", userID: "test-user-2", workoutID: user1WorkoutID, expected: false},
+		{name: "User2_Workout2", userID: "test-user-2", workoutID: user2WorkoutID, expected: true},
 	}
 
 	// Run test cases concurrently to test connection pool isolation
@@ -154,7 +154,7 @@ func testUserContextIsolation(t *testing.T, pool *pgxpool.Pool, userID string, w
 }
 
 // setupTestData creates test users and workouts for the isolation test
-func setupTestData(t *testing.T, pool *pgxpool.Pool) {
+func setupTestData(t *testing.T, pool *pgxpool.Pool) (user1WorkoutID, user2WorkoutID int) {
 	ctx := context.Background()
 
 	// First ensure RLS is set up (apply the RLS migration content)
@@ -171,21 +171,24 @@ func setupTestData(t *testing.T, pool *pgxpool.Pool) {
 	_, err = pool.Exec(ctx, "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", "test-user-2")
 	require.NoError(t, err, "Failed to create test user 2")
 
-	// Create test workouts
-	_, err = pool.Exec(ctx, "INSERT INTO workout (id, date, user_id) VALUES (1, NOW(), $1) ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id", "test-user-1")
-	require.NoError(t, err, "Failed to create workout 1 for user 1")
+	// Create test workouts and capture the database-generated IDs. Explicit IDs do
+	// not advance PostgreSQL's serial sequence and can collide with parallel tests.
+	err = pool.QueryRow(ctx, "INSERT INTO workout (date, user_id) VALUES (NOW(), $1) RETURNING id", "test-user-1").Scan(&user1WorkoutID)
+	require.NoError(t, err, "Failed to create workout for user 1")
 
-	_, err = pool.Exec(ctx, "INSERT INTO workout (id, date, user_id) VALUES (2, NOW(), $1) ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id", "test-user-2")
-	require.NoError(t, err, "Failed to create workout 2 for user 2")
+	err = pool.QueryRow(ctx, "INSERT INTO workout (date, user_id) VALUES (NOW(), $1) RETURNING id", "test-user-2").Scan(&user2WorkoutID)
+	require.NoError(t, err, "Failed to create workout for user 2")
 
 	// Re-enable RLS for testing. FORCE makes the local table owner exercise the
 	// same policies as production's non-owner runtime role.
 	_, err = pool.Exec(ctx, "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE workout ENABLE ROW LEVEL SECURITY; ALTER TABLE users FORCE ROW LEVEL SECURITY; ALTER TABLE workout FORCE ROW LEVEL SECURITY;")
 	require.NoError(t, err, "Failed to re-enable RLS after setup")
+
+	return user1WorkoutID, user2WorkoutID
 }
 
 // cleanupTestData removes test data after the test
-func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
+func cleanupTestData(t *testing.T, pool *pgxpool.Pool, user1WorkoutID, user2WorkoutID int) {
 	ctx := context.Background()
 
 	// Disable RLS temporarily for cleanup
@@ -195,7 +198,7 @@ func cleanupTestData(t *testing.T, pool *pgxpool.Pool) {
 	}
 
 	// Clean up test data
-	_, err = pool.Exec(ctx, "DELETE FROM workout WHERE id IN (1, 2)")
+	_, err = pool.Exec(ctx, "DELETE FROM workout WHERE id IN ($1, $2)", user1WorkoutID, user2WorkoutID)
 	if err != nil {
 		t.Logf("Warning: Failed to clean up workout data: %v", err)
 	}
