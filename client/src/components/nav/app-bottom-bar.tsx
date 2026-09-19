@@ -18,12 +18,26 @@ export function AppBottomBar({ user }: AppBottomBarProps) {
   const [compact, setCompact] = useState(false);
 
   useEffect(() => {
-    // Hysteresis avoids flickering near the top and during iOS overscroll.
+    // Clamp Safari's elastic overscroll so bouncing at either edge does not
+    // look like a change in the user's scroll direction.
+    const scrollPosition = () =>
+      Math.max(
+        0,
+        Math.min(
+          window.scrollY,
+          document.documentElement.scrollHeight - window.innerHeight,
+        ),
+      );
+    let previousY = scrollPosition();
+    setCompact(previousY > 0);
+
     const update = () => {
-      const y = Math.max(0, window.scrollY);
-      setCompact((current) => (current ? y > 8 : y > 48));
+      const y = scrollPosition();
+      if (y !== previousY || y === 0) {
+        setCompact(y > previousY);
+      }
+      previousY = y;
     };
-    update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
   }, [pathname]);

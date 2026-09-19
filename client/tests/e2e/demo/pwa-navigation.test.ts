@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.use({ viewport: { width: 393, height: 852 }, colorScheme: "dark" });
 
-test("PWA navigation shrinks while browsing and expands at the top", async ({
+test("PWA navigation shrinks scrolling down and expands scrolling up", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -25,7 +25,13 @@ test("PWA navigation shrinks while browsing and expands at the top", async ({
   await expect
     .poll(async () => (await tab.boundingBox())!.width)
     .toBe(compact.width);
-  await page.evaluate(() => window.scrollTo(0, 100));
+  await page.mouse.move(180, 300);
+  await page.mouse.wheel(0, -80);
+  await expect
+    .poll(async () => (await tab.boundingBox())!.height)
+    .toBe(expanded.height);
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.mouse.wheel(0, 80);
   await expect.poll(async () => (await tab.boundingBox())!.height).toBe(44);
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect
