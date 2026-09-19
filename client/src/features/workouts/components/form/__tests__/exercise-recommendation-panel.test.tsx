@@ -74,4 +74,30 @@ describe("compact exercise suggestions", () => {
       expect(recorded).toMatchObject({ readiness: "sluggish" }),
     );
   });
+
+  it("collapses and expands the suggestion from the upper-right control", async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ExerciseRecommendationPanel
+          exerciseId={1}
+          exerciseName="Press"
+          userId="owner"
+          api={api}
+          onChange={() => undefined}
+        />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("3 × 8 at 100 lb")).toBeTruthy();
+
+    await user.click(
+      screen.getByRole("button", { name: "Collapse today’s suggestion" }),
+    );
+    expect(screen.queryByText("3 × 8 at 100 lb")).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: "Expand today’s suggestion" }),
+    );
+    expect(screen.getByText("3 × 8 at 100 lb")).toBeTruthy();
+  });
 });
