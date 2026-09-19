@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { ApplicationUser } from "@/lib/application-user";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { AccountSlot } from "@/components/nav/account-slot";
@@ -14,6 +15,19 @@ export function AppBottomBar({ user }: AppBottomBarProps) {
     select: (state) => state.location.pathname,
   });
 
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    // Hysteresis avoids flickering near the top and during iOS overscroll.
+    const update = () => {
+      const y = Math.max(0, window.scrollY);
+      setCompact((current) => (current ? y > 8 : y > 48));
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [pathname]);
+
   return (
     <nav
       aria-label="PWA navigation"
@@ -21,7 +35,12 @@ export function AppBottomBar({ user }: AppBottomBarProps) {
       data-app-bottom-bar
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
     >
-      <div className="pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-1 rounded-full border bg-background/95 px-2 py-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/85">
+      <div
+        className={cn(
+          "pointer-events-auto mx-auto flex max-w-md items-center gap-1 rounded-full border bg-background/95 px-1 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/85 transition-[width,padding] duration-300 ease-out motion-reduce:transition-none",
+          compact ? "w-[84%] py-1" : "w-full py-1.5",
+        )}
+      >
         {navItems.map(({ to, label, icon: Icon, search }) => {
           const active = isActivePath(pathname, to);
 
@@ -34,7 +53,8 @@ export function AppBottomBar({ user }: AppBottomBarProps) {
               aria-label={label}
               title={label}
               className={cn(
-                "flex size-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "flex min-h-11 min-w-11 flex-1 items-center justify-center rounded-full transition-[height,background-color,color] duration-300 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                compact ? "h-11" : "h-12",
                 active
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -46,7 +66,12 @@ export function AppBottomBar({ user }: AppBottomBarProps) {
           );
         })}
 
-        <div className="flex size-11 items-center justify-center">
+        <div
+          className={cn(
+            "flex min-h-11 min-w-11 flex-1 items-center justify-center transition-[height] duration-300 ease-out motion-reduce:transition-none [&_button]:min-h-11 [&_button]:min-w-11 [&_button]:flex [&_button]:items-center [&_button]:justify-center",
+            compact ? "h-11" : "h-12",
+          )}
+        >
           <AccountSlot user={user} />
         </div>
       </div>
