@@ -9,11 +9,14 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/exercisecatalog"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/jackc/pgx/v5"
 )
 
 type ExerciseRepository interface {
+	UpdateExerciseCatalog(ctx context.Context, id int32, userID string, catalogID *string) error
+
 	ListExercises(ctx context.Context, userID string) ([]db.Exercise, error)
 	GetExercise(ctx context.Context, id int32, userID string) (db.Exercise, error)
 	GetExerciseDetail(ctx context.Context, id int32, userID string) (db.GetExerciseDetailRow, error)
@@ -111,6 +114,7 @@ func (es *ExerciseService) GetExerciseWithSets(ctx context.Context, id int32) (*
 			Historical1RMUpdatedAt:       historical1rmUpdatedAt,
 			Historical1RMSourceWorkoutID: historical1rmSourceWorkoutID,
 			BestE1RM:                     bestE1RM,
+			Catalog:                      exercisecatalog.Find(exercise.CatalogID.String),
 		},
 		Sets: setResponses,
 	}, nil

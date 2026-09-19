@@ -192,6 +192,8 @@ definitions:
       best_e1rm:
         example: 305
         type: number
+      catalog:
+        $ref: '#/definitions/exercisecatalog.Entry'
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string
@@ -374,6 +376,15 @@ definitions:
     - workout_date
     - workout_id
     type: object
+  exercise.UpdateCatalogRequest:
+    properties:
+      catalog_id:
+        description: Empty string explicitly clears classification. The field must
+          be present.
+        type: string
+    required:
+    - catalog_id
+    type: object
   exercise.UpdateExerciseHistorical1RMRequest:
     properties:
       historical_1rm:
@@ -393,6 +404,29 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  exercisecatalog.Entry:
+    properties:
+      equipment:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      primaryMuscles:
+        items:
+          type: string
+        type: array
+      secondaryMuscles:
+        items:
+          type: string
+        type: array
+    required:
+    - equipment
+    - id
+    - name
+    - primaryMuscles
+    - secondaryMuscles
     type: object
   featureaccess.FeatureAccessResponse:
     properties:
@@ -591,6 +625,8 @@ definitions:
     type: object
   workout.ExerciseInput:
     properties:
+      catalog_id:
+        type: string
       name:
         maxLength: 256
         minLength: 1
@@ -665,6 +701,8 @@ definitions:
     type: object
   workout.UpdateExercise:
     properties:
+      catalog_id:
+        type: string
       name:
         maxLength: 256
         minLength: 1
@@ -1278,6 +1316,26 @@ paths:
       summary: Stop an AI chat run
       tags:
       - ai-chat
+  /exercise-catalog:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/exercisecatalog.Entry'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: List reviewed exercise catalog
+      tags:
+      - exercises
   /exercises:
     get:
       consumes:
@@ -1462,6 +1520,50 @@ paths:
       security:
       - StackAuth: []
       summary: Update an exercise name
+      tags:
+      - exercises
+  /exercises/{id}/catalog:
+    put:
+      consumes:
+      - application/json
+      description: Changes only the catalog link. An empty catalog_id clears it; name
+        and history are preserved.
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Catalog link
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/exercise.UpdateCatalogRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Updated
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Classify an exercise or clear its classification
       tags:
       - exercises
   /exercises/{id}/historical-1rm:

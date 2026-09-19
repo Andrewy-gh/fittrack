@@ -297,6 +297,9 @@ export const exercise_ExerciseDetailExerciseResponseSchema = {
       type: "number",
       example: 305,
     },
+    catalog: {
+      $ref: "#/definitions/exercisecatalog.Entry",
+    },
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
@@ -529,6 +532,18 @@ export const exercise_RecentSetsResponseSchema = {
   },
 } as const;
 
+export const exercise_UpdateCatalogRequestSchema = {
+  type: "object",
+  required: ["catalog_id"],
+  properties: {
+    catalog_id: {
+      description:
+        "Empty string explicitly clears classification. The field must be present.",
+      type: "string",
+    },
+  },
+} as const;
+
 export const exercise_UpdateExerciseHistorical1RMRequestSchema = {
   type: "object",
   properties: {
@@ -551,6 +566,34 @@ export const exercise_UpdateExerciseNameRequestSchema = {
     name: {
       type: "string",
       maxLength: 256,
+    },
+  },
+} as const;
+
+export const exercisecatalog_EntrySchema = {
+  type: "object",
+  required: ["equipment", "id", "name", "primaryMuscles", "secondaryMuscles"],
+  properties: {
+    equipment: {
+      type: "string",
+    },
+    id: {
+      type: "string",
+    },
+    name: {
+      type: "string",
+    },
+    primaryMuscles: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    secondaryMuscles: {
+      type: "array",
+      items: {
+        type: "string",
+      },
     },
   },
 } as const;
@@ -837,6 +880,9 @@ export const workout_ExerciseInputSchema = {
   type: "object",
   required: ["name", "sets"],
   properties: {
+    catalog_id: {
+      type: "string",
+    },
     name: {
       type: "string",
       maxLength: 256,
@@ -929,6 +975,9 @@ export const workout_UpdateExerciseSchema = {
   type: "object",
   required: ["name", "sets"],
   properties: {
+    catalog_id: {
+      type: "string",
+    },
     name: {
       type: "string",
       maxLength: 256,

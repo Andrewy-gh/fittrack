@@ -1430,3 +1430,7 @@ func backfillOrderColumnsForTests(t *testing.T, pool *pgxpool.Pool) {
 		testutils.BackfillSetOrderColumns(ctxUser, t, pool, userID)
 	}
 }
+
+func (m *MockExerciseRepository) UpdateExerciseCatalog(ctx context.Context, id int32, userID string, catalogID *string) error {
+	return m.Called(ctx, id, userID, catalogID).Error(0)
+}

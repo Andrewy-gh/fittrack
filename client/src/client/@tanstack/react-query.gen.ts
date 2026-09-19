@@ -10,6 +10,7 @@ import {
   deleteWorkoutsById,
   getAiConversations,
   getAiConversationsById,
+  getExerciseCatalog,
   getExercises,
   getExercisesById,
   getExercisesByIdMetricsHistory,
@@ -32,6 +33,7 @@ import {
   postAiConversationsByIdRunsByRunIdStop,
   postExercises,
   postWorkouts,
+  putExercisesByIdCatalog,
   putTrainingProfile,
   putWorkoutsById,
 } from "../sdk.gen";
@@ -50,6 +52,9 @@ import type {
   GetAiConversationsData,
   GetAiConversationsError,
   GetAiConversationsResponse,
+  GetExerciseCatalogData,
+  GetExerciseCatalogError,
+  GetExerciseCatalogResponse,
   GetExercisesByIdData,
   GetExercisesByIdError,
   GetExercisesByIdMetricsHistoryData,
@@ -110,6 +115,8 @@ import type {
   PostWorkoutsData,
   PostWorkoutsError,
   PostWorkoutsResponse,
+  PutExercisesByIdCatalogData,
+  PutExercisesByIdCatalogError,
   PutTrainingProfileData,
   PutTrainingProfileError,
   PutTrainingProfileResponse,
@@ -420,6 +427,34 @@ export const postAiConversationsByIdRunsByRunIdStopMutation = (
   return mutationOptions;
 };
 
+export const getExerciseCatalogQueryKey = (
+  options?: Options<GetExerciseCatalogData>,
+) => createQueryKey("getExerciseCatalog", options, false, ["exercises"]);
+
+/**
+ * List reviewed exercise catalog
+ */
+export const getExerciseCatalogQueryOptions = (
+  options?: Options<GetExerciseCatalogData>,
+) =>
+  queryOptions<
+    GetExerciseCatalogResponse,
+    GetExerciseCatalogError,
+    GetExerciseCatalogResponse,
+    ReturnType<typeof getExerciseCatalogQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getExerciseCatalog({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getExerciseCatalogQueryKey(options),
+  });
+
 export const getExercisesQueryKey = (options?: Options<GetExercisesData>) =>
   createQueryKey("getExercises", options, false, ["exercises"]);
 
@@ -554,6 +589,35 @@ export const patchExercisesByIdMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await patchExercisesById({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Classify an exercise or clear its classification
+ *
+ * Changes only the catalog link. An empty catalog_id clears it; name and history are preserved.
+ */
+export const putExercisesByIdCatalogMutation = (
+  options?: Partial<Options<PutExercisesByIdCatalogData>>,
+): UseMutationOptions<
+  unknown,
+  PutExercisesByIdCatalogError,
+  Options<PutExercisesByIdCatalogData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    PutExercisesByIdCatalogError,
+    Options<PutExercisesByIdCatalogData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await putExercisesByIdCatalog({
         ...options,
         ...fnOptions,
         throwOnError: true,

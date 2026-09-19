@@ -52,8 +52,9 @@ func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) 
 	exercises := make([]db.Exercise, len(exerciseRows))
 	for i, row := range exerciseRows {
 		exercises[i] = db.Exercise{
-			ID:   row.ID,
-			Name: row.Name,
+			ID:        row.ID,
+			Name:      row.Name,
+			CatalogID: row.CatalogID,
 			// UserID is not returned by optimized query but was used for filtering
 			UserID: userID,
 		}
@@ -97,8 +98,9 @@ func (er *exerciseRepository) GetExercise(ctx context.Context, id int32, userID 
 
 	// Convert GetExerciseRow to Exercise
 	exercise := db.Exercise{
-		ID:   exerciseRow.ID,
-		Name: exerciseRow.Name,
+		ID:        exerciseRow.ID,
+		Name:      exerciseRow.Name,
+		CatalogID: exerciseRow.CatalogID,
 		// UserID is not returned by optimized query but was used for filtering
 		UserID: userID,
 	}
@@ -461,3 +463,14 @@ func (er *exerciseRepository) DeleteExercise(ctx context.Context, id int32, user
 }
 
 var _ ExerciseRepository = (*exerciseRepository)(nil)
+
+func (er *exerciseRepository) UpdateExerciseCatalog(ctx context.Context, id int32, userID string, catalogID *string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	value := pgtype.Text{}
+	if catalogID != nil {
+		value = pgtype.Text{String: *catalogID, Valid: true}
+	}
+	_, err := er.queries.UpdateExerciseCatalog(ctx, db.UpdateExerciseCatalogParams{ID: id, UserID: userID, CatalogID: value})
+	return err
+}

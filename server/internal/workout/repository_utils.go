@@ -38,7 +38,15 @@ func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo
 
 	for _, exercise := range exercises {
 		logger.Info("attempting to get or create exercise", "exercise_name", exercise.Name, "user_id", userID)
-		dbExercise, err := exerciseRepo.GetOrCreateExerciseTx(ctx, qtx, exercise.Name, userID)
+		var dbExercise db.Exercise
+		var err error
+		if exercise.CatalogID != nil {
+			dbExercise.ID, err = qtx.GetOrCreateCatalogExercise(ctx, db.GetOrCreateCatalogExerciseParams{
+				Name: exercise.Name, UserID: userID, CatalogID: pgtype.Text{String: *exercise.CatalogID, Valid: true},
+			})
+		} else {
+			dbExercise, err = exerciseRepo.GetOrCreateExerciseTx(ctx, qtx, exercise.Name, userID)
+		}
 		if err != nil {
 			logger.Error("failed to get/create exercise", "exercise_name", exercise.Name, "error", err)
 			return nil, fmt.Errorf("failed to get/create exercise %s: %w", exercise.Name, err)

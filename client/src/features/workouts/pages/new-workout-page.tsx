@@ -176,6 +176,7 @@ export function NewWorkoutPage({
           }
         >
           <AddExerciseScreen
+            isDemoMode={!user}
             form={form}
             exercises={exercises}
             onAddExercise={workoutForm.openExercise}

@@ -1,3 +1,4 @@
+import { ExerciseClassification } from "./exercise-classification";
 import { useMemo, useState } from "react";
 import { ArrowDownAz, ArrowUpAz } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -146,6 +147,13 @@ export function ExerciseDetail({
           onEdit={handleOpenEditDialog}
           onDelete={handleOpenDeleteDialog}
         />
+
+        {!isDemoMode && (
+          <ExerciseClassification
+            exerciseId={exerciseId}
+            catalog={exercise.catalog}
+          />
+        )}
 
         <ExerciseHistorical1RmCard
           exercise={exercise}

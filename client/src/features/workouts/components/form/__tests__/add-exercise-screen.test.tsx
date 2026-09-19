@@ -1,3 +1,19 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const catalog = [
+  {
+    id: "Pushups",
+    name: "Pushups",
+    equipment: "body only",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["triceps"],
+  },
+];
+vi.mock("@/client/@tanstack/react-query.gen", () => ({
+  getExerciseCatalogQueryOptions: () => ({
+    queryKey: ["catalog"],
+    queryFn: async () => catalog,
+  }),
+}));
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -20,12 +36,20 @@ function AddExerciseScreenHarness() {
   });
 
   return (
-    <AddExerciseScreen
-      form={form}
-      exercises={[{ id: 1, name: "Incline Hammer Curl" }]}
-      onAddExercise={vi.fn()}
-      onBack={vi.fn()}
-    />
+    <QueryClientProvider client={new QueryClient()}>
+      <form.Subscribe
+        selector={(state) => state.values.exercises}
+        children={(exercises) => (
+          <output data-testid="draft">{JSON.stringify(exercises)}</output>
+        )}
+      />
+      <AddExerciseScreen
+        form={form}
+        exercises={[{ id: 1, name: "Incline Hammer Curl" }]}
+        onAddExercise={vi.fn()}
+        onBack={vi.fn()}
+      />
+    </QueryClientProvider>
   );
 }
 
@@ -52,4 +76,23 @@ describe("AddExerciseScreen", () => {
       screen.queryByRole("button", { name: "Add" }),
     ).not.toBeInTheDocument();
   });
+});
+
+it("adds explicit catalog metadata to the workout draft", async () => {
+  render(<AddExerciseScreenHarness />);
+  fireEvent.click(screen.getByRole("button", { name: "Browse catalog" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Pushups" }));
+  expect(JSON.parse(screen.getByTestId("draft").textContent ?? "[]")).toEqual([
+    { name: "Pushups", catalog_id: "Pushups", sets: [] },
+  ]);
+});
+it("keeps a typed name unclassified even when it matches the catalog", () => {
+  render(<AddExerciseScreenHarness />);
+  fireEvent.change(screen.getByLabelText("Search exercises"), {
+    target: { value: "Pushups" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Add" }));
+  expect(JSON.parse(screen.getByTestId("draft").textContent ?? "[]")).toEqual([
+    { name: "Pushups", sets: [] },
+  ]);
 });

@@ -17,8 +17,9 @@ type CreateWorkoutRequest struct {
 }
 
 type ExerciseInput struct {
-	Name string     `json:"name" validate:"required,min=1,max=256"`
-	Sets []SetInput `json:"sets" validate:"required,min=1,dive"`
+	CatalogID *string    `json:"catalog_id,omitempty"`
+	Name      string     `json:"name" validate:"required,min=1,max=256"`
+	Sets      []SetInput `json:"sets" validate:"required,min=1,dive"`
 }
 
 type SetInput struct {
@@ -28,8 +29,9 @@ type SetInput struct {
 }
 
 type UpdateExercise struct {
-	Name string      `json:"name" validate:"required,min=1,max=256"`
-	Sets []UpdateSet `json:"sets" validate:"required,min=1,dive"`
+	CatalogID *string     `json:"catalog_id,omitempty"`
+	Name      string      `json:"name" validate:"required,min=1,max=256"`
+	Sets      []UpdateSet `json:"sets" validate:"required,min=1,dive"`
 }
 
 type UpdateSet struct {
@@ -39,8 +41,9 @@ type UpdateSet struct {
 }
 
 type exerciseRequestDraft struct {
-	Name string
-	Sets []setRequestDraft
+	CatalogID *string
+	Name      string
+	Sets      []setRequestDraft
 }
 
 type setRequestDraft struct {
@@ -65,7 +68,8 @@ type PGWorkoutData struct {
 }
 
 type PGExerciseData struct {
-	Name string
+	CatalogID *string
+	Name      string
 }
 
 type PGSetData struct {
@@ -92,7 +96,8 @@ type WorkoutData struct {
 }
 
 type ExerciseData struct {
-	Name string
+	CatalogID *string
+	Name      string
 }
 
 type SetData struct {

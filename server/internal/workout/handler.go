@@ -215,6 +215,10 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.workoutService.CreateWorkout(r.Context(), req); err != nil {
+		if errors.Is(err, ErrInvalidCatalog) {
+			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
 		if errors.Is(err, recommendation.ErrInvalidContext) {
 			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "invalid recommendation context", err)
 			return
@@ -270,6 +274,10 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 
 	// Delegate to service layer for business logic
 	if err := h.workoutService.UpdateWorkout(r.Context(), workoutID, req); err != nil {
+		if errors.Is(err, ErrInvalidCatalog) {
+			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
 		// Handle different error types with appropriate HTTP status codes
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound

@@ -160,6 +160,7 @@ export function EditWorkoutPage({
           }
         >
           <AddExerciseScreen
+            isDemoMode={!user}
             form={form}
             exercises={exercises}
             onAddExercise={(index, isNewExercise) =>

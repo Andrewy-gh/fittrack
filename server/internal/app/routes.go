@@ -51,6 +51,8 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 	mux.HandleFunc("GET /api/workouts/focus-values", wh.ListWorkoutFocusValues)
 	mux.HandleFunc("GET /api/workouts/contribution-data", wh.GetContributionData)
 	mux.HandleFunc("GET /api/exercises", eh.ListExercises)
+	mux.HandleFunc("GET /api/exercise-catalog", eh.ListCatalog)
+	mux.HandleFunc("PUT /api/exercises/{id}/catalog", eh.UpdateCatalog)
 	mux.HandleFunc("GET /api/features/access", fh.ListActiveFeatureAccess)
 	if tph != nil {
 		mux.HandleFunc("GET /api/training-profile", tph.Get)
