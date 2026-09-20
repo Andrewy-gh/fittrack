@@ -3,17 +3,17 @@ import { ExerciseCatalogPicker } from "@/features/exercises/components/exercise-
 import { withForm } from "@/hooks/form";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  ExerciseList,
+  ExerciseListSearch,
+} from "@/features/exercises/components/exercise-selection-list";
 import type {
   DbExercise,
   ExerciseOption,
 } from "@/features/exercises/api/exercises";
 import { MOCK_VALUES } from "@/features/workouts/components/form/form-options";
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { ChevronLeft, Search } from "lucide-react";
-import { CardContent } from "@/components/ui/card";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 type AddExerciseScreenProps = {
   isDemoMode?: boolean;
@@ -62,14 +62,16 @@ export const AddExerciseScreen = withForm({
           {/* Header */}
           <div className="flex items-center justify-between pt-4">
             <button
-              onClick={onBack}
+              type="button"
+              aria-label={showCatalog ? "Back to exercises" : "Back to workout"}
+              onClick={() => (showCatalog ? setShowCatalog(false) : onBack())}
               className="cursor-pointer"
             >
               <ChevronLeft className="text-primary" />
             </button>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                Choose Exercise
+                {showCatalog ? "Exercise Catalog" : "Choose Exercise"}
               </h1>
             </div>
             <form.AppField
@@ -105,13 +107,15 @@ export const AddExerciseScreen = withForm({
 
           {!isDemoMode && (
             <div className="space-y-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowCatalog(!showCatalog)}
-              >
-                {showCatalog ? "Hide catalog" : "Browse catalog"}
-              </Button>
+              {!showCatalog && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCatalog(true)}
+                >
+                  Browse catalog
+                </Button>
+              )}
               {showCatalog && (
                 <form.AppField
                   name="exercises"
@@ -141,70 +145,27 @@ export const AddExerciseScreen = withForm({
 
           {!showCatalog && (
             <>
-              {/* MARK: Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  autoFocus
-                  placeholder="Search/add exercises"
-                  aria-label="Search exercises"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 text-base"
-                />
-              </div>
-
-              {/* MARK: Exercise List */}
-              <Card className="py-0">
-                <CardContent className="p-0">
-                  <form.AppField
-                    name="exercises"
-                    mode="array"
-                    children={(field) => (
-                      <>
-                        {filteredExercises.length === 0 ? (
-                          <div>
-                            <div className="px-4 py-8 text-center text-wrap text-muted-foreground">
-                              No exercises found matching "{searchQuery}"
-                            </div>
-                          </div>
-                        ) : (
-                          filteredExercises.map((exercise) => (
-                            // MARK: List items
-                            <button
-                              type="button"
-                              key={exercise.id}
-                              className="flex w-full items-center justify-between border-b border-border p-4 text-left transition-colors hover:bg-gray-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset last:border-b-0"
-                              onClick={() => {
-                                field.pushValue({
-                                  name: exercise.name,
-                                  sets: [],
-                                });
-                                const exerciseIndex =
-                                  field.state.value.length - 1;
-                                onAddExercise(exerciseIndex, true);
-                              }}
-                            >
-                              <h3 className="font-semibold md:text-sm">
-                                {exercise.name}
-                              </h3>
-                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                            </button>
-                          ))
-                        )}
-                      </>
-                    )}
+              <ExerciseListSearch
+                label="Search exercises"
+                placeholder="Search/add exercises"
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+              <form.AppField
+                name="exercises"
+                mode="array"
+                children={(field) => (
+                  <ExerciseList
+                    entries={filteredExercises}
+                    emptyMessage={`No exercises found matching "${searchQuery}"`}
+                    showCount={searchQuery.length > 0}
+                    onSelect={(exercise) => {
+                      field.pushValue({ name: exercise.name, sets: [] });
+                      onAddExercise(field.state.value.length - 1, true);
+                    }}
                   />
-                </CardContent>
-              </Card>
-
-              {/* MARK: Results Count */}
-              {searchQuery && (
-                <div className="text-center text-sm text-muted-foreground">
-                  {filteredExercises.length} exercise
-                  {filteredExercises.length !== 1 ? "s" : ""} found
-                </div>
-              )}
+                )}
+              />
             </>
           )}
         </div>

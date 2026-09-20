@@ -89,7 +89,7 @@ export function ExerciseClassification({
             if (!mutation.isPending) setOpen(value);
           }}
         >
-          <DialogContent>
+          <DialogContent className="max-h-[85dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Classify exercise</DialogTitle>
               <DialogDescription>
