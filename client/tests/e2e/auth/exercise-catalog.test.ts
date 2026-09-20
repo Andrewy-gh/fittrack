@@ -5,6 +5,13 @@ import { authStatePath } from "../helpers/local-e2e-auth";
 test.use({ storageState: authStatePath });
 test.describe.configure({ mode: "serial" });
 
+test.beforeEach(() => {
+  test.skip(
+    process.env.E2E_LOCAL_AUTH_ENABLED !== "true",
+    "Requires isolated local E2E authentication",
+  );
+});
+
 for (const viewport of [
   { width: 1280, height: 1000 },
   { width: 390, height: 844 },
@@ -12,10 +19,6 @@ for (const viewport of [
   test(`catalog selection and classification preserve history at ${viewport.width}px`, async ({
     page,
   }, testInfo) => {
-    test.skip(
-      process.env.E2E_LOCAL_AUTH_ENABLED !== "true",
-      "Requires isolated local E2E authentication",
-    );
     await page.setViewportSize(viewport);
     await page.addInitScript(() =>
       localStorage.setItem("vite-ui-theme", "dark"),
