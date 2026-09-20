@@ -154,3 +154,32 @@ SELECT
 FROM workout_totals wt
 GROUP BY DATE_TRUNC('day', wt.date)
 ORDER BY date;
+
+-- name: ListTrainingEvidence :many
+-- Returns every owned workout in the requested bounds, including workouts with no valid sets.
+-- The owned-exercise check excludes corrupt cross-user joins instead of attributing them.
+SELECT
+    w.id AS workout_id,
+    w.date AS workout_date,
+    e.id AS exercise_id,
+    e.catalog_id,
+    COUNT(s.id) FILTER (WHERE s.set_type = 'working')::INTEGER AS working_set_count
+FROM workout AS w
+LEFT JOIN "set" AS s
+    ON s.workout_id = w.id
+    AND s.user_id = sqlc.arg(user_id)
+    AND EXISTS (
+        SELECT 1
+        FROM exercise AS owned_exercise
+        WHERE owned_exercise.id = s.exercise_id
+          AND owned_exercise.user_id = sqlc.arg(user_id)
+    )
+LEFT JOIN exercise AS e
+    ON e.id = s.exercise_id
+    AND e.user_id = sqlc.arg(user_id)
+WHERE w.user_id = sqlc.arg(user_id)
+  AND w.date >= sqlc.arg(start_at)
+  AND w.date < sqlc.arg(end_at)
+  AND w.date <= sqlc.arg(observed_at)
+GROUP BY w.id, w.date, e.id, e.catalog_id
+ORDER BY w.date, w.id, e.id;
