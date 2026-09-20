@@ -1,6 +1,10 @@
 package exercise
 
-import "time"
+import (
+	"time"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/exercisecatalog"
+)
 
 // ExerciseResponse represents an exercise response for swagger documentation
 type ExerciseResponse struct {
@@ -29,11 +33,12 @@ type ExerciseWithSetsResponse struct {
 
 // ExerciseDetailExerciseResponse represents exercise metadata for the exercise detail page.
 type ExerciseDetailExerciseResponse struct {
-	ID        int32     `json:"id" validate:"required" example:"1"`
-	Name      string    `json:"name" validate:"required" example:"Bench Press"`
-	CreatedAt time.Time `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UpdatedAt time.Time `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
-	UserID    string    `json:"user_id" validate:"required" example:"user-123"`
+	Catalog   *exercisecatalog.Entry `json:"catalog,omitempty"`
+	ID        int32                  `json:"id" validate:"required" example:"1"`
+	Name      string                 `json:"name" validate:"required" example:"Bench Press"`
+	CreatedAt time.Time              `json:"created_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UpdatedAt time.Time              `json:"updated_at" validate:"required" example:"2023-01-01T15:04:05Z"`
+	UserID    string                 `json:"user_id" validate:"required" example:"user-123"`
 
 	Historical1RM                *float64   `json:"historical_1rm,omitempty" example:"315.0"`
 	Historical1RMUpdatedAt       *time.Time `json:"historical_1rm_updated_at,omitempty" example:"2023-01-01T15:04:05Z"`

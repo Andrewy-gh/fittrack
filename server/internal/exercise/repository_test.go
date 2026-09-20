@@ -71,3 +71,7 @@ func TestExerciseRepository_GetRecentSetsForExercise(t *testing.T) {
 
 	mockRepo.AssertExpectations(t)
 }
+
+func (m *MockExerciseRepositoryForTest) UpdateExerciseCatalog(ctx context.Context, id int32, userID string, catalogID *string) error {
+	return m.Called(ctx, id, userID, catalogID).Error(0)
+}

@@ -689,6 +689,39 @@
                 }
             }
         },
+        "/exercise-catalog": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "List reviewed exercise catalog",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/exercisecatalog.Entry"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/exercises": {
             "get": {
                 "security": [
@@ -962,6 +995,73 @@
                     },
                     "409": {
                         "description": "Conflict - Exercise name already exists",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/exercises/{id}/catalog": {
+            "put": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Changes only the catalog link. An empty catalog_id clears it; name and history are preserved.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Classify an exercise or clear its classification",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Catalog link",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/exercise.UpdateCatalogRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Updated"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -2049,6 +2149,9 @@
                     "type": "number",
                     "example": 305
                 },
+                "catalog": {
+                    "$ref": "#/definitions/exercisecatalog.Entry"
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
@@ -2292,6 +2395,18 @@
                 }
             }
         },
+        "exercise.UpdateCatalogRequest": {
+            "type": "object",
+            "required": [
+                "catalog_id"
+            ],
+            "properties": {
+                "catalog_id": {
+                    "description": "Empty string explicitly clears classification. The field must be present.",
+                    "type": "string"
+                }
+            }
+        },
         "exercise.UpdateExerciseHistorical1RMRequest": {
             "type": "object",
             "properties": {
@@ -2318,6 +2433,39 @@
                 "name": {
                     "type": "string",
                     "maxLength": 256
+                }
+            }
+        },
+        "exercisecatalog.Entry": {
+            "type": "object",
+            "required": [
+                "equipment",
+                "id",
+                "name",
+                "primaryMuscles",
+                "secondaryMuscles"
+            ],
+            "properties": {
+                "equipment": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "primaryMuscles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "secondaryMuscles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -2613,6 +2761,9 @@
                 "sets"
             ],
             "properties": {
+                "catalog_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 256,
@@ -2717,6 +2868,9 @@
                 "sets"
             ],
             "properties": {
+                "catalog_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 256,

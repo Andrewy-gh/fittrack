@@ -75,6 +75,7 @@ type AiChatTrialPromptUsage struct {
 }
 
 type Exercise struct {
+	CatalogID                    pgtype.Text        `json:"catalog_id"`
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`
 	Historical1rm                pgtype.Numeric     `json:"historical_1rm"`

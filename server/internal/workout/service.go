@@ -11,10 +11,13 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/exercisecatalog"
 	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/jackc/pgx/v5"
 )
+
+var ErrInvalidCatalog = errors.New("invalid or conflicting exercise catalog selection")
 
 type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
@@ -382,8 +385,9 @@ func exerciseInputsToDraft(exercises []ExerciseInput) []exerciseRequestDraft {
 			})
 		}
 		draftExercises = append(draftExercises, exerciseRequestDraft{
-			Name: exercise.Name,
-			Sets: draftSets,
+			Name:      exercise.Name,
+			CatalogID: exercise.CatalogID,
+			Sets:      draftSets,
 		})
 	}
 	return draftExercises
@@ -401,8 +405,9 @@ func updateExercisesToDraft(exercises []UpdateExercise) []exerciseRequestDraft {
 			})
 		}
 		draftExercises = append(draftExercises, exerciseRequestDraft{
-			Name: exercise.Name,
-			Sets: draftSets,
+			Name:      exercise.Name,
+			CatalogID: exercise.CatalogID,
+			Sets:      draftSets,
 		})
 	}
 	return draftExercises
@@ -424,15 +429,27 @@ func transformWorkoutRequest(logger *slog.Logger, request workoutRequestDraft) (
 	}
 
 	// Process exercises and sets
-	exerciseMap := make(map[string]bool)
+	catalogLinks := make(map[string]string)
 	var exercises []ExerciseData
 	var sets []SetData
 
 	for _, exercise := range request.Exercises {
-		if !exerciseMap[exercise.Name] {
-			exerciseMap[exercise.Name] = true
+		link := ""
+		if exercise.CatalogID != nil {
+			link = *exercise.CatalogID
+			if exercisecatalog.Find(link) == nil {
+				return nil, ErrInvalidCatalog
+			}
+		}
+		previous, exists := catalogLinks[exercise.Name]
+		if exists && previous != link {
+			return nil, ErrInvalidCatalog
+		}
+		catalogLinks[exercise.Name] = link
+		if !exists {
 			exercises = append(exercises, ExerciseData{
-				Name: exercise.Name,
+				Name:      exercise.Name,
+				CatalogID: exercise.CatalogID,
 			})
 		}
 

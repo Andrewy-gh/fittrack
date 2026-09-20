@@ -1,10 +1,11 @@
 -- name: GetExercise :one
-SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2;
+SELECT id, name, catalog_id FROM exercise WHERE id = $1 AND user_id = $2;
 
 -- name: GetExerciseDetail :one
 SELECT
     e.id,
     e.name,
+    e.catalog_id,
     e.created_at,
     e.updated_at,
     e.user_id,
@@ -22,7 +23,7 @@ FROM exercise e
 WHERE e.id = $1 AND e.user_id = $2;
 
 -- name: ListExercises :many
-SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name;
+SELECT id, name, catalog_id FROM exercise WHERE user_id = $1 ORDER BY name;
 
 -- name: GetExerciseWithSets :many
 SELECT 
@@ -289,7 +290,7 @@ ORDER BY e1rm DESC, workout_date DESC, workout_id DESC
 LIMIT 1;
 
 -- name: GetExerciseByName :one
-SELECT id, name FROM exercise WHERE name = $1 AND user_id = $2;
+SELECT id, name, catalog_id FROM exercise WHERE name = $1 AND user_id = $2;
 
 -- User queries
 
@@ -309,3 +310,14 @@ JOIN workout w ON w.id = s.workout_id
 WHERE s.exercise_id = $1 AND s.user_id = $2
 ORDER BY w.date DESC, s.set_order DESC
 LIMIT 3;
+
+-- name: UpdateExerciseCatalog :one
+UPDATE exercise SET catalog_id = $3, updated_at = NOW()
+WHERE id = $1 AND user_id = $2
+RETURNING id;
+
+-- name: GetOrCreateCatalogExercise :one
+INSERT INTO exercise (name, user_id, catalog_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id;

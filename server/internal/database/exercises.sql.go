@@ -26,7 +26,7 @@ func (q *Queries) DeleteExercise(ctx context.Context, arg DeleteExerciseParams) 
 }
 
 const getExercise = `-- name: GetExercise :one
-SELECT id, name FROM exercise WHERE id = $1 AND user_id = $2
+SELECT id, name, catalog_id FROM exercise WHERE id = $1 AND user_id = $2
 `
 
 type GetExerciseParams struct {
@@ -35,14 +35,15 @@ type GetExerciseParams struct {
 }
 
 type GetExerciseRow struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	CatalogID pgtype.Text `json:"catalog_id"`
 }
 
 func (q *Queries) GetExercise(ctx context.Context, arg GetExerciseParams) (GetExerciseRow, error) {
 	row := q.db.QueryRow(ctx, getExercise, arg.ID, arg.UserID)
 	var i GetExerciseRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.CatalogID)
 	return i, err
 }
 
@@ -119,7 +120,7 @@ func (q *Queries) GetExerciseBestE1rmWithWorkoutExcludingWorkout(ctx context.Con
 }
 
 const getExerciseByName = `-- name: GetExerciseByName :one
-SELECT id, name FROM exercise WHERE name = $1 AND user_id = $2
+SELECT id, name, catalog_id FROM exercise WHERE name = $1 AND user_id = $2
 `
 
 type GetExerciseByNameParams struct {
@@ -128,14 +129,15 @@ type GetExerciseByNameParams struct {
 }
 
 type GetExerciseByNameRow struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	CatalogID pgtype.Text `json:"catalog_id"`
 }
 
 func (q *Queries) GetExerciseByName(ctx context.Context, arg GetExerciseByNameParams) (GetExerciseByNameRow, error) {
 	row := q.db.QueryRow(ctx, getExerciseByName, arg.Name, arg.UserID)
 	var i GetExerciseByNameRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.CatalogID)
 	return i, err
 }
 
@@ -143,6 +145,7 @@ const getExerciseDetail = `-- name: GetExerciseDetail :one
 SELECT
     e.id,
     e.name,
+    e.catalog_id,
     e.created_at,
     e.updated_at,
     e.user_id,
@@ -168,6 +171,7 @@ type GetExerciseDetailParams struct {
 type GetExerciseDetailRow struct {
 	ID                           int32              `json:"id"`
 	Name                         string             `json:"name"`
+	CatalogID                    pgtype.Text        `json:"catalog_id"`
 	CreatedAt                    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt                    pgtype.Timestamptz `json:"updated_at"`
 	UserID                       string             `json:"user_id"`
@@ -183,6 +187,7 @@ func (q *Queries) GetExerciseDetail(ctx context.Context, arg GetExerciseDetailPa
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.CatalogID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.UserID,
@@ -553,6 +558,26 @@ func (q *Queries) GetExerciseWithSets(ctx context.Context, arg GetExerciseWithSe
 	return items, nil
 }
 
+const getOrCreateCatalogExercise = `-- name: GetOrCreateCatalogExercise :one
+INSERT INTO exercise (name, user_id, catalog_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id
+`
+
+type GetOrCreateCatalogExerciseParams struct {
+	Name      string      `json:"name"`
+	UserID    string      `json:"user_id"`
+	CatalogID pgtype.Text `json:"catalog_id"`
+}
+
+func (q *Queries) GetOrCreateCatalogExercise(ctx context.Context, arg GetOrCreateCatalogExerciseParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getOrCreateCatalogExercise, arg.Name, arg.UserID, arg.CatalogID)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getOrCreateExercise = `-- name: GetOrCreateExercise :one
 INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
@@ -681,12 +706,13 @@ func (q *Queries) GetWorkoutBestE1rmByExercise(ctx context.Context, arg GetWorko
 }
 
 const listExercises = `-- name: ListExercises :many
-SELECT id, name FROM exercise WHERE user_id = $1 ORDER BY name
+SELECT id, name, catalog_id FROM exercise WHERE user_id = $1 ORDER BY name
 `
 
 type ListExercisesRow struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID        int32       `json:"id"`
+	Name      string      `json:"name"`
+	CatalogID pgtype.Text `json:"catalog_id"`
 }
 
 func (q *Queries) ListExercises(ctx context.Context, userID string) ([]ListExercisesRow, error) {
@@ -698,7 +724,7 @@ func (q *Queries) ListExercises(ctx context.Context, userID string) ([]ListExerc
 	var items []ListExercisesRow
 	for rows.Next() {
 		var i ListExercisesRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.CatalogID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -765,6 +791,25 @@ func (q *Queries) SetExerciseHistorical1RM(ctx context.Context, arg SetExerciseH
 		arg.UserID,
 	)
 	return err
+}
+
+const updateExerciseCatalog = `-- name: UpdateExerciseCatalog :one
+UPDATE exercise SET catalog_id = $3, updated_at = NOW()
+WHERE id = $1 AND user_id = $2
+RETURNING id
+`
+
+type UpdateExerciseCatalogParams struct {
+	ID        int32       `json:"id"`
+	UserID    string      `json:"user_id"`
+	CatalogID pgtype.Text `json:"catalog_id"`
+}
+
+func (q *Queries) UpdateExerciseCatalog(ctx context.Context, arg UpdateExerciseCatalogParams) (int32, error) {
+	row := q.db.QueryRow(ctx, updateExerciseCatalog, arg.ID, arg.UserID, arg.CatalogID)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateExerciseHistorical1RMFromWorkoutIfBetter = `-- name: UpdateExerciseHistorical1RMFromWorkoutIfBetter :exec

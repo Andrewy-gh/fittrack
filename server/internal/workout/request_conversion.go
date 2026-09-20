@@ -33,8 +33,9 @@ func toCreateWorkoutRequest(reformatted *ReformattedRequest) (CreateWorkoutReque
 
 	for _, exercise := range reformatted.Exercises {
 		request.Exercises = append(request.Exercises, ExerciseInput{
-			Name: exercise.Name,
-			Sets: setsByExercise[exercise.Name],
+			Name:      exercise.Name,
+			CatalogID: exercise.CatalogID,
+			Sets:      setsByExercise[exercise.Name],
 		})
 	}
 

@@ -113,6 +113,7 @@ export type ExerciseCreateExerciseResponse = {
 
 export type ExerciseExerciseDetailExerciseResponse = {
   best_e1rm?: number;
+  catalog?: ExercisecatalogEntry;
   created_at: string;
   historical_1rm?: number;
   historical_1rm_source_workout_id?: number;
@@ -188,6 +189,13 @@ export type ExerciseRecentSetsResponse = {
   workout_id: number;
 };
 
+export type ExerciseUpdateCatalogRequest = {
+  /**
+   * Empty string explicitly clears classification. The field must be present.
+   */
+  catalog_id: string;
+};
+
 export type ExerciseUpdateExerciseHistorical1RmRequest = {
   historical_1rm?: number;
   mode?: "manual" | "recompute";
@@ -195,6 +203,14 @@ export type ExerciseUpdateExerciseHistorical1RmRequest = {
 
 export type ExerciseUpdateExerciseNameRequest = {
   name: string;
+};
+
+export type ExercisecatalogEntry = {
+  equipment: string;
+  id: string;
+  name: string;
+  primaryMuscles: Array<string>;
+  secondaryMuscles: Array<string>;
 };
 
 export type FeatureaccessFeatureAccessResponse = {
@@ -283,6 +299,7 @@ export type WorkoutCreateWorkoutRequest = {
 };
 
 export type WorkoutExerciseInput = {
+  catalog_id?: string;
   name: string;
   sets: Array<WorkoutSetInput>;
 };
@@ -311,6 +328,7 @@ export type WorkoutSetInput = {
 };
 
 export type WorkoutUpdateExercise = {
+  catalog_id?: string;
   name: string;
   sets: Array<WorkoutUpdateSet>;
 };
@@ -871,6 +889,33 @@ export type PostAiConversationsByIdRunsByRunIdStopResponses = {
 export type PostAiConversationsByIdRunsByRunIdStopResponse =
   PostAiConversationsByIdRunsByRunIdStopResponses[keyof PostAiConversationsByIdRunsByRunIdStopResponses];
 
+export type GetExerciseCatalogData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/exercise-catalog";
+};
+
+export type GetExerciseCatalogErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+};
+
+export type GetExerciseCatalogError =
+  GetExerciseCatalogErrors[keyof GetExerciseCatalogErrors];
+
+export type GetExerciseCatalogResponses = {
+  /**
+   * OK
+   */
+  200: Array<ExercisecatalogEntry>;
+};
+
+export type GetExerciseCatalogResponse =
+  GetExerciseCatalogResponses[keyof GetExerciseCatalogResponses];
+
 export type GetExercisesData = {
   body?: never;
   path?: never;
@@ -1067,6 +1112,50 @@ export type PatchExercisesByIdError =
 export type PatchExercisesByIdResponses = {
   /**
    * No Content - Exercise name updated successfully
+   */
+  204: unknown;
+};
+
+export type PutExercisesByIdCatalogData = {
+  /**
+   * Catalog link
+   */
+  body: ExerciseUpdateCatalogRequest;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query?: never;
+  url: "/exercises/{id}/catalog";
+};
+
+export type PutExercisesByIdCatalogErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type PutExercisesByIdCatalogError =
+  PutExercisesByIdCatalogErrors[keyof PutExercisesByIdCatalogErrors];
+
+export type PutExercisesByIdCatalogResponses = {
+  /**
+   * Updated
    */
   204: unknown;
 };
