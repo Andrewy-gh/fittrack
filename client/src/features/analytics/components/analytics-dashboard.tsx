@@ -1,3 +1,4 @@
+import { TrainingAssessment } from "@/features/analytics/components/training-assessment";
 import { useLayoutEffect, useRef } from "react";
 
 import type {
@@ -22,6 +23,8 @@ export interface AnalyticsDashboardProps {
   isLoadingDetails: boolean;
   exerciseSets?: ExerciseExerciseWithSetsResponse[];
   isDemoMode: boolean;
+  userId?: string;
+  assessmentWeek?: string;
   workoutContributionData?: WorkoutContributionDataResponse;
   workoutFocusValues?: string[];
 }
@@ -34,6 +37,8 @@ export function AnalyticsDashboard({
   isLoadingDetails,
   exerciseSets = [],
   isDemoMode,
+  userId,
+  assessmentWeek,
   workoutContributionData,
   workoutFocusValues = [],
 }: AnalyticsDashboardProps) {
@@ -159,6 +164,15 @@ export function AnalyticsDashboard({
             />
           </div>
         </section>
+
+        {userId && selectedExerciseId && (
+          <TrainingAssessment
+            key={assessmentWeek ?? "default"}
+            assessmentWeek={assessmentWeek}
+            userId={userId}
+            exerciseId={selectedExerciseId}
+          />
+        )}
 
         {isLoadingDetails || !selectedExerciseId ? (
           <div

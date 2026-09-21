@@ -27,6 +27,9 @@ import (
 
 func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler, fh *featureaccess.Handler, hh *health.Handler, ah *aichat.Handler, bh *billing.Handler, tph *trainingprofile.Handler, accountHandler *account.Handler, e2eh *e2eauth.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
+	assessment := workout.NewAssessmentHandler(workout.NewAssessmentService(api.queries, time.Now), api.logger)
+	mux.HandleFunc("GET /api/exercises/{id}/assessment", assessment.Get)
+
 	recommendations := recommendation.NewHandler(recommendation.NewService(recommendation.NewRepository(api.queries), time.Now), api.logger)
 	mux.HandleFunc("GET /api/exercises/{id}/recommendation", recommendations.Get)
 

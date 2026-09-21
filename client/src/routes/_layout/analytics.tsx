@@ -37,12 +37,13 @@ export const Route = createFileRoute("/_layout/analytics")({
 });
 
 function RouteComponent() {
-  const { exerciseId } = Route.useSearch();
+  const { exerciseId, assessmentWeek } = Route.useSearch();
   const { user } = Route.useRouteContext();
 
   return (
     <AnalyticsPage
       exerciseId={exerciseId}
+      assessmentWeek={assessmentWeek}
       user={user}
     />
   );

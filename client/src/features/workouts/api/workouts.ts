@@ -60,6 +60,7 @@ export function contributionDataQueryOptions() {
 }
 
 function invalidateWorkoutAnalyticsQueries() {
+  queryClient.invalidateQueries({ queryKey: ["training-assessment"] });
   queryClient.invalidateQueries({
     queryKey: getWorkoutsContributionDataQueryKey(),
   });

@@ -134,7 +134,19 @@ describe("useNewWorkoutFormWorkflow", () => {
   });
 
   it("uses the authenticated save mutation and clears the saved draft after submit", async () => {
-    const draftStorage = createDraftStorage();
+    const draftStorage = createDraftStorage({
+      date: "2026-08-12T12:00:00Z",
+      exercises: [
+        {
+          name: "New press",
+          sets: [{ reps: 5, weight: 50, setType: "working" }],
+        },
+      ],
+    });
+    mockFetchQuery.mockResolvedValue([
+      { id: 1, name: "Alphabetical first" },
+      { id: 9, name: "New press" },
+    ]);
     mockApiMutateAsync.mockImplementation(async (_variables, options) => {
       options.onSuccess();
     });
@@ -164,7 +176,20 @@ describe("useNewWorkoutFormWorkflow", () => {
     expect(mockDemoMutateAsync).not.toHaveBeenCalled();
     expect(draftStorage.clear).toHaveBeenCalledWith("user-1");
     expect(mockNavigate).toHaveBeenCalledWith({ search: {} });
-    expect(mockToastSuccess).toHaveBeenCalledWith("Workout saved successfully");
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      "Workout saved successfully",
+      {
+        action: { label: "View assessment", onClick: expect.any(Function) },
+      },
+    );
+    await act(async () => {
+      await mockToastSuccess.mock.calls[0][1].action.onClick();
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/analytics",
+      hash: "training-assessment",
+      search: { exerciseId: 9, assessmentWeek: "2026-08-10" },
+    });
   });
 
   it("asks before replacing an existing draft with a focus-area template", async () => {

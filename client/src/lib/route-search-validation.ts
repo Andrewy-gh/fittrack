@@ -43,5 +43,18 @@ export const exerciseDetailSearchValidator = valibotValidator(
 export const analyticsSearchValidator = valibotValidator(
   v.object({
     exerciseId: optionalPositiveIntegerSearchParam,
+    assessmentWeek: v.optional(
+      v.pipe(
+        v.string(),
+        v.regex(/^\d{4}-\d{2}-\d{2}$/),
+        v.check((value) => {
+          const date = new Date(value);
+          return (
+            !Number.isNaN(date.getTime()) &&
+            date.toISOString().slice(0, 10) === value
+          );
+        }, "Invalid assessment week"),
+      ),
+    ),
   }),
 );
