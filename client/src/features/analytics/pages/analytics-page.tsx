@@ -14,10 +14,15 @@ import {
 
 type AnalyticsPageProps = {
   exerciseId?: number;
+  assessmentWeek?: string;
   user: ApplicationUser | null;
 };
 
-export function AnalyticsPage({ exerciseId, user }: AnalyticsPageProps) {
+export function AnalyticsPage({
+  exerciseId,
+  assessmentWeek,
+  user,
+}: AnalyticsPageProps) {
   const navigate = useNavigate({ from: "/analytics" });
   const isDemoMode = !user;
 
@@ -54,6 +59,8 @@ export function AnalyticsPage({ exerciseId, user }: AnalyticsPageProps) {
       isLoadingDetails={exerciseDetailQuery.isLoading}
       exerciseSets={exerciseDetailQuery.data?.sets}
       isDemoMode={isDemoMode}
+      userId={user?.id}
+      assessmentWeek={assessmentWeek}
       workoutContributionData={workoutContributionQuery.data}
       workoutFocusValues={workoutFocusValuesQuery.data ?? []}
     />

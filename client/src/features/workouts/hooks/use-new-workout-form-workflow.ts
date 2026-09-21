@@ -1,3 +1,4 @@
+import { format, startOfWeek } from "date-fns";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import type { ApplicationUser } from "@/lib/application-user";
@@ -6,7 +7,10 @@ import type {
   RecommendationResult,
   WorkoutNewWorkoutContextResponse,
 } from "@/client";
-import type { DbExercise } from "@/features/exercises/api/exercises";
+import {
+  exercisesQueryOptions,
+  type DbExercise,
+} from "@/features/exercises/api/exercises";
 import {
   formatExerciseGoalSummary,
   getExerciseGoal,
@@ -63,11 +67,54 @@ export function useNewWorkoutFormWorkflow({
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };
 
+      // Snapshot saved context before resetting the draft. Newly created exercise IDs
+      // are resolved from the refreshed owned list when the action is clicked.
+      const savedExerciseName = trimmedValue.exercises[0]?.name;
+      const assessmentWeek = format(
+        startOfWeek(new Date(trimmedValue.date), { weekStartsOn: 1 }),
+        "yyyy-MM-dd",
+      );
+
       await saveWorkout.mutateAsync(
         { body: trimmedValue },
         {
           onSuccess: () => {
-            toast.success("Workout saved successfully");
+            if (user && savedExerciseName) {
+              toast.success("Workout saved successfully", {
+                action: {
+                  label: "View assessment",
+                  onClick: async () => {
+                    try {
+                      const savedExercises = await queryClient.fetchQuery({
+                        ...exercisesQueryOptions(),
+                        staleTime: 0,
+                      });
+                      const savedExercise = savedExercises.find(
+                        (exercise) => exercise.name === savedExerciseName,
+                      );
+                      if (!savedExercise) {
+                        toast.error(
+                          "This exercise is no longer available for assessment.",
+                        );
+                        return;
+                      }
+                      await navigate({
+                        to: "/analytics",
+                        search: {
+                          exerciseId: savedExercise.id,
+                          assessmentWeek,
+                        },
+                        hash: "training-assessment",
+                      });
+                    } catch {
+                      toast.error("Could not open the assessment. Try again.");
+                    }
+                  },
+                },
+              });
+            } else {
+              toast.success("Workout saved successfully");
+            }
             draftStorage.clear(user?.id);
             form.reset(MOCK_VALUES);
             clearSearch();

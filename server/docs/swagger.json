@@ -1008,6 +1008,77 @@
                 }
             }
         },
+        "/exercises/{id}/assessment": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exercises"
+                ],
+                "summary": "Compare saved exercise sessions with a general strength set reference",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Exercise ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "First local date, YYYY-MM-DD",
+                        "name": "startDate",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "IANA timezone",
+                        "name": "timezone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/workout.StrengthAssessment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/exercises/{id}/catalog": {
             "put": {
                 "security": [
@@ -2689,6 +2760,32 @@
                 }
             }
         },
+        "workout.AssessmentSession": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "invalidWorkingSets": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "reasonCode": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "workingSets": {
+                    "type": "integer"
+                },
+                "workoutId": {
+                    "type": "integer"
+                }
+            }
+        },
         "workout.ContributionDataResponse": {
             "type": "object",
             "properties": {
@@ -2751,6 +2848,32 @@
                 "workoutFocus": {
                     "type": "string",
                     "maxLength": 256
+                }
+            }
+        },
+        "workout.EvidencePeriod": {
+            "type": "object",
+            "properties": {
+                "endAt": {
+                    "type": "string"
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "observedAt": {
+                    "type": "string"
+                },
+                "partial": {
+                    "type": "boolean"
+                },
+                "startAt": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -2858,6 +2981,50 @@
                     "type": "number",
                     "maximum": 999999999.9,
                     "minimum": 0
+                }
+            }
+        },
+        "workout.StrengthAssessment": {
+            "type": "object",
+            "properties": {
+                "applicability": {
+                    "type": "string"
+                },
+                "exerciseId": {
+                    "type": "integer"
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "period": {
+                    "$ref": "#/definitions/workout.EvidencePeriod"
+                },
+                "policyVersion": {
+                    "type": "string"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workout.AssessmentSession"
+                    }
+                },
+                "sessionsMeetingReference": {
+                    "type": "integer"
+                },
+                "sourceUrl": {
+                    "type": "string"
+                },
+                "trainingDays": {
+                    "type": "integer"
+                },
+                "workingSets": {
+                    "type": "integer"
                 }
             }
         },

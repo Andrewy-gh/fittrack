@@ -1,0 +1,100 @@
+[
+  {
+    "scenario": "backdated",
+    "timezone": "America/New_York",
+    "selected": "Saved press",
+    "errors": [],
+    "overflow": false,
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/workouts",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/training-profile",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises/9",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/workouts/contribution-data",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/workouts/focus-values",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises/9/assessment",
+        "query": "?startDate=2026-08-10&timezone=America%2FNew_York"
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises/9/metrics-history",
+        "query": ""
+      }
+    ]
+  },
+  {
+    "scenario": "current",
+    "timezone": "America/New_York",
+    "selected": "Saved press",
+    "errors": [],
+    "overflow": false,
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/api/workouts",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/training-profile",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises/9",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/workouts/contribution-data",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/workouts/focus-values",
+        "query": ""
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises/9/assessment",
+        "query": "?startDate=2026-09-21&timezone=America%2FNew_York"
+      },
+      {
+        "method": "GET",
+        "path": "/api/exercises/9/metrics-history",
+        "query": ""
+      }
+    ]
+  }
+]

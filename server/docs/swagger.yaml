@@ -579,6 +579,23 @@ definitions:
       usual_training_location:
         type: string
     type: object
+  workout.AssessmentSession:
+    properties:
+      date:
+        type: string
+      invalidWorkingSets:
+        type: integer
+      reason:
+        type: string
+      reasonCode:
+        type: string
+      state:
+        type: string
+      workingSets:
+        type: integer
+      workoutId:
+        type: integer
+    type: object
   workout.ContributionDataResponse:
     properties:
       days:
@@ -622,6 +639,23 @@ definitions:
     required:
     - date
     - exercises
+    type: object
+  workout.EvidencePeriod:
+    properties:
+      endAt:
+        type: string
+      endDate:
+        type: string
+      observedAt:
+        type: string
+      partial:
+        type: boolean
+      startAt:
+        type: string
+      startDate:
+        type: string
+      timezone:
+        type: string
     type: object
   workout.ExerciseInput:
     properties:
@@ -698,6 +732,35 @@ definitions:
     required:
     - reps
     - setType
+    type: object
+  workout.StrengthAssessment:
+    properties:
+      applicability:
+        type: string
+      exerciseId:
+        type: integer
+      limitations:
+        items:
+          type: string
+        type: array
+      period:
+        $ref: '#/definitions/workout.EvidencePeriod'
+      policyVersion:
+        type: string
+      reference:
+        type: string
+      sessions:
+        items:
+          $ref: '#/definitions/workout.AssessmentSession'
+        type: array
+      sessionsMeetingReference:
+        type: integer
+      sourceUrl:
+        type: string
+      trainingDays:
+        type: integer
+      workingSets:
+        type: integer
     type: object
   workout.UpdateExercise:
     properties:
@@ -1520,6 +1583,52 @@ paths:
       security:
       - StackAuth: []
       summary: Update an exercise name
+      tags:
+      - exercises
+  /exercises/{id}/assessment:
+    get:
+      parameters:
+      - description: Exercise ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: First local date, YYYY-MM-DD
+        in: query
+        name: startDate
+        required: true
+        type: string
+      - description: IANA timezone
+        in: query
+        name: timezone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/workout.StrengthAssessment'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Compare saved exercise sessions with a general strength set reference
       tags:
       - exercises
   /exercises/{id}/catalog:
