@@ -1,6 +1,7 @@
 package exercisecatalog
 
 import (
+	"bytes"
 	"os"
 	"strings"
 	"testing"
@@ -32,4 +33,20 @@ func TestReviewedCatalog(t *testing.T) {
 	require.Equal(t, len(ids), strings.Count(migrationSQL, "'\n")+strings.Count(migrationSQL, "',\n"))
 	require.Nil(t, Find("Bench Press"), "names must never infer classification")
 	require.Nil(t, Find(""))
+}
+
+func TestCatalogVersionCanonicalizesLineEndingsAndChangesWithContent(t *testing.T) {
+	lf := bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n"))
+	crlf := bytes.ReplaceAll(lf, []byte("\n"), []byte("\r\n"))
+
+	lfVersion, err := catalogVersionForJSON(lf)
+	require.NoError(t, err)
+	crlfVersion, err := catalogVersionForJSON(crlf)
+	require.NoError(t, err)
+	require.Equal(t, lfVersion, crlfVersion)
+	require.Equal(t, Version(), lfVersion)
+
+	changed := append([]Entry(nil), All()...)
+	changed[0].Name += " changed"
+	require.NotEqual(t, Version(), catalogVersionForEntries(changed))
 }

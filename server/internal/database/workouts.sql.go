@@ -408,6 +408,82 @@ func (q *Queries) ListSets(ctx context.Context, userID string) ([]ListSetsRow, e
 	return items, nil
 }
 
+const listTrainingEvidence = `-- name: ListTrainingEvidence :many
+SELECT
+    w.id AS workout_id,
+    w.date AS workout_date,
+    e.id AS exercise_id,
+    e.catalog_id,
+    COUNT(s.id) FILTER (WHERE s.set_type = 'working')::INTEGER AS working_set_count
+FROM workout AS w
+LEFT JOIN "set" AS s
+    ON s.workout_id = w.id
+    AND s.user_id = $1
+    AND EXISTS (
+        SELECT 1
+        FROM exercise AS owned_exercise
+        WHERE owned_exercise.id = s.exercise_id
+          AND owned_exercise.user_id = $1
+    )
+LEFT JOIN exercise AS e
+    ON e.id = s.exercise_id
+    AND e.user_id = $1
+WHERE w.user_id = $1
+  AND w.date >= $2
+  AND w.date < $3
+  AND w.date <= $4
+GROUP BY w.id, w.date, e.id, e.catalog_id
+ORDER BY w.date, w.id, e.id
+`
+
+type ListTrainingEvidenceParams struct {
+	UserID     string             `json:"user_id"`
+	StartAt    pgtype.Timestamptz `json:"start_at"`
+	EndAt      pgtype.Timestamptz `json:"end_at"`
+	ObservedAt pgtype.Timestamptz `json:"observed_at"`
+}
+
+type ListTrainingEvidenceRow struct {
+	WorkoutID       int32              `json:"workout_id"`
+	WorkoutDate     pgtype.Timestamptz `json:"workout_date"`
+	ExerciseID      pgtype.Int4        `json:"exercise_id"`
+	CatalogID       pgtype.Text        `json:"catalog_id"`
+	WorkingSetCount int32              `json:"working_set_count"`
+}
+
+// Returns every owned workout in the requested bounds, including workouts with no valid sets.
+// The owned-exercise check excludes corrupt cross-user joins instead of attributing them.
+func (q *Queries) ListTrainingEvidence(ctx context.Context, arg ListTrainingEvidenceParams) ([]ListTrainingEvidenceRow, error) {
+	rows, err := q.db.Query(ctx, listTrainingEvidence,
+		arg.UserID,
+		arg.StartAt,
+		arg.EndAt,
+		arg.ObservedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTrainingEvidenceRow
+	for rows.Next() {
+		var i ListTrainingEvidenceRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.ExerciseID,
+			&i.CatalogID,
+			&i.WorkingSetCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkoutFocusTemplates = `-- name: ListWorkoutFocusTemplates :many
 WITH ranked_focus_workouts AS (
     SELECT
