@@ -1,3 +1,4 @@
+import { MuscleContributions } from "./muscle-contributions";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -13,7 +14,7 @@ const coverage = new Map<string, [string, string]>([
     "hypertrophy",
     [
       "Muscle growth",
-      "Muscle attribution and volume references are not assessed yet.",
+      "Reviewed muscle contributions are shown. Growth and volume targets are not assessed.",
     ],
   ],
   [
@@ -105,17 +106,8 @@ export function TrainingAssessment({
             to see assessment coverage.
           </p>
         ) : null}
-        {hasStrength && (
-          <section
-            aria-label="Strength reference"
-            className="space-y-4"
-          >
-            <div>
-              <h3 className="font-semibold">Strength reference</h3>
-              <p className="text-xs text-muted-foreground">
-                General adult reference · logged training only
-              </p>
-            </div>
+        {(hasStrength || goals.includes("hypertrophy")) && (
+          <>
             <div className="flex items-center justify-between gap-2">
               <Button
                 variant="ghost"
@@ -141,6 +133,19 @@ export function TrainingAssessment({
               >
                 <ChevronRight />
               </Button>
+            </div>
+          </>
+        )}
+        {hasStrength && (
+          <section
+            aria-label="Strength reference"
+            className="space-y-4"
+          >
+            <div>
+              <h3 className="font-semibold">Strength reference</h3>
+              <p className="text-xs text-muted-foreground">
+                General adult reference · logged training only
+              </p>
             </div>
             {assessment.isPending ? (
               <p
@@ -260,6 +265,13 @@ export function TrainingAssessment({
             )}
           </section>
         )}
+        {goals.includes("hypertrophy") && (
+          <MuscleContributions
+            userId={userId}
+            startDate={format(weekStart, "yyyy-MM-dd")}
+            timezone={timezone}
+          />
+        )}
         {goals.some((goal) => goal !== "strength") && (
           <details
             className="text-sm"
@@ -274,7 +286,10 @@ export function TrainingAssessment({
                 .map((goal) => (
                   <div key={goal}>
                     <dt className="font-medium">
-                      {coverage.get(goal)?.[0] ?? goal} · not assessed
+                      {coverage.get(goal)?.[0] ?? goal} ·{" "}
+                      {goal === "hypertrophy"
+                        ? "counts available"
+                        : "not assessed"}
                     </dt>
                     <dd className="text-muted-foreground">
                       {coverage.get(goal)?.[1] ??

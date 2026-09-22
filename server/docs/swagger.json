@@ -689,6 +689,64 @@
                 }
             }
         },
+        "/analytics/muscle-contributions": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Summarize reviewed weekly muscle contributions from logged working sets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First local date, YYYY-MM-DD",
+                        "name": "startDate",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "IANA timezone",
+                        "name": "timezone",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/workout.MuscleContributions"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/exercise-catalog": {
             "get": {
                 "security": [
@@ -2817,6 +2875,32 @@
                 }
             }
         },
+        "workout.ContributionExercise": {
+            "type": "object",
+            "properties": {
+                "catalogId": {
+                    "type": "string"
+                },
+                "exerciseId": {
+                    "type": "integer"
+                },
+                "invalidWorkingSets": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "workingSets": {
+                    "type": "integer"
+                }
+            }
+        },
         "workout.CreateWorkoutRequest": {
             "type": "object",
             "required": [
@@ -2942,6 +3026,70 @@
                 "workoutId": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "workout.MuscleContribution": {
+            "type": "object",
+            "properties": {
+                "directSets": {
+                    "type": "integer"
+                },
+                "indirectSets": {
+                    "type": "integer"
+                },
+                "invalidMappedSets": {
+                    "type": "integer"
+                },
+                "invalidUnresolvedSets": {
+                    "type": "integer"
+                },
+                "muscle": {
+                    "type": "string"
+                },
+                "unresolvedSets": {
+                    "type": "integer"
+                }
+            }
+        },
+        "workout.MuscleContributions": {
+            "type": "object",
+            "properties": {
+                "catalogVersion": {
+                    "type": "string"
+                },
+                "classificationBasis": {
+                    "type": "string"
+                },
+                "exercises": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workout.ContributionExercise"
+                    }
+                },
+                "invalidWorkingSets": {
+                    "type": "integer"
+                },
+                "mappingVersion": {
+                    "type": "string"
+                },
+                "muscles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/workout.MuscleContribution"
+                    }
+                },
+                "period": {
+                    "$ref": "#/definitions/workout.EvidencePeriod"
+                },
+                "unclassifiedSets": {
+                    "type": "integer"
+                },
+                "unreviewedSets": {
+                    "type": "integer"
+                },
+                "workingSets": {
+                    "type": "integer"
                 }
             }
         },

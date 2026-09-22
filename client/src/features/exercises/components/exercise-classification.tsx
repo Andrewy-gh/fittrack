@@ -30,6 +30,9 @@ export function ExerciseClassification({
     meta: { skipGlobalErrorHandler: true },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
+        queryKey: ["muscle-contributions"],
+      });
+      await queryClient.invalidateQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id: exerciseId } }),
       });
       setOpen(false);

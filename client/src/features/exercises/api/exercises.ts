@@ -63,6 +63,7 @@ function isMetricsHistoryQueryForExercise(
 }
 
 function invalidateExerciseDetail(id: number) {
+  queryClient.invalidateQueries({ queryKey: ["muscle-contributions"] });
   queryClient.invalidateQueries({
     queryKey: getExercisesQueryKey(),
   });
@@ -76,6 +77,7 @@ export function useDeleteExerciseMutation() {
     ...deleteExercisesByIdMutation(),
     meta: { skipGlobalErrorHandler: true },
     onSuccess: (_, { path: { id } }) => {
+      queryClient.invalidateQueries({ queryKey: ["muscle-contributions"] });
       queryClient.invalidateQueries({
         queryKey: getExercisesQueryKey(),
       });

@@ -86,7 +86,21 @@ async function mountSavedWorkout(
       if (saved && lookupFailure) throw new Error("offline");
       return { data: saved ? [firstExercise, savedExercise] : oldExercises };
     } else if (url.pathname === "/api/training-profile")
-      return { data: { goals: ["strength"], primary_goal: "strength" } };
+      return {
+        data: { goals: ["strength", "hypertrophy"], primary_goal: "strength" },
+      };
+    else if (url.pathname === "/api/analytics/muscle-contributions")
+      return {
+        data: {
+          period: { partial: savedDate.startsWith("2026-09") },
+          muscles: [],
+          exercises: [],
+          workingSets: 0,
+          invalidWorkingSets: 0,
+          unclassifiedSets: 0,
+          unreviewedSets: 0,
+        },
+      };
     else if (url.pathname.endsWith("/assessment")) {
       const expectedWeek = savedDate.startsWith("2026-08")
         ? "2026-08-10"
@@ -217,7 +231,7 @@ async function mountSavedWorkout(
 
 describe("Saved workout assessment destination", () => {
   it("opens the saved existing exercise and backdated week after the form was reset", async () => {
-    await mountSavedWorkout("2026-08-12T12:00:00Z", false);
+    const { requests } = await mountSavedWorkout("2026-08-12T12:00:00Z", false);
     fireEvent.click(screen.getByRole("button", { name: "View assessment" }));
     expect(
       await screen.findByText("1 of 1 logged sessions reached 2 working sets."),
@@ -226,6 +240,16 @@ describe("Saved workout assessment destination", () => {
       screen.getByRole("combobox", { name: "Exercise options" }),
     ).toHaveTextContent("Saved press");
     expect(screen.getByText("Aug 10 – Aug 16, 2026")).toBeInTheDocument();
+    await screen.findByRole("region", { name: "Muscle contributions" });
+    await waitFor(() =>
+      expect(
+        requests.some(
+          (url) =>
+            url.pathname.endsWith("/muscle-contributions") &&
+            url.searchParams.get("startDate") === "2026-08-10",
+        ),
+      ).toBe(true),
+    );
     expect(
       screen.getByText("Reference met in logged training"),
     ).toBeInTheDocument();

@@ -74,3 +74,70 @@ func (q *Queries) ListExerciseAssessmentSets(ctx context.Context, arg ListExerci
 	}
 	return items, nil
 }
+
+const listMuscleContributionSets = `-- name: ListMuscleContributionSets :many
+SELECT w.id AS workout_id, w.date AS workout_date, e.id AS exercise_id,
+       e.name AS exercise_name, e.catalog_id, s.id AS set_id, s.set_type, s.reps, s.weight
+FROM "set" s
+JOIN workout w ON w.id = s.workout_id AND w.user_id = s.user_id
+JOIN exercise e ON e.id = s.exercise_id AND e.user_id = s.user_id
+WHERE s.user_id = $1
+  AND w.date >= $2::timestamptz
+  AND w.date < $3::timestamptz
+  AND w.date <= $4::timestamptz
+ORDER BY w.date, w.id, s.id
+`
+
+type ListMuscleContributionSetsParams struct {
+	UserID     string             `json:"user_id"`
+	StartAt    pgtype.Timestamptz `json:"start_at"`
+	EndAt      pgtype.Timestamptz `json:"end_at"`
+	ObservedAt pgtype.Timestamptz `json:"observed_at"`
+}
+
+type ListMuscleContributionSetsRow struct {
+	WorkoutID    int32              `json:"workout_id"`
+	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
+	ExerciseID   int32              `json:"exercise_id"`
+	ExerciseName string             `json:"exercise_name"`
+	CatalogID    pgtype.Text        `json:"catalog_id"`
+	SetID        int32              `json:"set_id"`
+	SetType      string             `json:"set_type"`
+	Reps         int32              `json:"reps"`
+	Weight       pgtype.Numeric     `json:"weight"`
+}
+
+func (q *Queries) ListMuscleContributionSets(ctx context.Context, arg ListMuscleContributionSetsParams) ([]ListMuscleContributionSetsRow, error) {
+	rows, err := q.db.Query(ctx, listMuscleContributionSets,
+		arg.UserID,
+		arg.StartAt,
+		arg.EndAt,
+		arg.ObservedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMuscleContributionSetsRow
+	for rows.Next() {
+		var i ListMuscleContributionSetsRow
+		if err := rows.Scan(
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.ExerciseID,
+			&i.ExerciseName,
+			&i.CatalogID,
+			&i.SetID,
+			&i.SetType,
+			&i.Reps,
+			&i.Weight,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

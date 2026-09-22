@@ -59,7 +59,17 @@ async function mount(
         data:
           options.url === "/training-profile"
             ? { goals, primary_goal: goals[0] ?? null }
-            : { ...result, period: { ...result.period, partial } },
+            : options.url === "/analytics/muscle-contributions"
+              ? {
+                  period: { ...result.period, partial },
+                  muscles: [],
+                  exercises: [],
+                  workingSets: 0,
+                  invalidWorkingSets: 0,
+                  unclassifiedSets: 0,
+                  unreviewedSets: 0,
+                }
+              : { ...result, period: { ...result.period, partial } },
       }) as any,
   );
   const queryClient = new QueryClient({
@@ -102,7 +112,7 @@ describe("Training assessment", () => {
       screen.getByText(/Personal applicability has not been verified/),
     ).toBeVisible();
     fireEvent.click(screen.getByText("Other goal coverage"));
-    expect(screen.getByText("Muscle growth · not assessed")).toBeVisible();
+    expect(screen.getByText("Muscle growth · counts available")).toBeVisible();
   });
   it("shows only counts for an unfinished week", async () => {
     await mount(["strength"], true);
@@ -137,6 +147,36 @@ describe("Training assessment", () => {
     expect(
       screen.getByRole("button", { name: "Next assessment week" }),
     ).toBeDisabled();
-    await waitFor(() => expect(api).toHaveBeenCalledTimes(3));
+    await waitFor(() =>
+      expect(
+        api.mock.calls.filter(([options]) =>
+          options.url.endsWith("/assessment"),
+        ),
+      ).toHaveLength(2),
+    );
   });
+});
+
+it("offers week navigation for hypertrophy alone without a strength verdict", async () => {
+  const api = await mount(["hypertrophy"], true);
+  await screen.findByRole("region", { name: "Muscle contributions" });
+  expect(
+    screen.queryByRole("region", { name: "Strength reference" }),
+  ).not.toBeInTheDocument();
+  expect(
+    await screen.findByText("Week in progress · contributions so far."),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Previous assessment week" }),
+  );
+  await waitFor(() =>
+    expect(
+      api.mock.calls.filter(
+        ([options]) => options.url === "/analytics/muscle-contributions",
+      ),
+    ).toHaveLength(2),
+  );
+  expect(
+    api.mock.calls.some(([options]) => options.url.endsWith("/assessment")),
+  ).toBe(false);
 });

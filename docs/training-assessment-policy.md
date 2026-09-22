@@ -31,7 +31,7 @@ The API accepts a start date and IANA timezone. The window is seven local calend
 
 Existing Session Metrics remain informational. Historical 1RM can be manually entered or estimated, its update date is not necessarily a test date, and session fallback is an estimate. No 80% pass/fail assessment is added. Missing weight does not suppress a set-count comparison.
 
-Other selected goals receive concise coverage explanations: hypertrophy attribution/reference compatibility remains unresolved; endurance needs muscular/aerobic distinction and appropriate measurements; general fitness includes activity beyond these logs; weight loss cannot be inferred from workout logs alone; mobility lacks range-of-motion measurements. Absence of strength does not silently substitute a strength assessment. No goals prompts profile setup.
+Other selected goals receive concise coverage explanations: hypertrophy shows reviewed muscle contributions with incomplete attribution and no volume verdict (see [muscle contributions](muscle-contributions.md)); endurance needs muscular/aerobic distinction and appropriate measurements; general fitness includes activity beyond these logs; weight loss cannot be inferred from workout logs alone; mobility lacks range-of-motion measurements. Absence of strength does not silently substitute a strength assessment. No goals prompts profile setup.
 
 Health, age, effort, real-world log completeness, and deload intent are not inferred. This slice adds no persistent profile or health fields and no AI calls. Assessment responses are computed from existing owned records. Recommendations, personal targets, and new data collection remain deferred.
 
