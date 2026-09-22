@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ExercisecatalogEntry } from "@/client";
 import {
@@ -23,6 +23,7 @@ export function ExerciseClassification({
   exerciseId: number;
   catalog?: ExercisecatalogEntry;
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const mutation = useMutation({
@@ -62,6 +63,7 @@ export function ExerciseClassification({
         )}
         <div className="flex gap-2">
           <Button
+            ref={trigger}
             type="button"
             variant="outline"
             disabled={mutation.isPending}
@@ -92,7 +94,13 @@ export function ExerciseClassification({
             if (!mutation.isPending) setOpen(value);
           }}
         >
-          <DialogContent className="max-h-[85dvh] overflow-y-auto">
+          <DialogContent
+            className="max-h-[85dvh] overflow-y-auto"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              trigger.current?.focus();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Classify exercise</DialogTitle>
               <DialogDescription>

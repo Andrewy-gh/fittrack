@@ -159,13 +159,11 @@ describe("Training assessment", () => {
 
 it("offers week navigation for hypertrophy alone without a strength verdict", async () => {
   const api = await mount(["hypertrophy"], true);
-  await screen.findByRole("region", { name: "Muscle contributions" });
+  await screen.findByRole("region", { name: "Muscle sets" });
   expect(
     screen.queryByRole("region", { name: "Strength reference" }),
   ).not.toBeInTheDocument();
-  expect(
-    await screen.findByText("Week in progress · contributions so far."),
-  ).toBeInTheDocument();
+  expect(await screen.findByText("This week so far")).toBeInTheDocument();
   fireEvent.click(
     screen.getByRole("button", { name: "Previous assessment week" }),
   );
