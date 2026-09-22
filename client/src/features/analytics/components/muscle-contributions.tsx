@@ -1,3 +1,6 @@
+import { useEffect, useRef, useState } from "react";
+import { getExercisesByIdQueryOptions } from "@/client/@tanstack/react-query.gen";
+import { ExerciseClassification } from "@/features/exercises/components/exercise-classification";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { muscleContributionsQueryOptions } from "../api/muscle-contributions";
@@ -18,33 +21,54 @@ export function MuscleContributions({
   startDate: string;
   timezone: string;
 }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [classifying, setClassifying] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const query = useQuery(
     muscleContributionsQueryOptions(userId, startDate, timezone),
   );
   return (
     <section
-      aria-label="Muscle contributions"
+      aria-label="Muscle sets"
       className="space-y-4"
     >
       <div>
-        <h3 className="font-semibold">Muscle contributions</h3>
+        <h3
+          ref={heading}
+          tabIndex={-1}
+          className="font-semibold"
+        >
+          Muscle sets
+        </h3>
         <p className="text-xs text-muted-foreground">
-          All exercises · logged working sets
+          All exercises · working sets
         </p>
       </div>
+      {classifying && (
+        <ClassificationPanel
+          key={classifying.id}
+          exercise={classifying}
+          onClose={() => {
+            setClassifying(null);
+            heading.current?.focus();
+          }}
+        />
+      )}
       {query.isPending ? (
         <p
           role="status"
           className="text-sm"
         >
-          Loading muscle contributions…
+          Loading sets…
         </p>
       ) : query.isError ? (
         <p
           role="alert"
           className="text-sm"
         >
-          Could not load muscle contributions.{" "}
+          Could not load sets.{" "}
           <Button
             variant="link"
             onClick={() => query.refetch()}
@@ -55,18 +79,16 @@ export function MuscleContributions({
       ) : (
         <>
           {query.data.period.partial && (
-            <p className="text-sm">Week in progress · contributions so far.</p>
+            <p className="text-sm">This week so far</p>
           )}
           {query.data.workingSets === 0 && (
-            <p className="text-sm">
-              No valid working sets logged this week. This does not mean no
-              training occurred.
-            </p>
+            <p className="text-sm">No counts available for this week.</p>
           )}
           {query.data.invalidWorkingSets > 0 && (
             <p className="text-sm">
-              {query.data.invalidWorkingSets} invalid working sets excluded from
-              counts.
+              {query.data.invalidWorkingSets}{" "}
+              {query.data.invalidWorkingSets === 1 ? "set" : "sets"} excluded ·
+              check reps or weight
             </p>
           )}
           <ul className="divide-y">
@@ -79,31 +101,31 @@ export function MuscleContributions({
                   {names.get(muscle.muscle) ?? muscle.muscle}
                 </h4>
                 {muscle.directSets + muscle.indirectSets > 0 ? (
-                  <p className="text-sm">
+                  <p className="text-lg font-semibold">
                     {muscle.directSets} direct · {muscle.indirectSets} indirect
                   </p>
                 ) : (
-                  <p className="text-sm">No supported mapped contributions</p>
+                  <p className="text-sm">No counts available</p>
                 )}
                 {muscle.unresolvedSets > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {muscle.unresolvedSets} sets not reviewed for this muscle
+                    {muscle.unresolvedSets}{" "}
+                    {muscle.unresolvedSets === 1 ? "set" : "sets"} not counted ·
+                    muscle use not reviewed
                   </p>
                 )}
                 {muscle.invalidMappedSets + muscle.invalidUnresolvedSets >
                   0 && (
                   <p className="text-xs text-muted-foreground">
-                    Invalid entries: {muscle.invalidMappedSets} mapped ·{" "}
-                    {muscle.invalidUnresolvedSets} unresolved
+                    Excluded: {muscle.invalidMappedSets} for this muscle ·{" "}
+                    {muscle.invalidUnresolvedSets} muscle unclear
                   </p>
                 )}
                 {query.data.exercises.some(
                   (exercise) => exercise.roles[muscle.muscle],
                 ) && (
                   <details className="text-sm">
-                    <summary className="cursor-pointer">
-                      Contributing exercises
-                    </summary>
+                    <summary className="cursor-pointer">Exercises</summary>
                     <ul className="space-y-1 pt-2 text-muted-foreground">
                       {query.data.exercises
                         .filter((exercise) => exercise.roles[muscle.muscle])
@@ -112,7 +134,7 @@ export function MuscleContributions({
                             {exercise.name}: {exercise.workingSets}{" "}
                             {exercise.roles[muscle.muscle]}
                             {exercise.invalidWorkingSets > 0
-                              ? ` · ${exercise.invalidWorkingSets} invalid`
+                              ? ` · ${exercise.invalidWorkingSets} excluded`
                               : ""}
                           </li>
                         ))}
@@ -124,64 +146,164 @@ export function MuscleContributions({
           </ul>
           <details className="text-sm">
             <summary className="cursor-pointer font-medium">
-              Coverage and counting
+              Exercise matches
             </summary>
             <div className="space-y-3 pt-3 text-muted-foreground">
               <p>
-                {query.data.unclassifiedSets} sets without catalog links ·{" "}
-                {query.data.unreviewedSets} sets from unreviewed movements.
+                {query.data.unclassifiedSets} sets need a match ·{" "}
+                {query.data.unreviewedSets} sets await research review
               </p>
               <p>
-                Only listed exercise-to-muscle contributions have been reviewed.
-                Other roles remain unknown, even for a mapped exercise. Other
-                muscle groups are not covered yet.
+                We cover some exercises and muscles so far. Missing counts do
+                not mean no training.
               </p>
               <ul className="space-y-1">
                 {query.data.exercises.map((exercise) => (
-                  <li key={exercise.exerciseId}>
-                    {exercise.name}: {exercise.workingSets} working sets
-                    {Object.keys(exercise.roles).length === 0
-                      ? " · mapping unavailable"
-                      : " · some roles reviewed"}
-                    {exercise.invalidWorkingSets
-                      ? ` · ${exercise.invalidWorkingSets} invalid`
-                      : ""}
+                  <li
+                    key={exercise.exerciseId}
+                    className="space-y-1"
+                  >
+                    <p>
+                      {exercise.name}: {exercise.workingSets} working sets
+                      {Object.keys(exercise.roles).length === 0
+                        ? " · not counted yet"
+                        : " · counted for some muscles"}
+                      {exercise.invalidWorkingSets
+                        ? ` · ${exercise.invalidWorkingSets} excluded`
+                        : ""}
+                    </p>
+                    {!exercise.catalogId ? (
+                      <Button
+                        variant="link"
+                        className="h-auto whitespace-normal p-0 text-left"
+                        onClick={() =>
+                          setClassifying({
+                            id: exercise.exerciseId,
+                            name: exercise.name,
+                          })
+                        }
+                      >
+                        Classify {exercise.name}
+                      </Button>
+                    ) : Object.keys(exercise.roles).length === 0 ? (
+                      <p className="text-xs">
+                        Matched · muscle use not reviewed yet.
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
-              <p>
-                Direct means the main muscle worked; indirect means an assisting
-                muscle in a reviewed mapping. Direct and indirect counts stay
-                separate. These are logged contributions, not measured stimulus,
-                a growth prediction, or a personal target. Muscle groups do not
-                imply equal stimulus in every constituent muscle.
-              </p>
-              <p>
-                Each logged set counts once per reviewed role. We do not double
-                unilateral sets. Effort, range of motion and training outside
-                FitTrack are unknown.
-              </p>
-              <p>
-                These counts do not tell you whether you trained enough for
-                muscle growth.
-              </p>
-              <a
-                href="https://doi.org/10.1007/s40279-025-02344-w"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-4"
-              >
-                Research and counting methods
-              </a>
-              <p>
-                Recalculated from current catalog links. Mapping{" "}
-                {query.data.mappingVersion} · catalog{" "}
-                {query.data.catalogVersion}.
-              </p>
             </div>
           </details>
         </>
       )}
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium">
+          About these counts
+        </summary>
+        <div className="space-y-3 pt-3 text-muted-foreground">
+          <p>
+            Direct sets work this muscle mainly; indirect sets work it as a
+            helper.
+          </p>
+          <p>
+            Research in healthy adults links weekly sets with muscle growth, but
+            different counting methods mean these numbers are not a personal
+            target.
+          </p>
+          <p>
+            Only reviewed exercise matches count; effort and training outside
+            FitTrack are unknown.
+          </p>
+          <p className="flex flex-wrap gap-x-4 gap-y-2">
+            <a
+              href="https://acsm.org/resistance-training-guidelines-update-2026/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              ACSM guidance
+            </a>
+            <a
+              href="https://doi.org/10.1007/s40279-025-02344-w"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-4"
+            >
+              Counting research
+            </a>
+          </p>
+        </div>
+      </details>
+    </section>
+  );
+}
+
+function ClassificationPanel({
+  exercise,
+  onClose,
+}: {
+  exercise: { id: number; name: string };
+  onClose: () => void;
+}) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+  const detail = useQuery(
+    getExercisesByIdQueryOptions({ path: { id: exercise.id } }),
+  );
+  const retry = useRef<HTMLButtonElement>(null);
+  const hadError = useRef(false);
+  useEffect(() => {
+    if (detail.isError) {
+      retry.current?.focus();
+      hadError.current = true;
+    } else if (hadError.current && detail.isSuccess) {
+      heading.current?.focus();
+      hadError.current = false;
+    }
+  }, [detail.isError, detail.isSuccess]);
+  return (
+    <section
+      aria-label={`Classification for ${exercise.name}`}
+      className="space-y-3 rounded-lg border p-3"
+    >
+      <h4
+        ref={heading}
+        tabIndex={-1}
+        className="font-medium"
+      >
+        {exercise.name}
+      </h4>
+      <p className="text-xs text-muted-foreground">
+        Choose the same movement. This also updates past weeks.
+      </p>
+      {detail.isPending ? (
+        <p role="status">Loading classification…</p>
+      ) : detail.isError ? (
+        <div role="alert">
+          Could not load classification.{" "}
+          <Button
+            ref={retry}
+            variant="link"
+            onClick={() => detail.refetch()}
+          >
+            Retry classification
+          </Button>
+        </div>
+      ) : (
+        <ExerciseClassification
+          exerciseId={exercise.id}
+          catalog={detail.data.exercise.catalog}
+        />
+      )}
+      <Button
+        variant="ghost"
+        onClick={onClose}
+      >
+        Done
+      </Button>
     </section>
   );
 }

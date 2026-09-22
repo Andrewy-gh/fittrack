@@ -34,3 +34,13 @@ Only working rows with positive reps and absent or finite nonnegative weight cou
 Known contributions stay visible when mapping is incomplete. No logs produce empty evidence, not a no-training assertion. Current weeks show counts so far; completed weeks also remain counts-only. Catalog version, mapping version and current-link basis are returned: editing a classification recalculates history, not an immutable snapshot. Mutation invalidation covers workout create/update/delete and exercise update/rename/delete.
 
 No new profile data, schema migrations, prescription, AI, inferred effort or range of motion are introduced. Numeric comparison is deferred until counting units and a research reference are compatible.
+
+## Research context and classification from Analytics
+
+The next slice keeps the existing separate counts under “Muscle sets” and adds a short “About these counts” explanation. [ACSM's healthy-adult guidance](https://acsm.org/resistance-training-guidelines-update-2026/) and Pelland's outcome-specific counting research provide context, not a compatible universal cutoff for this display. The UI therefore assigns no enough/not-enough result, numeric target, weighted total, or suggested increase. Missing roles, effort and outside training remain unknown; classifications do not resolve individual training needs. No new profile inputs or backend calculation changes are needed.
+
+In Exercise matches, only exercises without catalog links offer a named classification action. It opens the existing classification controls inside Analytics; the panel stays available after saving so the user can change or clear their choice. The selected week is retained, and existing mutation invalidation reloads that week's contributions and the exercise details. Linked movements with no reviewed roles explicitly say they still need research review, rather than suggesting another catalog choice fixes the gap. Current catalog links still recalculate historical weeks; names, IDs and logged history are unchanged.
+
+Technical versions and detailed counting rules remain in the API and these docs rather than the user-facing copy. The panel receives keyboard focus on opening, the catalog dialog returns focus to its persistent action after save/cancel, and Done returns to the contribution heading. Loading, failed detail reads, failed saves and failed summary refreshes provide recovery without navigating away. Successful classification does not imply complete muscle coverage.
+
+If classification saves but the exercise detail cannot refresh, stale classification controls are hidden and focus moves to Retry classification. A successful retry shows the saved match and restores focus to the panel heading; the week and available counts remain intact.

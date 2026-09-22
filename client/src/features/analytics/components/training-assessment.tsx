@@ -14,7 +14,7 @@ const coverage = new Map<string, [string, string]>([
     "hypertrophy",
     [
       "Muscle growth",
-      "Reviewed muscle contributions are shown. Growth and volume targets are not assessed.",
+      "Muscle sets are shown. Personal targets are not available yet.",
     ],
   ],
   [

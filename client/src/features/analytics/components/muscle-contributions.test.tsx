@@ -72,13 +72,15 @@ it("preserves known contributions and exposes unknown and invalid roles without 
   vi.spyOn(client, "get").mockResolvedValue({ data } as never);
   mount();
   expect(await screen.findByText("4 direct · 6 indirect")).toBeVisible();
-  expect(screen.getByText("1 sets not reviewed for this muscle")).toBeVisible();
-  expect(screen.getByText("No supported mapped contributions")).toBeVisible();
-  fireEvent.click(screen.getByText("Contributing exercises"));
-  expect(screen.getByText("My bench: 6 indirect · 1 invalid")).toBeVisible();
-  fireEvent.click(screen.getByText("Coverage and counting"));
   expect(
-    screen.getByText("Custom: 1 working sets · mapping unavailable"),
+    screen.getByText("1 set not counted · muscle use not reviewed"),
+  ).toBeVisible();
+  expect(screen.getByText("No counts available")).toBeVisible();
+  fireEvent.click(screen.getByText("Exercises"));
+  expect(screen.getByText("My bench: 6 indirect · 1 excluded")).toBeVisible();
+  fireEvent.click(screen.getByText("Exercise matches"));
+  expect(
+    screen.getByText("Custom: 1 working sets · not counted yet"),
   ).toBeVisible();
   expect(
     screen.queryByText(/Below reference|Reference met/),
@@ -91,7 +93,7 @@ it("lets a failed request recover without changing the selected period", async (
     .mockResolvedValue({ data } as never);
   mount();
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Could not load muscle contributions",
+    "Could not load sets",
   );
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   expect(await screen.findByText("4 direct · 6 indirect")).toBeVisible();

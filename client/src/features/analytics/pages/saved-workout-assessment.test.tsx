@@ -240,7 +240,7 @@ describe("Saved workout assessment destination", () => {
       screen.getByRole("combobox", { name: "Exercise options" }),
     ).toHaveTextContent("Saved press");
     expect(screen.getByText("Aug 10 – Aug 16, 2026")).toBeInTheDocument();
-    await screen.findByRole("region", { name: "Muscle contributions" });
+    await screen.findByRole("region", { name: "Muscle sets" });
     await waitFor(() =>
       expect(
         requests.some(
