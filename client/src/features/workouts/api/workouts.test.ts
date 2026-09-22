@@ -52,6 +52,9 @@ describe("workout mutation cache invalidation", () => {
 
     mutation.onSuccess?.(undefined, undefined, undefined);
 
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["muscle-contributions"],
+    });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["workouts"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["exercises"] });
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -70,6 +73,9 @@ describe("workout mutation cache invalidation", () => {
 
     mutation.onSuccess?.(undefined, { path: { id: 42 } }, undefined);
 
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["muscle-contributions"],
+    });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["workouts"] });
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["workout", 42],
@@ -92,6 +98,9 @@ describe("workout mutation cache invalidation", () => {
 
     expect(removeQueries).toHaveBeenCalledWith({ queryKey: ["workouts"] });
     expect(removeQueries).toHaveBeenCalledWith({ queryKey: ["workout", 42] });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["muscle-contributions"],
+    });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["workouts"] });
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["contribution"],

@@ -39,8 +39,14 @@ function Harness() {
     queryKey: ["detail"],
     queryFn: () => ({ catalog: saved }),
   });
+  const muscleSummary = useQuery({
+    queryKey: ["muscle-contributions", "owner"],
+    queryFn: () => saved?.name ?? "Unclassified",
+    staleTime: 60_000,
+  });
   return (
     <>
+      <p>Summary: {muscleSummary.data}</p>
       <h1>My custom exercise</h1>
       <ExerciseClassification
         exerciseId={42}
@@ -79,6 +85,7 @@ describe("exercise classification", () => {
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Pushups" }));
     await screen.findByRole("button", { name: "Change classification" });
+    expect(await screen.findByText("Summary: Pushups")).toBeVisible();
     expect(mocks.save).toHaveBeenLastCalledWith(
       { path: { id: 42 }, body: { catalog_id: "Pushups" } },
       expect.anything(),
@@ -102,6 +109,7 @@ describe("exercise classification", () => {
     expect(screen.getByText("Primary: biceps")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     await screen.findByText("Unclassified");
+    expect(await screen.findByText("Summary: Unclassified")).toBeVisible();
     expect(mocks.save).toHaveBeenLastCalledWith(
       { path: { id: 42 }, body: { catalog_id: "" } },
       expect.anything(),

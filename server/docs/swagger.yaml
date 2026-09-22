@@ -616,6 +616,23 @@ definitions:
           $ref: '#/definitions/workout.WorkoutSummary'
         type: array
     type: object
+  workout.ContributionExercise:
+    properties:
+      catalogId:
+        type: string
+      exerciseId:
+        type: integer
+      invalidWorkingSets:
+        type: integer
+      name:
+        type: string
+      roles:
+        additionalProperties:
+          type: string
+        type: object
+      workingSets:
+        type: integer
+    type: object
   workout.CreateWorkoutRequest:
     properties:
       date:
@@ -705,6 +722,48 @@ definitions:
     - date
     - note
     - workoutId
+    type: object
+  workout.MuscleContribution:
+    properties:
+      directSets:
+        type: integer
+      indirectSets:
+        type: integer
+      invalidMappedSets:
+        type: integer
+      invalidUnresolvedSets:
+        type: integer
+      muscle:
+        type: string
+      unresolvedSets:
+        type: integer
+    type: object
+  workout.MuscleContributions:
+    properties:
+      catalogVersion:
+        type: string
+      classificationBasis:
+        type: string
+      exercises:
+        items:
+          $ref: '#/definitions/workout.ContributionExercise'
+        type: array
+      invalidWorkingSets:
+        type: integer
+      mappingVersion:
+        type: string
+      muscles:
+        items:
+          $ref: '#/definitions/workout.MuscleContribution'
+        type: array
+      period:
+        $ref: '#/definitions/workout.EvidencePeriod'
+      unclassifiedSets:
+        type: integer
+      unreviewedSets:
+        type: integer
+      workingSets:
+        type: integer
     type: object
   workout.NewWorkoutContextResponse:
     properties:
@@ -1379,6 +1438,44 @@ paths:
       summary: Stop an AI chat run
       tags:
       - ai-chat
+  /analytics/muscle-contributions:
+    get:
+      parameters:
+      - description: First local date, YYYY-MM-DD
+        in: query
+        name: startDate
+        required: true
+        type: string
+      - description: IANA timezone
+        in: query
+        name: timezone
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/workout.MuscleContributions'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Summarize reviewed weekly muscle contributions from logged working
+        sets
+      tags:
+      - analytics
   /exercise-catalog:
     get:
       produces:

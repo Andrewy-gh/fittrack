@@ -1,0 +1,18 @@
+{
+  "branch": "feature/hypertrophy-evidence",
+  "route": "/hypertrophy-preview.html",
+  "server": 5198,
+  "timezone": "America/New_York",
+  "auth": "fixture user in actual AnalyticsDashboard",
+  "api": "intercepted fixtures",
+  "errors": [],
+  "overflow": false,
+  "requests": [
+    "/api/training-profile",
+    "/api/exercises/1/metrics-history",
+    "/api/analytics/muscle-contributions?startDate=2026-09-14&timezone=America%2FNew_York",
+    "/api/analytics/muscle-contributions?startDate=2026-09-21&timezone=America%2FNew_York"
+  ],
+  "currentWeekDisabled": true,
+  "strengthVisible": 0
+}
