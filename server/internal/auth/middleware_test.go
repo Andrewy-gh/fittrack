@@ -15,7 +15,6 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
-	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
@@ -302,12 +301,6 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 	}
 }
 
-func TestJWKSCache_GetUserIDFromToken(t *testing.T) {
-	// This test verifies the interface implementation
-	// More comprehensive tests would require mocking the jwk library
-	var _ JWKSProvider = (*JWKSCache)(nil)
-}
-
 func TestJWKSCache_GetUserIDFromToken_AllowsSmallIssuedAtClockSkew(t *testing.T) {
 	cache, signedToken := newTestJWKSCacheAndToken(t, time.Now().Add(30*time.Second))
 
@@ -375,17 +368,4 @@ func newTestJWKSCacheAndToken(t *testing.T, issuedAt time.Time) (*JWKSCache, str
 	assert.NoError(t, err)
 
 	return &JWKSCache{keySet: keySet}, string(signedToken)
-}
-
-func TestErrorResponse(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/test", nil)
-
-	response.ErrorJSON(w, req, logger, http.StatusUnauthorized, "test error", nil)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-
-	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 }

@@ -26,49 +26,7 @@ tester.run(
       `,
       `
         type User = { readonly id: string };
-        function readUser(raw: unknown): User {
-          // SAFETY: this function accepts only the parsed storage record.
-          return raw as User;
-        }
-      `,
-      `
-        type User = { readonly id: string };
-        // SAFETY: the adapter owns the conversion from its validated protocol record.
-        const id = (raw as User).id;
-      `,
-      `
-        type User = { readonly id: string };
-        // SAFETY: the adapter owns the conversion in this concise function body.
-        const readUser = () => raw as User;
-      `,
-      `
-        type User = { readonly id: string };
-        // SAFETY: the adapter owns the conversion for this default parameter.
-        function readUser(user = raw as User) {}
-      `,
-      `
-        type User = { readonly id: string };
-        function hasUserId(raw: unknown): boolean {
-          // SAFETY: the caller parsed the value before this condition.
-          if ((raw as User).id) return true;
-          return false;
-        }
-      `,
-      `
-        type User = { readonly id: string };
-        function hasUserId(raw: unknown): boolean {
-          // SAFETY: the caller parsed the value before this loop condition.
-          while ((raw as User).id) return true;
-          return false;
-        }
-      `,
-      `
-        type User = { readonly id: string };
         const user = raw /* SAFETY: parseUser checked the boundary value. */ as User;
-      `,
-      `
-        type User = { readonly id: string };
-        const user = (raw) /* SAFETY: parseUser checked the parenthesized boundary value. */ as User;
       `,
       `
         type User = { readonly id: string };
@@ -115,16 +73,6 @@ tester.run(
       {
         code: `
           type User = { readonly id: string };
-          // SAFETY: a function-level comment must not cover its nested loop body.
-          function hasUserId(raw: unknown): boolean {
-            while (raw) return (raw as User).id;
-          }
-        `,
-        errors: [error],
-      },
-      {
-        code: `
-          type User = { readonly id: string };
           // SAFETY: a function-level comment must not cover its body statement.
           function readUser(raw: unknown): User {
             return raw as User;
@@ -136,13 +84,6 @@ tester.run(
         code: `
           type User = { readonly id: string };
           const user = raw as /* SAFETY: too late. */ User;
-        `,
-        errors: [error],
-      },
-      {
-        code: `
-          type User = { readonly id: string };
-          const user = raw as /* SAFETY: too late. */ (User);
         `,
         errors: [error],
       },

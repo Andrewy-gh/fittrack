@@ -69,6 +69,13 @@ describe("AppTopBar", () => {
 
     render(<AppTopBar user={{} as CurrentUser} />);
 
+    expect(
+      screen.getByRole("button", { name: "Signed-in user menu" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Guest user menu" }),
+    ).not.toBeInTheDocument();
+
     const header = screen.getByRole("banner");
     const nav = screen.getByRole("navigation", { name: "Primary navigation" });
 
@@ -87,17 +94,6 @@ describe("AppTopBar", () => {
     expect(
       screen.getByRole("button", { name: "Open navigation menu" }),
     ).toBeInTheDocument();
-  });
-
-  it("renders the signed-in account slot for authenticated users", () => {
-    render(<AppTopBar user={{} as CurrentUser} />);
-
-    expect(
-      screen.getByRole("button", { name: "Signed-in user menu" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Guest user menu" }),
-    ).not.toBeInTheDocument();
   });
 
   it("renders the guest account slot without a user", () => {

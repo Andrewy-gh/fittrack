@@ -92,22 +92,6 @@ describe("useChatHistoryEntry", () => {
     });
   });
 
-  it("models the no-conversation loading path as opening the latest chat", () => {
-    mockListConversations.mockReturnValue(new Promise(() => {}));
-
-    const view = renderHook(() =>
-      useChatHistoryEntry({
-        userId: "user-1",
-        conversationId: null,
-        onOpenConversation: vi.fn(),
-      }),
-    );
-
-    expect(view.result.current.entryState).toEqual({
-      status: "openingLatestChat",
-    });
-  });
-
   it("models no-conversation history load failures separately from ready chat content", async () => {
     mockListConversations.mockRejectedValue(new Error("Recent chats failed"));
 

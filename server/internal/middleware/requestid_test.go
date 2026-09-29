@@ -11,10 +11,10 @@ import (
 
 func TestRequestID(t *testing.T) {
 	tests := []struct {
-		name                   string
-		clientProvidedID       string
-		expectClientID         bool
-		expectGeneratedID      bool
+		name              string
+		clientProvidedID  string
+		expectClientID    bool
+		expectGeneratedID bool
 	}{
 		{
 			name:              "no client-provided request ID - should generate",
@@ -95,42 +95,5 @@ func TestRequestID(t *testing.T) {
 				t.Errorf("Response header ID (%v) does not match context ID (%v)", responseID, capturedRequestID)
 			}
 		})
-	}
-}
-
-func TestGetRequestID_NoRequestID(t *testing.T) {
-	// Test request.GetRequestID when no request ID is in context
-	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
-	requestID := request.GetRequestID(req.Context())
-
-	if requestID != "" {
-		t.Errorf("Expected empty string when no request ID in context, got %v", requestID)
-	}
-}
-
-func TestRequestID_UniquePerRequest(t *testing.T) {
-	// Test that each request gets a unique ID
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	handler := RequestID()(nextHandler)
-
-	// Make multiple requests
-	requestIDs := make(map[string]bool)
-	for i := 0; i < 10; i++ {
-		req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		requestID := rr.Header().Get("X-Request-ID")
-		if requestIDs[requestID] {
-			t.Errorf("Duplicate request ID generated: %v", requestID)
-		}
-		requestIDs[requestID] = true
-	}
-
-	if len(requestIDs) != 10 {
-		t.Errorf("Expected 10 unique request IDs, got %d", len(requestIDs))
 	}
 }

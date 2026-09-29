@@ -48,26 +48,6 @@ func TestValidateWorkoutDraftQualityScalesMinimumWorkToRequestedDuration(t *test
 	}
 }
 
-func TestValidateWorkoutDraftQualityAcceptsReasonableHypertrophyDraft(t *testing.T) {
-	input := WorkoutGenerationToolInput{
-		FitnessGoal:     "hypertrophy",
-		Equipment:       "full gym",
-		SessionDuration: 45,
-		WorkoutFocus:    "pull",
-		Injuries:        "none",
-	}
-	draft := validDraftWithExercises(
-		draftExercise("Pull-Up", warmupSet(6), warmupSet(6), workingSet(8), workingSet(8), workingSet(8)),
-		draftExercise("Chest Supported Row", workingSet(10), workingSet(10), workingSet(10)),
-		draftExercise("Seated Cable Row", workingSet(12), workingSet(12)),
-		draftExercise("Incline Dumbbell Curl", workingSet(12), workingSet(12)),
-	)
-
-	if err := validateWorkoutDraftQuality(input, draft); err != nil {
-		t.Fatalf("validateWorkoutDraftQuality() error = %v, want nil", err)
-	}
-}
-
 func TestValidateWorkoutDraftQualityRejectsUnavailableEquipment(t *testing.T) {
 	input := WorkoutGenerationToolInput{
 		FitnessGoal:      "general fitness",

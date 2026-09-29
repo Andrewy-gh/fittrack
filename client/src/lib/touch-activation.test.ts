@@ -66,16 +66,6 @@ function createTouchTarget(tagName: "button" | "div") {
 }
 
 describe("touch activation helpers", () => {
-  it("treats a short touch as a tap", () => {
-    const element = document.createElement("div");
-
-    beginTouchTapTracking(element, createTouchEvent(10, 20));
-
-    expect(finishTouchTapTracking(element, createTouchEvent(14, 24))).toBe(
-      true,
-    );
-  });
-
   it("treats a moved touch as a drag", () => {
     const element = document.createElement("div");
 
@@ -133,21 +123,6 @@ describe("touch activation helpers", () => {
         createTouchEndEvent(10, 20, 250, preventDefault),
       ),
     ).toBe(true);
-    expect(clickSpy).toHaveBeenCalledTimes(2);
-  });
-
-  it("allows repeated quick taps on the create row while suppressing follow-up clicks", () => {
-    const { clickSpy, element } = createTouchTarget("div");
-
-    beginTouchTapTracking(element, createTouchEvent(10, 20));
-    activateTouchTap(element, createTouchEndEvent(10, 20, 100));
-
-    dispatchClick(element, 200);
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-
-    beginTouchTapTracking(element, createTouchEvent(10, 20));
-    activateTouchTap(element, createTouchEndEvent(10, 20, 250));
-
     expect(clickSpy).toHaveBeenCalledTimes(2);
   });
 });

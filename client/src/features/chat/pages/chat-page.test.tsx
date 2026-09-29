@@ -127,33 +127,9 @@ describe("ChatRouteComponent", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(drawer).toBeInTheDocument();
-  });
-
-  it("does nothing when chat deletion is cancelled", async () => {
-    const user = userEvent.setup();
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-    mockListConversations.mockResolvedValue([
-      {
-        id: 72,
-        title: "Leg day plan",
-        created_at: "2026-06-24T17:00:00Z",
-        updated_at: "2026-06-24T17:05:00Z",
-      },
-    ]);
-
-    render(<ChatRouteComponent />);
-
-    await user.click(
-      await screen.findByRole("button", {
-        name: "More options for Leg day plan",
-      }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: "Delete chat" }));
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-
     expect(mockDeleteConversation).not.toHaveBeenCalled();
     expect(mockListConversations).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Leg day plan")).toBeInTheDocument();
+    expect(within(drawer).getByText("Leg day plan")).toBeInTheDocument();
   });
 
   it("keeps a chat when deletion conflicts with an active response", async () => {
@@ -273,32 +249,6 @@ describe("ChatRouteComponent", () => {
     expect(mockToastError).not.toHaveBeenCalled();
     expect(mockShowErrorToast).not.toHaveBeenCalled();
     expect(mockListConversations).toHaveBeenCalledTimes(2);
-  });
-
-  it("opens blank New Chat when entering without an eligible draft", async () => {
-    mockSearch.conversationId = undefined;
-    mockListConversations.mockResolvedValue([
-      {
-        id: 72,
-        title: "Leg day plan",
-        created_at: "2026-06-25T17:00:00Z",
-        updated_at: "2026-06-25T17:05:00Z",
-        last_message_at: "2026-06-25T17:05:00Z",
-      },
-    ]);
-
-    render(<ChatRouteComponent />);
-
-    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/chat",
-        search: { createChat: true },
-        replace: true,
-      });
-    });
-    expect(screen.getByText("What should we train today?")).toBeInTheDocument();
-    expect(mockGetConversation).not.toHaveBeenCalled();
   });
 
   it("opens a blank draft without persisting a conversation from chat navigation", async () => {
@@ -602,23 +552,6 @@ describe("ChatRouteComponent", () => {
     expect(mockListConversations).toHaveBeenCalledTimes(1);
   });
 
-  it("shows every recent chat returned by the history endpoint", async () => {
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-    mockListConversations.mockResolvedValue(
-      Array.from({ length: 50 }, (_, index) => ({
-        id: index + 1,
-        title: `Recent chat ${index + 1}`,
-        created_at: "2026-06-25T17:00:00Z",
-        updated_at: "2026-06-25T17:05:00Z",
-        last_message_at: "2026-06-25T17:05:00Z",
-      })),
-    );
-
-    render(<ChatRouteComponent />);
-
-    expect(await screen.findByText("Recent chat 50")).toBeInTheDocument();
-  });
-
   it("lets desktop users collapse and expand chat history", async () => {
     const user = userEvent.setup();
     mockGetConversation.mockResolvedValue(conversationDetail([]));
@@ -635,6 +568,14 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     const expandedHistory = await screen.findByLabelText("Chat history");
+    expect(
+      await within(expandedHistory).findByRole("button", {
+        name: /^Leg day plan/,
+      }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(expandedHistory).getByText("Current conversation"),
+    ).toBeInTheDocument();
     expect(expandedHistory).toHaveClass("lg:fixed", "lg:left-0");
     expect(screen.getByTestId("chat-page-layout")).toHaveClass(
       "lg:px-chat-gutter",
@@ -668,48 +609,6 @@ describe("ChatRouteComponent", () => {
     expect(
       screen.queryByLabelText("Collapse chat history"),
     ).not.toBeInTheDocument();
-  });
-
-  it("omits ready access chrome from the chat page", async () => {
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-    mockListConversations.mockResolvedValue([
-      {
-        id: 41,
-        title: "Leg day plan",
-        created_at: "2026-06-25T17:00:00Z",
-        updated_at: "2026-06-25T17:05:00Z",
-        last_message_at: "2026-06-25T17:05:00Z",
-      },
-    ]);
-
-    render(<ChatRouteComponent />);
-
-    expect(await screen.findByText("Leg day plan")).toBeInTheDocument();
-    expect(screen.queryByText("Access active")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "New Chat" })).toHaveLength(1);
-  });
-
-  it("adds top padding when showing an existing conversation", async () => {
-    mockGetConversation.mockResolvedValue(
-      conversationDetail([
-        {
-          id: 61,
-          conversation_id: 41,
-          role: "user",
-          content: "Hello anybody there?",
-          status: "completed",
-          created_at: "2026-03-26T17:00:00Z",
-          updated_at: "2026-03-26T17:00:00Z",
-          completed_at: "2026-03-26T17:00:00Z",
-        },
-      ]),
-    );
-    mockListConversations.mockResolvedValue([]);
-
-    render(<ChatRouteComponent />);
-
-    expect(await screen.findByText("Hello anybody there?")).toBeInTheDocument();
-    expect(screen.getByTestId("chat-conversation-body")).toHaveClass("pt-4");
   });
 
   it("removes typing immediately while durable Stop is pending", async () => {

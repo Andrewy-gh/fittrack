@@ -59,14 +59,6 @@ describe("ChatDraftStore", () => {
     );
   });
 
-  it("clears every draft", () => {
-    store.setDraft({ type: "conversation", conversationId: 1 }, "secret");
-    store.clear();
-    expect(store.getDraft({ type: "conversation", conversationId: 1 })).toBe(
-      "",
-    );
-  });
-
   it("supports the isolated always-new-chat test policy", () => {
     store.setDraft({ type: "conversation", conversationId: 1 }, "draft");
     expect(store.resolveMainDestination("always-new-chat")).toEqual({

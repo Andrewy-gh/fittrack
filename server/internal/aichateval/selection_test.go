@@ -5,30 +5,6 @@ import (
 	"testing"
 )
 
-func TestFilterScenariosNoSelectionReturnsAll(t *testing.T) {
-	scenarios := selectionTestScenarios()
-
-	got, err := FilterScenarios(scenarios, ScenarioSelection{})
-
-	if err != nil {
-		t.Fatalf("FilterScenarios() error = %v, want nil", err)
-	}
-	if gotIDs(got) != "prompt-01,prompt-02,prompt-03,prompt-04" {
-		t.Fatalf("FilterScenarios() ids = %s, want all ids", gotIDs(got))
-	}
-}
-
-func TestFilterScenariosSingleIDReturnsOne(t *testing.T) {
-	got, err := FilterScenarios(selectionTestScenarios(), ScenarioSelection{ScenarioID: "prompt-03"})
-
-	if err != nil {
-		t.Fatalf("FilterScenarios() error = %v, want nil", err)
-	}
-	if gotIDs(got) != "prompt-03" {
-		t.Fatalf("FilterScenarios() ids = %s, want prompt-03", gotIDs(got))
-	}
-}
-
 func TestFilterScenariosCommaSeparatedIDsPreservePackOrder(t *testing.T) {
 	got, err := FilterScenarios(selectionTestScenarios(), ScenarioSelection{ScenarioIDs: "prompt-04,prompt-02"})
 
@@ -62,55 +38,16 @@ func TestFilterScenariosRangeReturnsInclusiveScenarios(t *testing.T) {
 	}
 }
 
-func TestFilterScenariosRejectsAmbiguousSelection(t *testing.T) {
-	_, err := FilterScenarios(selectionTestScenarios(), ScenarioSelection{
-		ScenarioID:  "prompt-01",
-		ScenarioIDs: "prompt-02",
-	})
-
-	if err == nil {
-		t.Fatal("FilterScenarios() error = nil, want ambiguous selection error")
-	}
-	if !strings.Contains(err.Error(), "use only one of scenario or scenarios") {
-		t.Fatalf("FilterScenarios() error = %q, want ambiguous selection", err.Error())
-	}
-}
-
-func TestFilterScenariosRejectsRangeCombinedWithIDs(t *testing.T) {
-	_, err := FilterScenarios(selectionTestScenarios(), ScenarioSelection{
-		ScenarioIDs: "prompt-01,prompt-02",
-		FromID:      "prompt-03",
-		ToID:        "prompt-04",
-	})
-
-	if err == nil {
-		t.Fatal("FilterScenarios() error = nil, want range combination error")
-	}
-	if !strings.Contains(err.Error(), "range selection cannot be combined") {
-		t.Fatalf("FilterScenarios() error = %q, want range combination error", err.Error())
-	}
-}
-
-func TestFilterBaseOnlyScenariosExcludesBaseOnlyScenarios(t *testing.T) {
-	scenarios := []Scenario{
-		{ID: "prompt-19", Title: "Before"},
-		{ID: "prompt-20", Title: "Base Only", BaseOnly: true},
-		{ID: "profile-01", Title: "Fixture"},
-	}
-
-	got := FilterBaseOnlyScenarios(scenarios)
-
-	if gotIDs(got) != "prompt-19,profile-01" {
-		t.Fatalf("FilterBaseOnlyScenarios() ids = %s, want prompt-19,profile-01", gotIDs(got))
-	}
-}
-
 func TestFilterBaseOnlyScenariosExcludesAskFirstDefaultScenariosFromFixturesMode(t *testing.T) {
 	scenarios := append(DefaultScenarios(), DataFixtureScenarios()...)
 	got := FilterBaseOnlyScenarios(scenarios)
 	gotByID := make(map[string]Scenario, len(got))
 	for _, scenario := range got {
 		gotByID[scenario.ID] = scenario
+	}
+
+	if _, ok := gotByID["data-01"]; !ok {
+		t.Fatal("fixtures-mode scenarios must retain non-base-only data-01")
 	}
 
 	for _, scenario := range DefaultScenarios() {

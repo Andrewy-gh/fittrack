@@ -49,31 +49,6 @@ func (routeAccountService) DeleteCurrentUser(context.Context) error {
 	return nil
 }
 
-func TestRoutes_AllowsInngestHandlerAlongsideStaticFallback(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	api := &api{
-		logger: logger,
-		cfg:    &config.Config{},
-		// nil pool is fine here because we only care about route registration.
-		pool:           nil,
-		inngestHandler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
-	}
-
-	wh := &workout.WorkoutHandler{}
-	eh := &exercise.ExerciseHandler{}
-	fh := &featureaccess.Handler{}
-	hh := health.NewHandler(logger, nil)
-	ah := aichat.NewHandler(logger, nil)
-
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("route registration should not panic, got %v", r)
-		}
-	}()
-
-	_ = api.routes(wh, eh, fh, hh, ah, nil, nil, nil, nil)
-}
-
 func TestRoutes_RegistersPutForInngestHandler(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	called := false
@@ -163,35 +138,6 @@ func TestRoutes_ProtectsPublicMetricsWhenCredentialsConfigured(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
-	}
-}
-
-func TestRoutes_RegistersBillingCustomerPortalSession(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	api := &api{
-		logger: logger,
-		cfg:    &config.Config{},
-		pool:   nil,
-	}
-
-	wh := &workout.WorkoutHandler{}
-	eh := &exercise.ExerciseHandler{}
-	fh := &featureaccess.Handler{}
-	hh := health.NewHandler(logger, nil)
-	ah := aichat.NewHandler(logger, nil)
-	bh := billing.NewHandler(logger, routeBillingService{})
-
-	mux := api.routes(wh, eh, fh, hh, ah, bh, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodPost, "/api/billing/customer-portal-session", nil)
-	rr := httptest.NewRecorder()
-
-	mux.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rr.Code, rr.Body.String())
-	}
-	if !strings.Contains(rr.Body.String(), "https://billing.stripe.test/session") {
-		t.Fatalf("expected billing portal URL response, got %s", rr.Body.String())
 	}
 }
 

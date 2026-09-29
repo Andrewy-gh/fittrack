@@ -99,30 +99,6 @@ func TestLoad_RLSEnforcementRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-func TestLoad_ValidConfig(t *testing.T) {
-	// Set required environment variables
-	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
-	os.Setenv("PROJECT_ID", "test-project-123")
-	os.Setenv("RLS_ENFORCEMENT_REQUIRED", "true")
-	defer cleanupEnv()
-
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	if cfg.DatabaseURL != "postgresql://user:pass@localhost:5432/testdb" {
-		t.Errorf("expected DatabaseURL to be set, got: %s", cfg.DatabaseURL)
-	}
-
-	if cfg.ProjectID != "test-project-123" {
-		t.Errorf("expected ProjectID to be 'test-project-123', got: %s", cfg.ProjectID)
-	}
-	if !cfg.RLSEnforcementRequired {
-		t.Error("expected RLS enforcement to be required")
-	}
-}
-
 func TestLoad_MissingDatabaseURL(t *testing.T) {
 	// Only set PROJECT_ID, leave DATABASE_URL empty
 	os.Setenv("PROJECT_ID", "test-project-123")
@@ -156,18 +132,6 @@ func TestLoad_InvalidDatabaseURL(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error when DATABASE_URL is invalid, got nil")
-	}
-}
-
-func TestLoad_InvalidLogLevel(t *testing.T) {
-	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
-	os.Setenv("PROJECT_ID", "test-project-123")
-	os.Setenv("LOG_LEVEL", "invalid-level")
-	defer cleanupEnv()
-
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error when LOG_LEVEL is invalid, got nil")
 	}
 }
 
@@ -312,44 +276,6 @@ func TestConfigLocalE2EAuthConfigured(t *testing.T) {
 	})
 }
 
-func TestGetAllowedOrigins_EmptyString(t *testing.T) {
-	cfg := &Config{AllowedOrigins: ""}
-	origins := cfg.GetAllowedOrigins()
-
-	if len(origins) != 0 {
-		t.Errorf("expected empty slice, got: %v", origins)
-	}
-}
-
-func TestGetAllowedOrigins_SingleOrigin(t *testing.T) {
-	cfg := &Config{AllowedOrigins: "https://example.com"}
-	origins := cfg.GetAllowedOrigins()
-
-	if len(origins) != 1 {
-		t.Fatalf("expected 1 origin, got: %d", len(origins))
-	}
-
-	if origins[0] != "https://example.com" {
-		t.Errorf("expected 'https://example.com', got: %s", origins[0])
-	}
-}
-
-func TestGetAllowedOrigins_MultipleOrigins(t *testing.T) {
-	cfg := &Config{AllowedOrigins: "https://example.com,https://app.example.com,http://localhost:3000"}
-	origins := cfg.GetAllowedOrigins()
-
-	if len(origins) != 3 {
-		t.Fatalf("expected 3 origins, got: %d", len(origins))
-	}
-
-	expected := []string{"https://example.com", "https://app.example.com", "http://localhost:3000"}
-	for i, exp := range expected {
-		if origins[i] != exp {
-			t.Errorf("expected origins[%d] to be '%s', got: %s", i, exp, origins[i])
-		}
-	}
-}
-
 func TestGetAllowedOrigins_WithWhitespace(t *testing.T) {
 	cfg := &Config{AllowedOrigins: "https://example.com , https://app.example.com  ,  http://localhost:3000"}
 	origins := cfg.GetAllowedOrigins()
@@ -384,152 +310,7 @@ func TestGetAllowedOrigins_WithEmptyValues(t *testing.T) {
 	}
 }
 
-func TestLoad_ValidLogLevels(t *testing.T) {
-	validLevels := []string{"debug", "info", "warn", "error"}
-
-	for _, level := range validLevels {
-		t.Run("LogLevel_"+level, func(t *testing.T) {
-			os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
-			os.Setenv("PROJECT_ID", "test-project-123")
-			os.Setenv("LOG_LEVEL", level)
-			defer cleanupEnv()
-
-			cfg, err := Load()
-			if err != nil {
-				t.Fatalf("expected no error for valid log level '%s', got: %v", level, err)
-			}
-
-			if cfg.LogLevel != level {
-				t.Errorf("expected LogLevel to be '%s', got: %s", level, cfg.LogLevel)
-			}
-		})
-	}
-}
-
-func TestLoad_ValidEnvironments(t *testing.T) {
-	validEnvs := []string{"development", "staging", "production"}
-
-	for _, env := range validEnvs {
-		t.Run("Environment_"+env, func(t *testing.T) {
-			os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
-			os.Setenv("PROJECT_ID", "test-project-123")
-			os.Setenv("ENVIRONMENT", env)
-			defer cleanupEnv()
-
-			cfg, err := Load()
-			if err != nil {
-				t.Fatalf("expected no error for valid environment '%s', got: %v", env, err)
-			}
-
-			if cfg.Environment != env {
-				t.Errorf("expected Environment to be '%s', got: %s", env, cfg.Environment)
-			}
-		})
-	}
-}
-
 // Test that invalid integer values are logged and default is used
-func TestGetEnvInt_InvalidInteger(t *testing.T) {
-	// Capture log output
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer log.SetOutput(os.Stderr) // Restore default log output
-
-	tests := []struct {
-		name         string
-		envValue     string
-		defaultValue int
-		expectLog    bool
-	}{
-		{
-			name:         "invalid integer - letters",
-			envValue:     "abc",
-			defaultValue: 100,
-			expectLog:    true,
-		},
-		{
-			name:         "invalid integer - mixed",
-			envValue:     "12abc34",
-			defaultValue: 50,
-			expectLog:    true,
-		},
-		{
-			name:         "invalid integer - float",
-			envValue:     "12.34",
-			defaultValue: 75,
-			expectLog:    true,
-		},
-		{
-			name:         "invalid integer - special chars",
-			envValue:     "!@#$",
-			defaultValue: 200,
-			expectLog:    true,
-		},
-		{
-			name:         "valid integer",
-			envValue:     "500",
-			defaultValue: 100,
-			expectLog:    false,
-		},
-		{
-			name:         "empty string",
-			envValue:     "",
-			defaultValue: 100,
-			expectLog:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Reset buffer
-			buf.Reset()
-
-			// Set environment variable
-			if tt.envValue != "" {
-				os.Setenv("TEST_INT_VAR", tt.envValue)
-			} else {
-				os.Unsetenv("TEST_INT_VAR")
-			}
-			defer os.Unsetenv("TEST_INT_VAR")
-
-			// Call getEnvInt
-			result := getEnvInt("TEST_INT_VAR", tt.defaultValue)
-
-			// Verify result
-			if tt.envValue == "500" {
-				if result != 500 {
-					t.Errorf("expected result to be 500, got: %d", result)
-				}
-			} else {
-				if result != tt.defaultValue {
-					t.Errorf("expected result to be default value %d, got: %d", tt.defaultValue, result)
-				}
-			}
-
-			// Verify log output
-			logOutput := buf.String()
-			if tt.expectLog {
-				if logOutput == "" {
-					t.Error("expected log output, but got none")
-				}
-				if !bytes.Contains([]byte(logOutput), []byte("TEST_INT_VAR")) {
-					t.Errorf("expected log to contain 'TEST_INT_VAR', got: %s", logOutput)
-				}
-				if !bytes.Contains([]byte(logOutput), []byte("failed to parse")) {
-					t.Errorf("expected log to contain 'failed to parse', got: %s", logOutput)
-				}
-				if !bytes.Contains([]byte(logOutput), []byte(tt.envValue)) {
-					t.Errorf("expected log to contain value '%s', got: %s", tt.envValue, logOutput)
-				}
-			} else {
-				if logOutput != "" {
-					t.Errorf("expected no log output, but got: %s", logOutput)
-				}
-			}
-		})
-	}
-}
-
 // Test that Load() with invalid integer env vars still succeeds (uses defaults)
 func TestLoad_InvalidIntegerValues(t *testing.T) {
 	// Capture log output

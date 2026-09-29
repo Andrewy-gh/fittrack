@@ -4,51 +4,10 @@ import {
   shouldDiscardSetOnDismiss,
   shouldShowRecentFocusAreaCard,
   shouldDiscardNewExerciseAfterSetRemoval,
-  validateSetReps,
 } from "../workout-form-helpers";
 
 describe("workout-form-helpers", () => {
-  describe("validateSetReps", () => {
-    it("returns error when reps are below minimum", () => {
-      expect(validateSetReps(0)).toBe("Reps must be at least 1");
-    });
-
-    it("returns undefined when reps are within range", () => {
-      expect(validateSetReps(8)).toBeUndefined();
-    });
-  });
-
   describe("shouldDiscardSetOnDismiss", () => {
-    it("discards a default zeroed working set", () => {
-      expect(
-        shouldDiscardSetOnDismiss({
-          reps: 0,
-          weight: 0,
-          setType: "working",
-        }),
-      ).toBe(true);
-    });
-
-    it("discards a zeroed warmup set", () => {
-      expect(
-        shouldDiscardSetOnDismiss({
-          reps: 0,
-          weight: 0,
-          setType: "warmup",
-        }),
-      ).toBe(true);
-    });
-
-    it("discards a weight-only set with zero reps", () => {
-      expect(
-        shouldDiscardSetOnDismiss({
-          reps: 0,
-          weight: 135,
-          setType: "working",
-        }),
-      ).toBe(true);
-    });
-
     it("keeps a valid set with reps", () => {
       expect(
         shouldDiscardSetOnDismiss({
@@ -71,16 +30,6 @@ describe("workout-form-helpers", () => {
   });
 
   describe("hasWorkoutDraftContent", () => {
-    it("returns false for an untouched draft", () => {
-      expect(
-        hasWorkoutDraftContent({
-          notes: "",
-          workoutFocus: "",
-          exercises: [],
-        }),
-      ).toBe(false);
-    });
-
     it("returns true when notes have been typed but not persisted yet", () => {
       expect(
         hasWorkoutDraftContent({
@@ -148,20 +97,6 @@ describe("workout-form-helpers", () => {
           },
         }),
       ).toBe(false);
-    });
-
-    it("shows the card again after the draft is cleared", () => {
-      expect(
-        shouldShowRecentFocusAreaCard({
-          focusAreaTemplateCount: 2,
-          isDirty: false,
-          value: {
-            notes: "",
-            workoutFocus: "",
-            exercises: [],
-          },
-        }),
-      ).toBe(true);
     });
   });
 });

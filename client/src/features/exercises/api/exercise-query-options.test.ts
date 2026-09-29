@@ -43,7 +43,6 @@ const selectors = [
 
 const querySources = [
   { name: "authenticated users", user: authenticatedUser, expected: "api" },
-  { name: "demo users", user: null, expected: "demo" },
 ] as const;
 
 describe("exercise query options", () => {

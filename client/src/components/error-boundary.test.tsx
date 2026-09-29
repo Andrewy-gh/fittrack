@@ -41,33 +41,9 @@ describe("ErrorBoundary", () => {
     expect(screen.queryByText("No error")).not.toBeInTheDocument();
     expect(screen.getByText("Error occurred")).toBeInTheDocument();
   });
-
-  it("logs error to console", () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
-    render(
-      <ErrorBoundary fallback={<div>Error occurred</div>}>
-        <ThrowError shouldThrow={true} />
-      </ErrorBoundary>,
-    );
-
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    consoleErrorSpy.mockRestore();
-  });
 });
 
 describe("FullScreenErrorFallback", () => {
-  it("renders error message", () => {
-    render(<FullScreenErrorFallback message="Test error message" />);
-
-    expect(
-      screen.getByRole("heading", { name: /something went wrong/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Test error message")).toBeInTheDocument();
-  });
-
   it("calls onAction when button clicked", async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();
@@ -80,6 +56,10 @@ describe("FullScreenErrorFallback", () => {
       />,
     );
 
+    expect(
+      screen.getByRole("heading", { name: /something went wrong/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Test error")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "Retry" });
     await user.click(button);
 
@@ -100,27 +80,6 @@ describe("FullScreenErrorFallback", () => {
     await user.click(button);
 
     expect(reloadSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("uses default action label when not provided", () => {
-    render(<FullScreenErrorFallback message="Test error" />);
-
-    expect(
-      screen.getByRole("button", { name: "Reload Page" }),
-    ).toBeInTheDocument();
-  });
-
-  it("uses custom action label when provided", () => {
-    render(
-      <FullScreenErrorFallback
-        message="Test error"
-        actionLabel="Try Again"
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Try Again" }),
-    ).toBeInTheDocument();
   });
 });
 

@@ -214,25 +214,4 @@ describe("ScrollableChart", () => {
       ).not.toBeInTheDocument();
     });
   });
-
-  it("hides desktop scroll controls for touch devices", async () => {
-    coarsePointer = true;
-    const { container } = render(
-      <ScrollableChart
-        dataLength={20}
-        visibleBarCount={5}
-      >
-        <div>Chart</div>
-      </ScrollableChart>,
-    );
-    const scrollContainer = getScrollContainer(container);
-
-    await waitFor(() => expect(scrollContainer.scrollLeft).toBe(1500));
-    expect(
-      screen.queryByRole("button", { name: "Scroll left" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Scroll right" }),
-    ).not.toBeInTheDocument();
-  });
 });

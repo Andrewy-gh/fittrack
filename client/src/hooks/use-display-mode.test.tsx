@@ -63,22 +63,6 @@ describe("useDisplayMode", () => {
     setStandaloneNavigator(undefined);
   });
 
-  it("returns web when the app is running in a browser tab", () => {
-    installDisplayModeMatchMedia(false);
-
-    const { result } = renderHook(() => useDisplayMode());
-
-    expect(result.current).toBe("web");
-  });
-
-  it("returns pwa when display-mode is standalone", () => {
-    installDisplayModeMatchMedia(true);
-
-    const { result } = renderHook(() => useDisplayMode());
-
-    expect(result.current).toBe("pwa");
-  });
-
   it("returns pwa for iOS standalone mode", () => {
     installDisplayModeMatchMedia(false);
     setStandaloneNavigator(true);

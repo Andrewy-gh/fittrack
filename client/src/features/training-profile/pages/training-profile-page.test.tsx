@@ -98,7 +98,8 @@ describe("TrainingProfilePage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the frozen intro copy and enum options", async () => {
+  it("keeps save disabled until dirty and shows a success toast", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     expect(
@@ -123,11 +124,6 @@ describe("TrainingProfilePage", () => {
     for (const option of ["Not set", "Beginner", "Intermediate", "Advanced"]) {
       expect(within(experience).getByRole("option", { name: option }));
     }
-  });
-
-  it("keeps save disabled until dirty and shows a success toast", async () => {
-    const user = userEvent.setup();
-    renderPage();
 
     const save = await screen.findByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
@@ -163,22 +159,6 @@ describe("TrainingProfilePage", () => {
     await waitFor(() => {
       expect(latestUpdatePayload()).toEqual(
         expect.objectContaining({ movement_limitations: null }),
-      );
-    });
-  });
-
-  it("sends an empty array when there are no known limitations", async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await user.click(
-      await screen.findByRole("radio", { name: "No known limitations" }),
-    );
-    await user.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(latestUpdatePayload()).toEqual(
-        expect.objectContaining({ movement_limitations: [] }),
       );
     });
   });

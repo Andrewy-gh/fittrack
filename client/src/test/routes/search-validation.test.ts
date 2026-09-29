@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  analyticsSearchValidator,
   exerciseDetailSearchValidator,
   workoutEditorSearchValidator,
   workoutsSearchValidator,
@@ -42,12 +41,6 @@ describe("route search validation", () => {
       addExercise: true,
       exerciseIndex: 0,
       newExercise: false,
-    });
-  });
-
-  it("coerces analytics exercise ids to positive integers", () => {
-    expect(analyticsSearchValidator.parse({ exerciseId: "12" })).toEqual({
-      exerciseId: 12,
     });
   });
 

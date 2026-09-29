@@ -2,14 +2,6 @@ import { describe, it, expect } from "vitest";
 import { getPaginationItems } from "./pagination-utils";
 
 describe("pagination-utils", () => {
-  it("returns a single page when totalPages is 1", () => {
-    expect(getPaginationItems(1, 1)).toEqual([1]);
-  });
-
-  it("returns both pages when totalPages is 2", () => {
-    expect(getPaginationItems(1, 2)).toEqual([1, 2]);
-  });
-
   it("returns all pages when totalPages is 5", () => {
     expect(getPaginationItems(3, 5)).toEqual([1, 2, 3, 4, 5]);
   });

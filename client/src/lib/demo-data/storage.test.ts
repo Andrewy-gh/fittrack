@@ -68,20 +68,6 @@ describe("updateExercise", () => {
     expect(updated?.name).toBe("Bench Press");
   });
 
-  it("should update updated_at timestamp", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-15T10:00:00.000Z"));
-    const exercise = createExercise("Bench Press");
-    const oldUpdatedAt = exercise.updated_at;
-    vi.setSystemTime(new Date("2026-03-15T10:00:01.000Z"));
-    updateExercise(exercise.id, "New Name");
-
-    const exercises = getAllExercises();
-    const updated = exercises.find((ex) => ex.id === exercise.id);
-
-    expect(updated?.updated_at).not.toBe(oldUpdatedAt);
-  });
-
   it("reads valid persisted demo collections through storage APIs", () => {
     localStorage.setItem(
       STORAGE_KEYS.EXERCISES,

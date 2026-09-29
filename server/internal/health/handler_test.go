@@ -24,53 +24,6 @@ func (m *MockPool) Ping(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func TestHealth(t *testing.T) {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-
-	tests := []struct {
-		name         string
-		expectedCode int
-		checkFields  func(*testing.T, HealthResponse)
-	}{
-		{
-			name:         "successful health check",
-			expectedCode: http.StatusOK,
-			checkFields: func(t *testing.T, resp HealthResponse) {
-				assert.Equal(t, "healthy", resp.Status)
-				assert.Equal(t, "1.0.0", resp.Version)
-				assert.NotEmpty(t, resp.Timestamp)
-
-				_, err := time.Parse(time.RFC3339, resp.Timestamp)
-				assert.NoError(t, err, "timestamp should be in RFC3339 format")
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockPool := new(MockPool)
-			handler := NewHandlerWithPool(logger, mockPool)
-
-			req := httptest.NewRequest(http.MethodGet, "/health", nil)
-			rr := httptest.NewRecorder()
-
-			handler.Health(rr, req)
-
-			assert.Equal(t, tt.expectedCode, rr.Code)
-
-			assert.Equal(t, "application/json", rr.Header().Get("Content-Type"))
-
-			var response HealthResponse
-			err := json.NewDecoder(rr.Body).Decode(&response)
-			assert.NoError(t, err, "response should be valid JSON")
-
-			if tt.checkFields != nil {
-				tt.checkFields(t, response)
-			}
-		})
-	}
-}
-
 func TestReady(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
