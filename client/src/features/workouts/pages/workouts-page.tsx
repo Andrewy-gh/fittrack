@@ -18,7 +18,7 @@ import { ArrowDownAz, ArrowUpAz, Clock, Plus } from "lucide-react";
 import { getWorkoutListQueryOptions } from "@/features/workouts/api/workout-query-options";
 import { workoutDraftStorage } from "@/lib/local-storage";
 import { WorkoutSummaryCards } from "@/features/workouts/components/workout-summary-cards";
-import { RecentWorkoutsCard } from "@/features/workouts/components/recent-workouts-card";
+import { RecentWorkoutsList } from "@/features/workouts/components/recent-workouts-list";
 import { WorkoutDistributionCard } from "@/features/workouts/components/workout-distribution-card";
 import {
   filterWorkoutsByFocus,
@@ -96,129 +96,140 @@ export function WorkoutsPage({
         {/* Summary Cards */}
         <WorkoutSummaryCards workouts={workouts} />
 
-        <div className="grid grid-cols-2 gap-3 px-1">
-          <div className="space-y-1.5">
+        <section
+          aria-labelledby="recent-workouts-heading"
+          className="space-y-4"
+        >
+          <h2
+            id="recent-workouts-heading"
+            className="text-xl font-semibold"
+          >
+            Recent Workouts
+          </h2>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="focus-area-compact"
+                className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+              >
+                Focus Area
+              </Label>
+              <Select
+                value={normalizedFocusArea}
+                onValueChange={(value) =>
+                  navigate({
+                    search: (prev) => ({
+                      ...prev,
+                      focusArea: value,
+                      page: 1,
+                    }),
+                  })
+                }
+              >
+                <SelectTrigger
+                  id="focus-area-compact"
+                  className="h-9"
+                >
+                  <SelectValue placeholder="Select focus area" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Focus Areas</SelectItem>
+                  {focusAreas.map((focus) => (
+                    <SelectItem
+                      key={focus}
+                      value={focus}
+                    >
+                      {focus}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                Sort Order
+              </Label>
+              <Toggle
+                pressed={normalizedSortOrder === "asc"}
+                onPressedChange={(pressed) =>
+                  navigate({
+                    search: (prev) => ({
+                      ...prev,
+                      sortOrder: pressed ? "asc" : "desc",
+                      page: 1,
+                    }),
+                  })
+                }
+                aria-label="Toggle sort order"
+                className="w-full px-3 py-1.5 inline-flex items-center justify-start gap-2"
+              >
+                <span className="text-sm">
+                  {normalizedSortOrder === "asc" ? "Ascending" : "Descending"}
+                </span>
+                {normalizedSortOrder === "asc" ? (
+                  <ArrowUpAz className="w-4 h-4 opacity-70" />
+                ) : (
+                  <ArrowDownAz className="w-4 h-4 opacity-70" />
+                )}
+              </Toggle>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 justify-center">
             <Label
-              htmlFor="focus-area-compact"
-              className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+              htmlFor="items-per-page"
+              className="text-xs whitespace-nowrap"
             >
-              Focus Area
+              Show
             </Label>
             <Select
-              value={normalizedFocusArea}
+              value={String(normalizedItemsPerPage)}
               onValueChange={(value) =>
                 navigate({
                   search: (prev) => ({
                     ...prev,
-                    focusArea: value,
+                    itemsPerPage: Number(value),
                     page: 1,
                   }),
                 })
               }
             >
               <SelectTrigger
-                id="focus-area-compact"
-                className="h-9"
+                id="items-per-page"
+                className="h-8 w-[70px]"
               >
-                <SelectValue placeholder="Select focus area" />
+                <SelectValue placeholder="10" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Focus Areas</SelectItem>
-                {focusAreas.map((focus) => (
-                  <SelectItem
-                    key={focus}
-                    value={focus}
-                  >
-                    {focus}
-                  </SelectItem>
-                ))}
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
               </SelectContent>
             </Select>
+            <span className="text-xs text-muted-foreground">per page</span>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-              Sort Order
-            </Label>
-            <Toggle
-              pressed={normalizedSortOrder === "asc"}
-              onPressedChange={(pressed) =>
-                navigate({
-                  search: (prev) => ({
-                    ...prev,
-                    sortOrder: pressed ? "asc" : "desc",
-                    page: 1,
-                  }),
-                })
-              }
-              aria-label="Toggle sort order"
-              className="w-full px-3 py-1.5 inline-flex items-center justify-start gap-2"
-            >
-              <span className="text-sm">
-                {normalizedSortOrder === "asc" ? "Ascending" : "Descending"}
-              </span>
-              {normalizedSortOrder === "asc" ? (
-                <ArrowUpAz className="w-4 h-4 opacity-70" />
-              ) : (
-                <ArrowDownAz className="w-4 h-4 opacity-70" />
-              )}
-            </Toggle>
-          </div>
-        </div>
+          <RecentWorkoutsList
+            workouts={pagedWorkouts}
+            hasWorkoutInProgress={hasWorkoutInProgress}
+            newWorkoutLink={newWorkoutLink}
+          />
 
-        <div className="flex items-center gap-2 justify-center px-1">
-          <Label
-            htmlFor="items-per-page"
-            className="text-xs whitespace-nowrap"
-          >
-            Show
-          </Label>
-          <Select
-            value={String(normalizedItemsPerPage)}
-            onValueChange={(value) =>
+          <PaginationControl
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(nextPage) =>
               navigate({
                 search: (prev) => ({
                   ...prev,
-                  itemsPerPage: Number(value),
-                  page: 1,
+                  page: nextPage,
                 }),
               })
             }
-          >
-            <SelectTrigger
-              id="items-per-page"
-              className="h-8 w-[70px]"
-            >
-              <SelectValue placeholder="10" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
-          <span className="text-xs text-muted-foreground">per page</span>
-        </div>
-
-        {/* Recent Workouts */}
-        <RecentWorkoutsCard
-          workouts={pagedWorkouts}
-          hasWorkoutInProgress={hasWorkoutInProgress}
-          newWorkoutLink={newWorkoutLink}
-        />
-
-        <PaginationControl
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(nextPage) =>
-            navigate({
-              search: (prev) => ({
-                ...prev,
-                page: nextPage,
-              }),
-            })
-          }
-        />
+          />
+        </section>
 
         {/* Workout Distribution */}
         <WorkoutDistributionCard workouts={workouts} />
