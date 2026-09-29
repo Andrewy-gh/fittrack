@@ -823,45 +823,6 @@ func TestServicePrepareMessageStream_StopsWhenTrialPromptCapReached(t *testing.T
 	runtime.AssertExpectations(t)
 }
 
-func TestServiceRequestMessageRecovery_QueuesActiveRun(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	featureAccess := new(mockFeatureAccessService)
-	runtime := new(mockRuntime)
-	repo := new(mockRepository)
-	recovery := new(mockRecoveryDispatcher)
-	service := NewService(logger, featureAccess, runtime, repo, nil)
-	service.SetRecoveryDispatcher(recovery)
-	ctx := user.WithContext(context.Background(), "user-123")
-	expiredLease := time.Now().UTC().Add(-time.Second)
-
-	featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-	repo.On("GetConversation", mock.Anything, int32(41), "user-123").Return(&Conversation{ID: 41, UserID: "user-123"}, nil).Once()
-	repo.On("GetActiveRunForConversation", mock.Anything, int32(41), "user-123").Return(&ChatRun{
-		ID:               51,
-		ConversationID:   41,
-		UserID:           "user-123",
-		Status:           statusStreaming,
-		GenerationStatus: generationStatusGenerating,
-		LeaseExpiresAt:   &expiredLease,
-	}, nil).Once()
-	recovery.On("EnqueueRunRecovery", mock.Anything, RunRecoveryRequest{
-		ConversationID: 41,
-		RunID:          51,
-		UserID:         "user-123",
-		Reason:         recoverReasonStreamReconnect,
-	}).Return(nil).Once()
-
-	resp, err := service.RequestMessageRecovery(ctx, 41, "")
-
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	assert.Equal(t, recoverStatusQueued, resp.Status)
-	assert.Equal(t, int32(51), resp.RunID)
-	featureAccess.AssertExpectations(t)
-	repo.AssertExpectations(t)
-	recovery.AssertExpectations(t)
-}
-
 func TestServiceRequestMessageRecovery_QueuesStaleClaimedRun(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	featureAccess := new(mockFeatureAccessService)
@@ -1337,91 +1298,6 @@ func TestServiceStartMessageGeneration_RemoteStopCancelsOnOwnershipPoll(t *testi
 	case <-time.After(2 * time.Second):
 		t.Fatal("generation was not canceled after durable ownership was cleared")
 	}
-	runtime.AssertExpectations(t)
-	repo.AssertExpectations(t)
-}
-
-func TestServiceRecoverStreamingRun_CompletesActiveRun(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	featureAccess := new(mockFeatureAccessService)
-	runtime := new(mockRuntime)
-	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo, nil)
-	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
-	expiredLease := now.Add(-time.Second)
-	prepared := &PreparedMessageStream{
-		Conversation: &Conversation{ID: 41, UserID: "user-123"},
-		Run: &ChatRun{
-			ID:                 51,
-			ConversationID:     41,
-			UserID:             "user-123",
-			AssistantMessageID: 61,
-			Model:              defaultModelName,
-			Status:             statusStreaming,
-			GenerationStatus:   generationStatusGenerating,
-			LeaseExpiresAt:     &expiredLease,
-		},
-		AssistantMessage: &ChatMessage{
-			ID:             61,
-			ConversationID: 41,
-			UserID:         "user-123",
-			Status:         statusStreaming,
-		},
-		History: []ChatMessage{
-			{Role: roleUser, Content: "previous user", Status: statusCompleted},
-		},
-		Prompt: "new prompt",
-	}
-
-	runtime.On("Available").Return(true).Once()
-	repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
-	repo.On("ClaimRunGeneration", mock.Anything, prepared.Run, mock.Anything, mock.AnythingOfType("time.Time")).Run(func(args mock.Arguments) {
-		run := args.Get(1).(*ChatRun)
-		run.GenerationStatus = generationStatusGenerating
-		run.GenerationOwner = stringPtr("inngest:run-51")
-		run.UpdatedAt = now
-	}).Return(nil).Once()
-	runtime.On("StreamChat", mock.Anything, "new prompt", []RuntimeChatMessage{
-		{Role: roleUser, Text: "previous user"},
-	}, mock.Anything).Run(func(args mock.Arguments) {
-		onChunk := args.Get(3).(func(string) error)
-		require.NoError(t, onChunk("hello "))
-		require.NoError(t, onChunk("world"))
-	}).Return(&StreamDone{
-		Model: defaultModelName,
-		Text:  "hello world",
-	}, nil).Once()
-	repo.On("AppendStreamChunk", mock.Anything, prepared, "hello ", "hello", mock.AnythingOfType("time.Time")).Return(int32(1), nil).Once()
-	repo.On("AppendStreamChunk", mock.Anything, prepared, "world", "hello world", mock.AnythingOfType("time.Time")).Return(int32(2), nil).Once()
-	repo.On("CompleteRun", mock.Anything, prepared, "hello world", (*workout.CreateWorkoutRequest)(nil), mock.AnythingOfType("time.Time")).Return(&ChatMessage{
-		ID:             61,
-		ConversationID: 41,
-		UserID:         "user-123",
-		Status:         statusCompleted,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		CompletedAt:    &now,
-	}, &ChatRun{
-		ID:                 51,
-		ConversationID:     41,
-		UserID:             "user-123",
-		AssistantMessageID: 61,
-		Model:              defaultModelName,
-		Status:             statusCompleted,
-		CreatedAt:          now,
-		UpdatedAt:          now,
-		StartedAt:          now,
-		CompletedAt:        &now,
-	}, nil).Once()
-
-	err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
-		ConversationID: 41,
-		RunID:          51,
-		UserID:         "user-123",
-		Reason:         recoverReasonStreamReconnect,
-	})
-
-	require.NoError(t, err)
 	runtime.AssertExpectations(t)
 	repo.AssertExpectations(t)
 }

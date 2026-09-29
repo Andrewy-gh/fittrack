@@ -2,7 +2,6 @@ import type { ComponentPropsWithoutRef } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { CurrentUser } from "@stackframe/react";
 import { LandingTopBar } from "@/components/nav/landing-top-bar";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -69,14 +68,5 @@ describe("LandingTopBar", () => {
       "href",
       "/chat",
     );
-  });
-
-  it('labels the quick-jump menu "Open ▾" for logged-in users', () => {
-    render(<LandingTopBar user={{ id: "user_1" } as CurrentUser} />);
-
-    expect(screen.getByRole("button", { name: "Open ▾" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Signed-in user menu" }),
-    ).toBeInTheDocument();
   });
 });

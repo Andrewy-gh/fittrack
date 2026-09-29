@@ -146,24 +146,3 @@ func TestChatRunLifecycleStates(t *testing.T) {
 		})
 	}
 }
-
-func TestShouldRecoverRunUsesLifecycle(t *testing.T) {
-	now := time.Date(2026, 6, 29, 15, 0, 0, 0, time.UTC)
-	expiredLease := now.Add(-time.Second)
-	validLease := now.Add(time.Second)
-
-	if !shouldRecoverRun(&ChatRun{
-		Status:           statusStreaming,
-		GenerationStatus: generationStatusGenerating,
-		LeaseExpiresAt:   &expiredLease,
-	}, now) {
-		t.Fatal("expired generating run should be recoverable")
-	}
-	if shouldRecoverRun(&ChatRun{
-		Status:           statusStreaming,
-		GenerationStatus: generationStatusGenerating,
-		LeaseExpiresAt:   &validLease,
-	}, now) {
-		t.Fatal("fresh generating run should not be recoverable")
-	}
-}

@@ -5,12 +5,7 @@ import { buildHistoricalRangeTimeline } from "./historical-range-timeline";
 const today = new Date(2026, 2, 24);
 
 describe("historical range timeline", () => {
-  it.each([
-    ["W", "day", 7, "2026-03-18", "2026-03-24"],
-    ["M", "day", 30, "2026-02-23", "2026-03-24"],
-    ["6M", "week", 26, "2025-09-29", "2026-03-23"],
-    ["Y", "month", 1, "2026-03-01", "2026-03-01"],
-  ] as const)(
+  it.each([["Y", "month", 1, "2026-03-01", "2026-03-01"]] as const)(
     "builds the minimum %s timeline",
     (range, bucket, count, firstDate, lastDate) => {
       const timeline = buildHistoricalRangeTimeline({

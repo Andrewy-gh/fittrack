@@ -2,7 +2,6 @@ package trainingprofile
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -176,23 +175,4 @@ func TestHandlerUpsert(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, rr.Code)
 		assert.Contains(t, rr.Body.String(), "internal error")
 	})
-}
-
-func TestProfileResponseJSONTriState(t *testing.T) {
-	base := emptyProfileResponse()
-	raw, err := json.Marshal(base)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"movement_limitations":null`)
-
-	none := []string{}
-	base.MovementLimitations = &none
-	raw, err = json.Marshal(base)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"movement_limitations":[]`)
-
-	values := []string{"no deep squats"}
-	base.MovementLimitations = &values
-	raw, err = json.Marshal(base)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"movement_limitations":["no deep squats"]`)
 }

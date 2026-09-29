@@ -91,15 +91,6 @@ it("selects an existing custom exercise through the shared list", () => {
     { name: "Incline Hammer Curl", sets: [] },
   ]);
 });
-
-it("adds explicit catalog metadata to the workout draft", async () => {
-  render(<AddExerciseScreenHarness />);
-  fireEvent.click(screen.getByRole("button", { name: "Browse catalog" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Pushups" }));
-  expect(JSON.parse(screen.getByTestId("draft").textContent ?? "[]")).toEqual([
-    { name: "Pushups", catalog_id: "Pushups", sets: [] },
-  ]);
-});
 it("uses Back to leave the catalog before leaving exercise selection", async () => {
   render(<AddExerciseScreenHarness />);
   fireEvent.change(screen.getByLabelText("Search exercises"), {

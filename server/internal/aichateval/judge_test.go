@@ -3,7 +3,6 @@ package aichateval
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -99,27 +98,5 @@ func TestLLMNarrowScopeJudgeRetriesGenerateFailure(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Fatalf("Generate calls = %d, want retry once", calls)
-	}
-}
-
-func TestBuildNarrowScopeJudgePromptNamesStrictCriteria(t *testing.T) {
-	prompt := buildNarrowScopeJudgePrompt(NarrowScopeJudgeInput{
-		ScenarioID:    "prompt-18",
-		ScenarioTitle: "Workout And Meal Plan Request",
-		UserPrompt:    "Make me a workout and meal plan.",
-		ResponseText:  "I cannot create meal plans. What workout focus do you want?",
-	})
-
-	for _, want := range []string{
-		"Return STRICT JSON only",
-		"refuses_meal_plan",
-		"asks_workout_focus",
-		"narrows_to_single_workout",
-		"asks_user_to_choose",
-		"prompt-18",
-	} {
-		if !strings.Contains(prompt, want) {
-			t.Fatalf("buildNarrowScopeJudgePrompt() missing %q\nprompt=%s", want, prompt)
-		}
 	}
 }

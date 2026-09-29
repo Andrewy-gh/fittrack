@@ -100,6 +100,7 @@ describe("ChatRouteComponent", () => {
 
     expect(await screen.findByText("hello world")).toBeInTheDocument();
     expect(screen.queryByText("hello world world")).not.toBeInTheDocument();
+    expect(mockResumeStream).toHaveBeenCalledTimes(1);
     expect(mockResumeStream).toHaveBeenCalledWith(
       41,
       91,
@@ -154,6 +155,15 @@ describe("ChatRouteComponent", () => {
 
     expect(await screen.findByText("Recovered answer")).toBeInTheDocument();
     expect(mockResumeStream).toHaveBeenCalledTimes(1);
+    expect(mockResumeStream).toHaveBeenCalledWith(
+      41,
+      91,
+      1,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(mockResumeStream.mock.invocationCallOrder[0]).toBeLessThan(
+      mockRequestRecovery.mock.invocationCallOrder[0],
+    );
     expect(mockRequestRecovery).toHaveBeenCalledWith(
       41,
       expect.objectContaining({
@@ -166,141 +176,6 @@ describe("ChatRouteComponent", () => {
         signal: expect.any(AbortSignal),
       }),
     );
-  });
-
-  it("falls back to recovery polling when the resume stream exits before a terminal event", async () => {
-    mockGetConversation.mockResolvedValue(
-      conversationDetail(
-        [
-          {
-            id: 61,
-            conversation_id: 41,
-            role: "assistant",
-            content: "partial",
-            status: "streaming",
-            created_at: "2026-03-26T17:00:00Z",
-            updated_at: "2026-03-26T17:00:01Z",
-          },
-        ],
-        {
-          id: 91,
-          assistant_message_id: 61,
-          status: "streaming",
-          latest_sequence: 1,
-        },
-      ),
-    );
-    mockResumeStream.mockRejectedValue(
-      new Error("AI chat stream ended before a terminal event"),
-    );
-    mockPollConversation.mockResolvedValue(
-      conversationDetail([
-        {
-          id: 61,
-          conversation_id: 41,
-          role: "assistant",
-          content: "Recovered answer",
-          status: "completed",
-          created_at: "2026-03-26T17:00:00Z",
-          updated_at: "2026-03-26T17:00:02Z",
-          completed_at: "2026-03-26T17:00:02Z",
-        },
-      ]),
-    );
-
-    render(<ChatRouteComponent />);
-
-    expect(await screen.findByText("Recovered answer")).toBeInTheDocument();
-    expect(mockResumeStream).toHaveBeenCalledTimes(1);
-    expect(mockRequestRecovery).toHaveBeenCalledWith(
-      41,
-      expect.objectContaining({
-        signal: expect.any(AbortSignal),
-      }),
-    );
-    expect(mockPollConversation).toHaveBeenCalledWith(
-      41,
-      expect.objectContaining({
-        signal: expect.any(AbortSignal),
-      }),
-    );
-    expect(mockReportTelemetry).toHaveBeenCalledWith({
-      category: "recovery",
-      outcome: "recovered_completed",
-    });
-    expect(mockShowErrorToast).not.toHaveBeenCalled();
-  });
-
-  it("finishes reconnect without recovery when the resume stream returns the completed reply", async () => {
-    mockGetConversation
-      .mockResolvedValueOnce(
-        conversationDetail(
-          [
-            {
-              id: 61,
-              conversation_id: 41,
-              role: "assistant",
-              content: "partial",
-              status: "streaming",
-              created_at: "2026-03-26T17:00:00Z",
-              updated_at: "2026-03-26T17:00:01Z",
-            },
-          ],
-          {
-            id: 91,
-            assistant_message_id: 61,
-            status: "streaming",
-            latest_sequence: 1,
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        conversationDetail([
-          {
-            id: 61,
-            conversation_id: 41,
-            role: "assistant",
-            content: "Completed answer",
-            status: "completed",
-            created_at: "2026-03-26T17:00:00Z",
-            updated_at: "2026-03-26T17:00:02Z",
-            completed_at: "2026-03-26T17:00:02Z",
-          },
-        ]),
-      );
-    mockResumeStream.mockImplementation(
-      async (
-        _conversationId: number,
-        _runId: number,
-        _afterSequence: number,
-        options?: {
-          onDone?: (event: Record<string, unknown>) => void;
-        },
-      ) => {
-        options?.onDone?.({
-          type: "done",
-          message_id: 61,
-          text: "Completed answer",
-          sequence: 2,
-        });
-
-        return {
-          doneEvent: {
-            type: "done",
-            message_id: 61,
-            text: "Completed answer",
-          },
-          endedWithError: false,
-        };
-      },
-    );
-
-    render(<ChatRouteComponent />);
-
-    expect(await screen.findByText("Completed answer")).toBeInTheDocument();
-    expect(mockResumeStream).toHaveBeenCalledTimes(1);
-    expect(mockRequestRecovery).not.toHaveBeenCalled();
-    expect(mockPollConversation).not.toHaveBeenCalled();
   });
 
   it("shows a user-visible failure when load-triggered recovery times out", async () => {

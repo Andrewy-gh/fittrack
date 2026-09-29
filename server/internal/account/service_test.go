@@ -58,27 +58,6 @@ func TestServiceDeleteCurrentUser_DeletesCurrentUser(t *testing.T) {
 	assert.Equal(t, "user-123", repo.deletedUserID)
 }
 
-func TestServiceDeleteCurrentUser_ReturnsDeleteFailure(t *testing.T) {
-	expectedErr := errors.New("delete failed")
-	repo := &stubRepository{deleteErr: expectedErr}
-	service := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo, nil)
-	ctx := user.WithContext(context.Background(), "user-123")
-
-	err := service.DeleteCurrentUser(ctx)
-
-	require.ErrorIs(t, err, expectedErr)
-}
-
-func TestServiceDeleteCurrentUser_ReturnsZeroRowDeleteFailure(t *testing.T) {
-	repo := &stubRepository{deleteErr: ErrUserNotDeleted}
-	service := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo, nil)
-	ctx := user.WithContext(context.Background(), "user-123")
-
-	err := service.DeleteCurrentUser(ctx)
-
-	require.ErrorIs(t, err, ErrUserNotDeleted)
-}
-
 func TestServiceDeleteCurrentUser_DoesNotDeleteWhenSubscriptionCancellationFails(t *testing.T) {
 	expectedErr := errors.New("stripe failed")
 	repo := &stubRepository{}

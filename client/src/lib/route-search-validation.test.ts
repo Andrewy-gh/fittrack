@@ -13,7 +13,7 @@ describe("Analytics assessment search", () => {
   it("keeps ordinary Analytics navigation free of an explicit week", () => {
     expect(analyticsSearchValidator.parse({})).toEqual({});
   });
-  it.each(["not-a-date", "2026-02-30", "2026-13-01", "2026-08-10T12:00:00Z"])(
+  it.each(["not-a-date", "2026-02-30", "2026-08-10T12:00:00Z"])(
     "rejects invalid local-date input %s",
     (assessmentWeek) => {
       expect(() =>

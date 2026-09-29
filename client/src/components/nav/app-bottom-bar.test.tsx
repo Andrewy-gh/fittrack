@@ -58,6 +58,13 @@ describe("AppBottomBar", () => {
 
     render(<AppBottomBar user={{} as CurrentUser} />);
 
+    expect(
+      screen.getByRole("button", { name: "Signed-in user menu" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Guest user menu" }),
+    ).not.toBeInTheDocument();
+
     const nav = screen.getByRole("navigation", { name: "PWA navigation" });
 
     expect(
@@ -75,17 +82,6 @@ describe("AppBottomBar", () => {
     expect(nav).toHaveStyle({
       paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
     });
-  });
-
-  it("renders the signed-in account slot for authenticated users", () => {
-    render(<AppBottomBar user={{} as CurrentUser} />);
-
-    expect(
-      screen.getByRole("button", { name: "Signed-in user menu" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Guest user menu" }),
-    ).not.toBeInTheDocument();
   });
 
   it("renders the guest account slot without a user", () => {

@@ -184,6 +184,7 @@ describe("ChatRouteComponent", () => {
       screen.getByRole("button", { name: "Open saved workout" }),
     );
 
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/workouts/$workoutId",
       params: { workoutId: 88 },

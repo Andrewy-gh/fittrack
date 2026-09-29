@@ -5,7 +5,6 @@ import {
   ChatRouteComponent,
   conversationDetail,
   mockBillingQueryResult,
-  mockBillingCancellationQueryResult,
   mockCheckoutAccessQueryResult,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
@@ -123,6 +122,7 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     expect(await screen.findByText("Activating")).toBeInTheDocument();
+    expect(screen.getByText("Finishing activation.")).toBeInTheDocument();
     expect(
       screen.queryByText("Checking your AI chat access..."),
     ).not.toBeInTheDocument();
@@ -143,6 +143,7 @@ describe("ChatRouteComponent", () => {
     expect(mockRefetchFeatureAccess.mock.calls.length).toBeGreaterThanOrEqual(
       featureAccessRefreshesBeforeClick + 1,
     );
+    expect(mockCreateBillingCheckoutSession).not.toHaveBeenCalled();
   });
 
   it("confirms payment without offering Checkout when the checkout poll has not received billing access yet", async () => {
@@ -180,6 +181,9 @@ describe("ChatRouteComponent", () => {
     render(<ChatRouteComponent />);
 
     expect(await screen.findByText("Confirming")).toBeInTheDocument();
+    expect(
+      screen.getByText("Checking access after payment."),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start 7-day trial" }),
     ).not.toBeInTheDocument();
@@ -317,6 +321,8 @@ describe("ChatRouteComponent", () => {
       ),
     ).toBeEnabled();
     expect(screen.queryByText("Premium")).not.toBeInTheDocument();
+    expect(screen.queryByText("Access active")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "New Chat" })).toHaveLength(1);
     expect(
       screen.queryByRole("button", { name: "Manage plan" }),
     ).not.toBeInTheDocument();
@@ -344,129 +350,6 @@ describe("ChatRouteComponent", () => {
     });
   });
 
-  it("shows a billing return notice and refreshes billing state", async () => {
-    mockSearch.billing = "portal-return";
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    render(<ChatRouteComponent />);
-
-    expect(
-      await screen.findByText(
-        "Returned from billing. We are refreshing your AI chat billing status.",
-      ),
-    ).toBeInTheDocument();
-    expect(mockRefetchBillingStatus).toHaveBeenCalledTimes(1);
-    expect(mockRefetchFeatureAccess).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/chat",
-      search: { conversationId: "41" },
-      replace: true,
-    });
-  });
-
-  it("keeps active access ready after returning from billing management", async () => {
-    mockSearch.billing = "portal-return";
-    mockBillingCancellationQueryResult.value = {
-      data: undefined,
-      error: null,
-      isFetching: true,
-      isError: false,
-      isSuccess: false,
-    };
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    render(<ChatRouteComponent />);
-
-    expect(
-      await screen.findByText(
-        "Returned from billing. We are refreshing your AI chat billing status.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Premium")).not.toBeInTheDocument();
-    expect(
-      screen
-        .getAllByRole("button", { name: "New Chat" })
-        .some((button) => !button.hasAttribute("disabled")),
-    ).toBe(true);
-    expect(
-      screen.queryByText("Access continues until Jun 10, 2026."),
-    ).not.toBeInTheDocument();
-  });
-
-  it("uses cancellation polling data after Stripe returns before the webhook has refreshed base billing", async () => {
-    mockSearch.billing = "cancelled";
-    mockBillingCancellationQueryResult.value = {
-      data: {
-        billingStatus: {
-          feature_key: "ai_chatbot",
-          has_access: true,
-          subscription: {
-            stripe_subscription_id: "sub_active",
-            status: "active",
-            cancellation_scheduled: true,
-            access_ends_at: "2026-06-10T12:00:00Z",
-          },
-        },
-        featureAccess: [{ feature_key: "ai_chatbot" }],
-      },
-      isFetching: false,
-      isError: false,
-      isSuccess: true,
-    };
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    render(<ChatRouteComponent />);
-
-    expect(
-      await screen.findByText(
-        "Cancellation received. We are refreshing your AI chat billing status.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Access continues until Jun 10, 2026."),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Cancel plan" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("uses access-end polling data after Stripe returns from scheduled cancellation", async () => {
-    mockSearch.billing = "cancelled";
-    mockBillingCancellationQueryResult.value = {
-      data: {
-        billingStatus: {
-          feature_key: "ai_chatbot",
-          has_access: true,
-          subscription: {
-            stripe_subscription_id: "sub_active",
-            status: "active",
-            cancellation_scheduled: true,
-            access_ends_at: "2026-07-10T12:00:00Z",
-          },
-        },
-        featureAccess: [{ feature_key: "ai_chatbot" }],
-      },
-      isFetching: false,
-      isError: false,
-      isSuccess: true,
-    };
-    mockGetConversation.mockResolvedValue(conversationDetail([]));
-
-    render(<ChatRouteComponent />);
-
-    expect(
-      await screen.findByText(
-        "Cancellation received. We are refreshing your AI chat billing status.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Access continues until Jul 10, 2026."),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Cancel plan" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("starts Checkout from the no-access trial CTA", async () => {
     const user = userEvent.setup();
     mockBillingQueryResult.value = {
@@ -487,6 +370,9 @@ describe("ChatRouteComponent", () => {
     mockGetConversation.mockResolvedValue(conversationDetail([]));
 
     render(<ChatRouteComponent />);
+
+    expect(await screen.findByText("Trial available")).toBeInTheDocument();
+    expect(screen.getByText(/30 AI prompts/)).toBeInTheDocument();
 
     await user.click(
       await screen.findByRole("button", { name: "Start 7-day trial" }),

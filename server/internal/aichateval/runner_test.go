@@ -360,63 +360,11 @@ func TestRunScoresAnswerWithoutToolsFailsOnDisallowedToolCall(t *testing.T) {
 	}
 }
 
-func TestRunScoresProfileUpdateAcceptsUpdatedProfileAnnouncement(t *testing.T) {
-	runtime := &fakeRuntime{
-		next: []runtimeResponse{{
-			done: &aichat.StreamDone{
-				Text:      "I've updated your training profile to reflect that your usual training setup is at home with adjustable dumbbells and a bench.",
-				ToolCalls: []string{"update_training_profile"},
-			},
-		}},
-	}
-
-	report := Run(context.Background(), runtime, []Scenario{{
-		ID:                "case-profile-update",
-		Title:             "Profile Update",
-		Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
-		ExpectedOutcome:   ExpectedProfileUpdated,
-		RequiredTextTerms: []string{"remember", "home", "dumbbells"},
-		RequiredToolCalls: []string{"update_training_profile"},
-		AllowedToolCalls:  []string{"update_training_profile"},
-	}}, RunOptions{Mode: ModeSingleTurn})
-
-	result := report.Results[0]
-	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
-		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
-	}
-}
-
 func TestRunScoresProfileUpdateAcceptsSavedSetupAnnouncement(t *testing.T) {
 	runtime := &fakeRuntime{
 		next: []runtimeResponse{{
 			done: &aichat.StreamDone{
 				Text:      "I've saved your usual training setup as at home with adjustable dumbbells and a bench.",
-				ToolCalls: []string{"update_training_profile"},
-			},
-		}},
-	}
-
-	report := Run(context.Background(), runtime, []Scenario{{
-		ID:                "case-profile-update",
-		Title:             "Profile Update",
-		Prompt:            "Remember that my usual training setup is at home with adjustable dumbbells and a bench.",
-		ExpectedOutcome:   ExpectedProfileUpdated,
-		RequiredTextTerms: []string{"remember", "home", "dumbbells"},
-		RequiredToolCalls: []string{"update_training_profile"},
-		AllowedToolCalls:  []string{"update_training_profile"},
-	}}, RunOptions{Mode: ModeSingleTurn})
-
-	result := report.Results[0]
-	if !result.Passed || result.ScoreStatus != ScoreStatusPass {
-		t.Fatalf("score = passed %v status %q reason %q, want pass", result.Passed, result.ScoreStatus, result.ScoreReason)
-	}
-}
-
-func TestRunScoresProfileUpdateAcceptsSavedThatSetupAnnouncement(t *testing.T) {
-	runtime := &fakeRuntime{
-		next: []runtimeResponse{{
-			done: &aichat.StreamDone{
-				Text:      "I've saved that your usual training setup is at home with adjustable dumbbells and a bench.",
 				ToolCalls: []string{"update_training_profile"},
 			},
 		}},

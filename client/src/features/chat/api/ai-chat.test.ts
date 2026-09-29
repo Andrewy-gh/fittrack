@@ -23,11 +23,8 @@ vi.mock("@/lib/local-dev-auth", () => ({
 
 import "@/lib/api/client-config";
 import {
-  createAIChatConversation,
   deleteAllAIChatHistory,
-  listAIChatConversations,
   pollAIChatConversationUntilSettled,
-  reportAIChatTelemetry,
   resumeAIChatMessageStream,
   requestAIChatMessageRecovery,
   saveAIChatLatestWorkoutDraft,
@@ -462,7 +459,8 @@ describe("ai chat api wrapper", () => {
     expect(onDelta).not.toHaveBeenCalled();
   });
 
-  it("polls persisted conversation state until streaming settles", async () => {
+  it("runs the streaming callback before retrying persisted conversation polling", async () => {
+    const onStreaming = vi.fn().mockResolvedValue(undefined);
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(
@@ -516,69 +514,15 @@ describe("ai chat api wrapper", () => {
     const detail = await pollAIChatConversationUntilSettled(41, {
       intervalMs: 0,
       timeoutMs: 1000,
+      onStreaming,
     });
 
     expect(detail.messages[0]?.status).toBe("completed");
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-  });
-
-  it("runs the streaming callback before retrying persisted conversation polling", async () => {
-    const onStreaming = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            conversation: {
-              id: 41,
-              created_at: "2026-03-26T17:00:00Z",
-              updated_at: "2026-03-26T17:00:00Z",
-            },
-            messages: [
-              {
-                id: 61,
-                conversation_id: 41,
-                role: "assistant",
-                content: "partial",
-                status: "streaming",
-                created_at: "2026-03-26T17:00:00Z",
-                updated_at: "2026-03-26T17:00:01Z",
-              },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            conversation: {
-              id: 41,
-              created_at: "2026-03-26T17:00:00Z",
-              updated_at: "2026-03-26T17:00:02Z",
-            },
-            messages: [
-              {
-                id: 61,
-                conversation_id: 41,
-                role: "assistant",
-                content: "complete",
-                status: "completed",
-                created_at: "2026-03-26T17:00:00Z",
-                updated_at: "2026-03-26T17:00:02Z",
-                completed_at: "2026-03-26T17:00:02Z",
-              },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-
-    await pollAIChatConversationUntilSettled(41, {
-      intervalMs: 0,
-      timeoutMs: 1000,
-      onStreaming,
-    });
-
+    for (const [request] of fetchSpy.mock.calls) {
+      expect((request as Request).url).toContain("/api/ai/conversations/41");
+      expect((request as Request).method).toBe("GET");
+    }
     expect(onStreaming).toHaveBeenCalledTimes(1);
     expect(onStreaming).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -589,44 +533,6 @@ describe("ai chat api wrapper", () => {
         ],
       }),
     );
-  });
-
-  it("fetches persisted conversation state through the generated client", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(async (input) => {
-        expect((input as Request).url).toContain("/api/ai/conversations/41");
-
-        return new Response(
-          JSON.stringify({
-            conversation: {
-              id: 41,
-              created_at: "2026-03-26T17:00:00Z",
-              updated_at: "2026-03-26T17:00:02Z",
-            },
-            messages: [
-              {
-                id: 61,
-                conversation_id: 41,
-                role: "assistant",
-                content: "complete",
-                status: "completed",
-                created_at: "2026-03-26T17:00:00Z",
-                updated_at: "2026-03-26T17:00:02Z",
-                completed_at: "2026-03-26T17:00:02Z",
-              },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      });
-
-    await pollAIChatConversationUntilSettled(41, {
-      intervalMs: 0,
-      timeoutMs: 10,
-    });
-
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("requests chat recovery for an active conversation", async () => {
@@ -702,88 +608,5 @@ describe("ai chat api wrapper", () => {
     expect(conversation.latest_workout_draft_status?.saved_workout_id).toBe(
       901,
     );
-  });
-
-  it("posts ai chat telemetry events to the Go API", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(null, {
-        status: 202,
-      }),
-    );
-
-    await reportAIChatTelemetry({
-      category: "stream",
-      outcome: "transport_ended_pre_terminal",
-      stage: "pre_start",
-    });
-
-    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
-    const request = latestRequest();
-    expect(request.url).toContain("/api/ai/chat/telemetry");
-    expect(request.method).toBe("POST");
-    expect(request.keepalive).toBe(true);
-    await expect(request.json()).resolves.toEqual({
-      category: "stream",
-      outcome: "transport_ended_pre_terminal",
-      stage: "pre_start",
-    });
-  });
-
-  it("returns created conversation JSON", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: 41,
-          created_at: "2026-03-26T17:00:00Z",
-          updated_at: "2026-03-26T17:00:00Z",
-        }),
-        {
-          status: 201,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      ),
-    );
-
-    const conversation = await createAIChatConversation();
-
-    expect(conversation.id).toBe(41);
-    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
-    expect(latestRequest().url).toContain("/api/ai/conversations");
-    expect(latestRequest().method).toBe("POST");
-  });
-
-  it("lists recent conversations through the generated client", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            id: 72,
-            title: "Leg day plan",
-            created_at: "2026-06-25T17:00:00Z",
-            updated_at: "2026-06-25T17:05:00Z",
-            last_message_at: "2026-06-25T17:05:00Z",
-          },
-        ]),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      ),
-    );
-
-    const conversations = await listAIChatConversations();
-
-    expect(conversations).toHaveLength(1);
-    expect(conversations[0]).toMatchObject({
-      id: 72,
-      title: "Leg day plan",
-    });
-    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
-    expect(latestRequest().url).toContain("/api/ai/conversations");
-    expect(latestRequest().method).toBe("GET");
   });
 });

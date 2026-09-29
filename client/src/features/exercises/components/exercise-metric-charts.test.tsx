@@ -58,29 +58,6 @@ describe("ExerciseMetricCharts", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when the exercise has no working-set sessions", () => {
-    mockUseQuery.mockReturnValue({
-      data: { points: [] },
-      isFetching: false,
-      isPending: false,
-    });
-
-    render(
-      <ExerciseMetricCharts
-        exerciseId={1}
-        exerciseSets={[]}
-        isDemoMode={false}
-      />,
-    );
-
-    expect(
-      screen.getByText("No working-set sessions for this exercise."),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Daily Session Best 1RM"),
-    ).not.toBeInTheDocument();
-  });
-
   it("shows an empty state when every weighted metric is zero", () => {
     mockUseQuery.mockReturnValue({
       data: {
@@ -161,6 +138,11 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Bars group exercise sessions by the selected time range. e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("No weighted metrics for this exercise."),
     ).not.toBeInTheDocument();
@@ -257,40 +239,5 @@ describe("ExerciseMetricCharts", () => {
       screen.getByText("Couldn't update chart. Showing previous data."),
     ).toBeInTheDocument();
     expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
-  });
-
-  it("labels the metrics section as working-set based", () => {
-    mockUseQuery.mockReturnValue({
-      data: {
-        points: [
-          {
-            x: "1",
-            date: "2026-03-01",
-            workout_id: 42,
-            session_best_e1rm: 225,
-            session_avg_e1rm: 220,
-            session_avg_intensity: 84.5,
-            session_best_intensity: 91.2,
-            total_volume_working: 5400,
-          },
-        ],
-      },
-      isFetching: false,
-      isPending: false,
-    });
-
-    render(
-      <ExerciseMetricCharts
-        exerciseId={1}
-        exerciseSets={[]}
-        isDemoMode={false}
-      />,
-    );
-
-    expect(
-      screen.getByText(
-        "Bars group exercise sessions by the selected time range. e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.",
-      ),
-    ).toBeInTheDocument();
   });
 });

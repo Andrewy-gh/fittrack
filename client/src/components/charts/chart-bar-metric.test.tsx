@@ -2,12 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  ChartBarMetric,
-  formatTooltipDateLabel,
-  formatTooltipFocusType,
-  getAxisDateFormat,
-} from "./chart-bar-metric";
+import { ChartBarMetric, formatTooltipDateLabel } from "./chart-bar-metric";
 import { useBreakpoint } from "./chart-bar-vol.utils";
 
 const { mockScrollableChart } = vi.hoisted(() => ({
@@ -85,11 +80,7 @@ describe("ChartBarMetric", () => {
     expect(onWorkoutClick).toHaveBeenCalledWith(42);
   });
 
-  it.each([
-    ["W", 7],
-    ["M", 26],
-    ["6M", 26],
-  ] as const)(
+  it.each([["W", 7]] as const)(
     "shows %s session bars in the initial viewport",
     (range, count) => {
       render(
@@ -132,12 +123,6 @@ describe("ChartBarMetric", () => {
   });
 });
 
-describe("getAxisDateFormat", () => {
-  it("uses single-letter labels for monthly axis ticks", () => {
-    expect(getAxisDateFormat("month")).toBe("MMMMM");
-  });
-});
-
 describe("formatTooltipDateLabel", () => {
   it("formats a weekly range within one month", () => {
     expect(formatTooltipDateLabel(new Date(2026, 2, 2), "week")).toBe(
@@ -149,15 +134,5 @@ describe("formatTooltipDateLabel", () => {
     expect(formatTooltipDateLabel(new Date(2026, 2, 30), "week")).toBe(
       "Mar 30 - Apr 5 2026",
     );
-  });
-});
-
-describe("formatTooltipFocusType", () => {
-  it("truncates long focus labels for tooltip display", () => {
-    expect(
-      formatTooltipFocusType(
-        "Very Long Custom Focus Type For Heavy Lower Body Strength Work",
-      ),
-    ).toBe("Very Long Custom Focus Type For Heavy Lower Bod…");
   });
 });

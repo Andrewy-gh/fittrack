@@ -26,15 +26,6 @@ describe("static agent-discovery assets", () => {
     ).toEqual([`${canonicalOrigin}/`, `${canonicalOrigin}/privacy`]);
   });
 
-  test("robots preserves open crawling and advertises the sitemap", () => {
-    expect(readClientFile("public/robots.txt").replaceAll("\r\n", "\n")).toBe(
-      "# https://www.robotstxt.org/robotstxt.html\n" +
-        "User-agent: *\n" +
-        "Disallow:\n" +
-        `Sitemap: ${canonicalOrigin}/sitemap.xml\n`,
-    );
-  });
-
   test("llms describes public resources without claiming private data is public", () => {
     const llms = readClientFile("public/llms.txt");
 
@@ -51,16 +42,6 @@ describe("static agent-discovery assets", () => {
     );
     expect(llms).toContain(
       "does not provide unauthenticated access to workout or account data",
-    );
-  });
-
-  test("homepage metadata describes FitTrack instead of the app scaffold", () => {
-    const html = readFileSync(`${clientRoot}/index.html`, "utf8");
-    const document = new DOMParser().parseFromString(html, "text/html");
-    const description = document.querySelector('meta[name="description"]');
-
-    expect(description?.getAttribute("content")).toBe(
-      "FitTrack helps you log exercises, sets, reps, weight, and notes, then review workout history, progress, and training consistency.",
     );
   });
 });

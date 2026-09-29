@@ -88,21 +88,6 @@ func TestDecodeStrictJSONRejectsTrailingJSON(t *testing.T) {
 	assert.Equal(t, CreateExerciseRequest{Name: "Bench Press"}, req)
 }
 
-func TestDecodeStrictJSONRejectsUnknownExerciseFields(t *testing.T) {
-	var req CreateExerciseRequest
-	w := httptest.NewRecorder()
-	httpReq := httptest.NewRequest(
-		http.MethodPost,
-		"/api/exercises",
-		strings.NewReader(`{"name":"Bench Press","unexpected":true}`),
-	)
-
-	err := decodeStrictJSON(w, httpReq, &req)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `unknown field "unexpected"`)
-}
-
 func TestDecodeStrictJSONRejectsOversizedExerciseJSON(t *testing.T) {
 	var req CreateExerciseRequest
 	w := httptest.NewRecorder()

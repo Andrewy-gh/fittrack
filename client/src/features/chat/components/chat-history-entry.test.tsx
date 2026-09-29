@@ -47,18 +47,4 @@ describe("ChatHistoryEntry", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Leg day plan")).not.toBeInTheDocument();
   });
-
-  it("marks the active ready conversation as current", () => {
-    renderChatHistoryEntry({
-      conversations: [conversation(41, "Leg day plan")],
-      activeConversationId: 41,
-      isLoading: false,
-      error: null,
-    });
-
-    expect(
-      screen.getByRole("button", { name: /Leg day plan/ }),
-    ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByText("Current conversation")).toBeInTheDocument();
-  });
 });

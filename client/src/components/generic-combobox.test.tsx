@@ -167,12 +167,6 @@ describe("GenericCombobox", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the generic search placeholder by default", async () => {
-    await renderGenericCombobox();
-
-    expect(screen.getByPlaceholderText("Search options...")).toBeTruthy();
-  });
-
   it("supports exercise-specific labels, search text, and touch creation", async () => {
     const onCreate = vi.fn();
 

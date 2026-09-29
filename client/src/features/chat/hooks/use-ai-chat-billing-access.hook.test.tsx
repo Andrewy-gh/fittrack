@@ -96,22 +96,6 @@ describe("useAIChatBillingAccess checkout polling", () => {
     mocks.mockShowErrorToast.mockReset();
   });
 
-  it("keeps exhausted checkout polling in activating when billing is active but the feature grant is still pending", async () => {
-    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
-    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
-    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(activeBillingStatus);
-    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
-
-    const { result } = renderBillingAccessHook();
-
-    await waitFor(() => {
-      expect(result.current.accessState).toBe("activating");
-      expect(result.current.billingStatus?.has_access).toBe(true);
-    });
-    expect(result.current.hasChatAccess).toBe(false);
-    expect(result.current.isBillingError).toBe(false);
-  });
-
   it("passes the React Query cancellation signal to checkout polling requests", async () => {
     mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
     mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
@@ -129,22 +113,6 @@ describe("useAIChatBillingAccess checkout polling", () => {
     );
   });
 
-  it("keeps exhausted checkout polling in payment confirming when billing has not caught up", async () => {
-    mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
-    mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
-    mocks.mockGetCheckoutBillingStatus.mockResolvedValue(blockedBillingStatus);
-    mocks.mockGetCheckoutFeatureAccess.mockResolvedValue([]);
-
-    const { result } = renderBillingAccessHook();
-
-    await waitFor(() => {
-      expect(result.current.accessState).toBe("payment-confirming");
-      expect(result.current.billingStatus?.has_access).toBe(false);
-    });
-    expect(result.current.hasChatAccess).toBe(false);
-    expect(result.current.isBillingError).toBe(false);
-  });
-
   it("keeps refreshing checkout access automatically while payment is confirming", async () => {
     mocks.mockGetBaseBillingStatus.mockResolvedValue(blockedBillingStatus);
     mocks.mockGetBaseFeatureAccess.mockResolvedValue([]);
@@ -156,6 +124,9 @@ describe("useAIChatBillingAccess checkout polling", () => {
     await waitFor(
       () => {
         expect(result.current.accessState).toBe("payment-confirming");
+        expect(result.current.billingStatus?.has_access).toBe(false);
+        expect(result.current.hasChatAccess).toBe(false);
+        expect(result.current.isBillingError).toBe(false);
       },
       { interval: 1 },
     );
@@ -185,6 +156,9 @@ describe("useAIChatBillingAccess checkout polling", () => {
     await waitFor(
       () => {
         expect(result.current.accessState).toBe("activating");
+        expect(result.current.billingStatus?.has_access).toBe(true);
+        expect(result.current.hasChatAccess).toBe(false);
+        expect(result.current.isBillingError).toBe(false);
       },
       { interval: 1 },
     );
@@ -328,6 +302,7 @@ describe("useAIChatBillingAccess checkout polling", () => {
       expect(result.current.accessState).toBe("billing-error");
     });
     expect(result.current.isBillingError).toBe(true);
+    expect(result.current.hasChatAccess).toBe(false);
   });
 
   it("polls cancellation return until billing reflects the canceled state", async () => {

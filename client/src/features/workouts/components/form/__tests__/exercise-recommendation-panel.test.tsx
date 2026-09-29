@@ -25,27 +25,6 @@ const api: RecommendationApi = {
 };
 
 describe("compact exercise suggestions", () => {
-  it("shows guidance without an apply button or extra details", async () => {
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ExerciseRecommendationPanel
-          exerciseId={1}
-          exerciseName="Press"
-          userId="owner"
-          api={api}
-          onChange={() => undefined}
-        />
-      </QueryClientProvider>,
-    );
-    expect(await screen.findByText("3 × 8 at 100 lb")).toBeTruthy();
-    expect(
-      screen.queryByRole("button", {
-        name: /Use suggestion|Ready for your next set/,
-      }),
-    ).toBeNull();
-    expect(screen.queryByText("Details")).toBeNull();
-  });
-
   it("offers three accessible numbered faces and records the chosen feeling", async () => {
     const user = userEvent.setup();
     let recorded: unknown;
@@ -63,6 +42,12 @@ describe("compact exercise suggestions", () => {
       </QueryClientProvider>,
     );
     await screen.findByText("3 × 8 at 100 lb");
+    expect(
+      screen.queryByRole("button", {
+        name: /Use suggestion|Ready for your next set/,
+      }),
+    ).toBeNull();
+    expect(screen.queryByText("Details")).toBeNull();
     expect(screen.getByRole("radio", { name: "2 · Okay" })).toHaveProperty(
       "checked",
       true,

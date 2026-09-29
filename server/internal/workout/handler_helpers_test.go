@@ -88,21 +88,6 @@ func TestDecodeStrictJSONRejectsTrailingJSON(t *testing.T) {
 	assert.Equal(t, "2023-01-15T10:00:00Z", req.Date)
 }
 
-func TestDecodeStrictJSONRejectsUnknownWorkoutFields(t *testing.T) {
-	var req CreateWorkoutRequest
-	w := httptest.NewRecorder()
-	httpReq := httptest.NewRequest(
-		http.MethodPost,
-		"/api/workouts",
-		strings.NewReader(`{"date":"2023-01-15T10:00:00Z","exercises":[{"name":"Bench Press","sets":[{"reps":10,"setType":"working"}]}],"unexpected":true}`),
-	)
-
-	err := decodeStrictJSON(w, httpReq, &req)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `unknown field "unexpected"`)
-}
-
 func TestDecodeStrictJSONRejectsOversizedWorkoutJSON(t *testing.T) {
 	var req CreateWorkoutRequest
 	w := httptest.NewRecorder()

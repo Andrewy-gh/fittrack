@@ -75,6 +75,13 @@ describe("NavSideDrawer", () => {
 
     render(<NavSideDrawer user={{} as CurrentUser} />);
 
+    expect(
+      screen.getByRole("button", { name: "Signed-in user menu" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Guest user menu" }),
+    ).not.toBeInTheDocument();
+
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
 
     expect(
@@ -92,17 +99,6 @@ describe("NavSideDrawer", () => {
     expect(
       within(nav).getByRole("link", { name: "AI Chat" }),
     ).toBeInTheDocument();
-  });
-
-  it("renders the signed-in account slot for authenticated users", () => {
-    render(<NavSideDrawer user={{} as CurrentUser} />);
-
-    expect(
-      screen.getByRole("button", { name: "Signed-in user menu" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Guest user menu" }),
-    ).not.toBeInTheDocument();
   });
 
   it("renders the guest account slot without a user", () => {

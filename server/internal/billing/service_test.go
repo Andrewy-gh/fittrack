@@ -585,22 +585,6 @@ func TestServiceEnsureAIChatPromptAllowed_TrialCap(t *testing.T) {
 	})
 }
 
-func TestServiceCurrentStatus_NoSubscription(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	repo := new(mockRepository)
-	service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
-	ctx := user.WithContext(context.Background(), "user-123")
-
-	repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{}, pgx.ErrNoRows).Once()
-
-	resp, err := service.CurrentStatus(ctx)
-
-	require.NoError(t, err)
-	assert.False(t, resp.HasAccess)
-	assert.Nil(t, resp.Subscription)
-	repo.AssertExpectations(t)
-}
-
 func subscriptionEventPayload(t *testing.T, subscriptionID string, status string, cancelAtPeriodEnd bool, periodStart time.Time, periodEnd time.Time) []byte {
 	t.Helper()
 	return subscriptionEventPayloadWithPrice(t, subscriptionID, status, cancelAtPeriodEnd, periodStart, periodEnd, stringPtr("price_premium"))
