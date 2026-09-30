@@ -26,15 +26,18 @@ type WorkoutRouteLoaderContext = {
   user: WorkoutRouteUser;
 };
 
+/** Resolve every query consumed by the new-workout route before navigation commits. */
 export function preloadNewWorkoutRouteData({
   queryClient,
   user,
 }: WorkoutRouteLoaderContext) {
   if (!user) initializeDemoData();
 
-  queryClient.ensureQueryData(getExerciseListQueryOptions(user));
-  queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user));
-  queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
+  return Promise.all([
+    queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
+    queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user)),
+    queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+  ]);
 }
 
 export function preloadEditWorkoutRouteData({
