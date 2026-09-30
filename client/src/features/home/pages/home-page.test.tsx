@@ -67,6 +67,19 @@ describe("HomePage feature cards", () => {
   beforeEach(() => {
     displayModeMock.displayMode = "web";
     routerMock.pathname = "/workouts";
+    // The "How it works" section observes scroll position and media queries.
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.stubGlobal("matchMedia", () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
   });
 
   it("renders the PWA bottom bar for guest landing sessions", () => {

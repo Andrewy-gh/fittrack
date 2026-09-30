@@ -19,6 +19,7 @@ import type { ApplicationUser } from "@/lib/application-user";
 import { AppBottomBar } from "@/components/nav/app-bottom-bar";
 import { LandingTopBar } from "@/components/nav/landing-top-bar";
 import { useDisplayMode } from "@/hooks/use-display-mode";
+import { HowItWorks } from "@/features/home/components/how-it-works";
 
 export function HomePage({ user }: { user: ApplicationUser | null }) {
   const displayMode = useDisplayMode();
@@ -229,6 +230,8 @@ export function HomePage({ user }: { user: ApplicationUser | null }) {
           </div>
         </div>
       </section>
+
+      <HowItWorks />
 
       <section className="bg-background px-6 py-16">
         <div className="mx-auto max-w-7xl">
