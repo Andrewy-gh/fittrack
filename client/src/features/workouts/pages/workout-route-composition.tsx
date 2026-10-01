@@ -27,13 +27,13 @@ type WorkoutRouteLoaderContext = {
 };
 
 /** Resolve every query consumed by the new-workout route before navigation commits. */
-export function preloadNewWorkoutRouteData({
+export async function preloadNewWorkoutRouteData({
   queryClient,
   user,
 }: WorkoutRouteLoaderContext) {
   if (!user) initializeDemoData();
 
-  return Promise.all([
+  await Promise.all([
     queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
     queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user)),
     queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
