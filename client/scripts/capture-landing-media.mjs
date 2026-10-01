@@ -446,6 +446,12 @@ async function captureLandingGif(browser) {
   await context.addInitScript(() =>
     localStorage.setItem("vite-ui-theme", "dark"),
   );
+  // The preview serves dist/, which holds whatever clips existed at build
+  // time. Serve the ones this run just encoded so the GIF never shows stale media.
+  await context.route("**/media/how-it-works/*", (route) => {
+    const file = path.basename(new URL(route.request().url()).pathname);
+    return route.fulfill({ path: path.join(CLIP_DIR, file) });
+  });
   const page = await context.newPage();
   await page.goto(BASE_URL + "/");
   const section = page.getByRole("region", { name: /log it\. repeat it\./i });

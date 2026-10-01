@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Pause, Play } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
@@ -46,12 +46,14 @@ type Step = (typeof STEPS)[number];
 function StepClip({
   step,
   theme,
+  active,
   playing,
   reducedMotion,
   className,
 }: {
   step: Step;
   theme: "light" | "dark";
+  active: boolean;
   playing: boolean;
   reducedMotion: boolean;
   className?: string;
@@ -59,11 +61,17 @@ function StepClip({
   const videoRef = useRef<HTMLVideoElement>(null);
   const base = `/media/how-it-works/${step.id}-${theme}`;
 
+  // Rewind when the step stops being current, so it starts fresh next time
+  // while a pause/resume on the current step continues where it left off.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && !active) video.currentTime = 0;
+  }, [active]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     if (playing && !reducedMotion) {
-      video.currentTime = 0;
       video.play().catch(() => {
         // Autoplay can be refused (e.g. data saver); the poster stays visible.
       });
@@ -89,6 +97,28 @@ function StepClip({
         type="video/mp4"
       />
     </video>
+  );
+}
+
+// Looping clips run longer than five seconds, so visitors need a way to stop
+// them (WCAG 2.2.2). One shared state drives every phone's toggle.
+function PlaybackToggle({
+  paused,
+  onToggle,
+}: {
+  paused: boolean;
+  onToggle: () => void;
+}) {
+  const Icon = paused ? Play : Pause;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={paused ? "Play demo videos" : "Pause demo videos"}
+      className="absolute bottom-3 right-3 z-10 grid h-9 w-9 place-items-center rounded-full border border-border bg-background/85 text-foreground shadow-md backdrop-blur hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <Icon className="h-4 w-4" />
+    </button>
   );
 }
 
@@ -119,28 +149,46 @@ export function HowItWorks() {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [activeIndex, setActiveIndex] = useState(0);
   const [inView, setInView] = useState(false);
+  const [userPaused, setUserPaused] = useState(false);
+  const canPlay = inView && !userPaused;
+  const togglePlayback = () => setUserPaused((paused) => !paused);
   const sectionRef = useRef<HTMLElement>(null);
   const stepsRef = useRef<HTMLOListElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
 
-  // The step crossing the middle of the viewport is the active one.
+  // The step crossing the middle of the viewport is the active one. Margins
+  // are pixels from the viewport height (percentage margins are not resolved
+  // against height consistently), so the observer is rebuilt when it changes.
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const index = stepRefs.current.findIndex(
-            (step) => step === entry.target,
-          );
-          if (entry.isIntersecting && index >= 0) setActiveIndex(index);
-        }
-      },
-      { rootMargin: "-45% 0px -45% 0px" },
-    );
-    for (const step of stepRefs.current) {
-      if (step) observer.observe(step);
-    }
-    return () => observer.disconnect();
+    let observer: IntersectionObserver | undefined;
+    let observedHeight = 0;
+    const observe = () => {
+      if (window.innerHeight === observedHeight) return;
+      observedHeight = window.innerHeight;
+      observer?.disconnect();
+      const margin = Math.round(observedHeight * 0.45);
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const index = stepRefs.current.findIndex(
+              (step) => step === entry.target,
+            );
+            if (entry.isIntersecting && index >= 0) setActiveIndex(index);
+          }
+        },
+        { rootMargin: `-${margin}px 0px -${margin}px 0px` },
+      );
+      for (const step of stepRefs.current) {
+        if (step) observer.observe(step);
+      }
+    };
+    observe();
+    window.addEventListener("resize", observe);
+    return () => {
+      window.removeEventListener("resize", observe);
+      observer?.disconnect();
+    };
   }, []);
 
   // Only play while the section is on screen.
@@ -225,11 +273,18 @@ export function HowItWorks() {
                 }}
                 aria-current={index === activeIndex ? "step" : undefined}
                 className={cn(
-                  "flex flex-col justify-center py-10 transition-opacity duration-500 motion-reduce:transition-none lg:min-h-[75vh] lg:max-w-lg lg:py-0",
-                  index === activeIndex ? "lg:opacity-100" : "lg:opacity-35",
+                  "flex flex-col justify-center py-10 transition-colors duration-500 motion-reduce:transition-none lg:min-h-[75vh] lg:max-w-lg lg:border-l-2 lg:py-0 lg:pl-8",
+                  index === activeIndex
+                    ? "lg:border-primary"
+                    : "lg:border-border",
                 )}
               >
-                <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+                <p
+                  className={cn(
+                    "text-sm font-semibold uppercase tracking-widest text-primary",
+                    index !== activeIndex && "lg:text-muted-foreground",
+                  )}
+                >
                   {String(index + 1).padStart(2, "0")} · {step.eyebrow}
                 </p>
                 <h3 className="mt-3 text-3xl font-bold leading-tight text-foreground md:text-4xl">
@@ -256,25 +311,35 @@ export function HowItWorks() {
                   <StepClip
                     step={step}
                     theme={theme}
-                    playing={!isDesktop && inView && index === activeIndex}
+                    active={index === activeIndex}
+                    playing={!isDesktop && canPlay && index === activeIndex}
                     reducedMotion={reducedMotion}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
+                  {reducedMotion ? null : (
+                    <PlaybackToggle
+                      paused={userPaused}
+                      onToggle={togglePlayback}
+                    />
+                  )}
                 </PhoneFrame>
               </li>
             ))}
           </ol>
 
           {/* Starts level with step 1 (10vh list padding + half a 75vh step,
-              minus half the ~38rem phone), then pins mid-screen while scrolling. */}
+              minus half the ~38rem phone), then pins mid-screen while scrolling.
+              On short viewports the width shrinks so the whole phone fits below
+              the 5rem sticky offset: height = (w - 1rem) * 844/390 + 1rem. */}
           <div className="sticky top-[max(5rem,calc(50vh-18rem))] mt-[max(4rem,calc(47.5vh-19rem))] hidden h-fit items-center justify-center gap-6 self-start lg:flex">
-            <PhoneFrame>
+            <PhoneFrame className="w-[min(17rem,calc((100vh-9rem)*0.4621+1rem))]">
               {STEPS.map((step, index) => (
                 <StepClip
                   key={step.id}
                   step={step}
                   theme={theme}
-                  playing={isDesktop && inView && index === activeIndex}
+                  active={index === activeIndex}
+                  playing={isDesktop && canPlay && index === activeIndex}
                   reducedMotion={reducedMotion}
                   className={cn(
                     "absolute inset-0 h-full w-full object-cover transition-opacity duration-500 motion-reduce:transition-none",
@@ -282,6 +347,12 @@ export function HowItWorks() {
                   )}
                 />
               ))}
+              {reducedMotion ? null : (
+                <PlaybackToggle
+                  paused={userPaused}
+                  onToggle={togglePlayback}
+                />
+              )}
             </PhoneFrame>
 
             <div
@@ -294,11 +365,15 @@ export function HowItWorks() {
                   type="button"
                   onClick={() => goToStep(index)}
                   aria-label={`Show step ${index + 1}: ${step.eyebrow}`}
+                  aria-current={index === activeIndex ? "step" : undefined}
                   className={cn(
                     "h-8 w-8 rounded-full border text-xs font-semibold transition-colors",
-                    index <= activeIndex
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                    index === activeIndex &&
+                      "border-primary bg-primary text-primary-foreground",
+                    index < activeIndex &&
+                      "border-primary bg-primary/10 text-primary",
+                    index > activeIndex &&
+                      "border-border bg-card text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {index + 1}
