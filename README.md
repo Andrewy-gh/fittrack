@@ -11,8 +11,6 @@ A full-stack fitness tracking application with a Go backend and React frontend.
   <img src="docs/media/app-screens-light.png" alt="FitTrack on a phone: three Bench Press sets logged today, a repeated upper-body workout loaded as a new draft, and the analytics page with workout pace and an activity map.">
 </picture>
 
-These are real captures of guest demo mode. Regenerate them with `bun run media:capture` (see [Landing and README Media](docs/development.md#landing-and-readme-media)).
-
 ## Architecture
 
 - **Backend**: Go API with PostgreSQL database
