@@ -380,7 +380,6 @@ export function NewWorkoutPage({
             {/* MARK: Exercise Cards */}
             <form.AppField
               name="exercises"
-              mode="array"
               children={(field) => {
                 return (
                   <WorkoutExerciseSection

@@ -14,21 +14,19 @@ export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
       return { workoutId };
     },
   },
-  loader: ({ context, params }) => {
+  loader: async ({ context, params }) => {
     const workoutId = params.workoutId;
     const user = context.user;
 
     if (user) {
       clearDemoData();
-      context.queryClient.ensureQueryData(
-        getWorkoutByIdQueryOptions(user, workoutId),
-      );
     } else {
       initializeDemoData();
-      context.queryClient.ensureQueryData(
-        getWorkoutByIdQueryOptions(user, workoutId),
-      );
     }
+
+    await context.queryClient.ensureQueryData(
+      getWorkoutByIdQueryOptions(user, workoutId),
+    );
 
     return { workoutId };
   },

@@ -7,8 +7,8 @@ import { workoutEditorSearchValidator } from "@/lib/route-search-validation";
 
 export const Route = createFileRoute("/_layout/workouts/new")({
   validateSearch: workoutEditorSearchValidator,
-  loader: ({ context }) => {
-    preloadNewWorkoutRouteData(context);
+  loader: async ({ context }) => {
+    await preloadNewWorkoutRouteData(context);
   },
   component: RouteComponent,
 });

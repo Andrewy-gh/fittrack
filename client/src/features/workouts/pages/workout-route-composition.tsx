@@ -26,27 +26,33 @@ type WorkoutRouteLoaderContext = {
   user: WorkoutRouteUser;
 };
 
-export function preloadNewWorkoutRouteData({
+/** Resolve every query consumed by the new-workout route before navigation commits. */
+export async function preloadNewWorkoutRouteData({
   queryClient,
   user,
 }: WorkoutRouteLoaderContext) {
   if (!user) initializeDemoData();
 
-  queryClient.ensureQueryData(getExerciseListQueryOptions(user));
-  queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user));
-  queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
+  await Promise.all([
+    queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
+    queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user)),
+    queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+  ]);
 }
 
-export function preloadEditWorkoutRouteData({
+/** Resolve the edit route's queries before returning its workout identifier. */
+export async function preloadEditWorkoutRouteData({
   queryClient,
   user,
   workoutId,
 }: WorkoutRouteLoaderContext & { workoutId: number }) {
   if (!user) initializeDemoData();
 
-  queryClient.ensureQueryData(getWorkoutByIdQueryOptions(user, workoutId));
-  queryClient.ensureQueryData(getExerciseListQueryOptions(user));
-  queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
+  await Promise.all([
+    queryClient.ensureQueryData(getWorkoutByIdQueryOptions(user, workoutId)),
+    queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
+    queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+  ]);
 
   return { workoutId };
 }
