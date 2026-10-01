@@ -40,16 +40,19 @@ export function preloadNewWorkoutRouteData({
   ]);
 }
 
-export function preloadEditWorkoutRouteData({
+/** Resolve the edit route's queries before returning its workout identifier. */
+export async function preloadEditWorkoutRouteData({
   queryClient,
   user,
   workoutId,
 }: WorkoutRouteLoaderContext & { workoutId: number }) {
   if (!user) initializeDemoData();
 
-  queryClient.ensureQueryData(getWorkoutByIdQueryOptions(user, workoutId));
-  queryClient.ensureQueryData(getExerciseListQueryOptions(user));
-  queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user));
+  await Promise.all([
+    queryClient.ensureQueryData(getWorkoutByIdQueryOptions(user, workoutId)),
+    queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
+    queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+  ]);
 
   return { workoutId };
 }
