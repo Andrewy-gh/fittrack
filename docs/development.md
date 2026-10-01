@@ -133,6 +133,25 @@ That flow:
 - seeds a persisted chat conversation with a structured workout draft
 - reopens the chat in the browser and imports the draft into `/workouts/new`
 
+## Landing and README Media
+
+The landing page's "How it works" clips and the README screenshots/GIF are recorded from the real app in guest demo mode, so they match the current UI. Re-record them after UI changes to the workout form, workout detail, or analytics pages.
+
+Requires `ffmpeg` (with `libx264` and `libwebp`) on your PATH.
+
+```bash
+cd client
+bun run build && bun run serve:test   # terminal 1
+bun run media:capture                  # terminal 2
+```
+
+The script seeds 12 weeks of sample training into demo storage (browser-only; the app's built-in demo data is untouched), records the log, repeat, and review flows in light and dark, and writes:
+
+- `client/public/media/how-it-works/{log,repeat,review}-{light,dark}.{mp4,webp}`: landing clips and poster frames
+- `docs/media/app-screens-{light,dark}.png` and `docs/media/how-it-works.gif`: README artifacts
+
+Pass clip names to re-record a subset, for example `bun run media:capture review readme`.
+
 ## Available Commands
 
 ### Backend

@@ -17,6 +17,7 @@
     "test:e2e:ci": "bun run build && CI=true bunx playwright test",
     "test:e2e:ui": "bunx playwright test --ui",
     "knip": "knip",
+    "media:capture": "node scripts/capture-landing-media.mjs",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "prepare": "node scripts/install-husky.mjs"
