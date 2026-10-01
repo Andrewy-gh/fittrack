@@ -93,17 +93,17 @@ describe("HowItWorks", () => {
         return !playing.has(this);
       },
     );
-    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(
-      function (this: HTMLMediaElement) {
-        playing.add(this);
-        return Promise.resolve();
-      },
-    );
-    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(
-      function (this: HTMLMediaElement) {
-        playing.delete(this);
-      },
-    );
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      playing.add(this);
+      return Promise.resolve();
+    });
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      playing.delete(this);
+    });
   });
 
   afterEach(() => {
