@@ -18,10 +18,10 @@ function AddSetDialogHarness({
   onSaveSet = vi.fn(),
 }: {
   initialSet: SetValue;
-  onClose?: ReturnType<typeof vi.fn>;
-  onDiscardInvalidSet?: ReturnType<typeof vi.fn>;
-  onRemoveSet?: ReturnType<typeof vi.fn>;
-  onSaveSet?: ReturnType<typeof vi.fn>;
+  onClose?: () => void;
+  onDiscardInvalidSet?: () => void;
+  onRemoveSet?: () => void;
+  onSaveSet?: () => void;
 }) {
   const form = useAppForm({
     defaultValues: {
