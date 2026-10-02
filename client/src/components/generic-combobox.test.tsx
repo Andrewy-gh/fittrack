@@ -96,8 +96,8 @@ async function renderGenericCombobox({
   onCreate = vi.fn(),
 }: {
   isDesktop?: boolean;
-  onChange?: ReturnType<typeof vi.fn>;
-  onCreate?: ReturnType<typeof vi.fn>;
+  onChange?: (option: { name: string }) => void;
+  onCreate?: (label: string) => void;
 } = {}) {
   mediaQueryMatches = isDesktop;
 
