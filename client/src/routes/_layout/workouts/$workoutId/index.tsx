@@ -24,9 +24,10 @@ export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
       initializeDemoData();
     }
 
-    await context.queryClient.ensureQueryData(
-      getWorkoutByIdQueryOptions(user, workoutId),
-    );
+    await context.queryClient.query({
+      ...getWorkoutByIdQueryOptions(user, workoutId),
+      staleTime: "static",
+    });
 
     return { workoutId };
   },

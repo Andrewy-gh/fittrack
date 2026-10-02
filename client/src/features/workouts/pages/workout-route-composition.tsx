@@ -34,9 +34,18 @@ export async function preloadNewWorkoutRouteData({
   if (!user) initializeDemoData();
 
   await Promise.all([
-    queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
-    queryClient.ensureQueryData(getNewWorkoutContextQueryOptions(user)),
-    queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+    queryClient.query({
+      ...getExerciseListQueryOptions(user),
+      staleTime: "static",
+    }),
+    queryClient.query({
+      ...getNewWorkoutContextQueryOptions(user),
+      staleTime: "static",
+    }),
+    queryClient.query({
+      ...getWorkoutsFocusQueryOptions(user),
+      staleTime: "static",
+    }),
   ]);
 }
 
@@ -49,9 +58,18 @@ export async function preloadEditWorkoutRouteData({
   if (!user) initializeDemoData();
 
   await Promise.all([
-    queryClient.ensureQueryData(getWorkoutByIdQueryOptions(user, workoutId)),
-    queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
-    queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+    queryClient.query({
+      ...getWorkoutByIdQueryOptions(user, workoutId),
+      staleTime: "static",
+    }),
+    queryClient.query({
+      ...getExerciseListQueryOptions(user),
+      staleTime: "static",
+    }),
+    queryClient.query({
+      ...getWorkoutsFocusQueryOptions(user),
+      staleTime: "static",
+    }),
   ]);
 
   return { workoutId };

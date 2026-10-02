@@ -1,3 +1,4 @@
+import { noop } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { contributionDataQueryOptions } from "@/features/workouts/api/workouts";
 import { getWorkoutListQueryOptions } from "@/features/workouts/api/workout-query-options";
@@ -12,11 +13,17 @@ export const Route = createFileRoute("/_layout/workouts/")({
 
     if (user) {
       clearDemoData();
-      context.queryClient.ensureQueryData(getWorkoutListQueryOptions(user));
-      context.queryClient.ensureQueryData(contributionDataQueryOptions());
+      void context.queryClient
+        .query({ ...getWorkoutListQueryOptions(user), staleTime: "static" })
+        .catch(noop);
+      void context.queryClient
+        .query({ ...contributionDataQueryOptions(), staleTime: "static" })
+        .catch(noop);
     } else {
       initializeDemoData();
-      context.queryClient.ensureQueryData(getWorkoutListQueryOptions(user));
+      void context.queryClient
+        .query({ ...getWorkoutListQueryOptions(user), staleTime: "static" })
+        .catch(noop);
     }
   },
   component: RouteComponent,
