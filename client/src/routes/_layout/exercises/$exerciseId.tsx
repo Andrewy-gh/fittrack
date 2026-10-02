@@ -1,3 +1,4 @@
+import { noop } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { getExerciseDetailQueryOptions } from "@/features/exercises/api/exercise-query-options";
 import { ExerciseDetailPage } from "@/features/exercises/pages/exercise-detail-page";
@@ -22,15 +23,21 @@ export const Route = createFileRoute("/_layout/exercises/$exerciseId")({
     if (user) {
       // Authenticated: use API data
       clearDemoData();
-      context.queryClient.ensureQueryData(
-        getExerciseDetailQueryOptions(user, exerciseId),
-      );
+      void context.queryClient
+        .query({
+          ...getExerciseDetailQueryOptions(user, exerciseId),
+          staleTime: "static",
+        })
+        .catch(noop);
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
-      context.queryClient.ensureQueryData(
-        getExerciseDetailQueryOptions(user, exerciseId),
-      );
+      void context.queryClient
+        .query({
+          ...getExerciseDetailQueryOptions(user, exerciseId),
+          staleTime: "static",
+        })
+        .catch(noop);
     }
 
     return { exerciseId };

@@ -16,20 +16,34 @@ export const Route = createFileRoute("/_layout/analytics")({
     if (user) {
       clearDemoData();
       await Promise.all([
-        context.queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
-        context.queryClient.ensureQueryData(
-          getWorkoutContributionQueryOptions(user),
-        ),
-        context.queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+        context.queryClient.query({
+          ...getExerciseListQueryOptions(user),
+          staleTime: "static",
+        }),
+        context.queryClient.query({
+          ...getWorkoutContributionQueryOptions(user),
+          staleTime: "static",
+        }),
+        context.queryClient.query({
+          ...getWorkoutsFocusQueryOptions(user),
+          staleTime: "static",
+        }),
       ]);
     } else {
       initializeDemoData();
       await Promise.all([
-        context.queryClient.ensureQueryData(getExerciseListQueryOptions(user)),
-        context.queryClient.ensureQueryData(
-          getWorkoutContributionQueryOptions(user),
-        ),
-        context.queryClient.ensureQueryData(getWorkoutsFocusQueryOptions(user)),
+        context.queryClient.query({
+          ...getExerciseListQueryOptions(user),
+          staleTime: "static",
+        }),
+        context.queryClient.query({
+          ...getWorkoutContributionQueryOptions(user),
+          staleTime: "static",
+        }),
+        context.queryClient.query({
+          ...getWorkoutsFocusQueryOptions(user),
+          staleTime: "static",
+        }),
       ]);
     }
   },
