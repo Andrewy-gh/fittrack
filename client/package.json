@@ -4,10 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vite",
-    "start": "vite --port 3000",
+    "start": "bun scripts/serve-local.ts start",
     "build": "bunx --bun vite build",
     "serve": "vite preview",
-    "serve:test": "vite preview --host 127.0.0.1 --strictPort --port 5173",
+    "serve:test": "bun scripts/serve-local.ts test",
     "test": "vitest run",
     "openapi-ts": "openapi-ts",
     "fmt": "oxfmt",

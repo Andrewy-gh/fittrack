@@ -2,6 +2,14 @@
 
 This guide covers the repo-level workflow for running FitTrack locally and keeping backend and frontend contracts in sync.
 
+## Worktree-local development
+
+For concurrent linked worktrees sharing a local PostgreSQL server, see the
+[worktree setup guide](worktrees.md). Its initial helper allocates isolated
+database names and ports; database installation/provisioning is still a separate
+step pending production-version verification. The Docker quick start below is
+the existing single-checkout workflow.
+
 ## Quick Start
 
 ### Backend Setup

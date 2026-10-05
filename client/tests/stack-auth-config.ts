@@ -28,6 +28,7 @@ export function resolveStackAuthBootstrapConfig(options: {
     pickFirst(
       processEnv.E2E_LOCAL_AUTH_API_BASE_URL,
       serverEnv.E2E_LOCAL_AUTH_API_BASE_URL,
+      processEnv.API_PROXY_TARGET,
       processEnv.VITE_API_BASE_URL,
       clientEnv.VITE_API_BASE_URL,
       "http://localhost:8080",

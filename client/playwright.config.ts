@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { resolveE2EServerConfig } from "./scripts/local-server-config";
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -6,8 +7,7 @@ import { defineConfig, devices } from "@playwright/test";
 const isCI = Boolean(process.env.CI);
 const runsExclusiveMutationTests =
   process.env.E2E_EXCLUSIVE_MUTATION === "true";
-const e2ePort = Number(process.env.E2E_PORT ?? "5173");
-const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${e2ePort}`;
+const { baseURL, webServer } = resolveE2EServerConfig();
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -56,12 +56,5 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
-    command: isCI ? "bun run serve:test" : "bun run dev",
-    url: baseURL,
-    reuseExistingServer: !isCI,
-    timeout: 120000,
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer,
 });

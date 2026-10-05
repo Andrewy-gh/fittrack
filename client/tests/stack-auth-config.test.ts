@@ -90,4 +90,25 @@ describe("resolveStackAuthBootstrapConfig", () => {
 
     expect(config.localAuthEnabled).toBe(true);
   });
+
+  it("bootstraps local auth against the selected proxy backend", () => {
+    const config = resolveStackAuthBootstrapConfig({
+      processEnv: { API_PROXY_TARGET: "http://127.0.0.1:24004" },
+      clientEnv: {},
+      serverEnv: {},
+    });
+    expect(config.localAuthApiBaseUrl).toBe("http://127.0.0.1:24004");
+  });
+
+  it("keeps an explicit local auth backend ahead of the proxy fallback", () => {
+    const config = resolveStackAuthBootstrapConfig({
+      processEnv: {
+        E2E_LOCAL_AUTH_API_BASE_URL: "http://127.0.0.1:25004",
+        API_PROXY_TARGET: "http://127.0.0.1:24004",
+      },
+      clientEnv: {},
+      serverEnv: {},
+    });
+    expect(config.localAuthApiBaseUrl).toBe("http://127.0.0.1:25004");
+  });
 });

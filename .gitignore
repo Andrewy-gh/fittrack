@@ -41,3 +41,6 @@ server/tmp/
 server/tmp/ai-chat-scenario-sweeps/
 server/api.exe
 server/api
+
+# Generated non-secret per-worktree allocation
+/.worktree/
