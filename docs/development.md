@@ -5,9 +5,10 @@ This guide covers the repo-level workflow for running FitTrack locally and keepi
 ## Worktree-local development
 
 For concurrent linked worktrees sharing a local PostgreSQL server, see the
-[worktree setup guide](worktrees.md). Its initial helper allocates isolated
-database names and ports; database installation/provisioning is still a separate
-step pending production-version verification. The Docker quick start below is
+[worktree setup guide](worktrees.md). Run its `init`, `db setup --major`, and
+`run` commands in each worktree; creating a worktree alone is not setup. Local
+PostgreSQL 15.19 is pinned for local development and CI; the guide includes the
+shared Docker startup, version checks, and safe fresh-storage transition. The Docker quick start below is
 the existing single-checkout workflow.
 
 ## Quick Start

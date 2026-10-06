@@ -1,216 +1,267 @@
-# Worktree-local development (initial increment)
+# Concurrent linked worktrees
 
-One local PostgreSQL server can serve several FitTrack worktrees. Each worktree
-needs its own databases and application ports. Database isolation is necessary:
-the Go tests toggle RLS and delete fixtures, so a test suite must not use your
-persistent development database.
+**Creating a Git worktree is not setup.** In each worktree use
+`node scripts/worktree.ts init`, then `db setup`, then `run` below.
+Linked worktrees from one clone share a locked allocation registry. Separate
+clones do not coordinate application ports. Never copy `.worktree/` or source
+another checkout's database environment.
 
-This first increment allocates names and ports, supplies isolated command
-environments, and makes Vite/Playwright honor them. It **does not install or
-start PostgreSQL, create databases or roles, set passwords, run migrations, or
-start the app for you**. Database provisioning is a separate next step, after the
-production PostgreSQL version is verified.
+## Prerequisites and version gate
 
-## What works now
+- Node **24.14.0**, Go **1.26.6**, Bun **1.4.2**, Goose **v3.24.3**.
+- Windows 10/11 with Windows PowerShell 5.1 and available `Add-Type`, or POSIX.
+  PowerShell and Git Bash invoke the same Node entry point on Windows.
+- A running **local PostgreSQL cluster** at `127.0.0.1:55432`. Setup does not
+  install/start/upgrade clusters or change their configuration.
+- A local owning login with `CREATEDB` (and `CREATEROLE` for first setup), plus
+  stable local credentials for the shared restricted `fittrack_app` login.
 
-From the worktree root, with the repository's Node version available (the
-command runner currently supports Linux, macOS, and WSL):
+Production reported PostgreSQL **15.8 / 150008** through an authorized read-only
+query on October 5, 2026. Local development and CI pin **15.19 / 150019**:
 
-```bash
-node scripts/worktree.mjs init
-node scripts/worktree.mjs status
-node --test scripts/worktree.test.mjs
+```text
+postgres:15.19-bookworm@sha256:539ceaaae49b3a7c8a04467cf00cc6788d8e3f1675df41860d86eebc4c40524f
 ```
 
-`init` writes an ignored `.worktree/config.json` containing no credentials. It
-reserves a ten-port block in a locked registry under the repository's shared Git
-common directory (`fittrack-worktrees/registry.json`). Linked Git worktrees share
-that registry. Branch changes keep the same allocation. The worktree ID combines
-a short directory label with a hash of the canonical absolute path; moving a
-worktree changes its identity and leaves the old reservation intact.
+Review release notes and update Compose, CI, the Docker setup guard, and its test
+together for deliberate patch updates. Local Docker does not reproduce Supabase
+extensions, managed services, or session-pooler behavior. The application's
+production session-pooler guard is unchanged; local checks do not prove that parity.
 
-The block starts in the range 21000–29999:
+### Shell and TypeScript entry point
 
-| Offset | Service |
+Use the same `node scripts/worktree.ts` commands from Git Bash, PowerShell,
+or a POSIX shell. The pinned Node 24.14.0 executes the TypeScript directly;
+no transpiler, loader, or Bash wrapper is needed. Check `node --version` first.
+If your nvm-managed shell selects another version, run `nvm use 24.14.0`.
+
+The only PowerShell script is an internal compile step for the Windows native
+supervisor. Git Bash still launches Windows Node and therefore uses that
+supervisor too. Windows Job Objects and exclusive sockets provide process-tree
+cleanup and port ownership; switching shells cannot replace those OS guarantees.
+The shared CLI, allocation logic, environment wiring, and tests stay in TypeScript.
+
+### One shared Docker server
+
+Start this once from one checkout's `server/` directory, then reuse the same
+container from all linked worktrees. Set the local owner password in your session:
+
+```bash
+export DB_USER='postgres'
+export DB_PASSWORD='YOUR_LOCAL_OWNER_PASSWORD'
+export DB_NAME='postgres'
+export DB_PORT='55432'
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) docker_host='npipe:////./pipe/docker_engine' ;;
+  *) docker_host='unix:///var/run/docker.sock' ;;
+esac
+MSYS_NO_PATHCONV=1 docker --host "$docker_host" compose -p fittrack-local-pg15 up -d postgres
+export FITTRACK_LOCAL_POSTGRES_CONTAINER='fittrack-postgres15'
+```
+
+The Bash example works in Git Bash and POSIX shells; `MSYS_NO_PATHCONV` keeps
+Git Bash from rewriting the Docker endpoint. In PowerShell, set variables with
+`$env:NAME='value'` and use `--host npipe:////./pipe/docker_engine`. The helper
+supports these local daemons only. It ignores Docker environment/context overrides
+when verifying the named container, its exact pinned image, ownership label,
+running state, and sole `5432/tcp` publication at `127.0.0.1:55432`. It then
+matches the connected server's bridge address/internal port and exact version
+`150019`. Without this opt-in, native PostgreSQL must report the loopback
+address/port directly. Setup never starts or replaces a container itself.
+
+Compose and all Make lifecycle commands select the separate
+`fittrack-local-pg15` project; Make passes it explicitly even when
+`COMPOSE_PROJECT_NAME` is inherited. Compose uses a separately named container and fresh `server/_db-data-pg15`.
+Leave the old `db` PostgreSQL 16 container and `server/_db-data` untouched.
+Never run PostgreSQL 15 against PostgreSQL 16 storage. Rollback means returning
+to the original PostgreSQL 16 container and its original data; keep both data
+directories separate. `pg_upgrade` cannot downgrade 16 to 15. If old data is
+needed, separately back it up and rehearse a compatible logical/data-only export
+and import into a disposable PostgreSQL 15 database; review unsupported features
+and validate the restored data before planning any migration. No data transfer
+is performed by this workflow.
+
+If global Goose differs, set `FITTRACK_GOOSE` to a separately installed pinned
+executable. On Windows, bound compilation and omit unused database drivers:
+
+```bash
+export GOBIN="$(pwd -W)/.worktree/tools"
+go install -p=1 -tags='no_mysql,no_sqlite3,no_mssql,no_ydb,no_vertica,no_clickhouse,no_turso' github.com/pressly/goose/v3/cmd/goose@v3.24.3
+export FITTRACK_GOOSE="$GOBIN/goose.exe"
+```
+
+This installation example uses Git Bash on Windows. On POSIX, use `pwd`
+instead of `pwd -W` and omit the `.exe` suffix.
+
+## Setup in each worktree
+
+```bash
+node scripts/worktree.ts init
+node scripts/worktree.ts status
+
+# Set this in every worktree terminal when using the shared Docker server.
+export FITTRACK_LOCAL_POSTGRES_CONTAINER='fittrack-postgres15'
+# Supply these through a local secret manager/session, never a committed file.
+export FITTRACK_LOCAL_DATABASE_URL='postgresql://LOCAL_OWNER:LOCAL_PASSWORD@127.0.0.1:55432/postgres?sslmode=disable'
+export FITTRACK_LOCAL_RUNTIME_DATABASE_URL='postgresql://fittrack_app:STABLE_LOCAL_PASSWORD@127.0.0.1:55432/postgres?sslmode=disable'
+node scripts/worktree.ts db setup --major 15
+```
+
+In PowerShell, use `$env:NAME='value'` for the same session variables; the
+`node scripts/worktree.ts` commands are identical.
+
+Replace placeholders locally; URL-encode special characters in credentials.
+Never paste credentials into review artifacts. This workflow needs no production
+credential or write.
+
+`init` writes ignored `.worktree/config.json` with names and ports only. Its
+registry is under the clone's Git common directory at
+`fittrack-worktrees/registry.json`. Concurrent initializers briefly wait for
+the lock without stealing it. The canonical checkout path determines the ID;
+branch changes keep the allocation, moving the directory does not.
+
+Setup verifies the native or explicitly inspected Docker endpoint, authenticated role, database, and
+explicit major before mutations. A PostgreSQL advisory lock in `postgres`
+coordinates role/catalog operations across clones throughout setup. Competing
+setup fails with a retryable lock message. Existing databases must match both
+the owning login and the exact `fittrack-worktree:<id>` comment. Unmarked or
+differently owned databases are never adopted. A crash between creation and
+marking requires manual ownership verification. Otherwise reruns create only
+missing databases and run Goose `up` idempotently. There is no drop/reset command.
+
+| Suffix | Purpose |
 | --- | --- |
-| +0 | Dev frontend |
-| +1 | Dev API |
-| +2 | Dev metrics |
-| +3 | E2E frontend |
-| +4 | E2E API |
-| +5 | E2E metrics |
-| +6 | Standalone production preview |
-| +7–9 | Reserved for later needs |
+| `_dev` | Persistent development data; never used by test modes |
+| `_test` | Go integration fixtures and destructive RLS-state tests |
+| `_rls` | Restricted-role checks, with separate owner/runtime connections |
+| `_e2e` | Browser test API data |
 
-All ten ports are checked against actual IPv4/IPv6 listeners before allocation.
-A new worktree skips occupied blocks; an existing worktree keeps its assignment
-and fails clearly if a port is occupied. Stop its services before rerunning
-`init` or `check`. `status` can be used while services are running.
+Names are `ft_<worktree-id>_<suffix>`. Setup applies this checkout's migrations
+and grants to all four databases. Stop wrapped commands before setup; their
+run records prevent migrations underneath them. Unwrapped commands cannot
+participate in this coordination.
 
-```bash
-node scripts/worktree.mjs check
-```
+The first setup creates `fittrack_app` only if absent, using the supplied local
+runtime password. Later setup authenticates its existing password and checks
+restricted attributes/memberships; it **never resets passwords, alters unsafe
+existing attributes, or drops the role**. Unsafe or NOLOGIN existing roles need
+operator attention. Per-database grants use the provisioning script's
+preserve-role mode. Do not run CI's password-reset or ordinary role provisioning
+commands against this shared cluster while agents are using it.
 
-A registry reservation coordinates cooperating worktrees, not the operating
-system. Another program can still take a port after the check; Vite, Playwright,
-and the API fail on a bind conflict instead of silently selecting another port.
-Separate clones have separate registries: keep linked worktrees in one clone
-for coordinated reservations. The initial helper has no automatic pruning or
-cleanup. It never assumes that an old-looking reservation is safe to reuse.
+## Commands and cancellation
 
-## Database layout and connection guardrails
-
-For an ID such as `fittrack_123456789abc`, the allocated databases are:
-
-- `ft_fittrack_123456789abc_dev`: persistent local development data
-- `ft_fittrack_123456789abc_test`: disposable Go integration test data
-- `ft_fittrack_123456789abc_rls`: restricted-runtime/RLS checks only
-- `ft_fittrack_123456789abc_e2e`: browser test API data, separate from Go tests
-
-All connect to a single local server at `127.0.0.1:55432`. This is a local endpoint
-convention, not a PostgreSQL version selection. The databases must be created
-and migrated independently before running their respective commands.
-
-Once that server and its owning role exist, export an existing local connection
-URL in your shell as `FITTRACK_LOCAL_DATABASE_URL`. Its database component is
-replaced by the selected worktree/mode name; credentials are passed to the child
-process in memory and are never written into the registry or config. The helper
-refuses remote hosts, other ports, and query parameters that could override the
-selected database or host. Only `sslmode` and `connect_timeout` query options are
-accepted. Do not put production credentials in this variable.
-
-For example, with `YOUR_LOCAL_OWNER` replaced by an already-provisioned local
-role and its existing authentication configured:
+Each terminal uses its own wrapper, which preserves the current directory:
 
 ```bash
-export FITTRACK_LOCAL_DATABASE_URL='postgresql://YOUR_LOCAL_OWNER@127.0.0.1:55432/postgres?sslmode=disable'
+# Terminal 1, from server/
+node ../scripts/worktree.ts run dev -- go run ./cmd/api
+# Terminal 2, from client/ after bun install --frozen-lockfile
+node ../scripts/worktree.ts run dev -- bun run dev
+# From server/: serialized packages, isolated disposable test database
+node ../scripts/worktree.ts run test -- go test -p 1 ./...
+# From the worktree root: cancel all its dev commands
+node scripts/worktree.ts stop dev
 ```
 
-The helper preserves other environment settings, including application keys.
-It does not copy `.env` files, create auth accounts, or change Stack configuration.
-Each worktree still needs its own normal client/server application settings.
-Never commit local credentials. The command wrapper is a development guardrail,
-not a security sandbox: arbitrary commands can override variables or connect
-elsewhere, and owning roles on a shared cluster are not a security boundary.
+`stop` requests cancellation; wait for the original commands to exit before
+restarting. Ctrl+C also cancels. `test` and `rls` each hold an exclusive mode
+lock until the owned process tree has stopped. Dev API/frontend and E2E
+API/Playwright share their respective mode because they use separate ports.
+Do not run concurrent destructive E2E suites in one worktree.
 
-## Running commands after database provisioning
+PowerShell compiles a small native supervisor once per source hash into
+`%TEMP%/fittrack-worktree-native/`; long-running commands do not retain a
+PowerShell process. Windows atomically places commands in non-breakaway Job Objects with
+kill-on-close. Normal root exit, failure, cancellation, and wrapper death also
+terminate grandchildren. The supervisor verifies the job is empty before
+releasing locks. Windows cancellation is forced, not a POSIX graceful signal.
+Commands are noninteractive native executables (`go`, `bun`, `node`); stdin is
+closed. `.cmd`/`.bat` and shell expressions are not implicitly interpreted.
+Invoke an explicit shell when needed. Arguments use Windows argv quoting.
 
-The wrapper resolves its worktree from the current directory and leaves that
-directory unchanged. Use it for each process rather than sourcing another
-worktree's settings. These examples require the selected database to exist and
-have that checkout's migrations applied.
+POSIX retains separate process groups and TERM/KILL cleanup. Deliberately
+escaping a POSIX group is outside this guardrail. This is local coordination,
+not a security sandbox: arbitrary commands can override variables, and shared
+owning roles are not a tenant security boundary.
+
+Do not wrap `make dev`, `make test-*`, or `make migrate-*`; those source
+`setenv.sh` and manage Docker. Use the direct commands above. Supply normal app
+settings such as `PROJECT_ID` per terminal; setup does not copy `.env` files or
+create Stack accounts.
+
+## Ports, frontend, and auth
+
+Ten-port blocks use 21000â€“29999: dev frontend `+0`, API `+1`, metrics `+2`,
+E2E frontend `+3`, API `+4`, metrics `+5`, preview `+6`, three reserved ports.
+`init`/`check` probe both address families. Windows uses exclusive native sockets:
+Node's `exclusive: true` was observed accepting a conflicting loopback listener
+even on pinned Node 24.14.0.
 
 ```bash
-# Terminal 1: development API
-cd server
-node ../scripts/worktree.mjs run dev -- go run ./cmd/api
-
-# Terminal 2: development frontend
-cd client
-node ../scripts/worktree.mjs run dev -- bun run dev
-
-# Disposable integration database, never the development database
-cd server
-node ../scripts/worktree.mjs run test -- go test -p 1 ./...
+node scripts/worktree.ts check
 ```
 
-`test` holds a per-worktree test lock and sets `GOFLAGS` to serialize Go packages.
-Keep `-p 1` for this suite; do not override it with higher package parallelism.
-Different worktrees can run concurrently because their databases differ.
+Stop services before `init`/`check`; use `status` while running. New allocations
+skip occupied blocks; existing allocations fail without moving. The registry
+does not reserve OS ports after a check. Another program can race startup;
+Vite/Playwright use strict ports and the API reports bind failure.
 
-The original `make dev`, `make test-short`, `make test-integration`, and `make migrate-*` still own
-a Docker Compose lifecycle and source `setenv.sh`; **do not use them through this
-wrapper**. Sourcing an env file afterward can overwrite the isolation variables.
-Use the direct Go commands above for this shared-server workflow. Existing
-single-checkout Docker workflows remain unchanged.
+For E2E, set `export E2E_LOCAL_AUTH_ENABLED='true'` and start the API from `server/`
+using `run e2e -- go run ./cmd/api`. From `client/`, set
+`export VITE_E2E_LOCAL_AUTH_ENABLED='true'` and use `run e2e -- bun run test:e2e`.
+PowerShell uses `$env:NAME='value'` for these variables. Playwright owns the E2E frontend
+with existing-server reuse disabled. Build preview/CI assets under the same
+`e2e` environment. The wrapper aligns `APP_BASE_URL`, `API_PROXY_TARGET`,
+`E2E_BASE_URL`, and `E2E_LOCAL_AUTH_API_BASE_URL`, and forces browser requests to
+same-origin `/api`.
 
-For E2E, run the API in `e2e` mode in one terminal and Playwright in `e2e` mode in
-another. Enable the existing local-only auth bootstrap explicitly if needed:
+`rls` uses the runtime URL for `_rls`, retains the owning `ADMIN_DATABASE_URL`,
+and enables RLS enforcement. Use CI's dedicated restricted checks, not the full
+Go suite or migrations. Separate browser profiles/Playwright contexts are still
+needed for independent localhost cookies. External Stack authentication may
+require allowlisting the actual allocated origins.
+
+## Recovery and verification
+
+Locks/run records are never automatically stolen. After a hard kill, inspect
+`owner.json` in the reported registry directory, verify the owned supervisor
+and tree are gone, then remove only the exact stale mode lock/run record. PID
+reuse means a live PID alone does not prove ownership. If uncertain, keep the
+record. Never kill by process-name/port wildcard. Old allocations survive
+worktree deletion/moves until explicitly reviewed.
+
+After installing the pinned client dependencies, type-check the CLI and both
+test files from the repository root:
 
 ```bash
-# API terminal (from server/)
-E2E_LOCAL_AUTH_ENABLED=true node ../scripts/worktree.mjs run e2e -- go run ./cmd/api
-
-# Browser test terminal (from client/)
-VITE_E2E_LOCAL_AUTH_ENABLED=true node ../scripts/worktree.mjs run e2e -- bun run test:e2e
+node client/node_modules/typescript/bin/tsc -p scripts/tsconfig.json
+node --test scripts/worktree.test.ts
 ```
 
-Playwright starts its own frontend on the E2E port. In CI/preview mode, build the
-client with the same `e2e` environment and local-auth setting before serving it.
-The wrapper supplies matching `APP_BASE_URL`, `API_PROXY_TARGET`, `E2E_BASE_URL`,
-and `E2E_LOCAL_AUTH_API_BASE_URL`. It forces same-origin `/api` client requests
-and disables reuse of an existing frontend so one worktree cannot silently test
-another. E2E API startup and migrations are still manual in this increment.
+Node strips types at runtime; the separate strict TypeScript check runs in CI.
+The lifecycle tests exercise native process/socket and real linked-worktree coverage. For the disposable PostgreSQL test, ensure 55432 is
+unused, set `FITTRACK_TEST_DOCKER=1` for the pinned Docker image (or
+`FITTRACK_TEST_POSTGRES_BIN` for a native PostgreSQL bin directory), and
+`FITTRACK_GOOSE` to v3.24.3, then run:
 
-`rls` mode additionally requires an existing
-`FITTRACK_LOCAL_RUNTIME_DATABASE_URL` for `fittrack_app` at the same local
-endpoint. It sets `DATABASE_URL` and `RECOMMENDATION_TEST_DATABASE_URL` to the
-restricted `_rls` database, retains its owning-role URL as `ADMIN_DATABASE_URL`,
-and enables RLS enforcement. Use only the dedicated restricted-role checks from
-CI in this mode, not the full Go suite or owner migrations.
+```bash
+node --test scripts/worktree.database.test.ts
+```
 
-The fixed `fittrack_app` role is cluster-wide. Its provisioning alters role
-attributes, and current CI changes its password. A future shared-cluster setup
-must provision it once under a cluster-wide lock with stable existing credentials,
-then apply grants separately per database. Worktree setup must never reset or
-drop that shared role. Supporting distinct per-worktree runtime roles would
-require changing the existing hardcoded migrations and tests.
+This opt-in test creates a fresh temporary cluster and eight databases in two
+real linked worktrees, exercises migration/write/read/reuse and refusal paths,
+then stops/removes its own resources. A skipped database test or green unit
+tests do not prove database isolation. For live API/proxy verification too,
+build this checkout's API (`go build -p=1 -o ../.worktree/api.exe ./cmd/api`
+from `server/`), install the client's locked dependencies, and set
+`FITTRACK_TEST_API` to that executable. Set `FITTRACK_TEST_PROJECT_ID` to your
+existing local Stack project ID: API initialization requires public JWKS access
+even with local E2E authentication. The test uses two temporary frontend
+checkouts and links their dependencies; it does not regenerate files in your
+checkout. It checks real auth/API/metrics/proxy endpoints and loads Playwright's
+actual configuration, but does not execute the full browser E2E suite.
 
-Separate ports do not isolate localhost cookies. Use separate browser profiles
-or Playwright contexts for independent Stack Auth sessions. Auth allowlists and
-redirects must include the actual local origins if the selected auth flow needs
-them.
-
-## Failure recovery
-
-- Port conflict: stop the listener or choose a different worktree. An existing
-  assignment is deliberately not reassigned automatically
-- Registry lock: wait for the other command. After a crash, inspect `owner.json`
-  in the reported lock directory and verify that process is gone before removing
-  the lock directory. Locks are never automatically stolen
-- Missing/different config: stop services and rerun `init` to regenerate it from
-  the registry. Do not copy `.worktree/` between checkouts
-- Test failure: the child's exit status is preserved and its test lock is
-  released once its process group has stopped. Cancellation reaches subprocesses
-  too. If a process group cannot be verified as gone, the lock is retained; this
-  includes unreaped zombie processes. A killed helper can also leave a lock; use
-  the crash procedure above
-- Worktree deletion/move: keep the old reservation until a future explicit
-  cleanup flow can verify process state and exact owned database names. Never
-  use wildcard database deletion
-
-## Version policy and next increments
-
-Production Supabase's actual PostgreSQL version has not yet been verified.
-Existing definitions disagree: `server/docker-compose.yaml` pins `postgres:16.2`,
-while `.github/workflows/test.yml` uses `postgres:15`. Do not infer production's
-major from a Supabase default or select a new major merely because it is newer.
-
-1. Obtain `SHOW server_version;` from the actual production database using an
-   authorized read-only connection, or have its owner provide the result
-2. Select a currently maintained patch release in that verified major, and
-   align local/native installation and CI to that explicit version. If using
-   containers, pin the artifact digest too and plan deliberate update reviews
-3. Create a fresh local cluster for a different major. Never start a new major
-   against the existing Compose `server/_db-data` directory. Preserve needed
-   data through an explicit backup/migration plan
-4. Add idempotent local-only creation of the four registered databases, verify
-   server version, migrate each checkout separately, and implement centrally
-   locked restricted-role provisioning. Keep dev data persistent
-5. Verify two real linked worktrees simultaneously: migrations, full Go tests,
-   restricted-role checks, distinct API/frontend/metrics listeners, and browser
-   E2E. Then add narrowly scoped cleanup with ownership checks and confirmation
-
-Tool versions already declared in this repository are Node `24.14.0`
-(`.node-version`), Go `1.26.6` (`server/go.mod` and CI), Bun `1.4.2` (CI), and
-Goose `v3.24.3` (CI/development guide). Use the lockfile for client dependencies.
-A later DX pass can consolidate duplicated tool pins without conflating that
-work with a database major upgrade.
-
-Relevant upstream references:
-
-- [PostgreSQL versioning and upgrade policy](https://www.postgresql.org/support/versioning/)
-- [PostgreSQL roles are cluster-wide](https://www.postgresql.org/docs/current/database-roles.html)
-- [Supabase upgrade guidance](https://supabase.com/docs/guides/platform/upgrading)
-- [Git worktrees and shared repository state](https://git-scm.com/docs/git-worktree)
-- [Cookie isolation does not follow port boundaries](https://www.rfc-editor.org/rfc/rfc6265#section-8.5)
+References: [atomic Job Object assignment](https://devblogs.microsoft.com/oldnewthing/20230209-00/?p=107812),
+[Job Object lifecycle](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects),
+[PostgreSQL version policy](https://www.postgresql.org/support/versioning/).

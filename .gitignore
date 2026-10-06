@@ -31,6 +31,7 @@ client/test-results/
 # Local dev postgres volume (docker-compose in server/)
 server/db-data/
 server/_db-data/
+server/_db-data-pg15/
 server/db-data.bak-*/
 server/_db-data.bak-*/
 
