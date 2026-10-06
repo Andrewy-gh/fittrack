@@ -27,7 +27,9 @@ function readHttpUrl(name: string, value: string): URL {
   } catch {
     // Report the setting name without echoing a potentially sensitive value.
   }
-  throw new Error(`${name} must be an absolute HTTP(S) URL without credentials`);
+  throw new Error(
+    `${name} must be an absolute HTTP(S) URL without credentials`,
+  );
 }
 
 export function resolveViteServerConfig(env: Environment = process.env) {
