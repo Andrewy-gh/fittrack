@@ -14,10 +14,13 @@ SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
 # Configurable variables for development
+# Keep every lifecycle operation out of the legacy PostgreSQL 16 Compose project.
+# Explicit -p also overrides an inherited COMPOSE_PROJECT_NAME.
+DOCKER_COMPOSE = docker compose --project-name fittrack-local-pg15
 DB_SERVICE ?= postgres
 DB_READY_TIMEOUT ?= 90
 AIR_CMD ?= air
-DB_DATA_DIR ?= _db-data
+DB_DATA_DIR ?= _db-data-pg15
 ENV_FILE ?= setenv.sh
 TEST_DB_ENV_FILE ?= $(CURDIR)/tmp/fittrack-test-db.env
 
@@ -47,7 +50,7 @@ clean:
 	rm -rf dist
 
 docker-down:
-	docker compose down
+	$(DOCKER_COMPOSE) down
 
 migrate-create:
 ifeq ($(strip $(NAME)),)
@@ -59,7 +62,6 @@ endif
 
 migrate-up:
 	@if [ -f "$(ENV_FILE)" ] && . ./$(ENV_FILE) && [ -n "$$DATABASE_URL" ]; then \
-		echo "DATABASE_URL: $$DATABASE_URL"; \
 		goose -dir migrations postgres "$$DATABASE_URL" up; \
 	else \
 		echo "DATABASE_URL does not exist"; \
@@ -123,8 +125,8 @@ test-db-ready: ## Prepare local test DB for server tests
 		echo "ERROR: goose is not installed or not on PATH."; \
 		exit 1; \
 	fi; \
-	DB_PORT="$$db_port" docker compose up -d $(DB_SERVICE); \
-	container_id="$$(docker compose ps -q $(DB_SERVICE))"; \
+	DB_PORT="$$db_port" $(DOCKER_COMPOSE) up -d $(DB_SERVICE); \
+	container_id="$$($(DOCKER_COMPOSE) ps -q $(DB_SERVICE))"; \
 	if [ -z "$$container_id" ]; then \
 		echo "ERROR: Could not determine container id for $(DB_SERVICE)."; \
 		exit 1; \
@@ -139,7 +141,7 @@ test-db-ready: ## Prepare local test DB for server tests
 		elapsed=$$(( now - start_ts )); \
 		if [ "$$elapsed" -ge "$(DB_READY_TIMEOUT)" ]; then \
 			echo "ERROR: Timed out waiting for PostgreSQL readiness"; \
-			echo "Tip: Check logs with: docker compose logs $(DB_SERVICE)"; \
+			echo "Tip: Check logs with: $(DOCKER_COMPOSE) logs $(DB_SERVICE)"; \
 			exit 1; \
 		fi; \
 		sleep 1; \
@@ -148,7 +150,7 @@ test-db-ready: ## Prepare local test DB for server tests
 	verify_output=""; \
 	start_ts=$$(date +%s); \
 	while true; do \
-		if verify_output="$$(docker compose exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
+		if verify_output="$$($(DOCKER_COMPOSE) exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
 			break; \
 		fi; \
 		now=$$(date +%s); \
@@ -158,11 +160,8 @@ test-db-ready: ## Prepare local test DB for server tests
 			echo "$$verify_output"; \
 			case "$$verify_output" in \
 				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
-					echo "This can happen when $(DB_DATA_DIR) was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
-					echo "If you do not need the local data, reset it and try again:"; \
-					echo "  docker compose down"; \
-					echo "  Remove-Item -Recurse -Force $(DB_DATA_DIR)"; \
-					echo "  New-Item -ItemType Directory $(DB_DATA_DIR) | Out-Null"; \
+					echo "This can happen when the cluster was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
+					echo "Do not remove $(DB_DATA_DIR) unless you have verified it contains only disposable local data."; \
 					;; \
 			esac; \
 			exit 1; \
@@ -198,13 +197,13 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	fi
 	. ./$(ENV_FILE)
 
-	@echo "==> Checking prerequisites: docker, docker compose, goose, and $(AIR_CMD)"
+	@echo "==> Checking prerequisites: docker, $(DOCKER_COMPOSE), goose, and $(AIR_CMD)"
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "ERROR: docker is not installed or not on PATH."; \
 		exit 1; \
 	fi
-	@if ! docker compose version >/dev/null 2>&1; then \
-		echo "ERROR: docker compose plugin not available. Install Docker Desktop or the compose plugin."; \
+	@if ! $(DOCKER_COMPOSE) version >/dev/null 2>&1; then \
+		echo "ERROR: $(DOCKER_COMPOSE) plugin not available. Install Docker Desktop or the compose plugin."; \
 		exit 1; \
 	fi
 	@if ! command -v goose >/dev/null 2>&1; then \
@@ -219,10 +218,10 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	fi
 
 	@echo "==> Starting database container: $(DB_SERVICE)"
-	docker compose up -d $(DB_SERVICE)
+	$(DOCKER_COMPOSE) up -d $(DB_SERVICE)
 
 	@echo "==> Waiting for PostgreSQL to accept connections (timeout: $(DB_READY_TIMEOUT)s)"
-	container_id="$$(docker compose ps -q $(DB_SERVICE))"; \
+	container_id="$$($(DOCKER_COMPOSE) ps -q $(DB_SERVICE))"; \
 	if [ -z "$$container_id" ]; then \
 		echo "ERROR: Could not determine container id for $(DB_SERVICE)."; \
 		exit 1; \
@@ -238,7 +237,7 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 		elapsed=$$(( now - start_ts )); \
 		if [ "$$elapsed" -ge "$(DB_READY_TIMEOUT)" ]; then \
 			echo "ERROR: Timed out after $(DB_READY_TIMEOUT)s waiting for PostgreSQL."; \
-			echo "Tip: Check logs with: docker compose logs $(DB_SERVICE)"; \
+			echo "Tip: Check logs with: $(DOCKER_COMPOSE) logs $(DB_SERVICE)"; \
 			exit 1; \
 		fi; \
 		echo "Waiting for database... ($${elapsed}s elapsed)"; \
@@ -249,7 +248,7 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	verify_output=""; \
 	start_ts=$$(date +%s); \
 	while true; do \
-		if verify_output="$$(docker compose exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
+		if verify_output="$$($(DOCKER_COMPOSE) exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
 			break; \
 		fi; \
 		now=$$(date +%s); \
@@ -259,11 +258,8 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 			echo "$$verify_output"; \
 			case "$$verify_output" in \
 				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
-					echo "This can happen when $(DB_DATA_DIR) was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
-					echo "If you do not need the local data, reset it and try again:"; \
-					echo "  docker compose down"; \
-					echo "  Remove-Item -Recurse -Force $(DB_DATA_DIR)"; \
-					echo "  New-Item -ItemType Directory $(DB_DATA_DIR) | Out-Null"; \
+					echo "This can happen when the cluster was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
+					echo "Do not remove $(DB_DATA_DIR) unless you have verified it contains only disposable local data."; \
 					;; \
 			esac; \
 			exit 1; \

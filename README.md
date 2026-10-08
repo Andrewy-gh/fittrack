@@ -24,6 +24,7 @@ A full-stack fitness tracking application with a Go backend and React frontend.
 For a full local setup, start with the development guide:
 
 - [Development Guide](docs/development.md)
+- [Worktree Setup](docs/worktrees.md) (required setup for concurrent linked worktrees)
 - [Backend Setup](server/README.md)
 - [Frontend Setup](client/README.md)
 

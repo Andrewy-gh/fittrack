@@ -11,7 +11,7 @@ bun install
 bun run prepare  # optional: enable local Husky git hooks
 bun run dev       # http://localhost:5173 (proxies API calls to :8080)
 # or
-bun run start     # http://localhost:3000
+bun run start     # http://localhost:3000 unless FRONTEND_PORT is set
 ```
 
 `bunfig.toml` skips install scripts and delays newly published package versions by default. Husky is still installed through dev dependencies; run `bun run prepare` when you want local git hooks enabled.
@@ -19,10 +19,11 @@ bun run start     # http://localhost:3000
 ## Available Commands
 
 ```bash
-bun run dev           # Development server (Vite default port)
-bun run start         # Development server on port 3000
+bun run dev           # Development server (FRONTEND_PORT, default 5173)
+bun run start         # Development server (FRONTEND_PORT, default 3000)
 bun run build         # Production build
-bun run serve         # Preview production build
+bun run serve         # Preview production build (PREVIEW_PORT, default 4173)
+bun run serve:test    # Preview on E2E_PORT (default 5173)
 bun run openapi-ts    # Generate API client from OpenAPI spec
 bun run fmt           # Format client files with oxfmt
 bun run fmt:check     # Check client formatting with oxfmt
@@ -50,6 +51,36 @@ VITE_API_BASE_URL=http://localhost:8080
 ```
 
 You usually do not need `VITE_API_BASE_URL` during local dev because Vite proxies `/api` to the backend by default.
+
+### Local ports and worktrees
+
+Export `FRONTEND_PORT` (default `5173`), `PREVIEW_PORT` (default `4173`),
+`E2E_PORT` (default `5173`), and `API_PROXY_TARGET` (default
+`http://127.0.0.1:8080`) in the command environment. These settings are not
+browser-visible `VITE_` variables, and Vite's `.env` files are not loaded by the
+server configuration. The repo's worktree helper supplies them automatically;
+see [the worktree setup guide](../docs/worktrees.md).
+
+`bun run start` keeps its legacy default port `3000`, but honors an exported
+`FRONTEND_PORT` just like `bun run dev`.
+
+```bash
+FRONTEND_PORT=24000 API_PROXY_TARGET=http://127.0.0.1:24001 bun run dev
+PREVIEW_PORT=24006 API_PROXY_TARGET=http://127.0.0.1:24001 bun run serve
+E2E_PORT=24003 API_PROXY_TARGET=http://127.0.0.1:24004 bun run test:e2e
+```
+
+Development and preview servers bind to `127.0.0.1` by default and fail when their requested port is occupied;
+they never silently move to the next port. Playwright launches its server on
+`E2E_PORT`, even when the development and preview port settings differ, and
+refuses to reuse an existing server by default. Use
+`E2E_REUSE_EXISTING_SERVER=true` only when you deliberately want that server.
+
+An explicit `E2E_BASE_URL` must use HTTP `localhost` or `127.0.0.1` on
+`E2E_PORT` for a managed server. A different origin requires
+`E2E_REUSE_EXISTING_SERVER=true`; Playwright then tests that existing target
+without launching a local server. Local auth bootstrap also uses
+`API_PROXY_TARGET` unless `E2E_LOCAL_AUTH_API_BASE_URL` is set explicitly.
 
 For local Playwright auth bootstrap without manual social login, also set:
 

@@ -5,6 +5,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import { resolve } from "node:path";
+import { resolveViteServerConfig } from "./scripts/local-server-config";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -81,12 +82,5 @@ export default defineConfig({
       "@": resolve(__dirname, "./src"),
     },
   },
-  server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
-    },
-  },
+  ...resolveViteServerConfig(),
 });

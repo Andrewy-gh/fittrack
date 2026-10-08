@@ -28,6 +28,27 @@ Useful optional local vars:
 
 See [Stripe Billing](stripe-billing.md) for the checkout and webhook integration details.
 
+## Worktree-local commands
+
+See [worktree setup](worktrees.md) for the initial helper and its provisioning
+limits. These variables are read from the exported process environment:
+
+- `FRONTEND_PORT`: Vite development port (default `5173`)
+- `PREVIEW_PORT`: Vite preview port (default `4173`)
+- `API_PROXY_TARGET`: API origin used by both dev and preview proxies (default `http://127.0.0.1:8080`)
+- `E2E_PORT`: managed Playwright frontend port (default `5173`)
+- `E2E_BASE_URL`: Playwright target URL; managed local launches must match `E2E_PORT`
+- `E2E_REUSE_EXISTING_SERVER=true`: explicit opt-in to an existing test target; disabled by the worktree wrapper
+- `E2E_LOCAL_AUTH_API_BASE_URL`: local auth bootstrap API origin, without `/api`
+- `FITTRACK_LOCAL_DATABASE_URL`: existing owning-role URL for the shared local server at `127.0.0.1:55432`; the wrapper replaces its database name
+- `FITTRACK_LOCAL_RUNTIME_DATABASE_URL`: existing `fittrack_app` URL, required only for the isolated `rls` mode
+
+The wrapper generates mode-specific `DATABASE_URL`, API/metrics ports, frontend
+origins, and proxy settings without saving credentials. It forces
+`VITE_API_BASE_URL=/api` so local clients use the same-origin proxy. For direct
+API access outside this wrapper, `VITE_API_BASE_URL` must include the `/api`
+prefix, and `ALLOWED_ORIGINS` must allow the frontend origin.
+
 ## Local Testing
 
 - `server/setenv.sh`: used by `make dev`, `make migrate-up`, `make migrate-down`, and `make test-short`

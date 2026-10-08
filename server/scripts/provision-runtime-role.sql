@@ -12,6 +12,13 @@ BEGIN
             NOINHERIT
             NOREPLICATION
             NOBYPASSRLS;
+    ELSIF current_setting('fittrack.preserve_runtime_role', true) = 'on' THEN
+        -- Shared local clusters must never repair/alter another worktree's role.
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fittrack_app'
+            AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolinherit OR rolreplication OR rolbypassrls))
+           OR EXISTS (SELECT 1 FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = 'fittrack_app')) THEN
+            RAISE EXCEPTION 'Existing fittrack_app attributes/membership are unsafe; refusing to alter shared role';
+        END IF;
     ELSE
         -- Preserve externally managed LOGIN/password settings.
         ALTER ROLE fittrack_app

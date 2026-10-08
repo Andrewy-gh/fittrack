@@ -50,7 +50,7 @@ source ./setenv.sh
 2. Start database:
 
 ```bash
-docker compose up -d postgres
+docker compose --project-name fittrack-local-pg15 up -d postgres
 ```
 
 3. Initialize the database (first time only):
@@ -274,10 +274,10 @@ make DB_READY_TIMEOUT=60 dev
 
 ```bash
 # Check database logs
-docker compose logs postgres
+docker compose --project-name fittrack-local-pg15 logs postgres
 
 # Check database health
-docker compose ps
+docker compose --project-name fittrack-local-pg15 ps
 ```
 
 **Missing goose:**
@@ -289,27 +289,19 @@ export PATH="$HOME/go/bin:$PATH"
 
 **Postgres auth failures after changing DB_USER/DB_PASSWORD or switching branches:**
 
-This repo bind-mounts PostgreSQL data into `server/_db-data`. If that folder was initialized with different `DB_USER`, `DB_PASSWORD`, or `DB_NAME` values, Postgres may still start but `make dev` and `goose` will fail authentication.
+PostgreSQL 15.19 uses the dedicated `fittrack-local-pg15` Compose project,
+`fittrack-postgres15` container, and fresh `server/_db-data-pg15` storage.
+Make targets explicitly select that project even if `COMPOSE_PROJECT_NAME`
+is inherited. The old `db` container and `server/_db-data` (PostgreSQL 16)
+are left untouched. Do not remove either directory to repair an authentication
+error: verify the selected container and its original initialization credentials.
 
-PowerShell:
-
-```powershell
-cd server
-docker compose down
-Remove-Item -Recurse -Force _db-data
-New-Item -ItemType Directory _db-data | Out-Null
-```
-
-Bash:
-
-```bash
-cd server
-docker compose down
-rm -rf _db-data
-mkdir -p _db-data
-```
-
-After that, rerun `make dev` so Postgres initializes with the values from `setenv.sh`.
+See [worktree setup and rollback](../docs/worktrees.md) before any storage
+transition. PostgreSQL 16 data cannot be opened by PostgreSQL 15, and
+`pg_upgrade` cannot downgrade it. Back up and separately rehearse any optional
+logical data transfer. Concurrent worktrees use the documented wrapper commands;
+legacy Make targets operate the shared server and must not be wrapped in a
+worktree command.
 
 **Missing air:**
 

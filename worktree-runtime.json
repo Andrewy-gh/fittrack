@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "modes": ["dev", "test", "rls", "e2e"],
+  "exclusiveModes": ["test", "rls"],
+  "runAdapter": ["node", "scripts/worktree.ts", "--exec"],
+  "setup": ["node", "scripts/worktree.ts", "--setup"]
+}
