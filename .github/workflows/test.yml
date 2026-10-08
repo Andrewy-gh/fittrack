@@ -131,7 +131,7 @@ jobs:
         with:
           node-version-file: .node-version
 
-      - name: Test worktree setup helper
+      - name: Test FitTrack worktree adapter
         run: node --test scripts/worktree.test.ts
 
       - name: Set up Bun

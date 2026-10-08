@@ -1,4 +1,4 @@
-// worktree-db is invoked by scripts/worktree.ts with the allocation in memory.
+// worktree-db is invoked by the FitTrack adapter under external worktree-runtime supervision.
 // It never installs, starts, upgrades, drops, or reconfigures PostgreSQL clusters.
 package main
 

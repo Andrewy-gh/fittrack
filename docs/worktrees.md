@@ -2,15 +2,27 @@
 
 **Creating a Git worktree is not setup.** In each worktree use
 `node scripts/worktree.ts init`, then `db setup`, then `run` below.
-Linked worktrees from one clone share a locked allocation registry. Separate
-clones do not coordinate application ports. Never copy `.worktree/` or source
-another checkout's database environment.
+The separately installed **worktree-runtime Go CLI** owns allocation, locks,
+process supervision, status and recovery. One per-user registry coordinates
+linked worktrees and independent clones. This repo keeps only
+`worktree-runtime.json`, its FitTrack environment adapter and database setup.
+Never copy `.worktree/` or source another checkout's database environment.
+
+Ordinary single-checkout development does not require this CLI. Concurrent
+agent work needs it or equivalent isolation. Process Compose is optional and
+is not a FitTrack dependency.
 
 ## Prerequisites and version gate
 
 - Node **24.14.0**, Go **1.26.6**, Bun **1.4.2**, Goose **v3.24.3**.
-- Windows 10/11 with Windows PowerShell 5.1 and available `Add-Type`, or POSIX.
-  PowerShell and Git Bash invoke the same Node entry point on Windows.
+- A separately built/installed **worktree-runtime protocol 1** native executable,
+  available on PATH or selected with `WORKTREE_RUNTIME`. Its Go source, OS tests
+  and install lifecycle live outside this repository. Build from that tool's
+  source checkout with `go build -o bin/worktree-runtime.exe .` (omit `.exe` on
+  POSIX), or use `go install .` there. A versioned release/install channel must
+  be established separately; this PR does not vendor or download the tool.
+- Windows 10/11 or POSIX. PowerShell and Git Bash invoke the same native runtime.
+  No C# compiler, PowerShell compile helper or Process Compose install is needed.
 - A running **local PostgreSQL cluster** at `127.0.0.1:55432`. Setup does not
   install/start/upgrade clusters or change their configuration.
 - A local owning login with `CREATEDB` (and `CREATEROLE` for first setup), plus
@@ -35,11 +47,14 @@ or a POSIX shell. The pinned Node 24.14.0 executes the TypeScript directly;
 no transpiler, loader, or Bash wrapper is needed. Check `node --version` first.
 If your nvm-managed shell selects another version, run `nvm use 24.14.0`.
 
-The only PowerShell script is an internal compile step for the Windows native
-supervisor. Git Bash still launches Windows Node and therefore uses that
-supervisor too. Windows Job Objects and exclusive sockets provide process-tree
-cleanup and port ownership; switching shells cannot replace those OS guarantees.
-The shared CLI, allocation logic, environment wiring, and tests stay in TypeScript.
+Set `WORKTREE_RUNTIME` to a native executable path if it is not on PATH. In
+PowerShell use `$env:WORKTREE_RUNTIME='C:\path\to\worktree-runtime.exe'`; in
+Bash use `export WORKTREE_RUNTIME='/path/to/worktree-runtime'`. The Node command
+is a FitTrack adapter: it maps assigned ports/database names and runs setup.
+The standalone Go runtime contains the Windows Job Object/exclusive socket
+implementation and Unix process groups. Killing the Node adapter closes its
+dedicated cancellation pipe to the runtime; it cannot leave supervised writers
+behind merely because a package wrapper was killed.
 
 ### One shared Docker server
 
@@ -114,9 +129,11 @@ Replace placeholders locally; URL-encode special characters in credentials.
 Never paste credentials into review artifacts. This workflow needs no production
 credential or write.
 
-`init` writes ignored `.worktree/config.json` with names and ports only. Its
-registry is under the clone's Git common directory at
-`fittrack-worktrees/registry.json`. Concurrent initializers briefly wait for
+`init` writes ignored `.worktree/allocation.json` with identity and base port
+only. The adapter derives FitTrack's database names and endpoints in memory.
+The per-user runtime registry is outside Git; `worktree-runtime status --json`
+reports its exact location, active/uncertain runs and optional log paths.
+All concurrent sessions must share this registry scope. Concurrent initializers briefly wait for
 the lock without stealing it. The canonical checkout path determines the ID;
 branch changes keep the allocation, moving the directory does not.
 
@@ -170,9 +187,8 @@ lock until the owned process tree has stopped. Dev API/frontend and E2E
 API/Playwright share their respective mode because they use separate ports.
 Do not run concurrent destructive E2E suites in one worktree.
 
-PowerShell compiles a small native supervisor once per source hash into
-`%TEMP%/fittrack-worktree-native/`; long-running commands do not retain a
-PowerShell process. Windows atomically places commands in non-breakaway Job Objects with
+The external Go runtime starts its own native supervisor. Windows atomically
+places commands in non-breakaway Job Objects with
 kill-on-close. Normal root exit, failure, cancellation, and wrapper death also
 terminate grandchildren. The supervisor verifies the job is empty before
 releasing locks. Windows cancellation is forced, not a POSIX graceful signal.
@@ -192,7 +208,23 @@ create Stack accounts.
 
 ## Ports, frontend, and auth
 
-Ten-port blocks use 21000â€“29999: dev frontend `+0`, API `+1`, metrics `+2`,
+### Agent status and optional logs
+
+From `server/`, a managed API can capture a new log file in the allocation
+directory without introducing Process Compose:
+
+```bash
+node ../scripts/worktree.ts run dev --log-file ../.worktree/api.log -- go run ./cmd/api
+```
+
+Use a new log filename per invocation; existing files are not overwritten.
+`worktree-runtime status --json` reports this checkout's active/uncertain run
+IDs, owner PIDs, modes and log paths without command arguments or credentials.
+Agents can read the file or capture the normal streamed output themselves.
+Multi-service orchestration/readiness is a separate optional extension of the
+external tool; it is not required for concurrent worktree isolation.
+
+Ten-port blocks use 21000-29999: dev frontend `+0`, API `+1`, metrics `+2`,
 E2E frontend `+3`, API `+4`, metrics `+5`, preview `+6`, three reserved ports.
 `init`/`check` probe both address families. Windows uses exclusive native sockets:
 Node's `exclusive: true` was observed accepting a conflicting loopback listener
@@ -231,7 +263,7 @@ reuse means a live PID alone does not prove ownership. If uncertain, keep the
 record. Never kill by process-name/port wildcard. Old allocations survive
 worktree deletion/moves until explicitly reviewed.
 
-After installing the pinned client dependencies, type-check the CLI and both
+After installing the pinned client dependencies, type-check the adapter and
 test files from the repository root:
 
 ```bash
@@ -239,8 +271,16 @@ node client/node_modules/typescript/bin/tsc -p scripts/tsconfig.json
 node --test scripts/worktree.test.ts
 ```
 
+With `WORKTREE_RUNTIME` pointing to the separately built executable, also run
+`node --test scripts/worktree.runtime.test.ts` for the real Node-to-Go boundary,
+wrapper death, orphan cleanup, and log capture. The tool owns its generic
+Windows/Linux lifecycle and allocation suite in its own source repository.
+
 Node strips types at runtime; the separate strict TypeScript check runs in CI.
-The lifecycle tests exercise native process/socket and real linked-worktree coverage. For the disposable PostgreSQL test, ensure 55432 is
+The standalone tool owns native process/socket and real clone/worktree lifecycle
+tests (`go test ./...` in its source checkout). FitTrack's Node suite owns URL,
+RLS and service-endpoint mapping. For the disposable PostgreSQL test, ensure
+the external runtime is available and 55432 is
 unused, set `FITTRACK_TEST_DOCKER=1` for the pinned Docker image (or
 `FITTRACK_TEST_POSTGRES_BIN` for a native PostgreSQL bin directory), and
 `FITTRACK_GOOSE` to v3.24.3, then run:

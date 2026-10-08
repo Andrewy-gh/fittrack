@@ -1,183 +1,37 @@
 #!/usr/bin/env node
-// Local-only worktree coordination. See docs/worktrees.md for the supported entry points.
-import { createHash, randomUUID } from "node:crypto";
-import { execFile, execFileSync, spawn } from "node:child_process";
-import {
-  access,
-  mkdir,
-  readFile,
-  readdir,
-  realpath,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import type { SpawnOptions } from "node:child_process";
-import type { Server } from "node:net";
-import { createServer } from "node:net";
-import { tmpdir } from "node:os";
-import { promisify } from "node:util";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+// FitTrack's app adapter for the separately installed worktree-runtime Go CLI.
+import { execFileSync, spawn } from "node:child_process";
+import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const VERSION = 1;
-const FIRST_PORT = 21000;
-const LAST_PORT = 29999;
-const BLOCK_SIZE = 10;
 const MODES = ["dev", "test", "rls", "e2e"] as const;
 type Mode = (typeof MODES)[number];
 type Allocation = { readonly root: string; readonly id: string; readonly basePort: number };
-type Context = { readonly root: string; readonly stateDir: string; readonly configPath: string };
-type Registry = { readonly version: number; readonly entries: Allocation[] };
 type LocalConfig = ReturnType<typeof localConfig>;
-type Release = () => Promise<void>;
-type WindowsRequest =
-  | { readonly action: "reserve"; readonly port: number }
-  | {
-      readonly action: "run";
-      readonly receipt: string;
-      readonly command: string;
-      readonly args: string[];
-    };
-type WindowsOptions = Pick<SpawnOptions, "cwd" | "env"> & { readonly stdout?: "pipe" | "inherit" };
-type ExecutionOptions = {
-  readonly cwd: string;
-  readonly env: NodeJS.ProcessEnv;
-  readonly cancelPath?: string;
-  readonly receiptPath: string;
-  readonly onUncertain: () => void;
-};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-function errorCode(error: unknown): unknown {
-  return isRecord(error) ? error.code : undefined;
-}
 function isMode(value: string | undefined): value is Mode {
   return MODES.some((mode) => mode === value);
 }
-const LOCAL_DIRECTORY = ".worktree";
-const windowsScript = fileURLToPath(new URL("./worktree-windows.ps1", import.meta.url));
-
-async function windowsExecutable() {
-  const source = await readFile(new URL("./worktree-windows.cs", import.meta.url));
-  const hash = createHash("sha256").update(source).update(process.arch).digest("hex");
-  const directory = join(tmpdir(), "fittrack-worktree-native");
-  const executable = join(directory, `${hash}.exe`);
-  const exists = () =>
-    access(executable).then(
-      () => true,
-      () => false,
-    );
-  if (await exists()) return executable;
-  await withLock(
-    `${executable}.lock`,
-    async () => {
-      if (await exists()) return;
-      const temporary = join(directory, `${randomUUID()}.exe`);
-      try {
-        await promisify(execFile)(
-          join(
-            process.env.SystemRoot ?? "C:\\Windows",
-            "System32",
-            "WindowsPowerShell",
-            "v1.0",
-            "powershell.exe",
-          ),
-          [
-            "-NoLogo",
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            windowsScript,
-            "-OutputPath",
-            temporary,
-          ],
-          { windowsHide: true },
-        );
-        await rename(temporary, executable);
-      } finally {
-        await rm(temporary, { force: true });
-      }
-    },
-    () => true,
-    30000,
-  );
-  return executable;
-}
-
-function windowsSupervisor(
-  executable: string,
-  request: WindowsRequest,
-  options: WindowsOptions = {},
-) {
-  const args =
-    request.action === "reserve"
-      ? ["reserve", String(request.port)]
-      : ["run", request.receipt, request.command, ...request.args];
-  const child = spawn(executable, args, {
-    windowsHide: true,
-    ...options,
-    stdio: ["pipe", options.stdout ?? "inherit", "inherit"],
-  });
-  child.stdin?.on("error", () => {});
-  return child;
-}
-
-async function reserveWindows(basePort: number) {
-  const child = windowsSupervisor(
-    await windowsExecutable(),
-    { action: "reserve", port: basePort },
-    { stdout: "pipe" },
-  );
-  const exited = new Promise<number | null>((done, reject) => {
-    child.once("error", reject);
-    child.once("exit", done);
-  });
-  const release = async () => {
-    child.stdin?.end();
-    await exited;
-  };
-  try {
-    const status = await new Promise<string>((done, reject) => {
-      let output = "";
-      child.stdout?.on("data", (chunk) => {
-        output += chunk;
-        if (output.includes("\n")) done(output.trim());
-      });
-      exited.then(
-        () => reject(new Error("Windows port supervisor exited before reserving sockets.")),
-        reject,
-      );
-    });
-    if (status !== "READY")
-      throw new Error(`Port block ${basePort} cannot be reserved (${status}).`, {
-        cause: { code: status },
-      });
-    return release;
-  } catch (error) {
-    await release();
-    throw error;
+function parseAllocation(value: unknown): Allocation {
+  if (!isRecord(value) || value.version !== VERSION || typeof value.root !== "string" ||
+      !isAbsolute(value.root) || typeof value.id !== "string" ||
+      !/^[a-z0-9_]+_[a-f0-9]{12}$/.test(value.id) || typeof value.basePort !== "number" ||
+      !Number.isInteger(value.basePort) || value.basePort < 21000 || value.basePort > 29990 ||
+      (value.basePort - 21000) % 10 !== 0) {
+    throw new Error("Unsupported external runtime allocation; use worktree-runtime protocol 1.");
   }
+  return { root: value.root, id: value.id, basePort: value.basePort };
 }
-
-/** Derive a stable database-safe identifier from the canonical checkout path. */
-export function worktreeId(root: string) {
-  const label =
-    basename(root)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .slice(0, 20) || "worktree";
-  return `${label}_${createHash("sha256").update(root).digest("hex").slice(0, 12)}`;
-}
-
-function allocation(root: string, basePort: number): Allocation {
-  const id = worktreeId(root);
-  return { root, id, basePort };
+function assignedConfig() {
+  try {
+    return localConfig(parseAllocation(JSON.parse(process.env.WORKTREE_ALLOCATION ?? "")));
+  } catch {
+    throw new Error("Invoke this app adapter through the external worktree-runtime CLI.");
+  }
 }
 
 /** Build the credential-free database names and service ports for an allocation. */
@@ -204,224 +58,6 @@ export function localConfig(entry: Allocation) {
       preview: basePort + 6,
     },
   };
-}
-
-/** Discover the canonical checkout and shared Git coordination directory. */
-export async function discover(cwd = process.cwd()): Promise<Context> {
-  const git = (...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
-  const root = await realpath(git("rev-parse", "--show-toplevel"));
-  const common = await realpath(resolve(cwd, git("rev-parse", "--git-common-dir")));
-  return {
-    root,
-    stateDir: join(common, "fittrack-worktrees"),
-    configPath: join(root, LOCAL_DIRECTORY, "config.json"),
-  };
-}
-
-async function readJSON(path: string, fallback?: unknown): Promise<unknown> {
-  try {
-    return JSON.parse(await readFile(path, "utf8"));
-  } catch (error) {
-    if (errorCode(error) === "ENOENT" && fallback !== undefined) return fallback;
-    throw new Error(
-      `Cannot read ${path}: ${error instanceof Error ? error.message : "unknown read error"}`,
-    );
-  }
-}
-
-async function atomicJSON(path: string, value: unknown) {
-  await mkdir(dirname(path), { recursive: true });
-  const temporary = `${path}.${randomUUID()}.tmp`;
-  try {
-    await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" });
-    await rename(temporary, path);
-  } finally {
-    await rm(temporary, { force: true });
-  }
-}
-
-/** Run an operation under an exclusive directory lock without stealing stale locks. */
-export async function withLock<T>(
-  path: string,
-  action: () => Promise<T>,
-  shouldRelease = () => true,
-  waitMs = 0,
-): Promise<T> {
-  await mkdir(dirname(path), { recursive: true });
-  const deadline = Date.now() + waitMs;
-  for (;;) {
-    try {
-      await mkdir(path);
-      break;
-    } catch (error) {
-      if (errorCode(error) !== "EEXIST") throw error;
-      if (Date.now() >= deadline)
-        throw new Error(
-          `Lock already held: ${path}. Wait for the other command. After a crash, verify its process has stopped before removing this lock directory.`,
-        );
-      await delay(100);
-    }
-  }
-  try {
-    await writeFile(
-      join(path, "owner.json"),
-      JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
-    );
-    return await action();
-  } finally {
-    if (shouldRelease()) await rm(path, { recursive: true, force: true });
-  }
-}
-
-function parseRegistry(value: unknown): Registry {
-  if (!isRecord(value) || value.version !== VERSION || !Array.isArray(value.entries))
-    throw new Error("Unsupported worktree registry. Refusing to overwrite it.");
-  const roots = new Set<string>();
-  const ids = new Set<string>();
-  const ports = new Set<number>();
-  const entries: Allocation[] = [];
-  for (const candidate of value.entries) {
-    const entry: unknown = candidate;
-    if (
-      !isRecord(entry) ||
-      typeof entry.root !== "string" ||
-      typeof entry.id !== "string" ||
-      entry.id !== worktreeId(entry.root) ||
-      typeof entry.basePort !== "number" ||
-      !Number.isInteger(entry.basePort) ||
-      entry.basePort < FIRST_PORT ||
-      entry.basePort + BLOCK_SIZE - 1 > LAST_PORT ||
-      (entry.basePort - FIRST_PORT) % BLOCK_SIZE !== 0 ||
-      roots.has(entry.root) ||
-      ids.has(entry.id) ||
-      ports.has(entry.basePort)
-    ) {
-      throw new Error(
-        "Invalid or conflicting worktree registry entry. Refusing to change allocations.",
-      );
-    }
-    roots.add(entry.root);
-    ids.add(entry.id);
-    ports.add(entry.basePort);
-    entries.push({ root: entry.root, id: entry.id, basePort: entry.basePort });
-  }
-  return { version: VERSION, entries };
-}
-
-async function readRegistry(stateDir: string) {
-  const registry = await readJSON(join(stateDir, "registry.json"), {
-    version: VERSION,
-    entries: [],
-  });
-  return parseRegistry(registry);
-}
-
-async function listen(port: number, host: string) {
-  const server = createServer();
-  await new Promise<void>((resolveListen, reject) => {
-    server.once("error", reject);
-    server.listen({ port, host, exclusive: true, ipv6Only: host === "::" }, resolveListen);
-  });
-  return server;
-}
-
-// Hold both address-family reservations until every port has been checked.
-/** Reserve all ten ports until the returned release function is called. */
-export async function reserveBlock(basePort: number): Promise<Release> {
-  if (process.platform === "win32") return reserveWindows(basePort);
-  const servers: Server[] = [];
-  const release = async () => {
-    await Promise.all(
-      servers.map((server) => new Promise<void>((done) => server.close(() => done()))),
-    );
-  };
-  try {
-    for (let port = basePort; port < basePort + BLOCK_SIZE; port++) {
-      for (const host of ["0.0.0.0", "::"]) {
-        try {
-          servers.push(await listen(port, host));
-        } catch (error) {
-          if (
-            host === "::" &&
-            ["EAFNOSUPPORT", "EADDRNOTAVAIL"].some((code) => code === errorCode(error))
-          )
-            continue;
-          throw new Error(
-            `Port ${port} cannot be reserved (${String(errorCode(error))}). Stop the conflicting listener; assignments never silently change.`,
-            { cause: error },
-          );
-        }
-      }
-    }
-    return release;
-  } catch (error) {
-    await release();
-    throw error;
-  }
-}
-
-/** Allocate or recover a checkout configuration while holding its port reservations. */
-export async function initialize(
-  context: Context,
-  reserve: (port: number) => Promise<Release> = reserveBlock,
-) {
-  // Allocation is short-lived; concurrent initializers wait, but never steal locks.
-  const lock = join(context.stateDir, "registry.lock");
-  return withLock(
-    lock,
-    async () => {
-      const registry = await readRegistry(context.stateDir);
-      let entry = registry.entries.find((candidate) => candidate.root === context.root);
-      let release: Release | undefined;
-      if (entry) {
-        release = await reserve(entry.basePort);
-      } else {
-        for (let port = FIRST_PORT; port + BLOCK_SIZE - 1 <= LAST_PORT; port += BLOCK_SIZE) {
-          if (registry.entries.some((candidate) => candidate.basePort === port)) continue;
-          try {
-            release = await reserve(port);
-            entry = allocation(context.root, port);
-            break;
-          } catch (error) {
-            if (!(error instanceof Error && errorCode(error.cause) === "EADDRINUSE")) throw error;
-          }
-        }
-        if (!entry) throw new Error("No free ten-port worktree block remains in 21000â€“29999.");
-        const allocated = entry;
-        if (registry.entries.some((candidate) => candidate.id === allocated.id))
-          throw new Error("Worktree ID collision; refusing allocation.");
-        registry.entries.push(entry);
-      }
-      if (!entry || !release) throw new Error("Port allocation did not complete.");
-      try {
-        // Registry first: an interrupted local-file write can be retried without reallocating.
-        await atomicJSON(join(context.stateDir, "registry.json"), registry);
-        const config = localConfig(entry);
-        await atomicJSON(context.configPath, config);
-        return config;
-      } finally {
-        await release();
-      }
-    },
-    () => true,
-    5000,
-  );
-}
-
-/** Load an allocation only when the local configuration matches the shared registry. */
-export async function loadConfig(context: Context) {
-  const registry = await readRegistry(context.stateDir);
-  const entry = registry.entries.find((candidate) => candidate.root === context.root);
-  if (!entry)
-    throw new Error("This worktree has no allocation. Run: node scripts/worktree.ts init");
-  const expected = localConfig(entry);
-  const actual = await readJSON(context.configPath);
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    throw new Error(
-      "Worktree config differs from the registry. Stop this worktree's services and rerun init; never copy another worktree's .worktree directory.",
-    );
-  }
-  return expected;
 }
 
 /** Select a worktree database while refusing remote or redirected connection templates. */
@@ -511,288 +147,111 @@ export function commandEnvironment(
   return env;
 }
 
-function signalGroup(pid: number, signal: NodeJS.Signals | 0) {
-  try {
-    process.kill(-pid, signal);
-    return true;
-  } catch (error) {
-    if (errorCode(error) === "ESRCH") return false;
-    throw error;
-  }
-}
-
-const delay = (milliseconds: number) => new Promise<void>((done) => setTimeout(done, milliseconds));
-
-async function executeOwned(
-  command: string,
-  args: string[],
-  { cwd, env, cancelPath, receiptPath, onUncertain }: ExecutionOptions,
-): Promise<number> {
-  const executable = process.platform === "win32" ? await windowsExecutable() : undefined;
-  return new Promise<number>((resolveExit, reject) => {
-    // A separate group lets cancellation reach go/bun/shell grandchildren too.
-    const windows = process.platform === "win32";
-    if (windows) {
-      try {
-        if (!isAbsolute(command))
-          command =
-            execFileSync("where.exe", [command], {
-              encoding: "utf8",
-              windowsHide: true,
-              stdio: ["ignore", "pipe", "ignore"],
-            })
-              .trim()
-              .split(/\r?\n/)
-              .find((path) => path.toLowerCase().endsWith(".exe")) ?? "";
-      } catch {
-        reject(
-          new Error(
-            "ENOENT: executable not found. Use a native executable (node, bun, go) or an explicit shell.",
-          ),
-        );
-        return;
-      }
-      if (!command?.toLowerCase().endsWith(".exe")) {
-        reject(
-          new Error(
-            "Use a native .exe or an explicit shell; .cmd/.bat files are not implicitly interpreted.",
-          ),
-        );
-        return;
-      }
-    }
-    const child = executable
-      ? windowsSupervisor(
-          executable,
-          { action: "run", command, args, receipt: receiptPath },
-          { cwd, env },
-        )
-      : spawn(command, args, { cwd, env, stdio: "inherit", detached: true });
-    let escalation: ReturnType<typeof setTimeout> | undefined;
-    const cancel = (signal: NodeJS.Signals) => {
-      if (!child.pid) return;
-      if (windows) {
-        child.stdin?.end();
-        return;
-      }
-      const pid = child.pid;
-      signalGroup(pid, signal);
-      escalation ??= setTimeout(() => signalGroup(pid, "SIGKILL"), 2000);
-    };
-    const onInterrupt = () => cancel("SIGINT");
-    const onTerminate = () => cancel("SIGTERM");
-    const cancellation = cancelPath
-      ? setInterval(async () => {
-          try {
-            await readFile(cancelPath);
-            cancel("SIGTERM");
-          } catch {}
-        }, 100)
-      : undefined;
-    process.on("SIGINT", onInterrupt);
-    process.on("SIGTERM", onTerminate);
-    const cleanup = () => {
-      clearTimeout(escalation);
-      clearInterval(cancellation);
-      process.off("SIGINT", onInterrupt);
-      process.off("SIGTERM", onTerminate);
-    };
-    child.once("error", (error) => {
-      cleanup();
-      reject(error);
+// This bridge contains no allocation, lock, process-tree or recovery policy.
+function runtimeCommand(args: string[], cwd = process.cwd(), inherited = process.env, capture = false) {
+  return new Promise<{ readonly output: string; readonly code: number }>((done, reject) => {
+    const child = spawn(inherited.WORKTREE_RUNTIME ?? "worktree-runtime", args, {
+      cwd,
+      env: { ...inherited, WORKTREE_RUNTIME_PARENT_PIPE: "1" },
+      windowsHide: true,
+      // libuv's implicit Windows job would kill the runtime itself with this
+      // wrapper, preventing its confirmed cleanup receipt and lock release.
+      detached: process.platform === "win32",
+      stdio: ["pipe", capture ? "pipe" : "inherit", "inherit"],
     });
-    child.once("exit", async (code, signal) => {
-      try {
-        // Even a normally-exiting shell can leave a background database writer.
-        if (windows) {
-          const drained = await readFile(receiptPath, "utf8").catch(() => "");
-          if (drained !== "drained") {
-            onUncertain();
-            console.error(
-              "Windows job cleanup was not confirmed; coordination records are retained for manual recovery.",
-            );
-            if (code === 0) code = 1;
-          }
-        }
-        if (!windows && child.pid !== undefined && signalGroup(child.pid, 0)) {
-          signalGroup(child.pid, "SIGTERM");
-          await delay(250);
-          if (signalGroup(child.pid, 0)) {
-            signalGroup(child.pid, "SIGKILL");
-            await delay(250);
-          }
-          if (signalGroup(child.pid, 0)) {
-            onUncertain();
-            console.error(
-              `Process group ${child.pid} has not fully disappeared. Its coordination records are retained; verify ownership and termination before recovery.`,
-            );
-            if (code === 0) code = 1;
-          }
-        }
-        resolveExit(code ?? (signal === "SIGINT" ? 130 : 143));
-      } catch (error) {
-        onUncertain();
-        reject(error);
-      } finally {
-        cleanup();
-      }
+    child.stdin?.on("error", () => {});
+    let output = "";
+    child.stdout?.on("data", (chunk) => { output += chunk; });
+    const cancel = () => child.stdin?.end();
+    process.on("SIGINT", cancel);
+    process.on("SIGTERM", cancel);
+    const cleanup = () => {
+      process.off("SIGINT", cancel);
+      process.off("SIGTERM", cancel);
+      child.stdin?.end();
+    };
+    child.once("error", () => {
+      cleanup();
+      reject(new Error("Install the external worktree-runtime CLI on PATH or set WORKTREE_RUNTIME to its native executable."));
+    });
+    child.once("exit", (code) => {
+      cleanup();
+      done({ output, code: code ?? 130 });
     });
   });
 }
 
-/** Run and supervise a command, retaining coordination records if cleanup is uncertain. */
-export async function runCommand(
-  context: Context,
-  mode: string,
-  command: string | undefined,
-  args: string[],
-) {
-  if (!command) throw new Error("Expected: run <dev|test|rls|e2e> -- <command> [arguments]");
-  const config = await loadConfig(context);
-  const env = commandEnvironment(config, mode);
-  let releaseLock = true;
-  const lockPath = join(context.stateDir, `${config.id}-${mode}.lock`);
-  const runPath = join(context.stateDir, `${config.id}-runs`, randomUUID());
-  await withLock(
-    join(context.stateDir, `${config.id}-database.lock`),
-    async () => {
-      await mkdir(runPath, { recursive: true });
-      await atomicJSON(join(runPath, "owner.json"), { pid: process.pid, mode });
-    },
-    () => true,
-    5000,
-  );
-  const execute = () =>
-    executeOwned(command, args, {
-      cwd: process.cwd(),
-      env,
-      cancelPath: join(runPath, "cancel"),
-      receiptPath: join(runPath, "drained"),
-      onUncertain: () => {
-        releaseLock = false;
-      },
-    });
+/** Read the external allocation and project it into FitTrack's local endpoints. */
+export async function loadConfig(cwd = process.cwd(), inherited: NodeJS.ProcessEnv = process.env) {
+  const result = await runtimeCommand(["status", "--json"], cwd, inherited, true);
+  if (result.code) throw new Error("External allocation could not be loaded.");
+  const value: unknown = JSON.parse(result.output);
+  return localConfig(parseAllocation(value));
+}
+
+function nativeCommand(command: string) {
+  if (process.platform !== "win32") return command;
   try {
-    return await (["test", "rls"].includes(mode)
-      ? withLock(lockPath, execute, () => releaseLock)
-      : execute());
-  } finally {
-    if (releaseLock) await rm(runPath, { recursive: true, force: true });
-  }
+    const path = isAbsolute(command) ? command :
+      execFileSync("where.exe", [command], { encoding: "utf8", windowsHide: true,
+        stdio: ["ignore", "pipe", "ignore"] }).trim().split(/\r?\n/)
+        .find((candidate) => candidate.toLowerCase().endsWith(".exe"));
+    if (path?.toLowerCase().endsWith(".exe")) return path;
+  } catch {}
+  throw new Error("ENOENT: use a native .exe or an explicit shell; .cmd/.bat files are not implicitly interpreted.");
 }
 
-async function stopCommands(context: Context, mode: string | undefined) {
-  if (!isMode(mode)) throw new Error("Expected stop <dev|test|rls|e2e>");
-  const config = await loadConfig(context);
-  const directory = join(context.stateDir, `${config.id}-runs`);
-  await withLock(
-    join(context.stateDir, `${config.id}-database.lock`),
-    async () => {
-      for (const id of await readdir(directory).catch((error) => {
-        if (errorCode(error) === "ENOENT") return [];
-        throw error;
-      })) {
-        const owner = await readJSON(join(directory, id, "owner.json"), null);
-        if (isRecord(owner) && owner.mode === mode)
-          await writeFile(join(directory, id, "cancel"), "cancel\n").catch((error) => {
-            if (errorCode(error) !== "ENOENT") throw error;
-          });
-      }
-    },
-    () => true,
-    5000,
-  );
-  console.log(
-    `Cancellation requested for this worktree's ${mode} commands. Wait for their exit before restarting.`,
-  );
-}
-
-async function setupDatabases(context: Context, major: string | undefined) {
-  if (!major || !/^[1-9][0-9]$/.test(major))
-    throw new Error(
-      "Expected db setup --major <verified-production-major>. No default version is assumed.",
-    );
-  const config = await loadConfig(context);
-  const env = commandEnvironment(config, "dev");
-  env.FITTRACK_DATABASE_CONFIG = JSON.stringify(config);
-  env.FITTRACK_POSTGRES_MAJOR = major;
-  let releaseLock = true;
-  await withLock(
-    join(context.stateDir, `${config.id}-database.lock`),
-    async () => {
-      const runs = await readdir(join(context.stateDir, `${config.id}-runs`)).catch((error) => {
-        if (errorCode(error) === "ENOENT") return [];
-        throw error;
-      });
-      if (runs.length)
-        throw new Error(
-          "Stop this worktree's commands before database setup. Stale run records require manual process verification.",
-        );
-      const args = ["run", "-p=1", "./cmd/worktree-db"];
-      const code = await executeOwned("go", args, {
-        cwd: join(context.root, "server"),
-        env,
-        receiptPath: join(context.stateDir, `${config.id}-database.lock`, "drained"),
-        onUncertain: () => {
-          releaseLock = false;
-        },
-      });
-      if (code !== 0)
-        throw new Error(
-          `Database setup exited ${code}; completed databases are preserved. Correct the prerequisite and retry.`,
-        );
-    },
-    () => releaseLock,
-  );
+function execute(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) {
+  return new Promise<void>((done, reject) => {
+    const child = spawn(nativeCommand(command), args, { cwd, env, windowsHide: true, stdio: "inherit" });
+    child.once("error", () => reject(new Error("App command could not start; arguments and environment withheld.")));
+    // Observe exit, not pipe EOF: grandchildren are contained by the Go runtime.
+    child.once("exit", (code) => { process.exitCode = code ?? 130; done(); });
+  });
 }
 
 async function main(args: string[]) {
   if (!args.length || args[0] === "help" || args[0] === "--help") {
-    console.log(
-      "Usage: node scripts/worktree.ts init | status | check | db setup --major <verified-major> | stop <mode> | run <dev|test|rls|e2e> -- <command> [arguments]\nCreating a Git worktree is not setup. Run init, then db setup before running commands. See docs/worktrees.md.",
-    );
+    console.log("FitTrack adapter: init | status | check | db setup --major <verified-major> | stop <mode> | run <dev|test|rls|e2e> [--log-file path] -- <command> [arguments]\nRequires the external worktree-runtime Go CLI. See docs/worktrees.md.");
     return;
   }
-  const context = await discover();
-  switch (args[0]) {
-    case "init": {
-      const config = await initialize(context);
-      console.log(
-        `Allocated ${config.id}. Config: ${context.configPath}\nNo databases created. See docs/worktrees.md for the staged setup.`,
-      );
-      break;
-    }
-    case "status":
-      console.log(JSON.stringify(await loadConfig(context), null, 2));
-      break;
-    case "check": {
-      const config = await loadConfig(context);
-      const release = await reserveBlock(config.ports.frontend);
-      await release();
-      console.log(`All ten assigned ports for ${config.id} are currently free.`);
-      break;
-    }
-    case "run":
-      if (args[2] !== "--")
-        throw new Error("Expected: run <dev|test|rls|e2e> -- <command> [arguments]");
-      process.exitCode = await runCommand(context, args[1] ?? "", args[3], args.slice(4));
-      break;
-    case "stop":
-      await stopCommands(context, args[1]);
-      break;
-    case "db":
-      if (args[1] !== "setup" || args[2] !== "--major" || args.length !== 4)
-        throw new Error("Expected db setup --major <verified-production-major>");
-      await setupDatabases(context, args[3]);
-      break;
-    default:
-      throw new Error(`Unknown command: ${args[0]}`);
+  if (args[0] === "--exec") {
+    const mode = args[1], command = args[3];
+    if (!isMode(mode) || args[2] !== "--" || !command || process.env.WORKTREE_MODE !== mode)
+      throw new Error("Invalid managed FitTrack command.");
+    const cwd = process.env.WORKTREE_COMMAND_CWD;
+    if (!cwd || !isAbsolute(cwd)) throw new Error("Missing managed command directory.");
+    await execute(command, args.slice(4), cwd, commandEnvironment(assignedConfig(), mode));
+    return;
   }
+  if (args[0] === "--setup") {
+    if (args.length !== 3 || args[1] !== "--major" || !/^[1-9][0-9]$/.test(args[2] ?? ""))
+      throw new Error("Expected db setup --major <verified-production-major>.");
+    const config = assignedConfig();
+    const env = commandEnvironment(config, "dev");
+    env.FITTRACK_DATABASE_CONFIG = JSON.stringify(config);
+    env.FITTRACK_POSTGRES_MAJOR = args[2];
+    await execute("go", ["run", "-p=1", "./cmd/worktree-db"], join(config.root, "server"), env);
+    return;
+  }
+  if (args[0] === "status") {
+    if (args.length !== 1) throw new Error("Expected status.");
+    console.log(JSON.stringify(await loadConfig(), null, 2));
+    return;
+  }
+  if (args[0] === "db") {
+    if (args[1] !== "setup") throw new Error("Expected db setup --major <verified-production-major>.");
+    process.exitCode = (await runtimeCommand(["setup", ...args.slice(2)])).code;
+    return;
+  }
+  if (!["init", "check", "stop", "run"].includes(args[0] ?? ""))
+    throw new Error("Unknown FitTrack adapter command.");
+  process.exitCode = (await runtimeCommand(args)).code;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main(process.argv.slice(2)).catch((error) => {
-    console.error(error.message);
+  main(process.argv.slice(2)).catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : "FitTrack adapter failed.");
     process.exitCode = 1;
   });
 }

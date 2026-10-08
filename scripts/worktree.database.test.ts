@@ -1,7 +1,7 @@
 // Opt-in real PostgreSQL proof. Starts ONLY a fresh, task-owned temporary cluster.
 import assert from "node:assert/strict";
 import type { ChildProcess, ExecFileOptionsWithStringEncoding } from "node:child_process";
-import { discover, loadConfig } from "./worktree.ts";
+import { loadConfig } from "./worktree.ts";
 import { execFile, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
@@ -213,6 +213,7 @@ test(
     }
     const env = {
       ...process.env,
+      WORKTREE_RUNTIME_STATE_DIR: join(temp, "runtime-state"),
       FITTRACK_LOCAL_DATABASE_URL: `postgresql://ft_test_owner:${password}@127.0.0.1:55432/postgres?sslmode=disable`,
       FITTRACK_LOCAL_RUNTIME_DATABASE_URL: `postgresql://fittrack_app:${randomBytes(24).toString("hex")}@127.0.0.1:55432/postgres?sslmode=disable`,
       FITTRACK_LOCAL_POSTGRES_CONTAINER: docker ? container : "",
@@ -290,6 +291,9 @@ test(
     await mkdir(repo);
     // Commit only synthetic fixture inputs. No real checkout or user files are staged.
     const inputs = [
+      "worktree-runtime.json",
+      "scripts/worktree.ts",
+      "scripts/package.json",
       "server/go.mod",
       "server/go.sum",
       "server/cmd/worktree-db",
@@ -342,7 +346,7 @@ test(
       });
     await Promise.all(roots.map((root) => cli(root, ["init"])));
     const readConfig = async (root: string) => {
-      const config = await loadConfig(await discover(root));
+      const config = await loadConfig(root, env);
       assert.deepEqual(JSON.parse((await cli(root, ["status"])).stdout), config);
       return config;
     };
