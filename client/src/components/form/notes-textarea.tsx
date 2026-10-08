@@ -1,3 +1,8 @@
+import {
+  validateWorkoutText,
+  workoutTextLength,
+  WORKOUT_TEXT_LIMIT,
+} from "@/lib/workout-text";
 import { useState } from "react";
 import { useFieldContext } from "@/hooks/form";
 import { Button } from "@/components/ui/button";
@@ -19,6 +24,8 @@ import { Textarea } from "../ui/textarea";
 export default function NotesTextarea() {
   const field = useFieldContext<string>();
   const [open, setOpen] = useState(false);
+  const text = field.state.value ?? "";
+  const error = validateWorkoutText(text.trim(), "Notes");
 
   return (
     <Dialog
@@ -41,14 +48,14 @@ export default function NotesTextarea() {
                 Notes
               </span>
             </div>
-            <div className="text-xs font-semibold text-card-foreground">
+            <div className="text-xs font-semibold text-card-foreground [overflow-wrap:anywhere]">
               {field.state.value ||
                 "Enter any notes, focus areas, or observations for this workout."}
             </div>
           </button>
         </Card>
       </DialogTrigger>
-      <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
+      <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto">
         <DialogHeader>
           <DialogTitle>Notes</DialogTitle>
           <DialogDescription>
@@ -65,13 +72,26 @@ export default function NotesTextarea() {
           <Textarea
             id={field.name}
             name={field.name}
-            value={field.state.value}
+            value={text}
             onBlur={field.handleBlur}
             onChange={(e) => field.handleChange(e.target.value)}
             autoFocus
             className="min-h-[80px]"
-            aria-invalid={field.state.meta.errors.length > 0}
+            aria-invalid={Boolean(error) || field.state.meta.errors.length > 0}
+            aria-describedby={`${field.name}-limit`}
           />
+          <p
+            id={`${field.name}-limit`}
+            className={
+              error
+                ? "text-sm text-destructive"
+                : "text-sm text-muted-foreground"
+            }
+            role={error ? "alert" : undefined}
+          >
+            {error ??
+              `${workoutTextLength(text.trim())}/${WORKOUT_TEXT_LIMIT} characters`}
+          </p>
           {field.state.meta.errors.length > 0 && (
             <p className="text-sm text-destructive">
               {field.state.meta.errors.join(", ")}

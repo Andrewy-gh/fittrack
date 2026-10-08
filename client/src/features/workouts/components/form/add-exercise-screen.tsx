@@ -1,3 +1,4 @@
+import { validateWorkoutText } from "@/lib/workout-text";
 import type { WorkoutExerciseInput } from "@/client";
 import { ExerciseCatalogPicker } from "@/features/exercises/components/exercise-catalog-picker";
 import { withForm } from "@/hooks/form";
@@ -48,6 +49,7 @@ export const AddExerciseScreen = withForm({
       exercise.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
     const trimmedSearchQuery = searchQuery.trim();
+    const nameError = validateWorkoutText(trimmedSearchQuery, "Exercise name");
     const canCreateExercise =
       normalizeExerciseName(trimmedSearchQuery).length > 0 &&
       !workingExercises.some(
@@ -82,6 +84,7 @@ export const AddExerciseScreen = withForm({
                   {canCreateExercise && !showCatalog && (
                     <Button
                       size="sm"
+                      disabled={Boolean(nameError)}
                       onClick={() => {
                         const newExercise: ExerciseOption = {
                           id: null, // null ID for new exercises not yet in the database
@@ -151,6 +154,14 @@ export const AddExerciseScreen = withForm({
                 value={searchQuery}
                 onChange={setSearchQuery}
               />
+              {nameError && (
+                <p
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {nameError}
+                </p>
+              )}
               <form.AppField
                 name="exercises"
                 mode="array"

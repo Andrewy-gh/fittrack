@@ -17,7 +17,7 @@ export function AppTopBar({ user }: AppTopBarProps) {
 
   return (
     <header
-      className="flex items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/85"
+      className="flex flex-wrap items-center gap-3 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/85"
       data-app-header
     >
       <Link
@@ -29,7 +29,7 @@ export function AppTopBar({ user }: AppTopBarProps) {
 
       <nav
         aria-label="Primary navigation"
-        className="hidden items-center gap-1 md:flex"
+        className="hidden flex-wrap items-center gap-1 md:flex"
       >
         {navItems.map(({ to, label, search }) => {
           const active = isActivePath(pathname, to);

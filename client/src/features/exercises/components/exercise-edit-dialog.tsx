@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { validateWorkoutText } from "@/lib/workout-text";
 import { useState } from "react";
 import { useRenameExerciseMutation } from "@/features/exercises/api/exercises";
 import { isApiError, getErrorMessage } from "@/lib/errors";
@@ -32,6 +33,7 @@ export function ExerciseEditDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const nameError = validateWorkoutText(name.trim(), "Exercise name");
   const updateMutation = useRenameExerciseMutation(isDemoMode);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,8 +48,8 @@ export function ExerciseEditDialog({
       return;
     }
 
-    if (trimmedName.length > 100) {
-      setError("Exercise name must be 100 characters or less");
+    if (nameError) {
+      setError(nameError);
       return;
     }
 
@@ -107,11 +109,21 @@ export function ExerciseEditDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Exercise name"
-              maxLength={100}
+              aria-label="Exercise name"
+              aria-invalid={Boolean(nameError || error)}
+              aria-describedby="exercise-name-error"
               disabled={isSubmitting}
               autoFocus
             />
-            {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
+            {(nameError || error) && (
+              <div
+                id="exercise-name-error"
+                role="alert"
+                className="text-sm text-destructive mt-2"
+              >
+                {nameError || error}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -124,7 +136,7 @@ export function ExerciseEditDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || Boolean(nameError)}
             >
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
