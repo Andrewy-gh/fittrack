@@ -6,7 +6,7 @@ require (
 	github.com/firebase/genkit/go v1.13.1
 	github.com/go-playground/validator/v10 v10.30.5
 	github.com/google/uuid v1.6.0
-	github.com/inngest/inngestgo v0.16.1
+	github.com/inngest/inngestgo v0.16.5
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/httprc/v3 v3.0.6
