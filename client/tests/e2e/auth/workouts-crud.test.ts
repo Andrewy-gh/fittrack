@@ -21,7 +21,7 @@ test.describe("Authenticated - Workouts CRUD", () => {
 
     await page.goto("/workouts");
     await expect(
-      page.getByRole("heading", { name: /workouts/i }),
+      page.getByRole("heading", { name: "Workouts", exact: true, level: 1 }),
     ).toBeVisible();
 
     await page.getByRole("link", { name: /new workout/i }).click();
