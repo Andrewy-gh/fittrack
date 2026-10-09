@@ -602,7 +602,7 @@ function MessageBubble({
         data-testid={`chat-message-${message.id}`}
         className="flex justify-end"
       >
-        <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
+        <div className="max-w-[80%] whitespace-pre-wrap [overflow-wrap:anywhere] rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
           {message.content}
         </div>
       </div>
@@ -620,7 +620,7 @@ function MessageBubble({
       data-testid={`chat-message-${message.id}`}
       className="flex flex-col gap-2"
     >
-      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+      <div className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-foreground">
         {message.content}
         {isStreaming ? (
           <ChatTypingIndicator

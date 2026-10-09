@@ -28,7 +28,8 @@ export default defineConfig({
         name: "FitTrack",
         short_name: "FitTrack",
         description: "Track your workouts",
-        theme_color: "#000000",
+        theme_color: "#f9f9f9",
+        background_color: "#f9f9f9",
         icons: [
           {
             src: "logo192.png",

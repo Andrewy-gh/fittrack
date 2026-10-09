@@ -63,7 +63,7 @@ export const AddSetDialog = withForm({
           }
         }}
       >
-        <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
+        <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-semibold">Add Set</DialogTitle>
             <DialogDescription>

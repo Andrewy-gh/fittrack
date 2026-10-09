@@ -41,6 +41,12 @@ export function ThemeProvider({
     root.classList.remove("light", "dark");
 
     root.classList.add(theme);
+    // Match the light and dark background tokens in styles.css.
+    const color = theme === "light" ? "#f9f9f9" : "#000000";
+    document
+      .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      ?.setAttribute("content", color);
+    root.style.colorScheme = theme;
   }, [theme]);
 
   const setTheme = (theme: Theme) => {

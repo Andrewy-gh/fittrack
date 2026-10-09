@@ -1,3 +1,4 @@
+import { validateWorkoutText } from "@/lib/workout-text";
 import { useState } from "react";
 import { useFieldContext } from "@/hooks/form";
 import { Button } from "@/components/ui/button";
@@ -82,12 +83,12 @@ export default function WorkoutFocusCombobox({
               </Button>
             )}
           </div>
-          <div className="text-card-foreground font-semibold text-xs">
+          <div className="text-card-foreground font-semibold text-xs [overflow-wrap:anywhere]">
             {field.state.value || "What is your focus for today?"}
           </div>
         </Card>
       </DialogTrigger>
-      <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto my-8">
+      <DialogContent className="w-[90vw] max-w-md sm:max-w-lg mx-auto">
         <DialogHeader>
           <DialogTitle>Workout Focus</DialogTitle>
           <DialogDescription>What are you working on today?</DialogDescription>
@@ -100,6 +101,9 @@ export default function WorkoutFocusCombobox({
             inputAriaLabel="Workout focus search"
             onChange={handleSelect}
             onCreate={handleAppendGroup}
+            validateCreate={(value) =>
+              validateWorkoutText(value.trim(), "Workout focus")
+            }
           />
           <div className="flex gap-2">
             <Button

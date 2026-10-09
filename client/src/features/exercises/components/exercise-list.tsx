@@ -21,7 +21,7 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
     <main>
       <div className="max-w-lg mx-auto space-y-6 px-4 pb-8">
         {/* Header */}
-        <div className="flex items-center justify-between pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Exercises</h1>
           </div>
@@ -49,7 +49,7 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
         <Card className="py-0">
           <CardContent className="p-0">
             {filteredExercises.length === 0 ? (
-              <div className="px-4 py-8 text-center text-wrap text-muted-foreground">
+              <div className="px-4 py-8 text-center [overflow-wrap:anywhere] text-muted-foreground">
                 No exercises found matching "{searchQuery}"
               </div>
             ) : (
@@ -59,10 +59,12 @@ export function ExerciseList({ exercises }: ExerciseListProps) {
                   params={{ exerciseId: exercise.id }}
                   key={exercise.id}
                   data-testid="exercise-card"
-                  className="flex items-center justify-between p-4 hover:bg-gray-100/50 transition-colors cursor-pointer border-b border-border last:border-b-0"
+                  className="flex min-w-0 items-center justify-between gap-3 p-4 hover:bg-gray-100/50 transition-colors cursor-pointer border-b border-border last:border-b-0"
                 >
-                  <h3 className="font-semibold">{exercise.name}</h3>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  <h3 className="min-w-0 [overflow-wrap:anywhere] font-semibold">
+                    {exercise.name}
+                  </h3>
+                  <ChevronRight className="w-5 h-5 shrink-0 text-muted-foreground" />
                 </Link>
               ))
             )}

@@ -39,7 +39,7 @@ export function ExerciseListSearch({
 }
 
 const rowActionClass =
-  "flex min-w-0 flex-1 items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-gray-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50";
+  "flex min-w-0 grow basis-48 items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-gray-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50";
 
 /** Shared exercise selection list; optional details expand independently of selection. */
 export function ExerciseList<Entry extends { name: string }>({
@@ -62,7 +62,7 @@ export function ExerciseList<Entry extends { name: string }>({
       <Card className="py-0">
         <CardContent className="p-0">
           {entries.length === 0 && (
-            <div className="px-4 py-8 text-center text-wrap text-muted-foreground">
+            <div className="px-4 py-8 text-center [overflow-wrap:anywhere] text-muted-foreground">
               {emptyMessage}
             </div>
           )}
@@ -72,13 +72,13 @@ export function ExerciseList<Entry extends { name: string }>({
                 key={entry.name}
                 className="border-b border-border last:border-b-0"
               >
-                <div className="flex items-stretch">
+                <div className="flex flex-wrap items-stretch">
                   <CollapsibleTrigger
                     disabled={disabled}
                     aria-label={`Details for ${entry.name}`}
                     className={`group ${rowActionClass}`}
                   >
-                    <span className="font-semibold md:text-sm">
+                    <span className="min-w-0 [overflow-wrap:anywhere] font-semibold md:text-sm">
                       {entry.name}
                     </span>
                     <ChevronDown className="w-5 h-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
@@ -88,13 +88,13 @@ export function ExerciseList<Entry extends { name: string }>({
                     aria-label={entry.name}
                     title={`Select ${entry.name}`}
                     disabled={disabled}
-                    className="shrink-0 px-4 text-primary transition-colors hover:bg-gray-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50"
+                    className="ml-auto shrink-0 px-4 py-3 text-primary transition-colors hover:bg-gray-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:opacity-50"
                     onClick={() => onSelect(entry)}
                   >
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-                <CollapsibleContent className="space-y-1 px-4 pb-4 text-sm text-muted-foreground">
+                <CollapsibleContent className="min-w-0 [overflow-wrap:anywhere] space-y-1 px-4 pb-4 text-sm text-muted-foreground">
                   {renderDetails(entry)}
                 </CollapsibleContent>
               </Collapsible>
@@ -106,7 +106,9 @@ export function ExerciseList<Entry extends { name: string }>({
                 className={`w-full border-b border-border last:border-b-0 ${rowActionClass}`}
                 onClick={() => onSelect(entry)}
               >
-                <span className="font-semibold md:text-sm">{entry.name}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere] font-semibold md:text-sm">
+                  {entry.name}
+                </span>
                 <ChevronRight className="w-5 h-5 shrink-0 text-muted-foreground" />
               </button>
             ),

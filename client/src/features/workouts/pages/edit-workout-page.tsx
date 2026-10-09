@@ -1,3 +1,4 @@
+import { workoutTextError } from "@/lib/workout-text";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -109,6 +110,11 @@ export function EditWorkoutPage({
   const form = useAppForm({
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
+      const textError = workoutTextError(value);
+      if (textError) {
+        toast.error(textError);
+        return;
+      }
       const trimmedValue = {
         date: value.date,
         exercises: value.exercises,
