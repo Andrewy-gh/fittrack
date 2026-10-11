@@ -13,20 +13,6 @@ export function getSessionMetricBucket(range: RangeType) {
   return range === "Y" ? "month" : range === "6M" ? "week" : "day";
 }
 
-export function getSessionMetricPeriodLabel(range: RangeType): string {
-  return range === "Y" ? "Monthly" : range === "6M" ? "Weekly" : "Daily";
-}
-
-export function getSessionMetricBucketLabel(range: RangeType): string {
-  if (range === "Y") return "Monthly bars from your first exercise session";
-  if (range === "6M") {
-    return "Weekly bars from your first exercise session, 26 visible at a time";
-  }
-  return range === "M"
-    ? "Daily bars from your first exercise session, 26 visible at a time"
-    : "Daily bars from your first exercise session, 7 visible at a time";
-}
-
 export function buildSessionMetricChartData<T extends SessionMetricPoint>(
   points: T[],
   range: RangeType,

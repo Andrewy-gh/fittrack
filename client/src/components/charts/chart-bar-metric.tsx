@@ -34,8 +34,15 @@ const MAX_TOOLTIP_FOCUS_LENGTH = 48;
 
 function formatValue(unit: Unit, value: number) {
   if (unit === "%") return `${value.toFixed(1)}%`;
-  if (unit === "vol") return `${Math.round(value).toLocaleString()} vol`;
+  if (unit === "vol") {
+    return `${Math.round(value).toLocaleString()} lb × reps`;
+  }
   return `${Math.round(value).toLocaleString()} lb`;
+}
+
+function formatAxisValue(unit: Unit, value: number) {
+  if (unit === "%") return `${Number(value.toFixed(1))}%`;
+  return Math.round(value).toLocaleString();
 }
 
 /** Formats the date heading shown for a chart bucket tooltip. */
@@ -154,7 +161,7 @@ export function ChartBarMetric({
                 )}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => (unit === "%" ? `${v}%` : `${v}`)}
+                tickFormatter={(value) => formatAxisValue(unit, value)}
                 tick={{ fill: "var(--color-foreground)" }}
                 domain={[0, "dataMax"]}
                 tickCount={5}
