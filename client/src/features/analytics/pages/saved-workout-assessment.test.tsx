@@ -19,6 +19,10 @@ import { AnalyticsPage } from "./analytics-page";
 import type { WorkoutDraftStorage } from "@/lib/local-storage";
 import type { ApplicationUser } from "@/lib/application-user";
 
+vi.mock("@/lib/feature-flags", () => ({
+  featureFlags: { trainingGuidance: true },
+}));
+
 const user: ApplicationUser = {
   id: "owner",
   displayName: "Owner",
