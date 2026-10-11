@@ -2,6 +2,11 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkoutNewWorkoutContextResponse } from "@/client";
 import type { WorkoutDraftStorage } from "@/lib/local-storage";
+import { featureFlags } from "@/lib/feature-flags";
+
+vi.mock("@/lib/feature-flags", () => ({
+  featureFlags: { trainingGuidance: false },
+}));
 
 const {
   mockApiMutateAsync,
@@ -126,6 +131,7 @@ describe("useNewWorkoutFormWorkflow", () => {
     expect(result.current.form.state.values.recommendations).toBeUndefined();
   });
   beforeEach(() => {
+    featureFlags.trainingGuidance = false;
     mockApiMutateAsync.mockReset();
     mockDemoMutateAsync.mockReset();
     mockFetchQuery.mockReset();
@@ -133,64 +139,74 @@ describe("useNewWorkoutFormWorkflow", () => {
     mockToastSuccess.mockReset();
   });
 
-  it("uses the authenticated save mutation and clears the saved draft after submit", async () => {
-    const draftStorage = createDraftStorage({
-      date: "2026-08-12T12:00:00Z",
-      exercises: [
-        {
-          name: "New press",
-          sets: [{ reps: 5, weight: 50, setType: "working" }],
-        },
-      ],
-    });
-    mockFetchQuery.mockResolvedValue([
-      { id: 1, name: "Alphabetical first" },
-      { id: 9, name: "New press" },
-    ]);
-    mockApiMutateAsync.mockImplementation(async (_variables, options) => {
-      options.onSuccess();
-    });
+  it.each([false, true])(
+    "saves an authenticated workout with training guidance enabled=%s",
+    async (enabled) => {
+      featureFlags.trainingGuidance = enabled;
+      const draftStorage = createDraftStorage({
+        date: "2026-08-12T12:00:00Z",
+        exercises: [
+          {
+            name: "New press",
+            sets: [{ reps: 5, weight: 50, setType: "working" }],
+          },
+        ],
+      });
+      mockFetchQuery.mockResolvedValue([
+        { id: 1, name: "Alphabetical first" },
+        { id: 9, name: "New press" },
+      ]);
+      mockApiMutateAsync.mockImplementation(async (_variables, options) => {
+        options.onSuccess();
+      });
 
-    const { result } = renderHook(() =>
-      useNewWorkoutFormWorkflow({
-        user: { id: "user-1" } as any,
-        exercises: [],
-        newWorkoutContext,
-        draftStorage,
-      }),
-    );
-
-    await act(async () => {
-      await result.current.form.handleSubmit();
-    });
-
-    expect(mockApiMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          notes: undefined,
-          workoutFocus: undefined,
+      const { result } = renderHook(() =>
+        useNewWorkoutFormWorkflow({
+          user: { id: "user-1" } as any,
+          exercises: [],
+          newWorkoutContext,
+          draftStorage,
         }),
-      }),
-      expect.any(Object),
-    );
-    expect(mockDemoMutateAsync).not.toHaveBeenCalled();
-    expect(draftStorage.clear).toHaveBeenCalledWith("user-1");
-    expect(mockNavigate).toHaveBeenCalledWith({ search: {} });
-    expect(mockToastSuccess).toHaveBeenCalledWith(
-      "Workout saved successfully",
-      {
-        action: { label: "View assessment", onClick: expect.any(Function) },
-      },
-    );
-    await act(async () => {
-      await mockToastSuccess.mock.calls[0][1].action.onClick();
-    });
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/analytics",
-      hash: "training-assessment",
-      search: { exerciseId: 9, assessmentWeek: "2026-08-10" },
-    });
-  });
+      );
+
+      await act(async () => {
+        await result.current.form.handleSubmit();
+      });
+
+      expect(mockApiMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            notes: undefined,
+            workoutFocus: undefined,
+          }),
+        }),
+        expect.any(Object),
+      );
+      expect(mockDemoMutateAsync).not.toHaveBeenCalled();
+      expect(draftStorage.clear).toHaveBeenCalledWith("user-1");
+      expect(mockNavigate).toHaveBeenCalledWith({ search: {} });
+      if (!enabled) {
+        expect(mockToastSuccess).toHaveBeenCalledWith(
+          "Workout saved successfully",
+        );
+        return;
+      }
+      expect(mockToastSuccess).toHaveBeenCalledWith(
+        "Workout saved successfully",
+        {
+          action: { label: "View assessment", onClick: expect.any(Function) },
+        },
+      );
+      await act(async () => {
+        await mockToastSuccess.mock.calls[0][1].action.onClick();
+      });
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/analytics",
+        hash: "training-assessment",
+        search: { exerciseId: 9, assessmentWeek: "2026-08-10" },
+      });
+    },
+  );
 
   it("asks before replacing an existing draft with a focus-area template", async () => {
     const draftStorage = createDraftStorage({
