@@ -1,10 +1,15 @@
 import { chromium, type FullConfig } from "@playwright/test";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, access } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { signInWithStack } from "./helpers/stack-auth";
 import { resolveStackAuthBootstrapConfig } from "../stack-auth-config";
+import {
+  AuthReadinessError,
+  browserAuthReadinessError,
+  localAuthConfigurationError,
+} from "./auth-readiness";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -270,78 +275,119 @@ async function globalSetup(config: FullConfig) {
     serverEnv,
   });
 
-  const browser = await chromium.launch();
-  const context = await browser.newContext({ baseURL });
   const canUseServerAuth = Boolean(projectId && secretServerKey);
   const canUseUiAuth = Boolean(email && password);
 
   if (localAuthEnabled) {
-    const page = await context.newPage();
-    const localAuth = await bootstrapLocalDevAuth(localAuthApiBaseUrl);
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.evaluate(
-      ([storageKey, session]) => {
-        window.localStorage.setItem(storageKey, JSON.stringify(session));
+    const clientAuthEnabled = resolveStackAuthBootstrapConfig({
+      processEnv: {
+        VITE_E2E_LOCAL_AUTH_ENABLED: process.env.VITE_E2E_LOCAL_AUTH_ENABLED,
       },
-      [
-        localDevAuthStorageKey,
-        {
-          userId: localAuth.user_id,
-          email: localAuth.email,
-          displayName: localAuth.display_name,
-        },
-      ] satisfies [
-        string,
-        { userId: string; email: string; displayName: string },
-      ],
-    );
-  } else if (canUseServerAuth) {
-    if (!projectId || !secretServerKey) {
-      await browser.close();
-      return;
-    }
-
-    const generatedEmail = `e2e-${randomUUID()}@example.test`;
-    const resolvedEmail = email ?? generatedEmail;
-    const baseUrl = `${apiBaseUrl}/api/v1`;
-    const userId = await ensureUserId({
-      baseUrl,
-      projectId,
-      secretServerKey,
+      clientEnv,
+      serverEnv: {},
+    }).localAuthEnabled;
+    const error = localAuthConfigurationError({
+      isCI: Boolean(process.env.CI),
+      browserProjectId:
+        process.env.VITE_PROJECT_ID || clientEnv.VITE_PROJECT_ID,
       publishableClientKey,
-      email: resolvedEmail,
+      clientAuthEnabled,
     });
-    const tokens = await createSession({
-      baseUrl,
-      projectId,
-      secretServerKey,
-      publishableClientKey,
-      userId,
-    });
-
-    await context.addCookies(
-      buildAuthCookies({
-        baseUrl: baseURL,
-        projectId,
-        refreshToken: tokens.refreshToken,
-        accessToken: tokens.accessToken,
-      }),
+    if (error) throw error;
+  } else if (!canUseServerAuth && !canUseUiAuth) {
+    const staleStateExists = await access(authFile).then(
+      () => true,
+      () => false,
     );
-  } else if (canUseUiAuth) {
-    if (!email || !password) {
-      await browser.close();
-      return;
+    if (staleStateExists) {
+      throw new AuthReadinessError(
+        "No auth bootstrap is configured, but a previous Playwright auth state file exists. Configure fresh authentication or archive that file before a guest-only run; it will not be reused as proof.",
+      );
     }
-    const page = await context.newPage();
-    await signInWithStack(page, email, password);
-  } else {
-    await browser.close();
+    console.log(
+      "Playwright guest-only run: no authentication configured; authenticated coverage is not verified.",
+    );
     return;
   }
 
-  await mkdir(path.dirname(authFile), { recursive: true });
-  await context.storageState({ path: authFile });
-  await browser.close();
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ baseURL });
+    let mode: { kind: "local"; userId: string } | { kind: "stack" } = {
+      kind: "stack",
+    };
+
+    if (localAuthEnabled) {
+      const page = await context.newPage();
+      const localAuth = await bootstrapLocalDevAuth(localAuthApiBaseUrl);
+      mode = { kind: "local", userId: localAuth.user_id };
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await page.evaluate(
+        ([storageKey, session]) => {
+          window.localStorage.setItem(storageKey, JSON.stringify(session));
+        },
+        [
+          localDevAuthStorageKey,
+          {
+            userId: localAuth.user_id,
+            email: localAuth.email,
+            displayName: localAuth.display_name,
+          },
+        ] satisfies [
+          string,
+          { userId: string; email: string; displayName: string },
+        ],
+      );
+    } else if (canUseServerAuth) {
+      if (!projectId || !secretServerKey) {
+        return;
+      }
+
+      const generatedEmail = `e2e-${randomUUID()}@example.test`;
+      const resolvedEmail = email ?? generatedEmail;
+      const baseUrl = `${apiBaseUrl}/api/v1`;
+      const userId = await ensureUserId({
+        baseUrl,
+        projectId,
+        secretServerKey,
+        publishableClientKey,
+        email: resolvedEmail,
+      });
+      const tokens = await createSession({
+        baseUrl,
+        projectId,
+        secretServerKey,
+        publishableClientKey,
+        userId,
+      });
+
+      await context.addCookies(
+        buildAuthCookies({
+          baseUrl: baseURL,
+          projectId,
+          refreshToken: tokens.refreshToken,
+          accessToken: tokens.accessToken,
+        }),
+      );
+    } else if (canUseUiAuth) {
+      if (!email || !password) {
+        return;
+      }
+      const page = await context.newPage();
+      await signInWithStack(page, email, password);
+    }
+
+    const page = await context.newPage();
+    const readinessError = await browserAuthReadinessError(page, { mode });
+    if (readinessError) throw readinessError;
+    await mkdir(path.dirname(authFile), { recursive: true });
+    await context.storageState({ path: authFile });
+    console.log(
+      `Playwright authenticated readiness verified (${mode.kind}): browser GET /api/workouts succeeded.`,
+    );
+  } finally {
+    await browser.close();
+  }
 }
 
 export default globalSetup;

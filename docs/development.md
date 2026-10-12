@@ -142,6 +142,22 @@ That flow:
 - seeds a persisted chat conversation with a structured workout draft
 - reopens the chat in the browser and imports the draft into `/workouts/new`
 
+Authenticated Playwright setup now verifies the app's own browser request to
+`GET /api/workouts` before saving auth state or running tests. Local auth needs
+the Vite **development** server, both public Stack client settings
+(`VITE_PROJECT_ID` and `VITE_PUBLISHABLE_CLIENT_KEY`), and
+`VITE_E2E_LOCAL_AUTH_ENABLED=true`. Restart Vite after changing those settings.
+Do not use `CI=true`/production preview with local auth; preview requires real
+Stack authentication. A successful bootstrap or an existing auth file alone
+does not establish browser authentication.
+
+With no auth configured, a clean checkout still runs guest checks and reports
+that authenticated coverage is unverified. If a previous
+`client/tests/e2e/.auth/stack.json` exists, setup stops: configure fresh auth or
+archive the old file before a guest-only run. Failed readiness leaves existing
+state untouched. For concurrent worktrees, use the isolated E2E setup in
+[worktrees.md](worktrees.md), rather than the single-checkout commands above.
+
 ## Landing and README Media
 
 The landing page's "How it works" clips and the README screenshots/GIF are recorded from the real app in guest demo mode, so they match the current UI. Re-record them after UI changes to the workout form, workout detail, or analytics pages.
