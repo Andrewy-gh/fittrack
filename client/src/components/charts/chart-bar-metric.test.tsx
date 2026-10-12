@@ -5,8 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartBarMetric, formatTooltipDateLabel } from "./chart-bar-metric";
 import { useBreakpoint } from "./chart-bar-vol.utils";
 
-const { mockScrollableChart } = vi.hoisted(() => ({
+const { mockScrollableChart, mockYAxis } = vi.hoisted(() => ({
   mockScrollableChart: vi.fn(),
+  mockYAxis: vi.fn(),
 }));
 
 vi.mock("./chart-bar-vol.components", () => ({
@@ -39,9 +40,23 @@ vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
-  Tooltip: () => null,
+  Tooltip: ({
+    formatter,
+  }: {
+    formatter?: (
+      value: number,
+      name: string,
+      item: { payload: Record<string, never> },
+    ) => [React.ReactNode, string];
+  }) => {
+    const [content] = formatter?.(5400, "", { payload: {} }) ?? [];
+    return <div data-testid="metric-tooltip-value">{content}</div>;
+  },
   XAxis: () => null,
-  YAxis: () => null,
+  YAxis: (props: { tickFormatter?: (value: number) => string }) => {
+    mockYAxis(props);
+    return null;
+  },
 }));
 
 vi.mock("./chart-bar-vol.utils", async () => {
@@ -58,7 +73,46 @@ vi.mock("./chart-bar-vol.utils", async () => {
 describe("ChartBarMetric", () => {
   beforeEach(() => {
     mockScrollableChart.mockClear();
+    mockYAxis.mockClear();
     vi.mocked(useBreakpoint).mockReturnValue("desktop");
+  });
+
+  it.each([
+    ["lb", 227.50000000000003, "228"],
+    ["%", 85.71428571428571, "85.7%"],
+  ] as const)(
+    "formats %s axis values for people to read",
+    (unit, value, label) => {
+      render(
+        <ChartBarMetric
+          title="Progress"
+          range="M"
+          data={[{ x: "1", date: "2026-03-01", value }]}
+          unit={unit}
+        />,
+      );
+
+      const axisWithLabels = mockYAxis.mock.calls.find(
+        ([props]) => props.tickFormatter,
+      )?.[0];
+
+      expect(axisWithLabels?.tickFormatter?.(value)).toBe(label);
+    },
+  );
+
+  it("labels volume tooltip values as pounds times reps", () => {
+    render(
+      <ChartBarMetric
+        title="Total Weight Moved"
+        range="M"
+        data={[{ x: "1", date: "2026-03-01", value: 5400 }]}
+        unit="vol"
+      />,
+    );
+
+    expect(screen.getByTestId("metric-tooltip-value")).toHaveTextContent(
+      "5,400 lb × reps",
+    );
   });
 
   it("navigates to the workout when a desktop bar is clicked", async () => {

@@ -25,6 +25,7 @@ Useful optional local vars:
 - `APP_BASE_URL`: absolute frontend URL used for Stripe checkout success and cancel redirects, defaults to `http://localhost:5173`
 - `AI_CHAT_TRIAL_PROMPT_CAP`: number of AI chat prompts allowed while a Stripe subscription is `trialing`, defaults to `30`
 - `VITE_API_BASE_URL`: points the client at a non-default API base URL
+- `VITE_ENABLE_TRAINING_GUIDANCE`: shows the Training assessment (including muscle sets) and Today's suggestion panels only when set to `true`; defaults to `false`. This is a client build-time flag, so changing it requires rebuilding the frontend.
 
 See [Stripe Billing](stripe-billing.md) for the checkout and webhook integration details.
 

@@ -1,3 +1,4 @@
+import { workoutTextError } from "@/lib/workout-text";
 import type {
   CSSProperties,
   LazyExoticComponent,
@@ -576,19 +577,34 @@ export function WorkoutFormActions<
         )}
       </div>
       <div className="mt-8">
-        <form.Subscribe<readonly [boolean, boolean]>
-          selector={(state) => [state.canSubmit, state.isSubmitting] as const}
-          children={([canSubmit, isSubmitting]) => (
-            <Button
-              type="submit"
-              disabled={!canSubmit || isReorderMode}
-              size="action"
-              className="w-full"
-            >
-              <Save className="mr-1.5 h-3.5 w-3.5" />
-              {isSubmitting ? "Saving..." : "Save"}
-            </Button>
-          )}
+        <form.Subscribe
+          selector={(state) => state}
+          children={(state) => {
+            const textError = workoutTextError(state.values);
+            return (
+              <>
+                {textError && (
+                  <p
+                    role="alert"
+                    className="text-sm text-destructive mb-2"
+                  >
+                    {textError}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={
+                    !state.canSubmit || isReorderMode || Boolean(textError)
+                  }
+                  size="action"
+                  className="w-full"
+                >
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                  {state.isSubmitting ? "Saving..." : "Save"}
+                </Button>
+              </>
+            );
+          }}
         />
       </div>
     </>

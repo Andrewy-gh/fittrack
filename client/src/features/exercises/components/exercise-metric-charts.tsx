@@ -12,8 +12,6 @@ import { computeDemoMetricsHistory } from "@/features/exercises/utils/metrics-hi
 import {
   buildSessionMetricChartData,
   getSessionMetricBucket,
-  getSessionMetricBucketLabel,
-  getSessionMetricPeriodLabel,
   type SessionMetricAggregation,
 } from "@/features/exercises/utils/session-metric-buckets";
 import { RangeSelector } from "@/components/charts/chart-bar-vol.components";
@@ -56,11 +54,9 @@ export function ExerciseMetricCharts({
     <section className="space-y-6">
       <div className="space-y-3">
         <div>
-          <h2 className="text-xl font-semibold">Session Metrics</h2>
+          <h2 className="text-xl font-semibold">Your Progress</h2>
           <p className="text-sm text-muted-foreground">
-            Bars group exercise sessions by the selected time range. e1RM,
-            intensity, and volume are computed from working sets. Intensity can
-            exceed 100%.
+            Track your strength and training over time.
           </p>
         </div>
 
@@ -127,8 +123,6 @@ function MetricChartsBody({
     () => buildChart((p) => p.total_volume_working ?? 0, "sum"),
     [points, range],
   );
-  const bucketLabel = getSessionMetricBucketLabel(range);
-  const periodLabel = getSessionMetricPeriodLabel(range);
 
   const charts: Array<{
     title: string;
@@ -137,32 +131,32 @@ function MetricChartsBody({
     description: string;
   }> = [
     {
-      title: `${periodLabel} Session Best 1RM`,
-      description: `${bucketLabel}. Highest estimated 1RM from any working set in the period.`,
+      title: "Best Strength Estimate",
+      description: "What you could lift once, in pounds.",
       data: best1rm,
       unit: "lb",
     },
     {
-      title: `${periodLabel} Average Session 1RM`,
-      description: `${bucketLabel}. Average estimated 1RM across working-set sessions in the period.`,
+      title: "Average Strength Estimate",
+      description: "Your average across workouts, in pounds.",
       data: avg1rm,
       unit: "lb",
     },
     {
-      title: `${periodLabel} Average Session Intensity`,
-      description: `${bucketLabel}. Average intensity of working sets versus your historical 1RM.`,
+      title: "Average Weight vs. Max",
+      description: "Your workout average, as a percentage of your max.",
       data: avgIntensity,
       unit: "%",
     },
     {
-      title: `${periodLabel} Session Best Intensity`,
-      description: `${bucketLabel}. Highest single-set intensity versus your historical 1RM.`,
+      title: "Highest Percentage of Max",
+      description: "The highest percentage reached in one working set.",
       data: bestIntensity,
       unit: "%",
     },
     {
-      title: `${periodLabel} Working-Set Volume`,
-      description: `${bucketLabel}. Total volume from working sets in the period.`,
+      title: "Total Weight Moved",
+      description: "Weight × reps across your working sets.",
       data: volumeWorking,
       unit: "vol",
     },
@@ -171,7 +165,7 @@ function MetricChartsBody({
   if (points.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        No working-set sessions for this exercise.
+        No working sets yet for this exercise.
       </p>
     );
   }
@@ -179,7 +173,7 @@ function MetricChartsBody({
   if (!hasWeightedMetrics(points)) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        No weighted metrics for this exercise.
+        Add weight to your working sets to see these charts.
       </p>
     );
   }
@@ -267,7 +261,7 @@ function AuthedCharts({
           size="small"
           className="text-primary"
         />
-        <span>Loading session metrics...</span>
+        <span>Loading your progress...</span>
       </div>
     );
   }

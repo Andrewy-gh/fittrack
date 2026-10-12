@@ -1,3 +1,5 @@
+import { workoutTextError } from "@/lib/workout-text";
+import { featureFlags } from "@/lib/feature-flags";
 import { format, startOfWeek } from "date-fns";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
@@ -56,6 +58,11 @@ export function useNewWorkoutFormWorkflow({
       },
     },
     onSubmit: async ({ value }) => {
+      const textError = workoutTextError(value);
+      if (textError) {
+        toast.error(textError);
+        return;
+      }
       const trimmedValue = {
         ...value,
         recommendations: value.recommendations?.filter((snapshot) =>
@@ -79,7 +86,7 @@ export function useNewWorkoutFormWorkflow({
         { body: trimmedValue },
         {
           onSuccess: () => {
-            if (user && savedExerciseName) {
+            if (featureFlags.trainingGuidance && user && savedExerciseName) {
               toast.success("Workout saved successfully", {
                 action: {
                   label: "View assessment",

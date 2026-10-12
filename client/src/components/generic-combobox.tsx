@@ -67,6 +67,8 @@ interface ComboboxProps<T extends { name: string }> {
   onChange: (option: T) => void;
   /** Callback function called when a new option is created */
   onCreate?: (label: string) => void;
+  /** Optional validation for newly entered values; invalid drafts stay editable. */
+  validateCreate?: (label: string) => string | undefined;
 }
 
 function GenericList<T extends { name: string }>({
@@ -82,6 +84,7 @@ function GenericList<T extends { name: string }>({
   inputAriaLabel,
   searchPlaceholder,
   touchEnabled,
+  createError,
 }: {
   options: T[];
   selected: string;
@@ -95,6 +98,7 @@ function GenericList<T extends { name: string }>({
   inputAriaLabel?: string;
   searchPlaceholder?: string;
   touchEnabled: boolean;
+  createError?: string;
 }) {
   function handleSelect(option: T) {
     if (onChange) {
@@ -105,7 +109,7 @@ function GenericList<T extends { name: string }>({
   }
 
   function handleCreate() {
-    if (onCreate && query) {
+    if (onCreate && query && canCreate) {
       onCreate(query);
       setOpen(false);
       setQuery("");
@@ -149,6 +153,8 @@ function GenericList<T extends { name: string }>({
       className="pb-4"
     >
       <CommandInput
+        aria-label={inputAriaLabel}
+        aria-invalid={Boolean(createError)}
         placeholder={searchPlaceholder ?? "Search options..."}
         value={query}
         onValueChange={(value: string) => setQuery(value)}
@@ -159,6 +165,14 @@ function GenericList<T extends { name: string }>({
           }
         }}
       />
+      {createError && (
+        <p
+          role="alert"
+          className="px-3 py-2 text-sm text-destructive"
+        >
+          {createError}
+        </p>
+      )}
       <CommandEmpty className="flex pl-1 py-1 w-full">
         {query && canCreate && (
           <CommandAddItem
@@ -235,12 +249,14 @@ export function GenericCombobox<T extends { name: string }>({
   disabled,
   onChange,
   onCreate,
+  validateCreate,
 }: ComboboxProps<T>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [canCreate, setCanCreate] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const allowCreate = Boolean(onCreate);
+  const createError = onCreate ? validateCreate?.(query) : undefined;
 
   useEffect(() => {
     // Cannot create a new query if it is empty or has already been created
@@ -285,7 +301,8 @@ export function GenericCombobox<T extends { name: string }>({
             selected={selected}
             query={query}
             setQuery={setQuery}
-            canCreate={canCreate}
+            canCreate={canCreate && !createError}
+            createError={createError}
             allowCreate={allowCreate}
             setOpen={setOpen}
             onChange={onChange}
@@ -318,7 +335,8 @@ export function GenericCombobox<T extends { name: string }>({
             selected={selected}
             query={query}
             setQuery={setQuery}
-            canCreate={canCreate}
+            canCreate={canCreate && !createError}
+            createError={createError}
             allowCreate={allowCreate}
             setOpen={setOpen}
             onChange={onChange}

@@ -19,6 +19,7 @@ import {
 } from "@/components/error-boundary";
 import { ExerciseContextPanel } from "@/features/workouts/components/form/exercise-context-panel";
 import { ExerciseRecommendationPanel } from "@/features/workouts/components/form/exercise-recommendation-panel";
+import { featureFlags } from "@/lib/feature-flags";
 import { LastWorkoutNoteSection } from "@/features/workouts/components/last-workout-note-section";
 import type {
   WorkoutCreateWorkoutRequest,
@@ -233,24 +234,25 @@ export function NewWorkoutPage({
                   exerciseId={exerciseId}
                   exerciseName={exerciseName}
                 />
-                {user && exerciseId ? (
-                  <ExerciseRecommendationPanel
-                    key={`${user.id}:${exerciseId}`}
-                    exerciseId={exerciseId}
-                    exerciseName={exerciseName}
-                    userId={user.id}
-                    initialSnapshot={form.state.values.recommendations?.find(
-                      (snapshot) => snapshot.exerciseName === exerciseName,
-                    )}
-                    onChange={workoutForm.recordRecommendation}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {user
-                      ? "Log this exercise once to get set suggestions next time."
-                      : "Sign in to get set suggestions from your past workouts."}
-                  </p>
-                )}
+                {featureFlags.trainingGuidance &&
+                  (user && exerciseId ? (
+                    <ExerciseRecommendationPanel
+                      key={`${user.id}:${exerciseId}`}
+                      exerciseId={exerciseId}
+                      exerciseName={exerciseName}
+                      userId={user.id}
+                      initialSnapshot={form.state.values.recommendations?.find(
+                        (snapshot) => snapshot.exerciseName === exerciseName,
+                      )}
+                      onChange={workoutForm.recordRecommendation}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {user
+                        ? "Log this exercise once to get set suggestions next time."
+                        : "Sign in to get set suggestions from your past workouts."}
+                    </p>
+                  ))}
               </div>
             }
             recentSets={

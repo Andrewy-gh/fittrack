@@ -1,4 +1,5 @@
 import { TrainingAssessment } from "@/features/analytics/components/training-assessment";
+import { featureFlags } from "@/lib/feature-flags";
 import { useLayoutEffect, useRef } from "react";
 
 import type {
@@ -165,7 +166,7 @@ export function AnalyticsDashboard({
           </div>
         </section>
 
-        {userId && selectedExerciseId && (
+        {featureFlags.trainingGuidance && userId && selectedExerciseId && (
           <TrainingAssessment
             key={assessmentWeek ?? "default"}
             assessmentWeek={assessmentWeek}

@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildSessionMetricChartData,
   getSessionMetricBucket,
-  getSessionMetricBucketLabel,
-  getSessionMetricPeriodLabel,
 } from "./session-metric-buckets";
 
 const today = new Date(2026, 2, 24);
@@ -17,21 +15,6 @@ describe("session metric buckets", () => {
   it("uses monthly and weekly buckets for the long ranges", () => {
     expect(getSessionMetricBucket("Y")).toBe("month");
     expect(getSessionMetricBucket("6M")).toBe("week");
-    expect(getSessionMetricPeriodLabel("Y")).toBe("Monthly");
-    expect(getSessionMetricPeriodLabel("6M")).toBe("Weekly");
-    expect(getSessionMetricPeriodLabel("M")).toBe("Daily");
-    expect(getSessionMetricBucketLabel("Y")).toBe(
-      "Monthly bars from your first exercise session",
-    );
-    expect(getSessionMetricBucketLabel("6M")).toBe(
-      "Weekly bars from your first exercise session, 26 visible at a time",
-    );
-    expect(getSessionMetricBucketLabel("M")).toBe(
-      "Daily bars from your first exercise session, 26 visible at a time",
-    );
-    expect(getSessionMetricBucketLabel("W")).toBe(
-      "Daily bars from your first exercise session, 7 visible at a time",
-    );
   });
 
   it("combines sessions into weekly bars for six months", () => {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ExerciseMetricCharts } from "./exercise-metric-charts";
@@ -23,7 +23,21 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/components/charts/chart-bar-metric", () => ({
-  ChartBarMetric: ({ title }: { title: string }) => <div>{title}</div>,
+  ChartBarMetric: ({
+    title,
+    description,
+    unit,
+  }: {
+    title: string;
+    description: string;
+    unit: string;
+  }) => (
+    <div>
+      <h3>{title}</h3>
+      <p>{description}</p>
+      <span>Unit: {unit}</span>
+    </div>
+  ),
 }));
 
 vi.mock("@/components/charts/chart-bar-vol.components", () => ({
@@ -52,9 +66,9 @@ describe("ExerciseMetricCharts", () => {
 
     const status = screen.getByRole("status");
 
-    expect(status).toHaveTextContent("Loading session metrics...");
+    expect(status).toHaveTextContent("Loading your progress...");
     expect(
-      screen.queryByText("Daily Session Best 1RM"),
+      screen.queryByText("Best Strength Estimate"),
     ).not.toBeInTheDocument();
   });
 
@@ -92,14 +106,14 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(
-      screen.getByText("No weighted metrics for this exercise."),
+      screen.getByText("Add weight to your working sets to see these charts."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("Daily Session Best 1RM"),
+      screen.queryByText("Best Strength Estimate"),
     ).not.toBeInTheDocument();
   });
 
-  it("shows charts when any session has a weighted metric", () => {
+  it("shows plain-language chart labels with units that match their values", () => {
     mockUseQuery.mockReturnValue({
       data: {
         points: [
@@ -137,14 +151,49 @@ describe("ExerciseMetricCharts", () => {
       />,
     );
 
-    expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
+    expect(screen.getByText("Best Strength Estimate")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Bars group exercise sessions by the selected time range. e1RM, intensity, and volume are computed from working sets. Intensity can exceed 100%.",
-      ),
+      screen.getByText("What you could lift once, in pounds."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Unit: lb")).toBeInTheDocument();
     expect(
-      screen.queryByText("No weighted metrics for this exercise."),
+      screen.getByText("Track your strength and training over time."),
+    ).toBeInTheDocument();
+
+    const nextGraph = screen.getByRole("button", { name: "Next graph" });
+
+    fireEvent.click(nextGraph);
+    expect(screen.getByText("Average Strength Estimate")).toBeInTheDocument();
+    expect(
+      screen.getByText("Your average across workouts, in pounds."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unit: lb")).toBeInTheDocument();
+
+    fireEvent.click(nextGraph);
+    expect(screen.getByText("Average Weight vs. Max")).toBeInTheDocument();
+    expect(
+      screen.getByText("Your workout average, as a percentage of your max."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unit: %")).toBeInTheDocument();
+
+    fireEvent.click(nextGraph);
+    expect(screen.getByText("Highest Percentage of Max")).toBeInTheDocument();
+    expect(
+      screen.getByText("The highest percentage reached in one working set."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unit: %")).toBeInTheDocument();
+
+    fireEvent.click(nextGraph);
+    expect(screen.getByText("Total Weight Moved")).toBeInTheDocument();
+    expect(
+      screen.getByText("Weight × reps across your working sets."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unit: vol")).toBeInTheDocument();
+
+    expect(
+      screen.queryByText(
+        "Add weight to your working sets to see these charts.",
+      ),
     ).not.toBeInTheDocument();
   });
 
@@ -177,7 +226,7 @@ describe("ExerciseMetricCharts", () => {
     );
 
     expect(screen.getByText("Updating chart...")).toBeInTheDocument();
-    expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
+    expect(screen.getByText("Best Strength Estimate")).toBeInTheDocument();
   });
 
   it("rethrows the initial load error when no chart data is available", () => {
@@ -238,6 +287,6 @@ describe("ExerciseMetricCharts", () => {
     expect(
       screen.getByText("Couldn't update chart. Showing previous data."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Daily Session Best 1RM")).toBeInTheDocument();
+    expect(screen.getByText("Best Strength Estimate")).toBeInTheDocument();
   });
 });
