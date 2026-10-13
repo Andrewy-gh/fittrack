@@ -19,6 +19,7 @@ import {
 } from "@/lib/local-storage";
 import { toast } from "sonner";
 import { SavedRecommendations } from "@/features/workouts/components/saved-recommendations";
+import { featureFlags } from "@/lib/feature-flags";
 
 type WorkoutDetailProps = {
   workout: WorkoutWorkoutWithSetsResponse[];
@@ -79,7 +80,9 @@ function WorkoutDetailBase({
           totalVolume={totalVolume}
         />
         <WorkoutDetailExercises workout={workout} />
-        <SavedRecommendations recommendations={recommendations} />
+        {featureFlags.trainingGuidance && (
+          <SavedRecommendations recommendations={recommendations} />
+        )}
         {dialogSlot}
       </div>
     </main>
