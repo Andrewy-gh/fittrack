@@ -25,7 +25,6 @@ import {
   billingStatusQueryOptions,
   createBillingCheckoutSession,
   createBillingCustomerPortalSession,
-  createBillingSubscriptionCancelPortalSession,
   getBillingStatus,
 } from "./billing";
 
@@ -154,30 +153,5 @@ describe("billing api wrapper", () => {
       "/api/billing/customer-portal-session?return_to=settings",
     );
     expect(latestRequest().method).toBe("POST");
-  });
-
-  it("creates a Stripe-hosted subscription cancellation portal session", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          url: "https://billing.stripe.test/cancel-session",
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      ),
-    );
-
-    const session = await createBillingSubscriptionCancelPortalSession();
-
-    expect(fetch).toHaveBeenCalledWith(expect.any(Request));
-    expect(latestRequest().url).toContain(
-      "/api/billing/subscription-cancel-portal-session",
-    );
-    expect(latestRequest().method).toBe("POST");
-    expect(session.url).toBe("https://billing.stripe.test/cancel-session");
   });
 });

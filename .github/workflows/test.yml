@@ -176,6 +176,12 @@ jobs:
         working-directory: client
         run: bun run lint
 
+      - name: Check unused code
+        working-directory: client
+        run: |
+          bun run knip
+          bun run knip:production
+
       - name: Run type checking
         working-directory: client
         run: bun run tsc

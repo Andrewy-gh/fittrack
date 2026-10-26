@@ -267,11 +267,6 @@ export function handleDemoExerciseDeleted(exerciseId: number): void {
   setMap(map);
 }
 
-export function resetDemoHistorical1Rm(): void {
-  setMap({});
-  bootstrapDemoHistorical1Rm();
-}
-
 export function clearDemoHistorical1Rm(): void {
   removeFromStorage(STORAGE_KEYS.HISTORICAL_1RM);
 }

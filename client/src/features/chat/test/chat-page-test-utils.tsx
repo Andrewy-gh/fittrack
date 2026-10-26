@@ -36,7 +36,6 @@ const mocks = vi.hoisted(() => ({
   mockFeatureAccessQueryOptions: vi.fn(),
   mockCreateBillingCheckoutSession: vi.fn(),
   mockCreateBillingCustomerPortalSession: vi.fn(),
-  mockCreateBillingSubscriptionCancelPortalSession: vi.fn(),
   mockGetBillingStatus: vi.fn(),
   mockRedirectToBillingCheckout: vi.fn(),
   mockRedirectToBillingPortal: vi.fn(),
@@ -72,7 +71,6 @@ export const {
   mockFeatureAccessQueryOptions,
   mockCreateBillingCheckoutSession,
   mockCreateBillingCustomerPortalSession,
-  mockCreateBillingSubscriptionCancelPortalSession,
   mockGetBillingStatus,
   mockRedirectToBillingCheckout,
   mockRedirectToBillingPortal,
@@ -113,8 +111,6 @@ vi.mock("@/features/chat/api/ai-chat", () => ({
 vi.mock("@/features/chat/api/billing", () => ({
   billingStatusQueryOptions: mockBillingStatusQueryOptions,
   createBillingCustomerPortalSession: mockCreateBillingCustomerPortalSession,
-  createBillingSubscriptionCancelPortalSession:
-    mockCreateBillingSubscriptionCancelPortalSession,
   createBillingCheckoutSession: mockCreateBillingCheckoutSession,
   getBillingStatus: mockGetBillingStatus,
   redirectToBillingCheckout: mockRedirectToBillingCheckout,
@@ -246,7 +242,6 @@ export function resetChatRouteMocks() {
   mockFeatureAccessQueryOptions.mockReset();
   mockCreateBillingCheckoutSession.mockReset();
   mockCreateBillingCustomerPortalSession.mockReset();
-  mockCreateBillingSubscriptionCancelPortalSession.mockReset();
   mockGetBillingStatus.mockReset();
   mockRedirectToBillingCheckout.mockReset();
   mockRedirectToBillingPortal.mockReset();
@@ -318,9 +313,6 @@ export function resetChatRouteMocks() {
   });
   mockCreateBillingCustomerPortalSession.mockResolvedValue({
     url: "https://billing.stripe.test/session",
-  });
-  mockCreateBillingSubscriptionCancelPortalSession.mockResolvedValue({
-    url: "https://billing.stripe.test/cancel-session",
   });
   mockRefetchBillingStatus.mockResolvedValue(mockBillingQueryResult.value);
   mockRefetchFeatureAccess.mockResolvedValue(

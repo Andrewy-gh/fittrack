@@ -8,7 +8,6 @@ import type { FeatureAccessGrant } from "@/features/chat/api/feature-access";
 const mocks = vi.hoisted(() => ({
   mockCreateBillingCheckoutSession: vi.fn(),
   mockCreateBillingCustomerPortalSession: vi.fn(),
-  mockCreateBillingSubscriptionCancelPortalSession: vi.fn(),
   mockGetBaseBillingStatus: vi.fn(),
   mockGetBaseFeatureAccess: vi.fn(),
   mockGetCheckoutBillingStatus: vi.fn(),
@@ -30,8 +29,6 @@ vi.mock("@/features/chat/api/billing", async () => {
     createBillingCheckoutSession: mocks.mockCreateBillingCheckoutSession,
     createBillingCustomerPortalSession:
       mocks.mockCreateBillingCustomerPortalSession,
-    createBillingSubscriptionCancelPortalSession:
-      mocks.mockCreateBillingSubscriptionCancelPortalSession,
     getBillingStatus: mocks.mockGetCheckoutBillingStatus,
     redirectToBillingCheckout: mocks.mockRedirectToBillingCheckout,
     redirectToBillingPortal: mocks.mockRedirectToBillingPortal,
@@ -86,7 +83,6 @@ describe("useAIChatBillingAccess checkout polling", () => {
   beforeEach(() => {
     mocks.mockCreateBillingCheckoutSession.mockReset();
     mocks.mockCreateBillingCustomerPortalSession.mockReset();
-    mocks.mockCreateBillingSubscriptionCancelPortalSession.mockReset();
     mocks.mockGetBaseBillingStatus.mockReset();
     mocks.mockGetBaseFeatureAccess.mockReset();
     mocks.mockGetCheckoutBillingStatus.mockReset();

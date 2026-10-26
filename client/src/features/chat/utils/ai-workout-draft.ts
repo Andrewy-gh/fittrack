@@ -32,18 +32,6 @@ export function toWorkoutFormDraft(
   };
 }
 
-export function toWorkoutCreateRequest(
-  draft: AIWorkoutDraft,
-): WorkoutCreateWorkoutRequest {
-  const formDraft = toWorkoutFormDraft(draft);
-
-  return {
-    ...formDraft,
-    notes: formDraft.notes?.trim() || undefined,
-    workoutFocus: formDraft.workoutFocus?.trim() || undefined,
-  };
-}
-
 export function saveAIWorkoutDraftToWorkoutForm(
   draft: AIWorkoutDraft,
   userId?: string,

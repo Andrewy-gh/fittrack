@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildWorkoutDraftFromHistory,
   formatWeekComparison,
-  getLatestExerciseNote,
-  getLatestWorkoutNote,
   getWorkoutConsistencySummary,
 } from "./workout-insights";
 
@@ -59,49 +57,6 @@ describe("workout-insights", () => {
       ],
     });
   });
-
-  it("returns the latest workout note", () => {
-    expect(
-      getLatestWorkoutNote([
-        {
-          id: 1,
-          date: "2026-03-01T10:00:00.000Z",
-          notes: "Easy day",
-        },
-        {
-          id: 2,
-          date: "2026-03-10T10:00:00.000Z",
-          notes: "Keep elbows tucked",
-        },
-      ]),
-    ).toEqual({
-      workoutId: 2,
-      date: "2026-03-10T10:00:00.000Z",
-      note: "Keep elbows tucked",
-    });
-  });
-
-  it("returns the latest exercise note", () => {
-    expect(
-      getLatestExerciseNote([
-        {
-          workout_id: 2,
-          workout_date: "2026-03-10T10:00:00.000Z",
-          workout_notes: "Pause the first rep",
-        },
-        {
-          workout_id: 1,
-          workout_date: "2026-03-02T10:00:00.000Z",
-          workout_notes: "Warm up shoulders first",
-        },
-      ]),
-    ).toEqual({
-      workoutId: 2,
-      date: "2026-03-10T10:00:00.000Z",
-      note: "Pause the first rep",
-    });
-  });
-
   it("computes supportive consistency summaries", () => {
     const summary = getWorkoutConsistencySummary(
       [

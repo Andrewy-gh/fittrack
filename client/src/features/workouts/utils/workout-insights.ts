@@ -7,18 +7,11 @@ import {
   subWeeks,
 } from "date-fns";
 import type {
-  ExerciseExerciseWithSetsResponse,
   WorkoutCreateWorkoutRequest,
   WorkoutWorkoutResponse,
   WorkoutWorkoutWithSetsResponse,
 } from "@/client";
 import { sortByExerciseAndSetOrder } from "@/lib/utils";
-
-export type WorkoutNoteContext = {
-  date: string;
-  note: string;
-  workoutId: number;
-};
 
 export type WorkoutConsistencySummary = {
   totalWorkouts: number;
@@ -27,11 +20,6 @@ export type WorkoutConsistencySummary = {
   activeDaysThisMonth: number;
   averageWorkoutsPerWeek: number;
 };
-
-function trimNote(note?: string | null): string | null {
-  const trimmed = note?.trim();
-  return trimmed ? trimmed : null;
-}
 
 export function buildWorkoutDraftFromHistory(
   workout: WorkoutWorkoutWithSetsResponse[],
@@ -76,52 +64,6 @@ export function buildWorkoutDraftFromHistory(
     exercises: Array.from(groupedExercises.values())
       .sort((left, right) => left.order - right.order)
       .map(({ name, sets }) => ({ name, sets })),
-  };
-}
-
-export function getLatestWorkoutNote(
-  workouts: Pick<WorkoutWorkoutResponse, "date" | "id" | "notes">[],
-): WorkoutNoteContext | null {
-  const latestWorkoutWithNote = [...workouts]
-    .filter((workout) => trimNote(workout.notes))
-    .sort(
-      (left, right) =>
-        new Date(right.date).getTime() - new Date(left.date).getTime(),
-    )[0];
-
-  if (!latestWorkoutWithNote) {
-    return null;
-  }
-
-  return {
-    workoutId: latestWorkoutWithNote.id,
-    date: latestWorkoutWithNote.date,
-    note: trimNote(latestWorkoutWithNote.notes)!,
-  };
-}
-
-export function getLatestExerciseNote(
-  exerciseSets: Pick<
-    ExerciseExerciseWithSetsResponse,
-    "workout_date" | "workout_id" | "workout_notes"
-  >[],
-): WorkoutNoteContext | null {
-  const latestExerciseSetWithNote = [...exerciseSets]
-    .filter((set) => trimNote(set.workout_notes))
-    .sort(
-      (left, right) =>
-        new Date(right.workout_date).getTime() -
-        new Date(left.workout_date).getTime(),
-    )[0];
-
-  if (!latestExerciseSetWithNote) {
-    return null;
-  }
-
-  return {
-    workoutId: latestExerciseSetWithNote.workout_id,
-    date: latestExerciseSetWithNote.workout_date,
-    note: trimNote(latestExerciseSetWithNote.workout_notes)!,
   };
 }
 

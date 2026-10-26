@@ -214,6 +214,7 @@ bun run test          # Run unit tests with Vitest
 bun run test:e2e      # Run end-to-end tests with Playwright
 bun run lint          # Lint with oxlint
 bun run knip          # Check for unused files and dependency drift
+bun run knip:production # Check for code unused by the production app
 bun run tsc           # Type-check without emitting
 ```
 
@@ -222,5 +223,5 @@ bun run tsc           # Type-check without emitting
 Run the full repo-defined gate when practical:
 
 - backend: `make test`
-- frontend: `bun run lint && bun run knip && bun run test && bun run tsc`
+- frontend: `bun run lint && bun run knip && bun run knip:production && bun run test && bun run tsc`
 - docs or build checks when the change touches deploy, docs generation, or production output

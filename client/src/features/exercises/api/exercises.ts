@@ -95,15 +95,6 @@ export function useDeleteExerciseForModeMutation(isDemoMode: boolean) {
   return isDemoMode ? demoMutation : apiMutation;
 }
 
-export function useUpdateExerciseMutation() {
-  return useMutation({
-    ...patchExercisesByIdMutation(),
-    onSuccess: (_, { path: { id } }) => {
-      invalidateExerciseDetail(id);
-    },
-  });
-}
-
 export function useRenameExerciseMutation(isDemoMode: boolean) {
   const apiMutation = useMutation({
     ...patchExercisesByIdMutation(),
