@@ -1,6 +1,14 @@
 {
   "$schema": "./node_modules/knip/schema.json",
   "include": ["files", "dependencies", "unlisted", "exports"],
+  "project": [
+    "**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,css}!",
+    "!scripts/**!",
+    "!src/**/test/**!",
+    "!src/test/**!",
+    "!tests/**!",
+    "!tools/**!"
+  ],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "src/client/**": ["exports"],

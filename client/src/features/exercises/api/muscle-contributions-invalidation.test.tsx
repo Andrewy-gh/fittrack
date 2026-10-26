@@ -6,11 +6,9 @@ import { queryClient } from "@/lib/api/api";
 import {
   useDeleteExerciseMutation,
   useRenameExerciseMutation,
-  useUpdateExerciseMutation,
 } from "./exercises";
 let summary = "Old exercise summary";
-function Harness({ operation }: { operation: "update" | "rename" | "delete" }) {
-  const update = useUpdateExerciseMutation();
+function Harness({ operation }: { operation: "rename" | "delete" }) {
   const rename = useRenameExerciseMutation(false);
   const remove = useDeleteExerciseMutation();
   const query = useQuery({
@@ -24,11 +22,7 @@ function Harness({ operation }: { operation: "update" | "rename" | "delete" }) {
       <button
         onClick={() => {
           if (operation === "delete") remove.mutate({ path: { id: 1 } });
-          else
-            (operation === "rename" ? rename : update).mutate({
-              path: { id: 1 },
-              body: { name: "New name" },
-            });
+          else rename.mutate({ path: { id: 1 }, body: { name: "New name" } });
         }}
       >
         Change exercise
@@ -52,7 +46,7 @@ afterEach(() => {
   queryClient.clear();
   vi.restoreAllMocks();
 });
-for (const operation of ["update", "rename", "delete"] as const)
+for (const operation of ["rename", "delete"] as const)
   it(`refreshes muscle contributions after exercise ${operation}`, async () => {
     render(
       <QueryClientProvider client={queryClient}>

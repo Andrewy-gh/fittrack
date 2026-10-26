@@ -16,7 +16,6 @@ import { buildDemoContributionData } from "@/lib/demo-data/contribution-data";
 import {
   getAllExercises,
   getAllWorkoutsForContribution,
-  createExercise,
   updateExercise,
   deleteExercise,
   getExerciseDetail,
@@ -199,17 +198,6 @@ export const getDemoContributionDataQueryOptions = () => {
 // ===========================
 // Exercise Mutations
 // ===========================
-
-export const postDemoExercisesMutation = (): UseMutationOptions<
-  ExerciseExerciseResponse,
-  Error,
-  { body: { name: string } }
-> => ({
-  mutationFn: async ({ body }) => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return createExercise(body.name);
-  },
-});
 
 export const patchDemoExercisesByIdMutation = (): UseMutationOptions<
   void,

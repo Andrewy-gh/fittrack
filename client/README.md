@@ -32,6 +32,7 @@ bun run test:e2e      # Run end-to-end tests (Playwright)
 bun run test:e2e:ci   # Build then run E2E tests (CI mode)
 bun run lint          # Lint with oxlint
 bun run knip          # Check for unused files and dependency drift
+bun run knip:production # Check for code unused by the production app
 bun run tsc           # Type-check without emitting
 ```
 

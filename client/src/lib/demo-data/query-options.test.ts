@@ -21,7 +21,6 @@ vi.mock("../api/api", () => ({
 vi.mock("./storage", () => ({
   getAllExercises: vi.fn(() => []),
   getAllWorkoutsForContribution: vi.fn(() => []),
-  createExercise: vi.fn(),
   updateExercise: vi.fn(),
   deleteExercise: vi.fn(),
   getExerciseDetail: vi.fn(),

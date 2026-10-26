@@ -1,12 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   updateExercise,
-  createExercise,
-  getExerciseById,
   getExerciseDetail,
   getAllExercises,
   getAllWorkouts,
   getWorkoutById,
+  initializeDemoData,
 } from "./storage";
 import { recomputeDemoExerciseHistorical1Rm } from "./historical-1rm";
 import { STORAGE_KEYS } from "./types";
@@ -16,11 +15,20 @@ afterEach(() => {
   localStorage.clear();
 });
 
+function getInitialExercise(name: string) {
+  initializeDemoData();
+  const exercise = getAllExercises().find(
+    (candidate) => candidate.name === name,
+  );
+  if (!exercise) throw new Error(`Missing initial demo exercise: ${name}`);
+  return exercise;
+}
+
 describe("updateExercise", () => {
   it("should successfully update exercise name", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-15T09:00:00.000Z"));
-    const exercise = createExercise("Bench Press");
+    const exercise = getInitialExercise("Bench Press");
     vi.setSystemTime(new Date("2026-03-15T09:00:01.000Z"));
     const success = updateExercise(exercise.id, "Incline Bench Press");
 
@@ -35,8 +43,7 @@ describe("updateExercise", () => {
   });
 
   it("should throw error when duplicate name exists", () => {
-    const exercise1 = createExercise("Squat");
-    createExercise("Deadlift");
+    const exercise1 = getInitialExercise("Barbell Squat");
 
     expect(() => {
       updateExercise(exercise1.id, "Deadlift");
@@ -44,8 +51,7 @@ describe("updateExercise", () => {
   });
 
   it("should throw error when duplicate name exists (case-insensitive)", () => {
-    const exercise1 = createExercise("Squat");
-    createExercise("Deadlift");
+    const exercise1 = getInitialExercise("Barbell Squat");
 
     expect(() => {
       updateExercise(exercise1.id, "deadlift");
@@ -58,7 +64,7 @@ describe("updateExercise", () => {
   });
 
   it("should allow updating to the same name", () => {
-    const exercise = createExercise("Bench Press");
+    const exercise = getInitialExercise("Bench Press");
 
     const success = updateExercise(exercise.id, "Bench Press");
     expect(success).toBe(true);
@@ -186,7 +192,6 @@ describe("updateExercise", () => {
     );
     localStorage.setItem(STORAGE_KEYS.HISTORICAL_1RM, JSON.stringify(null));
 
-    expect(getExerciseById(1)?.name).toBe("Bench Press");
     expect(getExerciseDetail(1).exercise.historical_1rm).toBeUndefined();
   });
 

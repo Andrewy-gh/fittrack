@@ -26,7 +26,6 @@ import {
   handleDemoWorkoutCreated,
   handleDemoWorkoutDeleted,
   handleDemoWorkoutUpdated,
-  resetDemoHistorical1Rm,
 } from "./historical-1rm";
 import type { DemoContributionWorkout } from "@/lib/demo-data/contribution-data";
 
@@ -170,13 +169,6 @@ export function initializeDemoData(): void {
   }
 }
 
-export function resetDemoData(): void {
-  setInStorage(STORAGE_KEYS.EXERCISES, INITIAL_EXERCISES);
-  setInStorage(STORAGE_KEYS.WORKOUTS, INITIAL_WORKOUTS);
-  setInStorage(STORAGE_KEYS.SETS, INITIAL_SETS);
-  resetDemoHistorical1Rm();
-}
-
 export function clearDemoData(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEYS.EXERCISES);
@@ -198,44 +190,6 @@ export function getAllExercises(): ExerciseExerciseResponse[] {
     created_at: ex.created_at,
     updated_at: ex.updated_at,
   }));
-}
-
-export function getExerciseById(id: number): ExerciseExerciseResponse | null {
-  const exercises = getStoredExercises();
-  const exercise = exercises.find((ex) => ex.id === id);
-
-  if (!exercise) return null;
-
-  return {
-    id: exercise.id,
-    name: exercise.name,
-    user_id: exercise.user_id,
-    created_at: exercise.created_at,
-    updated_at: exercise.updated_at,
-  };
-}
-
-export function createExercise(name: string): ExerciseExerciseResponse {
-  const exercises = getStoredExercises();
-
-  const newExercise: StoredExercise = {
-    id: getNextId(exercises),
-    name,
-    user_id: DEMO_USER_ID,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  exercises.push(newExercise);
-  setInStorage(STORAGE_KEYS.EXERCISES, exercises);
-
-  return {
-    id: newExercise.id,
-    name: newExercise.name,
-    user_id: newExercise.user_id,
-    created_at: newExercise.created_at,
-    updated_at: newExercise.updated_at,
-  };
 }
 
 export function updateExercise(id: number, name: string): boolean {

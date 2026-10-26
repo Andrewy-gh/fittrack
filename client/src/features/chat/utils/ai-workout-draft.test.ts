@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AIWorkoutDraft } from "@/features/chat/api/ai-chat";
 import { createWorkoutDraftStorage } from "@/lib/local-storage";
-import {
-  saveAIWorkoutDraftToWorkoutForm,
-  toWorkoutCreateRequest,
-} from "@/features/chat/utils/ai-workout-draft";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
 import { getInitialValues } from "@/features/workouts/components/form/form-options";
 
 function createMemoryStorage() {
@@ -109,32 +106,6 @@ describe("ai workout draft import", () => {
         {
           name: "Lat Pulldown",
           sets: [{ reps: 12, setType: "working", weight: 120 }],
-        },
-      ],
-    });
-  });
-
-  it("normalizes optional text fields for direct workout creation", () => {
-    expect(
-      toWorkoutCreateRequest({
-        date: "2026-04-21T12:00:00Z",
-        notes: "  ",
-        workoutFocus: "  legs  ",
-        exercises: [
-          {
-            name: "Back Squat",
-            sets: [{ reps: 5, setType: "working", weight: 225 }],
-          },
-        ],
-      }),
-    ).toEqual({
-      date: "2026-04-21T12:00:00Z",
-      notes: undefined,
-      workoutFocus: "legs",
-      exercises: [
-        {
-          name: "Back Squat",
-          sets: [{ reps: 5, setType: "working", weight: 225 }],
         },
       ],
     });

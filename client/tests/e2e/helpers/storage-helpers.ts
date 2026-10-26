@@ -24,10 +24,3 @@ export async function verifyDemoDataExists(page: Page) {
   const exercises = await getDemoExercises(page);
   return workouts !== null && exercises !== null;
 }
-
-export async function resetDemoData(page: Page) {
-  await page.evaluate(() => {
-    const { resetDemoData } = require("@/lib/demo-data/storage");
-    resetDemoData();
-  });
-}
