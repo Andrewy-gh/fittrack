@@ -71,6 +71,7 @@ function StepClip({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    video.playbackRate = 0.65;
     if (playing && !reducedMotion) {
       video.play().catch(() => {
         // Autoplay can be refused (e.g. data saver); the poster stays visible.
@@ -132,12 +133,103 @@ function PhoneFrame({
   return (
     <div
       className={cn(
-        "relative w-[17rem] shrink-0 rounded-[2.75rem] bg-neutral-900 p-2 shadow-2xl ring-1 ring-black/10 dark:bg-neutral-800 dark:ring-white/10",
+        "relative aspect-[1102/2269] w-[17rem] shrink-0 drop-shadow-2xl [container-type:inline-size]",
         className,
       )}
     >
-      <div className="relative aspect-[390/844] overflow-hidden rounded-[2.25rem] bg-background">
-        {children}
+      <div className="absolute inset-0 bg-[url('/media/how-it-works/iphone-frame.svg')] bg-[length:100%_100%]" />
+      <div className="absolute inset-x-[1.7%] inset-y-[0.3%] rounded-[13.3%/6.55%] bg-neutral-900" />
+      <div className="absolute left-[3.28%] top-[1.09%] h-[97.84%] w-[93.47%] overflow-hidden rounded-[11.5%/5.4%] bg-background">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 z-10 flex h-[7.3%] items-center justify-between px-[7%] text-[min(11px,4cqw)] font-semibold text-foreground"
+        >
+          <span>9:41</span>
+          <span className="absolute left-1/2 top-[22%] h-[35%] w-[27%] -translate-x-1/2 rounded-full bg-black" />
+          <span className="flex items-center gap-[0.3em]">
+            <svg
+              width="15"
+              height="11"
+              className="h-auto w-[1.36em]"
+              viewBox="0 0 15 11"
+              fill="currentColor"
+            >
+              <rect
+                x="0"
+                y="7"
+                width="2.5"
+                height="4"
+                rx=".5"
+              />
+              <rect
+                x="4"
+                y="5"
+                width="2.5"
+                height="6"
+                rx=".5"
+              />
+              <rect
+                x="8"
+                y="3"
+                width="2.5"
+                height="8"
+                rx=".5"
+              />
+              <rect
+                x="12"
+                y="1"
+                width="2.5"
+                height="10"
+                rx=".5"
+              />
+            </svg>
+            <svg
+              width="15"
+              height="11"
+              className="h-auto w-[1.36em]"
+              viewBox="0 0 15 11"
+              fill="currentColor"
+            >
+              <path d="M0 3.3C4.3-.6 10.7-.6 15 3.3l-1.6 1.6a8.8 8.8 0 0 0-11.8 0L0 3.3Zm3 3c2.6-2.4 6.4-2.4 9 0L10.4 8a4.2 4.2 0 0 0-5.8 0L3 6.3Zm3 3a2.2 2.2 0 0 1 3 0L7.5 11 6 9.3Z" />
+            </svg>
+            <svg
+              width="22"
+              height="11"
+              className="h-auto w-[2em]"
+              viewBox="0 0 22 11"
+              fill="none"
+            >
+              <rect
+                x=".6"
+                y=".6"
+                width="18"
+                height="9.8"
+                rx="2.2"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <rect
+                x="2"
+                y="2"
+                width="14"
+                height="7"
+                rx="1"
+                fill="currentColor"
+              />
+              <path
+                d="M20 3.3v4.4c1.8-.5 1.8-3.9 0-4.4Z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+        </div>
+        <div className="absolute inset-x-0 top-[7.3%] bottom-[3.8%] overflow-hidden">
+          {children}
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute bottom-[1.5%] left-1/2 h-1 w-[35%] -translate-x-1/2 rounded-full bg-foreground"
+        />
       </div>
     </div>
   );
@@ -314,7 +406,7 @@ export function HowItWorks() {
                     active={index === activeIndex}
                     playing={!isDesktop && canPlay && index === activeIndex}
                     reducedMotion={reducedMotion}
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-contain"
                   />
                   {reducedMotion ? null : (
                     <PlaybackToggle
@@ -327,12 +419,9 @@ export function HowItWorks() {
             ))}
           </ol>
 
-          {/* Starts level with step 1 (10vh list padding + half a 75vh step,
-              minus half the ~38rem phone), then pins mid-screen while scrolling.
-              On short viewports the width shrinks so the whole phone fits below
-              the 5rem sticky offset: height = (w - 1rem) * 844/390 + 1rem. */}
+          {/* On short viewports, shrink the phone to fit below the sticky offset. */}
           <div className="sticky top-[max(5rem,calc(50vh-18rem))] mt-[max(4rem,calc(47.5vh-19rem))] hidden h-fit items-center justify-center gap-6 self-start lg:flex">
-            <PhoneFrame className="w-[min(17rem,calc((100vh-9rem)*0.4621+1rem))]">
+            <PhoneFrame className="w-[min(17rem,calc((100vh-9rem)*0.4857))]">
               {STEPS.map((step, index) => (
                 <StepClip
                   key={step.id}
@@ -342,7 +431,7 @@ export function HowItWorks() {
                   playing={isDesktop && canPlay && index === activeIndex}
                   reducedMotion={reducedMotion}
                   className={cn(
-                    "absolute inset-0 h-full w-full object-cover transition-opacity duration-500 motion-reduce:transition-none",
+                    "absolute inset-0 h-full w-full object-contain transition-opacity duration-500 motion-reduce:transition-none",
                     index === activeIndex ? "opacity-100" : "opacity-0",
                   )}
                 />
