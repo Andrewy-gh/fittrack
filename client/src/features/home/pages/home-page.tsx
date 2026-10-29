@@ -400,7 +400,24 @@ export function HomePage({ user }: { user: ApplicationUser | null }) {
       <footer className="border-t border-border px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <span>FitTrack</span>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <span>
+              Phone mockup adapted from{" "}
+              <a
+                href="https://www.figma.com/community/file/1149498945499741339/iphone-14-pro-iphone-14-pro-max-mockups"
+                className="underline hover:text-foreground"
+              >
+                David Barahona
+              </a>{" "}
+              (
+              <a
+                href="https://creativecommons.org/licenses/by/4.0/"
+                className="underline hover:text-foreground"
+              >
+                CC BY 4.0
+              </a>
+              )
+            </span>
             <Link
               to="/privacy"
               className="hover:text-foreground"
