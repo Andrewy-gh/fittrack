@@ -14,7 +14,7 @@ is not a FitTrack dependency.
 
 ## Prerequisites and version gate
 
-- Node **24.14.0**, Go **1.26.10**, Bun **1.4.2**, Goose **v3.24.3**.
+- Node **24.22.1**, Go **1.26.10**, Bun **1.4.2**, Goose **v3.24.3**.
 - A separately built/installed **worktree-runtime protocol 1** native executable,
   available on PATH or selected with `WORKTREE_RUNTIME`. Its Go source, OS tests
   and install lifecycle live outside this repository. Build from that tool's
@@ -43,9 +43,9 @@ production session-pooler guard is unchanged; local checks do not prove that par
 ### Shell and TypeScript entry point
 
 Use the same `node scripts/worktree.ts` commands from Git Bash, PowerShell,
-or a POSIX shell. The pinned Node 24.14.0 executes the TypeScript directly;
+or a POSIX shell. The pinned Node 24.22.1 executes the TypeScript directly;
 no transpiler, loader, or Bash wrapper is needed. Check `node --version` first.
-If your nvm-managed shell selects another version, run `nvm use 24.14.0`.
+If your nvm-managed shell selects another version, run `nvm use 24.22.1`.
 
 Set `WORKTREE_RUNTIME` to a native executable path if it is not on PATH. In
 PowerShell use `$env:WORKTREE_RUNTIME='C:\path\to\worktree-runtime.exe'`; in
