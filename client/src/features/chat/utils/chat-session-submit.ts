@@ -8,13 +8,7 @@ import {
   terminalStreamStage,
 } from "@/features/chat/utils/ai-chat-observability";
 import { getErrorMessage, showErrorToast } from "@/lib/errors";
-import {
-  clearResumeCursor,
-  saveResumeCursor,
-  updateStreamingMessageWithDelta,
-  updateStreamingMessageWithDone,
-  updateStreamingMessageWithError,
-} from "./chat-resume";
+import { clearResumeCursor, saveResumeCursor } from "./chat-resume";
 import type {
   ChatOperation,
   ChatOperationAttempt,
@@ -24,6 +18,7 @@ import type {
   ChatSessionState,
   RecordChatTelemetry,
 } from "./chat-session-types";
+import { createChatStreamUpdates } from "./chat-stream-updates";
 
 type SubmitPromptOptions = {
   conversationId: number | null;
@@ -33,6 +28,7 @@ type SubmitPromptOptions = {
   state: ChatSessionState;
 };
 
+/** Submit a prompt and retain ownership through streaming and recovery. */
 export async function submitPrompt({
   conversationId,
   prompt,
@@ -136,56 +132,19 @@ export async function submitPrompt({
             assistantMessageId,
           });
         },
-        onDelta: (event) => {
-          if (!controller.ownsAttempt(operation, attempt)) return;
-          const targetId = operation.assistantMessageId ?? tempAssistantId;
-          state.setMessages((current) =>
-            updateStreamingMessageWithDelta(
-              current,
-              targetId,
-              event.delta ?? "",
-            ),
-          );
-          if (event.sequence !== undefined) {
-            saveResumeCursor(activeConversationId, {
-              runId: event.run_id ?? 0,
-              sequence: event.sequence,
-              assistantMessageId: targetId,
-            });
-          }
-        },
-        onDone: (event) => {
-          if (!controller.ownsAttempt(operation, attempt)) return;
-          const targetId = operation.assistantMessageId ?? tempAssistantId;
-          state.setMessages((current) =>
-            updateStreamingMessageWithDone(current, targetId, event),
-          );
-          if (event.workout_draft) {
-            state.setConversation((current) =>
-              current
-                ? {
-                    ...current,
-                    latest_workout_draft: event.workout_draft,
-                    latest_workout_draft_status: { is_saved: false },
-                  }
-                : current,
+        ...createChatStreamUpdates({
+          conversationId: activeConversationId,
+          state,
+          ownsAttempt: () => controller.ownsAttempt(operation, attempt),
+          getMessageId: () => operation.assistantMessageId ?? tempAssistantId,
+          getRunId: (event) => event.run_id ?? 0,
+          onError: (event) => {
+            showErrorToast(
+              { message: event.message ?? "AI chat streaming failed" },
+              "AI chat streaming failed",
             );
-            state.setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
-          }
-          clearResumeCursor(activeConversationId);
-        },
-        onErrorEvent: (event) => {
-          if (!controller.ownsAttempt(operation, attempt)) return;
-          const targetId = operation.assistantMessageId ?? tempAssistantId;
-          state.setMessages((current) =>
-            updateStreamingMessageWithError(current, targetId, event),
-          );
-          clearResumeCursor(activeConversationId);
-          showErrorToast(
-            { message: event.message ?? "AI chat streaming failed" },
-            "AI chat streaming failed",
-          );
-        },
+          },
+        }),
         signal: attempt.controller.signal,
       },
     );

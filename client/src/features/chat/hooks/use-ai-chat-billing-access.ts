@@ -269,52 +269,17 @@ export function useAIChatBillingAccess({
     currentCheckoutPollingView,
   ]);
 
-  const checkoutPollingView =
-    checkoutNotice === "success" &&
-    isTerminalCheckoutPollingView(settledCheckoutPollingView) &&
-    !isTerminalCheckoutPollingView(currentCheckoutPollingView)
-      ? settledCheckoutPollingView
-      : currentCheckoutPollingView;
-  const checkoutAccessOverride = getCheckoutAccessOverride({
-    checkoutPollingView,
-    featureAccess: featureAccessQuery.data,
+  const accessView = resolveBillingAccess({
+    checkoutNotice,
+    billingNotice,
+    currentCheckoutPollingView,
+    settledCheckoutPollingView,
+    billingQuery,
+    featureAccessQuery,
+    checkoutAccessQuery,
+    billingCancellationQuery,
   });
-  const billingCancellationOverride = getBillingCancellationOverride({
-    data: billingCancellationQuery.data,
-    error: billingCancellationQuery.error,
-    isError: billingCancellationQuery.isError,
-  });
-  const isBlockingBillingCancellationRefresh =
-    billingNotice === "cancelled" && billingCancellationQuery.isFetching;
-  const errorSource = getAIChatAccessErrorSource({
-    isBillingError: billingQuery.isError || featureAccessQuery.isError,
-    checkoutPollingView,
-    isCheckoutReturn: checkoutNotice === "success",
-  });
-  const accessView = resolveAIChatAccessView({
-    billingStatus:
-      checkoutAccessOverride?.billingStatus ??
-      billingCancellationOverride?.billingStatus ??
-      billingQuery.data,
-    featureAccess:
-      checkoutAccessOverride?.featureAccess ??
-      billingCancellationOverride?.featureAccess ??
-      featureAccessQuery.data,
-    isPaymentConfirming: checkoutPollingView.status === "payment-confirming",
-    isChecking:
-      billingQuery.isLoading ||
-      billingQuery.isPending ||
-      featureAccessQuery.isLoading ||
-      featureAccessQuery.isPending ||
-      checkoutPollingView.status === "polling" ||
-      isBlockingBillingCancellationRefresh,
-    errorSource,
-  });
-  const isRefreshingAccess =
-    checkoutAccessQuery.isFetching ||
-    billingCancellationQuery.isFetching ||
-    Boolean(billingQuery.isFetching) ||
-    Boolean(featureAccessQuery.isFetching);
+  const { isRefreshingAccess } = accessView;
 
   useEffect(() => {
     if (checkoutNotice !== "success" && accessView.state !== "activating") {
@@ -371,6 +336,88 @@ export function useAIChatBillingAccess({
       void billingQuery.refetch();
       void featureAccessQuery.refetch();
     },
+  };
+}
+
+type AccessQuerySnapshot<T> = {
+  readonly data?: T;
+  readonly error: unknown;
+  readonly isError: boolean;
+  readonly isFetching: boolean;
+  readonly isLoading: boolean;
+  readonly isPending: boolean;
+};
+
+// Keep source precedence and state priority together: effects consume the final
+// decision without needing to know which query currently owns access.
+function resolveBillingAccess({
+  checkoutNotice,
+  billingNotice,
+  currentCheckoutPollingView,
+  settledCheckoutPollingView,
+  billingQuery,
+  featureAccessQuery,
+  checkoutAccessQuery,
+  billingCancellationQuery,
+}: {
+  readonly checkoutNotice: CheckoutSearch | null;
+  readonly billingNotice: BillingSearch | null;
+  readonly currentCheckoutPollingView: CheckoutAccessPollingView;
+  readonly settledCheckoutPollingView: CheckoutAccessPollingView;
+  readonly billingQuery: AccessQuerySnapshot<BillingStatusResponse>;
+  readonly featureAccessQuery: AccessQuerySnapshot<FeatureAccessGrant[]>;
+  readonly checkoutAccessQuery: { readonly isFetching: boolean };
+  readonly billingCancellationQuery: Pick<
+    AccessQuerySnapshot<CheckoutAccessPollResult>,
+    "data" | "error" | "isError" | "isFetching"
+  >;
+}) {
+  const checkoutPollingView =
+    checkoutNotice === "success" &&
+    isTerminalCheckoutPollingView(settledCheckoutPollingView) &&
+    !isTerminalCheckoutPollingView(currentCheckoutPollingView)
+      ? settledCheckoutPollingView
+      : currentCheckoutPollingView;
+  const checkoutAccessOverride = getCheckoutAccessOverride({
+    checkoutPollingView,
+    featureAccess: featureAccessQuery.data,
+  });
+  const billingCancellationOverride = getBillingCancellationOverride({
+    data: billingCancellationQuery.data,
+    error: billingCancellationQuery.error,
+    isError: billingCancellationQuery.isError,
+  });
+  const errorSource = getAIChatAccessErrorSource({
+    isBillingError: billingQuery.isError || featureAccessQuery.isError,
+    checkoutPollingView,
+    isCheckoutReturn: checkoutNotice === "success",
+  });
+  // Poll results own both billing and grants together. A ready checkout yields
+  // to fresher queries only after ordinary feature grants have caught up.
+  const access = checkoutAccessOverride ??
+    billingCancellationOverride ?? {
+      billingStatus: billingQuery.data,
+      featureAccess: featureAccessQuery.data,
+    };
+  const accessView = resolveAIChatAccessView({
+    ...access,
+    isPaymentConfirming: checkoutPollingView.status === "payment-confirming",
+    isChecking:
+      billingQuery.isLoading ||
+      billingQuery.isPending ||
+      featureAccessQuery.isLoading ||
+      featureAccessQuery.isPending ||
+      checkoutPollingView.status === "polling" ||
+      (billingNotice === "cancelled" && billingCancellationQuery.isFetching),
+    errorSource,
+  });
+  return {
+    ...accessView,
+    isRefreshingAccess:
+      checkoutAccessQuery.isFetching ||
+      billingCancellationQuery.isFetching ||
+      Boolean(billingQuery.isFetching) ||
+      Boolean(featureAccessQuery.isFetching),
   };
 }
 

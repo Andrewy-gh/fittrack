@@ -359,6 +359,19 @@ export function ChatPage({
     />
   );
 
+  const openHistoryButton = (
+    <Button
+      type="button"
+      variant="outline"
+      aria-label="Open chat history"
+      onClick={() => historyEntry.setIsMobileOpen(true)}
+      className={showBillingAccessPanel ? "w-full lg:hidden" : "w-full"}
+    >
+      <History className="size-4" />
+      History
+    </Button>
+  );
+
   return (
     <div className="flex flex-col gap-4 pb-10">
       {showBillingAccessPanel ? (
@@ -385,32 +398,14 @@ export function ChatPage({
                 onManageBilling={billingAccess.manageBilling}
                 onRefreshAccess={billingAccess.refreshAccess}
               />
-              <Button
-                type="button"
-                variant="outline"
-                aria-label="Open chat history"
-                onClick={() => historyEntry.setIsMobileOpen(true)}
-                className="w-full lg:hidden"
-              >
-                <History className="size-4" />
-                History
-              </Button>
+              {openHistoryButton}
             </div>
           </div>
         </div>
       ) : (
         <div className="mx-auto w-full max-w-6xl px-4 pt-4 lg:hidden">
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-start sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              aria-label="Open chat history"
-              onClick={() => historyEntry.setIsMobileOpen(true)}
-              className="w-full"
-            >
-              <History className="size-4" />
-              History
-            </Button>
+            {openHistoryButton}
           </div>
         </div>
       )}
