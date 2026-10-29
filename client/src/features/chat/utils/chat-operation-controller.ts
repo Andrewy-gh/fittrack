@@ -760,23 +760,11 @@ export class ChatOperationController {
       resumeResult.detail &&
       !this.isConversationTerminal(resumeResult.detail)
     ) {
-      const activeRun = resumeResult.detail.active_run;
-      if (activeRun) {
-        const retainedOperation =
-          operation.runId === activeRun.id
-            ? operation
-            : this.replaceRetainedOperation(
-                operation,
-                resumeResult.detail.conversation.id,
-                {
-                  runId: activeRun.id,
-                  assistantMessageId: activeRun.assistant_message_id,
-                },
-              );
-        if (!retainedOperation) return;
-        retainedOperation.runId = activeRun.id;
-        retainedOperation.assistantMessageId = activeRun.assistant_message_id;
-        this.keepOperationUnresolved(retainedOperation);
+      const retainedOperation = this.retainOperationAfterFailedStop(
+        operation,
+        resumeResult.detail,
+      );
+      if (retainedOperation) {
         if (retainedOperation === operation) {
           await this.recoverAfterFailedStop(
             resumeResult.detail.conversation.id,
@@ -788,19 +776,6 @@ export class ChatOperationController {
             retainedOperation,
           );
         }
-        return;
-      }
-
-      const streamingMessage = resumeResult.detail.messages.find(
-        (message) => message.status === "streaming",
-      );
-      if (streamingMessage) {
-        operation.assistantMessageId = streamingMessage.id;
-        this.keepOperationUnresolved(operation);
-        await this.recoverAfterFailedStop(
-          resumeResult.detail.conversation.id,
-          operation,
-        );
         return;
       }
     }
@@ -840,36 +815,45 @@ export class ChatOperationController {
       return;
     }
 
-    const activeRun = recoveryResult.detail.active_run;
+    if (this.isConversationTerminal(recoveryResult.detail)) {
+      this.releaseOperation(operation);
+      return;
+    }
+
+    this.retainOperationAfterFailedStop(operation, recoveryResult.detail);
+  }
+
+  // Retain ownership without choosing whether the caller resumes or only polls.
+  private retainOperationAfterFailedStop(
+    operation: ChatOperation,
+    detail: AIChatConversationDetail,
+  ): ChatOperation | null {
+    const activeRun = detail.active_run;
     if (activeRun) {
       const retainedOperation =
         operation.runId === activeRun.id
           ? operation
-          : this.replaceRetainedOperation(
-              operation,
-              recoveryResult.detail.conversation.id,
-              {
-                runId: activeRun.id,
-                assistantMessageId: activeRun.assistant_message_id,
-              },
-            );
-      if (!retainedOperation) return;
+          : this.replaceRetainedOperation(operation, detail.conversation.id, {
+              runId: activeRun.id,
+              assistantMessageId: activeRun.assistant_message_id,
+            });
+      if (!retainedOperation) return null;
       retainedOperation.runId = activeRun.id;
       retainedOperation.assistantMessageId = activeRun.assistant_message_id;
       this.keepOperationUnresolved(retainedOperation);
-      return;
+      return retainedOperation;
     }
 
-    const streamingMessage = recoveryResult.detail.messages.find(
+    const streamingMessage = detail.messages.find(
       (message) => message.status === "streaming",
     );
     if (streamingMessage) {
       operation.assistantMessageId = streamingMessage.id;
       this.keepOperationUnresolved(operation);
-      return;
+      return operation;
     }
 
-    this.releaseOperation(operation);
+    return null;
   }
 
   private replaceRetainedOperation(

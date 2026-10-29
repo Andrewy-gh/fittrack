@@ -14,9 +14,6 @@ import {
   clearResumeCursor,
   getResumeAfterSequence,
   saveResumeCursor,
-  updateStreamingMessageWithDelta,
-  updateStreamingMessageWithDone,
-  updateStreamingMessageWithError,
 } from "./chat-resume";
 import type {
   ChatOperation,
@@ -29,6 +26,7 @@ import type {
   ConversationRequestResult,
   RecordChatTelemetry,
 } from "./chat-session-types";
+import { createChatStreamUpdates } from "./chat-stream-updates";
 
 type RequestContext = {
   state: ChatSessionState;
@@ -137,6 +135,7 @@ export async function recoverConversation(
   }
 }
 
+/** Resume the loaded active run without taking ownership of its lifecycle. */
 export async function resumeConversation(
   detail: AIChatConversationDetail,
   loadConversation: LoadConversation,
@@ -174,55 +173,14 @@ export async function resumeConversation(
             });
           }
         },
-        onDelta: (event) => {
-          if (!ownsAttempt()) return;
-          const targetId =
-            operation.assistantMessageId ?? activeRun.assistant_message_id;
-          state.setMessages((current) =>
-            updateStreamingMessageWithDelta(
-              current,
-              targetId,
-              event.delta ?? "",
-            ),
-          );
-          if (event.sequence !== undefined) {
-            saveResumeCursor(detail.conversation.id, {
-              runId: activeRun.id,
-              sequence: event.sequence,
-              assistantMessageId: targetId,
-            });
-          }
-        },
-        onDone: (event) => {
-          if (!ownsAttempt()) return;
-          const targetId =
-            operation.assistantMessageId ?? activeRun.assistant_message_id;
-          state.setMessages((current) =>
-            updateStreamingMessageWithDone(current, targetId, event),
-          );
-          if (event.workout_draft) {
-            state.setConversation((current) =>
-              current
-                ? {
-                    ...current,
-                    latest_workout_draft: event.workout_draft,
-                    latest_workout_draft_status: { is_saved: false },
-                  }
-                : current,
-            );
-            state.setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
-          }
-          clearResumeCursor(detail.conversation.id);
-        },
-        onErrorEvent: (event) => {
-          if (!ownsAttempt()) return;
-          const targetId =
-            operation.assistantMessageId ?? activeRun.assistant_message_id;
-          state.setMessages((current) =>
-            updateStreamingMessageWithError(current, targetId, event),
-          );
-          clearResumeCursor(detail.conversation.id);
-        },
+        ...createChatStreamUpdates({
+          conversationId: detail.conversation.id,
+          state,
+          ownsAttempt,
+          getMessageId: () =>
+            operation.assistantMessageId ?? activeRun.assistant_message_id,
+          getRunId: () => activeRun.id,
+        }),
         signal: attempt.controller.signal,
       },
     );
