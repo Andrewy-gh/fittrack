@@ -289,6 +289,14 @@ func setup() error {
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--check" {
+		reportCheck(os.Args[2])
+		return
+	}
+	if len(os.Args) != 1 {
+		fmt.Fprintln(os.Stderr, "expected no arguments for setup, or --check <bootstrap|dev|test|rls|e2e>")
+		os.Exit(1)
+	}
 	if err := setup(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -429,6 +429,17 @@ test(
         /Remote databases|query parameter/,
       );
     }
+    // Doctor is read-only even when no worktree DB or runtime role exists.
+    await assert.rejects(cli(roots[0], ["doctor", "--mode", "test", "--json"]),
+      (error: unknown) => typeof error === "object" && error !== null && "stdout" in error && typeof error.stdout === "string" && JSON.parse(error.stdout).ready === false);
+    assert.equal(await sql("postgres", "SELECT count(*) FROM pg_database WHERE datname LIKE 'ft_%';"), "0");
+    // Prepare composes allocation/setup and doctor, then permits unchanged direct setup callers.
+    if (major === "15") {
+      const prepared = JSON.parse((await cli(roots[0], ["prepare", "--mode", "test", "--major", major, "--json"])).stdout);
+      assert.equal(prepared.ready, true);
+      const diagnosed = JSON.parse((await cli(roots[0], ["doctor", "--mode", "rls", "--json"])).stdout);
+      assert.equal(diagnosed.ready, true);
+    }
     await setupBoth();
     for (const config of configs) {
       await sql(
@@ -665,6 +676,8 @@ test(
       `COMMENT ON DATABASE "${configs[0].databases.dev}" IS 'fittrack-worktree:${configs[0].id}'; ALTER ROLE fittrack_app BYPASSRLS;`,
     );
     await assert.rejects(setup(roots[0]), /existing fittrack_app is unsafe/);
+    await assert.rejects(cli(roots[0], ["doctor", "--mode", "rls", "--json"]),
+      (error: unknown) => typeof error === "object" && error !== null && "stdout" in error && typeof error.stdout === "string" && JSON.parse(error.stdout).checks.some((check: { id: string }) => check.id === "unsafe_runtime_role"));
     assert.equal(
       await sql("postgres", "SELECT rolbypassrls FROM pg_roles WHERE rolname='fittrack_app';"),
       "t",

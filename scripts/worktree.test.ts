@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { commandEnvironment, databaseURL, localConfig } from "./worktree.ts";
 
 const base = "postgresql://local_owner@127.0.0.1:55432/postgres?sslmode=disable";
@@ -103,4 +105,21 @@ test("RLS mode requires existing restricted role and keeps owner URL distinct", 
   assert.equal(new URL(env.DATABASE_URL).pathname, new URL(env.ADMIN_DATABASE_URL).pathname);
   assert.equal(env.RLS_ENFORCEMENT_REQUIRED, "true");
   assert.equal(env.GOFLAGS, "-p=1");
+});
+
+test("unit commands receive no database or Stripe credentials and can construct a Node Request", () => {
+  const env = commandEnvironment(config(), "unit", { DATABASE_URL: "remote", ADMIN_DATABASE_URL: "remote", FITTRACK_LOCAL_DATABASE_URL: base, PGHOST: "remote", STRIPE_SECRET_KEY: "synthetic-secret" });
+  for (const key of ["DATABASE_URL", "ADMIN_DATABASE_URL", "FITTRACK_LOCAL_DATABASE_URL", "PGHOST", "STRIPE_SECRET_KEY"]) assert.equal(env[key], undefined);
+  assert.equal(new Request(`${env.VITE_API_BASE_URL}/workouts`).url, "http://127.0.0.1:8080/workouts");
+});
+
+test("E2E doctor refuses mismatched local auth flags even when Stack credentials are present", () => {
+    for (const [clientFlag, status] of [["false", "missing"], ["true", "passed"]]) {
+      const result = spawnSync(process.execPath, [resolve("scripts/worktree.ts"), "--doctor"], {
+        env: { ...process.env, WORKTREE_RUNTIME: undefined, WORKTREE_MODE: "e2e", WORKTREE_DOCTOR_STAGE: "bootstrap", PROJECT_ID: "synthetic-project", VITE_PROJECT_ID: "synthetic-project", VITE_PUBLISHABLE_CLIENT_KEY: "synthetic", SECRET_SERVER_KEY: "synthetic", E2E_LOCAL_AUTH_ENABLED: "true", VITE_E2E_LOCAL_AUTH_ENABLED: clientFlag }, encoding: "utf8", timeout: 30000,
+      });
+      assert.equal(result.status, 1); // Missing database credentials are a separate preparation blocker.
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.checks.find((c: { id: string }) => c.id === "e2e_auth_configuration").status, status);
+    }
 });

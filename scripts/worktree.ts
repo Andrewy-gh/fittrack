@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // FitTrack's app adapter for the separately installed worktree-runtime Go CLI.
 import { execFileSync, spawn } from "node:child_process";
-import { isAbsolute, join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { existsSync } from "node:fs";
+import { createConnection } from "node:net";
 
 const VERSION = 1;
-const MODES = ["dev", "test", "rls", "e2e"] as const;
+const MODES = ["dev", "test", "rls", "e2e", "unit"] as const;
 type Mode = (typeof MODES)[number];
 type Allocation = { readonly root: string; readonly id: string; readonly basePort: number };
 type LocalConfig = ReturnType<typeof localConfig>;
@@ -62,7 +64,7 @@ export function localConfig(entry: Allocation) {
 
 /** Select a worktree database while refusing remote or redirected connection templates. */
 export function databaseURL(template: string | undefined, config: LocalConfig, mode: string) {
-  if (!isMode(mode)) throw new Error("Unknown database mode.");
+  if (!isMode(mode) || mode === "unit") throw new Error("Unknown database mode.");
   if (!template)
     throw new Error(
       "Set FITTRACK_LOCAL_DATABASE_URL to an existing local owning-role connection URL. Credentials are never created or saved by this helper.",
@@ -86,19 +88,32 @@ export function databaseURL(template: string | undefined, config: LocalConfig, m
   // libpq/pgx accept query parameters that override the URL host and database.
   for (const key of url.searchParams.keys()) {
     if (!["sslmode", "connect_timeout"].includes(key))
-      throw new Error(`Unsupported database URL query parameter: ${key}`);
+      throw new Error("Unsupported database URL query parameter; connection details withheld.");
   }
   url.pathname = `/${config.databases[mode]}`;
   return url.toString();
 }
 
 /** Derive a command environment with isolated service ports and database targets. */
+export function commandEnvironment(config: LocalConfig, mode: "unit", inherited?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
+export function commandEnvironment(config: LocalConfig, mode: "dev" | "test" | "rls" | "e2e", inherited?: NodeJS.ProcessEnv): NodeJS.ProcessEnv & { DATABASE_URL: string; ADMIN_DATABASE_URL: string };
+export function commandEnvironment(config: LocalConfig, mode: string, inherited?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
 export function commandEnvironment(
   config: LocalConfig,
   mode: string,
   inherited: NodeJS.ProcessEnv = process.env,
 ) {
   if (!isMode(mode)) throw new Error(`Mode must be one of: ${MODES.join(", ")}`);
+  if (mode === "unit") {
+    const env = { ...inherited };
+    // Unit checks have no database target and must not inherit integration credentials.
+    for (const key of Object.keys(env)) {
+      if (/^(PG|DATABASE_URL$|ADMIN_DATABASE_URL$|RECOMMENDATION_TEST_DATABASE_URL$|FITTRACK_LOCAL_.*DATABASE_URL$|STRIPE_)/i.test(key)) delete env[key];
+    }
+    // Node's Request requires an absolute URL; this mode never starts a proxy.
+    env.VITE_API_BASE_URL = "http://127.0.0.1:8080";
+    return env;
+  }
   const isE2E = mode === "e2e";
   const frontend = isE2E ? config.ports.e2eFrontend : config.ports.frontend;
   const api = isE2E ? config.ports.e2eApi : config.ports.api;
@@ -210,9 +225,95 @@ function execute(command: string, args: string[], cwd: string, env: NodeJS.Proce
   });
 }
 
+type Check = { readonly id: string; readonly status: "passed" | "missing" | "inaccessible" | "failed" | "not_required"; readonly repair: string };
+type Readiness = { readonly ready: boolean; readonly checks: readonly Check[] };
+type ReadinessOptions = { readonly mode: Mode };
+function probe(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, timeout = 15000) {
+  try {
+    return { ok: true as const, output: execFileSync(command, args, { cwd, env, windowsHide: true, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout, maxBuffer: 1024 * 1024 }) };
+  } catch { return { ok: false as const }; }
+}
+function reportReadiness(report: Readiness) {
+  // The adapter emits the shared protocol; native runtime owns user formatting.
+  console.log(JSON.stringify({ version: 1, ...report }));
+  process.exitCode = report.ready ? 0 : 1;
+}
+
+/** Diagnose only; database checks use the same endpoint/ownership guard as setup. */
+async function readiness(root: string, env: NodeJS.ProcessEnv, options: ReadinessOptions, stage: "bootstrap" | "ready"): Promise<Readiness> {
+  const checks: Check[] = [];
+  const add = (id: string, passed: boolean, repair: string, failure: Check["status"] = "failed") => checks.push({ id, status: passed ? "passed" : failure, repair: passed ? "" : repair });
+  let config: LocalConfig | undefined;
+  if (env.WORKTREE_ALLOCATION) {
+    try { config = localConfig(parseAllocation(JSON.parse(env.WORKTREE_ALLOCATION))); }
+    catch { add("allocation", false, "Native runtime supplied an invalid allocation."); }
+  }
+  if (["dev", "e2e", "unit"].includes(options.mode)) {
+    add("client_dependencies", existsSync(join(root, "client", "node_modules", "vitest", "package.json")), "Run bun install --frozen-lockfile in client/.", "missing");
+    add("bun", probe("bun", ["--version"], root, env).ok, "Install the repository-pinned Bun runtime.", "inaccessible");
+  }
+  if (options.mode === "unit") {
+    checks.push({ id: "database_auth_billing", status: "not_required", repair: "" });
+    return { ready: checks.every(c => ["passed", "not_required"].includes(c.status)), checks };
+  }
+  const go = probe("go", ["version"], root, env);
+  add("go", go.ok, "Install the repository-pinned Go toolchain.", "inaccessible");
+  const goose = probe(env.FITTRACK_GOOSE ?? "goose", ["-version"], root, env);
+  add("goose", goose.ok && goose.output.trim() === "goose version: v3.24.3", "Install Goose v3.24.3 or set FITTRACK_GOOSE in the local profile.", "inaccessible");
+  const target = config ?? localConfig({ root, id: "doctor_000000000000", basePort: 21000 });
+  let credentialsValid = true;
+  for (const key of ["FITTRACK_LOCAL_DATABASE_URL", "FITTRACK_LOCAL_RUNTIME_DATABASE_URL"] as const) {
+    if (!env[key]) { add(key, false, "Supply this local credential through the session or selected development Doppler config.", "missing"); credentialsValid = false; continue; }
+    try {
+      const parsed = new URL(databaseURL(env[key], target, "dev"));
+      if (!parsed.username || (key === "FITTRACK_LOCAL_RUNTIME_DATABASE_URL" ? parsed.username !== "fittrack_app" : parsed.username === "fittrack_app")) throw new Error();
+      add(key, true, "");
+    } catch { add(key, false, "Use an explicit local owning role and fittrack_app role at 127.0.0.1:55432; redirected URLs are refused."); credentialsValid = false; }
+  }
+  const service = await new Promise<boolean>(done => {
+    const socket = createConnection({ host: "127.0.0.1", port: 55432 });
+    const finish = (ready: boolean) => { socket.destroy(); done(ready); };
+    socket.setTimeout(2000, () => finish(false));
+    socket.once("error", () => finish(false));
+    socket.once("connect", () => finish(true));
+  });
+  add("postgres_service", service, "Start the documented local PostgreSQL 15 cluster at 127.0.0.1:55432. Doctor never starts or replaces services.", "inaccessible");
+  if (credentialsValid && go.ok && service) {
+    const checkEnv: NodeJS.ProcessEnv = { ...env, FITTRACK_DATABASE_CONFIG: JSON.stringify(target), FITTRACK_POSTGRES_MAJOR: "15" };
+    for (const key of Object.keys(checkEnv)) if (/^(PGHOSTADDR|PGSERVICE|PGSERVICEFILE)$/i.test(key)) delete checkEnv[key];
+    const result = probe("go", ["run", "-p=1", "./cmd/worktree-db", "--check", stage === "ready" && config ? options.mode : "bootstrap"], join(root, "server"), {
+      ...checkEnv,
+    }, 120000);
+    // Only parse the deliberately bounded public report; never print subprocess diagnostics.
+    if (result.ok) {
+      try {
+        const data: unknown = JSON.parse(result.output);
+        if (isRecord(data) && typeof data.ready === "boolean" && typeof data.code === "string" && ["ready", "cluster_unavailable", "owner_permissions", "runtime_auth", "unsafe_runtime_role", "database_unprepared", "database_ownership", "migrations_pending", "invalid_configuration"].includes(data.code)) {
+          add(data.code === "ready" ? "database" : data.code, data.ready, "Check the local cluster, role permissions, and owning credentials; run prepare for missing worktree databases/migrations.");
+        } else add("database_probe", false, "Database checker returned an invalid report.");
+      } catch { add("database_probe", false, "Database checker returned an invalid report."); }
+    } else add("database_probe", false, "Cannot run the read-only database checker; inspect the Go toolchain and local service.", "inaccessible");
+  }
+  if (["dev", "e2e"].includes(options.mode)) {
+    const project = env.PROJECT_ID;
+    add("auth_project", Boolean(project && (!env.VITE_PROJECT_ID || env.VITE_PROJECT_ID === project)), "Supply PROJECT_ID (and matching VITE_PROJECT_ID) in the selected development configuration.", "missing");
+    if (options.mode === "e2e") {
+      const browser = probe(process.execPath, ["-e", "const {createRequire}=require('node:module');const {existsSync}=require('node:fs');const p=createRequire(process.cwd()+'/package.json')('playwright');process.exit(existsSync(p.chromium.executablePath())?0:1)"], join(root, "client"), env);
+      add("chromium", browser.ok, "Run bunx playwright install chromium in client/.", "missing");
+      const enabled = (value: string | undefined) => ["1", "true", "yes", "on"].includes((value ?? "").trim().toLowerCase());
+      const serverLocal = enabled(env.E2E_LOCAL_AUTH_ENABLED), clientLocal = enabled(env.VITE_E2E_LOCAL_AUTH_ENABLED);
+      const local = serverLocal && clientLocal;
+      const provider = Boolean(env.VITE_PROJECT_ID && env.VITE_PUBLISHABLE_CLIENT_KEY && (env.SECRET_SERVER_KEY || (env.E2E_STACK_EMAIL && env.E2E_STACK_PASSWORD)));
+      add("e2e_auth_configuration", (serverLocal || clientLocal) ? local : provider, "Set both E2E_LOCAL_AUTH_ENABLED and VITE_E2E_LOCAL_AUTH_ENABLED for local auth, or configure Stack test login. This checks configuration, not a completed login.", "missing");
+    }
+  } else checks.push({ id: "auth", status: "not_required", repair: "" });
+  checks.push({ id: "billing", status: "not_required", repair: "Billing provider access, webhook forwarding and authenticated checkout require separate scenario verification." });
+  return { ready: checks.every(c => ["passed", "not_required"].includes(c.status)), checks };
+}
+
 async function main(args: string[]) {
   if (!args.length || args[0] === "help" || args[0] === "--help") {
-    console.log("FitTrack adapter: init | status | check | db setup --major <verified-major> | stop <mode> | run <dev|test|rls|e2e> [--log-file path] -- <command> [arguments]\nRequires the external worktree-runtime Go CLI. See docs/worktrees.md.");
+    console.log("FitTrack adapter: [--profile <absolute-path>] init | status | check | doctor --mode <mode> [--json] | prepare --mode <mode> [--major 15] [--json] | db setup --major <verified-major> | stop <mode> | run <dev|test|rls|e2e|unit> [--log-file path] -- <command> [arguments]\nRequires the external worktree-runtime Go CLI. See docs/worktrees.md.");
     return;
   }
   if (args[0] === "--exec") {
@@ -221,7 +322,11 @@ async function main(args: string[]) {
       throw new Error("Invalid managed FitTrack command.");
     const cwd = process.env.WORKTREE_COMMAND_CWD;
     if (!cwd || !isAbsolute(cwd)) throw new Error("Missing managed command directory.");
-    await execute(command, args.slice(4), cwd, commandEnvironment(assignedConfig(), mode));
+    // Bun can restore deleted variables from .env when it executes a file/eval.
+    // Disable its automatic reload for unit launches; other modes retain it.
+    const commandArgs = mode === "unit" && /^bun(?:\.exe)?$/i.test(basename(command))
+      ? ["--no-env-file", ...args.slice(4)] : args.slice(4);
+    await execute(command, commandArgs, cwd, commandEnvironment(assignedConfig(), mode));
     return;
   }
   if (args[0] === "--setup") {
@@ -234,19 +339,36 @@ async function main(args: string[]) {
     await execute("go", ["run", "-p=1", "./cmd/worktree-db"], join(config.root, "server"), env);
     return;
   }
-  if (args[0] === "status") {
-    if (args.length !== 1) throw new Error("Expected status.");
-    console.log(JSON.stringify(await loadConfig(), null, 2));
+  if (args[0] === "--doctor") {
+    const mode = process.env.WORKTREE_MODE, stage = process.env.WORKTREE_DOCTOR_STAGE;
+    if (!isMode(mode) || (stage !== "ready" && stage !== "bootstrap")) throw new Error("Invoke doctor through the native worktree-runtime CLI.");
+    reportReadiness(await readiness(process.cwd(), process.env, { mode }, stage));
     return;
   }
-  if (args[0] === "db") {
-    if (args[1] !== "setup") throw new Error("Expected db setup --major <verified-production-major>.");
-    process.exitCode = (await runtimeCommand(["setup", ...args.slice(2)])).code;
+  // The bridge only translates FitTrack syntax and presents FitTrack endpoints.
+  // Profiles, readiness protocol and prepare orchestration belong to the native CLI.
+  const forwarded = [...args];
+  let commandIndex = 0;
+  while (forwarded[commandIndex] === "--profile") commandIndex += 2;
+  const command = forwarded[commandIndex];
+  if (command === "doctor" || command === "prepare") {
+    const major = forwarded.indexOf("--major");
+    if (major >= 0) {
+      if (forwarded[major + 1] !== "15") throw new Error("FitTrack preparation requires its pinned PostgreSQL major 15.");
+      forwarded.splice(major, 2);
+    }
+  }
+  if (command === "db") {
+    if (forwarded[commandIndex + 1] !== "setup") throw new Error("Expected db setup --major <verified-production-major>.");
+    forwarded.splice(commandIndex, 2, "setup");
+  }
+  if (command === "status") {
+    const result = await runtimeCommand(forwarded, process.cwd(), process.env, true);
+    if (result.code) { process.exitCode = result.code; return; }
+    console.log(JSON.stringify(localConfig(parseAllocation(JSON.parse(result.output))), null, 2));
     return;
   }
-  if (!["init", "check", "stop", "run"].includes(args[0] ?? ""))
-    throw new Error("Unknown FitTrack adapter command.");
-  process.exitCode = (await runtimeCommand(args)).code;
+  process.exitCode = (await runtimeCommand(forwarded)).code;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

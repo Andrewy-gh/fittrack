@@ -1,7 +1,8 @@
 # Concurrent linked worktrees
 
 **Creating a Git worktree is not setup.** In each worktree use
-`node scripts/worktree.ts init`, then `db setup`, then `run` below.
+`node scripts/worktree.ts prepare --mode dev`, then `run` below.
+The individual `init` and `db setup` commands remain available.
 The separately installed **worktree-runtime Go CLI** owns allocation, locks,
 process supervision, status and recovery. One per-user registry coordinates
 linked worktrees and independent clones. This repo keeps only
@@ -11,6 +12,108 @@ Never copy `.worktree/` or source another checkout's database environment.
 Ordinary single-checkout development does not require this CLI. Concurrent
 agent work needs it or equivalent isolation. Process Compose is optional and
 is not a FitTrack dependency.
+
+## Shared runtime profiles and readiness
+
+Profile resolution, diagnostic output and preparation orchestration now belong
+in the native **worktree-runtime repository**, not a FitTrack TypeScript loader.
+Build/install that updated runtime first; an older binary does not understand
+this manifest's `profile`, `doctor` and `prepare` fields. Select it on PATH or
+set `WORKTREE_RUNTIME` to its absolute native executable. A machine profile
+cannot bootstrap discovery of the executable that reads it.
+
+The native CLI and FitTrack bridge both support:
+
+```bash
+worktree-runtime doctor --mode e2e --json
+worktree-runtime prepare --mode e2e --json
+# Equivalent FitTrack syntax, including the optional pinned-major assertion:
+node scripts/worktree.ts doctor --mode e2e --json
+node scripts/worktree.ts prepare --mode e2e --major 15 --json
+```
+
+Configure a machine once with a profile outside every checkout. The default is
+`%LOCALAPPDATA%/fittrack/worktree-profile.json` on Windows, or
+`$XDG_CONFIG_HOME/fittrack/worktree-profile.json` on Unix (default `~/.config`).
+Create the parent directory/file. Profiles contain tool settings and credential
+references only, never actual credential values:
+
+```json
+{
+  "version": 1,
+  "environment": {
+    "FITTRACK_GOOSE": "C:/path/to/goose.exe",
+    "FITTRACK_LOCAL_POSTGRES_CONTAINER": "fittrack-postgres15"
+  },
+  "credentials": {
+    "provider": "doppler",
+    "project": "fittrack",
+    "config": "dev_local"
+  }
+}
+```
+
+`dev_local` is an example, not an automatically created config. Authenticate
+Doppler in the actual agent environment and choose an existing development
+config containing both **local** URLs described below. A generic `DATABASE_URL`
+is never their fallback; remote URLs remain refused. Only `dev`, `dev_*` and
+`dev-*` configurations are accepted. Omit `credentials` when using a session or
+existing ignored env files. Omit the container setting for native PostgreSQL.
+Older profiles may retain `WORKTREE_RUNTIME` metadata, but it cannot locate the
+CLI: managed adapters receive the actual running executable's path from native
+runtime ownership, with `runtime` provenance.
+
+Choose a profile with `--profile <absolute-path>` before the command's `--`,
+`WORKTREE_PROFILE`, or the FitTrack alias `FITTRACK_WORKTREE_PROFILE`, in that
+order. Missing defaults are optional; explicit invalid selection fails closed
+for run/setup/doctor/prepare. Inspection/allocation/cancellation need no profile,
+so a deleted profile cannot prevent `stop` from cancelling an owned run.
+
+The manifest declares allowlists and env files. Explicit session values (even
+empty) win, then `server/.env.local`, `client/.env.local`, `server/.env`,
+`client/.env`, then profile/Doppler. Native resolution imports only allowlisted
+values in memory, never dumps credentials, mutates global env, or writes them
+to allocation/registry/reports. Reports expose source labels only. It does not
+create credentials, log in, reset passwords or start/replace services.
+
+`doctor` checks the allocation and calls FitTrack's read-only adapter for tools,
+mode-specific dependencies, local service/credentials/version, database ownership,
+migrations and relevant auth/browser configuration. It creates no allocation,
+roles or databases. `prepare` runs bootstrap checks, native init, the declared
+existing database setup under native admission/containment, then doctor again.
+It stops on failure without retries or rollback. FitTrack's existing setup owns
+role/password/data preservation and refuses adoption of unowned databases.
+
+Modes: `dev`, `test` (Go/integration), `rls`, `e2e`, `unit`. Manifest preparation
+pins PostgreSQL major 15 and provisions the existing four isolated DB targets.
+The bridge accepts `--major 15` as an optional assertion; another major is refused.
+Unit preparation skips database setup and credential-provider retrieval:
+
+```bash
+node scripts/worktree.ts prepare --mode unit --json
+# From client/:
+node ../scripts/worktree.ts run unit -- bun run test
+```
+
+Unit commands still use native allocation/containment, strip DB/Stripe credentials,
+and use an absolute local API URL for Node Request tests. Direct Bun unit launches
+also receive `--no-env-file` so Bun cannot automatically restore stripped values
+when executing a file or eval; non-unit Bun loading remains unchanged. Native reports have
+`version:1`, `ready`, `checks`, and source labels; exit 1 indicates a blocker.
+Statuses distinguish missing/inaccessible/failed/passed/not_required. The adapter
+returns checks, while the native runtime owns schema/exit validation and capture.
+
+Readiness means local preparation, not a completed provider login or product
+scenario. E2E checks installed Chromium and local-auth/Stack configuration; it
+does not sign in. Billing access, webhook forwarding, authenticated checkout and
+RLS application-policy behavior still require separate scenario verification.
+Ordinary preparation does not require Stripe or provision a persistent cluster.
+
+FitTrack keeps its database/role/auth/browser/environment rules in its adapter.
+The native manifest protocol supports different codebases without importing
+FitTrack, installing Node unless their adapter needs it, or creating a second
+worktree manager. Generic resolver/orchestration tests live with worktree-runtime;
+FitTrack retains policy and actual native/DB integration coverage.
 
 ## Prerequisites and version gate
 
