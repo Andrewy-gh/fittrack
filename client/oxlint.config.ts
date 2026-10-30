@@ -1,5 +1,19 @@
 import { defineConfig } from "oxlint";
 
+const generatedClientRules = {
+  "anti-slop/no-chained-type-assertions": "off",
+  "anti-slop/no-conditional-empty-object-spread": "off",
+  "anti-slop/no-known-value-widening": "off",
+  "anti-slop/no-object-parameters": "off",
+  "anti-slop/no-reflect-apply": "off",
+  "anti-slop/no-reflect-get": "off",
+  "anti-slop/no-unknown-returns": "off",
+  "anti-slop/no-unknown-type-aliases": "off",
+  "anti-slop/no-unsafe-dictionary-type": "off",
+  "anti-slop/no-widen-then-assert": "off",
+  "anti-slop/require-safety-comment-for-type-assertion": "off",
+} as const;
+
 export default defineConfig({
   ignorePatterns: [
     ".agent/**",
@@ -69,18 +83,11 @@ export default defineConfig({
     },
     {
       files: ["src/client/**/*.{ts,tsx}"],
-      rules: {
-        "anti-slop/no-chained-type-assertions": "off",
-        "anti-slop/no-conditional-empty-object-spread": "off",
-        "anti-slop/no-known-value-widening": "off",
-        "anti-slop/no-object-parameters": "off",
-        "anti-slop/no-reflect-apply": "off",
-        "anti-slop/no-reflect-get": "off",
-        "anti-slop/no-unknown-returns": "off",
-        "anti-slop/no-unknown-type-aliases": "off",
-        "anti-slop/no-unsafe-dictionary-type": "off",
-        "anti-slop/no-widen-then-assert": "off",
-      },
+      rules: generatedClientRules,
+    },
+    {
+      files: ["src/client-api-contract-tmp-*/**/*.{ts,tsx}"],
+      rules: generatedClientRules,
     },
   ],
 });

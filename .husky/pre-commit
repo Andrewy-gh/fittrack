@@ -2,9 +2,34 @@
 
 set -e
 
-changed_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+hook_state="$(node scripts/api-contract-hook.mjs)"
+set -- $hook_state
+api_contract_changed=$1
+server_changed=$2
+client_changed=$3
+server_non_docs_changed=$4
 
-if echo "$changed_files" | grep -q '^client/'; then
+if [ "$api_contract_changed" -eq 1 ]; then
+  echo "pre-commit: generating the API contract from staged backend inputs"
+  if ! command -v bun >/dev/null 2>&1; then
+    echo "pre-commit: Bun is required to generate the API contract" >&2
+    exit 1
+  fi
+  bun run --cwd client api:generate
+  generated_worktree_changes="$(git diff --name-only -- server/docs/swagger.json server/docs/swagger.yaml client/src/client; git ls-files --others -- server/docs/swagger.json server/docs/swagger.yaml client/src/client)"
+  if [ -n "$generated_worktree_changes" ]; then
+    echo "pre-commit: generated API files changed. Review the output and stage it explicitly, then retry the commit:" >&2
+    printf '%s\n' "$generated_worktree_changes" | while IFS= read -r path; do echo "  $path" >&2; done
+    echo "  git diff -- server/docs/swagger.json server/docs/swagger.yaml client/src/client" >&2
+    echo "  git add server/docs/swagger.json server/docs/swagger.yaml client/src/client" >&2
+    client_changed=1
+    generated_changed=1
+  else
+    generated_changed=0
+  fi
+fi
+
+if [ "$client_changed" -eq 1 ]; then
   if command -v bun >/dev/null 2>&1; then
     bun run --cwd client fmt:check
     bun run --cwd client lint
@@ -20,13 +45,12 @@ if echo "$changed_files" | grep -q '^client/'; then
   fi
 fi
 
-if echo "$changed_files" | grep -q '^server/'; then
-  server_changed_files="$(echo "$changed_files" | grep '^server/' || true)"
-  server_non_docs_files="$(echo "$server_changed_files" | grep -Ev '^server/(README\.md|docs/|.*\.md$)' || true)"
-
-  if [ -n "$server_non_docs_files" ]; then
+if [ "$server_changed" -eq 1 ]; then
+  if [ "$server_non_docs_changed" -eq 1 ]; then
     (cd server && make test-fast)
   else
     echo "server changes are docs-only; skipping fast server tests"
   fi
 fi
+
+if [ "${generated_changed:-0}" -eq 1 ]; then exit 1; fi

@@ -811,6 +811,33 @@ export const trainingprofile_UpdateProfileRequestSchema = {
   },
 } as const;
 
+export const workout_AssessmentSessionSchema = {
+  type: "object",
+  properties: {
+    date: {
+      type: "string",
+    },
+    invalidWorkingSets: {
+      type: "integer",
+    },
+    reason: {
+      type: "string",
+    },
+    reasonCode: {
+      type: "string",
+    },
+    state: {
+      type: "string",
+    },
+    workingSets: {
+      type: "integer",
+    },
+    workoutId: {
+      type: "integer",
+    },
+  },
+} as const;
+
 export const workout_ContributionDataResponseSchema = {
   type: "object",
   properties: {
@@ -844,6 +871,33 @@ export const workout_ContributionDaySchema = {
   },
 } as const;
 
+export const workout_ContributionExerciseSchema = {
+  type: "object",
+  properties: {
+    catalogId: {
+      type: "string",
+    },
+    exerciseId: {
+      type: "integer",
+    },
+    invalidWorkingSets: {
+      type: "integer",
+    },
+    name: {
+      type: "string",
+    },
+    roles: {
+      type: "object",
+      additionalProperties: {
+        type: "string",
+      },
+    },
+    workingSets: {
+      type: "integer",
+    },
+  },
+} as const;
+
 export const workout_CreateWorkoutRequestSchema = {
   type: "object",
   required: ["date", "exercises"],
@@ -872,6 +926,33 @@ export const workout_CreateWorkoutRequestSchema = {
     workoutFocus: {
       type: "string",
       maxLength: 256,
+    },
+  },
+} as const;
+
+export const workout_EvidencePeriodSchema = {
+  type: "object",
+  properties: {
+    endAt: {
+      type: "string",
+    },
+    endDate: {
+      type: "string",
+    },
+    observedAt: {
+      type: "string",
+    },
+    partial: {
+      type: "boolean",
+    },
+    startAt: {
+      type: "string",
+    },
+    startDate: {
+      type: "string",
+    },
+    timezone: {
+      type: "string",
     },
   },
 } as const;
@@ -936,6 +1017,72 @@ export const workout_LatestWorkoutNoteResponseSchema = {
   },
 } as const;
 
+export const workout_MuscleContributionSchema = {
+  type: "object",
+  properties: {
+    directSets: {
+      type: "integer",
+    },
+    indirectSets: {
+      type: "integer",
+    },
+    invalidMappedSets: {
+      type: "integer",
+    },
+    invalidUnresolvedSets: {
+      type: "integer",
+    },
+    muscle: {
+      type: "string",
+    },
+    unresolvedSets: {
+      type: "integer",
+    },
+  },
+} as const;
+
+export const workout_MuscleContributionsSchema = {
+  type: "object",
+  properties: {
+    catalogVersion: {
+      type: "string",
+    },
+    classificationBasis: {
+      type: "string",
+    },
+    exercises: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/workout.ContributionExercise",
+      },
+    },
+    invalidWorkingSets: {
+      type: "integer",
+    },
+    mappingVersion: {
+      type: "string",
+    },
+    muscles: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/workout.MuscleContribution",
+      },
+    },
+    period: {
+      $ref: "#/definitions/workout.EvidencePeriod",
+    },
+    unclassifiedSets: {
+      type: "integer",
+    },
+    unreviewedSets: {
+      type: "integer",
+    },
+    workingSets: {
+      type: "integer",
+    },
+  },
+} as const;
+
 export const workout_NewWorkoutContextResponseSchema = {
   type: "object",
   properties: {
@@ -967,6 +1114,51 @@ export const workout_SetInputSchema = {
       type: "number",
       maximum: 999999999.9,
       minimum: 0,
+    },
+  },
+} as const;
+
+export const workout_StrengthAssessmentSchema = {
+  type: "object",
+  properties: {
+    applicability: {
+      type: "string",
+    },
+    exerciseId: {
+      type: "integer",
+    },
+    limitations: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    period: {
+      $ref: "#/definitions/workout.EvidencePeriod",
+    },
+    policyVersion: {
+      type: "string",
+    },
+    reference: {
+      type: "string",
+    },
+    sessions: {
+      type: "array",
+      items: {
+        $ref: "#/definitions/workout.AssessmentSession",
+      },
+    },
+    sessionsMeetingReference: {
+      type: "integer",
+    },
+    sourceUrl: {
+      type: "string",
+    },
+    trainingDays: {
+      type: "integer",
+    },
+    workingSets: {
+      type: "integer",
     },
   },
 } as const;

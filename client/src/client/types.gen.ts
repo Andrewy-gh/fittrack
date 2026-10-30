@@ -279,6 +279,16 @@ export type TrainingprofileUpdateProfileRequest = {
   usual_training_location?: string;
 };
 
+export type WorkoutAssessmentSession = {
+  date?: string;
+  invalidWorkingSets?: number;
+  reason?: string;
+  reasonCode?: string;
+  state?: string;
+  workingSets?: number;
+  workoutId?: number;
+};
+
 export type WorkoutContributionDataResponse = {
   days?: Array<WorkoutContributionDay>;
 };
@@ -290,12 +300,33 @@ export type WorkoutContributionDay = {
   workouts?: Array<WorkoutWorkoutSummary>;
 };
 
+export type WorkoutContributionExercise = {
+  catalogId?: string;
+  exerciseId?: number;
+  invalidWorkingSets?: number;
+  name?: string;
+  roles?: {
+    [key: string]: string;
+  };
+  workingSets?: number;
+};
+
 export type WorkoutCreateWorkoutRequest = {
   date: string;
   exercises: Array<WorkoutExerciseInput>;
   notes?: string;
   recommendations?: Array<RecommendationSnapshot>;
   workoutFocus?: string;
+};
+
+export type WorkoutEvidencePeriod = {
+  endAt?: string;
+  endDate?: string;
+  observedAt?: string;
+  partial?: boolean;
+  startAt?: string;
+  startDate?: string;
+  timezone?: string;
 };
 
 export type WorkoutExerciseInput = {
@@ -316,6 +347,28 @@ export type WorkoutLatestWorkoutNoteResponse = {
   workoutId: number;
 };
 
+export type WorkoutMuscleContribution = {
+  directSets?: number;
+  indirectSets?: number;
+  invalidMappedSets?: number;
+  invalidUnresolvedSets?: number;
+  muscle?: string;
+  unresolvedSets?: number;
+};
+
+export type WorkoutMuscleContributions = {
+  catalogVersion?: string;
+  classificationBasis?: string;
+  exercises?: Array<WorkoutContributionExercise>;
+  invalidWorkingSets?: number;
+  mappingVersion?: string;
+  muscles?: Array<WorkoutMuscleContribution>;
+  period?: WorkoutEvidencePeriod;
+  unclassifiedSets?: number;
+  unreviewedSets?: number;
+  workingSets?: number;
+};
+
 export type WorkoutNewWorkoutContextResponse = {
   focusTemplates?: Array<WorkoutFocusTemplateResponse>;
   latestWorkoutNote?: WorkoutLatestWorkoutNoteResponse;
@@ -325,6 +378,20 @@ export type WorkoutSetInput = {
   reps: number;
   setType: "warmup" | "working";
   weight?: number;
+};
+
+export type WorkoutStrengthAssessment = {
+  applicability?: string;
+  exerciseId?: number;
+  limitations?: Array<string>;
+  period?: WorkoutEvidencePeriod;
+  policyVersion?: string;
+  reference?: string;
+  sessions?: Array<WorkoutAssessmentSession>;
+  sessionsMeetingReference?: number;
+  sourceUrl?: string;
+  trainingDays?: number;
+  workingSets?: number;
 };
 
 export type WorkoutUpdateExercise = {
@@ -889,6 +956,50 @@ export type PostAiConversationsByIdRunsByRunIdStopResponses = {
 export type PostAiConversationsByIdRunsByRunIdStopResponse =
   PostAiConversationsByIdRunsByRunIdStopResponses[keyof PostAiConversationsByIdRunsByRunIdStopResponses];
 
+export type GetAnalyticsMuscleContributionsData = {
+  body?: never;
+  path?: never;
+  query: {
+    /**
+     * First local date, YYYY-MM-DD
+     */
+    startDate: string;
+    /**
+     * IANA timezone
+     */
+    timezone: string;
+  };
+  url: "/analytics/muscle-contributions";
+};
+
+export type GetAnalyticsMuscleContributionsErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetAnalyticsMuscleContributionsError =
+  GetAnalyticsMuscleContributionsErrors[keyof GetAnalyticsMuscleContributionsErrors];
+
+export type GetAnalyticsMuscleContributionsResponses = {
+  /**
+   * OK
+   */
+  200: WorkoutMuscleContributions;
+};
+
+export type GetAnalyticsMuscleContributionsResponse =
+  GetAnalyticsMuscleContributionsResponses[keyof GetAnalyticsMuscleContributionsResponses];
+
 export type GetExerciseCatalogData = {
   body?: never;
   path?: never;
@@ -1115,6 +1226,59 @@ export type PatchExercisesByIdResponses = {
    */
   204: unknown;
 };
+
+export type GetExercisesByIdAssessmentData = {
+  body?: never;
+  path: {
+    /**
+     * Exercise ID
+     */
+    id: number;
+  };
+  query: {
+    /**
+     * First local date, YYYY-MM-DD
+     */
+    startDate: string;
+    /**
+     * IANA timezone
+     */
+    timezone: string;
+  };
+  url: "/exercises/{id}/assessment";
+};
+
+export type GetExercisesByIdAssessmentErrors = {
+  /**
+   * Bad Request
+   */
+  400: ResponseErrorResponse;
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type GetExercisesByIdAssessmentError =
+  GetExercisesByIdAssessmentErrors[keyof GetExercisesByIdAssessmentErrors];
+
+export type GetExercisesByIdAssessmentResponses = {
+  /**
+   * OK
+   */
+  200: WorkoutStrengthAssessment;
+};
+
+export type GetExercisesByIdAssessmentResponse =
+  GetExercisesByIdAssessmentResponses[keyof GetExercisesByIdAssessmentResponses];
 
 export type PutExercisesByIdCatalogData = {
   /**

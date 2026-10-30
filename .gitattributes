@@ -1,6 +1,8 @@
 # Keep formatter checks consistent between Windows worktrees and Linux CI.
 .github/workflows/*.yml text eol=lf
 .husky/* text eol=lf
+server/docs/swagger.json text eol=lf
+server/docs/swagger.yaml text eol=lf
 client/*.html text eol=lf
 client/*.json text eol=lf
 client/*.md text eol=lf
