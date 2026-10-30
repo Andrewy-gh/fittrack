@@ -38,7 +38,7 @@ help:
 	@echo "  migrate-up   - Run database migrations up"
 	@echo "  migrate-down - Rollback database migrations"
 	@echo "  sqlc         - Generate SQL code"
-	@echo "  swagger      - Generate OpenAPI documentation"
+	@echo "  swagger      - Generate OpenAPI documentation and the TypeScript API client"
 	@echo "  dev          - Complete dev setup: load env, start DB, apply migrations, run air"
 
 build:
@@ -83,7 +83,7 @@ sqlc:
 	sqlc generate
 
 swagger:
-	swag init -g cmd/api/main.go -o docs --outputTypes json,yaml
+	cd .. && bun run --cwd client api:generate
 
 test:
 	$(GOTEST) -v ./...

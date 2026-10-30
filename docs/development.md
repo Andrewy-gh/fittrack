@@ -76,29 +76,41 @@ After signing in, the minimal phase-1 chat proof is available at `/chat`.
 
 To maintain type safety between backend and frontend, follow this workflow when modifying API endpoints.
 
-### 1. Modify Go Structs
+### Generate and verify the API client
 
-After changing any Go structs used in API endpoints, including request and response types:
-
-```bash
-cd server
-make swagger
-```
-
-This regenerates the OpenAPI documentation from your Go code annotations.
-
-### 2. Update API Client
-
-After swagger documentation is updated:
+After changing API structs, annotations, or generator configuration, run the combined command from the repository root:
 
 ```bash
-cd client
-bun run openapi-ts
+bun install --cwd client --frozen-lockfile
+bun run --cwd client api:generate
 ```
 
-This generates TypeScript client code and types from the updated swagger specification.
+The command runs the pinned `swag` CLI version `v1.16.6`, then the locked
+`@hey-api/openapi-ts` package and its formatter/linter post-processing. It writes
+Swagger JSON/YAML and the generated TypeScript client. `server/docs/docs.go` is
+a custom embedding wrapper and is intentionally not generated or replaced.
 
-### 3. Commit Generated Code
+Review and stage the output with the API change. The pre-commit hook runs this
+same generator when staged backend Go source, `server/go.mod`/`go.sum`,
+generation configuration/scripts, or generated contract files change. It stops
+before writing if relevant files have unstaged edits, including partial staging.
+If generated files change, it leaves them for review and fails the commit with
+the exact paths and `git add` guidance; it never stages files automatically.
+Stage reviewed outputs and retry. Ordinary frontend, Markdown, migration, and
+backend test-only changes do not run generation.
+
+CI runs the same generation chain into temporary output and compares every
+generated path with the checkout. It reports changed, missing, and unexpected
+files and does not write generated files or create bot commits. The job runs on
+every pull request so path filters cannot omit the freshness check.
+
+The generator version is pinned in `scripts/api-contract.mjs`; update it
+deliberately with regenerated Swagger files and a freshness-check run. Client
+generator dependencies remain pinned by `client/package.json` and `bun.lock`.
+The first run needs Go module download access and frozen Bun dependencies. A
+missing tool or failed generator exits nonzero before publishing any output.
+
+### Commit Generated Code
 
 Always commit the generated code to prevent drift:
 
@@ -188,7 +200,6 @@ make help             # Show all available commands
 make dev              # Complete dev setup: docker, migrations, and hot reload via air
 make build            # Compile the project
 make run              # Run the compiled binary
-make swagger          # Generate OpenAPI documentation
 make sqlc             # Generate SQL code from queries
 make test             # Run tests
 make vet              # Run go vet
@@ -209,7 +220,7 @@ bun run dev           # Development server on http://localhost:5173
 bun run start         # Development server on port 3000
 bun run build         # Production build
 bun run serve         # Preview production build
-bun run openapi-ts    # Generate API client from OpenAPI spec
+bun run api:generate  # Regenerate Swagger and the TypeScript API client
 bun run test          # Run unit tests with Vitest
 bun run test:e2e      # Run end-to-end tests with Playwright
 bun run lint          # Lint with oxlint

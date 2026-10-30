@@ -10,9 +10,11 @@ import {
   deleteWorkoutsById,
   getAiConversations,
   getAiConversationsById,
+  getAnalyticsMuscleContributions,
   getExerciseCatalog,
   getExercises,
   getExercisesById,
+  getExercisesByIdAssessment,
   getExercisesByIdMetricsHistory,
   getExercisesByIdRecentSets,
   getExercisesByIdRecommendation,
@@ -52,9 +54,15 @@ import type {
   GetAiConversationsData,
   GetAiConversationsError,
   GetAiConversationsResponse,
+  GetAnalyticsMuscleContributionsData,
+  GetAnalyticsMuscleContributionsError,
+  GetAnalyticsMuscleContributionsResponse,
   GetExerciseCatalogData,
   GetExerciseCatalogError,
   GetExerciseCatalogResponse,
+  GetExercisesByIdAssessmentData,
+  GetExercisesByIdAssessmentError,
+  GetExercisesByIdAssessmentResponse,
   GetExercisesByIdData,
   GetExercisesByIdError,
   GetExercisesByIdMetricsHistoryData,
@@ -427,6 +435,37 @@ export const postAiConversationsByIdRunsByRunIdStopMutation = (
   return mutationOptions;
 };
 
+export const getAnalyticsMuscleContributionsQueryKey = (
+  options: Options<GetAnalyticsMuscleContributionsData>,
+) =>
+  createQueryKey("getAnalyticsMuscleContributions", options, false, [
+    "analytics",
+  ]);
+
+/**
+ * Summarize reviewed weekly muscle contributions from logged working sets
+ */
+export const getAnalyticsMuscleContributionsQueryOptions = (
+  options: Options<GetAnalyticsMuscleContributionsData>,
+) =>
+  queryOptions<
+    GetAnalyticsMuscleContributionsResponse,
+    GetAnalyticsMuscleContributionsError,
+    GetAnalyticsMuscleContributionsResponse,
+    ReturnType<typeof getAnalyticsMuscleContributionsQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAnalyticsMuscleContributions({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAnalyticsMuscleContributionsQueryKey(options),
+  });
+
 export const getExerciseCatalogQueryKey = (
   options?: Options<GetExerciseCatalogData>,
 ) => createQueryKey("getExerciseCatalog", options, false, ["exercises"]);
@@ -598,6 +637,35 @@ export const patchExercisesByIdMutation = (
   };
   return mutationOptions;
 };
+
+export const getExercisesByIdAssessmentQueryKey = (
+  options: Options<GetExercisesByIdAssessmentData>,
+) =>
+  createQueryKey("getExercisesByIdAssessment", options, false, ["exercises"]);
+
+/**
+ * Compare saved exercise sessions with a general strength set reference
+ */
+export const getExercisesByIdAssessmentQueryOptions = (
+  options: Options<GetExercisesByIdAssessmentData>,
+) =>
+  queryOptions<
+    GetExercisesByIdAssessmentResponse,
+    GetExercisesByIdAssessmentError,
+    GetExercisesByIdAssessmentResponse,
+    ReturnType<typeof getExercisesByIdAssessmentQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getExercisesByIdAssessment({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getExercisesByIdAssessmentQueryKey(options),
+  });
 
 /**
  * Classify an exercise or clear its classification

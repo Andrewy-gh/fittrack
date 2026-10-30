@@ -1,10 +1,10 @@
 import { defineConfig } from "@hey-api/openapi-ts";
 
 export default defineConfig({
-  input: "../server/docs/swagger.json",
+  input: process.env.FITTRACK_OPENAPI_INPUT ?? "../server/docs/swagger.json",
   output: {
-    path: "./src/client",
-    postProcess: ["oxfmt", "oxlint"],
+    path: process.env.FITTRACK_OPENAPI_OUTPUT ?? "./src/client",
+    postProcess: [],
   },
   plugins: [
     "@hey-api/schemas", // Types for your Workout interface etc.

@@ -10,6 +10,8 @@
     "serve:test": "bun scripts/serve-local.ts test",
     "test": "vitest run",
     "openapi-ts": "openapi-ts",
+    "api:generate": "node ../scripts/api-contract.mjs",
+    "api:check": "node ../scripts/api-contract.mjs --check",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "tsc": "tsc --noEmit",

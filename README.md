@@ -47,8 +47,7 @@ bun run dev
 ## Everyday Workflow
 
 - Update backend API structs and annotations.
-- Run `cd server && make swagger`.
-- Run `cd client && bun run openapi-ts`.
+- Run `bun run --cwd client api:generate`.
 - Commit the generated `server/docs/` and `client/src/client/` changes with the API change.
 
 See [API Type Workflow](docs/development.md#api-type-workflow) for the full type-safety workflow.

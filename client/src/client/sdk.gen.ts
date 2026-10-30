@@ -32,9 +32,15 @@ import type {
   GetAiConversationsData,
   GetAiConversationsErrors,
   GetAiConversationsResponses,
+  GetAnalyticsMuscleContributionsData,
+  GetAnalyticsMuscleContributionsErrors,
+  GetAnalyticsMuscleContributionsResponses,
   GetExerciseCatalogData,
   GetExerciseCatalogErrors,
   GetExerciseCatalogResponses,
+  GetExercisesByIdAssessmentData,
+  GetExercisesByIdAssessmentErrors,
+  GetExercisesByIdAssessmentResponses,
   GetExercisesByIdData,
   GetExercisesByIdErrors,
   GetExercisesByIdMetricsHistoryData,
@@ -399,6 +405,28 @@ export const postAiConversationsByIdRunsByRunIdStop = <
   });
 
 /**
+ * Summarize reviewed weekly muscle contributions from logged working sets
+ */
+export const getAnalyticsMuscleContributions = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetAnalyticsMuscleContributionsData, ThrowOnError>,
+): RequestResult<
+  GetAnalyticsMuscleContributionsResponses,
+  GetAnalyticsMuscleContributionsErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    GetAnalyticsMuscleContributionsResponses,
+    GetAnalyticsMuscleContributionsErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/analytics/muscle-contributions",
+    ...options,
+  });
+
+/**
  * List reviewed exercise catalog
  */
 export const getExerciseCatalog = <ThrowOnError extends boolean = false>(
@@ -526,6 +554,28 @@ export const patchExercisesById = <ThrowOnError extends boolean = false>(
       "Content-Type": "application/json",
       ...options.headers,
     },
+  });
+
+/**
+ * Compare saved exercise sessions with a general strength set reference
+ */
+export const getExercisesByIdAssessment = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<GetExercisesByIdAssessmentData, ThrowOnError>,
+): RequestResult<
+  GetExercisesByIdAssessmentResponses,
+  GetExercisesByIdAssessmentErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).get<
+    GetExercisesByIdAssessmentResponses,
+    GetExercisesByIdAssessmentErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/exercises/{id}/assessment",
+    ...options,
   });
 
 /**
