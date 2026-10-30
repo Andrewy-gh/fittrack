@@ -1,7 +1,110 @@
 {
   "version": 1,
-  "modes": ["dev", "test", "rls", "e2e"],
-  "exclusiveModes": ["test", "rls"],
-  "runAdapter": ["node", "scripts/worktree.ts", "--exec"],
-  "setup": ["node", "scripts/worktree.ts", "--setup"]
+  "modes": [
+    "dev",
+    "test",
+    "rls",
+    "e2e",
+    "unit"
+  ],
+  "exclusiveModes": [
+    "test",
+    "rls"
+  ],
+  "runAdapter": [
+    "node",
+    "scripts/worktree.ts",
+    "--exec"
+  ],
+  "setup": [
+    "node",
+    "scripts/worktree.ts",
+    "--setup"
+  ],
+  "doctor": [
+    "node",
+    "scripts/worktree.ts",
+    "--doctor"
+  ],
+  "prepare": {
+    "dev": {
+      "setup": [
+        "--major",
+        "15"
+      ]
+    },
+    "test": {
+      "setup": [
+        "--major",
+        "15"
+      ]
+    },
+    "rls": {
+      "setup": [
+        "--major",
+        "15"
+      ]
+    },
+    "e2e": {
+      "setup": [
+        "--major",
+        "15"
+      ]
+    },
+    "unit": {}
+  },
+  "profile": {
+    "name": "fittrack",
+    "environmentVariable": "FITTRACK_WORKTREE_PROFILE",
+    "environment": [
+      "WORKTREE_RUNTIME",
+      "FITTRACK_GOOSE",
+      "FITTRACK_LOCAL_POSTGRES_CONTAINER"
+    ],
+    "files": [
+      "server/.env.local",
+      "client/.env.local",
+      "server/.env",
+      "client/.env"
+    ],
+    "secrets": {
+      "dev": [
+        "FITTRACK_LOCAL_DATABASE_URL",
+        "FITTRACK_LOCAL_RUNTIME_DATABASE_URL",
+        "PROJECT_ID",
+        "VITE_PROJECT_ID",
+        "VITE_PUBLISHABLE_CLIENT_KEY",
+        "SECRET_SERVER_KEY",
+        "E2E_STACK_EMAIL",
+        "E2E_STACK_PASSWORD",
+        "E2E_LOCAL_AUTH_ENABLED",
+        "VITE_E2E_LOCAL_AUTH_ENABLED"
+      ],
+      "test": [
+        "FITTRACK_LOCAL_DATABASE_URL",
+        "FITTRACK_LOCAL_RUNTIME_DATABASE_URL"
+      ],
+      "rls": [
+        "FITTRACK_LOCAL_DATABASE_URL",
+        "FITTRACK_LOCAL_RUNTIME_DATABASE_URL"
+      ],
+      "e2e": [
+        "FITTRACK_LOCAL_DATABASE_URL",
+        "FITTRACK_LOCAL_RUNTIME_DATABASE_URL",
+        "PROJECT_ID",
+        "VITE_PROJECT_ID",
+        "VITE_PUBLISHABLE_CLIENT_KEY",
+        "SECRET_SERVER_KEY",
+        "E2E_STACK_EMAIL",
+        "E2E_STACK_PASSWORD",
+        "E2E_LOCAL_AUTH_ENABLED",
+        "VITE_E2E_LOCAL_AUTH_ENABLED"
+      ],
+      "unit": [],
+      "setup": [
+        "FITTRACK_LOCAL_DATABASE_URL",
+        "FITTRACK_LOCAL_RUNTIME_DATABASE_URL"
+      ]
+    }
+  }
 }

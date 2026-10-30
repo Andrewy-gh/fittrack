@@ -46,10 +46,72 @@ async function fixture(t: TestContext) {
     PGSERVICE: "production",
   };
   const cli = (args: string[], cwd = root, overrides: NodeJS.ProcessEnv = {}) =>
-    execute(process.execPath, [script, ...args], { cwd, env: { ...env, ...overrides }, windowsHide: true });
+    // Bound the wrapper too: a test timeout alone does not close its parent pipe.
+    // execFile termination triggers the native supervisor's existing cleanup.
+    execute(process.execPath, [script, ...args], { cwd, env: { ...env, ...overrides }, windowsHide: true, timeout: 25000 });
   await cli(["init"]);
   return { root, env, cli, config: await loadConfig(root, env) };
 }
+
+test("a fresh session prepares and runs unit commands using only a local profile", options, async (t) => {
+  const f = await fixture(t);
+  await mkdir(join(f.root, "client", "node_modules", "vitest"), { recursive: true });
+  await writeFile(join(f.root, "client", "node_modules", "vitest", "package.json"), "{}");
+  const path = join(f.root, "..", "machine-profile.json");
+  await writeFile(path, JSON.stringify({ version: 1, environment: { WORKTREE_RUNTIME: resolve(runtime ?? "") }, credentials: { provider: "doppler", project: "not-needed", config: "dev" } }));
+  const overrides = { WORKTREE_RUNTIME: undefined, FITTRACK_LOCAL_DATABASE_URL: undefined, FITTRACK_LOCAL_RUNTIME_DATABASE_URL: undefined, FITTRACK_WORKTREE_PROFILE: path };
+  const native = (args: string[]) => execute(resolve(runtime ?? ""), args, { cwd: f.root, env: { ...f.env, ...overrides }, windowsHide: true });
+  const prepared = outputRecord((await native(["prepare", "--mode", "unit", "--json"])).stdout);
+  assert.equal(prepared.ready, true);
+  const run = await native(["run", "unit", "--", process.execPath, "-e", "console.log(new Request(process.env.VITE_API_BASE_URL+'/workouts').url); if(process.env.DATABASE_URL)process.exit(9)"]);
+  assert.equal(run.stdout.trim(), "http://127.0.0.1:8080/workouts");
+  await native(["check"]);
+});
+
+test("Bun unit launches cannot automatically reload database or Stripe env files", options, async (t) => {
+  const f = await fixture(t);
+  const client = join(f.root, "client");
+  await mkdir(client);
+  await writeFile(join(client, "package.json"), JSON.stringify({ scripts: { test: "node probe.cjs" } }));
+  await writeFile(join(client, ".env"), "DATABASE_URL=postgres://synthetic-never-connect.invalid/db\n");
+  await writeFile(join(client, ".env.local"), "STRIPE_SECRET_KEY=sk_test_synthetic_never_use\n");
+  await writeFile(join(client, "probe.cjs"), "console.log(JSON.stringify({databasePresent:Boolean(process.env.DATABASE_URL),stripePresent:Boolean(process.env.STRIPE_SECRET_KEY)}))");
+  const unit = outputRecord((await f.cli(["run", "unit", "--", "bun", "probe.cjs"], client, { NODE_ENV: "development" })).stdout);
+  assert.deepEqual(unit, { databasePresent: false, stripePresent: false });
+  const dev = outputRecord((await f.cli(["run", "dev", "--", "bun", "probe.cjs"], client, { NODE_ENV: "development" })).stdout);
+  assert.deepEqual(dev, { databasePresent: true, stripePresent: true });
+  // Bun's Node package-script path does not restore these values on Bun1.4.2;
+  // keep that supported path distinct from Bun's own runtime autoload behavior.
+  const packageScript = outputRecord((await f.cli(["run", "unit", "--", "bun", "run", "test"], client, { NODE_ENV: "development" })).stdout);
+  assert.deepEqual(packageScript, { databasePresent: false, stripePresent: false });
+});
+
+test("stop remains available when the selected profile disappears during a managed run", options, async (t) => {
+  const f = await fixture(t);
+  const ready = join(f.root, "managed-ready");
+  const profile = join(f.root, "selected-profile.json");
+  await writeFile(profile, JSON.stringify({ version: 1 }));
+  const command = `require('node:fs').writeFileSync(${JSON.stringify(ready)},'ready');setTimeout(()=>process.exit(0),20000)`;
+  const bridge = spawn(process.execPath, [script, "run", "dev", "--", process.execPath, "-e", command], {
+    cwd: f.root, env: { ...f.env, FITTRACK_WORKTREE_PROFILE: profile }, windowsHide: true, stdio: "ignore",
+  });
+  const exited = new Promise<void>((done, reject) => {
+    bridge.once("error", reject);
+    bridge.once("exit", () => done());
+  });
+  t.after(async () => {
+    await f.cli(["stop", "dev"]).catch(() => {});
+    if (bridge.exitCode === null && bridge.signalCode === null) bridge.kill("SIGKILL");
+    await exited;
+  });
+  await waitFor("managed command did not start", async () => readFile(ready).then(() => true, () => false));
+  await rm(profile);
+  const stopped = await f.cli(["stop", "dev"], f.root, { FITTRACK_WORKTREE_PROFILE: profile }).then(() => true, (error: unknown) => error);
+  // Drain explicitly before asserting, even on a regression, while cwd still exists.
+  if (stopped !== true) { await f.cli(["stop", "dev"]); await exited; assert.fail(stopped instanceof Error ? stopped.message : "stop failed"); }
+  await exited;
+  await f.cli(["check"]);
+});
 
 async function waitFor(description: string, predicate: () => Promise<boolean>) {
   const deadline = Date.now() + 10000;
