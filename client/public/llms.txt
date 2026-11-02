@@ -1,6 +1,6 @@
 # FitTrack
 
-> FitTrack is a web app for logging weightlifting workouts and reviewing exercise history, progress, notes, and training consistency.
+> FitTrack is a web app for logging weightlifting workouts and reviewing exercise history, progress, notes, and training consistency, with optional paid AI chat for training questions and workout drafts.
 
 ## Public resources
 

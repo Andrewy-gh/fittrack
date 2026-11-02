@@ -20,9 +20,9 @@ export function LandingTopBar({ user }: LandingTopBarProps) {
   return (
     <nav
       aria-label="Landing navigation"
-      className="border-b border-border bg-background/90 backdrop-blur-sm"
+      className="border-b border-border bg-background/90 px-6 backdrop-blur-sm"
     >
-      <div className="flex items-center justify-between gap-3 px-2 py-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 py-4">
         <Link
           to="/"
           className="flex items-center gap-2"

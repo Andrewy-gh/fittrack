@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@stackframe/react";
 
@@ -92,6 +92,41 @@ describe("HomePage feature cards", () => {
     ).toBeInTheDocument();
     expect(container.firstElementChild).toHaveClass(
       "pb-[calc(5rem+env(safe-area-inset-bottom))]",
+    );
+  });
+
+  it("tells guests they can try the app without an account", () => {
+    render(<HomePage user={null} />);
+
+    expect(screen.getByText("No account needed to try.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Try the App" })).toHaveAttribute(
+      "href",
+      "/workouts",
+    );
+  });
+
+  it("does not offer the no-account trial to signed-in users", () => {
+    render(<HomePage user={{ id: "user_1" } as CurrentUser} />);
+
+    expect(
+      screen.queryByText("No account needed to try."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Workouts" })).toHaveAttribute(
+      "href",
+      "/workouts",
+    );
+  });
+
+  it("discloses that AI Chat needs sign-in and is paid", () => {
+    render(<HomePage user={null} />);
+
+    const section = screen.getByRole("region", { name: "Also in FitTrack" });
+
+    expect(
+      within(section).getByRole("heading", { name: "AI Chat" }),
+    ).toBeInTheDocument();
+    expect(section).toHaveTextContent(
+      "Requires sign-in; paid after a 7-day trial of 30 prompts.",
     );
   });
 
