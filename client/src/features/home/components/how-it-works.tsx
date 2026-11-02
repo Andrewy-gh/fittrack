@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { CheckCircle, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
@@ -12,10 +12,6 @@ const STEPS = [
     eyebrow: "Log",
     title: "Log a set in seconds.",
     body: "Pick an exercise and your recent sets are right there. Save weight and reps, then repeat the last set with one tap.",
-    points: [
-      "Recent sets beside every exercise",
-      "One tap to repeat the last set",
-    ],
     caption: "Adding Bench Press to today's workout and logging three sets.",
   },
   {
@@ -23,7 +19,6 @@ const STEPS = [
     eyebrow: "Repeat",
     title: "Start from what already worked.",
     body: "Open any past session and repeat it. Exercises and sets come back as today's draft, with your last note on top.",
-    points: ["Copies exercises and sets", "Your last workout note resurfaces"],
     caption:
       "Opening Sunday's upper-body session and repeating it as a new draft.",
   },
@@ -32,10 +27,6 @@ const STEPS = [
     eyebrow: "Review",
     title: "See where training is going.",
     body: "Weekly pace, an activity map, and volume trends live together, so progress is visible without digging through old sessions.",
-    points: [
-      "Activity across the last few months",
-      "Volume by week, month, or year",
-    ],
     caption:
       "Scrolling analytics: workout pace, the activity map, and daily volume.",
   },
@@ -245,8 +236,6 @@ export function HowItWorks() {
   const canPlay = inView && !userPaused;
   const togglePlayback = () => setUserPaused((paused) => !paused);
   const sectionRef = useRef<HTMLElement>(null);
-  const stepsRef = useRef<HTMLOListElement>(null);
-  const railRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   // The step crossing the middle of the viewport is the active one. Margins
@@ -294,41 +283,6 @@ export function HowItWorks() {
     return () => observer.disconnect();
   }, []);
 
-  // Progress rail follows scroll position through the steps (no re-renders).
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const steps = stepsRef.current;
-      const rail = railRef.current;
-      if (!steps || !rail) return;
-      const rect = steps.getBoundingClientRect();
-      const progress = (window.innerHeight / 2 - rect.top) / rect.height;
-      rail.style.setProperty(
-        "--progress",
-        String(Math.min(1, Math.max(0, progress))),
-      );
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
-  const goToStep = (index: number) => {
-    stepRefs.current[index]?.scrollIntoView({
-      block: "center",
-      behavior: reducedMotion ? "auto" : "smooth",
-    });
-  };
-
   return (
     <section
       ref={sectionRef}
@@ -342,7 +296,7 @@ export function HowItWorks() {
           </p>
           <h2
             id="how-it-works-heading"
-            className="text-4xl font-bold leading-snug tracking-wide text-foreground md:text-6xl"
+            className="text-[length:clamp(1.5rem,calc((100vw-3rem)/11.5),3.75rem)] font-bold leading-snug tracking-wide text-foreground"
           >
             Log it. Repeat it.
             <br />
@@ -353,10 +307,7 @@ export function HowItWorks() {
         </div>
 
         <div className="mx-auto grid max-w-6xl gap-16 lg:grid-cols-2">
-          <ol
-            ref={stepsRef}
-            className="lg:py-[10vh]"
-          >
+          <ol className="lg:py-[10vh]">
             {STEPS.map((step, index) => (
               <li
                 key={step.id}
@@ -379,23 +330,12 @@ export function HowItWorks() {
                 >
                   {String(index + 1).padStart(2, "0")} · {step.eyebrow}
                 </p>
-                <h3 className="mt-3 text-3xl font-bold leading-tight text-foreground md:text-4xl">
+                <h3 className="mt-3 text-2xl font-bold leading-tight text-foreground md:text-4xl">
                   {step.title}
                 </h3>
                 <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
                   {step.body}
                 </p>
-                <ul className="mt-6 space-y-3 text-muted-foreground">
-                  {step.points.map((point) => (
-                    <li
-                      key={point}
-                      className="flex items-center gap-3"
-                    >
-                      <CheckCircle className="h-5 w-5 shrink-0 text-primary" />
-                      <span>{point}</span>
-                    </li>
-                  ))}
-                </ul>
                 <p className="sr-only">{step.caption}</p>
 
                 {/* Below lg each step carries its own phone; lg+ uses the pinned one. */}
@@ -420,7 +360,7 @@ export function HowItWorks() {
           </ol>
 
           {/* On short viewports, shrink the phone to fit below the sticky offset. */}
-          <div className="sticky top-[max(5rem,calc(50vh-18rem))] mt-[max(4rem,calc(47.5vh-19rem))] hidden h-fit items-center justify-center gap-6 self-start lg:flex">
+          <div className="sticky top-[max(5rem,calc(50vh-18rem))] mt-[max(4rem,calc(47.5vh-19rem))] hidden h-fit items-center justify-center self-start lg:flex">
             <PhoneFrame className="w-[min(17rem,calc((100vh-9rem)*0.4857))]">
               {STEPS.map((step, index) => (
                 <StepClip
@@ -443,35 +383,6 @@ export function HowItWorks() {
                 />
               )}
             </PhoneFrame>
-
-            <div
-              ref={railRef}
-              className="flex flex-col items-center gap-3"
-            >
-              {STEPS.map((step, index) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => goToStep(index)}
-                  aria-label={`Show step ${index + 1}: ${step.eyebrow}`}
-                  aria-current={index === activeIndex ? "step" : undefined}
-                  className={cn(
-                    "h-8 w-8 rounded-full border text-xs font-semibold transition-colors",
-                    index === activeIndex &&
-                      "border-primary bg-primary text-primary-foreground",
-                    index < activeIndex &&
-                      "border-primary bg-primary/10 text-primary",
-                    index > activeIndex &&
-                      "border-border bg-card text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {index + 1}
-                </button>
-              ))}
-              <div className="relative mt-1 h-24 w-0.5 overflow-hidden rounded-full bg-border">
-                <div className="absolute inset-0 origin-top scale-y-[var(--progress,0)] bg-primary" />
-              </div>
-            </div>
           </div>
         </div>
       </div>
