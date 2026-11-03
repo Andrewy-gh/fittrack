@@ -9,7 +9,12 @@ import type { ExercisecatalogEntry } from "@/client";
 import { ExerciseClassification } from "./exercise-classification";
 import { ExerciseCatalogPicker } from "./exercise-catalog-picker";
 
-const mocks = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  load: vi.fn(),
+  save: vi.fn(),
+  detail: vi.fn(),
+  summary: vi.fn(),
+}));
 vi.mock("@/client/@tanstack/react-query.gen", () => ({
   getExerciseCatalogQueryOptions: () => ({
     queryKey: ["catalog"],
@@ -37,11 +42,11 @@ let saved: ExercisecatalogEntry | undefined;
 function Harness() {
   const { data } = useQuery({
     queryKey: ["detail"],
-    queryFn: () => ({ catalog: saved }),
+    queryFn: mocks.detail,
   });
   const muscleSummary = useQuery({
     queryKey: ["muscle-contributions", "owner"],
-    queryFn: () => saved?.name ?? "Unclassified",
+    queryFn: mocks.summary,
     staleTime: 60_000,
   });
   return (
@@ -65,6 +70,10 @@ function mount(component = <Harness />) {
 }
 beforeEach(() => {
   saved = undefined;
+  mocks.detail.mockReset().mockImplementation(() => ({ catalog: saved }));
+  mocks.summary
+    .mockReset()
+    .mockImplementation(() => saved?.name ?? "Unclassified");
   mocks.load.mockReset().mockResolvedValue([pushups, curls]);
   mocks.save
     .mockReset()
@@ -114,6 +123,29 @@ describe("exercise classification", () => {
       { path: { id: 42 }, body: { catalog_id: "" } },
       expect.anything(),
     );
+  });
+  it("refreshes detail while the independent summary is slow and waits before closing", async () => {
+    mount();
+    await screen.findByText("Summary: Unclassified");
+    let finishSummary: (value: string) => void = () => {};
+    mocks.summary.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          finishSummary = resolve;
+        }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Classify exercise" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pushups" }));
+    await screen.findByText("Equipment: body only");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Saving classification",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    finishSummary("Pushups");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("Summary: Pushups")).toBeVisible();
   });
   it("shows failed saves and keeps the previous classification", async () => {
     saved = pushups;

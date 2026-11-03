@@ -3,6 +3,7 @@ package workout
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -157,6 +159,40 @@ func TestWorkoutHandler_GetNewWorkoutContext(t *testing.T) {
 			},
 		},
 		{
+			name: "missing note is optional",
+			setupMock: func(m *MockWorkoutRepository) {
+				m.On("ListWorkoutFocusTemplates", mock.Anything, userID).Return([]db.ListWorkoutFocusTemplatesRow{}, nil)
+				m.On("GetLatestWorkoutNote", mock.Anything, userID).Return(db.GetLatestWorkoutNoteRow{}, pgx.ErrNoRows)
+			},
+			ctx:          user.WithContext(context.Background(), userID),
+			expectedCode: http.StatusOK,
+			assertBody: func(t *testing.T, result NewWorkoutContextResponse) {
+				assert.Empty(t, result.FocusTemplates)
+				assert.Nil(t, result.LatestWorkoutNote)
+			},
+		},
+		{
+			name: "template failure keeps priority when both reads fail",
+			setupMock: func(m *MockWorkoutRepository) {
+				m.On("ListWorkoutFocusTemplates", mock.Anything, userID).Return([]db.ListWorkoutFocusTemplatesRow{}, errors.New("templates unavailable"))
+				m.On("GetLatestWorkoutNote", mock.Anything, userID).Return(db.GetLatestWorkoutNoteRow{}, errors.New("note unavailable"))
+			},
+			ctx:           user.WithContext(context.Background(), userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectedError: "failed to get new workout context",
+		},
+		{
+			name: "note failure is reported",
+			setupMock: func(m *MockWorkoutRepository) {
+				m.On("ListWorkoutFocusTemplates", mock.Anything, userID).Return([]db.ListWorkoutFocusTemplatesRow{}, nil)
+				m.On("GetLatestWorkoutNote", mock.Anything, userID).Return(db.GetLatestWorkoutNoteRow{}, errors.New("note unavailable"))
+			},
+			ctx:           user.WithContext(context.Background(), userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectedError: "failed to get new workout context",
+		},
+
+		{
 			name:          "unauthenticated user",
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.Background(),
@@ -198,4 +234,51 @@ func TestWorkoutHandler_GetNewWorkoutContext(t *testing.T) {
 			mockRepo.AssertExpectations(t)
 		})
 	}
+}
+
+// The repository boundary blocks each read until both have started. This guards
+// independent I/O overlap without using elapsed-time performance assertions.
+func TestNewWorkoutContextOverlapsReadsAndJoinsOnCancellation(t *testing.T) {
+	ctx, cancel := context.WithTimeout(user.WithContext(context.Background(), "owner"), 2*time.Second)
+	defer cancel()
+	started := make(chan string, 2)
+	repo := new(MockWorkoutRepository)
+	repo.On("ListWorkoutFocusTemplates", mock.Anything, "owner").Run(func(args mock.Arguments) {
+		started <- "templates"
+		<-args.Get(0).(context.Context).Done()
+	}).Return([]db.ListWorkoutFocusTemplatesRow{}, context.Canceled)
+	repo.On("GetLatestWorkoutNote", mock.Anything, "owner").Run(func(args mock.Arguments) {
+		started <- "note"
+		<-args.Get(0).(context.Context).Done()
+	}).Return(db.GetLatestWorkoutNoteRow{}, context.Canceled)
+	done := make(chan error, 1)
+	go func() {
+		_, err := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo).GetNewWorkoutContext(ctx)
+		done <- err
+	}()
+	for range 2 {
+		select {
+		case <-started:
+		case <-ctx.Done():
+			<-done
+			t.Fatal("both reads must start before either finishes")
+		}
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation = %v", err)
+	}
+	repo.AssertExpectations(t)
+}
+
+func TestNewWorkoutContextPreservesErrorPriority(t *testing.T) {
+	repo := new(MockWorkoutRepository)
+	templateErr, noteErr := errors.New("templates unavailable"), errors.New("note unavailable")
+	repo.On("ListWorkoutFocusTemplates", mock.Anything, "owner").Return([]db.ListWorkoutFocusTemplatesRow{}, templateErr)
+	repo.On("GetLatestWorkoutNote", mock.Anything, "owner").Return(db.GetLatestWorkoutNoteRow{}, noteErr)
+	_, err := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo).GetNewWorkoutContext(user.WithContext(context.Background(), "owner"))
+	if !errors.Is(err, templateErr) {
+		t.Fatalf("error priority = %v", err)
+	}
+	repo.AssertExpectations(t)
 }
