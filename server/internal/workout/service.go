@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
@@ -19,6 +20,7 @@ import (
 
 var ErrInvalidCatalog = errors.New("invalid or conflicting exercise catalog selection")
 
+// WorkoutRepository supports concurrent reads of focus templates and latest notes.
 type WorkoutRepository interface {
 	ListWorkouts(ctx context.Context, userID string) ([]db.Workout, error)
 	ListWorkoutFocusTemplates(ctx context.Context, userID string) ([]db.ListWorkoutFocusTemplatesRow, error)
@@ -64,12 +66,22 @@ func (ws *WorkoutService) GetNewWorkoutContext(ctx context.Context) (*NewWorkout
 		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
 
-	templates, err := ws.repo.ListWorkoutFocusTemplates(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list workout focus templates: %w", err)
-	}
-
+	// These pool-backed reads share only the authenticated user, not results.
+	// Bound fan-out to two and join before returning, including on errors.
+	var templates []db.ListWorkoutFocusTemplatesRow
+	var templateErr error
+	var reads sync.WaitGroup
+	reads.Add(1)
+	go func() {
+		defer reads.Done()
+		templates, templateErr = ws.repo.ListWorkoutFocusTemplates(ctx, userID)
+	}()
 	latestNote, err := ws.repo.GetLatestWorkoutNote(ctx, userID)
+	reads.Wait()
+	// Preserve template-error precedence and the optional missing-note behavior.
+	if templateErr != nil {
+		return nil, fmt.Errorf("failed to list workout focus templates: %w", templateErr)
+	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("failed to get latest workout note: %w", err)
 	}
