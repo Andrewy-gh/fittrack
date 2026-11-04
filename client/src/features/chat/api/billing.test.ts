@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These transport assertions own their API origin, independently of the runtime.
+vi.hoisted(() => {
+  vi.stubEnv("VITE_API_BASE_URL", "http://localhost/api");
+});
+
 const { getUser } = vi.hoisted(() => ({
   getUser: vi.fn(),
 }));

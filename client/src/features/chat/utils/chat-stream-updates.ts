@@ -1,14 +1,12 @@
 import type {
   AIChatStreamDeltaEvent,
   AIChatStreamDoneEvent,
-  AIChatStreamErrorEvent,
 } from "@/features/chat/api/ai-chat";
 import {
   clearResumeCursor,
   saveResumeCursor,
   updateStreamingMessageWithDelta,
   updateStreamingMessageWithDone,
-  updateStreamingMessageWithError,
 } from "./chat-resume";
 import type { ChatSessionState } from "./chat-session-types";
 
@@ -18,7 +16,6 @@ type StreamUpdateContext = {
   ownsAttempt: () => boolean;
   getMessageId: () => number;
   getRunId: (event: AIChatStreamDeltaEvent) => number;
-  onError?: (event: AIChatStreamErrorEvent) => void;
 };
 
 /**
@@ -32,7 +29,6 @@ export function createChatStreamUpdates({
   ownsAttempt,
   getMessageId,
   getRunId,
-  onError,
 }: StreamUpdateContext) {
   return {
     onDelta(event: AIChatStreamDeltaEvent) {
@@ -68,15 +64,6 @@ export function createChatStreamUpdates({
         state.setLatestWorkoutDraftMessageId(event.message_id ?? targetId);
       }
       clearResumeCursor(conversationId);
-    },
-    onErrorEvent(event: AIChatStreamErrorEvent) {
-      if (!ownsAttempt()) return;
-      const targetId = getMessageId();
-      state.setMessages((current) =>
-        updateStreamingMessageWithError(current, targetId, event),
-      );
-      clearResumeCursor(conversationId);
-      onError?.(event);
     },
   };
 }
