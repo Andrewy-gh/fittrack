@@ -137,6 +137,6 @@ describe("bootstrap configuration precedence", () => {
     expect(config.browserProjectId).toBe("");
     expect(config.localAuthEnabled).toBe(false);
     expect(config.secretServerKey).toBe("");
-    expect(e2eAuthReadiness(config, true).kind).toBe("guest");
+    expect(e2eAuthReadiness(config, { CI: "true" }).kind).toBe("guest");
   });
 });

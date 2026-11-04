@@ -118,7 +118,7 @@ test("E2E doctor rejects unusable auth and accepts local/provider configuration 
     PROJECT_ID: "11111111-1111-4111-8111-111111111111", VITE_PROJECT_ID: "11111111-1111-4111-8111-111111111111",
     VITE_PUBLISHABLE_CLIENT_KEY: "fixture-public-key",
     E2E_LOCAL_AUTH_ENABLED: "true", VITE_E2E_LOCAL_AUTH_ENABLED: "true",
-    SECRET_SERVER_KEY: "", E2E_STACK_EMAIL: "", E2E_STACK_PASSWORD: "", CI: "",
+    SECRET_SERVER_KEY: "", E2E_STACK_EMAIL: "", E2E_STACK_PASSWORD: "", CI: "", E2E_FRONTEND_MODE: undefined,
   };
   const cases: readonly { name: string; env: NodeJS.ProcessEnv; repair?: string }[] = [
     { name: "missing frontend project", env: { VITE_PROJECT_ID: "" }, repair: "VITE_PROJECT_ID" },
@@ -130,6 +130,9 @@ test("E2E doctor rejects unusable auth and accepts local/provider configuration 
     { name: "client flag alone", env: { E2E_LOCAL_AUTH_ENABLED: "false" }, repair: "both E2E_LOCAL_AUTH_ENABLED" },
     { name: "CI production preview", env: { CI: "true" }, repair: "production preview" },
     { name: "nonempty CI false still selects preview", env: { CI: "false" }, repair: "production preview" },
+    { name: "CI explicit development", env: { CI: "true", E2E_FRONTEND_MODE: "development" } },
+    { name: "local explicit preview", env: { E2E_FRONTEND_MODE: "preview" }, repair: "production preview" },
+    { name: "invalid frontend mode", env: { E2E_FRONTEND_MODE: "typo" }, repair: "E2E_FRONTEND_MODE" },
     { name: "valid local", env: {} },
     { name: "truthy flags", env: { E2E_LOCAL_AUTH_ENABLED: " YES ", VITE_E2E_LOCAL_AUTH_ENABLED: "1" } },
     { name: "provider server preview", env: { CI: "true", E2E_LOCAL_AUTH_ENABLED: "off", VITE_E2E_LOCAL_AUTH_ENABLED: "no", SECRET_SERVER_KEY: "fixture-secret-never-use" } },

@@ -115,8 +115,11 @@ installed Stack SDK constructor (a project UUID, or Stack's internal identifier)
 `on`, ignoring case/outer whitespace). One enabled flag is a blocker, including
 when provider credentials are present. Both disabled flags select Stack auth,
 using `SECRET_SERVER_KEY` or both `E2E_STACK_EMAIL` and `E2E_STACK_PASSWORD`.
-Any nonempty `CI` value (including `"false"`) selects Playwright's production
-preview, which refuses local auth; use Stack auth there. An explicitly reused
+By default, any nonempty `CI` value (including `"false"`) selects Playwright's
+production preview, which refuses local auth. Select `E2E_FRONTEND_MODE=development`
+explicitly for an isolated local-auth CI run; CI safety/worker policy still applies.
+`E2E_FRONTEND_MODE=preview` selects preview outside CI. Invalid mode values are
+refused. Use Stack auth for production preview. An explicitly reused
 external frontend must independently use a development build for local auth;
 doctor cannot inspect its build or configuration.
 

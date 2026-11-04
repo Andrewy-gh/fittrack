@@ -53,7 +53,18 @@ export function resolveViteServerConfig(env: Environment = process.env) {
   };
 }
 
+/** Frontend runtime is independent of CI's worker/retry/safety policy. */
+export function e2eFrontendMode(
+  env: Environment = process.env,
+): "development" | "preview" {
+  const mode = env.E2E_FRONTEND_MODE;
+  if (mode === undefined) return env.CI ? "preview" : "development";
+  if (mode === "development" || mode === "preview") return mode;
+  throw new Error("E2E_FRONTEND_MODE must be development or preview");
+}
+
 export function resolveE2EServerConfig(env: Environment = process.env) {
+  const mode = e2eFrontendMode(env);
   const port = readPort("E2E_PORT", 5173, env);
   const baseURL = env.E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
   const url = readHttpUrl("E2E_BASE_URL", baseURL);
@@ -77,7 +88,7 @@ export function resolveE2EServerConfig(env: Environment = process.env) {
     baseURL,
     webServer: {
       command:
-        `bun run ${env.CI ? "serve" : "dev"} --host ${url.hostname} ` +
+        `bun run ${mode === "preview" ? "serve" : "dev"} --host ${url.hostname} ` +
         `--port ${port} --strictPort`,
       url: baseURL,
       reuseExistingServer,

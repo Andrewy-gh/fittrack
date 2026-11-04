@@ -59,7 +59,8 @@
     "environment": [
       "WORKTREE_RUNTIME",
       "FITTRACK_GOOSE",
-      "FITTRACK_LOCAL_POSTGRES_CONTAINER"
+      "FITTRACK_LOCAL_POSTGRES_CONTAINER",
+      "E2E_FRONTEND_MODE"
     ],
     "files": [
       "server/.env.local",

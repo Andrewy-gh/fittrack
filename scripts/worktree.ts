@@ -303,7 +303,7 @@ async function readiness(root: string, env: NodeJS.ProcessEnv, options: Readines
     if (options.mode === "e2e") {
       const browser = probe(process.execPath, ["-e", "const {createRequire}=require('node:module');const {existsSync}=require('node:fs');const p=createRequire(process.cwd()+'/package.json')('playwright');process.exit(existsSync(p.chromium.executablePath())?0:1)"], join(root, "client"), env);
       add("chromium", browser.ok, "Run bunx playwright install chromium in client/.", "missing");
-      const auth = e2eAuthReadiness(resolveStackAuthBootstrapConfig({ processEnv: env, clientEnv: {}, serverEnv: {} }), Boolean(env.CI));
+      const auth = e2eAuthReadiness(resolveStackAuthBootstrapConfig({ processEnv: env, clientEnv: {}, serverEnv: {} }), env);
       add("e2e_auth_configuration", auth.kind !== "invalid" && auth.kind !== "guest",
         auth.kind === "invalid" ? auth.message : "Configure both local-auth flags and public Stack settings, or Stack test login. Doctor checks configuration only; Playwright verifies authenticated API access.", "missing");
     }
