@@ -4,11 +4,13 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { signInWithStack } from "./helpers/stack-auth";
-import { resolveStackAuthBootstrapConfig } from "../stack-auth-config";
+import {
+  e2eAuthReadiness,
+  resolveStackAuthBootstrapConfig,
+} from "../stack-auth-config";
 import {
   AuthReadinessError,
   browserAuthReadinessError,
-  localAuthConfigurationError,
 } from "./auth-readiness";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -258,8 +260,19 @@ function buildAuthCookies(options: {
 
 async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0]?.use?.baseURL ?? "http://localhost:5173";
-  const serverEnv = await loadEnvFile(serverEnvPath);
-  const clientEnv = await loadEnvFile(clientEnvPath);
+  const serverEnv = {
+    ...(await loadEnvFile(serverEnvPath)),
+    ...(await loadEnvFile(`${serverEnvPath}.local`)),
+  };
+  const clientEnv = {
+    ...(await loadEnvFile(clientEnvPath)),
+    ...(await loadEnvFile(`${clientEnvPath}.local`)),
+  };
+  const bootstrapConfig = resolveStackAuthBootstrapConfig({
+    processEnv: process.env,
+    clientEnv,
+    serverEnv,
+  });
   const {
     email,
     password,
@@ -269,32 +282,15 @@ async function globalSetup(config: FullConfig) {
     apiBaseUrl,
     localAuthEnabled,
     localAuthApiBaseUrl,
-  } = resolveStackAuthBootstrapConfig({
-    processEnv: process.env,
-    clientEnv,
-    serverEnv,
-  });
+  } = bootstrapConfig;
 
-  const canUseServerAuth = Boolean(projectId && secretServerKey);
-  const canUseUiAuth = Boolean(email && password);
+  const readiness = e2eAuthReadiness(bootstrapConfig, Boolean(process.env.CI));
+  if (readiness.kind === "invalid")
+    throw new AuthReadinessError(readiness.message);
+  const canUseServerAuth = readiness.kind === "server";
+  const canUseUiAuth = readiness.kind === "ui";
 
-  if (localAuthEnabled) {
-    const clientAuthEnabled = resolveStackAuthBootstrapConfig({
-      processEnv: {
-        VITE_E2E_LOCAL_AUTH_ENABLED: process.env.VITE_E2E_LOCAL_AUTH_ENABLED,
-      },
-      clientEnv,
-      serverEnv: {},
-    }).localAuthEnabled;
-    const error = localAuthConfigurationError({
-      isCI: Boolean(process.env.CI),
-      browserProjectId:
-        process.env.VITE_PROJECT_ID || clientEnv.VITE_PROJECT_ID,
-      publishableClientKey,
-      clientAuthEnabled,
-    });
-    if (error) throw error;
-  } else if (!canUseServerAuth && !canUseUiAuth) {
+  if (readiness.kind === "guest") {
     const staleStateExists = await access(authFile).then(
       () => true,
       () => false,

@@ -107,7 +107,30 @@ returns checks, while the native runtime owns schema/exit validation and capture
 
 Readiness means local preparation, not a completed provider login or product
 scenario. E2E checks installed Chromium and local-auth/Stack configuration; it
-does not sign in. Billing access, webhook forwarding, authenticated checkout and
+does not sign in. Authenticated preparation requires `PROJECT_ID` and matching
+`VITE_PROJECT_ID`, plus `VITE_PUBLISHABLE_CLIENT_KEY`, even for local auth:
+the frontend still constructs StackProvider. The project must also satisfy the
+installed Stack SDK constructor (a project UUID, or Stack's internal identifier). For local auth enable **both**
+`E2E_LOCAL_AUTH_ENABLED` and `VITE_E2E_LOCAL_AUTH_ENABLED` (`1`, `true`, `yes`,
+`on`, ignoring case/outer whitespace). One enabled flag is a blocker, including
+when provider credentials are present. Both disabled flags select Stack auth,
+using `SECRET_SERVER_KEY` or both `E2E_STACK_EMAIL` and `E2E_STACK_PASSWORD`.
+Any nonempty `CI` value (including `"false"`) selects Playwright's production
+preview, which refuses local auth; use Stack auth there. An explicitly reused
+external frontend must independently use a development build for local auth;
+doctor cannot inspect its build or configuration.
+
+Doctor and Playwright share bootstrap configuration checks. Native profile/file
+resolution feeds doctor and managed commands; explicit empty session values are
+preserved. Unmanaged Playwright uses session values before `.env.local` and
+`.env` fallbacks for its client/server settings. With no bootstrap credentials
+and neither local flag enabled, Playwright retains guest-only coverage, while
+E2E doctor reports missing authenticated preparation. Public settings and flags
+prove configuration only, not that Stack accepted the project/key or that a
+session exists. Playwright must still observe the app's authenticated
+`GET /api/workouts` before saving auth state.
+
+Billing access, webhook forwarding, authenticated checkout and
 RLS application-policy behavior still require separate scenario verification.
 Ordinary preparation does not require Stripe or provision a persistent cluster.
 

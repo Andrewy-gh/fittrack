@@ -31,7 +31,7 @@ async function fixture(t: TestContext) {
   t.after(() => rm(temp, { recursive: true, force: true }));
   const root = join(temp, "checkout with spaces");
   await mkdir(root);
-  for (const path of ["worktree-runtime.json", "scripts/worktree.ts", "scripts/package.json"]) {
+  for (const path of ["worktree-runtime.json", "scripts/worktree.ts", "scripts/package.json", "client/tests/stack-auth-config.ts"]) {
     await cp(join(source, path), join(root, path), { recursive: true });
   }
   await mkdir(join(root, "server"));
@@ -200,4 +200,35 @@ test("application root failure drains an orphan with inherited output", options,
     (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === 17);
   await f.cli(["check"]);
   await f.cli(["run", "test", "--", process.execPath, "-e", "process.exit(0)"]);
+});
+
+
+test("native E2E doctor uses resolved file precedence and explicit session overrides for auth", { ...options, timeout: 60000 }, async (t) => {
+  const f = await fixture(t);
+  const profile = join(f.root, "empty-profile.json");
+  await writeFile(profile, JSON.stringify({ version: 1 }));
+  await writeFile(join(f.root, "client", ".env"), "VITE_PROJECT_ID=11111111-1111-4111-8111-111111111111\nVITE_PUBLISHABLE_CLIENT_KEY=fixture-key\nVITE_E2E_LOCAL_AUTH_ENABLED=true\n");
+  await writeFile(join(f.root, "server", ".env.local"), "PROJECT_ID=11111111-1111-4111-8111-111111111111\nE2E_LOCAL_AUTH_ENABLED=true\n");
+  const env = {
+    ...f.env, WORKTREE_PROFILE: profile, FITTRACK_WORKTREE_PROFILE: profile,
+    FITTRACK_LOCAL_DATABASE_URL: "", FITTRACK_LOCAL_RUNTIME_DATABASE_URL: "",
+    PROJECT_ID: undefined, VITE_PROJECT_ID: undefined, VITE_PUBLISHABLE_CLIENT_KEY: undefined,
+    E2E_LOCAL_AUTH_ENABLED: undefined, VITE_E2E_LOCAL_AUTH_ENABLED: undefined,
+    SECRET_SERVER_KEY: "", E2E_STACK_EMAIL: "", E2E_STACK_PASSWORD: "", CI: "",
+  };
+  for (const [override, expected] of [[{}, "passed"], [{ VITE_PROJECT_ID: "" }, "missing"]] as const) {
+    const result = await execute(resolve(runtime ?? ""), ["doctor", "--mode", "e2e", "--json"], {
+      cwd: f.root, env: { ...env, ...override }, windowsHide: true, timeout: 25000,
+    }).then(value => ({ ...value, code: 0 }), (error: unknown) => {
+      assert.ok(isRecord(error) && typeof error.stdout === "string");
+      return { stdout: error.stdout, code: error.code };
+    });
+    const report = outputRecord(result.stdout);
+    assert.ok(Array.isArray(report.checks));
+    const auth: unknown = report.checks.find((check: unknown) => isRecord(check) && check.id === "e2e_auth_configuration");
+    assert.ok(isRecord(auth));
+    assert.equal(auth.status, expected);
+    assert.equal(report.ready, false);
+    assert.equal(result.code, 1);
+  }
 });
