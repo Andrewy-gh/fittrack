@@ -189,6 +189,9 @@ jobs:
       - name: Type check worktree scripts
         run: node client/node_modules/typescript/bin/tsc -p scripts/tsconfig.json
 
+      - name: Check managed unit environment against client transport
+        run: node --test scripts/worktree.client.test.ts
+
       - name: Cache Playwright browsers
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         id: playwright-cache
