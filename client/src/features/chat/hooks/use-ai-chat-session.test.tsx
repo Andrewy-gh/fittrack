@@ -1026,6 +1026,86 @@ describe("useAIChatSession", () => {
     },
   );
 
+  it("keeps a replacement run stoppable after ordinary resume completes", async () => {
+    const message = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "old partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([message], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [{ ...message, id: 82, content: "replacement partial" }],
+          {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      );
+    mockResumeStream
+      .mockResolvedValueOnce({
+        doneEvent: {
+          type: "done",
+          message_id: 61,
+          status: "completed",
+          text: "old run completed",
+        },
+        endedWithError: false,
+      })
+      .mockImplementationOnce(
+        (
+          _conversationId: number,
+          _runId: number,
+          _afterSequence: number,
+          handlers: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            handlers.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      );
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 92,
+      message_id: 82,
+      status: "stopped",
+      text: "replacement partial",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(mockResumeStream).toHaveBeenCalledTimes(2));
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ id: 82, content: "replacement partial" }),
+    );
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledWith(41, 92);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
   it("adopts a newer active run returned after replacement-run terminal SSE", async () => {
     const message = {
       id: 61,

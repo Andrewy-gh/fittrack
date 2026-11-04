@@ -895,6 +895,34 @@ export class ChatOperationController {
       });
       return;
     }
+    const observed =
+      resumeResult.kind === "not-needed"
+        ? resumeResult.detail
+        : resumeResult.kind === "finished" &&
+            resumeResult.reload.kind === "loaded"
+          ? resumeResult.reload.detail
+          : null;
+    const activity = observed ? classifyChatConversation(observed) : null;
+    // A terminal event settles its run, not work started before the reload.
+    if (observed && activity && activity.kind !== "settled") {
+      if (activity.kind === "run" && activity.runId !== detail.active_run?.id) {
+        this.releaseOperation(operation);
+        const nextOperation = this.beginRecovery(activity);
+        if (!nextOperation) return;
+        try {
+          await this.resumeOrRecoverActiveRun(
+            conversationId,
+            observed,
+            nextOperation,
+          );
+        } finally {
+          this.finishOperation(nextOperation);
+        }
+      } else {
+        await this.recoverOpenedConversation(conversationId, operation);
+      }
+      return;
+    }
     if (
       resumeResult.kind === "finished" &&
       resumeResult.stream.kind === "terminal"
@@ -908,13 +936,6 @@ export class ChatOperationController {
       });
       return;
     }
-    const observed =
-      resumeResult.kind === "not-needed"
-        ? resumeResult.detail
-        : resumeResult.kind === "finished" &&
-            resumeResult.reload.kind === "loaded"
-          ? resumeResult.reload.detail
-          : null;
     if (observed) {
       const resumeOutcome = classifyRecoveryOutcome({
         messages: observed.messages,
