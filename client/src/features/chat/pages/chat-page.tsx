@@ -469,7 +469,11 @@ export function ChatPage({
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                   {loadError}
                 </div>
-              ) : isLoadingConversation && messages.length === 0 ? (
+              ) : null}
+              {loadError &&
+              conversation?.id !==
+                conversationId ? null : isLoadingConversation &&
+                messages.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
                   Loading conversation...
                 </div>

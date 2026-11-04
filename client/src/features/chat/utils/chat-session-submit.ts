@@ -12,8 +12,8 @@ import { clearResumeCursor, saveResumeCursor } from "./chat-resume";
 import type {
   ChatOperation,
   ChatOperationAttempt,
-  ChatOperationController,
-} from "./chat-operation-controller";
+} from "./chat-operation-state";
+import type { ChatOperationController } from "./chat-operation-controller";
 import type {
   ChatSessionState,
   RecordChatTelemetry,
@@ -75,9 +75,9 @@ export async function submitPrompt({
   const tempAssistantId = tempUserId - 1;
   let streamStarted = false;
   let shouldRefreshConversation = false;
-  operation.assistantMessageId = tempAssistantId;
   const attempt = controller.beginAttempt(operation, "stream");
   if (!attempt) return;
+  controller.setAssistantMessage(operation, attempt, tempAssistantId);
   clearResumeCursor(activeConversationId);
 
   state.setMessages((current) => [
@@ -136,15 +136,20 @@ export async function submitPrompt({
           conversationId: activeConversationId,
           state,
           ownsAttempt: () => controller.ownsAttempt(operation, attempt),
-          getMessageId: () => operation.assistantMessageId ?? tempAssistantId,
-          getRunId: (event) => event.run_id ?? 0,
-          onError: (event) => {
-            showErrorToast(
-              { message: event.message ?? "AI chat streaming failed" },
-              "AI chat streaming failed",
-            );
-          },
+          getMessageId: () =>
+            controller.getSnapshot().assistantMessageId ?? tempAssistantId,
+          // Parsed deltas carry sequence/text; the start event owns run identity.
+          getRunId: () => controller.getSnapshot().runId ?? 0,
         }),
+        // An error frame does not prove that the server persisted failure.
+        onErrorEvent: (event) => {
+          if (!controller.ownsAttempt(operation, attempt)) return;
+          state.setLoadError(event.message);
+          showErrorToast(
+            { message: event.message },
+            "AI chat streaming failed",
+          );
+        },
         signal: attempt.controller.signal,
       },
     );
@@ -233,11 +238,11 @@ async function handleStreamFailureRecovery({
     operation,
     { silent: true },
   );
-  const {
-    detail: recoveredDetail,
-    aborted: recoveryAborted,
-    error: recoveryError,
-  } = await recoveryPromise;
+  const recovery = await recoveryPromise;
+  const recoveredDetail = recovery.kind === "loaded" ? recovery.detail : null;
+  const recoveryAborted = recovery.kind === "cancelled";
+  const recoveryError =
+    recovery.kind === "failed" ? recovery.error.cause : undefined;
   const submitFailure = recoveryError ?? error;
   const recoveryOutcome = classifyRecoveryOutcome({
     messages: recoveredDetail?.messages,
@@ -249,10 +254,10 @@ async function handleStreamFailureRecovery({
   if (recoveryAborted || !controller.ownsOperation(operation)) return;
 
   if (!recoveredDetail) {
-    const targetId = streamStarted
-      ? (operation.assistantMessageId ?? tempAssistantId)
-      : tempAssistantId;
-    markAssistantMessageFailed(state, targetId, submitFailure);
+    // A disconnected stream and failed recovery reveal no persisted outcome.
+    // Only a pre-start optimistic placeholder can be locally marked failed.
+    if (streamStarted) state.setLoadError(getErrorMessage(submitFailure));
+    else markAssistantMessageFailed(state, tempAssistantId, submitFailure);
   }
 
   if (recoveryOutcome !== "recovered_completed") {

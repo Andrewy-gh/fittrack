@@ -3,6 +3,7 @@ package aichat
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -88,30 +89,22 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 		return err
 	}
 
-	if prepared.Run == nil || prepared.Run.Status != statusStreaming {
-		return nil
-	}
 	now := time.Now().UTC()
-	if !shouldRecoverRun(prepared.Run, now) {
+	switch decision := decideRunRecovery(prepared, now).(type) {
+	case keepRunRecovery:
 		return nil
-	}
-	if prepared.LastSequence > 0 || strings.TrimSpace(prepared.AssistantMessage.Content) != "" {
+	case interruptRunRecovery:
 		return s.repo.InterruptRun(
 			context.WithoutCancel(ctx),
 			prepared,
-			strings.TrimSpace(prepared.AssistantMessage.Content),
-			interruptionReasonStalePartial,
-			time.Now().UTC(),
+			decision.text,
+			decision.reason,
+			now,
 		)
-	}
-	if generationAttemptsExhausted(prepared.Run) {
-		return s.repo.InterruptRun(
-			context.WithoutCancel(ctx),
-			prepared,
-			strings.TrimSpace(prepared.AssistantMessage.Content),
-			interruptionReasonAttemptsExhausted,
-			time.Now().UTC(),
-		)
+	case claimRunRecovery:
+		// A lost claim is a rejected proposal; it must not call the provider.
+	default:
+		return fmt.Errorf("unexpected ai chat recovery decision %T", decision)
 	}
 
 	owner := newInngestRunOwner(prepared.Run.ID)
@@ -136,8 +129,4 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 
 func shouldRecoverRun(run *ChatRun, now time.Time) bool {
 	return newChatRunLifecycle(run, now).ShouldRecover()
-}
-
-func generationAttemptsExhausted(run *ChatRun) bool {
-	return newChatRunLifecycle(run, time.Now().UTC()).GenerationAttemptsExhausted()
 }

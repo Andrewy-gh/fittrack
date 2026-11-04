@@ -1303,52 +1303,69 @@ func TestServiceStartMessageGeneration_RemoteStopCancelsOnOwnershipPoll(t *testi
 }
 
 func TestServiceRecoverStreamingRun_InterruptsStalePartialRun(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	featureAccess := new(mockFeatureAccessService)
-	runtime := new(mockRuntime)
-	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo, nil)
-	now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
-	expiredLease := now.Add(-time.Second)
-	prepared := &PreparedMessageStream{
-		Conversation: &Conversation{ID: 41, UserID: "user-123"},
-		Run: &ChatRun{
-			ID:                 51,
-			ConversationID:     41,
-			UserID:             "user-123",
-			AssistantMessageID: 61,
-			Model:              defaultModelName,
-			Status:             statusStreaming,
-			GenerationStatus:   generationStatusGenerating,
-			LeaseExpiresAt:     &expiredLease,
-		},
-		AssistantMessage: &ChatMessage{
-			ID:             61,
-			ConversationID: 41,
-			UserID:         "user-123",
-			Content:        "partial answer",
-			Status:         statusStreaming,
-		},
-		Prompt:       "new prompt",
-		LastSequence: 1,
+	cases := []struct {
+		name     string
+		content  string
+		sequence int32
+		attempts int32
+		wantText string
+	}{
+		{name: "text and chunks", content: "partial answer", sequence: 1, wantText: "partial answer"},
+		{name: "text without chunks", content: "  partial answer  ", wantText: "partial answer"},
+		{name: "chunks without text", sequence: 1},
+		{name: "partial output before exhausted attempts", content: "partial answer", attempts: maxGenerationAttempts, wantText: "partial answer"},
 	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			featureAccess := new(mockFeatureAccessService)
+			runtime := new(mockRuntime)
+			repo := new(mockRepository)
+			service := NewService(logger, featureAccess, runtime, repo, nil)
+			now := time.Date(2026, 3, 26, 17, 30, 0, 0, time.UTC)
+			expiredLease := now.Add(-time.Second)
+			prepared := &PreparedMessageStream{
+				Conversation: &Conversation{ID: 41, UserID: "user-123"},
+				Run: &ChatRun{
+					ID:                 51,
+					ConversationID:     41,
+					UserID:             "user-123",
+					AssistantMessageID: 61,
+					Model:              defaultModelName,
+					Status:             statusStreaming,
+					GenerationStatus:   generationStatusGenerating,
+					LeaseExpiresAt:     &expiredLease,
+					GenerationAttempt:  tc.attempts,
+				},
+				AssistantMessage: &ChatMessage{
+					ID:             61,
+					ConversationID: 41,
+					UserID:         "user-123",
+					Content:        tc.content,
+					Status:         statusStreaming,
+				},
+				Prompt:       "new prompt",
+				LastSequence: tc.sequence,
+			}
 
-	runtime.On("Available").Return(true).Once()
-	repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
-	repo.On("InterruptRun", mock.Anything, prepared, "partial answer", interruptionReasonStalePartial, mock.AnythingOfType("time.Time")).Return(nil).Once()
+			runtime.On("Available").Return(true).Once()
+			repo.On("LoadPreparedRunForRecovery", mock.Anything, int32(51), "user-123").Return(prepared, nil).Once()
+			repo.On("InterruptRun", mock.Anything, prepared, tc.wantText, interruptionReasonStalePartial, mock.AnythingOfType("time.Time")).Return(nil).Once()
 
-	err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
-		ConversationID: 41,
-		RunID:          51,
-		UserID:         "user-123",
-		Reason:         recoverReasonStreamReconnect,
-	})
+			err := service.RecoverStreamingRun(context.Background(), RunRecoveryRequest{
+				ConversationID: 41,
+				RunID:          51,
+				UserID:         "user-123",
+				Reason:         recoverReasonStreamReconnect,
+			})
 
-	require.NoError(t, err)
-	repo.AssertNotCalled(t, "ClaimRunGeneration", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	runtime.AssertNotCalled(t, "StreamChat", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	runtime.AssertExpectations(t)
-	repo.AssertExpectations(t)
+			require.NoError(t, err)
+			repo.AssertNotCalled(t, "ClaimRunGeneration", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			runtime.AssertNotCalled(t, "StreamChat", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+			runtime.AssertExpectations(t)
+			repo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestServiceRecoverStreamingRun_InterruptsRunWhenGenerationAttemptsExhausted(t *testing.T) {

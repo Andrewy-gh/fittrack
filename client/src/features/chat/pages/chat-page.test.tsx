@@ -611,6 +611,55 @@ describe("ChatRouteComponent", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps partial output visible with a retryable Stop after reconciliation fails", async () => {
+    const user = userEvent.setup();
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [
+            {
+              id: 61,
+              conversation_id: 41,
+              role: "assistant",
+              content: "partial response to preserve",
+              status: "streaming",
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:01Z",
+            },
+          ],
+          {
+            id: 91,
+            assistant_message_id: 61,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      )
+      .mockRejectedValue(new Error("Reconciliation unavailable"));
+    mockResumeStream.mockReturnValue(new Promise(() => undefined));
+    mockStopRun.mockRejectedValue(new Error("Stop unavailable"));
+
+    const { rerender } = render(<ChatRouteComponent />);
+    await screen.findByText("partial response to preserve");
+    const stop = screen.getByRole("button", { name: "Stop response" });
+    await user.click(stop);
+
+    await screen.findByText("Reconciliation unavailable");
+    await waitFor(() => expect(stop).toBeEnabled());
+    expect(screen.getByText("partial response to preserve")).toBeVisible();
+    expect(screen.getByRole("textbox")).toBeDisabled();
+
+    mockGetConversation.mockRejectedValue(
+      new Error("Different chat unavailable"),
+    );
+    mockSearch.conversationId = "42";
+    rerender(<ChatRouteComponent />);
+    await screen.findByText("Different chat unavailable");
+    expect(
+      screen.queryByText("partial response to preserve"),
+    ).not.toBeInTheDocument();
+  });
+
   it("removes typing immediately while durable Stop is pending", async () => {
     const user = userEvent.setup();
     const stopRequest = deferredPromise<Record<string, unknown>>();
