@@ -353,6 +353,33 @@ with existing-server reuse disabled. Build preview/CI assets under the same
 `E2E_BASE_URL`, and `E2E_LOCAL_AUTH_API_BASE_URL`, and forces browser requests to
 same-origin `/api`.
 
+Playwright global setup then gives the browser **120 seconds total** to load
+the landing route and display its React-rendered **Browse Exercise History**
+link. This is a separate browser startup phase after the webServer HTTP check;
+it applies to guest preview and development-auth runs. It navigates once, never
+retries user/session bootstrap, and leaves ordinary scenario and authenticated
+API-read timeouts unchanged. Failed script loads, unhandled page errors, the
+Vite error overlay and the app's route error screen fail early; a blank or
+stalled page fails at the deadline. The temporary page/listeners are released
+on both outcomes, and the existing Playwright/native runtime owns server cleanup.
+
+`browser-startup.json` in the first Playwright project's output directory
+(normally `client/test-results`) records only outcome, elapsed/deadline
+milliseconds and a sanitized failure category. Setup failure exits nonzero;
+inspect the **owned** Vite/build logs for details. Startup success proves the
+landing modules mounted, while the subsequent authenticated browser API read
+and the actual scenarios remain separate proofs. Do not enable existing-server
+reuse to bypass a cold start.
+
+For reproducible cold/warm diagnosis, use a fresh **task-owned** Vite `cacheDir`
+in a temporary config that imports the real `client/vite.config.js` and keeps
+its plugins. Run through the same Playwright configuration/mode twice, stopping
+its owned frontend between runs and retaining that cache only for the warm run.
+Record `browser-startup.json`, total run time, selected mode and cleanup for each.
+Never delete another checkout's `node_modules/.vite` or attach to an unowned
+server. A fixture-backed API can isolate startup diagnosis, but does not prove
+backend, provider or database behavior.
+
 `rls` uses the runtime URL for `_rls`, retains the owning `ADMIN_DATABASE_URL`,
 and enables RLS enforcement. Use CI's dedicated restricted checks, not the full
 Go suite or migrations. Separate browser profiles/Playwright contexts are still

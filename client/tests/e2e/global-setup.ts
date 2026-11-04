@@ -1,9 +1,10 @@
 import { chromium, type FullConfig } from "@playwright/test";
-import { mkdir, readFile, access } from "node:fs/promises";
+import { mkdir, readFile, access, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { signInWithStack } from "./helpers/stack-auth";
+import { browserStartupReadiness } from "./browser-startup";
 import { resolveStackAuthBootstrapConfig } from "../stack-auth-config";
 import {
   AuthReadinessError,
@@ -307,12 +308,30 @@ async function globalSetup(config: FullConfig) {
     console.log(
       "Playwright guest-only run: no authentication configured; authenticated coverage is not verified.",
     );
-    return;
   }
 
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ baseURL });
+    const startup = await browserStartupReadiness(context, 120000);
+    const outputDir = config.projects[0]?.outputDir ?? "test-results";
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(
+      path.join(outputDir, "browser-startup.json"),
+      JSON.stringify(startup, null, 2) + "\n",
+    );
+    if (startup.kind === "failed") {
+      throw new Error(
+        `Browser startup failed (${startup.reason}) after ${startup.elapsedMs}ms ` +
+          `(deadline ${startup.deadlineMs}ms). Check the owned frontend's module/build logs ` +
+          "and landing route. HTTP readiness alone does not prove the app mounted. " +
+          "Sanitized stage evidence: browser-startup.json in the Playwright output directory.",
+      );
+    }
+    console.log(
+      `Playwright browser startup verified: landing navigation visible after ${startup.elapsedMs}ms (deadline ${startup.deadlineMs}ms).`,
+    );
+    if (!localAuthEnabled && !canUseServerAuth && !canUseUiAuth) return;
     let mode: { kind: "local"; userId: string } | { kind: "stack" } = {
       kind: "stack",
     };
