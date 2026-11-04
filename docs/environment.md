@@ -73,24 +73,43 @@ GitHub Actions currently expect these secrets:
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PREMIUM_PRICE_ID`
 
-Preview deploys also use:
+Preview deploys use these secrets in the GitHub `review` environment, copied from
+Doppler project `fittrack`, config `stg` (storage in Doppler alone does not sync them):
 
-- `PREVIEW_DATABASE_URL`
+- `PREVIEW_MIGRATION_DATABASE_URL`: owning `postgres.<project-ref>` connection; only Goose receives it
+- `PREVIEW_DATABASE_URL`: restricted `fittrack_app.<project-ref>` runtime connection
 - `PREVIEW_METRICS_USERNAME`
 - `PREVIEW_METRICS_PASSWORD`
+
+Set the `review` environment variable `PREVIEW_SUPABASE_PROJECT_REF` to the
+nonproduction Supabase project reference. Both database URLs must use that project,
+the same shared session-pooler host on port `5432`, database `postgres`, and
+`sslmode=require`. The workflow validates these before migrations. Bootstrap a new
+database with migrations and `server/scripts/provision-runtime-role.sql`, then
+configure the runtime login/password separately; do not use its credential for Goose.
+
+All preview apps reuse this one database; deploying or closing a PR never resets it.
+Deployments are serialized across PRs, but existing apps continue serving while a
+migration runs. Keep migrations compatible with those apps and coordinate schema
+changes across PRs: serialization does not reconcile divergent migration histories
+or isolate test data. Use isolated local databases for destructive tests.
+
+The workflow fails on migration errors and requires deployed `/ready` to report
+`healthy` with database `ok`. Closing a PR only removes its Fly app and skips
+migrations/readiness. It does not remove the shared database.
 
 Fly preview apps set these runtime vars on the server:
 
 - `DATABASE_URL`
 - `PROJECT_ID`
 - `ENVIRONMENT=staging`
+- `RLS_ENFORCEMENT_REQUIRED=true`
+- `DB_MAX_CONNS=3` and `DB_MIN_CONNS=0` to limit aggregate preview connections
 - `METRICS_USERNAME`
 - `METRICS_PASSWORD`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PREMIUM_PRICE_ID`
-- `APP_BASE_URL`
-- `AI_CHAT_TRIAL_PROMPT_CAP`
+
+AI and Stripe credentials are not supplied by the preview workflow. Database
+readiness does not verify provider login, AI access, or billing scenarios.
 
 Production note:
 
