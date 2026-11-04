@@ -27,6 +27,9 @@ func TestJWKSCache_VerifiesIndependentWireTokens(t *testing.T) {
 	if err := public.Set(jwk.KeyIDKey, "wire-key"); err != nil {
 		t.Fatal(err)
 	}
+	if err := public.Set(jwk.AlgorithmKey, "RS256"); err != nil {
+		t.Fatal(err)
+	}
 	keys := jwk.NewSet()
 	if err := keys.AddKey(public); err != nil {
 		t.Fatal(err)

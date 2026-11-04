@@ -56,8 +56,8 @@ func TestGenkitRuntime_ProviderStreamTransport(t *testing.T) {
 				t.Fatalf("provider was never called: %v", err)
 			}
 			if tc.reject {
-				if err == nil || done != nil {
-					t.Fatalf("provider error lost: done=%v err=%v", done, err)
+				if err == nil || done != nil || chunks.String() != "Hello" {
+					t.Fatalf("provider error after first delta lost: done=%v chunks=%q err=%v", done, chunks.String(), err)
 				}
 				return
 			}
@@ -82,7 +82,8 @@ func (r *compatibilityRecoveryRunner) RecoverStreamingRun(ctx context.Context, r
 }
 
 func TestInngestRecovery_SignedTransport(t *testing.T) {
-	t.Setenv("INNGEST_DEV", "0")
+	// The SDK treats any nonempty INNGEST_DEV value as development mode.
+	t.Setenv("INNGEST_DEV", "")
 	t.Setenv("INNGEST_SIGNING_KEY", "signkey-test-0123456789abcdef0123456789abcdef")
 	t.Setenv("INNGEST_EVENT_KEY", "synthetic-event-key")
 	t.Setenv("INNGEST_ENABLE_UNAUTHED_SYNC", "false")
