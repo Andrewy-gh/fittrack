@@ -284,7 +284,7 @@ async function globalSetup(config: FullConfig) {
     localAuthApiBaseUrl,
   } = bootstrapConfig;
 
-  const readiness = e2eAuthReadiness(bootstrapConfig, Boolean(process.env.CI));
+  const readiness = e2eAuthReadiness(bootstrapConfig, process.env);
   if (readiness.kind === "invalid")
     throw new AuthReadinessError(readiness.message);
   const canUseServerAuth = readiness.kind === "server";
@@ -309,6 +309,8 @@ async function globalSetup(config: FullConfig) {
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ baseURL });
+    const timeoutMs = config.projects[0]?.timeout ?? 30000;
+    context.setDefaultNavigationTimeout(timeoutMs);
     let mode: { kind: "local"; userId: string } | { kind: "stack" } = {
       kind: "stack",
     };
@@ -374,7 +376,10 @@ async function globalSetup(config: FullConfig) {
     }
 
     const page = await context.newPage();
-    const readinessError = await browserAuthReadinessError(page, { mode });
+    const readinessError = await browserAuthReadinessError(page, {
+      mode,
+      timeoutMs,
+    });
     if (readinessError) throw readinessError;
     await mkdir(path.dirname(authFile), { recursive: true });
     await context.storageState({ path: authFile });

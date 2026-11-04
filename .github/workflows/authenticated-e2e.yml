@@ -1,0 +1,116 @@
+name: Authenticated E2E
+
+on:
+  pull_request:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  authenticated-e2e:
+    name: Run Required Authenticated E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:15.19-bookworm@sha256:539ceaaae49b3a7c8a04467cf00cc6788d8e3f1675df41860d86eebc4c40524f
+        env:
+          POSTGRES_USER: e2e_owner
+          POSTGRES_PASSWORD: disposable_owner
+          POSTGRES_DB: fittrack_e2e
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 127.0.0.1:25432:5432
+    env:
+      # Fresh service container on this job's runner; never preview/production data.
+      DATABASE_URL: postgresql://e2e_owner:disposable_owner@127.0.0.1:25432/fittrack_e2e?sslmode=disable
+      CI: "true"
+      ENVIRONMENT: development
+      E2E_FRONTEND_MODE: development
+      E2E_LOCAL_AUTH_ENABLED: "true"
+      VITE_E2E_LOCAL_AUTH_ENABLED: "true"
+      E2E_EXCLUSIVE_MUTATION: "true"
+      E2E_LOCAL_AUTH_USER_ID: ci-synthetic-user
+      E2E_LOCAL_AUTH_EMAIL: ci-synthetic-user@example.test
+      PORT: "25080"
+      METRICS_PORT: "25090"
+      E2E_PORT: "25173"
+      API_PROXY_TARGET: http://127.0.0.1:25080
+      E2E_LOCAL_AUTH_API_BASE_URL: http://127.0.0.1:25080
+      ALLOWED_ORIGINS: http://127.0.0.1:25173
+      # Match the documented local E2E owner connection. Restricted-role/RLS
+      # verification remains in backend-test; this flag requires Supabase transport.
+      RLS_ENFORCEMENT_REQUIRED: "false"
+      RATE_LIMIT_RPM: "10000"
+      DB_MAX_CONNS: "4"
+      # Public client configuration from https://fittrack.fly.dev (2026-11-04).
+      # Needed for StackProvider/JWKS initialization; no Stack sessions are created.
+      PROJECT_ID: 5d9ec16c-1975-40fe-85be-6c75d11b64d6
+      VITE_PROJECT_ID: 5d9ec16c-1975-40fe-85be-6c75d11b64d6
+      VITE_PUBLISHABLE_CLIENT_KEY: pck_a66vgw55yfn6wwmr9h97vcs9zy3qep8kmpwhexgq1r0xg
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.26.10"
+          cache-dependency-path: server/go.sum
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .node-version
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.2"
+      - name: Install dependencies
+        working-directory: client
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Install Chromium
+        working-directory: client
+        run: bunx playwright install --with-deps chromium
+      - name: Verify required-suite exit gate
+        run: node --test scripts/required-auth-gate.test.mjs
+      - name: Migrate isolated database
+        working-directory: server
+        run: |
+          go install -p=1 -tags='no_mysql,no_sqlite3,no_mssql,no_ydb,no_vertica,no_clickhouse,no_turso' github.com/pressly/goose/v3/cmd/goose@v3.24.3
+          test "$(psql "$DATABASE_URL" -X -Atqc 'SHOW server_version_num')" = 150019
+          goose -dir migrations postgres "$DATABASE_URL" up
+      - name: Build API
+        working-directory: server
+        run: go build -p=1 -o ../fittrack-e2e-api ./cmd/api
+      - name: Run all required authenticated scenarios
+        shell: bash
+        run: |
+          mkdir -p e2e-logs
+          ./fittrack-e2e-api >e2e-logs/api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true; wait "$api_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if ! kill -0 "$api_pid" 2>/dev/null; then cat e2e-logs/api.log; exit 1; fi
+            if curl --fail --silent http://127.0.0.1:25080/health >/dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then cat e2e-logs/api.log; exit 1; fi
+          # Playwright owns/stops Vite. Global setup proves the app's authenticated read.
+          bun run --cwd client test:e2e:auth
+      - name: Upload authenticated evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: playwright-authenticated-report
+          path: |
+            client/playwright-auth-report
+            client/test-results
+            e2e-logs
+          if-no-files-found: warn
+          retention-days: 7

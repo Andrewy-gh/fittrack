@@ -1,3 +1,5 @@
+import { e2eFrontendMode } from "../scripts/local-server-config.ts";
+
 type EnvSource = Record<string, string | undefined>;
 
 /** Resolved bootstrap inputs shared by Playwright and the read-only doctor. */
@@ -114,12 +116,18 @@ export type E2EAuthReadiness =
 /** Select the supported bootstrap or return a safe repair without echoing inputs. */
 export function e2eAuthReadiness(
   config: StackAuthBootstrapConfig,
-  isCI: boolean,
+  environment: EnvSource,
 ): E2EAuthReadiness {
   const invalid = (message: string): E2EAuthReadiness => ({
     kind: "invalid",
     message,
   });
+  let frontendMode: "development" | "preview";
+  try {
+    frontendMode = e2eFrontendMode(environment);
+  } catch {
+    return invalid("E2E_FRONTEND_MODE must be development or preview.");
+  }
   if (
     !config.localAuthEnabled &&
     !config.secretServerKey &&
@@ -128,9 +136,9 @@ export function e2eAuthReadiness(
   ) {
     return { kind: "guest" };
   }
-  if (config.localAuthEnabled && isCI) {
+  if (config.localAuthEnabled && frontendMode === "preview") {
     return invalid(
-      "Local E2E auth requires the Vite development server. CI uses production preview, where local auth is disabled. Unset CI for local checks or disable both local-auth flags and configure real Stack auth for preview.",
+      "Local E2E auth requires the Vite development server. Set E2E_FRONTEND_MODE=development for isolated local checks, or disable both local-auth flags and configure Stack auth for production preview.",
     );
   }
   if (!config.browserProjectId || !config.publishableClientKey) {

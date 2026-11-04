@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  e2eFrontendMode,
   readPort,
   resolveE2EServerConfig,
   resolveViteServerConfig,
@@ -80,6 +81,16 @@ describe("local server ports and API proxy", () => {
 });
 
 describe("Playwright server ownership", () => {
+  it("selects development explicitly on CI without changing the preview default", () => {
+    expect(e2eFrontendMode({ CI: "true" })).toBe("preview");
+    expect(
+      resolveE2EServerConfig({ CI: "true", E2E_FRONTEND_MODE: "development" })
+        .webServer?.command,
+    ).toContain("bun run dev ");
+    expect(() => resolveE2EServerConfig({ E2E_FRONTEND_MODE: "typo" })).toThrow(
+      "E2E_FRONTEND_MODE",
+    );
+  });
   it("starts its own strict-port development server by default", () => {
     const config = resolveE2EServerConfig({});
     expect(config.baseURL).toBe("http://127.0.0.1:5173");
