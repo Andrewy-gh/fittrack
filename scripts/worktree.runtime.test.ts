@@ -71,7 +71,7 @@ test("a fresh session prepares and runs unit commands using only a local profile
 test("Bun unit launches cannot automatically reload database or Stripe env files", options, async (t) => {
   const f = await fixture(t);
   const client = join(f.root, "client");
-  await mkdir(client);
+  await mkdir(client, { recursive: true });
   await writeFile(join(client, "package.json"), JSON.stringify({ scripts: { test: "node probe.cjs" } }));
   await writeFile(join(client, ".env"), "DATABASE_URL=postgres://synthetic-never-connect.invalid/db\n");
   await writeFile(join(client, ".env.local"), "STRIPE_SECRET_KEY=sk_test_synthetic_never_use\n");
