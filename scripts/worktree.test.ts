@@ -110,7 +110,7 @@ test("RLS mode requires existing restricted role and keeps owner URL distinct", 
 test("unit commands receive no database or Stripe credentials and can construct a Node Request", () => {
   const env = commandEnvironment(config(), "unit", { DATABASE_URL: "remote", ADMIN_DATABASE_URL: "remote", FITTRACK_LOCAL_DATABASE_URL: base, PGHOST: "remote", STRIPE_SECRET_KEY: "synthetic-secret" });
   for (const key of ["DATABASE_URL", "ADMIN_DATABASE_URL", "FITTRACK_LOCAL_DATABASE_URL", "PGHOST", "STRIPE_SECRET_KEY"]) assert.equal(env[key], undefined);
-  assert.equal(new Request(`${env.VITE_API_BASE_URL}/workouts`).url, "http://127.0.0.1:8080/workouts");
+  assert.equal(new Request(`${env.VITE_API_BASE_URL}/workouts`).url, "http://localhost/api/workouts");
 });
 
 test("E2E doctor refuses mismatched local auth flags even when Stack credentials are present", () => {

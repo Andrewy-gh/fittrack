@@ -110,8 +110,9 @@ export function commandEnvironment(
     for (const key of Object.keys(env)) {
       if (/^(PG|DATABASE_URL$|ADMIN_DATABASE_URL$|RECOMMENDATION_TEST_DATABASE_URL$|FITTRACK_LOCAL_.*DATABASE_URL$|STRIPE_)/i.test(key)) delete env[key];
     }
-    // Node's Request requires an absolute URL; this mode never starts a proxy.
-    env.VITE_API_BASE_URL = "http://127.0.0.1:8080";
+    // Match the client's test base, including the API prefix. Node's Request
+    // requires an absolute URL; this mode never starts an API or proxy.
+    env.VITE_API_BASE_URL = "http://localhost/api";
     return env;
   }
   const isE2E = mode === "e2e";

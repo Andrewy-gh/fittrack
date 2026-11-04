@@ -314,10 +314,16 @@ describe("ai chat api wrapper", () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      "/api/ai/conversations/41/messages/stream/resume?runId=51&afterSequence=3",
+      expect.any(String),
       expect.objectContaining({
         method: "GET",
       }),
+    );
+    // Direct tests use a relative base; managed unit mode supplies an absolute
+    // one. Both must preserve the complete endpoint and sequence cursor.
+    const url = vi.mocked(fetch).mock.calls.at(-1)?.[0];
+    expect(new URL(String(url), "http://localhost").href).toBe(
+      "http://localhost/api/ai/conversations/41/messages/stream/resume?runId=51&afterSequence=3",
     );
     expect(seen).toEqual([3, 4, "done"]);
     expectDoneEvent(result.doneEvent);
