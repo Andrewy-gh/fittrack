@@ -20,6 +20,7 @@ const (
 	chatDateLayout              = "2006-01-02"
 )
 
+// ChatDataReader supports concurrent TrainingSnapshot and TrainingProfile reads.
 type ChatDataReader interface {
 	ListWorkoutsWithSets(ctx context.Context, userID string, filter WorkoutHistoryFilter) ([]ChatWorkoutView, error)
 	ResolveExerciseNames(ctx context.Context, userID string, query string) ([]string, error)

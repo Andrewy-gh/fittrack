@@ -92,12 +92,14 @@ Unit preparation skips database setup and credential-provider retrieval:
 ```bash
 node scripts/worktree.ts prepare --mode unit --json
 # From client/:
-node ../scripts/worktree.ts run unit -- bun run test
+node ../scripts/worktree.ts run unit -- bun run test -- --maxWorkers=1
 ```
 
 Unit commands still use native allocation/containment, strip DB/Stripe credentials,
-and use an absolute local API URL for Node Request tests. Direct Bun unit launches
-also receive `--no-env-file` so Bun cannot automatically restore stripped values
+and use the client's absolute test API base (`http://localhost/api`) for Node
+Request tests. This includes the `/api` prefix; no API or proxy is started.
+The documented command bounds Vitest to one worker for memory-limited hosts.
+Direct Bun unit launches also receive `--no-env-file` so Bun cannot automatically restore stripped values
 when executing a file or eval; non-unit Bun loading remains unchanged. Native reports have
 `version:1`, `ready`, `checks`, and source labels; exit 1 indicates a blocker.
 Statuses distinguish missing/inaccessible/failed/passed/not_required. The adapter
@@ -372,7 +374,12 @@ test files from the repository root:
 ```bash
 node client/node_modules/typescript/bin/tsc -p scripts/tsconfig.json
 node --test scripts/worktree.test.ts
+node --test scripts/worktree.client.test.ts
 ```
+
+The client boundary check reuses the billing transport tests under the adapter's
+unit environment. CI runs it after installing client dependencies; it requires
+neither the native runtime nor database, auth or Stripe credentials.
 
 With `WORKTREE_RUNTIME` pointing to the separately built executable, also run
 `node --test scripts/worktree.runtime.test.ts` for the real Node-to-Go boundary,

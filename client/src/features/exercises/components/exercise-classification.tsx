@@ -30,12 +30,12 @@ export function ExerciseClassification({
     ...putExercisesByIdCatalogMutation(),
     meta: { skipGlobalErrorHandler: true },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["muscle-contributions"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: getExercisesByIdQueryKey({ path: { id: exerciseId } }),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["muscle-contributions"] }),
+        queryClient.invalidateQueries({
+          queryKey: getExercisesByIdQueryKey({ path: { id: exerciseId } }),
+        }),
+      ]);
       setOpen(false);
     },
   });

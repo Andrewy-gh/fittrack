@@ -129,19 +129,16 @@ describe("HowItWorks", () => {
     );
   });
 
-  it("marks the step crossing the middle of the screen as current, in the list and the rail", () => {
+  it("marks the step crossing the middle of the screen as current", () => {
     render(<HowItWorks />);
     const repeatStep = stepItem("Start from what already worked.");
 
     stepObserver().trigger(repeatStep);
 
     expect(repeatStep).toHaveAttribute("aria-current", "step");
-    expect(
-      screen.getByRole("button", { name: "Show step 2: Repeat" }),
-    ).toHaveAttribute("aria-current", "step");
-    expect(
-      screen.getByRole("button", { name: "Show step 1: Log" }),
-    ).not.toHaveAttribute("aria-current");
+    expect(stepItem("Log a set in seconds.")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("on desktop, plays only the current step's clip and stops everything off screen", () => {

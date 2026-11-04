@@ -64,7 +64,7 @@ test("a fresh session prepares and runs unit commands using only a local profile
   const prepared = outputRecord((await native(["prepare", "--mode", "unit", "--json"])).stdout);
   assert.equal(prepared.ready, true);
   const run = await native(["run", "unit", "--", process.execPath, "-e", "console.log(new Request(process.env.VITE_API_BASE_URL+'/workouts').url); if(process.env.DATABASE_URL)process.exit(9)"]);
-  assert.equal(run.stdout.trim(), "http://127.0.0.1:8080/workouts");
+  assert.equal(run.stdout.trim(), "http://localhost/api/workouts");
   await native(["check"]);
 });
 

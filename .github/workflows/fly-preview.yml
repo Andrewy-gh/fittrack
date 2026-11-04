@@ -4,25 +4,32 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, closed]
 
+permissions:
+  contents: read
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   # Set these to your Fly.io organization and preferred region.
   FLY_REGION: ${{ vars.FLY_REGION }}
   FLY_ORG: ${{ vars.FLY_ORG }}
-  # Use preview database URL for preview deployments
-  DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
 
 jobs:
   review_app:
-    # Allow review-only PRs to opt out before any preview database writes.
-    if: ${{ github.actor != 'dependabot[bot]' && !contains(github.event.pull_request.body, '<!-- skip-preview -->') }}
+    # Forks cannot use deployment secrets. Closing a PR still cleans up its app.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action == 'closed' ||
+      (github.actor != 'dependabot[bot]' &&
+      !contains(github.event.pull_request.body, '<!-- skip-preview -->')))
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}
-    # Only run one deployment at a time per PR.
+    # Every PR uses the same database; do not migrate underneath another deploy.
     concurrency:
-      group: pr-${{ github.event.number }}
+      group: fittrack-preview-shared-database
+      cancel-in-progress: false
+      queue: max
 
     # Deploying apps with this "review" environment allows the URL for the app to be displayed in the PR UI.
     # Feel free to change the name of this environment.
@@ -35,6 +42,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Go
+        if: github.event.action != 'closed'
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: "1.26.10"
@@ -42,37 +50,70 @@ jobs:
           cache-dependency-path: server/go.sum
 
       - name: Cache Go tools
+        if: github.event.action != 'closed'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-tools-goose-v3.24.3
-          restore-keys: |
-            ${{ runner.os }}-go-tools-
 
       - name: Install Goose
+        if: github.event.action != 'closed'
         run: |
-          if ! command -v goose &> /dev/null; then
+          if ! command -v goose &> /dev/null || ! goose -version 2>&1 | grep -qx 'goose version: v3.24.3'; then
             go install github.com/pressly/goose/v3/cmd/goose@v3.24.3
           fi
 
       - name: Run database migrations for preview
+        if: github.event.action != 'closed'
+        env:
+          MIGRATION_URL: ${{ secrets.PREVIEW_MIGRATION_DATABASE_URL }}
+          RUNTIME_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+          PROJECT_REF: ${{ vars.PREVIEW_SUPABASE_PROJECT_REF }}
         run: |
-          # Disable prepared statements (simple protocol) for goose
-          GOOSE_DB_URL="${{ secrets.PREVIEW_DATABASE_URL }}?default_query_exec_mode=simple_protocol"
-          echo "Checking migration status..."
-          if goose -dir server/migrations postgres "$GOOSE_DB_URL" status | grep -q "no migrations"; then
-            echo "Running migrations..."
-            goose -dir server/migrations postgres "$GOOSE_DB_URL" up
-          else
-            echo "Database is already up to date, checking for new migrations..."
-            goose -dir server/migrations postgres "$GOOSE_DB_URL" up || echo "No new migrations to apply"
-          fi
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+          project_ref = os.environ["PROJECT_REF"]
+          if not re.fullmatch(r"[a-z]{20}", project_ref):
+              raise SystemExit("Set the review environment's PREVIEW_SUPABASE_PROJECT_REF variable")
+          connections = []
+          for key, role in (("MIGRATION_URL", "postgres"), ("RUNTIME_URL", "fittrack_app")):
+              url = urlsplit(os.environ[key])
+              query_pairs = parse_qsl(url.query)
+              params = dict(query_pairs)
+              if not (
+                  url.scheme in ("postgres", "postgresql")
+                  and (url.hostname or "").endswith(".pooler.supabase.com")
+                  and url.port == 5432
+                  and url.path == "/postgres"
+                  and url.username == f"{role}.{project_ref}"
+                  and url.password
+                  and not url.fragment
+                  and params.get("sslmode") == "require"
+                  and len(params) == len(query_pairs)
+                  and params.keys() <= {"sslmode", "connect_timeout", "default_query_exec_mode"}
+              ):
+                  raise SystemExit(f"{key} must use the expected preview role/project, session pooler and TLS")
+              connections.append((url, params))
+          if connections[0][0].hostname != connections[1][0].hostname:
+              raise SystemExit("Preview migration and runtime connections must use the same host")
+          url, params = connections[0]
+          params.update(default_query_exec_mode="simple_protocol", connect_timeout="15")
+          env = dict(os.environ, GOOSE_DRIVER="postgres",
+                     GOOSE_DBSTRING=urlunsplit(url._replace(query=urlencode(params))))
+          subprocess.run(["goose", "-dir", "server/migrations", "up"], env=env, check=True)
+          PY
 
       - name: Set client environment variables
+        if: github.event.action != 'closed'
+        env:
+          PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
+          PUBLISHABLE_CLIENT_KEY: ${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}
         run: |
-          # Set client env vars for Docker build
-          echo "VITE_PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}" > client/.env
-          echo "VITE_PUBLISHABLE_CLIENT_KEY=${{ secrets.VITE_PUBLISHABLE_CLIENT_KEY }}" >> client/.env
+          printf 'VITE_PROJECT_ID=%s\nVITE_PUBLISHABLE_CLIENT_KEY=%s\n' "$PROJECT_ID" "$PUBLISHABLE_CLIENT_KEY" > client/.env
 
       - name: Deploy PR app to Fly.io
         id: deploy
@@ -83,5 +124,26 @@ jobs:
             DATABASE_URL=${{ secrets.PREVIEW_DATABASE_URL }}
             PROJECT_ID=${{ secrets.VITE_PROJECT_ID }}
             ENVIRONMENT=staging
+            RLS_ENFORCEMENT_REQUIRED=true
+            DB_MAX_CONNS=3
+            DB_MIN_CONNS=0
             METRICS_USERNAME=${{ secrets.PREVIEW_METRICS_USERNAME }}
             METRICS_PASSWORD=${{ secrets.PREVIEW_METRICS_PASSWORD }}
+
+      - name: Verify deployed database readiness
+        if: github.event.action != 'closed'
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          url="https://fittrack-pr-${PR_NUMBER}.fly.dev/ready"
+          for attempt in $(seq 1 24); do
+            if response=$(curl --silent --show-error --fail --connect-timeout 5 --max-time 10 "$url") &&
+              jq -e '.status == "healthy" and .checks.database == "ok"' <<< "$response" > /dev/null; then
+              echo "Preview is ready and its database is reachable: $url"
+              exit 0
+            fi
+            echo "Waiting for preview readiness ($attempt/24)..."
+            sleep 5
+          done
+          echo "Preview failed its deployed database readiness check" >&2
+          exit 1
