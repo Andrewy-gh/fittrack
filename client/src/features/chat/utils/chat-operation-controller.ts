@@ -9,7 +9,7 @@ import {
   classifyLoadOutcome,
   classifyRecoveryOutcome,
 } from "@/features/chat/utils/ai-chat-observability";
-import { getErrorMessage, showErrorToast } from "@/lib/errors";
+import { showErrorToast } from "@/lib/errors";
 import { clearResumeCursor } from "./chat-resume";
 import {
   loadConversation as loadConversationRequest,
@@ -22,40 +22,29 @@ import type {
   ChatSessionState,
   ConversationRequestOptions,
   ConversationRequestResult,
+  ConversationResumeResult,
 } from "./chat-session-types";
 
-export type ChatOperationPhase =
-  | "idle"
-  | "starting"
-  | "streaming"
-  | "recovering"
-  | "stopping";
+import {
+  transitionChatOperation,
+  classifyChatConversation,
+  type ChatControllerAttachment,
+  type ChatOperation,
+  type ChatOperationAttempt,
+  type ChatOperationAttemptKind,
+  type ChatOperationEvent,
+  type ChatOperationState,
+  type ChatOperationTarget,
+  type ChatStopRequest,
+  type ChatStopOutcome,
+} from "./chat-operation-state";
 
-export type ChatOperationAttemptKind = "stream" | "resume" | "recovery";
+import { ChatRequestFailure } from "./chat-session-types";
 
-export type ChatControllerAttachment = {
-  readonly generation: number;
-  active: boolean;
-};
+/** Public phases projected from the controller's internal lifecycle. */
+export type ChatOperationPhase = ChatOperationState["phase"];
 
-export type ChatOperationAttempt = {
-  readonly operation: ChatOperation;
-  readonly attachment: ChatControllerAttachment;
-  readonly kind: ChatOperationAttemptKind;
-  readonly controller: AbortController;
-};
-
-export type ChatOperation = {
-  readonly attachment: ChatControllerAttachment;
-  conversationId: number | null;
-  runId: number | null;
-  assistantMessageId: number | null;
-  phase: Exclude<ChatOperationPhase, "idle">;
-  currentAttempt: ChatOperationAttempt | null;
-  adoptedConversationId: number | null;
-  requiresAuthoritativeResolution: boolean;
-};
-
+/** Stable screen-facing projection of lifecycle state. */
 export type ChatOperationSnapshot = Readonly<{
   phase: ChatOperationPhase;
   conversationId: number | null;
@@ -86,32 +75,50 @@ const idleSnapshot: ChatOperationSnapshot = Object.freeze({
 const stopRequestTimeoutMs = 15_000;
 const stopReconciliationTimeoutMs = 15_000;
 
+type BoundedRequestResult<T> =
+  | { readonly kind: "completed"; readonly value: T }
+  | { readonly kind: "failed"; readonly error: ChatRequestFailure };
+
 function boundRequest<T>(
-  request: Promise<T>,
+  operation: "load" | "stop",
+  request: () => Promise<T>,
   timeoutMs: number,
   timeoutMessage: string,
   onTimeout?: () => void,
-): Promise<T> {
-  return new Promise((resolve, reject) => {
+): Promise<BoundedRequestResult<T>> {
+  return new Promise((resolve) => {
     const timeoutId = globalThis.setTimeout(() => {
       onTimeout?.();
-      reject(new Error(timeoutMessage));
+      resolve({
+        kind: "failed",
+        error: new ChatRequestFailure(
+          operation,
+          new Error(timeoutMessage),
+          "deadline",
+        ),
+      });
     }, timeoutMs);
-    void request.then(
-      (result) => {
+    const failed = (cause: unknown) => {
+      globalThis.clearTimeout(timeoutId);
+      resolve({
+        kind: "failed",
+        error: new ChatRequestFailure(operation, cause),
+      });
+    };
+    try {
+      void request().then((value) => {
         globalThis.clearTimeout(timeoutId);
-        resolve(result);
-      },
-      (error) => {
-        globalThis.clearTimeout(timeoutId);
-        reject(error);
-      },
-    );
+        resolve({ kind: "completed", value });
+      }, failed);
+    } catch (cause) {
+      failed(cause);
+    }
   });
 }
 
 /** Owns the browser-side lifecycle of the chat operation shown by one chat screen. */
 export class ChatOperationController {
+  /** UI state sinks owned by this screen. */
   readonly state: ChatSessionState;
   private readonly onConversationCreatedCallback: (
     conversationId: number,
@@ -123,10 +130,43 @@ export class ChatOperationController {
   private readonly listeners = new Set<() => void>();
   private attachmentGeneration = 0;
   private attachment: ChatControllerAttachment | null = null;
-  private operation: ChatOperation | null = null;
+  private operationState: ChatOperationState = { phase: "idle" };
+  private adoptedConversation: { operation: ChatOperation; id: number } | null =
+    null;
+
   private routeLoad: RouteLoad | null = null;
   private snapshot: ChatOperationSnapshot = idleSnapshot;
 
+  private get operation(): ChatOperation | null {
+    return this.operationState.phase === "idle"
+      ? null
+      : this.operationState.operation;
+  }
+
+  private currentAttempt(): ChatOperationAttempt | null {
+    const current = this.operationState;
+    return current.phase !== "idle" &&
+      current.phase !== "stopping" &&
+      current.activity.kind === "attempt"
+      ? current.activity.attempt
+      : null;
+  }
+
+  private transition(event: ChatOperationEvent): boolean {
+    const previousAttempt = this.currentAttempt();
+    const next = transitionChatOperation(this.operationState, event);
+    if (next === this.operationState) return false;
+    this.operationState = next;
+    if (this.adoptedConversation?.operation !== this.operation)
+      this.adoptedConversation = null;
+    // Invalidate ownership before abort: abort listeners may run synchronously.
+    if (previousAttempt !== this.currentAttempt())
+      previousAttempt?.controller.abort();
+    this.publishOperation();
+    return true;
+  }
+
+  /** Bind the lifecycle owner to one screen and its navigation callbacks. */
   constructor({
     state,
     onConversationCreated,
@@ -139,13 +179,16 @@ export class ChatOperationController {
     this.onNewConversationCreatedCallback = onNewConversationCreated;
   }
 
+  /** Subscribe React to changes in the screen-facing snapshot. */
   readonly subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
 
+  /** Return a cached snapshot suitable for useSyncExternalStore. */
   readonly getSnapshot = () => this.snapshot;
 
+  /** Start an attachment generation, invalidating work from earlier mounts. */
   attach(): ChatControllerAttachment {
     if (this.attachment?.active) {
       this.detach(this.attachment);
@@ -158,6 +201,7 @@ export class ChatOperationController {
     return attachment;
   }
 
+  /** Detach only the matching mount; this does not stop server generation. */
   detach(attachment: ChatControllerAttachment): void {
     if (this.attachment !== attachment || !attachment.active) {
       return;
@@ -168,52 +212,43 @@ export class ChatOperationController {
     this.attachment = null;
   }
 
-  beginOperation(
-    conversationId: number | null,
-    phase: Exclude<ChatOperationPhase, "idle" | "stopping"> = "starting",
-    activeRun?: { runId: number; assistantMessageId: number | null },
-  ): ChatOperation | null {
+  /** Reserve this attached screen for a new prompt. */
+  beginOperation(conversationId: number | null): ChatOperation | null {
     const attachment = this.attachment;
-    if (!attachment?.active || this.operation) {
-      return null;
-    }
-    const operation: ChatOperation = {
-      attachment,
-      conversationId,
-      runId: activeRun?.runId ?? null,
-      assistantMessageId: activeRun?.assistantMessageId ?? null,
-      phase,
-      currentAttempt: null,
-      adoptedConversationId: null,
-      requiresAuthoritativeResolution: false,
-    };
-    this.operation = operation;
-    this.publishOperation();
-    return operation;
+    if (!attachment?.active || this.operation) return null;
+    const operation: ChatOperation = { attachment };
+    return this.transition({ type: "begin", operation, conversationId })
+      ? operation
+      : null;
   }
 
+  private beginRecovery(target: ChatOperationTarget): ChatOperation | null {
+    const attachment = this.attachment;
+    if (!attachment?.active || this.operation) return null;
+    const operation: ChatOperation = { attachment };
+    return this.transition({ type: "recover-opened", operation, target })
+      ? operation
+      : null;
+  }
+
+  /** Replace the active transport attempt without transferring operation ownership. */
   beginAttempt(
     operation: ChatOperation,
     kind: ChatOperationAttemptKind,
   ): ChatOperationAttempt | null {
-    if (!this.ownsOperation(operation)) {
-      return null;
-    }
-    operation.currentAttempt?.controller.abort();
+    if (!this.ownsOperation(operation)) return null;
     const attempt: ChatOperationAttempt = {
       operation,
       attachment: operation.attachment,
       kind,
       controller: new AbortController(),
     };
-    operation.currentAttempt = attempt;
-    if (kind === "recovery" && operation.phase !== "recovering") {
-      operation.phase = "recovering";
-      this.publishOperation();
-    }
-    return attempt;
+    return this.transition({ type: "attempt-started", attempt })
+      ? attempt
+      : null;
   }
 
+  /** Whether a callback still belongs to the attached screen's operation. */
   ownsOperation(operation: ChatOperation): boolean {
     return (
       this.operation === operation &&
@@ -222,91 +257,100 @@ export class ChatOperationController {
     );
   }
 
+  /** Whether an asynchronous callback still belongs to the current attempt. */
   ownsAttempt(
     operation: ChatOperation,
     attempt: ChatOperationAttempt,
   ): boolean {
     return (
       this.ownsOperation(operation) &&
-      operation.currentAttempt === attempt &&
+      this.currentAttempt() === attempt &&
       attempt.operation === operation &&
       attempt.attachment === operation.attachment
     );
   }
 
+  /** End an attempt without releasing a retained Stop-resolution operation. */
   finishAttempt(
     operation: ChatOperation,
     attempt: ChatOperationAttempt,
   ): boolean {
-    if (!this.ownsAttempt(operation, attempt)) {
-      return false;
-    }
-    operation.currentAttempt = null;
-    return true;
+    return (
+      this.ownsAttempt(operation, attempt) &&
+      this.transition({ type: "attempt-finished", attempt })
+    );
   }
 
+  /** Ordinary workflow cleanup cannot release an unresolved Stop. */
   finishOperation(operation: ChatOperation): boolean {
-    if (
-      !this.ownsOperation(operation) ||
-      operation.requiresAuthoritativeResolution
-    ) {
-      return false;
-    }
-    this.releaseOperation(operation);
-    return true;
+    return (
+      this.ownsOperation(operation) &&
+      this.transition({ type: "workflow-finished", operation })
+    );
   }
 
+  /** Accept server stream identity only from the active attempt. */
   markStreaming(
     operation: ChatOperation,
     attempt: ChatOperationAttempt,
     runId: number | null,
     assistantMessageId: number,
   ): boolean {
-    if (!this.ownsAttempt(operation, attempt)) {
-      return false;
-    }
-    operation.runId = runId;
-    operation.assistantMessageId = assistantMessageId;
-    operation.phase = "streaming";
-    this.publishOperation();
-    return true;
+    return (
+      this.ownsAttempt(operation, attempt) &&
+      this.transition({
+        type: "stream-started",
+        attempt,
+        runId,
+        assistantMessageId,
+      })
+    );
   }
 
+  /** Associate an optimistic assistant message with its transport attempt. */
   setAssistantMessage(
     operation: ChatOperation,
     attempt: ChatOperationAttempt,
     assistantMessageId: number,
   ): boolean {
-    if (!this.ownsAttempt(operation, attempt)) {
-      return false;
-    }
-    operation.assistantMessageId = assistantMessageId;
-    this.publishOperation();
-    return true;
+    return (
+      this.ownsAttempt(operation, attempt) &&
+      this.transition({
+        type: "assistant-selected",
+        attempt,
+        assistantMessageId,
+      })
+    );
   }
 
+  /** Keep a newly created conversation's route change attached to its operation. */
   adoptConversation(operation: ChatOperation, conversationId: number): boolean {
-    if (!this.ownsOperation(operation)) {
-      return false;
-    }
-    operation.conversationId = conversationId;
-    operation.adoptedConversationId = conversationId;
-    this.publishOperation();
-    return true;
+    if (!this.ownsOperation(operation)) return false;
+    // Route adoption is independent of transport state and survives its updates.
+    this.adoptedConversation = { operation, id: conversationId };
+    return this.transition({
+      type: "conversation-created",
+      operation,
+      conversationId,
+    });
   }
 
+  /** Notify the screen when a prompt has been acknowledged. */
   onPromptStarted(conversationId: number): void {
     this.onPromptStartedCallback(conversationId);
   }
 
+  /** Migrate the draft into the newly created conversation. */
   onNewConversationCreated(conversationId: number): void {
     this.onNewConversationCreatedCallback(conversationId);
   }
 
+  /** Navigate to a created conversation through the screen callback. */
   onConversationCreated(conversationId: number): Promise<void> {
     return this.onConversationCreatedCallback(conversationId);
   }
 
+  /** Start the submission workflow while this controller owns the screen. */
   submitPrompt = ({
     conversationId,
     prompt,
@@ -322,17 +366,15 @@ export class ChatOperationController {
       state: this.state,
     });
 
+  /** Adopt an expected creation route or load a different conversation. */
   handleRoute = (conversationId: number | null, prompt = ""): void => {
-    const operation = this.operation;
+    const adoption = this.adoptedConversation;
     if (
-      operation &&
-      operation.adoptedConversationId !== null &&
-      (conversationId === null ||
-        conversationId === operation.adoptedConversationId)
+      adoption &&
+      this.ownsOperation(adoption.operation) &&
+      (conversationId === null || conversationId === adoption.id)
     ) {
-      if (conversationId === operation.adoptedConversationId) {
-        operation.adoptedConversationId = null;
-      }
+      if (conversationId === adoption.id) this.adoptedConversation = null;
       return;
     }
 
@@ -344,10 +386,12 @@ export class ChatOperationController {
     void this.loadRouteConversation(conversationId);
   };
 
+  /** Invalidate and cancel the current detail request. */
   cancelRouteLoad(): void {
     this.abortRouteLoad();
   }
 
+  /** Clear local ownership and presentation without issuing a server Stop. */
   resetConversation = (prompt = ""): void => {
     this.abortRouteLoad();
     this.detachOperation();
@@ -359,54 +403,38 @@ export class ChatOperationController {
     this.state.setIsLoadingConversation(false);
   };
 
+  /** Load a route and recover any observed server work under fresh ownership. */
   async loadRouteConversation(conversationId: number): Promise<void> {
     this.detachOperation();
     const loadResult = await this.loadConversation(conversationId);
     this.recordTelemetry({
       category: "load",
-      outcome: loadResult.detail
-        ? "load_completed"
-        : classifyLoadOutcome(loadResult.aborted),
+      outcome:
+        loadResult.kind === "loaded"
+          ? "load_completed"
+          : classifyLoadOutcome(loadResult.kind === "cancelled"),
     });
-    if (!loadResult.detail || !this.isAttached()) {
-      return;
-    }
-
-    const activeRun = loadResult.detail.active_run;
-    if (activeRun) {
-      const operation = this.beginOperation(conversationId, "recovering", {
-        runId: activeRun.id,
-        assistantMessageId: activeRun.assistant_message_id,
-      });
-      if (!operation) return;
-      try {
+    if (loadResult.kind !== "loaded" || !this.isAttached()) return;
+    const activity = classifyChatConversation(loadResult.detail);
+    if (activity.kind === "settled") return;
+    const operation = this.beginRecovery(activity);
+    if (!operation) return;
+    try {
+      if (activity.kind === "run") {
         await this.resumeOrRecoverActiveRun(
           conversationId,
           loadResult.detail,
           operation,
         );
-      } finally {
-        this.finishOperation(operation);
-      }
-      return;
-    }
-
-    const streamingMessage = loadResult.detail.messages.find(
-      (message) => message.status === "streaming",
-    );
-    if (streamingMessage) {
-      const operation = this.beginOperation(conversationId, "recovering");
-      if (!operation) return;
-      operation.assistantMessageId = streamingMessage.id;
-      this.publishOperation();
-      try {
+      } else {
         await this.recoverOpenedConversation(conversationId, operation);
-      } finally {
-        this.finishOperation(operation);
       }
+    } finally {
+      this.finishOperation(operation);
     }
   }
 
+  /** Reload detail while the attachment, route request and optional owner remain current. */
   async loadConversation(
     id: number,
     opts?: ConversationRequestOptions,
@@ -414,7 +442,7 @@ export class ChatOperationController {
   ): Promise<ConversationRequestResult> {
     const attachment = this.attachment;
     if (!attachment?.active) {
-      return { detail: null, aborted: true };
+      return { kind: "cancelled" };
     }
     this.abortRouteLoad();
     const routeLoad: RouteLoad = {
@@ -433,26 +461,24 @@ export class ChatOperationController {
       (guard?.() ?? true);
 
     try {
-      const request = loadConversationRequest(id, opts, {
-        state: this.state,
-        signal: routeLoad.controller.signal,
-        isCurrent,
-      });
-      if (!opts?.timeoutMs) return await request;
-      try {
-        return await boundRequest(
-          request,
-          opts.timeoutMs,
-          "AI chat reconciliation reload timed out",
-          () => routeLoad.controller.abort(),
-        );
-      } catch (error) {
-        if (!isCurrent()) {
-          return { detail: null, aborted: true, error };
-        }
-        this.state.setLoadError(getErrorMessage(error));
-        return { detail: null, aborted: false, error };
-      }
+      const request = () =>
+        loadConversationRequest(id, opts, {
+          state: this.state,
+          signal: routeLoad.controller.signal,
+          isCurrent,
+        });
+      if (!opts?.timeoutMs) return await request();
+      const bounded = await boundRequest(
+        "load",
+        request,
+        opts.timeoutMs,
+        "AI chat reconciliation reload timed out",
+        () => routeLoad.controller.abort(),
+      );
+      if (bounded.kind === "completed") return bounded.value;
+      if (!isCurrent()) return { kind: "cancelled" };
+      this.state.setLoadError(bounded.error.message);
+      return { kind: "failed", error: bounded.error };
     } finally {
       if (this.routeLoad === routeLoad) {
         this.routeLoad = null;
@@ -463,13 +489,14 @@ export class ChatOperationController {
     }
   }
 
+  /** Poll recovery under an attempt that navigation or Stop can invalidate. */
   async recoverConversation(
     id: number,
     operation: ChatOperation,
     opts?: ConversationRequestOptions,
   ): Promise<ConversationRequestResult> {
     const attempt = this.beginAttempt(operation, "recovery");
-    if (!attempt) return { detail: null, aborted: true };
+    if (!attempt) return { kind: "cancelled" };
     try {
       return await recoverConversationRequest(id, opts, {
         state: this.state,
@@ -481,90 +508,59 @@ export class ChatOperationController {
     }
   }
 
+  /** Request persisted Stop, retaining ownership until its outcome is reconciled. */
   stopRun = async (): Promise<void> => {
-    const operation = this.operation;
-    const attachment = this.attachment;
-    const conversationId = operation?.conversationId;
-    const runId = operation?.runId;
+    const current = this.operationState;
     if (
-      !operation ||
-      !attachment ||
-      conversationId === null ||
-      conversationId === undefined ||
-      runId === null ||
-      runId === undefined ||
-      (operation.phase !== "streaming" && operation.phase !== "recovering")
-    ) {
+      (current.phase !== "streaming" && current.phase !== "recovering") ||
+      current.target.kind !== "run" ||
+      !this.ownsOperation(current.operation)
+    )
+      return;
+    const request: ChatStopRequest = {
+      kind: current.completion === "stop-resolution" ? "retry" : "initial",
+      operation: current.operation,
+      target: current.target,
+    };
+    if (!this.transition({ type: "stop-requested", request })) return;
+    const { conversationId, runId, assistantMessageId } = request.target;
+    this.markAssistantPresentationStopped(assistantMessageId);
+
+    const response = await boundRequest(
+      "stop",
+      () => stopAIChatRun(conversationId, runId),
+      stopRequestTimeoutMs,
+      "AI chat Stop request timed out",
+    );
+    const outcome: ChatStopOutcome =
+      response.kind === "completed"
+        ? { kind: "terminal", result: response.value }
+        : { kind: "uncertain", error: response.error };
+    if (
+      !this.ownsStopRequest(request) ||
+      !this.transition({ type: "stop-replied", request, outcome })
+    )
+      return;
+    if (outcome.kind === "uncertain") {
+      showErrorToast(outcome.error.cause, "Failed to stop AI chat response");
+      await this.reconcileFailedStop(request);
       return;
     }
-
-    operation.phase = "stopping";
-    operation.requiresAuthoritativeResolution = true;
-    this.publishOperation();
-
-    let stopRequest: Promise<AIChatStopResponse>;
-    try {
-      stopRequest = boundRequest(
-        stopAIChatRun(conversationId, runId),
-        stopRequestTimeoutMs,
-        "AI chat Stop request timed out",
-      );
-    } catch (error) {
-      stopRequest = Promise.reject(error);
+    clearResumeCursor(conversationId);
+    if (outcome.result.status === "stopped" && request.kind === "initial") {
+      this.state.setLoadError(null);
+      this.applyStopResult(outcome.result);
+      this.releaseOperation(request.operation);
+      return;
     }
-
-    const canceledAttempt = operation.currentAttempt;
-    operation.currentAttempt = null;
-    canceledAttempt?.controller.abort();
-    this.markAssistantPresentationStopped(operation.assistantMessageId);
-
-    try {
-      const result = await stopRequest;
-      if (!this.ownsStopTarget(operation, attachment, conversationId, runId)) {
-        return;
-      }
-
-      clearResumeCursor(conversationId);
-      if (result.status === "stopped") {
-        this.state.setLoadError(null);
-        this.applyStopResult(result);
-        this.releaseOperation(operation);
-        return;
-      }
-
-      await this.reconcileTerminalStopResult(
-        operation,
-        attachment,
-        conversationId,
-        runId,
-        result,
-      );
-    } catch (error) {
-      if (!this.ownsStopTarget(operation, attachment, conversationId, runId)) {
-        return;
-      }
-      showErrorToast(error, "Failed to stop AI chat response");
-      await this.reconcileFailedStop(
-        operation,
-        attachment,
-        conversationId,
-        runId,
-      );
-    }
+    await this.reconcileTerminalStopResult(request, outcome.result);
   };
 
-  private ownsStopTarget(
-    operation: ChatOperation,
-    attachment: ChatControllerAttachment,
-    conversationId: number,
-    runId: number,
-  ): boolean {
+  private ownsStopRequest(request: ChatStopRequest): boolean {
     return (
-      attachment.active &&
-      this.attachment === attachment &&
-      this.ownsOperation(operation) &&
-      operation.conversationId === conversationId &&
-      operation.runId === runId
+      this.ownsOperation(request.operation) &&
+      this.operationState.phase === "stopping" &&
+      this.operationState.request === request
     );
   }
 
@@ -616,22 +612,21 @@ export class ChatOperationController {
   }
 
   private async reconcileTerminalStopResult(
-    operation: ChatOperation,
-    attachment: ChatControllerAttachment,
-    conversationId: number,
-    runId: number,
+    request: ChatStopRequest,
     result: AIChatStopResponse,
   ): Promise<void> {
+    const { operation } = request;
+    const { conversationId, runId } = request.target;
     const loadResult = await this.loadConversation(
       conversationId,
       { timeoutMs: stopReconciliationTimeoutMs },
-      () => this.ownsStopTarget(operation, attachment, conversationId, runId),
+      () => this.ownsStopRequest(request),
     );
-    if (!this.ownsStopTarget(operation, attachment, conversationId, runId)) {
+    if (!this.ownsStopRequest(request)) {
       return;
     }
 
-    if (!loadResult.detail) {
+    if (loadResult.kind !== "loaded") {
       this.applyStopResult(result);
       this.releaseOperation(operation);
       return;
@@ -645,7 +640,9 @@ export class ChatOperationController {
     }
     if (nextRun) {
       this.releaseOperation(operation);
-      const nextOperation = this.beginOperation(conversationId, "recovering", {
+      const nextOperation = this.beginRecovery({
+        kind: "run",
+        conversationId,
         runId: nextRun.id,
         assistantMessageId: nextRun.assistant_message_id,
       });
@@ -662,8 +659,10 @@ export class ChatOperationController {
       (message) => message.status === "streaming",
     );
     if (streamingMessage) {
-      operation.assistantMessageId = streamingMessage.id;
-      this.keepOperationUnresolved(operation);
+      this.keepOperationUnresolved(
+        operation,
+        this.messageTarget(conversationId, streamingMessage.id),
+      );
       await this.recoverAfterFailedStop(conversationId, operation);
       return;
     }
@@ -671,22 +670,19 @@ export class ChatOperationController {
     this.releaseOperation(operation);
   }
 
-  private async reconcileFailedStop(
-    operation: ChatOperation,
-    attachment: ChatControllerAttachment,
-    conversationId: number,
-    runId: number,
-  ): Promise<void> {
+  private async reconcileFailedStop(request: ChatStopRequest): Promise<void> {
+    const { operation } = request;
+    const { conversationId } = request.target;
     const loadResult = await this.loadConversation(
       conversationId,
       { timeoutMs: stopReconciliationTimeoutMs },
-      () => this.ownsStopTarget(operation, attachment, conversationId, runId),
+      () => this.ownsStopRequest(request),
     );
-    if (!this.ownsStopTarget(operation, attachment, conversationId, runId)) {
+    if (!this.ownsStopRequest(request)) {
       return;
     }
 
-    if (!loadResult.detail) {
+    if (loadResult.kind !== "loaded") {
       this.keepOperationUnresolved(operation);
       return;
     }
@@ -700,37 +696,19 @@ export class ChatOperationController {
   ): Promise<void> {
     if (!this.ownsOperation(targetOperation)) return;
 
-    const conversationId = detail.conversation.id;
-    const activeRun = detail.active_run;
-    if (activeRun) {
-      const operation =
-        targetOperation.runId === activeRun.id
-          ? targetOperation
-          : this.replaceRetainedOperation(targetOperation, conversationId, {
-              runId: activeRun.id,
-              assistantMessageId: activeRun.assistant_message_id,
-            });
-      if (!operation) return;
-      operation.conversationId = conversationId;
-      operation.runId = activeRun.id;
-      operation.assistantMessageId = activeRun.assistant_message_id;
-      this.keepOperationUnresolved(operation);
-      await this.resumeOrRecoverAfterFailedStop(detail, operation);
-      return;
-    }
-
-    const streamingMessage = detail.messages.find(
-      (message) => message.status === "streaming",
+    const operation = this.retainOperationAfterFailedStop(
+      targetOperation,
+      detail,
     );
-    if (streamingMessage) {
-      targetOperation.conversationId = conversationId;
-      targetOperation.assistantMessageId = streamingMessage.id;
-      this.keepOperationUnresolved(targetOperation);
-      await this.recoverAfterFailedStop(conversationId, targetOperation);
+    if (!operation) {
+      this.releaseOperation(targetOperation);
       return;
     }
-
-    this.releaseOperation(targetOperation);
+    if (detail.active_run) {
+      await this.resumeOrRecoverAfterFailedStop(detail, operation);
+    } else {
+      await this.recoverAfterFailedStop(detail.conversation.id, operation);
+    }
   }
 
   private async resumeOrRecoverAfterFailedStop(
@@ -739,7 +717,7 @@ export class ChatOperationController {
   ): Promise<void> {
     const attempt = this.beginAttempt(operation, "resume");
     if (!attempt) return;
-    let resumeResult: ConversationRequestResult;
+    let resumeResult: ConversationResumeResult;
     try {
       resumeResult = await resumeConversationRequest(
         detail,
@@ -755,44 +733,39 @@ export class ChatOperationController {
       this.finishAttempt(operation, attempt);
     }
 
-    if (!this.ownsOperation(operation) || resumeResult.aborted) return;
-    if (
-      resumeResult.detail &&
-      !this.isConversationTerminal(resumeResult.detail)
-    ) {
-      const retainedOperation = this.retainOperationAfterFailedStop(
-        operation,
-        resumeResult.detail,
-      );
-      if (retainedOperation) {
-        if (retainedOperation === operation) {
-          await this.recoverAfterFailedStop(
-            resumeResult.detail.conversation.id,
-            retainedOperation,
-          );
-        } else {
-          await this.resumeOrRecoverAfterFailedStop(
-            resumeResult.detail,
-            retainedOperation,
-          );
-        }
-        return;
+    if (!this.ownsOperation(operation) || resumeResult.kind === "cancelled")
+      return;
+    const observed =
+      resumeResult.kind === "not-needed"
+        ? resumeResult.detail
+        : resumeResult.kind === "finished" &&
+            resumeResult.reload.kind === "loaded"
+          ? resumeResult.reload.detail
+          : null;
+    const terminalStatus =
+      resumeResult.kind === "finished" &&
+      resumeResult.stream.kind === "terminal"
+        ? resumeResult.stream.status
+        : null;
+    if (observed && classifyChatConversation(observed).kind !== "settled") {
+      const retained = this.retainOperationAfterFailedStop(operation, observed);
+      if (!retained) return;
+      if (retained === operation) {
+        await this.recoverAfterFailedStop(observed.conversation.id, retained);
+      } else {
+        await this.resumeOrRecoverAfterFailedStop(observed, retained);
       }
+      return;
     }
-
-    if (
-      resumeResult.terminalStatus ||
-      (resumeResult.detail && this.isConversationTerminal(resumeResult.detail))
-    ) {
-      const outcome = resumeResult.terminalStatus
-        ? resumeResult.terminalStatus === "failed"
-          ? "recovered_failed"
-          : "recovered_completed"
-        : classifyRecoveryOutcome({
-            messages: resumeResult.detail?.messages,
-            error: resumeResult.error,
-          });
-      this.recordTelemetry({ category: "recovery", outcome });
+    if (terminalStatus || observed) {
+      this.recordTelemetry({
+        category: "recovery",
+        outcome: terminalStatus
+          ? terminalStatus === "failed"
+            ? "recovered_failed"
+            : "recovered_completed"
+          : classifyRecoveryOutcome({ messages: observed?.messages }),
+      });
       this.releaseOperation(operation);
       return;
     }
@@ -808,14 +781,15 @@ export class ChatOperationController {
       conversationId,
       operation,
     );
-    if (!this.ownsOperation(operation) || recoveryResult.aborted) return;
+    if (!this.ownsOperation(operation) || recoveryResult.kind === "cancelled")
+      return;
 
-    if (!recoveryResult.detail) {
+    if (recoveryResult.kind !== "loaded") {
       this.keepOperationUnresolved(operation);
       return;
     }
 
-    if (this.isConversationTerminal(recoveryResult.detail)) {
+    if (classifyChatConversation(recoveryResult.detail).kind === "settled") {
       this.releaseOperation(operation);
       return;
     }
@@ -828,70 +802,62 @@ export class ChatOperationController {
     operation: ChatOperation,
     detail: AIChatConversationDetail,
   ): ChatOperation | null {
-    const activeRun = detail.active_run;
-    if (activeRun) {
-      const retainedOperation =
-        operation.runId === activeRun.id
-          ? operation
-          : this.replaceRetainedOperation(operation, detail.conversation.id, {
-              runId: activeRun.id,
-              assistantMessageId: activeRun.assistant_message_id,
-            });
-      if (!retainedOperation) return null;
-      retainedOperation.runId = activeRun.id;
-      retainedOperation.assistantMessageId = activeRun.assistant_message_id;
-      this.keepOperationUnresolved(retainedOperation);
-      return retainedOperation;
-    }
-
-    const streamingMessage = detail.messages.find(
-      (message) => message.status === "streaming",
-    );
-    if (streamingMessage) {
-      operation.assistantMessageId = streamingMessage.id;
-      this.keepOperationUnresolved(operation);
-      return operation;
-    }
-
-    return null;
-  }
-
-  private replaceRetainedOperation(
-    operation: ChatOperation,
-    conversationId: number,
-    activeRun: { runId: number; assistantMessageId: number | null },
-  ): ChatOperation | null {
     if (!this.ownsOperation(operation)) return null;
-    operation.currentAttempt?.controller.abort();
-    operation.currentAttempt = null;
-    const replacement: ChatOperation = {
-      attachment: operation.attachment,
-      conversationId,
-      runId: activeRun.runId,
-      assistantMessageId: activeRun.assistantMessageId,
-      phase: "recovering",
-      currentAttempt: null,
-      adoptedConversationId: null,
-      requiresAuthoritativeResolution: true,
-    };
-    this.operation = replacement;
-    this.publishOperation();
-    return replacement;
-  }
-
-  private keepOperationUnresolved(operation: ChatOperation): void {
-    if (!this.ownsOperation(operation)) return;
-    operation.phase = "recovering";
-    operation.requiresAuthoritativeResolution = true;
-    this.restoreAssistantStreamingPresentation(operation.assistantMessageId);
-    this.publishOperation();
-  }
-
-  private isConversationTerminal(detail: AIChatConversationDetail): boolean {
-    return (
-      !detail.active_run &&
-      !detail.messages.some((message) => message.status === "streaming")
+    const activity = classifyChatConversation(detail);
+    if (activity.kind === "settled") return null;
+    if (activity.kind === "run") {
+      const replacement =
+        this.snapshot.runId === activity.runId
+          ? operation
+          : { attachment: operation.attachment };
+      this.keepOperationUnresolved(operation, activity, replacement);
+      return replacement;
+    }
+    this.keepOperationUnresolved(
+      operation,
+      this.messageTarget(activity.conversationId, activity.assistantMessageId),
     );
+    return operation;
+  }
+
+  // An orphan streaming message must not erase the known target for Stop retries.
+  private messageTarget(
+    conversationId: number,
+    assistantMessageId: number,
+  ): ChatOperationTarget {
+    const current = this.operationState;
+    return current.phase !== "idle" && current.target.kind === "run"
+      ? { ...current.target, assistantMessageId }
+      : { kind: "message", conversationId, assistantMessageId };
+  }
+
+  private keepOperationUnresolved(
+    operation: ChatOperation,
+    target?: ChatOperationTarget,
+    replacement = operation,
+  ): void {
+    const current = this.operationState;
+    if (
+      !this.ownsOperation(operation) ||
+      current.phase === "idle" ||
+      current.target.kind === "new-conversation"
+    )
+      return;
+    const nextTarget = target ?? current.target;
+    if (
+      this.transition({
+        type: "recovery-unresolved",
+        operation,
+        target: nextTarget,
+        replacement,
+      })
+    ) {
+      this.restoreAssistantStreamingPresentation(
+        "assistantMessageId" in nextTarget
+          ? nextTarget.assistantMessageId
+          : null,
+      );
+    }
   }
 
   private async resumeOrRecoverActiveRun(
@@ -901,7 +867,7 @@ export class ChatOperationController {
   ): Promise<void> {
     const attempt = this.beginAttempt(operation, "resume");
     if (!attempt) return;
-    let resumeResult: ConversationRequestResult;
+    let resumeResult: ConversationResumeResult;
     try {
       resumeResult = await resumeConversationRequest(
         detail,
@@ -918,45 +884,81 @@ export class ChatOperationController {
     }
 
     if (!this.ownsOperation(operation)) return;
-    if (!resumeResult.aborted && resumeResult.terminalStatus) {
-      this.recordTelemetry({
-        category: "recovery",
-        outcome:
-          resumeResult.terminalStatus === "failed"
-            ? "recovered_failed"
-            : "recovered_completed",
-      });
-      return;
-    }
-    if (!resumeResult.aborted && resumeResult.detail) {
-      const resumeOutcome = classifyRecoveryOutcome({
-        messages: resumeResult.detail.messages,
-        aborted: false,
-        error: resumeResult.error,
-      });
-      this.recordTelemetry({ category: "recovery", outcome: resumeOutcome });
-      if (
-        resumeOutcome !== "recovered_completed" &&
-        resumeOutcome !== "recovery_aborted"
-      ) {
-        const resumeError =
-          resumeResult.error ??
-          new Error("Failed to resume AI chat conversation");
-        this.recordTelemetry({
-          category: "ux",
-          outcome: "failure_toast_shown",
-        });
-        showErrorToast(resumeError, "Failed to recover AI chat conversation");
-      }
-      return;
-    }
-    if (resumeResult.aborted) {
+    if (
+      resumeResult.kind === "cancelled" ||
+      (resumeResult.kind === "finished" &&
+        resumeResult.reload.kind === "cancelled")
+    ) {
       this.recordTelemetry({
         category: "recovery",
         outcome: "recovery_aborted",
       });
       return;
     }
+    const observed =
+      resumeResult.kind === "not-needed"
+        ? resumeResult.detail
+        : resumeResult.kind === "finished" &&
+            resumeResult.reload.kind === "loaded"
+          ? resumeResult.reload.detail
+          : null;
+    const activity = observed ? classifyChatConversation(observed) : null;
+    // A terminal event settles its run, not work started before the reload.
+    if (observed && activity && activity.kind !== "settled") {
+      if (activity.kind === "run" && activity.runId !== detail.active_run?.id) {
+        this.releaseOperation(operation);
+        const nextOperation = this.beginRecovery(activity);
+        if (!nextOperation) return;
+        try {
+          await this.resumeOrRecoverActiveRun(
+            conversationId,
+            observed,
+            nextOperation,
+          );
+        } finally {
+          this.finishOperation(nextOperation);
+        }
+      } else {
+        await this.recoverOpenedConversation(conversationId, operation);
+      }
+      return;
+    }
+    if (
+      resumeResult.kind === "finished" &&
+      resumeResult.stream.kind === "terminal"
+    ) {
+      this.recordTelemetry({
+        category: "recovery",
+        outcome:
+          resumeResult.stream.status === "failed"
+            ? "recovered_failed"
+            : "recovered_completed",
+      });
+      return;
+    }
+    if (observed) {
+      const resumeOutcome = classifyRecoveryOutcome({
+        messages: observed.messages,
+      });
+      this.recordTelemetry({ category: "recovery", outcome: resumeOutcome });
+      if (
+        resumeOutcome !== "recovered_completed" &&
+        resumeOutcome !== "recovery_aborted"
+      ) {
+        const error =
+          resumeResult.kind === "finished" &&
+          resumeResult.stream.kind === "unconfirmed"
+            ? resumeResult.stream.error.cause
+            : new Error("Failed to resume AI chat conversation");
+        this.recordTelemetry({
+          category: "ux",
+          outcome: "failure_toast_shown",
+        });
+        showErrorToast(error, "Failed to recover AI chat conversation");
+      }
+      return;
+    }
+
     await this.recoverOpenedConversation(conversationId, operation);
   }
 
@@ -986,21 +988,14 @@ export class ChatOperationController {
   }
 
   private detachOperation(): void {
-    const operation = this.operation;
-    if (!operation) return;
-    operation.currentAttempt?.controller.abort();
-    operation.currentAttempt = null;
-    this.operation = null;
-    this.publishOperation();
+    this.transition({ type: "detached" });
   }
 
   private releaseOperation(operation: ChatOperation): boolean {
-    if (!this.ownsOperation(operation)) return false;
-    operation.currentAttempt?.controller.abort();
-    operation.currentAttempt = null;
-    this.operation = null;
-    this.publishOperation();
-    return true;
+    return (
+      this.ownsOperation(operation) &&
+      this.transition({ type: "resolved", operation })
+    );
   }
 
   private abortRouteLoad(): void {
@@ -1014,15 +1009,30 @@ export class ChatOperationController {
   }
 
   private publishOperation(): void {
-    const operation = this.operation;
-    this.snapshot = operation
-      ? Object.freeze({
-          phase: operation.phase,
-          conversationId: operation.conversationId,
-          runId: operation.runId,
-          assistantMessageId: operation.assistantMessageId,
-        })
-      : idleSnapshot;
+    const current = this.operationState;
+    const next: ChatOperationSnapshot =
+      current.phase === "idle"
+        ? idleSnapshot
+        : {
+            phase: current.phase,
+            conversationId:
+              current.target.kind === "new-conversation"
+                ? null
+                : current.target.conversationId,
+            runId: current.target.kind === "run" ? current.target.runId : null,
+            assistantMessageId:
+              "assistantMessageId" in current.target
+                ? current.target.assistantMessageId
+                : null,
+          };
+    if (
+      next.phase === this.snapshot.phase &&
+      next.conversationId === this.snapshot.conversationId &&
+      next.runId === this.snapshot.runId &&
+      next.assistantMessageId === this.snapshot.assistantMessageId
+    )
+      return;
+    this.snapshot = Object.freeze(next);
     for (const listener of this.listeners) listener();
   }
 }

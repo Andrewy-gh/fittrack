@@ -92,12 +92,14 @@ Unit preparation skips database setup and credential-provider retrieval:
 ```bash
 node scripts/worktree.ts prepare --mode unit --json
 # From client/:
-node ../scripts/worktree.ts run unit -- bun run test
+node ../scripts/worktree.ts run unit -- bun run test -- --maxWorkers=1
 ```
 
 Unit commands still use native allocation/containment, strip DB/Stripe credentials,
-and use an absolute local API URL for Node Request tests. Direct Bun unit launches
-also receive `--no-env-file` so Bun cannot automatically restore stripped values
+and use the client's absolute test API base (`http://localhost/api`) for Node
+Request tests. This includes the `/api` prefix; no API or proxy is started.
+The documented command bounds Vitest to one worker for memory-limited hosts.
+Direct Bun unit launches also receive `--no-env-file` so Bun cannot automatically restore stripped values
 when executing a file or eval; non-unit Bun loading remains unchanged. Native reports have
 `version:1`, `ready`, `checks`, and source labels; exit 1 indicates a blocker.
 Statuses distinguish missing/inaccessible/failed/passed/not_required. The adapter
@@ -105,7 +107,33 @@ returns checks, while the native runtime owns schema/exit validation and capture
 
 Readiness means local preparation, not a completed provider login or product
 scenario. E2E checks installed Chromium and local-auth/Stack configuration; it
-does not sign in. Billing access, webhook forwarding, authenticated checkout and
+does not sign in. Authenticated preparation requires `PROJECT_ID` and matching
+`VITE_PROJECT_ID`, plus `VITE_PUBLISHABLE_CLIENT_KEY`, even for local auth:
+the frontend still constructs StackProvider. The project must also satisfy the
+installed Stack SDK constructor (a project UUID, or Stack's internal identifier). For local auth enable **both**
+`E2E_LOCAL_AUTH_ENABLED` and `VITE_E2E_LOCAL_AUTH_ENABLED` (`1`, `true`, `yes`,
+`on`, ignoring case/outer whitespace). One enabled flag is a blocker, including
+when provider credentials are present. Both disabled flags select Stack auth,
+using `SECRET_SERVER_KEY` or both `E2E_STACK_EMAIL` and `E2E_STACK_PASSWORD`.
+By default, any nonempty `CI` value (including `"false"`) selects Playwright's
+production preview, which refuses local auth. Select `E2E_FRONTEND_MODE=development`
+explicitly for an isolated local-auth CI run; CI safety/worker policy still applies.
+`E2E_FRONTEND_MODE=preview` selects preview outside CI. Invalid mode values are
+refused. Use Stack auth for production preview. An explicitly reused
+external frontend must independently use a development build for local auth;
+doctor cannot inspect its build or configuration.
+
+Doctor and Playwright share bootstrap configuration checks. Native profile/file
+resolution feeds doctor and managed commands; explicit empty session values are
+preserved. Unmanaged Playwright uses session values before `.env.local` and
+`.env` fallbacks for its client/server settings. With no bootstrap credentials
+and neither local flag enabled, Playwright retains guest-only coverage, while
+E2E doctor reports missing authenticated preparation. Public settings and flags
+prove configuration only, not that Stack accepted the project/key or that a
+session exists. Playwright must still observe the app's authenticated
+`GET /api/workouts` before saving auth state.
+
+Billing access, webhook forwarding, authenticated checkout and
 RLS application-policy behavior still require separate scenario verification.
 Ordinary preparation does not require Stripe or provision a persistent cluster.
 
@@ -372,7 +400,12 @@ test files from the repository root:
 ```bash
 node client/node_modules/typescript/bin/tsc -p scripts/tsconfig.json
 node --test scripts/worktree.test.ts
+node --test scripts/worktree.client.test.ts
 ```
+
+The client boundary check reuses the billing transport tests under the adapter's
+unit environment. CI runs it after installing client dependencies; it requires
+neither the native runtime nor database, auth or Stripe credentials.
 
 With `WORKTREE_RUNTIME` pointing to the separately built executable, also run
 `node --test scripts/worktree.runtime.test.ts` for the real Node-to-Go boundary,

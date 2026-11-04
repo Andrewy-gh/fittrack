@@ -294,6 +294,7 @@ test(
       "worktree-runtime.json",
       "scripts/worktree.ts",
       "scripts/package.json",
+      "client/tests/stack-auth-config.ts", "client/scripts/local-server-config.ts",
       "server/go.mod",
       "server/go.sum",
       "server/cmd/worktree-db",

@@ -2,6 +2,8 @@ package aichat
 
 import (
 	"context"
+	"errors"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"regexp"
 	"strings"
 	"testing"
@@ -368,5 +370,69 @@ func TestTrainingProfilePromptIncludesEveryGoal(t *testing.T) {
 	prompt := buildChatSystemPrompt(nil, &TrainingProfile{PrimaryGoal: "strength", Goals: []string{"strength", "mobility"}}, time.Date(2026, 9, 12, 12, 0, 0, 0, time.UTC), true)
 	if !strings.Contains(prompt, "Goals: strength, mobility") {
 		t.Fatalf("missing selected goals in prompt: %s", prompt)
+	}
+}
+
+type contextReadBarrier struct {
+	stubChatDataReader
+	started     chan string
+	snapshotErr error
+	profileErr  error
+}
+
+func (r *contextReadBarrier) TrainingSnapshot(ctx context.Context, owner string) (*TrainingSnapshot, error) {
+	r.started <- "snapshot:" + owner
+	<-ctx.Done()
+	return r.snapshot, r.snapshotErr
+}
+func (r *contextReadBarrier) TrainingProfile(ctx context.Context, owner string) (*TrainingProfile, error) {
+	r.started <- "profile:" + owner
+	<-ctx.Done()
+	return r.profile, r.profileErr
+}
+
+func TestTrainingContextOverlapsOptionalReads(t *testing.T) {
+	for _, failed := range []string{"none", "snapshot", "profile"} {
+		t.Run(failed, func(t *testing.T) {
+			reader := &contextReadBarrier{
+				stubChatDataReader: stubChatDataReader{snapshot: &TrainingSnapshot{WorkoutsLast30D: 3}, profile: &TrainingProfile{PrimaryGoal: "strength"}},
+				started:            make(chan string, 2),
+			}
+			if failed == "snapshot" {
+				reader.snapshotErr = errors.New("snapshot unavailable")
+			}
+			if failed == "profile" {
+				reader.profileErr = errors.New("profile unavailable")
+			}
+			runtime := &GenkitRuntime{dataReader: reader}
+			// Anonymous requests must never start either read.
+			if snapshot, profile := runtime.trainingContextForChat(context.Background()); snapshot != nil || profile != nil || len(reader.started) != 0 {
+				t.Fatal("anonymous request loaded training data")
+			}
+			ctx, cancel := context.WithTimeout(user.WithContext(context.Background(), "owner"), 2*time.Second)
+			defer cancel()
+			done := make(chan struct{})
+			var snapshot *TrainingSnapshot
+			var profile *TrainingProfile
+			go func() { snapshot, profile = runtime.trainingContextForChat(ctx); close(done) }()
+			seen := map[string]bool{}
+			for range 2 {
+				select {
+				case name := <-reader.started:
+					seen[name] = true
+				case <-ctx.Done():
+					<-done
+					t.Fatal("both prompt inputs must start before either finishes")
+				}
+			}
+			cancel()
+			<-done
+			if !seen["snapshot:owner"] || !seen["profile:owner"] {
+				t.Fatal("wrong authenticated owner")
+			}
+			if (snapshot == nil) != (failed == "snapshot") || (profile == nil) != (failed == "profile") {
+				t.Fatalf("optional results: snapshot=%v profile=%v", snapshot, profile)
+			}
+		})
 	}
 }

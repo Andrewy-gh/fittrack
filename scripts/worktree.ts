@@ -6,6 +6,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import { createConnection } from "node:net";
 
+import { e2eAuthReadiness, resolveStackAuthBootstrapConfig } from "../client/tests/stack-auth-config.ts";
+
 const VERSION = 1;
 const MODES = ["dev", "test", "rls", "e2e", "unit"] as const;
 type Mode = (typeof MODES)[number];
@@ -110,8 +112,9 @@ export function commandEnvironment(
     for (const key of Object.keys(env)) {
       if (/^(PG|DATABASE_URL$|ADMIN_DATABASE_URL$|RECOMMENDATION_TEST_DATABASE_URL$|FITTRACK_LOCAL_.*DATABASE_URL$|STRIPE_)/i.test(key)) delete env[key];
     }
-    // Node's Request requires an absolute URL; this mode never starts a proxy.
-    env.VITE_API_BASE_URL = "http://127.0.0.1:8080";
+    // Match the client's test base, including the API prefix. Node's Request
+    // requires an absolute URL; this mode never starts an API or proxy.
+    env.VITE_API_BASE_URL = "http://localhost/api";
     return env;
   }
   const isE2E = mode === "e2e";
@@ -300,11 +303,9 @@ async function readiness(root: string, env: NodeJS.ProcessEnv, options: Readines
     if (options.mode === "e2e") {
       const browser = probe(process.execPath, ["-e", "const {createRequire}=require('node:module');const {existsSync}=require('node:fs');const p=createRequire(process.cwd()+'/package.json')('playwright');process.exit(existsSync(p.chromium.executablePath())?0:1)"], join(root, "client"), env);
       add("chromium", browser.ok, "Run bunx playwright install chromium in client/.", "missing");
-      const enabled = (value: string | undefined) => ["1", "true", "yes", "on"].includes((value ?? "").trim().toLowerCase());
-      const serverLocal = enabled(env.E2E_LOCAL_AUTH_ENABLED), clientLocal = enabled(env.VITE_E2E_LOCAL_AUTH_ENABLED);
-      const local = serverLocal && clientLocal;
-      const provider = Boolean(env.VITE_PROJECT_ID && env.VITE_PUBLISHABLE_CLIENT_KEY && (env.SECRET_SERVER_KEY || (env.E2E_STACK_EMAIL && env.E2E_STACK_PASSWORD)));
-      add("e2e_auth_configuration", (serverLocal || clientLocal) ? local : provider, "Set both E2E_LOCAL_AUTH_ENABLED and VITE_E2E_LOCAL_AUTH_ENABLED for local auth, or configure Stack test login. This checks configuration, not a completed login.", "missing");
+      const auth = e2eAuthReadiness(resolveStackAuthBootstrapConfig({ processEnv: env, clientEnv: {}, serverEnv: {} }), env);
+      add("e2e_auth_configuration", auth.kind !== "invalid" && auth.kind !== "guest",
+        auth.kind === "invalid" ? auth.message : "Configure both local-auth flags and public Stack settings, or Stack test login. Doctor checks configuration only; Playwright verifies authenticated API access.", "missing");
     }
   } else checks.push({ id: "auth", status: "not_required", repair: "" });
   checks.push({ id: "billing", status: "not_required", repair: "Billing provider access, webhook forwarding and authenticated checkout require separate scenario verification." });

@@ -215,6 +215,64 @@ describe("useAIChatSession", () => {
     });
   });
 
+  it.each(["disconnect", "SSE error"] as const)(
+    "keeps submitted partial output uncertain after %s and failed persistence",
+    async (failure) => {
+      mockGetConversation
+        .mockResolvedValueOnce(conversationDetail([]))
+        .mockRejectedValue(new Error("Recovery unavailable"));
+      mockPollConversation.mockRejectedValue(new Error("Recovery unavailable"));
+      mockStreamMessage.mockImplementation(
+        async (
+          _id: number,
+          _prompt: string,
+          handlers: ResumeStreamHandlers,
+        ) => {
+          handlers.onStart?.({
+            type: "start",
+            run_id: 91,
+            message_id: 61,
+            sequence: 1,
+          });
+          handlers.onDelta?.({
+            type: "delta",
+            message_id: 61,
+            delta: "submitted partial",
+            sequence: 2,
+          });
+          if (failure === "disconnect")
+            throw new Error("Transport disconnected");
+          const event = {
+            type: "error" as const,
+            message: "Stream error",
+            sequence: 3,
+          };
+          handlers.onErrorEvent?.(event);
+          return { doneEvent: event, endedWithError: true };
+        },
+      );
+      const { result } = renderSession();
+      await waitFor(() =>
+        expect(result.current.isLoadingConversation).toBe(false),
+      );
+
+      await act(async () => {
+        await result.current.submitPromptValue("hello");
+      });
+
+      expect(result.current.messages.at(-1)).toEqual(
+        expect.objectContaining({
+          id: 61,
+          content: "submitted partial",
+          status: "streaming",
+        }),
+      );
+      expect(result.current.messages.at(-1)?.error_message).toBeUndefined();
+      expect(result.current.loadError).toBe("Recovery unavailable");
+      expect(result.current.isSubmitting).toBe(false);
+    },
+  );
+
   it("preserves the first prompt while navigating to its newly created conversation", async () => {
     mockCreateConversation.mockResolvedValue({
       id: 41,
@@ -804,8 +862,8 @@ describe("useAIChatSession", () => {
     );
   });
 
-  it.each(["completed", "failed"] as const)(
-    "releases a replacement run after authoritative %s SSE when refresh fails",
+  it.each(["completed", "transport-error"] as const)(
+    "reconciles a replacement run after %s SSE when refresh fails",
     async (terminalStatus) => {
       const refreshError = new Error("Terminal refresh failed");
       const initialMessage = {
@@ -863,15 +921,28 @@ describe("useAIChatSession", () => {
             _runId: number,
             _afterSequence: number,
             handlers: {
+              onStart?: (event: Record<string, unknown>) => void;
+              onDelta?: (event: Record<string, unknown>) => void;
               onDone?: (event: Record<string, unknown>) => void;
               onErrorEvent?: (event: Record<string, unknown>) => void;
             },
           ) => {
-            if (terminalStatus === "completed") {
+            handlers.onStart?.({
+              type: "start",
+              message_id: 82,
+              run_id: 92,
+              sequence: 1,
+            });
+            handlers.onDelta?.({
+              type: "delta",
+              delta: " fragment",
+              sequence: 2,
+            });
+            if (terminalStatus !== "transport-error") {
               const doneEvent = {
                 type: "done",
                 message_id: 82,
-                status: "completed",
+                status: terminalStatus,
                 text: "new complete response",
               };
               handlers.onDone?.(doneEvent);
@@ -886,6 +957,7 @@ describe("useAIChatSession", () => {
             return { doneEvent: errorEvent, endedWithError: true };
           },
         );
+      mockPollConversation.mockRejectedValue(new Error("Recovery unavailable"));
       mockStopRun.mockResolvedValue({
         conversation_id: 41,
         run_id: 91,
@@ -902,6 +974,48 @@ describe("useAIChatSession", () => {
         await result.current.stopRun();
       });
 
+      if (terminalStatus === "transport-error") {
+        expect(result.current.isSubmitting).toBe(true);
+        expect(result.current.canStop).toBe(true);
+        expect(result.current.messages[0]).toEqual(
+          expect.objectContaining({
+            id: 82,
+            status: "streaming",
+            content: "new partial fragment",
+          }),
+        );
+        expect(
+          JSON.parse(
+            window.sessionStorage.getItem("fittrack.ai-chat.resume:41") ??
+              "null",
+          ),
+        ).toEqual(
+          expect.objectContaining({
+            runId: 92,
+            sequence: 2,
+            assistantMessageId: 82,
+          }),
+        );
+        expect(mockPollConversation).toHaveBeenCalled();
+        mockGetConversation.mockRejectedValueOnce(refreshError);
+        mockStopRun.mockResolvedValue({
+          conversation_id: 41,
+          run_id: 92,
+          message_id: 82,
+          status: "failed",
+          text: "persisted failure",
+          sequence: 2,
+        });
+        await act(async () => {
+          await result.current.stopRun();
+        });
+        expect(mockStopRun).toHaveBeenLastCalledWith(41, 92);
+        expect(result.current.isSubmitting).toBe(false);
+        expect(result.current.messages[0]).toEqual(
+          expect.objectContaining({ id: 82, status: "failed" }),
+        );
+        return;
+      }
       expect(mockPollConversation).not.toHaveBeenCalled();
       expect(result.current.isSubmitting).toBe(false);
       expect(result.current.canStop).toBe(false);
@@ -911,6 +1025,86 @@ describe("useAIChatSession", () => {
       );
     },
   );
+
+  it("keeps a replacement run stoppable after ordinary resume completes", async () => {
+    const message = {
+      id: 61,
+      conversation_id: 41,
+      role: "assistant",
+      content: "old partial",
+      status: "streaming",
+      created_at: "2026-03-26T17:00:00Z",
+      updated_at: "2026-03-26T17:00:01Z",
+    };
+    mockGetConversation
+      .mockResolvedValueOnce(
+        conversationDetail([message], {
+          id: 91,
+          assistant_message_id: 61,
+          status: "streaming",
+          latest_sequence: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        conversationDetail(
+          [{ ...message, id: 82, content: "replacement partial" }],
+          {
+            id: 92,
+            assistant_message_id: 82,
+            status: "streaming",
+            latest_sequence: 1,
+          },
+        ),
+      );
+    mockResumeStream
+      .mockResolvedValueOnce({
+        doneEvent: {
+          type: "done",
+          message_id: 61,
+          status: "completed",
+          text: "old run completed",
+        },
+        endedWithError: false,
+      })
+      .mockImplementationOnce(
+        (
+          _conversationId: number,
+          _runId: number,
+          _afterSequence: number,
+          handlers: { signal?: AbortSignal },
+        ) =>
+          new Promise((_resolve, reject) => {
+            handlers.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      );
+    mockStopRun.mockResolvedValue({
+      conversation_id: 41,
+      run_id: 92,
+      message_id: 82,
+      status: "stopped",
+      text: "replacement partial",
+      sequence: 2,
+    });
+
+    const { result } = renderSession();
+    await waitFor(() => expect(mockResumeStream).toHaveBeenCalledTimes(2));
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.messages[0]).toEqual(
+      expect.objectContaining({ id: 82, content: "replacement partial" }),
+    );
+
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledWith(41, 92);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.isSubmitting).toBe(false);
+  });
 
   it("adopts a newer active run returned after replacement-run terminal SSE", async () => {
     const message = {
@@ -1846,7 +2040,16 @@ describe("useAIChatSession", () => {
     );
     mockGetConversation
       .mockResolvedValueOnce(firstDetail)
-      .mockResolvedValueOnce(replacementDetail);
+      .mockResolvedValueOnce(replacementDetail)
+      .mockResolvedValueOnce(
+        conversationDetail([
+          {
+            ...replacementDetail.messages[0],
+            status: "stopped",
+            content: "new authoritative partial",
+          },
+        ]),
+      );
     mockResumeStream.mockImplementation(
       (
         _conversationId: number,
@@ -2186,74 +2389,146 @@ describe("useAIChatSession", () => {
     );
   });
 
-  it("keeps Stop retryable when both Stop and its reconciliation reload fail", async () => {
-    const error = new Error("Stop request failed");
-    const reloadError = new Error("Reload failed");
-    mockStopRun.mockRejectedValueOnce(error).mockResolvedValueOnce({
-      conversation_id: 41,
-      run_id: 91,
-      message_id: 61,
-      status: "stopped",
-      text: "authoritative partial",
-      sequence: 2,
-    });
-    mockGetConversation
-      .mockResolvedValueOnce(
-        conversationDetail(
-          [
+  it.each(["settled", "replacement"] as const)(
+    "reconciles a stopped retry after unavailable Stop/reload with %s persisted state",
+    async (persistedState) => {
+      const error = new Error("Stop request failed");
+      const reloadError = new Error("Reload failed");
+      mockStopRun.mockRejectedValueOnce(error).mockResolvedValueOnce({
+        conversation_id: 41,
+        run_id: 91,
+        message_id: 61,
+        status: "stopped",
+        text: "authoritative partial",
+        sequence: 2,
+      });
+      mockGetConversation
+        .mockResolvedValueOnce(
+          conversationDetail(
+            [
+              {
+                id: 61,
+                conversation_id: 41,
+                role: "assistant",
+                content: "partial",
+                status: "streaming",
+                created_at: "2026-03-26T17:00:00Z",
+                updated_at: "2026-03-26T17:00:01Z",
+              },
+            ],
             {
-              id: 61,
+              id: 91,
+              assistant_message_id: 61,
+              status: "streaming",
+              latest_sequence: 1,
+            },
+          ),
+        )
+        .mockRejectedValueOnce(reloadError)
+        .mockResolvedValueOnce(
+          conversationDetail(
+            [
+              {
+                id: persistedState === "settled" ? 61 : 82,
+                conversation_id: 41,
+                role: "assistant",
+                content:
+                  persistedState === "settled"
+                    ? "authoritative partial"
+                    : "replacement partial",
+                status: persistedState === "settled" ? "stopped" : "streaming",
+                created_at: "2026-03-26T17:00:00Z",
+                updated_at: "2026-03-26T17:00:01Z",
+              },
+            ],
+            persistedState === "settled"
+              ? undefined
+              : {
+                  id: 92,
+                  assistant_message_id: 82,
+                  status: "streaming",
+                  latest_sequence: 1,
+                },
+          ),
+        );
+      mockResumeStream
+        .mockImplementationOnce(() => new Promise(() => undefined))
+        .mockRejectedValueOnce(new Error("Replacement replay unavailable"));
+      mockPollConversation.mockRejectedValue(
+        new Error("Replacement recovery unavailable"),
+      );
+
+      const { result } = renderSession();
+
+      await waitFor(() => {
+        expect(result.current.canStop).toBe(true);
+      });
+
+      await act(async () => {
+        await result.current.stopRun();
+      });
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(
+        error,
+        "Failed to stop AI chat response",
+      );
+      expect(result.current.isSubmitting).toBe(true);
+      expect(result.current.canStop).toBe(true);
+      expect(result.current.messages[0]).toEqual(
+        expect.objectContaining({ status: "streaming" }),
+      );
+      expect(result.current.loadError).toBe("Reload failed");
+
+      await act(async () => {
+        await result.current.stopRun();
+      });
+      expect(mockStopRun).toHaveBeenNthCalledWith(2, 41, 91);
+      if (persistedState === "replacement") {
+        expect(result.current.isSubmitting).toBe(true);
+        expect(result.current.canStop).toBe(true);
+        expect(result.current.messages[0]).toEqual(
+          expect.objectContaining({
+            id: 82,
+            content: "replacement partial",
+            status: "streaming",
+          }),
+        );
+        mockStopRun.mockResolvedValueOnce({
+          conversation_id: 41,
+          run_id: 92,
+          message_id: 82,
+          status: "stopped",
+          text: "replacement partial",
+          sequence: 2,
+        });
+        mockGetConversation.mockResolvedValueOnce(
+          conversationDetail([
+            {
+              id: 82,
               conversation_id: 41,
               role: "assistant",
-              content: "partial",
-              status: "streaming",
+              content: "replacement partial",
+              status: "stopped",
               created_at: "2026-03-26T17:00:00Z",
               updated_at: "2026-03-26T17:00:01Z",
             },
-          ],
-          {
-            id: 91,
-            assistant_message_id: 61,
-            status: "streaming",
-            latest_sequence: 1,
-          },
-        ),
-      )
-      .mockRejectedValueOnce(reloadError);
-    mockResumeStream.mockImplementation(() => new Promise(() => undefined));
-
-    const { result } = renderSession();
-
-    await waitFor(() => {
-      expect(result.current.canStop).toBe(true);
-    });
-
-    await act(async () => {
-      await result.current.stopRun();
-    });
-
-    expect(mockShowErrorToast).toHaveBeenCalledWith(
-      error,
-      "Failed to stop AI chat response",
-    );
-    expect(result.current.isSubmitting).toBe(true);
-    expect(result.current.canStop).toBe(true);
-    expect(result.current.messages[0]).toEqual(
-      expect.objectContaining({ status: "streaming" }),
-    );
-    expect(result.current.loadError).toBe("Reload failed");
-
-    await act(async () => {
-      await result.current.stopRun();
-    });
-    expect(mockStopRun).toHaveBeenNthCalledWith(2, 41, 91);
-    expect(result.current.isSubmitting).toBe(false);
-    expect(result.current.loadError).toBeNull();
-    expect(result.current.messages[0]).toEqual(
-      expect.objectContaining({
-        status: "stopped",
-        content: "authoritative partial",
-      }),
-    );
-  });
+          ]),
+        );
+        await act(async () => {
+          await result.current.stopRun();
+        });
+        expect(mockStopRun).toHaveBeenNthCalledWith(3, 41, 92);
+        expect(result.current.isSubmitting).toBe(false);
+        return;
+      }
+      expect(result.current.isSubmitting).toBe(false);
+      expect(result.current.loadError).toBeNull();
+      expect(result.current.messages[0]).toEqual(
+        expect.objectContaining({
+          status: "stopped",
+          content: "authoritative partial",
+        }),
+      );
+    },
+  );
 });

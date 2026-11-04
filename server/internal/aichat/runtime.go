@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/firebase/genkit/go/ai"
@@ -169,8 +170,7 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 
 	var builder strings.Builder
 	firstModelDelta := false
-	snapshot := r.trainingSnapshotForChat(ctx)
-	profile := r.trainingProfileForChat(ctx)
+	snapshot, profile := r.trainingContextForChat(ctx)
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
 		ai.WithTools(r.chatTools()...),
@@ -281,42 +281,35 @@ func (r *GenkitRuntime) chatTools() []ai.ToolRef {
 	return tools
 }
 
-func (r *GenkitRuntime) trainingSnapshotForChat(ctx context.Context) *TrainingSnapshot {
+// trainingContextForChat loads independent, optional prompt inputs with fixed fan-out.
+func (r *GenkitRuntime) trainingContextForChat(ctx context.Context) (*TrainingSnapshot, *TrainingProfile) {
 	if r == nil || r.dataReader == nil {
-		return nil
+		return nil, nil
 	}
 	userID, ok := user.Current(ctx)
 	if !ok || strings.TrimSpace(userID) == "" {
-		return nil
+		return nil, nil
 	}
-	snapshot, err := r.dataReader.TrainingSnapshot(ctx, userID)
-	if err != nil {
-		slog.Warn("ai chat training snapshot omitted after reader error",
-			"error", err,
-			"request_id", request.GetRequestID(ctx),
-		)
-		return nil
-	}
-	return snapshot
-}
-
-func (r *GenkitRuntime) trainingProfileForChat(ctx context.Context) *TrainingProfile {
-	if r == nil || r.dataReader == nil {
-		return nil
-	}
-	userID, ok := user.Current(ctx)
-	if !ok || strings.TrimSpace(userID) == "" {
-		return nil
-	}
+	var snapshot *TrainingSnapshot
+	var reads sync.WaitGroup
+	reads.Add(1)
+	go func() {
+		defer reads.Done()
+		var err error
+		snapshot, err = r.dataReader.TrainingSnapshot(ctx, userID)
+		if err != nil {
+			slog.Warn("ai chat training snapshot omitted after reader error", "error", err, "request_id", request.GetRequestID(ctx))
+			snapshot = nil
+		}
+	}()
 	profile, err := r.dataReader.TrainingProfile(ctx, userID)
 	if err != nil {
-		slog.Warn("ai chat training profile omitted after reader error",
-			"error", err,
-			"request_id", request.GetRequestID(ctx),
-		)
-		return nil
+		slog.Warn("ai chat training profile omitted after reader error", "error", err, "request_id", request.GetRequestID(ctx))
+		profile = nil
 	}
-	return profile
+	// Neither optional read cancels its sibling. Join both before model generation.
+	reads.Wait()
+	return snapshot, profile
 }
 
 func configuredAPIKeyEnvVar() string {

@@ -6,30 +6,6 @@ export class AuthReadinessError extends Error {
   readonly _tag = "AuthReadinessError";
 }
 
-/** Check local-auth prerequisites before the bootstrap can write fixtures. */
-export function localAuthConfigurationError(options: {
-  isCI: boolean;
-  browserProjectId: string | undefined;
-  publishableClientKey: string | undefined;
-  clientAuthEnabled: boolean;
-}): AuthReadinessError | undefined {
-  if (options.isCI) {
-    return new AuthReadinessError(
-      "Local E2E auth requires the Vite development server. CI uses production preview, where local auth is disabled. Run authenticated local checks without CI; use real Stack auth for preview checks.",
-    );
-  }
-  if (!options.browserProjectId || !options.publishableClientKey) {
-    return new AuthReadinessError(
-      "Local E2E auth requires VITE_PROJECT_ID and VITE_PUBLISHABLE_CLIENT_KEY in the frontend environment; otherwise the app renders as a guest.",
-    );
-  }
-  if (!options.clientAuthEnabled) {
-    return new AuthReadinessError(
-      "Local E2E auth requires VITE_E2E_LOCAL_AUTH_ENABLED=true in the frontend environment. Restart Vite after changing it.",
-    );
-  }
-}
-
 /** Prove the app's own workout read uses a valid browser session, without mutating data. */
 export async function browserAuthReadinessError(
   page: Page,

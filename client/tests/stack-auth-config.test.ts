@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveStackAuthBootstrapConfig } from "./stack-auth-config";
+import {
+  e2eAuthReadiness,
+  resolveStackAuthBootstrapConfig,
+} from "./stack-auth-config";
 
 describe("resolveStackAuthBootstrapConfig", () => {
   it("uses process PROJECT_ID for Playwright server auth bootstrap", () => {
@@ -110,5 +113,30 @@ describe("resolveStackAuthBootstrapConfig", () => {
       serverEnv: {},
     });
     expect(config.localAuthApiBaseUrl).toBe("http://127.0.0.1:25004");
+  });
+});
+
+describe("bootstrap configuration precedence", () => {
+  it("keeps explicit empty/false session settings ahead of file fallbacks", () => {
+    const config = resolveStackAuthBootstrapConfig({
+      processEnv: {
+        VITE_PROJECT_ID: "",
+        E2E_LOCAL_AUTH_ENABLED: "false",
+        VITE_E2E_LOCAL_AUTH_ENABLED: "off",
+        SECRET_SERVER_KEY: "",
+      },
+      clientEnv: {
+        VITE_PROJECT_ID: "file-project",
+        VITE_E2E_LOCAL_AUTH_ENABLED: "true",
+      },
+      serverEnv: {
+        E2E_LOCAL_AUTH_ENABLED: "true",
+        SECRET_SERVER_KEY: "file-secret",
+      },
+    });
+    expect(config.browserProjectId).toBe("");
+    expect(config.localAuthEnabled).toBe(false);
+    expect(config.secretServerKey).toBe("");
+    expect(e2eAuthReadiness(config, { CI: "true" }).kind).toBe("guest");
   });
 });
