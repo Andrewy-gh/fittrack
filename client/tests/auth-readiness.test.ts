@@ -2,34 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser } from "@playwright/test";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import {
-  browserAuthReadinessError,
-  localAuthConfigurationError,
-} from "./e2e/auth-readiness";
-
-describe("local authenticated setup", () => {
-  const configured = {
-    isCI: false,
-    browserProjectId: "public-project",
-    publishableClientKey: "public-key",
-    clientAuthEnabled: true,
-  };
-
-  it("accepts configured development authentication", () => {
-    expect(localAuthConfigurationError(configured)).toBeUndefined();
-  });
-
-  it.each([
-    [{ isCI: true }, "development server"],
-    [{ browserProjectId: undefined }, "VITE_PROJECT_ID"],
-    [{ publishableClientKey: undefined }, "VITE_PUBLISHABLE_CLIENT_KEY"],
-    [{ clientAuthEnabled: false }, "VITE_E2E_LOCAL_AUTH_ENABLED"],
-  ])("refuses unusable local-auth configuration %j", (override, message) => {
-    expect(
-      localAuthConfigurationError({ ...configured, ...override })?.message,
-    ).toContain(message);
-  });
-});
+import { browserAuthReadinessError } from "./e2e/auth-readiness";
 
 describe("authenticated browser readiness", () => {
   let browser: Browser;

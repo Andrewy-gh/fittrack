@@ -113,13 +113,45 @@ test("unit commands receive no database or Stripe credentials and can construct 
   assert.equal(new Request(`${env.VITE_API_BASE_URL}/workouts`).url, "http://localhost/api/workouts");
 });
 
-test("E2E doctor refuses mismatched local auth flags even when Stack credentials are present", () => {
-    for (const [clientFlag, status] of [["false", "missing"], ["true", "passed"]]) {
-      const result = spawnSync(process.execPath, [resolve("scripts/worktree.ts"), "--doctor"], {
-        env: { ...process.env, WORKTREE_RUNTIME: undefined, WORKTREE_MODE: "e2e", WORKTREE_DOCTOR_STAGE: "bootstrap", PROJECT_ID: "synthetic-project", VITE_PROJECT_ID: "synthetic-project", VITE_PUBLISHABLE_CLIENT_KEY: "synthetic", SECRET_SERVER_KEY: "synthetic", E2E_LOCAL_AUTH_ENABLED: "true", VITE_E2E_LOCAL_AUTH_ENABLED: clientFlag }, encoding: "utf8", timeout: 30000,
-      });
-      assert.equal(result.status, 1); // Missing database credentials are a separate preparation blocker.
-      const report = JSON.parse(result.stdout);
-      assert.equal(report.checks.find((c: { id: string }) => c.id === "e2e_auth_configuration").status, status);
-    }
+test("E2E doctor rejects unusable auth and accepts local/provider configuration without hiding other blockers", () => {
+  const configured = {
+    PROJECT_ID: "11111111-1111-4111-8111-111111111111", VITE_PROJECT_ID: "11111111-1111-4111-8111-111111111111",
+    VITE_PUBLISHABLE_CLIENT_KEY: "fixture-public-key",
+    E2E_LOCAL_AUTH_ENABLED: "true", VITE_E2E_LOCAL_AUTH_ENABLED: "true",
+    SECRET_SERVER_KEY: "", E2E_STACK_EMAIL: "", E2E_STACK_PASSWORD: "", CI: "",
+  };
+  const cases: readonly { name: string; env: NodeJS.ProcessEnv; repair?: string }[] = [
+    { name: "missing frontend project", env: { VITE_PROJECT_ID: "" }, repair: "VITE_PROJECT_ID" },
+    { name: "missing frontend key", env: { VITE_PUBLISHABLE_CLIENT_KEY: "" }, repair: "VITE_PUBLISHABLE_CLIENT_KEY" },
+    { name: "missing API project", env: { PROJECT_ID: "" }, repair: "PROJECT_ID" },
+    { name: "invalid frontend project", env: { PROJECT_ID: "malformed-project", VITE_PROJECT_ID: "malformed-project" }, repair: "Stack project UUID" },
+    { name: "project mismatch", env: { PROJECT_ID: "another-project" }, repair: "same Stack project" },
+    { name: "server flag alone", env: { VITE_E2E_LOCAL_AUTH_ENABLED: "off", SECRET_SERVER_KEY: "fixture-secret-never-use" }, repair: "both E2E_LOCAL_AUTH_ENABLED" },
+    { name: "client flag alone", env: { E2E_LOCAL_AUTH_ENABLED: "false" }, repair: "both E2E_LOCAL_AUTH_ENABLED" },
+    { name: "CI production preview", env: { CI: "true" }, repair: "production preview" },
+    { name: "nonempty CI false still selects preview", env: { CI: "false" }, repair: "production preview" },
+    { name: "valid local", env: {} },
+    { name: "truthy flags", env: { E2E_LOCAL_AUTH_ENABLED: " YES ", VITE_E2E_LOCAL_AUTH_ENABLED: "1" } },
+    { name: "provider server preview", env: { CI: "true", E2E_LOCAL_AUTH_ENABLED: "off", VITE_E2E_LOCAL_AUTH_ENABLED: "no", SECRET_SERVER_KEY: "fixture-secret-never-use" } },
+    { name: "provider UI", env: { E2E_LOCAL_AUTH_ENABLED: "0", VITE_E2E_LOCAL_AUTH_ENABLED: "false", E2E_STACK_EMAIL: "fixture@example.test", E2E_STACK_PASSWORD: "fixture-password-never-use" } },
+    { name: "partial provider", env: { E2E_LOCAL_AUTH_ENABLED: "", VITE_E2E_LOCAL_AUTH_ENABLED: "", E2E_STACK_EMAIL: "fixture@example.test" }, repair: "both E2E_STACK_EMAIL" },
+    { name: "guest cannot claim authenticated preparation", env: { E2E_LOCAL_AUTH_ENABLED: "", VITE_E2E_LOCAL_AUTH_ENABLED: "" }, repair: "Configure both local-auth flags" },
+  ];
+  for (const scenario of cases) {
+    const result = spawnSync(process.execPath, [resolve(import.meta.dirname, "worktree.ts"), "--doctor"], {
+      cwd: resolve(import.meta.dirname, ".."), encoding: "utf8",
+      env: { ...process.env, ...configured, ...scenario.env, WORKTREE_MODE: "e2e", WORKTREE_DOCTOR_STAGE: "bootstrap",
+        FITTRACK_LOCAL_DATABASE_URL: "", FITTRACK_LOCAL_RUNTIME_DATABASE_URL: "", WORKTREE_ALLOCATION: "" },
+      timeout: 30000, windowsHide: true,
+    });
+    assert.equal(result.error, undefined, scenario.name);
+    const report = JSON.parse(result.stdout);
+    const auth = report.checks.find((check: { id: string }) => check.id === "e2e_auth_configuration");
+    assert.ok(auth, scenario.name);
+    assert.equal(auth.status, scenario.repair ? "missing" : "passed", scenario.name);
+    if (scenario.repair) assert.ok(auth.repair.includes(scenario.repair), scenario.name);
+    assert.equal(report.ready, false, "auth success must not bypass unavailable DB credentials");
+    assert.equal(result.status, 1);
+    assert.ok(!result.stdout.includes("fixture-secret-never-use") && !result.stdout.includes("fixture-password-never-use"));
+  }
 });
