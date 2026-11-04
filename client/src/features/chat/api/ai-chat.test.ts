@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Transport tests own their API origin, independently of the worktree proxy.
+vi.hoisted(() => {
+  vi.stubEnv("VITE_API_BASE_URL", "http://localhost/api");
+});
+
 const { getUser } = vi.hoisted(() => ({
   getUser: vi.fn(),
 }));
@@ -465,81 +470,99 @@ describe("ai chat api wrapper", () => {
     expect(onDelta).not.toHaveBeenCalled();
   });
 
-  it("runs the streaming callback before retrying persisted conversation polling", async () => {
-    const onStreaming = vi.fn().mockResolvedValue(undefined);
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            conversation: {
-              id: 41,
-              created_at: "2026-03-26T17:00:00Z",
-              updated_at: "2026-03-26T17:00:00Z",
-            },
-            messages: [
-              {
-                id: 61,
-                conversation_id: 41,
-                role: "assistant",
-                content: "partial",
-                status: "streaming",
+  it.each(["streaming message", "active run with a terminal message"] as const)(
+    "keeps polling persisted state while there is a %s",
+    async (pendingState) => {
+      const onStreaming = vi.fn().mockResolvedValue(undefined);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              conversation: {
+                id: 41,
                 created_at: "2026-03-26T17:00:00Z",
-                updated_at: "2026-03-26T17:00:01Z",
+                updated_at: "2026-03-26T17:00:00Z",
               },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            conversation: {
-              id: 41,
-              created_at: "2026-03-26T17:00:00Z",
-              updated_at: "2026-03-26T17:00:02Z",
-            },
-            messages: [
-              {
-                id: 61,
-                conversation_id: 41,
-                role: "assistant",
-                content: "complete",
-                status: "completed",
+              active_run:
+                pendingState === "streaming message"
+                  ? undefined
+                  : {
+                      id: 51,
+                      assistant_message_id: 61,
+                      status: "streaming",
+                      latest_sequence: 1,
+                    },
+              messages: [
+                {
+                  id: 61,
+                  conversation_id: 41,
+                  role: "assistant",
+                  content: "partial",
+                  status:
+                    pendingState === "streaming message"
+                      ? "streaming"
+                      : "completed",
+                  created_at: "2026-03-26T17:00:00Z",
+                  updated_at: "2026-03-26T17:00:01Z",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              conversation: {
+                id: 41,
                 created_at: "2026-03-26T17:00:00Z",
                 updated_at: "2026-03-26T17:00:02Z",
-                completed_at: "2026-03-26T17:00:02Z",
               },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+              messages: [
+                {
+                  id: 61,
+                  conversation_id: 41,
+                  role: "assistant",
+                  content: "complete",
+                  status: "completed",
+                  created_at: "2026-03-26T17:00:00Z",
+                  updated_at: "2026-03-26T17:00:02Z",
+                  completed_at: "2026-03-26T17:00:02Z",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+
+      const detail = await pollAIChatConversationUntilSettled(41, {
+        intervalMs: 0,
+        timeoutMs: 1000,
+        onStreaming,
+      });
+
+      expect(detail.messages[0]?.status).toBe("completed");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      for (const [request] of fetchSpy.mock.calls) {
+        expect((request as Request).url).toContain("/api/ai/conversations/41");
+        expect((request as Request).method).toBe("GET");
+      }
+      expect(onStreaming).toHaveBeenCalledTimes(1);
+      expect(onStreaming).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [
+            expect.objectContaining({
+              status:
+                pendingState === "streaming message"
+                  ? "streaming"
+                  : "completed",
+            }),
+          ],
+        }),
       );
-
-    const detail = await pollAIChatConversationUntilSettled(41, {
-      intervalMs: 0,
-      timeoutMs: 1000,
-      onStreaming,
-    });
-
-    expect(detail.messages[0]?.status).toBe("completed");
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
-    for (const [request] of fetchSpy.mock.calls) {
-      expect((request as Request).url).toContain("/api/ai/conversations/41");
-      expect((request as Request).method).toBe("GET");
-    }
-    expect(onStreaming).toHaveBeenCalledTimes(1);
-    expect(onStreaming).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [
-          expect.objectContaining({
-            status: "streaming",
-          }),
-        ],
-      }),
-    );
-  });
+    },
+  );
 
   it("requests chat recovery for an active conversation", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(

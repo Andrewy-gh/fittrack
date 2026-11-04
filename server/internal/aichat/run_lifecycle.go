@@ -1,6 +1,9 @@
 package aichat
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type chatRunLifecycleState string
 
@@ -97,4 +100,38 @@ func isTerminalGenerationStatus(status string) bool {
 	default:
 		return false
 	}
+}
+
+// A recovery decision is a proposal, not a committed lifecycle transition.
+// The repository must still compare the loaded generation snapshot or win a
+// guarded claim before any worker can publish output.
+type runRecoveryDecision interface{ isRunRecoveryDecision() }
+
+type keepRunRecovery struct{}
+type claimRunRecovery struct{}
+type interruptRunRecovery struct {
+	text   string
+	reason string
+}
+
+func (keepRunRecovery) isRunRecoveryDecision()      {}
+func (claimRunRecovery) isRunRecoveryDecision()     {}
+func (interruptRunRecovery) isRunRecoveryDecision() {}
+
+// decideRunRecovery keeps time and persisted-output policy out of the effectful
+// worker. Partial output takes priority over exhausted attempts, and must never
+// be regenerated. Fresh, terminal and invalid runs are left unchanged.
+func decideRunRecovery(prepared *PreparedMessageStream, now time.Time) runRecoveryDecision {
+	lifecycle := newChatRunLifecycle(prepared.Run, now)
+	if !lifecycle.ShouldRecover() {
+		return keepRunRecovery{}
+	}
+	text := strings.TrimSpace(prepared.AssistantMessage.Content)
+	if prepared.LastSequence > 0 || text != "" {
+		return interruptRunRecovery{text: text, reason: interruptionReasonStalePartial}
+	}
+	if lifecycle.GenerationAttemptsExhausted() {
+		return interruptRunRecovery{text: text, reason: interruptionReasonAttemptsExhausted}
+	}
+	return claimRunRecovery{}
 }

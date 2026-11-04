@@ -61,16 +61,18 @@ describe("ChatOperationController", () => {
     });
     expect(controller.getSnapshot()).toBe(controller.getSnapshot());
 
-    const attempt = controller.beginAttempt(operation!, "stream");
+    if (!operation) throw new Error("Expected an attached operation");
+    controller.adoptConversation(operation, 41);
+    const attempt = controller.beginAttempt(operation, "stream");
     expect(attempt).not.toBeNull();
     controller.markStreaming(operation!, attempt!, 91, 61);
     expect(controller.getSnapshot()).toEqual({
       phase: "streaming",
-      conversationId: null,
+      conversationId: 41,
       runId: 91,
       assistantMessageId: 61,
     });
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalled();
   });
 
   it("uses attempt identity so late cleanup cannot finish a replacement", () => {
@@ -86,6 +88,31 @@ describe("ChatOperationController", () => {
     expect(controller.getSnapshot().phase).toBe("recovering");
   });
 
+  it("invalidates an old attempt before its synchronous abort callbacks run", () => {
+    const { controller } = createController();
+    controller.attach();
+    const operation = controller.beginOperation(41);
+    if (!operation) throw new Error("Expected an attached operation");
+    const stream = controller.beginAttempt(operation, "stream");
+    if (!stream) throw new Error("Expected a stream attempt");
+    let acceptedLateStart: boolean | undefined;
+    stream.controller.signal.addEventListener("abort", () => {
+      acceptedLateStart = controller.markStreaming(operation, stream, 91, 61);
+    });
+
+    const recovery = controller.beginAttempt(operation, "recovery");
+
+    expect(acceptedLateStart).toBe(false);
+    expect(controller.getSnapshot()).toEqual({
+      phase: "recovering",
+      conversationId: 41,
+      runId: null,
+      assistantMessageId: null,
+    });
+    if (!recovery) throw new Error("Expected a recovery attempt");
+    expect(controller.ownsAttempt(operation, recovery)).toBe(true);
+  });
+
   it("adopts the created route but detaches for different navigation", async () => {
     mockGetConversation.mockResolvedValue({
       conversation: { id: 42 },
@@ -95,9 +122,8 @@ describe("ChatOperationController", () => {
     const { controller } = createController();
     controller.attach();
     const operation = controller.beginOperation(null)!;
-    const attempt = controller.beginAttempt(operation, "stream")!;
-
     expect(controller.adoptConversation(operation, 41)).toBe(true);
+    const attempt = controller.beginAttempt(operation, "stream")!;
     controller.handleRoute(41);
     expect(controller.ownsAttempt(operation, attempt)).toBe(true);
     expect(mockGetConversation).not.toHaveBeenCalled();

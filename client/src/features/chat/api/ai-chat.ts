@@ -1,3 +1,4 @@
+import { classifyChatConversation } from "../utils/chat-operation-state";
 import {
   deleteAiConversations,
   deleteAiConversationsById,
@@ -469,10 +470,7 @@ export async function pollAIChatConversationUntilSettled(
       signal: options.signal,
     });
     throwIfAborted(options.signal);
-    const hasStreamingMessage = detail.messages.some(
-      (message) => message.status === "streaming",
-    );
-    if (!hasStreamingMessage) {
+    if (classifyChatConversation(detail).kind === "settled") {
       return detail;
     }
     await options.onStreaming?.(detail);

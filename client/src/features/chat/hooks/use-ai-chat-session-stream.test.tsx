@@ -128,8 +128,7 @@ describe("chat stream state before authoritative reload", () => {
       };
       await act(async () => {
         send({ type: "start", message_id: 72, run_id: 91, sequence: 1 });
-        // The real parser omits delta identity. Submit retains its zero
-        // fallback while resume keeps the loaded run identity.
+        // Delta identity comes from the start/loaded run, not the delta payload.
         send({ type: "delta", delta: "Partial", sequence: 2 });
       });
       await waitFor(() =>
@@ -142,7 +141,7 @@ describe("chat stream state before authoritative reload", () => {
           window.sessionStorage.getItem("fittrack.ai-chat.resume:41") ?? "null",
         ),
       ).toEqual({
-        runId: mode === "resume" ? 91 : 0,
+        runId: 91,
         sequence: 2,
         assistantMessageId: 72,
       });
