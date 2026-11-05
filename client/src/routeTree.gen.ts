@@ -9,44 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as HandlerSplatRouteImport } from './routes/handler.$'
-import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
-import { Route as LayoutChatRouteImport } from './routes/_layout/chat'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LayoutAnalyticsRouteImport } from './routes/_layout/analytics'
-import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
-import { Route as LayoutSettingsIndexRouteImport } from './routes/_layout/settings/index'
+import { Route as LayoutChatRouteImport } from './routes/_layout/chat'
+import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as HandlerSplatRouteImport } from './routes/handler.$'
 import { Route as LayoutExercisesIndexRouteImport } from './routes/_layout/exercises/index'
-import { Route as LayoutWorkoutsNewRouteImport } from './routes/_layout/workouts/new'
-import { Route as LayoutSettingsTrainingProfileRouteImport } from './routes/_layout/settings/training-profile'
 import { Route as LayoutExercisesExerciseIdRouteImport } from './routes/_layout/exercises/$exerciseId'
+import { Route as LayoutSettingsIndexRouteImport } from './routes/_layout/settings/index'
+import { Route as LayoutSettingsTrainingProfileRouteImport } from './routes/_layout/settings/training-profile'
+import { Route as LayoutWorkoutsIndexRouteImport } from './routes/_layout/workouts/index'
+import { Route as LayoutWorkoutsNewRouteImport } from './routes/_layout/workouts/new'
 import { Route as LayoutWorkoutsWorkoutIdIndexRouteImport } from './routes/_layout/workouts/$workoutId/index'
 import { Route as LayoutWorkoutsWorkoutIdEditRouteImport } from './routes/_layout/workouts/$workoutId/edit'
 
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HandlerSplatRoute = HandlerSplatRouteImport.update({
-  id: '/handler/$',
-  path: '/handler/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const LayoutAnalyticsRoute = LayoutAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutChatRoute = LayoutChatRouteImport.update({
@@ -54,30 +49,31 @@ const LayoutChatRoute = LayoutChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutAnalyticsRoute = LayoutAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexRouteImport.update({
-  id: '/workouts/',
-  path: '/workouts/',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutSettingsIndexRoute = LayoutSettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => LayoutSettingsRoute,
+const HandlerSplatRoute = HandlerSplatRouteImport.update({
+  id: '/handler/$',
+  path: '/handler/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutExercisesIndexRoute = LayoutExercisesIndexRouteImport.update({
   id: '/exercises/',
   path: '/exercises/',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWorkoutsNewRoute = LayoutWorkoutsNewRouteImport.update({
-  id: '/workouts/new',
-  path: '/workouts/new',
-  getParentRoute: () => LayoutRoute,
+const LayoutExercisesExerciseIdRoute =
+  LayoutExercisesExerciseIdRouteImport.update({
+    id: '/exercises/$exerciseId',
+    path: '/exercises/$exerciseId',
+    getParentRoute: () => LayoutRoute,
+  } as any)
+const LayoutSettingsIndexRoute = LayoutSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LayoutSettingsRoute,
 } as any)
 const LayoutSettingsTrainingProfileRoute =
   LayoutSettingsTrainingProfileRouteImport.update({
@@ -85,12 +81,16 @@ const LayoutSettingsTrainingProfileRoute =
     path: '/training-profile',
     getParentRoute: () => LayoutSettingsRoute,
   } as any)
-const LayoutExercisesExerciseIdRoute =
-  LayoutExercisesExerciseIdRouteImport.update({
-    id: '/exercises/$exerciseId',
-    path: '/exercises/$exerciseId',
-    getParentRoute: () => LayoutRoute,
-  } as any)
+const LayoutWorkoutsIndexRoute = LayoutWorkoutsIndexRouteImport.update({
+  id: '/workouts/',
+  path: '/workouts/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWorkoutsNewRoute = LayoutWorkoutsNewRouteImport.update({
+  id: '/workouts/new',
+  path: '/workouts/new',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWorkoutsWorkoutIdIndexRoute =
   LayoutWorkoutsWorkoutIdIndexRouteImport.update({
     id: '/workouts/$workoutId/',
@@ -213,11 +213,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -227,25 +227,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/handler/$': {
-      id: '/handler/$'
-      path: '/handler/$'
-      fullPath: '/handler/$'
-      preLoaderRoute: typeof HandlerSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_layout/settings': {
-      id: '/_layout/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof LayoutSettingsRouteImport
+    '/_layout/analytics': {
+      id: '/_layout/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof LayoutAnalyticsRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/chat': {
@@ -255,18 +248,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutChatRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/analytics': {
-      id: '/_layout/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof LayoutAnalyticsRouteImport
+    '/_layout/settings': {
+      id: '/_layout/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/workouts/': {
-      id: '/_layout/workouts/'
-      path: '/workouts'
-      fullPath: '/workouts/'
-      preLoaderRoute: typeof LayoutWorkoutsIndexRouteImport
+    '/handler/$': {
+      id: '/handler/$'
+      path: '/handler/$'
+      fullPath: '/handler/$'
+      preLoaderRoute: typeof HandlerSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout/exercises/': {
+      id: '/_layout/exercises/'
+      path: '/exercises'
+      fullPath: '/exercises/'
+      preLoaderRoute: typeof LayoutExercisesIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/exercises/$exerciseId': {
+      id: '/_layout/exercises/$exerciseId'
+      path: '/exercises/$exerciseId'
+      fullPath: '/exercises/$exerciseId'
+      preLoaderRoute: typeof LayoutExercisesExerciseIdRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/settings/': {
@@ -276,20 +283,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsIndexRouteImport
       parentRoute: typeof LayoutSettingsRoute
     }
-    '/_layout/exercises/': {
-      id: '/_layout/exercises/'
-      path: '/exercises'
-      fullPath: '/exercises/'
-      preLoaderRoute: typeof LayoutExercisesIndexRouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/_layout/workouts/new': {
-      id: '/_layout/workouts/new'
-      path: '/workouts/new'
-      fullPath: '/workouts/new'
-      preLoaderRoute: typeof LayoutWorkoutsNewRouteImport
-      parentRoute: typeof LayoutRoute
-    }
     '/_layout/settings/training-profile': {
       id: '/_layout/settings/training-profile'
       path: '/training-profile'
@@ -297,11 +290,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsTrainingProfileRouteImport
       parentRoute: typeof LayoutSettingsRoute
     }
-    '/_layout/exercises/$exerciseId': {
-      id: '/_layout/exercises/$exerciseId'
-      path: '/exercises/$exerciseId'
-      fullPath: '/exercises/$exerciseId'
-      preLoaderRoute: typeof LayoutExercisesExerciseIdRouteImport
+    '/_layout/workouts/': {
+      id: '/_layout/workouts/'
+      path: '/workouts'
+      fullPath: '/workouts/'
+      preLoaderRoute: typeof LayoutWorkoutsIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/workouts/new': {
+      id: '/_layout/workouts/new'
+      path: '/workouts/new'
+      fullPath: '/workouts/new'
+      preLoaderRoute: typeof LayoutWorkoutsNewRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/workouts/$workoutId/': {
