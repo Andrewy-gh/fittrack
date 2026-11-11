@@ -16,7 +16,7 @@
 
 | Assignment | Findings | Explicit execution profile | Ownership | State |
 | --- | --- | --- | --- | --- |
-| AUDIT-W1-WORKOUT | A001–A004 | Pi / openai-codex/gpt-6.1-sol / medium | Workout editing/null semantics, new-workout default date, local draft catalog persistence, relevant tests and generated contract/SQL files only as required | Running; requested profile confirmed in dispatch receipt |
+| AUDIT-W1-WORKOUT | A001–A004 | Pi / openai-codex/gpt-6.1-sol / medium | Workout editing/null semantics, new-workout default date, local draft catalog persistence, relevant tests and generated contract/SQL files only as required | Returned 729e0cb; pending head reconciliation, database run and independent review |
 | AUDIT-W1-EXERCISE | A009–A010 | Pi / openai-codex/gpt-6-luna / medium | Exercise historical-1RM/metrics error mapping and exercise list/create timestamp mapping; relevant tests | Returned; integrated as 7da9a8f; independent review pending and A010 database verification blocked |
 
 The first assignment spans client, storage and server semantics, so Sol medium is appropriate. The second has specified error/timestamp outcomes and a bounded exercise surface, so Luna medium is appropriate.
@@ -47,7 +47,11 @@ Workers must report: assignment ID; actual profile; branch/worktree and commit S
 ### AUDIT-W1-WORKOUT
 
 - Task: `node:delegated-task:command%3Amcp%3A92085636-86ad-46c8-beb5-365883da1183%3Adelegate-task%3AAUDIT-W1-WORKOUT`.
-- Requested profile confirmed Pi / openai-codex/gpt-6.1-sol / medium. Still outstanding; do not poll.
+- Requested profile confirmed Pi / openai-codex/gpt-6.1-sol / medium.
+- Report 1 returned: commit `729e0cbab873d7c082b730f4276a132e8dac4fea`, worktree `C:/Users/lenny/.t3/worktrees/fittrack/t3-99199185`, branch `t3/fix-workout-updates-and-drafts`.
+- Reported 22 tests across six client files plus type/lint/format/API freshness checks, SQLC generation, workout short tests, Go build/vet and DB-excluded short suite passing. A001/A002 database regression was not run; do not accept persistence based on unit tests.
+- Worker disclosed an initial broad short run reached tests ignoring short mode, attempted fallback DB authentication, then stopped; no successful writes observed. Future head runs must use explicit isolated test mode with fresh local credentials.
+- Pending: inspect diff, integrate scoped commit, run full relevant tests under the disposable DB harness, then fresh independent review. No acceptance yet.
 
 ### Next review
 
@@ -64,3 +68,13 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 - A104: user approved deleting output artifacts. Head removed tracked files and repaired two historical evidence references in docs/training-assessment-policy.md; unrelated docs/design and GIF remain untouched.
 - A094: user conditionally approved removal only for scripts with no useful current purpose. A bounded inventory/cleanup assignment is planned; preserve the active provision/verify/test-runtime-role scripts.
 - A088: explanation requested, not removal. Head confirmed dedicated service/query are test-only but helpers/types in training_evidence.go power live assessment and muscle-contribution code; no whole-file deletion is safe.
+- A103/A104 removal committed as `6269904`; no remaining non-audit references found. Commit hook passed format, lint, both knip modes and all 489 client tests. Code/artifact closeout review can be combined with the next independent review.
+- A094 script inventory/conditional cleanup assigned next as AUDIT-SCRIPTS-CLEANUP, Pi / Sol / medium, isolated worktree; report purpose and evidence for every retained/deleted script. No production execution.
+
+## Head continuation state
+
+- A010 correction is in progress in the root checkout: `server/internal/exercise/repository_timestamps_integration_test.go` rewritten to test actual POST/list/detail JSON, preserved distinct timestamps, transaction/catalog path and migration backfill. This file is uncommitted and not yet run; migration files 00034/00035 and schema correction still need to be created after the intended red test. Do not mistake it for unrelated user work.
+- Disposable verification harness (ignored, no persisted credentials): `C:/Users/lenny/.t3/worktrees/fittrack/t3-07e11d14/.worktree/verify-exercise-audit.mjs`. It creates pinned PostgreSQL on 55432 with fresh in-memory credentials, prepares/runs managed test mode and deletes only its owned container in finally. Goose 3.24.3 is installed in the same worktree's `.worktree/tools/goose.exe`. First run log: `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-21-79c97849.log`.
+- Harness currently targets the exercise worker checkout; parameterize root safely for head's corrected tests and integrated workout tests. Do not use original local databases or generic DATABASE_URL.
+- Existing fittrack-postgres15 was started and left running unchanged at 5432. Old PostgreSQL 16 container/data untouched. No disposable audit container remains from the first run.
+- A009 is the only accepted implementation finding so far. A010 and workout changes need completion and review; cleanup is implemented with checks but final closeout still pending.
