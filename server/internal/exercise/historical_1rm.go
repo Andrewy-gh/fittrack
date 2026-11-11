@@ -2,6 +2,7 @@ package exercise
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
@@ -29,8 +30,11 @@ func (es *ExerciseService) UpdateExerciseHistorical1RM(ctx context.Context, id i
 	}
 
 	_, err := es.repo.GetExercise(ctx, id, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", id)}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to look up exercise before updating historical 1rm: %w", err)
 	}
 
 	mode := req.Mode

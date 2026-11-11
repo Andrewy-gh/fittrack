@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -92,6 +94,40 @@ func TestExerciseHandler_UpdateExerciseHistorical1RM(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, w.Code)
 
 		repo.AssertExpectations(t)
+	})
+
+	t.Run("missing exercise is not found", func(t *testing.T) {
+		repo := new(MockExerciseRepository)
+		service := NewService(logger, repo)
+		handler := NewHandler(logger, validator, service)
+		userID := "user-123"
+		exerciseID := int32(7)
+		repo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{}, pgx.ErrNoRows)
+		body := []byte(`{"mode":"manual"}`)
+		ctx := context.WithValue(context.Background(), user.UserIDKey, userID)
+		req := httptest.NewRequest(http.MethodPatch, "/api/exercises/7/historical-1rm", bytes.NewBuffer(body)).WithContext(ctx)
+		req.SetPathValue("id", "7")
+		w := httptest.NewRecorder()
+		handler.UpdateExerciseHistorical1RM(w, req)
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("database failure is internal error without leaking details", func(t *testing.T) {
+		repo := new(MockExerciseRepository)
+		service := NewService(logger, repo)
+		handler := NewHandler(logger, validator, service)
+		userID := "user-123"
+		exerciseID := int32(7)
+		repo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{}, errors.New("SQL password=secret"))
+		body := []byte(`{"mode":"manual"}`)
+		ctx := context.WithValue(context.Background(), user.UserIDKey, userID)
+		req := httptest.NewRequest(http.MethodPatch, "/api/exercises/7/historical-1rm", bytes.NewBuffer(body)).WithContext(ctx)
+		req.SetPathValue("id", "7")
+		w := httptest.NewRecorder()
+		handler.UpdateExerciseHistorical1RM(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.NotContains(t, w.Body.String(), "SQL")
+		assert.NotContains(t, w.Body.String(), "secret")
 	})
 
 	t.Run("validation_error_bad_mode", func(t *testing.T) {

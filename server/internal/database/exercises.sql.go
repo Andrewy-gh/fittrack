@@ -582,7 +582,7 @@ const getOrCreateExercise = `-- name: GetOrCreateExercise :one
 INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
-RETURNING id
+RETURNING id, name, catalog_id, created_at, updated_at
 `
 
 type GetOrCreateExerciseParams struct {
@@ -590,11 +590,25 @@ type GetOrCreateExerciseParams struct {
 	UserID string `json:"user_id"`
 }
 
-func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerciseParams) (int32, error) {
+type GetOrCreateExerciseRow struct {
+	ID        int32              `json:"id"`
+	Name      string             `json:"name"`
+	CatalogID pgtype.Text        `json:"catalog_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetOrCreateExercise(ctx context.Context, arg GetOrCreateExerciseParams) (GetOrCreateExerciseRow, error) {
 	row := q.db.QueryRow(ctx, getOrCreateExercise, arg.Name, arg.UserID)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
+	var i GetOrCreateExerciseRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CatalogID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getRecentSetsForExercise = `-- name: GetRecentSetsForExercise :many
@@ -706,13 +720,15 @@ func (q *Queries) GetWorkoutBestE1rmByExercise(ctx context.Context, arg GetWorko
 }
 
 const listExercises = `-- name: ListExercises :many
-SELECT id, name, catalog_id FROM exercise WHERE user_id = $1 ORDER BY name
+SELECT id, name, catalog_id, created_at, updated_at FROM exercise WHERE user_id = $1 ORDER BY name
 `
 
 type ListExercisesRow struct {
-	ID        int32       `json:"id"`
-	Name      string      `json:"name"`
-	CatalogID pgtype.Text `json:"catalog_id"`
+	ID        int32              `json:"id"`
+	Name      string             `json:"name"`
+	CatalogID pgtype.Text        `json:"catalog_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) ListExercises(ctx context.Context, userID string) ([]ListExercisesRow, error) {
@@ -724,7 +740,13 @@ func (q *Queries) ListExercises(ctx context.Context, userID string) ([]ListExerc
 	var items []ListExercisesRow
 	for rows.Next() {
 		var i ListExercisesRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.CatalogID); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CatalogID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

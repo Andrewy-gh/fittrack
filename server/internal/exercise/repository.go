@@ -55,6 +55,8 @@ func (er *exerciseRepository) ListExercises(ctx context.Context, userID string) 
 			ID:        row.ID,
 			Name:      row.Name,
 			CatalogID: row.CatalogID,
+			CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt,
 			// UserID is not returned by optimized query but was used for filtering
 			UserID: userID,
 		}
@@ -144,7 +146,7 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 		Name:   name,
 		UserID: userID,
 	}
-	exerciseID, err := er.queries.GetOrCreateExercise(ctx, params)
+	exerciseRow, err := er.queries.GetOrCreateExercise(ctx, params)
 	if err != nil {
 		// Check if this might be an RLS-related error
 		if db.IsRowLevelSecurityError(err) {
@@ -162,14 +164,14 @@ func (er *exerciseRepository) GetOrCreateExercise(ctx context.Context, name stri
 		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 
-	// Create Exercise from returned ID
-	exercise := db.Exercise{
-		ID:     exerciseID,
-		Name:   name,
-		UserID: userID,
-	}
-
-	return exercise, nil
+	return db.Exercise{
+		ID:        exerciseRow.ID,
+		Name:      exerciseRow.Name,
+		CatalogID: exerciseRow.CatalogID,
+		CreatedAt: exerciseRow.CreatedAt,
+		UpdatedAt: exerciseRow.UpdatedAt,
+		UserID:    userID,
+	}, nil
 }
 
 func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32, userID string) ([]db.GetExerciseWithSetsRow, error) {
@@ -222,7 +224,7 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 	}
 
 	er.logger.Info("calling GetOrCreateExercise with params", "params", params)
-	exerciseID, err := qtx.GetOrCreateExercise(ctx, params)
+	exerciseRow, err := qtx.GetOrCreateExercise(ctx, params)
 	if err != nil {
 		er.logger.Error("failed to get or create exercise",
 			"error", err,
@@ -231,11 +233,13 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 		return db.Exercise{}, fmt.Errorf("failed to get or create exercise: %w", err)
 	}
 
-	// Create Exercise from returned ID
 	exercise := db.Exercise{
-		ID:     exerciseID,
-		Name:   name,
-		UserID: userID,
+		ID:        exerciseRow.ID,
+		Name:      exerciseRow.Name,
+		CatalogID: exerciseRow.CatalogID,
+		CreatedAt: exerciseRow.CreatedAt,
+		UpdatedAt: exerciseRow.UpdatedAt,
+		UserID:    userID,
 	}
 
 	er.logger.Info("successfully got/created exercise",
