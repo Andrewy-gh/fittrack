@@ -180,7 +180,7 @@ function groupSetsByExercise(
     }
 
     exerciseEntry.exercise.sets.push({
-      weight: workout.weight || 0,
+      weight: workout.weight,
       reps: workout.reps || 0,
       setType,
     });

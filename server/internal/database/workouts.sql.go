@@ -634,28 +634,32 @@ func (q *Queries) UpdateSet(ctx context.Context, arg UpdateSetParams) (int32, er
 const updateWorkout = `-- name: UpdateWorkout :one
 UPDATE workout
 SET
-    date = COALESCE($2, date),
-    notes = COALESCE($3, notes),
-    workout_focus = COALESCE($4, workout_focus),
+    date = COALESCE($1::timestamptz, date),
+    notes = CASE WHEN $2::boolean THEN $3::text ELSE notes END,
+    workout_focus = CASE WHEN $4::boolean THEN $5::text ELSE workout_focus END,
     updated_at = NOW()
-WHERE id = $1 AND user_id = $5
+WHERE id = $6 AND user_id = $7
 RETURNING id
 `
 
 type UpdateWorkoutParams struct {
-	ID           int32              `json:"id"`
-	Date         pgtype.Timestamptz `json:"date"`
-	Notes        pgtype.Text        `json:"notes"`
-	WorkoutFocus pgtype.Text        `json:"workout_focus"`
-	UserID       string             `json:"user_id"`
+	Date               pgtype.Timestamptz `json:"date"`
+	UpdateNotes        bool               `json:"update_notes"`
+	Notes              pgtype.Text        `json:"notes"`
+	UpdateWorkoutFocus bool               `json:"update_workout_focus"`
+	WorkoutFocus       pgtype.Text        `json:"workout_focus"`
+	ID                 int32              `json:"id"`
+	UserID             string             `json:"user_id"`
 }
 
 func (q *Queries) UpdateWorkout(ctx context.Context, arg UpdateWorkoutParams) (int32, error) {
 	row := q.db.QueryRow(ctx, updateWorkout,
-		arg.ID,
 		arg.Date,
+		arg.UpdateNotes,
 		arg.Notes,
+		arg.UpdateWorkoutFocus,
 		arg.WorkoutFocus,
+		arg.ID,
 		arg.UserID,
 	)
 	var id int32

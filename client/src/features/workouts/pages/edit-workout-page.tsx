@@ -118,8 +118,8 @@ export function EditWorkoutPage({
       const trimmedValue = {
         date: value.date,
         exercises: value.exercises,
-        notes: value.notes?.trim() || undefined,
-        workoutFocus: value.workoutFocus?.trim() || undefined,
+        notes: value.notes?.trim(),
+        workoutFocus: value.workoutFocus?.trim(),
       };
       await updateWorkoutMutation.mutateAsync(
         {

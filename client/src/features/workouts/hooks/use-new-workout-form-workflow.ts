@@ -7,6 +7,7 @@ import type { ApplicationUser } from "@/lib/application-user";
 import { toast } from "sonner";
 import type {
   RecommendationResult,
+  WorkoutCreateWorkoutRequest,
   WorkoutNewWorkoutContextResponse,
 } from "@/client";
 import {
@@ -20,7 +21,7 @@ import {
 import { useSaveWorkoutForUserMutation } from "@/features/workouts/api/workouts";
 import {
   getInitialValues,
-  MOCK_VALUES,
+  createNewWorkoutValues,
 } from "@/features/workouts/components/form/form-options";
 import { hasWorkoutDraftContent } from "@/features/workouts/components/form/workout-form-helpers";
 import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
@@ -50,8 +51,11 @@ export function useNewWorkoutFormWorkflow({
   >(null);
 
   const saveWorkout = useSaveWorkoutForUserMutation(user);
+  const [initialValues, setInitialValues] = useState(() =>
+    getInitialValues(user?.id, draftStorage),
+  );
   const form = useAppForm({
-    defaultValues: getInitialValues(user?.id, draftStorage),
+    defaultValues: initialValues,
     listeners: {
       onChange: ({ formApi }) => {
         draftStorage.save(formApi.state.values, user?.id);
@@ -123,13 +127,20 @@ export function useNewWorkoutFormWorkflow({
               toast.success("Workout saved successfully");
             }
             draftStorage.clear(user?.id);
-            form.reset(MOCK_VALUES);
+            resetDraft(createNewWorkoutValues());
             clearSearch();
           },
         },
       );
     },
   });
+
+  function resetDraft(values: WorkoutCreateWorkoutRequest) {
+    // TanStack updates options on rerender; keep the React defaults aligned with
+    // reset so an untouched replacement draft is not reverted to the old one.
+    setInitialValues(values);
+    form.reset(values);
+  }
 
   const recordRecommendation = useCallback(
     (exerciseName: string, recommendation: RecommendationResult | null) => {
@@ -197,7 +208,7 @@ export function useNewWorkoutFormWorkflow({
     );
     const nextDraft = buildWorkoutDraftFromHistory(workoutToRepeat.sets);
 
-    form.reset(nextDraft);
+    resetDraft(nextDraft);
     draftStorage.save(nextDraft, user?.id);
     clearSearch();
     toast.success("Loaded workout structure");
@@ -227,7 +238,7 @@ export function useNewWorkoutFormWorkflow({
 
   const clearForm = () => {
     draftStorage.clear(user?.id);
-    form.reset(MOCK_VALUES);
+    resetDraft(createNewWorkoutValues());
     clearSearch();
     setIsClearDialogOpen(false);
   };

@@ -20,6 +20,31 @@ function createMemoryStorage(
 }
 
 describe("workoutDraftStorage", () => {
+  it("retains catalog identity on reload alongside custom and legacy exercises", () => {
+    const storage = createMemoryStorage();
+    const draft = {
+      date: "2026-10-08T12:00:00Z",
+      exercises: [
+        {
+          name: "My pushups",
+          catalog_id: "Pushups",
+          sets: [{ reps: 10, setType: "working" as const }],
+        },
+        {
+          name: "Custom movement",
+          sets: [{ reps: 5, setType: "working" as const }],
+        },
+      ],
+    };
+    createWorkoutDraftStorage(storage).save(draft, "owner");
+    const reloaded = createWorkoutDraftStorage(storage).load("owner");
+    expect(reloaded?.exercises).toEqual(draft.exercises);
+    if (!reloaded) throw new Error("Expected readable draft");
+    createWorkoutDraftStorage(storage).save(reloaded, "owner");
+    expect(createWorkoutDraftStorage(storage).load("owner")?.exercises).toEqual(
+      draft.exercises,
+    );
+  });
   it("preserves recommendation snapshots separately from sets and isolates them by account", () => {
     const draftStorage = createWorkoutDraftStorage(createMemoryStorage());
     const recommendations = [

@@ -277,13 +277,16 @@ func (wr *workoutRepository) UpdateWorkout(ctx context.Context, id int32, reform
 	// Create queries instance with transaction
 	qtx := wr.queries.WithTx(tx)
 
-	// Step 1: Update workout metadata
+	// Omitted and JSON null text fields retain their previous values. An explicit
+	// empty string is present, but converts to SQL NULL to clear the value.
 	_, err = qtx.UpdateWorkout(ctx, db.UpdateWorkoutParams{
-		ID:           id,
-		Date:         pgData.Workout.Date,
-		Notes:        pgData.Workout.Notes,
-		WorkoutFocus: pgData.Workout.WorkoutFocus,
-		UserID:       userID,
+		ID:                 id,
+		Date:               pgData.Workout.Date,
+		Notes:              pgData.Workout.Notes,
+		UpdateNotes:        reformatted.Workout.Notes != nil,
+		WorkoutFocus:       pgData.Workout.WorkoutFocus,
+		UpdateWorkoutFocus: reformatted.Workout.WorkoutFocus != nil,
+		UserID:             userID,
 	})
 	if err != nil {
 		// Check for RLS violations
