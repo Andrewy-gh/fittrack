@@ -1,225 +1,86 @@
-# RLS Smoke Test Scripts
+# Database security tools
 
-This directory contains scripts for testing Row Level Security (RLS) in staging and production-like environments to ensure proper user data isolation.
+Row-level security (RLS) limits which rows a database connection can access for
+its current user context. These tools have different purposes and credentials;
+do not run every SQL file as one audit.
 
-## Overview
+## Maintained tools
 
-The smoke tests verify that:
-1. User A can create and access their own data
-2. User B can create and access their own data  
-3. **CRITICAL:** User B cannot see User A's data (and vice versa)
-4. Anonymous access is properly blocked
-5. RLS policies are working correctly in the target environment
+| Script | Purpose and callers | Safety assumptions |
+| --- | --- | --- |
+| [provision-runtime-role.sql](provision-runtime-role.sql) | Establishes the restricted `fittrack_app` role and deny-by-default grants. Used by CI and `server/cmd/worktree-db`. | Writes role attributes, grants and default privileges. Requires the migration owner/admin. Shared local setup uses preserve-role mode; do not run ordinary provisioning or reset the shared role's password while worktrees are using it. |
+| [verify-runtime-role.sql](verify-runtime-role.sql) | Rejects unsafe runtime privileges, checks webhook access restrictions and checks an unknown user's workout visibility. Used by CI, the isolated database test and the production-triage runbook. | Connect as the candidate runtime role, not the owner. Reads catalogs/data and changes only the current session's user context. It does not prove all policies or deployed HTTP authentication. |
+| [test-runtime-role.sql](test-runtime-role.sql) | Asserts two-user workout isolation, cross-user write rejection, missing-context denial, billing isolation and narrow webhook-function access. Used by CI and the isolated database test. | Disposable migrated/provisioned database only, connected as `fittrack_app`. Fixture writes roll back, but sequences can advance. Never use production or a shared development database. |
+| [audit-rls-coverage.sql](audit-rls-coverage.sql) | Manual, read-only catalog report of table RLS flags, policies and command coverage. No automated caller remains; retained because this inventory is useful when reviewing schema changes. | Uses `psql` meta-commands and SELECTs. Report only: it does not fail when a policy is missing and is not an isolation test. See interpretation limits below. |
 
-## Scripts
+### Current verification path
 
-### 1. `quick-rls-test.sh` - Simple Manual Test
+[`.github/workflows/test.yml`](../../.github/workflows/test.yml), in the
+**Verify restricted runtime role** step, creates a separate disposable
+`fittrack_rls_test` database, migrates it, provisions the role, then runs role
+verification and the rollback-only SQL smoke test as `fittrack_app`. It also runs:
 
-A lightweight script for quick RLS verification against an existing environment.
+- `TestOpenDatabaseSetsRLSContextForEveryAcquisition` in
+  [`internal/app/rls_connection_integration_test.go`](../internal/app/rls_connection_integration_test.go):
+  checks that the real application pool sets each user's context and clears it
+  for an unauthenticated acquisition.
+- `TestRecommendationPersistenceWithRLS` in
+  [`internal/recommendation/repository_integration_test.go`](../internal/recommendation/repository_integration_test.go):
+  exercises workout/exercise/set persistence and cross-user denial through
+  repositories under the restricted role.
 
-**Usage:**
+For local execution, first follow [linked-worktree setup](../../docs/worktrees.md).
+Its `rls` mode supplies the isolated runtime and admin URLs; use the dedicated
+restricted checks, not the full Go suite or migrations in that mode. The opt-in
+`scripts/worktree.database.test.ts` creates its own temporary cluster and runs
+the retained SQL checks; its prerequisites are documented in the same guide.
+The general database tests include owner/superuser-sensitive checks that can
+skip, so a green general suite alone is not restricted-role proof.
+
+These checks do **not** establish live Stack authentication, deployed API
+isolation or session-pooler parity. Those need a separately authorized scenario;
+there is no `rls-smoke-test.yml` workflow or remote smoke-test secret requirement
+in the current Test workflow.
+
+### Manual catalog inspection
+
+After selecting an approved **local** database explicitly, from `server/`:
+
 ```bash
-# Export test user tokens
-export USER_A_TOKEN="your-test-user-a-jwt-token"
-export USER_B_TOKEN="your-test-user-b-jwt-token"
-
-# Run against staging
-./scripts/quick-rls-test.sh https://fittrack.fly.dev
-
-# Or use environment variable
-export STAGING_URL="https://your-staging.fly.dev"
-./scripts/quick-rls-test.sh
+# Set LOCAL_INSPECTION_DATABASE_URL privately to the intended local database.
+psql "$LOCAL_INSPECTION_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/audit-rls-coverage.sql
 ```
 
-**Features:**
-- Quick 7-test validation
-- Clear pass/fail output
-- Tests both workout and exercise endpoints
-- Verifies anonymous access blocking
+Do not substitute a production credential or print connection strings. This
+report performs no fixture writes or role provisioning. Interpret it manually:
 
-### 2. `rls-smoke-test.sh` - Comprehensive Test Suite
+- No RLS is not automatically a vulnerability: migration metadata and deliberately
+  restricted tables need their grants and intended access reviewed.
+- RLS without policies denies access only to roles subject to RLS; owners and
+  bypass roles may behave differently.
+- The disabled-table section matches table names without schema qualification;
+  duplicate table names across schemas can hide a disabled table. Check the
+  schema-qualified first section instead when multiple schemas are present.
+- Command counts and clause-presence labels do not validate policy expressions,
+  ownership, grants or cross-user behavior. Use the restricted-role checks above.
 
-A thorough test suite with detailed reporting and edge case testing.
+## Retired historical tooling
 
-**Usage:**
-```bash
-export USER_A_TOKEN="your-test-user-a-jwt-token"
-export USER_B_TOKEN="your-test-user-b-jwt-token"
-export STAGING_URL="https://fittrack.fly.dev"
+The following files originated in the 2025 RLS investigation (`f598297`, #36).
+Tracked-file searches found no executable callers outside that legacy group;
+the old README was the only documented entry point for the HTTP scripts.
+External/manual usage outside the repository cannot be established by that search. They were removed rather
+than reviving an unsafe second verification path:
 
-./scripts/rls-smoke-test.sh
-```
+| Removed script | Historical purpose | Why retired / remaining coverage |
+| --- | --- | --- |
+| `quick-rls-test.sh` | Two-token HTTP workout creation/list isolation and anonymous rejection. | Defaulted to the live app, left writes behind and treated successful curl transport as successful HTTP creation. Error objects could satisfy its list-length checks. The restricted SQL/pool checks are the maintained isolation path, not a claim of deployed HTTP parity. |
+| `rls-smoke-test.sh` | Broader manual HTTP workout/exercise isolation check. | Also defaulted to the live app without cleanup. Expected 200/empty data for cross-user detail instead of the current 404 contract; one list check required User B's own notes count to be zero, contradicting its fixture. Not a trustworthy live acceptance test. |
+| `run-complete-rls-audit.sh` | Chained the catalog report, persistent fixtures and privilege probes. | Used PowerShell `Get-Content` inside Bash and the retired `db` container/credentials, lacked reliable SQL failure propagation, and printed hard-coded findings rather than generating a report. Dedicated CI/local restricted checks replace the runner; the catalog report remains independently usable. |
+| `setup-test-data.sql` | Persisted three users' workouts/exercises for the old probes. | Only called by the retired runner, accumulated workout fixtures and had no rollback/cleanup. Maintained tests own their fixtures. |
+| `test-privilege-escalation.sql` | Exploratory WHERE TRUE, OR/UNION, session and role probes. | No caller; unbounded UPDATE/DELETE without an outer rollback, an undeclared loop record and notice-only error handling. Restricted-role assertions and the existing database bypass tests retain meaningful isolation checks without treating notices as acceptance. |
+| `test-privilege-escalation-fixed.sql` | Alternate exploratory probe used by the runner. | Not a title-only copy of the other SQL file: scenarios differ. Still used persistent updates, invalid aggregate LIMIT syntax, notice-only failures and obsolete claims that the set table has no policies. Current migrations include set policies; maintained runtime/repository checks exercise actual access. |
 
-**Features:**
-- 8 comprehensive test scenarios
-- Detailed logging and error reporting
-- Tests specific workout access by ID
-- Concurrent user testing
-- Exercise endpoint isolation testing
-- Full cross-user data leakage verification
-
-### 3. GitHub Action: `rls-smoke-test.yml`
-
-Automated CI/CD pipeline that deploys to staging and runs smoke tests.
-
-**Features:**
-- Deploys current branch to staging
-- Waits for deployment readiness
-- Runs comprehensive RLS tests
-- Fails pipeline if User B can see User A's data
-- Automatic cleanup
-
-## Getting Test Tokens
-
-To run these tests, you need JWT tokens for two different test users:
-
-### Method 1: Stack Auth Dashboard
-1. Visit your Stack Auth project dashboard
-2. Create two test user accounts
-3. Generate JWT tokens for each user
-4. Store as environment variables or GitHub secrets
-
-### Method 2: Browser Dev Tools
-1. Login to your staging app as Test User A
-2. Open browser dev tools → Network tab
-3. Make an API request and copy the `x-stack-access-token` header value
-4. Repeat for Test User B in incognito/different browser
-
-### Method 3: API Token Generation
-```bash
-# Example using your auth endpoint
-curl -X POST https://api.stack-auth.com/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test-user-a@example.com", "password": "testpass"}'
-```
-
-## Environment Setup
-
-### Local Development
-```bash
-# Required environment variables
-export STAGING_URL="https://fittrack.fly.dev"
-export USER_A_TOKEN="eyJhbGciOiJSUzI1NiIs..."
-export USER_B_TOKEN="eyJhbGciOiJSUzI1NiIs..."
-
-# Make script executable
-chmod +x scripts/quick-rls-test.sh
-chmod +x scripts/rls-smoke-test.sh
-
-# Run tests
-./scripts/quick-rls-test.sh
-```
-
-### GitHub Actions
-Add these secrets to your repository:
-
-**Required Secrets:**
-- `TEST_USER_A_TOKEN` - JWT token for test user A
-- `TEST_USER_B_TOKEN` - JWT token for test user B
-- `STAGING_DATABASE_URL` - Database connection for staging migrations
-- `FLY_API_TOKEN` - Fly.io deployment token
-
-**Optional Secrets:**
-- `STAGING_FLY_APP_NAME` - If using separate staging app (default: `fittrack`)
-- `VITE_PROJECT_ID` - Frontend environment variable
-- `VITE_PUBLISHABLE_CLIENT_KEY` - Frontend environment variable
-
-## Expected Test Results
-
-### ✅ Success (RLS Working)
-```
-Test 1: User A creates workout... ✓ Success
-Test 2: User B creates workout... ✓ Success  
-Test 3: User A retrieves workouts... ✓ Found 1 workout(s)
-Test 4: User B retrieves workouts... ✓ Found 1 workout(s)
-Test 5: Checking User B cannot see User A's data... ✓ Data isolation working
-Test 6: Checking User A cannot see User B's data... ✓ Data isolation working
-Test 7: Anonymous access blocked... ✓ Properly rejected (401)
-
-🎉 ALL RLS TESTS PASSED! 🎉
-```
-
-### ❌ Failure (RLS Broken)
-```
-Test 5: Checking User B cannot see User A's data... ✗ CRITICAL: User B can see User A's workout!
-RLS IS NOT WORKING PROPERLY!
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### "Missing test user tokens"
-- Ensure `USER_A_TOKEN` and `USER_B_TOKEN` are set
-- Verify tokens are valid and not expired
-- Check tokens are for different users
-
-#### "401 Unauthorized" for valid tokens
-- Verify `STAGING_URL` is correct
-- Check if staging deployment is ready
-- Ensure Stack Auth configuration matches
-
-#### "RLS IS NOT WORKING PROPERLY!"
-🚨 **CRITICAL SECURITY ISSUE** 🚨
-- RLS policies may not be enabled
-- Database user might be a superuser (bypasses RLS)
-- Session variable `app.current_user_id` not being set
-- Review RLS implementation immediately
-
-#### Tests pass locally but fail in staging
-- Verify staging database has RLS policies applied
-- Check staging database user is NOT a superuser
-- Ensure migrations ran successfully
-- Verify authentication middleware is working
-
-### Debug Mode
-
-Run with verbose output:
-```bash
-set -x  # Enable bash debug mode
-./scripts/quick-rls-test.sh
-```
-
-View API responses:
-```bash
-# Test API manually
-curl -H "x-stack-access-token: $USER_A_TOKEN" \
-  https://fittrack.fly.dev/api/workouts
-```
-
-## Security Checklist
-
-Before deploying to production, ensure:
-
-- [ ] All RLS smoke tests pass
-- [ ] User A cannot see User B's data
-- [ ] User B cannot see User A's data
-- [ ] Anonymous access returns 401/403
-- [ ] Database user is NOT a superuser
-- [ ] RLS policies are enabled on all tables
-- [ ] Session variables are set correctly
-- [ ] Tests pass in staging environment
-
-## CI/CD Integration
-
-### Basic Pipeline
-```yaml
-- name: Run RLS Smoke Tests
-  run: |
-    export USER_A_TOKEN="${{ secrets.TEST_USER_A_TOKEN }}"
-    export USER_B_TOKEN="${{ secrets.TEST_USER_B_TOKEN }}"
-    ./scripts/quick-rls-test.sh
-```
-
-### Full Pipeline
-Use the provided `rls-smoke-test.yml` GitHub Action for complete deployment and testing.
-
-## Support
-
-If RLS tests fail:
-1. Check the RLS migration in [`../migrations/00006_add_rls_policies.sql`](../migrations/00006_add_rls_policies.sql)
-2. Review the current E2E tests in [`../../client/tests/e2e`](../../client/tests/e2e)
-3. Run integration tests: `go test ./...`
-4. Verify database RLS policies are active
-
-**Remember:** RLS failures are critical security issues that can lead to data breaches. Never deploy to production if RLS tests are failing.
+Removing the runner supersedes its repair finding (A029/F16); it does not assert
+that the historical complete audit now passes. No production verification or
+database modification is part of this cleanup.
