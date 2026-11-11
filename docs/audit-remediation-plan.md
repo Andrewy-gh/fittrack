@@ -10,7 +10,7 @@ The original F/G/D identifiers are retained **only as implementation guidance**,
 
 No application fixes have been accepted yet. The audit's claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Six findings (A001–A004, A009–A010) are assigned for the first implementation wave; all other findings remain not started. In progress means assigned, not verified.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Six findings (A001–A004, A009–A010) are assigned for the first implementation wave. A009 is implemented pending independent review; A010 is implemented but blocked on required database verification. A001–A004 remain with the workout worker; all others remain not started. In progress means assigned, not verified.
 
 ## Progress summary
 
@@ -170,18 +170,18 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F08` — Batch 2
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker commit `9c1b58a`, integrated as `7da9a8f`. Head inspected the patch and reran managed exercise short tests, full Go build and exercise vet successfully. Independent review pending.
+- **Decision / blocker:** Await fresh independent review before acceptance. Worker reproduced old 404 behavior with database-failure handler regressions; head's managed short test rerun passed.
 
 #### A010
 
 > H Exercise list and create return created_at/updated_at as null although the API contract marks them required (exercise/repository.go:54).
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Blocked
 - **Plan:** `F09` — Batch 2
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker commit `9c1b58a`, integrated as `7da9a8f`. Head inspected the patch and reran managed exercise short tests, full Go build and exercise vet successfully. Independent review pending.
+- **Decision / blocker:** Required database/JSON timestamp verification remains unrun. No local worktree profile or FITTRACK_LOCAL_DATABASE_URL / FITTRACK_LOCAL_RUNTIME_DATABASE_URL; Docker daemon unavailable; pinned Goose v3.24.3 unavailable (installed v3.27.0). Doppler dev/dev_personal do not contain the required local URL keys. Do not substitute generic DATABASE_URL.
 
 #### A011
 
