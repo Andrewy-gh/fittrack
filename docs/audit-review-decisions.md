@@ -3,7 +3,7 @@
 Related tracker: [audit-remediation-plan.md](audit-remediation-plan.md).
 Working branch: `fix/audit-remediation`.
 
-There are **64 findings not automatically approved for implementation**: 13 high-confidence gated findings and 51 medium/low-confidence deferred findings. You do not need to review the 42 ready findings before agents begin. Every implemented behavior still requires tests/evidence and independent code review.
+Originally **64 findings required review**: 13 high-confidence gated findings and 51 medium/low-confidence deferred findings. A103/A104 removal is now approved; A094 has conditional cleanup approval; A088 is awaiting a decision after explanation. The inventory below preserves all original decision items. You do not need to review the 42 ready findings before agents begin. Every implemented behavior still requires tests/evidence and independent code review.
 
 ## Review these decisions first
 
@@ -96,11 +96,11 @@ This is a decision worksheet, not a second implementation tracker. Main A-ID ent
 | [A084](audit-remediation-plan.md#a084) | Deferred | L Each telemetry event costs a database query. | Pending |
 | [A085](audit-remediation-plan.md#a085) | Deferred | L Static files are opened twice per request. | Pending |
 | [A086](audit-remediation-plan.md#a086) | Deferred | L make dev and make test-db-ready duplicate about 60 lines. | Pending |
-| [A088](audit-remediation-plan.md#a088) | Gated | H The training-evidence service and its query are reachable only from tests (training_evidence.go:115). This may be parked on purpose. | Pending |
-| [A094](audit-remediation-plan.md#a094) | Gated | H Six scripts in server/scripts are referenced by nothing, and two of the SQL files differ only in their title. | Pending |
+| [A088](audit-remediation-plan.md#a088) | Gated | H The training-evidence service and its query are reachable only from tests (training_evidence.go:115). This may be parked on purpose. | Explanation requested; no deletion approved. |
+| [A094](audit-remediation-plan.md#a094) | Gated | H Six scripts in server/scripts are referenced by nothing, and two of the SQL files differ only in their title. | Conditional approval: explain purpose; delete only scripts with no useful current purpose. |
 | [A095](audit-remediation-plan.md#a095) | Deferred | M workout/validator.go and two redundant ID-validation structs in the exercise package. | Pending |
 | [A096](audit-remediation-plan.md#a096) | Deferred | L Nil checks in routes.go that are always true. | Pending |
-| [A103](audit-remediation-plan.md#a103) | Deferred | M Three client/docs files are copies of upstream TanStack docs. | Pending |
-| [A104](audit-remediation-plan.md#a104) | Deferred | M output/ holds 2.3 MB of one-off verification screenshots and JSON, referenced by one doc. | Pending |
+| [A103](audit-remediation-plan.md#a103) | Deferred | M Three client/docs files are copies of upstream TanStack docs. | Approved: remove copied docs. |
+| [A104](audit-remediation-plan.md#a104) | Deferred | M output/ holds 2.3 MB of one-off verification screenshots and JSON, referenced by one doc. | Approved: remove output artifacts and fix references. |
 | [A105](audit-remediation-plan.md#a105) | Deferred | L .gitignore has a redundant server/tmp/ai-chat-scenario-sweeps/ entry, and the Makefile's GOGET variable is unused. | Pending |
 | [A106](audit-remediation-plan.md#a106) | Gated | H, your call Untracked local leftovers: server/api.exe (55 MB, from August), server/bin/, server/.setenv.sh, the Postgres 16 data directory and two backup directories. | Pending |

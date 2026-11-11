@@ -8,19 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-No application fixes have been accepted yet. The audit's claims have not all been independently reproduced.
+A009 has been accepted after independent review and regression verification. Other findings are not complete unless their individual entries say Done. The audit's claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Six findings (A001–A004, A009–A010) are assigned for the first implementation wave. A009 is implemented pending independent review; A010 is implemented but blocked on required database verification. A001–A004 remain with the workout worker; all others remain not started. In progress means assigned, not verified.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). A001–A004 remain with the workout worker; A009 is Done; A010 is under head correction following review. User approved A103/A104 removal and conditional A094 script cleanup. See individual entries for current evidence. In progress means assigned or under correction, not verified.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement | H | 42 | 0 |
+| Ready to implement | H | 42 | 1 |
+| User-approved cleanup | M | 2 | 0 |
 | Gated on evidence, design or approval | H | 13 | 0 |
-| Deferred for user review | M | 33 | 0 |
+| Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **0** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **1** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -168,20 +169,20 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Any database error is reported as 404 in exercise/historical_1rm.go:31 and exercise/metrics_history.go:40.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F08` — Batch 2
-- **Evidence / commit / PR:** Worker commit `9c1b58a`, integrated as `7da9a8f`. Head inspected the patch and reran managed exercise short tests, full Go build and exercise vet successfully. Independent review pending.
-- **Decision / blocker:** Await fresh independent review before acceptance. Worker reproduced old 404 behavior with database-failure handler regressions; head's managed short test rerun passed.
+- **Evidence / commit / PR:** Implemented in `7da9a8f`. Independent Sol/high review cleared correctness; reviewer reran both handler suites uncached (nine subtests passed). Head also ran managed short tests, Go build/vet and, after restoring isolated DB setup, the full exercise suite: error-mapping cases passed.
+- **Decision / blocker:** Accepted separately from A010. Reviewer report AUDIT-W1-EXERCISE-REVIEW-1; no remaining A009 blocker.
 
 #### A010
 
 > H Exercise list and create return created_at/updated_at as null although the API contract marks them required (exercise/repository.go:54).
 
 - **Disposition:** Ready
-- **Status:** Blocked
+- **Status:** In progress
 - **Plan:** `F09` — Batch 2
-- **Evidence / commit / PR:** Worker commit `9c1b58a`, integrated as `7da9a8f`. Head inspected the patch and reran managed exercise short tests, full Go build and exercise vet successfully. Independent review pending.
-- **Decision / blocker:** Required database/JSON timestamp verification remains unrun. No local worktree profile or FITTRACK_LOCAL_DATABASE_URL / FITTRACK_LOCAL_RUNTIME_DATABASE_URL; Docker daemon unavailable; pinned Goose v3.24.3 unavailable (installed v3.27.0). Doppler dev/dev_personal do not contain the required local URL keys. Do not substitute generic DATABASE_URL.
+- **Evidence / commit / PR:** Initial patch `7da9a8f` was incomplete: reviewer found updated_at has no persisted default. Head restored isolated PostgreSQL 15.19 + Goose 3.24.3; the first full exercise run also exposed missing authenticated context in the new test. Head is repairing stored timestamps and replacing the test with real HTTP/DB coverage.
+- **Decision / blocker:** Not accepted. Requires default/backfill correction, pre-fix failure for the intended reason, non-skipped database/JSON regression checks, and fresh review. Old local environment blockers were bypassed safely with an owned disposable container, not shared data.
 
 #### A011
 
@@ -994,8 +995,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Gated
 - **Status:** Not started
 - **Plan:** `G08` — Gated work
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Satisfy the mapped evidence/approval gate before closing this finding.
+- **Evidence / commit / PR:** Head inspected training_evidence.go, ListTrainingEvidence SQL, documentation and callers. Dedicated service/query are test-only; shared period/types/helpers are used by live assessment and muscle-contribution features.
+- **Decision / blocker:** User requested explanation, not deletion. Preserve service/query and live shared helpers until a decision.
 
 #### A089
 
@@ -1070,10 +1071,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Six scripts in server/scripts are referenced by nothing, and two of the SQL files differ only in their title.
 
 - **Disposition:** Gated
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `G08` — Gated work
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Satisfy the mapped evidence/approval gate before closing this finding.
+- **Evidence / commit / PR:** User authorized inventory and removal only if scripts serve no useful current purpose.
+- **Decision / blocker:** Explain each script's purpose, compare maintained replacements, retain useful/manual tools; do not execute destructive or production-facing scripts during inventory.
 
 #### A095
 
@@ -1161,11 +1162,11 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 
 > M Three client/docs files are copies of upstream TanStack docs.
 
-- **Disposition:** Deferred
-- **Status:** Not started
+- **Disposition:** Ready
+- **Status:** In progress
 - **Plan:** `D43` — User review
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Awaiting user review; see the mapped decision guidance.
+- **Evidence / commit / PR:** User explicitly approved removal. Removed the three copied TanStack documents; no inbound non-audit references found.
+- **Decision / blocker:** Final cleanup verification/closeout pending; no user decision remains.
 
 ### No longer needed / Repository
 
@@ -1173,11 +1174,11 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 
 > M output/ holds 2.3 MB of one-off verification screenshots and JSON, referenced by one doc.
 
-- **Disposition:** Deferred
-- **Status:** Not started
+- **Disposition:** Ready
+- **Status:** In progress
 - **Plan:** `D44` — User review
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Awaiting user review; see the mapped decision guidance.
+- **Evidence / commit / PR:** User explicitly approved removal. Removed tracked output/ artifacts only; updated docs/training-assessment-policy.md to retain historical caveats without dangling artifact links.
+- **Decision / blocker:** Final cleanup verification/closeout pending; no user decision remains.
 
 #### A105
 

@@ -51,4 +51,16 @@ Workers must report: assignment ID; actual profile; branch/worktree and commit S
 
 ### Next review
 
-Fresh read-only Sol high review of `355d722..7da9a8f` will assess A009/A010 correctness and verification adequacy. It must not treat the known unrun database test as passed.
+Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, with confirmed Pi / Sol / high profile. Task suffix: `delegate-task%3AAUDIT-W1-EXERCISE-REVIEW-1` under the same task prefix above. Head reconciled report 1 once:
+
+- A009 accepted: reviewer ran both handler suites uncached, all nine cases passed; no correctness findings.
+- A010 rejected pending correction: exercise.updated_at has no default and remains NULL on new records. Head owns the small correction and stronger HTTP/persistence tests; no replacement implementation worker.
+- Docker subsequently became available. Existing fittrack-postgres15 was started unchanged on port 5432. Worktree setup requires 55432, so head created an isolated, pinned disposable container with fresh in-memory credentials and installed Goose 3.24.3 only in the worker's ignored .worktree/tools directory.
+- First full exercise suite ran against migrated PostgreSQL 15.19. All cases except the new timestamp test passed; that test failed earlier than its intended assertion because it lacked authenticated Go context. Head is fixing that test boundary too. Disposable container was removed in finally; existing databases were untouched.
+
+## User decisions and cleanup
+
+- A103: user approved deleting the three copied TanStack docs.
+- A104: user approved deleting output artifacts. Head removed tracked files and repaired two historical evidence references in docs/training-assessment-policy.md; unrelated docs/design and GIF remain untouched.
+- A094: user conditionally approved removal only for scripts with no useful current purpose. A bounded inventory/cleanup assignment is planned; preserve the active provision/verify/test-runtime-role scripts.
+- A088: explanation requested, not removal. Head confirmed dedicated service/query are test-only but helpers/types in training_evidence.go power live assessment and muscle-contribution code; no whole-file deletion is safe.

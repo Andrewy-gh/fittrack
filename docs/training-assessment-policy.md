@@ -46,13 +46,13 @@ Acceptance cases include 1+5 sessions, a single two-set session, 4+ sets, warmup
 - Focused frontend suite: 21 tests passed across assessment, Analytics, and workout-save workflow.
 - Frontend TypeScript and lint passed; production build passed (existing chunk-size and stale Browserslist warnings).
 - Go workout/app short suites and vet passed. Assessment service/HTTP tests and ownership/window integration passed against a disposable migrated PostgreSQL 17 database.
-- Actual dashboard/component dark-mode screenshots at desktop and mobile sizes are in `output/training-assessment/`; no horizontal overflow or final browser page errors. Network fixtures and a temporary preview harness were used; live authenticated frontend-to-backend end-to-end behavior has not been verified.
+- Historical dashboard/component dark-mode checks at desktop and mobile sizes reported no horizontal overflow or final browser page errors. The one-off screenshots were retired during audit cleanup (A104); this is a historical result, not retained visual evidence or a fresh verification. Network fixtures and a temporary preview harness were used; live authenticated frontend-to-backend end-to-end behavior was not verified.
 - No merge, deployment, or publication performed. No new profile fields, migrations, or AI calls.
 
 ### Post-save navigation correction
 
 The saved-workout action captures the first submitted exercise name exactly as persisted and the workout's Monday-start local week before clearing the draft. On click, it fetches the current owned exercise list and resolves that exact name, including newly created exercises whose IDs were unavailable before saving. It passes the resolved ID and validated `assessmentWeek` date to Analytics. Failed/missing lookup reports an error without undoing the successful save or opening unrelated evidence. Ordinary Analytics navigation still defaults to the previous completed week; an explicit current-week destination remains counts-only.
 
-Regression verification uses the real form, mutation, query cache, toast, router, and destination UI with the API adapter mocked. Tests cover existing/backdated and new/current exercise destinations plus failed lookup, with separate malformed-date rejection checks. Chromium proof additionally covers a Sunday-local/Monday-UTC boundary in New York; see `output/training-assessment/post-save-proof.json`.
+Regression verification uses the real form, mutation, query cache, toast, router, and destination UI with the API adapter mocked. Tests cover existing/backdated and new/current exercise destinations plus failed lookup, with separate malformed-date rejection checks. The historical Chromium check additionally covered a Sunday-local/Monday-UTC boundary in New York. Its one-off JSON proof was retired during audit cleanup (A104); the executable regression tests remain.
 
 Post-save fix checks: 30 focused frontend tests passed across seven files; the three destination regressions also passed again after test-fixture lint cleanup. TypeScript, lint, and `git diff --check` passed. No backend changes were made for this fix.
