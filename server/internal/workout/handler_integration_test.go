@@ -43,6 +43,7 @@ func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 
 	// Create test data with proper RLS context
 	workoutAID := setupTestWorkout(t, pool, userAID, "User A's workout")
+	setupTestSet(t, pool, userAID, workoutAID)
 	workoutBID := setupTestWorkout(t, pool, userBID, "User B's workout")
 
 	t.Run("Scenario1_UserA_CanRetrieveOwnWorkout", func(t *testing.T) {
@@ -105,23 +106,35 @@ func TestWorkoutHandler_Integration_ListWorkouts_RLS(t *testing.T) {
 		assert.Contains(t, resp.Message, "not authorized")
 	})
 
-	t.Run("Scenario4_GetSpecificWorkout_UserB_CannotAccessUserAWorkout", func(t *testing.T) {
-		// User B tries to access User A's specific workout
-		ctx := setTestUserContext(context.Background(), t, pool, userBID)
-		ctx = user.WithContext(ctx, userBID)
-
-		req := httptest.NewRequest("GET", fmt.Sprintf("/api/workouts/%d", workoutAID), nil).WithContext(ctx)
-		req.SetPathValue("id", fmt.Sprintf("%d", workoutAID))
-		w := httptest.NewRecorder()
-
-		handler.GetWorkoutWithSets(w, req)
-
-		// Should succeed but return empty results due to RLS
-		assert.Equal(t, http.StatusOK, w.Code)
-		var result WorkoutDetailResponse
-		err := json.Unmarshal(w.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Empty(t, result.Sets, "User B should not see User A's workout data")
+	t.Run("Scenario4_GetSpecificWorkout_OwnershipAndExistence", func(t *testing.T) {
+		for _, test := range []struct {
+			name       string
+			userID     string
+			workoutID  int32
+			statusCode int
+			setCount   int
+		}{
+			{name: "owner with sets", userID: userAID, workoutID: workoutAID, statusCode: http.StatusOK, setCount: 1},
+			{name: "owner with no sets", userID: userBID, workoutID: workoutBID, statusCode: http.StatusOK, setCount: 0},
+			{name: "foreign workout", userID: userBID, workoutID: workoutAID, statusCode: http.StatusNotFound},
+			{name: "nonexistent workout", userID: userAID, workoutID: workoutAID + 100000, statusCode: http.StatusNotFound},
+		} {
+			t.Run(test.name, func(t *testing.T) {
+				ctx := setTestUserContext(context.Background(), t, pool, test.userID)
+				ctx = user.WithContext(ctx, test.userID)
+				path := fmt.Sprintf("/api/workouts/%d", test.workoutID)
+				req := httptest.NewRequest("GET", path, nil).WithContext(ctx)
+				req.SetPathValue("id", fmt.Sprintf("%d", test.workoutID))
+				w := httptest.NewRecorder()
+				handler.GetWorkoutWithSets(w, req)
+				assert.Equal(t, test.statusCode, w.Code)
+				if test.statusCode == http.StatusOK {
+					var result WorkoutDetailResponse
+					assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+					assert.Len(t, result.Sets, test.setCount)
+				}
+			})
+		}
 	})
 
 	t.Run("Scenario5_ConcurrentRequests_ProperIsolation", func(t *testing.T) {

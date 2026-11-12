@@ -174,9 +174,13 @@ func (h *WorkoutHandler) GetWorkoutWithSets(w http.ResponseWriter, r *http.Reque
 	workoutWithSets, err := h.workoutService.GetWorkoutWithSets(r.Context(), workoutID)
 	if err != nil {
 		var errUnauthorized *apperrors.Unauthorized
-		if errors.As(err, &errUnauthorized) {
+		var errNotFound *apperrors.NotFound
+		switch {
+		case errors.As(err, &errUnauthorized):
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
-		} else {
+		case errors.As(err, &errNotFound):
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
+		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get workout with sets", err)
 		}
 		return
