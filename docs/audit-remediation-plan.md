@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Twelve findings are accepted after independent review and appropriate verification: A001–A004, A007, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Fourteen findings are accepted after independent review and appropriate verification: A001–A007, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A007 passed independent review. A005–A006 are integrated pending combined client checks and fresh review. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094) | H | 43 | 10 |
+| Ready to implement (including approved A094) | H | 43 | 12 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 12 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **12** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **14** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -121,10 +121,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Saving an AI workout draft from chat refreshes no caches (chat-session-workout-draft.ts:22). The workout list and analytics stay stale, and route loaders use staleTime: "static".
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F05` — Batch 2
 - **Evidence / commit / PR:** Worker `d349756` integrated as `ef677d5`. Shared training-data completion policy refreshes generated workout/exercise families and initiating-user analytics; mutable route loaders honor invalidation. Worker reports 71 focused tests, tsc/lint/format and negative controls passing. Head inspected implementation and behavioral suite; repaired shared chat fixture and asynchronous route-test assumption in `2f8cd33`. Full combined gate passed 513 tests / 102 files plus format/lint/both knip modes (session35 log). No live browser/account-switch isolation proof.
-- **Decision / blocker:** Full client gate and final tsc passed. Fresh independent review pending; not accepted yet.
+- **Decision / blocker:** Accepted after AUDIT-W2-CACHES-REVIEW, Pi / Sol / high, target `e0fbcbc..2f8cd33`: no actionable introduced regressions. Reviewer independently passed 44 tests / 2 files and inspected combined evidence. Background refresh can briefly render stale data; live account-transition isolation remains unproven.
 
 #### A006
 
@@ -139,10 +139,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > - The TODO at workouts.ts:77 assumes a low stale time; it is 5 minutes.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F06` — Batch 2
 - **Evidence / commit / PR:** Worker `d349756` integrated as `ef677d5`. Shared training-data completion policy refreshes generated workout/exercise families and initiating-user analytics; mutable route loaders honor invalidation. Worker reports 71 focused tests, tsc/lint/format and negative controls passing. Head inspected implementation and behavioral suite; repaired shared chat fixture and asynchronous route-test assumption in `2f8cd33`. Full combined gate passed 513 tests / 102 files plus format/lint/both knip modes (session35 log). No live browser/account-switch isolation proof.
-- **Decision / blocker:** Full client gate and final tsc passed. Fresh independent review pending; not accepted yet.
+- **Decision / blocker:** Accepted after AUDIT-W2-CACHES-REVIEW, Pi / Sol / high, target `e0fbcbc..2f8cd33`: no actionable introduced regressions. Reviewer independently passed 44 tests / 2 files and inspected combined evidence. Background refresh can briefly render stale data; live account-transition isolation remains unproven.
 
 #### A007
 
@@ -189,9 +189,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The mini chart on every exercise card in the new and edit pages shows hard-coded numbers (new-workout-page.tsx:100).
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F10` — Batch 2
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Next assignment AUDIT-W2-CARD-CHARTS; remove synthetic history from new/edit cards, retaining form behavior.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A012
