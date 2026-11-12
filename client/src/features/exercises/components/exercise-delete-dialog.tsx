@@ -18,6 +18,7 @@ interface ExerciseDeleteDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   exerciseId: number;
+  userId: string;
   isDemoMode: boolean;
 }
 
@@ -25,12 +26,13 @@ export function ExerciseDeleteDialog({
   isOpen,
   onOpenChange,
   exerciseId,
+  userId,
   isDemoMode,
 }: ExerciseDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
-  const deleteMutation = useDeleteExerciseForModeMutation(isDemoMode);
+  const deleteMutation = useDeleteExerciseForModeMutation(isDemoMode, userId);
 
   const handleDelete = async () => {
     setIsDeleting(true);

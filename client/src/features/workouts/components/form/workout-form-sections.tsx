@@ -132,7 +132,6 @@ type WorkoutExerciseCardsProps = {
   onSaveOrder: () => void;
   formatVolume: (volume: number) => string;
   renderNameSupplement?: (exercise: WorkoutExerciseCard) => ReactNode;
-  renderMetrics?: (exercise: WorkoutExerciseCard) => ReactNode;
 };
 
 type WorkoutFormActionsProps<
@@ -187,7 +186,6 @@ export function WorkoutExerciseCards({
   onSaveOrder,
   formatVolume,
   renderNameSupplement,
-  renderMetrics,
 }: WorkoutExerciseCardsProps) {
   const router = useRouter();
   const sensors = useSensors(
@@ -224,7 +222,6 @@ export function WorkoutExerciseCards({
               exerciseIndex={exerciseIndex}
               formatVolume={formatVolume}
               id={id}
-              renderMetrics={renderMetrics}
               renderNameSupplement={renderNameSupplement}
             />
           );
@@ -241,7 +238,6 @@ export function WorkoutExerciseCards({
               router.navigate({ to: ".", search: { exerciseIndex } });
             }}
             onRemoveExercise={onRemoveExercise}
-            renderMetrics={renderMetrics}
             renderNameSupplement={renderNameSupplement}
           />
         );
@@ -327,7 +323,6 @@ function WorkoutExerciseCardContent({
   isReorderMode = false,
   onOpenExercise,
   onRemoveExercise,
-  renderMetrics,
   renderNameSupplement,
   sortableAttributes,
   sortableListeners,
@@ -342,7 +337,6 @@ function WorkoutExerciseCardContent({
   onOpenExercise?: () => void;
   onRemoveExercise?: (index: number) => void;
   renderNameSupplement?: (exercise: WorkoutExerciseCard) => ReactNode;
-  renderMetrics?: (exercise: WorkoutExerciseCard) => ReactNode;
   sortableAttributes?: SortableHandleAttributes;
   sortableListeners?: SortableHandleListeners;
   sortableHandleRef?: SortableHandleRef;
@@ -450,7 +444,6 @@ function WorkoutExerciseCardContent({
                       volume
                     </div>
                   </div>
-                  {renderMetrics?.(exercise)}
                 </div>
               </>
             ) : (
@@ -478,7 +471,6 @@ function WorkoutExerciseCardContent({
                       volume
                     </div>
                   </div>
-                  {renderMetrics?.(exercise)}
                 </div>
               </button>
             )}
@@ -495,7 +487,6 @@ function SortableWorkoutExerciseCard({
   exerciseIndex,
   formatVolume,
   id,
-  renderMetrics,
   renderNameSupplement,
 }: {
   dataTestId: string;
@@ -504,7 +495,6 @@ function SortableWorkoutExerciseCard({
   formatVolume: (volume: number) => string;
   id: string;
   renderNameSupplement?: (exercise: WorkoutExerciseCard) => ReactNode;
-  renderMetrics?: (exercise: WorkoutExerciseCard) => ReactNode;
 }) {
   const {
     attributes,
@@ -531,7 +521,6 @@ function SortableWorkoutExerciseCard({
         formatVolume={formatVolume}
         isDragging={isDragging}
         isReorderMode
-        renderMetrics={renderMetrics}
         renderNameSupplement={renderNameSupplement}
         sortableAttributes={attributes}
         sortableHandleRef={setActivatorNodeRef}

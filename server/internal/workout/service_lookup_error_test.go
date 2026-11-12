@@ -17,6 +17,36 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestWorkoutService_GetWorkoutWithSets_LookupErrorClassification(t *testing.T) {
+	userID := "user-123"
+	workoutID := int32(1)
+
+	for _, test := range []struct {
+		name        string
+		lookupError error
+		notFound    bool
+	}{
+		{name: "missing workout", lookupError: pgx.ErrNoRows, notFound: true},
+		{name: "database failure", lookupError: assert.AnError},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			mockRepo := new(MockWorkoutRepository)
+			mockRepo.On("GetWorkout", mock.Anything, workoutID, userID).Return(db.Workout{}, test.lookupError)
+			service := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), mockRepo)
+			ctx := context.WithValue(context.Background(), user.UserIDKey, userID)
+
+			_, err := service.GetWorkoutWithSets(ctx, workoutID)
+			require.Error(t, err)
+			var notFoundErr *apperrors.NotFound
+			assert.Equal(t, test.notFound, errors.As(err, &notFoundErr))
+			if !test.notFound {
+				require.ErrorIs(t, err, test.lookupError)
+			}
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
 func TestWorkoutService_UpdateWorkout_LookupErrorClassification(t *testing.T) {
 	userID := "user-123"
 	workoutID := int32(1)

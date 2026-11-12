@@ -252,6 +252,80 @@ export const aichat_StreamEventSchema = {
   },
 } as const;
 
+export const billing_CheckoutSessionResponseSchema = {
+  type: "object",
+  required: ["url"],
+  properties: {
+    url: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const billing_CustomerPortalSessionResponseSchema = {
+  type: "object",
+  required: ["url"],
+  properties: {
+    url: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const billing_StatusResponseSchema = {
+  type: "object",
+  required: ["feature_key", "has_access"],
+  properties: {
+    feature_key: {
+      type: "string",
+    },
+    has_access: {
+      type: "boolean",
+    },
+    subscription: {
+      $ref: "#/definitions/billing.SubscriptionView",
+    },
+    trial_usage: {
+      $ref: "#/definitions/billing.TrialUsageView",
+    },
+  },
+} as const;
+
+export const billing_SubscriptionViewSchema = {
+  type: "object",
+  required: ["cancellation_scheduled", "status", "stripe_subscription_id"],
+  properties: {
+    access_ends_at: {
+      type: "string",
+    },
+    cancellation_scheduled: {
+      type: "boolean",
+    },
+    status: {
+      type: "string",
+    },
+    stripe_subscription_id: {
+      type: "string",
+    },
+    trial_end: {
+      type: "string",
+    },
+  },
+} as const;
+
+export const billing_TrialUsageViewSchema = {
+  type: "object",
+  required: ["limit", "used"],
+  properties: {
+    limit: {
+      type: "integer",
+    },
+    used: {
+      type: "integer",
+    },
+  },
+} as const;
+
 export const exercise_CreateExerciseRequestSchema = {
   type: "object",
   required: ["name"],
@@ -264,11 +338,37 @@ export const exercise_CreateExerciseRequestSchema = {
 
 export const exercise_CreateExerciseResponseSchema = {
   type: "object",
-  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  required: [
+    "catalog_id",
+    "created_at",
+    "historical_1rm",
+    "historical_1rm_source_workout_id",
+    "historical_1rm_updated_at",
+    "id",
+    "name",
+    "updated_at",
+    "user_id",
+  ],
   properties: {
+    catalog_id: {
+      type: "string",
+      "x-nullable": true,
+    },
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
+    },
+    historical_1rm: {
+      type: "number",
+      "x-nullable": true,
+    },
+    historical_1rm_source_workout_id: {
+      type: "integer",
+      "x-nullable": true,
+    },
+    historical_1rm_updated_at: {
+      type: "string",
+      "x-nullable": true,
     },
     id: {
       type: "integer",
@@ -398,11 +498,37 @@ export const exercise_ExerciseMetricsHistoryResponseSchema = {
 
 export const exercise_ExerciseResponseSchema = {
   type: "object",
-  required: ["created_at", "id", "name", "updated_at", "user_id"],
+  required: [
+    "catalog_id",
+    "created_at",
+    "historical_1rm",
+    "historical_1rm_source_workout_id",
+    "historical_1rm_updated_at",
+    "id",
+    "name",
+    "updated_at",
+    "user_id",
+  ],
   properties: {
+    catalog_id: {
+      type: "string",
+      "x-nullable": true,
+    },
     created_at: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
+    },
+    historical_1rm: {
+      type: "number",
+      "x-nullable": true,
+    },
+    historical_1rm_source_workout_id: {
+      type: "integer",
+      "x-nullable": true,
+    },
+    historical_1rm_updated_at: {
+      type: "string",
+      "x-nullable": true,
     },
     id: {
       type: "integer",
@@ -495,7 +621,17 @@ export const exercise_MetricsHistoryBucketSchema = {
 
 export const exercise_RecentSetsResponseSchema = {
   type: "object",
-  required: ["created_at", "reps", "set_id", "workout_date", "workout_id"],
+  required: [
+    "created_at",
+    "exercise_order",
+    "reps",
+    "set_id",
+    "set_order",
+    "weight",
+    "workout_date",
+    "workout_focus",
+    "workout_id",
+  ],
   properties: {
     created_at: {
       type: "string",
@@ -519,11 +655,16 @@ export const exercise_RecentSetsResponseSchema = {
     },
     weight: {
       type: "number",
+      "x-nullable": true,
       example: 225.5,
     },
     workout_date: {
       type: "string",
       example: "2023-01-01T15:04:05Z",
+    },
+    workout_focus: {
+      type: "string",
+      "x-nullable": true,
     },
     workout_id: {
       type: "integer",
@@ -727,6 +868,16 @@ export const response_SuccessResponseSchema = {
 
 export const trainingprofile_ProfileResponseSchema = {
   type: "object",
+  required: [
+    "available_equipment",
+    "avoided_exercises",
+    "experience_level",
+    "goals",
+    "movement_limitations",
+    "preferred_session_duration_minutes",
+    "primary_goal",
+    "usual_training_location",
+  ],
   properties: {
     available_equipment: {
       type: "array",
@@ -742,6 +893,7 @@ export const trainingprofile_ProfileResponseSchema = {
     },
     experience_level: {
       type: "string",
+      "x-nullable": true,
     },
     goals: {
       type: "array",
@@ -758,12 +910,15 @@ export const trainingprofile_ProfileResponseSchema = {
     },
     preferred_session_duration_minutes: {
       type: "integer",
+      "x-nullable": true,
     },
     primary_goal: {
       type: "string",
+      "x-nullable": true,
     },
     usual_training_location: {
       type: "string",
+      "x-nullable": true,
     },
   },
 } as const;
@@ -785,6 +940,7 @@ export const trainingprofile_UpdateProfileRequestSchema = {
     },
     experience_level: {
       type: "string",
+      "x-nullable": true,
     },
     goals: {
       type: "array",
@@ -801,18 +957,30 @@ export const trainingprofile_UpdateProfileRequestSchema = {
     },
     preferred_session_duration_minutes: {
       type: "integer",
+      "x-nullable": true,
     },
     primary_goal: {
       type: "string",
+      "x-nullable": true,
     },
     usual_training_location: {
       type: "string",
+      "x-nullable": true,
     },
   },
 } as const;
 
 export const workout_AssessmentSessionSchema = {
   type: "object",
+  required: [
+    "date",
+    "invalidWorkingSets",
+    "reason",
+    "reasonCode",
+    "state",
+    "workingSets",
+    "workoutId",
+  ],
   properties: {
     date: {
       type: "string",
@@ -828,6 +996,7 @@ export const workout_AssessmentSessionSchema = {
     },
     state: {
       type: "string",
+      enum: ["below_reference", "reference_met", "cannot_assess"],
     },
     workingSets: {
       type: "integer",
@@ -873,6 +1042,14 @@ export const workout_ContributionDaySchema = {
 
 export const workout_ContributionExerciseSchema = {
   type: "object",
+  required: [
+    "catalogId",
+    "exerciseId",
+    "invalidWorkingSets",
+    "name",
+    "roles",
+    "workingSets",
+  ],
   properties: {
     catalogId: {
       type: "string",
@@ -915,6 +1092,7 @@ export const workout_CreateWorkoutRequestSchema = {
     notes: {
       type: "string",
       maxLength: 256,
+      "x-nullable": true,
     },
     recommendations: {
       type: "array",
@@ -926,12 +1104,22 @@ export const workout_CreateWorkoutRequestSchema = {
     workoutFocus: {
       type: "string",
       maxLength: 256,
+      "x-nullable": true,
     },
   },
 } as const;
 
 export const workout_EvidencePeriodSchema = {
   type: "object",
+  required: [
+    "endAt",
+    "endDate",
+    "observedAt",
+    "partial",
+    "startAt",
+    "startDate",
+    "timezone",
+  ],
   properties: {
     endAt: {
       type: "string",
@@ -1019,6 +1207,14 @@ export const workout_LatestWorkoutNoteResponseSchema = {
 
 export const workout_MuscleContributionSchema = {
   type: "object",
+  required: [
+    "directSets",
+    "indirectSets",
+    "invalidMappedSets",
+    "invalidUnresolvedSets",
+    "muscle",
+    "unresolvedSets",
+  ],
   properties: {
     directSets: {
       type: "integer",
@@ -1043,6 +1239,18 @@ export const workout_MuscleContributionSchema = {
 
 export const workout_MuscleContributionsSchema = {
   type: "object",
+  required: [
+    "catalogVersion",
+    "classificationBasis",
+    "exercises",
+    "invalidWorkingSets",
+    "mappingVersion",
+    "muscles",
+    "period",
+    "unclassifiedSets",
+    "unreviewedSets",
+    "workingSets",
+  ],
   properties: {
     catalogVersion: {
       type: "string",
@@ -1114,12 +1322,26 @@ export const workout_SetInputSchema = {
       type: "number",
       maximum: 999999999.9,
       minimum: 0,
+      "x-nullable": true,
     },
   },
 } as const;
 
 export const workout_StrengthAssessmentSchema = {
   type: "object",
+  required: [
+    "applicability",
+    "exerciseId",
+    "limitations",
+    "period",
+    "policyVersion",
+    "reference",
+    "sessions",
+    "sessionsMeetingReference",
+    "sourceUrl",
+    "trainingDays",
+    "workingSets",
+  ],
   properties: {
     applicability: {
       type: "string",
@@ -1201,6 +1423,7 @@ export const workout_UpdateSetSchema = {
       type: "number",
       maximum: 999999999.9,
       minimum: 0,
+      "x-nullable": true,
     },
   },
 } as const;
@@ -1222,10 +1445,12 @@ export const workout_UpdateWorkoutRequestSchema = {
     notes: {
       type: "string",
       maxLength: 256,
+      "x-nullable": true,
     },
     workoutFocus: {
       type: "string",
       maxLength: 256,
+      "x-nullable": true,
     },
   },
 } as const;

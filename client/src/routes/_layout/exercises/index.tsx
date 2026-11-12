@@ -12,13 +12,13 @@ export const Route = createFileRoute("/_layout/exercises/")({
       // Authenticated: use API data
       clearDemoData();
       void context.queryClient
-        .query({ ...getExerciseListQueryOptions(user), staleTime: "static" })
+        .query({ ...getExerciseListQueryOptions(user), staleTime: Infinity })
         .catch(noop);
     } else {
       // Demo mode: use localStorage
       initializeDemoData();
       void context.queryClient
-        .query({ ...getExerciseListQueryOptions(user), staleTime: "static" })
+        .query({ ...getExerciseListQueryOptions(user), staleTime: Infinity })
         .catch(noop);
     }
   },

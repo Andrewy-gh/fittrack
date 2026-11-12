@@ -23,7 +23,6 @@ func RequestLog(logger *slog.Logger) func(http.Handler) http.Handler {
 			logAttrs := []any{
 				"method", r.Method,
 				"route", routeLabel(r),
-				"path", r.URL.Path,
 				"status", rw.statusCode,
 				"duration_ms", duration.Milliseconds(),
 				"request_id", request.GetRequestID(r.Context()),

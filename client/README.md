@@ -24,7 +24,8 @@ bun run start         # Development server (FRONTEND_PORT, default 3000)
 bun run build         # Production build
 bun run serve         # Preview production build (PREVIEW_PORT, default 4173)
 bun run serve:test    # Preview on E2E_PORT (default 5173)
-bun run openapi-ts    # Generate API client from OpenAPI spec
+bun run api:generate  # Generate Swagger, then the TypeScript API client
+bun run api:check     # Verify all generated API files are fresh (no writes)
 bun run fmt           # Format client files with oxfmt
 bun run fmt:check     # Check client formatting with oxfmt
 bun run test          # Run unit tests (Vitest)
@@ -91,13 +92,26 @@ VITE_E2E_LOCAL_AUTH_ENABLED=true
 
 ## API Client Generation
 
-TypeScript client code is auto-generated from the backend's OpenAPI spec. After the backend swagger docs are updated, regenerate with:
+After changing backend API structs or annotations, run the complete workflow
+from `client/` (Go, Node, and Bun must be on PATH):
 
 ```bash
-bun run openapi-ts
+bun install --frozen-lockfile
+bun run api:generate
+bun run api:check
+bun run tsc
 ```
 
-This reads `../server/docs/swagger.json` and outputs to `src/client/`. Always commit the generated files.
+`api:generate` first runs pinned Swag v1.16.6 to generate Swagger JSON/YAML from
+Go, then the installed `@hey-api/openapi-ts` generator with
+`openapi-ts.config.ts`, followed by formatting/lint fixes. Review and explicitly
+stage `server/docs/swagger.json`, `server/docs/swagger.yaml`, and
+`client/src/client/` with the API change. `server/docs/docs.go` is a custom
+embedding wrapper, not generated output. `bun run openapi-ts` alone only reads
+the existing spec and can miss backend changes.
+
+For managed worktree commands, generator configuration, hook staging safeguards,
+and CI freshness checks, see [API type generation](docs/api-type-generation.md).
 
 ## Adding shadcn Components
 
@@ -128,4 +142,15 @@ bun run test:e2e -- tests/e2e/auth/structured-workout-chat-import.test.ts
 
 ## PWA
 
-The app ships as a Progressive Web App. The service worker caches API responses and serves the app offline.
+The production build uses `vite-plugin-pwa` with prompt-based service-worker
+updates. Workbox precaches matching built JS, CSS, HTML, ICO, PNG, and SVG files,
+plus the configured icon assets. Cached app-shell assets can be available offline;
+this does not make authenticated API-backed features work offline.
+
+In `vite.config.js`, navigation fallback excludes `/api/` and `/handler/`.
+The only runtime cache rule is `NetworkFirst` for URLs matching
+`/^https:\/\/api\./`, with a 10-second network timeout and cacheable response
+statuses 0 and 200 in `api-cache`. Normal same-origin `/api` requests (including
+those proxied by Vite) do not match that rule. An explicitly configured HTTPS
+`api.*` host can match it; there is no general API cache, offline API guarantee,
+or offline mutation queue.

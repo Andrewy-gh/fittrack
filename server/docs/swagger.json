@@ -17,6 +17,37 @@
     },
     "basePath": "/api",
     "paths": {
+        "/account": {
+            "delete": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "description": "Cancels applicable billing subscriptions and removes FitTrack data; does not delete the authentication provider identity.",
+                "tags": [
+                    "account"
+                ],
+                "summary": "Delete the current user's application data",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/ai/chat/telemetry": {
             "post": {
                 "security": [
@@ -740,6 +771,258 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/billing/checkout-session": {
+            "post": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Create billing checkout session",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/billing.CheckoutSessionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/billing/customer-portal-session": {
+            "post": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Create billing customer portal session",
+                "parameters": [
+                    {
+                        "enum": [
+                            "chat",
+                            "settings"
+                        ],
+                        "type": "string",
+                        "description": "Return destination; unrecognized values use chat",
+                        "name": "return_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/billing.CustomerPortalSessionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/billing/status": {
+            "get": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Get current billing access and trial usage",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/billing.StatusResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/billing/subscription-cancel-portal-session": {
+            "post": {
+                "security": [
+                    {
+                        "StackAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "billing"
+                ],
+                "summary": "Create subscription cancellation portal session",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/billing.CustomerPortalSessionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -2221,6 +2504,89 @@
                 }
             }
         },
+        "billing.CheckoutSessionResponse": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "billing.CustomerPortalSessionResponse": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "billing.StatusResponse": {
+            "type": "object",
+            "required": [
+                "feature_key",
+                "has_access"
+            ],
+            "properties": {
+                "feature_key": {
+                    "type": "string"
+                },
+                "has_access": {
+                    "type": "boolean"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/billing.SubscriptionView"
+                },
+                "trial_usage": {
+                    "$ref": "#/definitions/billing.TrialUsageView"
+                }
+            }
+        },
+        "billing.SubscriptionView": {
+            "type": "object",
+            "required": [
+                "cancellation_scheduled",
+                "status",
+                "stripe_subscription_id"
+            ],
+            "properties": {
+                "access_ends_at": {
+                    "type": "string"
+                },
+                "cancellation_scheduled": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "stripe_subscription_id": {
+                    "type": "string"
+                },
+                "trial_end": {
+                    "type": "string"
+                }
+            }
+        },
+        "billing.TrialUsageView": {
+            "type": "object",
+            "required": [
+                "limit",
+                "used"
+            ],
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "used": {
+                    "type": "integer"
+                }
+            }
+        },
         "exercise.CreateExerciseRequest": {
             "type": "object",
             "required": [
@@ -2235,16 +2601,36 @@
         "exercise.CreateExerciseResponse": {
             "type": "object",
             "required": [
+                "catalog_id",
                 "created_at",
+                "historical_1rm",
+                "historical_1rm_source_workout_id",
+                "historical_1rm_updated_at",
                 "id",
                 "name",
                 "updated_at",
                 "user_id"
             ],
             "properties": {
+                "catalog_id": {
+                    "type": "string",
+                    "x-nullable": true
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
+                },
+                "historical_1rm": {
+                    "type": "number",
+                    "x-nullable": true
+                },
+                "historical_1rm_source_workout_id": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "historical_1rm_updated_at": {
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "integer",
@@ -2379,16 +2765,36 @@
         "exercise.ExerciseResponse": {
             "type": "object",
             "required": [
+                "catalog_id",
                 "created_at",
+                "historical_1rm",
+                "historical_1rm_source_workout_id",
+                "historical_1rm_updated_at",
                 "id",
                 "name",
                 "updated_at",
                 "user_id"
             ],
             "properties": {
+                "catalog_id": {
+                    "type": "string",
+                    "x-nullable": true
+                },
                 "created_at": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
+                },
+                "historical_1rm": {
+                    "type": "number",
+                    "x-nullable": true
+                },
+                "historical_1rm_source_workout_id": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "historical_1rm_updated_at": {
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "id": {
                     "type": "integer",
@@ -2484,9 +2890,13 @@
             "type": "object",
             "required": [
                 "created_at",
+                "exercise_order",
                 "reps",
                 "set_id",
+                "set_order",
+                "weight",
                 "workout_date",
+                "workout_focus",
                 "workout_id"
             ],
             "properties": {
@@ -2512,11 +2922,16 @@
                 },
                 "weight": {
                     "type": "number",
+                    "x-nullable": true,
                     "example": 225.5
                 },
                 "workout_date": {
                     "type": "string",
                     "example": "2023-01-01T15:04:05Z"
+                },
+                "workout_focus": {
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "workout_id": {
                     "type": "integer",
@@ -2736,6 +3151,16 @@
         },
         "trainingprofile.ProfileResponse": {
             "type": "object",
+            "required": [
+                "available_equipment",
+                "avoided_exercises",
+                "experience_level",
+                "goals",
+                "movement_limitations",
+                "preferred_session_duration_minutes",
+                "primary_goal",
+                "usual_training_location"
+            ],
             "properties": {
                 "available_equipment": {
                     "type": "array",
@@ -2750,7 +3175,8 @@
                     }
                 },
                 "experience_level": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "goals": {
                     "type": "array",
@@ -2766,13 +3192,16 @@
                     "x-nullable": true
                 },
                 "preferred_session_duration_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "primary_goal": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "usual_training_location": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
@@ -2792,7 +3221,8 @@
                     }
                 },
                 "experience_level": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "goals": {
                     "type": "array",
@@ -2808,18 +3238,30 @@
                     "x-nullable": true
                 },
                 "preferred_session_duration_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "primary_goal": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 },
                 "usual_training_location": {
-                    "type": "string"
+                    "type": "string",
+                    "x-nullable": true
                 }
             }
         },
         "workout.AssessmentSession": {
             "type": "object",
+            "required": [
+                "date",
+                "invalidWorkingSets",
+                "reason",
+                "reasonCode",
+                "state",
+                "workingSets",
+                "workoutId"
+            ],
             "properties": {
                 "date": {
                     "type": "string"
@@ -2834,7 +3276,12 @@
                     "type": "string"
                 },
                 "state": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "below_reference",
+                        "reference_met",
+                        "cannot_assess"
+                    ]
                 },
                 "workingSets": {
                     "type": "integer"
@@ -2877,6 +3324,14 @@
         },
         "workout.ContributionExercise": {
             "type": "object",
+            "required": [
+                "catalogId",
+                "exerciseId",
+                "invalidWorkingSets",
+                "name",
+                "roles",
+                "workingSets"
+            ],
             "properties": {
                 "catalogId": {
                     "type": "string"
@@ -2920,7 +3375,8 @@
                 },
                 "notes": {
                     "type": "string",
-                    "maxLength": 256
+                    "maxLength": 256,
+                    "x-nullable": true
                 },
                 "recommendations": {
                     "type": "array",
@@ -2931,12 +3387,22 @@
                 },
                 "workoutFocus": {
                     "type": "string",
-                    "maxLength": 256
+                    "maxLength": 256,
+                    "x-nullable": true
                 }
             }
         },
         "workout.EvidencePeriod": {
             "type": "object",
+            "required": [
+                "endAt",
+                "endDate",
+                "observedAt",
+                "partial",
+                "startAt",
+                "startDate",
+                "timezone"
+            ],
             "properties": {
                 "endAt": {
                     "type": "string"
@@ -3031,6 +3497,14 @@
         },
         "workout.MuscleContribution": {
             "type": "object",
+            "required": [
+                "directSets",
+                "indirectSets",
+                "invalidMappedSets",
+                "invalidUnresolvedSets",
+                "muscle",
+                "unresolvedSets"
+            ],
             "properties": {
                 "directSets": {
                     "type": "integer"
@@ -3054,6 +3528,18 @@
         },
         "workout.MuscleContributions": {
             "type": "object",
+            "required": [
+                "catalogVersion",
+                "classificationBasis",
+                "exercises",
+                "invalidWorkingSets",
+                "mappingVersion",
+                "muscles",
+                "period",
+                "unclassifiedSets",
+                "unreviewedSets",
+                "workingSets"
+            ],
             "properties": {
                 "catalogVersion": {
                     "type": "string"
@@ -3128,12 +3614,26 @@
                 "weight": {
                     "type": "number",
                     "maximum": 999999999.9,
-                    "minimum": 0
+                    "minimum": 0,
+                    "x-nullable": true
                 }
             }
         },
         "workout.StrengthAssessment": {
             "type": "object",
+            "required": [
+                "applicability",
+                "exerciseId",
+                "limitations",
+                "period",
+                "policyVersion",
+                "reference",
+                "sessions",
+                "sessionsMeetingReference",
+                "sourceUrl",
+                "trainingDays",
+                "workingSets"
+            ],
             "properties": {
                 "applicability": {
                     "type": "string"
@@ -3221,7 +3721,8 @@
                 "weight": {
                     "type": "number",
                     "maximum": 999999999.9,
-                    "minimum": 0
+                    "minimum": 0,
+                    "x-nullable": true
                 }
             }
         },
@@ -3244,11 +3745,13 @@
                 },
                 "notes": {
                     "type": "string",
-                    "maxLength": 256
+                    "maxLength": 256,
+                    "x-nullable": true
                 },
                 "workoutFocus": {
                     "type": "string",
-                    "maxLength": 256
+                    "maxLength": 256,
+                    "x-nullable": true
                 }
             }
         },

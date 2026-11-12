@@ -4,6 +4,7 @@ import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
 
 import { client } from "../client.gen";
 import {
+  deleteAccount,
   deleteAiConversations,
   deleteAiConversationsById,
   deleteExercisesById,
@@ -11,6 +12,7 @@ import {
   getAiConversations,
   getAiConversationsById,
   getAnalyticsMuscleContributions,
+  getBillingStatus,
   getExerciseCatalog,
   getExercises,
   getExercisesById,
@@ -33,6 +35,9 @@ import {
   postAiConversationsByIdLatestWorkoutDraftSave,
   postAiConversationsByIdMessagesRecover,
   postAiConversationsByIdRunsByRunIdStop,
+  postBillingCheckoutSession,
+  postBillingCustomerPortalSession,
+  postBillingSubscriptionCancelPortalSession,
   postExercises,
   postWorkouts,
   putExercisesByIdCatalog,
@@ -40,6 +45,8 @@ import {
   putWorkoutsById,
 } from "../sdk.gen";
 import type {
+  DeleteAccountData,
+  DeleteAccountError,
   DeleteAiConversationsByIdData,
   DeleteAiConversationsByIdError,
   DeleteAiConversationsData,
@@ -57,6 +64,9 @@ import type {
   GetAnalyticsMuscleContributionsData,
   GetAnalyticsMuscleContributionsError,
   GetAnalyticsMuscleContributionsResponse,
+  GetBillingStatusData,
+  GetBillingStatusError,
+  GetBillingStatusResponse,
   GetExerciseCatalogData,
   GetExerciseCatalogError,
   GetExerciseCatalogResponse,
@@ -117,6 +127,15 @@ import type {
   PostAiConversationsData,
   PostAiConversationsError,
   PostAiConversationsResponse,
+  PostBillingCheckoutSessionData,
+  PostBillingCheckoutSessionError,
+  PostBillingCheckoutSessionResponse,
+  PostBillingCustomerPortalSessionData,
+  PostBillingCustomerPortalSessionError,
+  PostBillingCustomerPortalSessionResponse,
+  PostBillingSubscriptionCancelPortalSessionData,
+  PostBillingSubscriptionCancelPortalSessionError,
+  PostBillingSubscriptionCancelPortalSessionResponse,
   PostExercisesData,
   PostExercisesError,
   PostExercisesResponse,
@@ -131,6 +150,35 @@ import type {
   PutWorkoutsByIdData,
   PutWorkoutsByIdError,
 } from "../types.gen";
+
+/**
+ * Delete the current user's application data
+ *
+ * Cancels applicable billing subscriptions and removes FitTrack data; does not delete the authentication provider identity.
+ */
+export const deleteAccountMutation = (
+  options?: Partial<Options<DeleteAccountData>>,
+): UseMutationOptions<
+  unknown,
+  DeleteAccountError,
+  Options<DeleteAccountData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    DeleteAccountError,
+    Options<DeleteAccountData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await deleteAccount({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
 
 /**
  * Record AI chat telemetry
@@ -465,6 +513,115 @@ export const getAnalyticsMuscleContributionsQueryOptions = (
     },
     queryKey: getAnalyticsMuscleContributionsQueryKey(options),
   });
+
+/**
+ * Create billing checkout session
+ */
+export const postBillingCheckoutSessionMutation = (
+  options?: Partial<Options<PostBillingCheckoutSessionData>>,
+): UseMutationOptions<
+  PostBillingCheckoutSessionResponse,
+  PostBillingCheckoutSessionError,
+  Options<PostBillingCheckoutSessionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostBillingCheckoutSessionResponse,
+    PostBillingCheckoutSessionError,
+    Options<PostBillingCheckoutSessionData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await postBillingCheckoutSession({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Create billing customer portal session
+ */
+export const postBillingCustomerPortalSessionMutation = (
+  options?: Partial<Options<PostBillingCustomerPortalSessionData>>,
+): UseMutationOptions<
+  PostBillingCustomerPortalSessionResponse,
+  PostBillingCustomerPortalSessionError,
+  Options<PostBillingCustomerPortalSessionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostBillingCustomerPortalSessionResponse,
+    PostBillingCustomerPortalSessionError,
+    Options<PostBillingCustomerPortalSessionData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await postBillingCustomerPortalSession({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getBillingStatusQueryKey = (
+  options?: Options<GetBillingStatusData>,
+) => createQueryKey("getBillingStatus", options, false, ["billing"]);
+
+/**
+ * Get current billing access and trial usage
+ */
+export const getBillingStatusQueryOptions = (
+  options?: Options<GetBillingStatusData>,
+) =>
+  queryOptions<
+    GetBillingStatusResponse,
+    GetBillingStatusError,
+    GetBillingStatusResponse,
+    ReturnType<typeof getBillingStatusQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getBillingStatus({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getBillingStatusQueryKey(options),
+  });
+
+/**
+ * Create subscription cancellation portal session
+ */
+export const postBillingSubscriptionCancelPortalSessionMutation = (
+  options?: Partial<Options<PostBillingSubscriptionCancelPortalSessionData>>,
+): UseMutationOptions<
+  PostBillingSubscriptionCancelPortalSessionResponse,
+  PostBillingSubscriptionCancelPortalSessionError,
+  Options<PostBillingSubscriptionCancelPortalSessionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    PostBillingSubscriptionCancelPortalSessionResponse,
+    PostBillingSubscriptionCancelPortalSessionError,
+    Options<PostBillingSubscriptionCancelPortalSessionData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await postBillingSubscriptionCancelPortalSession({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
 
 export const getExerciseCatalogQueryKey = (
   options?: Options<GetExerciseCatalogData>,

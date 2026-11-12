@@ -26,6 +26,15 @@ func NewHandler(logger *slog.Logger, service accountService) *Handler {
 	}
 }
 
+// DeleteAccount godoc
+// @Summary Delete the current user's application data
+// @Description Cancels applicable billing subscriptions and removes FitTrack data; does not delete the authentication provider identity.
+// @Tags account
+// @Security StackAuth
+// @Success 204 "No Content"
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /account [delete]
 func (h *Handler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	err := h.service.DeleteCurrentUser(r.Context())
 	if err != nil {

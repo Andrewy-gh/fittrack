@@ -37,32 +37,32 @@ type MuscleContributionQuerier interface {
 	ListMuscleContributionSets(context.Context, db.ListMuscleContributionSetsParams) ([]db.ListMuscleContributionSetsRow, error)
 }
 type MuscleContribution struct {
-	Muscle                string `json:"muscle"`
-	DirectSets            int    `json:"directSets"`
-	IndirectSets          int    `json:"indirectSets"`
-	UnresolvedSets        int    `json:"unresolvedSets"`
-	InvalidMappedSets     int    `json:"invalidMappedSets"`
-	InvalidUnresolvedSets int    `json:"invalidUnresolvedSets"`
+	Muscle                string `json:"muscle" validate:"required"`
+	DirectSets            int    `json:"directSets" validate:"required"`
+	IndirectSets          int    `json:"indirectSets" validate:"required"`
+	UnresolvedSets        int    `json:"unresolvedSets" validate:"required"`
+	InvalidMappedSets     int    `json:"invalidMappedSets" validate:"required"`
+	InvalidUnresolvedSets int    `json:"invalidUnresolvedSets" validate:"required"`
 }
 type ContributionExercise struct {
-	ExerciseID         int32             `json:"exerciseId"`
-	Name               string            `json:"name"`
-	CatalogID          string            `json:"catalogId"`
-	WorkingSets        int               `json:"workingSets"`
-	InvalidWorkingSets int               `json:"invalidWorkingSets"`
-	Roles              map[string]string `json:"roles"`
+	ExerciseID         int32             `json:"exerciseId" validate:"required"`
+	Name               string            `json:"name" validate:"required"`
+	CatalogID          string            `json:"catalogId" validate:"required"`
+	WorkingSets        int               `json:"workingSets" validate:"required"`
+	InvalidWorkingSets int               `json:"invalidWorkingSets" validate:"required"`
+	Roles              map[string]string `json:"roles" validate:"required"`
 }
 type MuscleContributions struct {
-	Period              EvidencePeriod         `json:"period"`
-	Muscles             []MuscleContribution   `json:"muscles"`
-	Exercises           []ContributionExercise `json:"exercises"`
-	WorkingSets         int                    `json:"workingSets"`
-	InvalidWorkingSets  int                    `json:"invalidWorkingSets"`
-	UnclassifiedSets    int                    `json:"unclassifiedSets"`
-	UnreviewedSets      int                    `json:"unreviewedSets"`
-	MappingVersion      string                 `json:"mappingVersion"`
-	CatalogVersion      string                 `json:"catalogVersion"`
-	ClassificationBasis string                 `json:"classificationBasis"`
+	Period              EvidencePeriod         `json:"period" validate:"required"`
+	Muscles             []MuscleContribution   `json:"muscles" validate:"required"`
+	Exercises           []ContributionExercise `json:"exercises" validate:"required"`
+	WorkingSets         int                    `json:"workingSets" validate:"required"`
+	InvalidWorkingSets  int                    `json:"invalidWorkingSets" validate:"required"`
+	UnclassifiedSets    int                    `json:"unclassifiedSets" validate:"required"`
+	UnreviewedSets      int                    `json:"unreviewedSets" validate:"required"`
+	MappingVersion      string                 `json:"mappingVersion" validate:"required"`
+	CatalogVersion      string                 `json:"catalogVersion" validate:"required"`
+	ClassificationBasis string                 `json:"classificationBasis" validate:"required"`
 }
 type MuscleContributionService struct {
 	queries MuscleContributionQuerier

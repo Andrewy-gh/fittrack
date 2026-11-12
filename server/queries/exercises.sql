@@ -23,7 +23,7 @@ FROM exercise e
 WHERE e.id = $1 AND e.user_id = $2;
 
 -- name: ListExercises :many
-SELECT id, name, catalog_id FROM exercise WHERE user_id = $1 ORDER BY name;
+SELECT id, name, catalog_id, created_at, updated_at FROM exercise WHERE user_id = $1 ORDER BY name;
 
 -- name: GetExerciseWithSets :many
 SELECT 
@@ -200,7 +200,7 @@ ORDER BY workout_day ASC, workout_id ASC;
 INSERT INTO exercise (name, user_id)
 VALUES ($1, $2)
 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name
-RETURNING id;
+RETURNING id, name, catalog_id, created_at, updated_at;
 
 -- name: DeleteExercise :exec
 DELETE FROM exercise WHERE id = $1 AND user_id = $2;

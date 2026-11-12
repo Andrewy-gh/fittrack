@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   updateExercise,
+  createWorkout,
+  updateWorkout,
+  getExerciseRecentSets,
   getExerciseDetail,
   getAllExercises,
   getAllWorkouts,
@@ -23,6 +26,47 @@ function getInitialExercise(name: string) {
   if (!exercise) throw new Error(`Missing initial demo exercise: ${name}`);
   return exercise;
 }
+
+it("round-trips nullable generated workout inputs without losing demo sets", () => {
+  const workout = {
+    date: "2026-03-15T10:00:00Z",
+    notes: null,
+    workoutFocus: null,
+    exercises: [
+      {
+        name: "Contract press",
+        sets: [
+          { reps: 10, weight: null, setType: "working" },
+          { reps: 10, weight: 0, setType: "working" },
+          { reps: 10, weight: 12.5, setType: "working" },
+        ],
+      },
+    ],
+  } satisfies import("@/client/types.gen").WorkoutCreateWorkoutRequest;
+  expect(createWorkout(workout)).toEqual({ success: true });
+  const saved = getAllWorkouts()[0];
+  const exercise = getAllExercises()[0];
+  if (!saved || !exercise) throw new Error("Missing saved demo workout");
+  expect(getWorkoutById(saved.id).map((set) => set.weight)).toEqual([
+    undefined,
+    0,
+    12.5,
+  ]);
+  expect(getExerciseRecentSets(exercise.id).map((set) => set.weight)).toEqual([
+    null,
+    0,
+    12.5,
+  ]);
+  expect(
+    updateWorkout(saved.id, { ...workout, notes: "", workoutFocus: "" }),
+  ).toEqual({ success: true });
+  expect(getWorkoutById(saved.id).map((set) => set.weight)).toEqual([
+    undefined,
+    0,
+    12.5,
+  ]);
+  expect(getAllWorkouts()[0]?.notes).toBe("");
+});
 
 describe("updateExercise", () => {
   it("should successfully update exercise name", () => {
@@ -121,6 +165,10 @@ describe("updateExercise", () => {
 
     expect(getAllExercises()).toEqual([
       {
+        catalog_id: null,
+        historical_1rm: null,
+        historical_1rm_source_workout_id: null,
+        historical_1rm_updated_at: null,
         id: 1,
         name: "Bench Press",
         user_id: "demo-user",

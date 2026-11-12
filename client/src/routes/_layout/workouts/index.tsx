@@ -14,15 +14,15 @@ export const Route = createFileRoute("/_layout/workouts/")({
     if (user) {
       clearDemoData();
       void context.queryClient
-        .query({ ...getWorkoutListQueryOptions(user), staleTime: "static" })
+        .query({ ...getWorkoutListQueryOptions(user), staleTime: Infinity })
         .catch(noop);
       void context.queryClient
-        .query({ ...contributionDataQueryOptions(), staleTime: "static" })
+        .query({ ...contributionDataQueryOptions(), staleTime: Infinity })
         .catch(noop);
     } else {
       initializeDemoData();
       void context.queryClient
-        .query({ ...getWorkoutListQueryOptions(user), staleTime: "static" })
+        .query({ ...getWorkoutListQueryOptions(user), staleTime: Infinity })
         .catch(noop);
     }
   },

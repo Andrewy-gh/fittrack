@@ -31,31 +31,31 @@ var (
 )
 
 type CheckoutSessionResponse struct {
-	URL string `json:"url"`
+	URL string `json:"url" validate:"required"`
 }
 
 type CustomerPortalSessionResponse struct {
-	URL string `json:"url"`
+	URL string `json:"url" validate:"required"`
 }
 
 type StatusResponse struct {
-	FeatureKey   string            `json:"feature_key"`
-	HasAccess    bool              `json:"has_access"`
+	FeatureKey   string            `json:"feature_key" validate:"required"`
+	HasAccess    bool              `json:"has_access" validate:"required"`
 	Subscription *SubscriptionView `json:"subscription,omitempty"`
 	TrialUsage   *TrialUsageView   `json:"trial_usage,omitempty"`
 }
 
 type SubscriptionView struct {
-	StripeSubscriptionID  string     `json:"stripe_subscription_id"`
-	Status                string     `json:"status"`
-	CancellationScheduled bool       `json:"cancellation_scheduled"`
+	StripeSubscriptionID  string     `json:"stripe_subscription_id" validate:"required"`
+	Status                string     `json:"status" validate:"required"`
+	CancellationScheduled bool       `json:"cancellation_scheduled" validate:"required"`
 	AccessEndsAt          *time.Time `json:"access_ends_at,omitempty"`
 	TrialEnd              *time.Time `json:"trial_end,omitempty"`
 }
 
 type TrialUsageView struct {
-	Used  int32 `json:"used"`
-	Limit int32 `json:"limit"`
+	Used  int32 `json:"used" validate:"required"`
+	Limit int32 `json:"limit" validate:"required"`
 }
 
 type StripeSubscriptionSnapshot struct {

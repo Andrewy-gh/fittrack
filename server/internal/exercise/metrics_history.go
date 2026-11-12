@@ -2,11 +2,13 @@ package exercise
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5"
 )
 
 type MetricsHistoryBucket string
@@ -38,8 +40,11 @@ func (es *ExerciseService) GetExerciseMetricsHistory(ctx context.Context, exerci
 	}
 
 	_, err := es.repo.GetExercise(ctx, exerciseID, userID)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, &apperrors.NotFound{Resource: "exercise", ID: fmt.Sprintf("%d", exerciseID)}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to look up exercise before loading metrics history: %w", err)
 	}
 
 	points, bucket, err := es.repo.GetExerciseMetricsHistory(ctx, exerciseID, userID)

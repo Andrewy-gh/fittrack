@@ -33,6 +33,19 @@ func NewHandler(logger *slog.Logger, service billingService) *Handler {
 	}
 }
 
+// CreateCheckoutSession godoc
+// @Summary Create billing checkout session
+// @Tags billing
+// @Produce json
+// @Security StackAuth
+// @Success 200 {object} billing.CheckoutSessionResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 409 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Failure 503 {object} response.ErrorResponse
+// @Router /billing/checkout-session [post]
 func (h *Handler) CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.CreateCheckoutSession(r.Context())
 	if err != nil {
@@ -45,6 +58,20 @@ func (h *Handler) CreateCheckoutSession(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// CreateCustomerPortalSession godoc
+// @Summary Create billing customer portal session
+// @Tags billing
+// @Produce json
+// @Security StackAuth
+// @Param return_to query string false "Return destination; unrecognized values use chat" Enums(chat,settings)
+// @Success 200 {object} billing.CustomerPortalSessionResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 409 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Failure 503 {object} response.ErrorResponse
+// @Router /billing/customer-portal-session [post]
 func (h *Handler) CreateCustomerPortalSession(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.CreateCustomerPortalSession(r.Context(), parsePortalReturnDestination(r))
 	if err != nil {
@@ -64,6 +91,19 @@ func parsePortalReturnDestination(r *http.Request) PortalReturnDestination {
 	return PortalReturnChat
 }
 
+// CreateSubscriptionCancelPortalSession godoc
+// @Summary Create subscription cancellation portal session
+// @Tags billing
+// @Produce json
+// @Security StackAuth
+// @Success 200 {object} billing.CustomerPortalSessionResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 409 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Failure 503 {object} response.ErrorResponse
+// @Router /billing/subscription-cancel-portal-session [post]
 func (h *Handler) CreateSubscriptionCancelPortalSession(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.CreateSubscriptionCancelPortalSession(r.Context())
 	if err != nil {
@@ -76,6 +116,19 @@ func (h *Handler) CreateSubscriptionCancelPortalSession(w http.ResponseWriter, r
 	}
 }
 
+// CurrentStatus godoc
+// @Summary Get current billing access and trial usage
+// @Tags billing
+// @Produce json
+// @Security StackAuth
+// @Success 200 {object} billing.StatusResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 409 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Failure 503 {object} response.ErrorResponse
+// @Router /billing/status [get]
 func (h *Handler) CurrentStatus(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.CurrentStatus(r.Context())
 	if err != nil {

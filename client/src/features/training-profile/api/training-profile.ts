@@ -4,25 +4,20 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { client } from "@/client/client.gen";
+import type {
+  TrainingprofileProfileResponse,
+  TrainingprofileUpdateProfileRequest,
+  GetTrainingProfileResponses,
+  PutTrainingProfileResponses,
+} from "@/client/types.gen";
 import type { ApiError } from "@/lib/errors";
 import "@/lib/api/client-config";
 
-export type TrainingProfile = {
-  primary_goal: string | null;
-  goals: string[];
-  experience_level: string | null;
-  preferred_session_duration_minutes: number | null;
-  usual_training_location: string | null;
-  available_equipment: string[];
-  avoided_exercises: string[];
-  movement_limitations: string[] | null;
-};
+/** Profile returned by the server, including explicit nullable fields. */
+export type TrainingProfile = TrainingprofileProfileResponse;
 
-export type UpdateTrainingProfileRequest = TrainingProfile;
-
-type TrainingProfileResponses = {
-  200: TrainingProfile;
-};
+/** Server-supported profile update fields. */
+export type UpdateTrainingProfileRequest = TrainingprofileUpdateProfileRequest;
 
 /** Keeps authenticated profile reads scoped to the current account. */
 export function trainingProfileQueryOptions(userId: string) {
@@ -37,7 +32,11 @@ export async function getTrainingProfile(
     signal?: AbortSignal;
   } = {},
 ): Promise<TrainingProfile> {
-  const response = await client.get<TrainingProfileResponses, ApiError, true>({
+  const response = await client.get<
+    GetTrainingProfileResponses,
+    ApiError,
+    true
+  >({
     url: "/training-profile",
     signal: options.signal,
     throwOnError: true,
@@ -49,7 +48,11 @@ export async function getTrainingProfile(
 export async function updateTrainingProfile(
   body: UpdateTrainingProfileRequest,
 ): Promise<TrainingProfile> {
-  const response = await client.put<TrainingProfileResponses, ApiError, true>({
+  const response = await client.put<
+    PutTrainingProfileResponses,
+    ApiError,
+    true
+  >({
     url: "/training-profile",
     body,
     throwOnError: true,

@@ -1,39 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/client/client.gen";
+import type {
+  WorkoutMuscleContributions,
+  GetAnalyticsMuscleContributionsResponses,
+} from "@/client/types.gen";
 import type { ApiError } from "@/lib/errors";
 import "@/lib/api/client-config";
 
-export type MuscleContributions = {
-  period: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
-    partial: boolean;
-  };
-  workingSets: number;
-  invalidWorkingSets: number;
-  unclassifiedSets: number;
-  unreviewedSets: number;
-  mappingVersion: string;
-  catalogVersion: string;
-  classificationBasis: string;
-  muscles: {
-    muscle: string;
-    directSets: number;
-    indirectSets: number;
-    unresolvedSets: number;
-    invalidMappedSets: number;
-    invalidUnresolvedSets: number;
-  }[];
-  exercises: {
-    exerciseId: number;
-    name: string;
-    catalogId: string;
-    workingSets: number;
-    invalidWorkingSets: number;
-    roles: Record<string, string>;
-  }[];
-};
+/** Server-generated muscle contribution summary. */
+export type MuscleContributions = WorkoutMuscleContributions;
 export function muscleContributionsQueryOptions(
   userId: string,
   startDate: string,
@@ -43,7 +18,7 @@ export function muscleContributionsQueryOptions(
     queryKey: ["muscle-contributions", userId, startDate, timezone],
     queryFn: async ({ signal }) => {
       const response = await client.get<
-        { 200: MuscleContributions },
+        GetAnalyticsMuscleContributionsResponses,
         ApiError,
         true
       >({

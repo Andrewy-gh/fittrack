@@ -18,15 +18,15 @@ export const Route = createFileRoute("/_layout/analytics")({
       await Promise.all([
         context.queryClient.query({
           ...getExerciseListQueryOptions(user),
-          staleTime: "static",
+          staleTime: Infinity,
         }),
         context.queryClient.query({
           ...getWorkoutContributionQueryOptions(user),
-          staleTime: "static",
+          staleTime: Infinity,
         }),
         context.queryClient.query({
           ...getWorkoutsFocusQueryOptions(user),
-          staleTime: "static",
+          staleTime: Infinity,
         }),
       ]);
     } else {
@@ -34,15 +34,15 @@ export const Route = createFileRoute("/_layout/analytics")({
       await Promise.all([
         context.queryClient.query({
           ...getExerciseListQueryOptions(user),
-          staleTime: "static",
+          staleTime: Infinity,
         }),
         context.queryClient.query({
           ...getWorkoutContributionQueryOptions(user),
-          staleTime: "static",
+          staleTime: Infinity,
         }),
         context.queryClient.query({
           ...getWorkoutsFocusQueryOptions(user),
-          staleTime: "static",
+          staleTime: Infinity,
         }),
       ]);
     }

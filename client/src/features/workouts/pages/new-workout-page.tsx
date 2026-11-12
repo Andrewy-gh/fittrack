@@ -2,7 +2,6 @@ import { Suspense, type ReactNode } from "react";
 import { type WorkoutFocus } from "@/features/workouts/api/workouts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MiniChart } from "@/features/workouts/components/form/mini-chart";
 import { X } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import type { ApplicationUser } from "@/lib/application-user";
@@ -95,12 +94,6 @@ function WorkoutExerciseSection({
         }}
         formatVolume={formatVolume}
         renderNameSupplement={renderExerciseGoalSummary}
-        renderMetrics={() => (
-          <MiniChart
-            data={[3, 5, 2, 4, 6, 3, 4]}
-            activeIndex={6}
-          />
-        )}
       />
 
       <WorkoutFormActions

@@ -1,3 +1,7 @@
+-- Canonical storage representation for SQLC, not a deployment bootstrap.
+-- Runtime security/functions/grants live in migrations and role provisioning.
+-- See schema-verification.md for disposable-database parity verification.
+
 -- Users table
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -106,7 +110,7 @@ CREATE TABLE ai_chat_message (
         role IN ('user', 'assistant')
     ),
     CONSTRAINT ai_chat_message_status_valid CHECK (
-        status IN ('streaming', 'completed', 'failed')
+        status IN ('streaming', 'completed', 'failed', 'stopped')
     ),
     CONSTRAINT ai_chat_message_error_not_empty CHECK (
         error_message IS NULL OR btrim(error_message) <> ''
@@ -138,7 +142,7 @@ CREATE TABLE ai_chat_run (
     started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMPTZ,
     CONSTRAINT ai_chat_run_status_valid CHECK (
-        status IN ('streaming', 'completed', 'failed')
+        status IN ('streaming', 'completed', 'failed', 'stopped')
     ),
     CONSTRAINT ai_chat_run_model_not_empty CHECK (btrim(model) <> ''),
     CONSTRAINT ai_chat_run_request_id_not_empty CHECK (
@@ -148,7 +152,7 @@ CREATE TABLE ai_chat_run (
         error_message IS NULL OR btrim(error_message) <> ''
     ),
     CONSTRAINT ai_chat_run_generation_status_valid CHECK (
-        generation_status IN ('queued', 'generating', 'completed', 'failed', 'interrupted')
+        generation_status IN ('queued', 'generating', 'completed', 'failed', 'interrupted', 'stopped')
     ),
     CONSTRAINT ai_chat_run_generation_owner_not_empty CHECK (
         generation_owner IS NULL OR btrim(generation_owner) <> ''
@@ -254,7 +258,7 @@ CREATE TABLE workout (
     date TIMESTAMPTZ NOT NULL,
     notes VARCHAR(256),
     workout_focus VARCHAR(256),
-    recommendation_context JSONB NOT NULL DEFAULT '[]'::jsonb,
+    recommendation_context JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(recommendation_context) = 'array'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
@@ -295,9 +299,9 @@ CREATE TABLE exercise (
     historical_1rm_updated_at TIMESTAMPTZ,
     historical_1rm_source_workout_id INTEGER REFERENCES workout(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name)
+    CONSTRAINT exercise_user_id_name_key UNIQUE NULLS NOT DISTINCT (user_id, name)
 );
 
 -- Sets table
@@ -316,6 +320,12 @@ CREATE TABLE "set" (
     CONSTRAINT weight_non_negative CHECK (weight IS NULL OR weight >= 0)
 );
 
+-- The conversation/run cycle and later-created workout table require these
+-- references after all three tables exist (migration 00020).
+ALTER TABLE ai_chat_conversation
+    ADD FOREIGN KEY (latest_workout_draft_source_run_id) REFERENCES ai_chat_run(id) ON DELETE SET NULL,
+    ADD FOREIGN KEY (latest_workout_draft_saved_workout_id) REFERENCES workout(id) ON DELETE SET NULL;
+
 -- Indexes for foreign keys
 CREATE INDEX idx_set_exercise_id ON "set"(exercise_id);
 CREATE INDEX idx_set_workout_id ON "set"(workout_id);
@@ -326,6 +336,7 @@ CREATE INDEX idx_set_user_exercise_id ON "set"(user_id, exercise_id);
 CREATE INDEX idx_workout_user_id ON workout(user_id);
 CREATE INDEX idx_exercise_user_id ON exercise(user_id);
 CREATE INDEX idx_workout_user_date ON workout(user_id, date);
+CREATE INDEX idx_workout_user_focus ON workout(user_id, workout_focus);
 CREATE INDEX idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_key, starts_at DESC);
 CREATE INDEX idx_user_feature_access_active_lookup ON user_feature_access(user_id, starts_at DESC) WHERE revoked_at IS NULL;
 CREATE INDEX idx_stripe_subscriptions_user_updated ON stripe_subscriptions(user_id, stripe_event_created_at DESC);

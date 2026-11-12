@@ -78,11 +78,11 @@ ORDER BY s.exercise_order, s.set_order, s.id;
 -- name: UpdateWorkout :one
 UPDATE workout
 SET
-    date = COALESCE($2, date),
-    notes = COALESCE($3, notes),
-    workout_focus = COALESCE($4, workout_focus),
+    date = COALESCE(sqlc.narg(date)::timestamptz, date),
+    notes = CASE WHEN sqlc.arg(update_notes)::boolean THEN sqlc.narg(notes)::text ELSE notes END,
+    workout_focus = CASE WHEN sqlc.arg(update_workout_focus)::boolean THEN sqlc.narg(workout_focus)::text ELSE workout_focus END,
     updated_at = NOW()
-WHERE id = $1 AND user_id = $5
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
 RETURNING id;
 
 -- name: UpdateSet :one

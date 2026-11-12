@@ -1,6 +1,6 @@
 module github.com/Andrewy-gh/fittrack/server
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/firebase/genkit/go v1.14.0

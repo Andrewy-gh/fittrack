@@ -118,6 +118,11 @@ func (ws *WorkoutService) GetWorkoutWithSets(ctx context.Context, id int32) (*Wo
 	if !ok {
 		return nil, &apperrors.Unauthorized{Resource: "workout", UserID: ""}
 	}
+	if _, err := ws.repo.GetWorkout(ctx, id, userID); errors.Is(err, pgx.ErrNoRows) {
+		return nil, &apperrors.NotFound{Resource: "workout", ID: fmt.Sprintf("%d", id)}
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to look up workout: %w", err)
+	}
 	workoutWithSets, err := ws.repo.GetWorkoutWithSets(ctx, id, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workout with sets: %w", err)

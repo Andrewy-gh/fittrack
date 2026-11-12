@@ -23,6 +23,7 @@ const WorkoutSetSchema = v.object({
 });
 
 const WorkoutExerciseSchema = v.object({
+  catalog_id: v.optional(v.string()),
   name: v.string(),
   sets: v.array(WorkoutSetSchema),
 });

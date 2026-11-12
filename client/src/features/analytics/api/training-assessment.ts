@@ -1,34 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/client/client.gen";
+import type {
+  WorkoutStrengthAssessment,
+  GetExercisesByIdAssessmentResponses,
+} from "@/client/types.gen";
 import type { ApiError } from "@/lib/errors";
 import "@/lib/api/client-config";
 
-export type StrengthAssessment = {
-  exerciseId: number;
-  period: {
-    startDate: string;
-    endDate: string;
-    timezone: string;
-    partial: boolean;
-  };
-  sessions: {
-    workoutId: number;
-    date: string;
-    workingSets: number;
-    invalidWorkingSets: number;
-    reasonCode: string;
-    state: "below_reference" | "reference_met" | "cannot_assess";
-    reason: string;
-  }[];
-  workingSets: number;
-  trainingDays: number;
-  sessionsMeetingReference: number;
-  reference: string;
-  sourceUrl: string;
-  applicability: string;
-  limitations: string[];
-  policyVersion: string;
-};
+/** Server-generated strength assessment. */
+export type StrengthAssessment = WorkoutStrengthAssessment;
 
 export function trainingAssessmentQueryOptions(
   userId: string,
@@ -40,7 +20,7 @@ export function trainingAssessmentQueryOptions(
     queryKey: ["training-assessment", userId, exerciseId, startDate, timezone],
     queryFn: async ({ signal }) => {
       const response = await client.get<
-        { 200: StrengthAssessment },
+        GetExercisesByIdAssessmentResponses,
         ApiError,
         true
       >({

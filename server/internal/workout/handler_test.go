@@ -126,6 +126,7 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 			name:      "successful fetch",
 			workoutID: "1",
 			setupMock: func(m *MockWorkoutRepository, id int32) {
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{ID: id}, nil)
 				m.On("GetWorkoutWithSets", mock.Anything, id, userID).Return([]db.GetWorkoutWithSetsRow{
 					{
 						WorkoutID: id,
@@ -157,9 +158,20 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 			expectedError: "Invalid workout ID",
 		},
 		{
+			name:      "workout lookup database error",
+			workoutID: "999",
+			setupMock: func(m *MockWorkoutRepository, id int32) {
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{}, assert.AnError)
+			},
+			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
+			expectedCode:  http.StatusInternalServerError,
+			expectedError: "failed to get workout with sets",
+		},
+		{
 			name:      "service error",
 			workoutID: "999",
 			setupMock: func(m *MockWorkoutRepository, id int32) {
+				m.On("GetWorkout", mock.Anything, id, userID).Return(db.Workout{ID: id}, nil)
 				m.On("GetWorkoutWithSets", mock.Anything, id, userID).Return([]db.GetWorkoutWithSetsRow{}, assert.AnError)
 			},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),

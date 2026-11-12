@@ -12,6 +12,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -64,7 +65,7 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		handler := NewHandler(logger, validate, service)
 
 		exerciseID := int32(99)
-		mockRepo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{}, errors.New("missing"))
+		mockRepo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{}, pgx.ErrNoRows)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/exercises/99/metrics-history", nil).WithContext(ctx)
 		req.SetPathValue("id", "99")
@@ -73,6 +74,23 @@ func TestExerciseHandler_GetExerciseMetricsHistory(t *testing.T) {
 		handler.GetExerciseMetricsHistory(w, req)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("database failure is internal error without leaking details", func(t *testing.T) {
+		mockRepo := new(MockExerciseRepository)
+		service := NewService(logger, mockRepo)
+		handler := NewHandler(logger, validate, service)
+		exerciseID := int32(99)
+		mockRepo.On("GetExercise", mock.Anything, exerciseID, userID).Return(db.Exercise{}, errors.New("SQL password=secret"))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/exercises/99/metrics-history", nil).WithContext(ctx)
+		req.SetPathValue("id", "99")
+		w := httptest.NewRecorder()
+		handler.GetExerciseMetricsHistory(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.NotContains(t, w.Body.String(), "SQL")
+		assert.NotContains(t, w.Body.String(), "secret")
 	})
 }
 

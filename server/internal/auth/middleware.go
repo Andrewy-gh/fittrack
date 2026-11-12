@@ -67,7 +67,7 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 		}
 
 		if userID, ok, err := a.resolveLocalE2EUserID(r); err != nil {
-			a.logger.Warn("invalid local e2e auth header", "path", r.URL.Path, "request_id", request.GetRequestID(r.Context()))
+			a.logger.Warn("invalid local e2e auth header", "route", r.Pattern, "request_id", request.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "invalid local e2e auth header", err)
 			return
 		} else if ok {
@@ -79,7 +79,7 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 
 		accessToken := r.Header.Get("x-stack-access-token")
 		if accessToken == "" {
-			a.logger.Warn("missing access token", "path", r.URL.Path, "method", r.Method, "request_id", request.GetRequestID(r.Context()))
+			a.logger.Warn("missing access token", "route", r.Pattern, "method", r.Method, "request_id", request.GetRequestID(r.Context()))
 			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "missing access token", nil)
 			return
 		}
@@ -87,7 +87,7 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 		userID, err := a.jwkCache.GetUserIDFromToken(accessToken)
 		if err != nil {
 			a.logger.Error("invalid access token",
-				"path", r.URL.Path,
+				"route", r.Pattern,
 				"method", r.Method,
 				"status", http.StatusUnauthorized,
 				"request_id", request.GetRequestID(r.Context()),
@@ -107,12 +107,15 @@ func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request,
 	// The connection pool uses it to establish the RLS session for every acquired
 	// connection, including the EnsureUser query below.
 	authCtx := user.WithContext(r.Context(), userID)
+	// Keep the verified identity visible to request-local completion observers,
+	// including when provisioning fails. WithContext alone would leave observers
+	// holding an unauthenticated request copy. No downstream handler runs yet.
+	*r = *r.WithContext(authCtx)
 	dbUser, err := a.userService.EnsureUser(authCtx, userID)
 	if err != nil {
 		a.logger.Error("failed to ensure user",
-			"userID", userID,
 			"method", r.Method,
-			"path", r.URL.Path,
+			"route", r.Pattern,
 			"status", http.StatusInternalServerError,
 			"request_id", request.GetRequestID(r.Context()),
 			"error_category", "database",
@@ -123,7 +126,8 @@ func (a *Authenticator) authenticateUser(w http.ResponseWriter, r *http.Request,
 	}
 
 	ctx := user.WithContext(authCtx, dbUser.UserID)
-	next.ServeHTTP(w, r.WithContext(ctx))
+	*r = *r.WithContext(ctx)
+	next.ServeHTTP(w, r)
 	return true
 }
 

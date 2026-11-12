@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_layout/exercises/$exerciseId")({
       void context.queryClient
         .query({
           ...getExerciseDetailQueryOptions(user, exerciseId),
-          staleTime: "static",
+          staleTime: Infinity,
         })
         .catch(noop);
     } else {
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/_layout/exercises/$exerciseId")({
       void context.queryClient
         .query({
           ...getExerciseDetailQueryOptions(user, exerciseId),
-          staleTime: "static",
+          staleTime: Infinity,
         })
         .catch(noop);
     }
