@@ -46,9 +46,12 @@ type api struct {
 	inngestHandler http.Handler
 }
 
-// New constructs the complete API application without starting its servers.
+// New configures process-wide logging and constructs the complete API application
+// without starting its servers.
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	logger := newLogger(cfg.LogLevel)
+	// AI runtime, trace and SDK logs share the application's level and JSON handler.
+	slog.SetDefault(logger)
 	logger.Info("starting application",
 		"environment", cfg.Environment,
 		"port", cfg.Port,
@@ -318,16 +321,27 @@ func buildHandlers(ctx context.Context, cfg *config.Config, logger *slog.Logger,
 		e2eAuthHandler,
 	)
 
+	return newAPIHandler(cfg, logger, router, authenticator), api.metricsHandler(), nil
+}
+
+// newAPIHandler composes the shared HTTP boundary without changing auth-before-routing ordering.
+func newAPIHandler(cfg *config.Config, logger *slog.Logger, router *http.ServeMux, authenticator *auth.Authenticator) http.Handler {
 	var handler http.Handler = router
 	handler = middleware.RateLimit(logger, int64(cfg.RateLimitRPM))(handler)
-	handler = authenticator.Middleware(handler)
+	authenticated := authenticator.Middleware(handler)
+	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Resolve only the registered template, including requests rejected before
+		// dispatch. Authentication and rate limiting still run before the router.
+		_, r.Pattern = router.Handler(r)
+		authenticated.ServeHTTP(w, r)
+	})
 	handler = middleware.Metrics()(handler)
 	handler = middleware.RequestLog(logger)(handler)
 	handler = middleware.RequestID()(handler)
 	handler = middleware.CORS(cfg.GetAllowedOrigins(), logger)(handler)
 	handler = middleware.SecurityHeaders()(handler)
 
-	return handler, api.metricsHandler(), nil
+	return handler
 }
 
 func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {

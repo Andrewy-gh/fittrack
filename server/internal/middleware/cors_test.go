@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -12,15 +14,15 @@ func TestCORS(t *testing.T) {
 	allowedOrigins := []string{"http://localhost:5173", "https://app.example.com"}
 
 	tests := []struct {
-		name                 string
-		method               string
-		origin               string
-		expectOriginHeader   bool
-		expectedOrigin       string
-		expectStatus         int
-		expectMethodsHeader  bool
-		expectHeadersHeader  bool
-		expectCredsHeader    bool
+		name                string
+		method              string
+		origin              string
+		expectOriginHeader  bool
+		expectedOrigin      string
+		expectStatus        int
+		expectMethodsHeader bool
+		expectHeadersHeader bool
+		expectCredsHeader   bool
 	}{
 		{
 			name:                "allowed origin with GET",
@@ -43,6 +45,15 @@ func TestCORS(t *testing.T) {
 			expectMethodsHeader: true,
 			expectHeadersHeader: true,
 			expectCredsHeader:   true,
+		},
+		{
+			name: "allowed origin with PATCH", method: http.MethodPatch, origin: "https://app.example.com",
+			expectOriginHeader: true, expectedOrigin: "https://app.example.com", expectStatus: http.StatusOK,
+			expectMethodsHeader: true, expectHeadersHeader: true, expectCredsHeader: true,
+		},
+		{
+			name: "disallowed origin with PATCH", method: http.MethodPatch, origin: "https://evil.com",
+			expectStatus: http.StatusOK,
 		},
 		{
 			name:                "unknown origin with GET",
@@ -104,11 +115,18 @@ func TestCORS(t *testing.T) {
 			if tt.origin != "" {
 				req.Header.Set("Origin", tt.origin)
 			}
+			if tt.method == http.MethodOptions {
+				req.Header.Set("Access-Control-Request-Method", "PATCH")
+				req.Header.Set("Access-Control-Request-Headers", "x-stack-access-token")
+			}
 
 			// Record response
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 
+			if !strings.Contains(strings.Join(rr.Header().Values("Vary"), ","), "Origin") {
+				t.Error("response must vary by Origin even when origin is absent or disallowed")
+			}
 			// Check status code
 			if rr.Code != tt.expectStatus {
 				t.Errorf("status code = %v, want %v", rr.Code, tt.expectStatus)
@@ -129,8 +147,8 @@ func TestCORS(t *testing.T) {
 			// Check Access-Control-Allow-Methods header
 			methodsHeader := rr.Header().Get("Access-Control-Allow-Methods")
 			if tt.expectMethodsHeader {
-				if methodsHeader == "" {
-					t.Error("Expected Access-Control-Allow-Methods header, got none")
+				if !strings.Contains(methodsHeader, "PATCH") {
+					t.Errorf("PATCH missing from Access-Control-Allow-Methods: %q", methodsHeader)
 				}
 			} else {
 				if methodsHeader != "" {
@@ -162,6 +180,32 @@ func TestCORS(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCORS_PreservesVary(t *testing.T) {
+	for _, existing := range [][]string{{"Accept-Encoding, Accept", "Cookie"}, {"Accept", "origin"}, {"*"}} {
+		for _, method := range []string{"OPTIONS", "PATCH"} {
+			rr := httptest.NewRecorder()
+			rr.Header()["Vary"] = append([]string(nil), existing...)
+			req := httptest.NewRequest(method, "/api/exercises/123", nil)
+			req.Header.Set("Origin", "https://allowed.test")
+			req.Header.Set("Access-Control-Request-Method", "PATCH")
+			CORS([]string{"https://allowed.test"}, slog.Default())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Add("Vary", "Accept-Language")
+				w.WriteHeader(204)
+			})).ServeHTTP(rr, req)
+			want := append([]string(nil), existing...)
+			if len(existing) == 2 && existing[1] == "Cookie" {
+				want = append(want, "Origin")
+			}
+			if method == "PATCH" {
+				want = append(want, "Accept-Language")
+			}
+			if !reflect.DeepEqual(rr.Result().Header.Values("Vary"), want) {
+				t.Errorf("%s Vary=%v want %v", method, rr.Result().Header.Values("Vary"), want)
+			}
+		}
 	}
 }
 

@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -65,6 +67,8 @@ func TestValidateRLSCompatibleDatabaseConfig(t *testing.T) {
 }
 
 func TestNewRejectsUnsafeProductionURLWithoutOptIn(t *testing.T) {
+	oldLogger, oldWriter, oldFlags := slog.Default(), log.Writer(), log.Flags()
+	t.Cleanup(func() { slog.SetDefault(oldLogger); log.SetOutput(oldWriter); log.SetFlags(oldFlags) })
 	// Call the application boundary directly, bypassing config.Load. Rejection
 	// must occur before a connection attempt, even with a canceled context.
 	ctx, cancel := context.WithCancel(context.Background())

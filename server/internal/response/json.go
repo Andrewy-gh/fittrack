@@ -170,7 +170,7 @@ func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, stat
 	requestID := request.GetRequestID(r.Context())
 	safeMessage := sanitizeErrorMessage(message, err)
 	logAttrs := []any{
-		"path", r.URL.Path,
+		"route", r.Pattern,
 		"method", r.Method,
 		"status", status,
 		"request_id", requestID,
@@ -192,7 +192,7 @@ func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, stat
 
 	if jsonErr := JSON(w, status, resp); jsonErr != nil {
 		logger.Error("failed to write error response",
-			"path", r.URL.Path,
+			"route", r.Pattern,
 			"method", r.Method,
 			"status", status,
 			"request_id", requestID,
