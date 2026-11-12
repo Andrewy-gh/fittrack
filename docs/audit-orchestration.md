@@ -83,7 +83,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 - The system reboot interrupted two prior unit commands; no completion was claimed. Head verified OS boot after both run starts and absence of their supervisor PIDs, then archived only records 8944e3e2abaddd90685ae1d15db556a4 and b488815b045bac8bf708ee4c86a94f27 under ignored `.worktree/interrupted-runs/`. Runtime status was empty before reruns.
 - Reusable local harness: ignored `C:/Users/lenny/projects/fittrack/.worktree/verify-audit.mjs`. Uses fresh in-memory passwords, an owned tmpfs container at 55432, managed test setup, full exercise/workout suites and retained SQL checks, then deletes only its owned container in finally. Goose pinned at `C:/Users/lenny/.t3/worktrees/fittrack/t3-07e11d14/.worktree/tools/goose.exe`. Do not persist credentials or use generic/shared DATABASE_URL. Serialize prepare against other wrapped commands: admission correctly refused a prepare attempted while a unit command was running.
 - No disposable audit container remains. The preexisting PostgreSQL 15/16 data was never modified; after reboot no preexisting container was restarted by the head.
-- Fourteen findings are accepted: A001–A007, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. A088 remains untouched. A011 chart removal is next.
+- Fifteen findings are accepted: A001–A007, A009–A011, A029 (superseded by removal), A050, A094, A103–A104. A088 remains untouched. A025/A026/A028 are next as one server composition/middleware assignment.
 
 ### AUDIT-SCRIPTS-CLEANUP / report 1 reconciled
 
@@ -106,7 +106,8 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 | --- | --- | --- | --- |
 | AUDIT-W1-COMBINED-REVIEW | Wave 1 and cleanup through 3e52255, including corrected A010 | Pi / openai-codex/gpt-6.1-sol / high | Reconciled; accepted |
 | AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Integrated ef677d5; head repairs 2f8cd33; independently reviewed and accepted |
-| AUDIT-W2-CARD-CHARTS | Remove fabricated exercise-card history, A011 | Pi / openai-codex/gpt-6.1-terra / medium | Integrated caf2b2b; head checks/review closeout in progress |
+| AUDIT-W2-CARD-CHARTS | Remove fabricated exercise-card history, A011 | Pi / openai-codex/gpt-6.1-terra / medium | Accepted; caf2b2b plus head test hardening 093adf4 |
+| AUDIT-W3-HTTP-OBSERVABILITY | A025 route/user observability, A026 CORS, A028 logger configuration | Pi / openai-codex/gpt-6.1-sol / medium | Prepared; interacting server middleware/startup boundaries |
 | AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Integrated ac12780; independently reviewed and accepted |
 
 Cache task: `node:delegated-task:command%3Amcp%3A8b6abc8e-650c-4e14-9ace-860f562852e7%3Adelegate-task%3AAUDIT-W2-CACHES`.
@@ -137,6 +138,7 @@ Workout lookup is fully specified, bounded server behavior with real HTTP/DB acc
 - Removed synthetic seven-bar charts from new/edit pages, unused MiniChart and renderMetrics prop plumbing. Preserved actual sets/volume and form behavior. Worker reports intended red, seven focused passes, tsc/lint/format and both knip modes. Its worktree lacked .husky/_ so commit hooks did not run; no full-suite evidence claimed for this patch.
 - Head inspected all five changed files and reran page regressions (five tests), tsc and both knip modes successfully: `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-42-3433cdaf.log`. Initial card-test filter omitted __tests__; only one file ran, so head corrected this with separate session43: both card-section tests passed, log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-43-5c7297d5.log`. Seven focused tests passed in total. Do not count unmatched filters as executed checks.
 - Browser bridge fixture passed in worker session; actual app was not started/visually checked. Desktop/mobile layout remains unverified. Head queried the exact reported diagnostic PID35604 from worker session6 via Win32_Process; it no longer exists (session44 exit0, empty result). No process was killed and no shared state was altered.
-- A011 remains In progress pending fresh Pi / Sol / high independent review of `e62c4f8..caf2b2b`. Accepted count remains14.
+- AUDIT-W2-CARD-CHARTS-REVIEW report1 reconciled: requested/receipt/returned Pi / Sol / high matched, target `e62c4f8..caf2b2b`. No production blockers; independently passed seven tests/two files, inspected callers and real metrics/controls. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-3-492ef675.log`. Task suffix `delegate-task%3AAUDIT-W2-CARD-CHARTS-REVIEW` under the same 8b6abc8e prefix.
+- Head fixed P3 selector overbreadth: inspect actual CSS height percentages in the former seven-bar cluster rather than matching arbitrary style text (including line-height). Commit `093adf4`; focused seven tests and complete commit-hook gate passed515 tests/102files, format/lint/both knip modes, no bypass. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-47-1f2bf3fa.log`. Production remained unchanged from reviewed target. A011 accepted; total15. Reviewer considered missing live layout check nonblocking for this narrow deletion; it remains a caveat.
 
 No nested workers; head owns integration, tracker updates and final acceptance. Next reports must be reconciled once and returned through native completion, without polling.

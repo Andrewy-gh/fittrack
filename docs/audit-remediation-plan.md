@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Fourteen findings are accepted after independent review and appropriate verification: A001–A007, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Fifteen findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 server middleware and logging work is next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094) | H | 43 | 12 |
+| Ready to implement (including approved A094) | H | 43 | 13 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 12 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **14** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **15** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -189,10 +189,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The mini chart on every exercise card in the new and edit pages shows hard-coded numbers (new-workout-page.tsx:100).
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F10` — Batch 2
 - **Evidence / commit / PR:** Worker `863bcb3` integrated as `caf2b2b`: removed both fabricated mini-charts and unused component/prop plumbing; real set count/volume retained. Worker reports intended red and seven focused tests passing. Head reran five page tests, tsc and both knip modes successfully (session42), then two card-section tests passed (session43). Live desktop/mobile layout not verified; worker only ran browser bridge fixture preflight.
-- **Decision / blocker:** Fresh independent review pending; not accepted yet.
+- **Decision / blocker:** Accepted after AUDIT-W2-CARD-CHARTS-REVIEW, Pi / Sol / high (`e62c4f8..caf2b2b`): seven independent tests passed, no production blockers. Head fixed nonblocking overbroad selector in `093adf4`, then seven focused tests and full 515-test/102-file gate passed with format/lint/both knip modes. Live responsive appearance remains unverified; reviewer judged this nonblocking for the narrow deletion.
 
 #### A012
 
@@ -339,9 +339,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > - The middleware tests set the pattern by hand, so they miss it.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F12` — Batch 3
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Next assignment AUDIT-W3-HTTP-OBSERVABILITY; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A026
@@ -349,9 +349,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The CORS allow-list omits PATCH (middleware/cors.go:30) although PATCH routes exist. It only matters cross-origin. There is also no Vary: Origin.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F13` — Batch 3
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Next assignment AUDIT-W3-HTTP-OBSERVABILITY; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A027
@@ -369,9 +369,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The AI runtime, trace and tool code log through the global slog logger, which is never configured. Those lines ignore LOG_LEVEL and the JSON format.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F15` — Batch 3
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Next assignment AUDIT-W3-HTTP-OBSERVABILITY; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A029
