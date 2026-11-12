@@ -1,17 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
+import { invalidateTrainingData } from "./training-data-cache";
 import type { ApplicationUser } from "@/lib/application-user";
 import { queryClient } from "@/lib/api/api";
 import {
-  getExercisesQueryKey,
   getWorkoutsByIdQueryKey,
   getWorkoutsByIdQueryOptions,
-  getWorkoutsNewWorkoutContextQueryKey,
   getWorkoutsNewWorkoutContextQueryOptions,
-  getWorkoutsFocusValuesQueryKey,
-  getWorkoutsQueryKey,
   getWorkoutsQueryOptions,
   getWorkoutsFocusValuesQueryOptions,
-  getWorkoutsContributionDataQueryKey,
   getWorkoutsContributionDataQueryOptions,
   postWorkoutsMutation,
   putWorkoutsByIdMutation,
@@ -59,63 +55,35 @@ export function contributionDataQueryOptions() {
   return getWorkoutsContributionDataQueryOptions();
 }
 
-function invalidateWorkoutAnalyticsQueries() {
-  queryClient.invalidateQueries({ queryKey: ["training-assessment"] });
-  queryClient.invalidateQueries({ queryKey: ["muscle-contributions"] });
-  queryClient.invalidateQueries({
-    queryKey: getWorkoutsContributionDataQueryKey(),
-  });
-  queryClient.invalidateQueries({
-    queryKey: getWorkoutsFocusValuesQueryKey(),
-  });
-  queryClient.invalidateQueries({
-    queryKey: getWorkoutsNewWorkoutContextQueryKey(),
-  });
-}
-
 // MARK: Create
-// ! TODO: Return data from server to invalidate recent sets for exercise
-// ! TODO: if I want to be granular, but stale time is so low not a priority
-export function useSaveWorkoutMutation() {
+export function useSaveWorkoutMutation(userId: string) {
   return useMutation({
     ...postWorkoutsMutation(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsQueryKey(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getExercisesQueryKey(),
-      });
-      invalidateWorkoutAnalyticsQueries();
-    },
+    onMutate: () => userId,
+    onSuccess: (_, _variables, mutationUserId) =>
+      invalidateTrainingData(mutationUserId),
   });
 }
 
 export function useSaveWorkoutForUserMutation(user: WorkoutMutationUser) {
-  const apiMutation = useSaveWorkoutMutation();
+  const apiMutation = useSaveWorkoutMutation(user?.id ?? "");
   const demoMutation = useMutation(postDemoWorkoutsMutation());
 
   return user ? apiMutation : demoMutation;
 }
 
 // MARK: Update
-export function useUpdateWorkoutMutation() {
+export function useUpdateWorkoutMutation(userId: string) {
   return useMutation({
     ...putWorkoutsByIdMutation(),
-    onSuccess: (_, { path: { id } }) => {
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsQueryKey(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
-      });
-      invalidateWorkoutAnalyticsQueries();
-    },
+    onMutate: () => userId,
+    onSuccess: (_, _variables, mutationUserId) =>
+      invalidateTrainingData(mutationUserId),
   });
 }
 
 export function useUpdateWorkoutForUserMutation(user: WorkoutMutationUser) {
-  const apiMutation = useUpdateWorkoutMutation();
+  const apiMutation = useUpdateWorkoutMutation(user?.id ?? "");
   const demoMutation = useMutation(putDemoWorkoutsByIdMutation());
 
   return user ? apiMutation : demoMutation;
@@ -123,27 +91,22 @@ export function useUpdateWorkoutForUserMutation(user: WorkoutMutationUser) {
 
 // MARK: Delete
 // Delete mutation without automatic error toasts (for manual error handling)
-export function useDeleteWorkoutMutation() {
+export function useDeleteWorkoutMutation(userId: string) {
   return useMutation({
     ...deleteWorkoutsByIdMutation(),
+    onMutate: () => userId,
     meta: { skipGlobalErrorHandler: true },
-    onSuccess: (_, { path: { id } }) => {
-      queryClient.removeQueries({
-        queryKey: getWorkoutsQueryKey(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getWorkoutsQueryKey(),
-      });
+    onSuccess: (_, { path: { id } }, mutationUserId) => {
       queryClient.removeQueries({
         queryKey: getWorkoutsByIdQueryKey({ path: { id } }),
       });
-      invalidateWorkoutAnalyticsQueries();
+      return invalidateTrainingData(mutationUserId);
     },
   });
 }
 
 export function useDeleteWorkoutForUserMutation(user: WorkoutMutationUser) {
-  const apiMutation = useDeleteWorkoutMutation();
+  const apiMutation = useDeleteWorkoutMutation(user?.id ?? "");
   const demoMutation = useMutation(deleteDemoWorkoutsByIdMutationWithMeta());
 
   return user ? apiMutation : demoMutation;

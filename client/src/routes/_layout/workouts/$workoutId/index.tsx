@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_layout/workouts/$workoutId/")({
 
     await context.queryClient.query({
       ...getWorkoutByIdQueryOptions(user, workoutId),
-      staleTime: "static",
+      staleTime: Infinity,
     });
 
     return { workoutId };

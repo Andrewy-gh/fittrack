@@ -255,6 +255,7 @@ export function ExerciseDetail({
           isDemoMode={isDemoMode}
         />
         <ExerciseDeleteDialog
+          userId={exercise.user_id}
           isOpen={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
           exerciseId={exerciseId}

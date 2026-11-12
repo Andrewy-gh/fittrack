@@ -130,6 +130,7 @@ export function ChatPage({
     stopRun,
     canStop,
   } = useAIChatSession({
+    userId: userId ?? "",
     conversationId,
     initialPrompt,
     onPromptChange: handlePromptChange,

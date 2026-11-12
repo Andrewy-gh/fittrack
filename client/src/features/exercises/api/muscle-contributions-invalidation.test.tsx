@@ -10,7 +10,7 @@ import {
 let summary = "Old exercise summary";
 function Harness({ operation }: { operation: "rename" | "delete" }) {
   const rename = useRenameExerciseMutation(false);
-  const remove = useDeleteExerciseMutation();
+  const remove = useDeleteExerciseMutation("owner");
   const query = useQuery({
     queryKey: ["muscle-contributions", "owner", "2026-09-14", "UTC"],
     queryFn: async () => summary,

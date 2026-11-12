@@ -16,6 +16,7 @@ import type { ChatSessionState } from "../utils/chat-session-types";
 import { saveLatestWorkoutDraft as saveLatestWorkoutDraftRequest } from "../utils/chat-session-workout-draft";
 
 type UseAIChatSessionOptions = {
+  userId?: string;
   conversationId: number | null;
   initialPrompt: string;
   onPromptChange: (prompt: string) => void;
@@ -25,6 +26,7 @@ type UseAIChatSessionOptions = {
 };
 
 export function useAIChatSession({
+  userId = "",
   conversationId,
   initialPrompt,
   onPromptChange,
@@ -124,10 +126,11 @@ export function useAIChatSession({
   const saveLatestWorkoutDraft = useCallback(
     () =>
       saveLatestWorkoutDraftRequest({
+        userId,
         conversation,
         state,
       }),
-    [conversation, state],
+    [conversation, state, userId],
   );
 
   const isSubmitting = operationSnapshot.phase !== "idle";

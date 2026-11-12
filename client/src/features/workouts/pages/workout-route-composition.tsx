@@ -36,15 +36,15 @@ export async function preloadNewWorkoutRouteData({
   await Promise.all([
     queryClient.query({
       ...getExerciseListQueryOptions(user),
-      staleTime: "static",
+      staleTime: Infinity,
     }),
     queryClient.query({
       ...getNewWorkoutContextQueryOptions(user),
-      staleTime: "static",
+      staleTime: Infinity,
     }),
     queryClient.query({
       ...getWorkoutsFocusQueryOptions(user),
-      staleTime: "static",
+      staleTime: Infinity,
     }),
   ]);
 }
@@ -60,15 +60,15 @@ export async function preloadEditWorkoutRouteData({
   await Promise.all([
     queryClient.query({
       ...getWorkoutByIdQueryOptions(user, workoutId),
-      staleTime: "static",
+      staleTime: Infinity,
     }),
     queryClient.query({
       ...getExerciseListQueryOptions(user),
-      staleTime: "static",
+      staleTime: Infinity,
     }),
     queryClient.query({
       ...getWorkoutsFocusQueryOptions(user),
-      staleTime: "static",
+      staleTime: Infinity,
     }),
   ]);
 

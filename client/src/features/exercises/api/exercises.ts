@@ -1,4 +1,5 @@
 import { queryClient } from "@/lib/api/api";
+import { invalidateTrainingData } from "@/features/workouts/api/training-data-cache";
 import { useMutation } from "@tanstack/react-query";
 import type { ExerciseExerciseResponse } from "@/client";
 import {
@@ -72,24 +73,25 @@ function invalidateExerciseDetail(id: number) {
   });
 }
 
-export function useDeleteExerciseMutation() {
+export function useDeleteExerciseMutation(userId: string) {
   return useMutation({
     ...deleteExercisesByIdMutation(),
+    onMutate: () => userId,
     meta: { skipGlobalErrorHandler: true },
-    onSuccess: (_, { path: { id } }) => {
-      queryClient.invalidateQueries({ queryKey: ["muscle-contributions"] });
-      queryClient.invalidateQueries({
-        queryKey: getExercisesQueryKey(),
-      });
+    onSuccess: (_, { path: { id } }, mutationUserId) => {
       queryClient.removeQueries({
         queryKey: getExercisesByIdQueryKey({ path: { id } }),
       });
+      return invalidateTrainingData(mutationUserId);
     },
   });
 }
 
-export function useDeleteExerciseForModeMutation(isDemoMode: boolean) {
-  const apiMutation = useDeleteExerciseMutation();
+export function useDeleteExerciseForModeMutation(
+  isDemoMode: boolean,
+  userId: string,
+) {
+  const apiMutation = useDeleteExerciseMutation(userId);
   const demoMutation = useMutation(deleteDemoExercisesByIdMutationWithMeta());
 
   return isDemoMode ? demoMutation : apiMutation;
