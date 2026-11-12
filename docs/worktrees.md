@@ -100,7 +100,23 @@ and use the client's absolute test API base (`http://localhost/api`) for Node
 Request tests. This includes the `/api` prefix; no API or proxy is started.
 The documented command bounds Vitest to one worker for memory-limited hosts.
 Direct Bun unit launches also receive `--no-env-file` so Bun cannot automatically restore stripped values
-when executing a file or eval; non-unit Bun loading remains unchanged. Native reports have
+when executing a file or eval; non-unit Bun loading remains unchanged.
+Vitest independently disables Vite env-file loading and clears inherited public
+Stack settings for ordinary units. Provider-config tests can use explicit
+synthetic values via `vi.stubEnv`. Before application imports, unit setup guards
+global fetch and Node TCP connection creation (including HTTP/HTTPS and Node's
+fetch/undici). Unexpected transport is recorded and fails hooks even if the
+caller catches its rejection. Diagnostics omit request URLs and credentials.
+Only literal loopback endpoints belonging to servers listening in the same
+worker are allowed; explicit client/fetch mocks remain available. The guard
+persists through worker teardown and does not replace jsdom DOM/storage.
+This is a test-process boundary, **not an OS network sandbox**: it does not
+contain browser/subprocess traffic, raw UDP/DNS APIs, native addons, or sockets
+opened before setup. The separate Playwright auth-readiness tests retain their
+owned local HTTP/browser fixtures; do not use them to probe live providers.
+`tests/unit-isolation.test.ts` checks the entrypoint with synthetic inherited and
+throwaway env-file settings behind an independent offline interception fuse.
+Native reports have
 `version:1`, `ready`, `checks`, and source labels; exit 1 indicates a blocker.
 Statuses distinguish missing/inaccessible/failed/passed/not_required. The adapter
 returns checks, while the native runtime owns schema/exit validation and capture.

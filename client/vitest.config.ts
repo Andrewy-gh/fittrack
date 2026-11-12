@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
+  // Ordinary unit tests must not load provider credentials from Vite env files.
+  envDir: false,
   plugins: [react()],
   resolve: {
     alias: {
@@ -11,6 +13,12 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Runtime defaults also override inherited public settings; vi.stubEnv can
+    // still supply explicit synthetic configuration in provider-config tests.
+    env: {
+      VITE_PROJECT_ID: "",
+      VITE_PUBLISHABLE_CLIENT_KEY: "",
+    },
     setupFiles: ["./tests/setup.ts"],
     // Exclude e2e tests (they use Playwright, not Vitest)
     exclude: ["**/node_modules/**", "**/tests/e2e/**"],
