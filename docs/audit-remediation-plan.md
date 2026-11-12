@@ -567,8 +567,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Replaced nonexistent docker-up guidance with existing single-checkout make dev and linked shared PostgreSQL/worktree setup; no Make target added. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A048
 
@@ -577,8 +577,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Documented full Swagger-to-client api:generate, freshness/types and explicit output staging. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A049
 
@@ -587,8 +587,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Documented asset precaching and actual narrow HTTPS api.* runtime rule, which does not match normal same-origin /api; no offline API guarantee or PWA config change. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A050
 
@@ -607,8 +607,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F21` — Batch 5
-- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Separated actual workflow secrets from required Stripe runtime configuration; runtime settings retained. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A052
 
@@ -617,8 +617,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Replaced obsolete generator tutorial with installed Hey API0.99.0/config/output/Fetch/Query workflow. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A053
 
@@ -627,8 +627,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F21` — Batch 5
-- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Corrected client/.cursorrules (not a root file) to bunx and removed precommit pnpm fallback; clear missing-Bun failure, checks and staged-output guards retained. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 ### Inconsistent / Client setup
 
