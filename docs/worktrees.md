@@ -161,7 +161,7 @@ FitTrack retains policy and actual native/DB integration coverage.
 
 ## Prerequisites and version gate
 
-- Node **24.22.1**, Go **1.26.10**, Bun **1.4.2**, Goose **v3.24.3**.
+- Node **24.22.1**, Go **1.26.11**, Bun **1.4.2**, Goose **v3.24.3**.
 - A separately built/installed **worktree-runtime protocol 1** native executable,
   available on PATH or selected with `WORKTREE_RUNTIME`. Its Go source, OS tests
   and install lifecycle live outside this repository. Build from that tool's

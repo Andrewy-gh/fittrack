@@ -7,7 +7,7 @@ not `openapi-typescript-codegen` or an Axios service-class generator.
 
 ## Generate and verify
 
-Use Node 24.22.1, Bun 1.4.2, and Go 1.26.10 (the documented/CI versions).
+Use Node 24.22.1, Bun 1.4.2, and Go 1.26.11 (the documented/CI versions).
 No running API, database, Docker, auth provider, or Stripe account is needed.
 The first run may need network access for Go modules and client dependencies.
 

@@ -523,23 +523,33 @@ describe("training mutations followed by authoritative reads", () => {
           body,
         });
       });
+      // React Query schedules hook notifications on a timer; act/mutateAsync
+      // completion alone does not guarantee React has observed that state.
+      // Keep both writes gated until the consumer sees them pending.
+      await waitFor(() => {
+        expect(hooks.result.current.create.isPending).toBe(true);
+        expect(hooks.result.current.update.isPending).toBe(true);
+      });
       releaseSecond();
       await act(async () => {
         await second;
       });
+      await waitFor(() => {
+        expect(hooks.result.current.update.isSuccess).toBe(true);
+        expect(hooks.result.current.create.isPending).toBe(true);
+      });
       expect(observer.getCurrentResult().data).toEqual({
         days: [{ count: 1 }],
       });
-      expect(hooks.result.current.create.isPending).toBe(true);
       releaseFirst();
       await act(async () => {
         await first;
       });
-      await waitFor(() =>
-        expect(hooks.result.current.create.isPending).toBe(false),
-      );
-      expect(hooks.result.current.update.isSuccess).toBe(true);
-      expect(hooks.result.current.create.isError).toBe(failFirst);
+      await waitFor(() => {
+        expect(hooks.result.current.create.isPending).toBe(false);
+        expect(hooks.result.current.create.isError).toBe(failFirst);
+        expect(hooks.result.current.update.isSuccess).toBe(true);
+      });
       expect(observer.getCurrentResult().data).toEqual({
         days: [{ count: failFirst ? 1 : 2 }],
       });
