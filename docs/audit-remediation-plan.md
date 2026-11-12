@@ -191,8 +191,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F10` — Batch 2
-- **Evidence / commit / PR:** Next assignment AUDIT-W2-CARD-CHARTS; remove synthetic history from new/edit cards, retaining form behavior.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `863bcb3` integrated as `caf2b2b`: removed both fabricated mini-charts and unused component/prop plumbing; real set count/volume retained. Worker reports intended red and seven focused tests passing. Head reran five page tests, tsc and both knip modes successfully (session42), then two card-section tests passed (session43). Live desktop/mobile layout not verified; worker only ran browser bridge fixture preflight.
+- **Decision / blocker:** Fresh independent review pending; not accepted yet.
 
 #### A012
 
