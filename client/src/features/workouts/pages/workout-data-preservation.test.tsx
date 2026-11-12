@@ -120,8 +120,16 @@ it.each(["new", "edit"] as const)(
     const metrics = await screen.findByRole("button", {
       name: /Pushups: 1 sets, .*200.* volume/,
     });
-    // The misleading bars have no accessible label; inspect their rendered heights.
-    expect(metrics.querySelectorAll('[style*="height:"]')).toHaveLength(0);
+    // The former chart was an unlabeled seven-bar cluster with percentage heights.
+    // Read the height property, not style text that also matches line-height.
+    const fabricatedBars = Array.from(
+      metrics.querySelectorAll<HTMLDivElement>("div[style]"),
+    ).filter(
+      (bar) =>
+        bar.style.height.endsWith("%") &&
+        bar.parentElement?.children.length === 7,
+    );
+    expect(fabricatedBars).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Edit order" }));
     expect(
       screen.getByRole("button", { name: "Reorder Pushups" }),
