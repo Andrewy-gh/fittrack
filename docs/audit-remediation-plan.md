@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Twenty-two findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A044, A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Twenty-eight findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; setup/API documentation and Bun-hook reconciliation are next. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is next. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 20 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 26 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **22** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **28** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -565,30 +565,30 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H docs/development.md:209 lists a make docker-up target that does not exist.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F20` — Batch 5
 - **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Replaced nonexistent docker-up guidance with existing single-checkout make dev and linked shared PostgreSQL/worktree setup; no Make target added. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
+- **Decision / blocker:** Accepted after AUDIT-W5-DOCS-TOOLING-REVIEW (Pi / Sol / high, `66a9804..c4b2fe1`): no actionable defects; reviewer independently passed 12 hook tests, actual API freshness, shell/diff checks and target-integrity checks. Windows/Git Bash executed; POSIX portability inspected only. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A048
 
 > H client/README.md:97 says to regenerate with bun run openapi-ts, which skips the Swagger step.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F20` — Batch 5
 - **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Documented full Swagger-to-client api:generate, freshness/types and explicit output staging. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
+- **Decision / blocker:** Accepted after AUDIT-W5-DOCS-TOOLING-REVIEW (Pi / Sol / high, `66a9804..c4b2fe1`): no actionable defects; reviewer independently passed 12 hook tests, actual API freshness, shell/diff checks and target-integrity checks. Windows/Git Bash executed; POSIX portability inspected only. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A049
 
 > H client/README.md:131 says the service worker caches API responses.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F20` — Batch 5
 - **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Documented asset precaching and actual narrow HTTPS api.* runtime rule, which does not match normal same-origin /api; no offline API guarantee or PWA config change. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
+- **Decision / blocker:** Accepted after AUDIT-W5-DOCS-TOOLING-REVIEW (Pi / Sol / high, `66a9804..c4b2fe1`): no actionable defects; reviewer independently passed 12 hook tests, actual API freshness, shell/diff checks and target-integrity checks. Windows/Git Bash executed; POSIX portability inspected only. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A050
 
@@ -605,30 +605,30 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H docs/environment.md lists Stripe secrets that no workflow uses.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F21` — Batch 5
 - **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Separated actual workflow secrets from required Stripe runtime configuration; runtime settings retained. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
+- **Decision / blocker:** Accepted after AUDIT-W5-DOCS-TOOLING-REVIEW (Pi / Sol / high, `66a9804..c4b2fe1`): no actionable defects; reviewer independently passed 12 hook tests, actual API freshness, shell/diff checks and target-integrity checks. Windows/Git Bash executed; POSIX portability inspected only. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A052
 
 > H client/docs/api-type-generation.md describes a different generator.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F20` — Batch 5
 - **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Replaced obsolete generator tutorial with installed Hey API0.99.0/config/output/Fetch/Query workflow. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
+- **Decision / blocker:** Accepted after AUDIT-W5-DOCS-TOOLING-REVIEW (Pi / Sol / high, `66a9804..c4b2fe1`): no actionable defects; reviewer independently passed 12 hook tests, actual API freshness, shell/diff checks and target-integrity checks. Windows/Git Bash executed; POSIX portability inspected only. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 #### A053
 
 > H .cursorrules says pnpx, and the pre-commit hook falls back to pnpm with no pnpm lockfile.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F21` — Batch 5
 - **Evidence / commit / PR:** Worker `dc8815e`, integrated `c4b2fe1`. Corrected client/.cursorrules (not a root file) to bunx and removed precommit pnpm fallback; clear missing-Bun failure, checks and staged-output guards retained. Head passed 12 hook tests, real API generation/freshness, tsc, format and shell/diff checks; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-84-69b883af.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
+- **Decision / blocker:** Accepted after AUDIT-W5-DOCS-TOOLING-REVIEW (Pi / Sol / high, `66a9804..c4b2fe1`): no actionable defects; reviewer independently passed 12 hook tests, actual API freshness, shell/diff checks and target-integrity checks. Windows/Git Bash executed; POSIX portability inspected only. Go1.26.4 vs documented1.26.10; no full client suite or live service/provider/browser/deploy execution for this scope.
 
 ### Inconsistent / Client setup
 
@@ -647,9 +647,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H vite.config.js:76 has a test block that Vitest ignores, and there are two test setup files.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F23` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-TEST-CONFIG; trace active setup/browser dependency usage, preserve test discovery and verify full single-worker suite.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A056
@@ -1123,9 +1123,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H @vitest/browser 3.2.4 sits beside Vitest 5.0.1 and is referenced only in tsconfig.json.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F23` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-TEST-CONFIG; trace active setup/browser dependency usage, preserve test discovery and verify full single-worker suite.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A100
@@ -1133,9 +1133,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H src/test/setup.ts is never loaded.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F23` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-TEST-CONFIG; trace active setup/browser dependency usage, preserve test discovery and verify full single-worker suite.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A101
