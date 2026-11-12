@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Eighteen findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Twenty-one findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 contract work is active. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 are accepted; A044 schema reconciliation is next. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 16 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 19 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **18** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **21** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -481,30 +481,30 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The OpenAPI spec has no billing endpoints and no DELETE /account, so the client hand-types them.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F17`, `F18` — Batch 4
 - **Evidence / commit / PR:** Worker `2fbdfe2` integrated as `cf57c5c`. Billing/account product operations documented; clients use generated billing/account/analytics/profile types; stale unused workout Swagger struct removed; exercise/nullability contracts corrected with narrow demo projections. Worker reports 43 focused client tests, contract red/green and checks passing. Head inspected source/tests and passed 524 client tests/103 files, tsc/api:check/full format/lint/both knip modes, scoped Go tests/full build/vet. Installed Go 1.26.4 differs from documented 1.26.10; no replacement performed.
-- **Decision / blocker:** Combined verification passed; fresh independent review pending. Not accepted yet. No live provider/DB/browser evidence. A042/A043 policy and transport remain unchanged.
+- **Decision / blocker:** Accepted after AUDIT-W4-API-CONTRACT-REVIEW, Pi / Sol / high (`75f2093..cf57c5c`): no actionable introduced defects. Reviewer independently passed 18 client tests / 2 files and scoped contract/handler/profile Go checks. Go-version and live/provider/DB gaps remain; no full OpenAPI-validator claim. A042/A043 unchanged.
 
 #### A040
 
 > H Three client modules hand-type endpoints that are in the spec: muscle contributions, training assessment and training profile.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F18` — Batch 4
 - **Evidence / commit / PR:** Worker `2fbdfe2` integrated as `cf57c5c`. Billing/account product operations documented; clients use generated billing/account/analytics/profile types; stale unused workout Swagger struct removed; exercise/nullability contracts corrected with narrow demo projections. Worker reports 43 focused client tests, contract red/green and checks passing. Head inspected source/tests and passed 524 client tests/103 files, tsc/api:check/full format/lint/both knip modes, scoped Go tests/full build/vet. Installed Go 1.26.4 differs from documented 1.26.10; no replacement performed.
-- **Decision / blocker:** Combined verification passed; fresh independent review pending. Not accepted yet. No live provider/DB/browser evidence. A042/A043 policy and transport remain unchanged.
+- **Decision / blocker:** Accepted after AUDIT-W4-API-CONTRACT-REVIEW, Pi / Sol / high (`75f2093..cf57c5c`): no actionable introduced defects. Reviewer independently passed 18 client tests / 2 files and scoped contract/handler/profile Go checks. Go-version and live/provider/DB gaps remain; no full OpenAPI-validator claim. A042/A043 unchanged.
 
 #### A041
 
 > H Doc-only response structs have drifted from the real ones (UpdateWorkoutRequestSwagger, the exercise response types).
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F17` — Batch 4
 - **Evidence / commit / PR:** Worker `2fbdfe2` integrated as `cf57c5c`. Billing/account product operations documented; clients use generated billing/account/analytics/profile types; stale unused workout Swagger struct removed; exercise/nullability contracts corrected with narrow demo projections. Worker reports 43 focused client tests, contract red/green and checks passing. Head inspected source/tests and passed 524 client tests/103 files, tsc/api:check/full format/lint/both knip modes, scoped Go tests/full build/vet. Installed Go 1.26.4 differs from documented 1.26.10; no replacement performed.
-- **Decision / blocker:** Combined verification passed; fresh independent review pending. Not accepted yet. No live provider/DB/browser evidence. A042/A043 policy and transport remain unchanged.
+- **Decision / blocker:** Accepted after AUDIT-W4-API-CONTRACT-REVIEW, Pi / Sol / high (`75f2093..cf57c5c`): no actionable introduced defects. Reviewer independently passed 18 client tests / 2 files and scoped contract/handler/profile Go checks. Go-version and live/provider/DB gaps remain; no full OpenAPI-validator claim. A042/A043 unchanged.
 
 #### A042
 
@@ -533,9 +533,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H schema.sql has drifted from the migrations: two indexes, the stopped statuses, three foreign keys and a check constraint are missing.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F19` — Batch 4
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Next assignment AUDIT-W4-SCHEMA: compare migrated disposable DB against canonical schema, repair confirmed drift and regenerate SQL bindings. No historical migration rewrite or index optimization authorized.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A045
