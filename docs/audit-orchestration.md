@@ -105,7 +105,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 | Assignment | Scope | Profile | State |
 | --- | --- | --- | --- |
 | AUDIT-W1-COMBINED-REVIEW | Wave 1 and cleanup through 3e52255, including corrected A010 | Pi / openai-codex/gpt-6.1-sol / high | Reconciled; accepted |
-| AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Running; confirmed receipt; do not poll |
+| AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Returned; integrated ef677d5; combined checks running |
 | AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Returned; integrated ac12780; head checks passed; review pending |
 
 Cache task: `node:delegated-task:command%3Amcp%3A8b6abc8e-650c-4e14-9ace-860f562852e7%3Adelegate-task%3AAUDIT-W2-CACHES`.
@@ -118,6 +118,14 @@ Workout lookup is fully specified, bounded server behavior with real HTTP/DB acc
 - Missing/foreign lookup returns404, owned empty/nonempty returns200, lookup DB errors remain safe500. No client/generated SQL changes; A008 empty-workout policy unchanged.
 - Worker reported red HTTP cases for foreign/nonexistent IDs, then green full isolated packages/restricted SQL, unit checks/build/vet.
 - Head reran full exercise/workout suites uncached plus both retained restricted-role SQL checks against disposable PostgreSQL15.19: exit0. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-20-81eb5ef6.log`. Verified all four new real HTTP/DB cases and error-classification tests passed. Preexisting owner-mode direct-RLS case skipped; separate role checks do not imply it ran. Owned container removed.
-- Fresh read-only AUDIT-W2-WORKOUT-LOOKUP-REVIEW planned for immutable `2fa1225..ac12780`, Pi / Sol / high. A007 stays In progress until review reconciliation; accepted count remains11.
+- Fresh read-only AUDIT-W2-WORKOUT-LOOKUP-REVIEW dispatched for immutable `2fa1225..ac12780`; requested/receipt Pi / Sol / high matched. Task suffix `delegate-task%3AAUDIT-W2-WORKOUT-LOOKUP-REVIEW` under the same 8b6abc8e prefix. Running; do not poll. A007 stays In progress until review reconciliation; accepted count remains11.
+
+### AUDIT-W2-CACHES / report 1 reconciled
+
+- Requested/returned Pi / Sol / medium matched. Source `d3497560de010d44dfa0cffb700fb578895466b9` from `C:/Users/lenny/.t3/worktrees/fittrack/t3-63dccf32`, integrated once as `ef677d5`.
+- Head inspected production changes and behavioral coverage. Feature-local invalidation refreshes workout/exercise tag families and user-scoped analytics; active queries refetch, inactive ones invalidate, deleted details are removed. Mutable loaders use Infinity rather than invalidation-proof static; demo mutations stay separate. Mutation-start user IDs are captured per operation.
+- Worker reports 71 passing tests across8 files, tsc/lint/format, seven original regression failures, five route regressions failing with original static loaders, and separate new-context/wrong-user negative controls. No server/form/storage changes.
+- Head's combined client tsc/full suite running in session24; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-24-1fbc4bde.log`. No completion claimed until exit observed.
+- A005/A006 stay In progress pending combined checks and fresh Pi / Sol / high review. Existing SDK-generated authenticated keys lack user-ID dimension; broad account-transition cache isolation remains unproven, not silently redesigned.
 
 No nested workers; head owns integration, tracker updates and final acceptance. Next reports must be reconciled once and returned through native completion, without polling.
