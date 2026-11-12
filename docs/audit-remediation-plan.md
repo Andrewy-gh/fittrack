@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Twenty-one findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Twenty-two findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A044, A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 are accepted; A044 schema reconciliation is next. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; setup/API documentation and Bun-hook reconciliation are next. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 19 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 20 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **21** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **22** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -533,10 +533,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H schema.sql has drifted from the migrations: two indexes, the stopped statuses, three foreign keys and a check constraint are missing.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F19` — Batch 4
 - **Evidence / commit / PR:** Worker `0133fe7`, integrated `79af80d`; head reran PostgreSQL15.19 migrated/schema-built catalog comparison (268 entries, zero differences), behavioral SQL in both DBs, five focused integration tests without skips, both restricted-role SQL checks, Go build/vet and SQLC regeneration (no binding changes). Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-77-1d186904.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted yet. Reconfirmed one missing index, two FKs, three stopped-status checks, JSON-array check and unique NULLS NOT DISTINCT representation. Original second index/third FK claims not reproduced; migration00024 deliberately dropped that index. Runtime migrations unchanged; schema.sql is not a security/deployment bootstrap. Go1.26.4 versus documented1.26.10; no full-suite/production proof.
+- **Decision / blocker:** Accepted after AUDIT-W4-SCHEMA-REVIEW, Pi / Sol / high (`8368127..1622916`): no actionable introduced defects. Reviewer independently repeated real-DB parity/persistence, five Go tests, role checks, build/vet and SQLC; all passed. Reconfirmed one missing index, two FKs, three stopped-status checks, JSON-array check and unique NULLS NOT DISTINCT representation. Original second index/third FK claims not reproduced; migration00024 deliberately dropped that index. Runtime migrations unchanged; schema.sql is not a security/deployment bootstrap. Go1.26.4 versus documented1.26.10; no full-suite/production proof.
 
 #### A045
 
@@ -565,9 +565,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H docs/development.md:209 lists a make docker-up target that does not exist.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A048
@@ -575,9 +575,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H client/README.md:97 says to regenerate with bun run openapi-ts, which skips the Swagger step.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A049
@@ -585,9 +585,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H client/README.md:131 says the service worker caches API responses.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A050
@@ -605,9 +605,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H docs/environment.md lists Stripe secrets that no workflow uses.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F21` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A052
@@ -615,9 +615,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H client/docs/api-type-generation.md describes a different generator.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F20` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A053
@@ -625,9 +625,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H .cursorrules says pnpx, and the pre-commit hook falls back to pnpm with no pnpm lockfile.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F21` — Batch 5
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned AUDIT-W5-DOCS-TOOLING; reconcile documentation against executable setup/API/CI behavior and verify Bun-only hook behavior. No runtime secret removal or PWA policy changes.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 ### Inconsistent / Client setup
