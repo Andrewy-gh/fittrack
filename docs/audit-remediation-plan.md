@@ -123,8 +123,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F05` — Batch 2
-- **Evidence / commit / PR:** Worker `d349756` integrated as `ef677d5`. Shared training-data completion policy refreshes generated workout/exercise families and initiating-user analytics; mutable route loaders honor invalidation. Worker reports 71 focused tests, tsc/lint/format and negative controls passing. Head inspected implementation and 619-line behavioral suite; combined full-client verification started. No live browser/account-switch isolation proof.
-- **Decision / blocker:** Combined client checks and fresh independent review pending; not accepted yet.
+- **Evidence / commit / PR:** Worker `d349756` integrated as `ef677d5`. Shared training-data completion policy refreshes generated workout/exercise families and initiating-user analytics; mutable route loaders honor invalidation. Worker reports 71 focused tests, tsc/lint/format and negative controls passing. Head inspected implementation and behavioral suite; repaired shared chat fixture and asynchronous route-test assumption in `2f8cd33`. Full combined gate passed 513 tests / 102 files plus format/lint/both knip modes (session35 log). No live browser/account-switch isolation proof.
+- **Decision / blocker:** Full client gate and final tsc passed. Fresh independent review pending; not accepted yet.
 
 #### A006
 
@@ -141,8 +141,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F06` — Batch 2
-- **Evidence / commit / PR:** Worker `d349756` integrated as `ef677d5`. Shared training-data completion policy refreshes generated workout/exercise families and initiating-user analytics; mutable route loaders honor invalidation. Worker reports 71 focused tests, tsc/lint/format and negative controls passing. Head inspected implementation and 619-line behavioral suite; combined full-client verification started. No live browser/account-switch isolation proof.
-- **Decision / blocker:** Combined client checks and fresh independent review pending; not accepted yet.
+- **Evidence / commit / PR:** Worker `d349756` integrated as `ef677d5`. Shared training-data completion policy refreshes generated workout/exercise families and initiating-user analytics; mutable route loaders honor invalidation. Worker reports 71 focused tests, tsc/lint/format and negative controls passing. Head inspected implementation and behavioral suite; repaired shared chat fixture and asynchronous route-test assumption in `2f8cd33`. Full combined gate passed 513 tests / 102 files plus format/lint/both knip modes (session35 log). No live browser/account-switch isolation proof.
+- **Decision / blocker:** Full client gate and final tsc passed. Fresh independent review pending; not accepted yet.
 
 #### A007
 
