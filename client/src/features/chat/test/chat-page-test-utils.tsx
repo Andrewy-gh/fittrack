@@ -85,7 +85,8 @@ export const {
   mockBillingCancellationQueryResult,
 } = mocks;
 
-vi.mock("@tanstack/react-query", () => ({
+vi.mock(import("@tanstack/react-query"), async (importOriginal) => ({
+  ...(await importOriginal()),
   useMutation: mockUseMutation,
   useQuery: mockUseQuery,
 }));

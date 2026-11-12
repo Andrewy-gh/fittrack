@@ -427,7 +427,7 @@ describe("training mutations followed by authoritative reads", () => {
       );
     });
 
-  it("new/edit route loaders reread invalidated inactive data before navigation commits", async () => {
+  it("new/edit route navigation refreshes invalidated inactive data", async () => {
     const hooks = mountMutations();
     const context = { queryClient, user };
     const root = createRootRoute();
@@ -460,16 +460,22 @@ describe("training mutations followed by authoritative reads", () => {
       to: "/workouts/$workoutId/edit",
       params: { workoutId: 42 },
     });
-    expect(queryClient.getQueryData(exercisesQueryOptions().queryKey)).toEqual([
-      { id: 7, name: "exercise-1" },
-    ]);
-    expect(queryClient.getQueryData(workoutQueryOptions(42).queryKey)).toEqual({
-      sets: [{ workout_notes: "note-1" }],
-      recommendations: [],
+    // Cached routes revalidate in the background: navigation completion is not
+    // a promise that their loaders have finished refreshing Query data.
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData(exercisesQueryOptions().queryKey),
+      ).toEqual([{ id: 7, name: "exercise-1" }]);
+      expect(
+        queryClient.getQueryData(workoutQueryOptions(42).queryKey),
+      ).toEqual({
+        sets: [{ workout_notes: "note-1" }],
+        recommendations: [],
+      });
+      expect(
+        queryClient.getQueryData(newWorkoutContextQueryOptions().queryKey),
+      ).toEqual({ focusTemplates: [{ focus: "focus-1" }] });
     });
-    expect(
-      queryClient.getQueryData(newWorkoutContextQueryOptions().queryKey),
-    ).toEqual({ focusTemplates: [{ focus: "focus-1" }] });
   });
 
   for (const failFirst of [false, true])
