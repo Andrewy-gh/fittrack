@@ -5,35 +5,65 @@ set -e
 zero_sha="0000000000000000000000000000000000000000"
 has_server_code_changes=0
 
+# Inspect every ref before verification. Children must never consume Git's
+# remaining pre-push input (including refs after a server-changing ref).
 while read -r local_ref local_sha remote_ref remote_sha
 do
   [ -z "$local_sha" ] && continue
   [ "$local_sha" = "$zero_sha" ] && continue
 
   if [ "$remote_sha" = "$zero_sha" ]; then
-    commit_list="$(git rev-list "$local_sha" --not --remotes)"
+    commit_list="$(git rev-list "$local_sha" --not --remotes </dev/null)" || {
+      echo "pre-push: cannot inspect outgoing commits; refusing push" >&2
+      exit 1
+    }
   else
-    commit_list="$(git rev-list "$remote_sha..$local_sha")"
+    commit_list="$(git rev-list "$remote_sha..$local_sha" </dev/null)" || {
+      echo "pre-push: cannot inspect outgoing commits; refusing push" >&2
+      exit 1
+    }
   fi
 
   for commit in $commit_list
   do
-    commit_files="$(git diff-tree --no-commit-id --name-only -r "$commit" || true)"
-    server_non_docs_files="$(echo "$commit_files" | grep '^server/' | grep -Ev '^server/(README\.md|docs/|.*\.md$)' || true)"
-    if [ -n "$server_non_docs_files" ]; then
+    # Pathspec exclusions avoid parsing filenames, including embedded newlines.
+    # --root includes initial commits; -m includes changes introduced by merges.
+    changed_paths="$(git diff-tree --no-commit-id --name-only --root -r -m "$commit" -- \
+      server/ ':(exclude)server/docs/' ':(exclude,glob)server/**/*.md' </dev/null)" || {
+      echo "pre-push: cannot inspect server changes; refusing push" >&2
+      exit 1
+    }
+    if [ -n "$changed_paths" ]; then
       has_server_code_changes=1
-      break
     fi
   done
-
-  if [ "$has_server_code_changes" -eq 1 ]; then
-    break
-  fi
 done
 
 if [ "$has_server_code_changes" -eq 1 ]; then
-  echo "pre-push: server code changes detected; running make test-short"
-  (cd server && make test-short)
+  echo "pre-push: server code changes detected; checking prepared worktree TEST target"
+  if ! command -v node >/dev/null 2>&1; then
+    echo "pre-push: install/select Node 24.22.1; see docs/worktrees.md" >&2
+    exit 1
+  fi
+  # Git exports hook-local repository context. In particular, GIT_DIR can make
+  # discovery from server/ treat it as a different checkout. Drop only Git's
+  # documented local variables, never the native runtime's admission context.
+  git_local_env="$(git rev-parse --local-env-vars </dev/null)" || {
+    echo "pre-push: cannot normalize Git hook context; refusing push" >&2
+    exit 1
+  }
+  # Intentional field splitting: Git emits variable names, not values.
+  unset $git_local_env
+  if ! node scripts/worktree.ts doctor --mode test --json </dev/null; then
+    echo "pre-push: TEST target is not ready; no tests were run." >&2
+    echo "Configure the installed worktree-runtime and explicit local credentials, then deliberately run:" >&2
+    echo "  node scripts/worktree.ts prepare --mode test --json" >&2
+    echo "See docs/worktrees.md. The hook never starts services or prepares databases." >&2
+    exit 1
+  fi
+  # Never use Make/setenv or unit mode here: even -short tests can access a DB.
+  # Native admission owns the TEST lock; the adapter assigns this worktree's DB.
+  (cd server && node ../scripts/worktree.ts run test -- go test -p 1 -short ./... </dev/null)
 else
-  echo "pre-push: no server code changes; skipping make test-short"
+  echo "pre-push: no server code changes; skipping server verification"
 fi

@@ -353,6 +353,56 @@ Do not wrap `make dev`, `make test-*`, or `make migrate-*`; those source
 settings such as `PROJECT_ID` per terminal; setup does not copy `.env` files or
 create Stack accounts.
 
+### Pre-push server verification
+
+For outgoing non-documentation `server/` changes, `.husky/pre-push` first runs
+`node scripts/worktree.ts doctor --mode test --json` from the checkout root.
+This read-only check must validate an **already prepared**, worktree-owned TEST
+database. Only then does the hook run, from `server/`:
+
+```bash
+node ../scripts/worktree.ts run test -- go test -p 1 -short ./...
+```
+
+All Go packages remain selected: `-short` is not a database isolation boundary.
+Do not substitute unit mode or raw `go test`, and do not wrap this hook in a
+legacy Make target. The hook never sources `setenv.sh`, starts services, runs
+migrations, or falls back to an ambient `DATABASE_URL`. Readiness, native
+admission, or test failures block the push. Ref deletions, documentation-only
+changes and pushes without server changes require no database preparation.
+Git inspection failures also block publication. Hook subprocesses receive no
+Git ref stdin, and the hook does not stage, stash or reset user changes.
+Before native runtime discovery it clears Git's hook-local repository variables
+so the `server/` command uses the same checkout allocation; native admission
+and managed caller context are preserved.
+
+Before publishing server changes, deliberately prepare **this checkout** using
+the prerequisites above: pinned Node/Go/Goose, the installed native runtime,
+an operator-approved running local PostgreSQL 15.19 endpoint, and explicit
+`FITTRACK_LOCAL_DATABASE_URL` / `FITTRACK_LOCAL_RUNTIME_DATABASE_URL` credentials
+(session or selected local profile). Docker users must explicitly select their
+approved `FITTRACK_LOCAL_POSTGRES_CONTAINER`; never start an unrelated shared
+cluster just to satisfy a push. Do not copy allocation or environment files
+from another checkout. Preparation can create/migrate this checkout's owned
+databases and must be a separate, intentional action:
+
+```bash
+# From the checkout root, in the same configured session used for the push:
+node scripts/worktree.ts prepare --mode test --json
+node scripts/worktree.ts doctor --mode test --json
+# Invoke Git normally, not inside a managed run (the hook owns TEST admission):
+git -c core.hooksPath=.husky push -u origin HEAD:refs/heads/YOUR_BRANCH
+```
+
+The per-command hook path runs the executable checked-in hook directly, including
+in fresh linked worktrees without the ignored Husky `.husky/_` installation.
+It does not disable hooks or change global/repository Git configuration.
+
+Keep that approved database available until the hook finishes. A missing
+runtime, Node, allocation, credentials or prepared database is a blocker, not a
+reason to bypass hooks. Hook fixtures need no runtime/database and never use
+host credentials: `node --test scripts/pre-push.test.mjs`.
+
 ## Ports, frontend, and auth
 
 ### Agent status and optional logs
