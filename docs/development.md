@@ -5,7 +5,7 @@ This guide covers the repo-level workflow for running FitTrack locally and keepi
 ## Worktree-local development
 
 For concurrent linked worktrees sharing a local PostgreSQL server, see the
-[worktree setup guide](worktrees.md). Run its `init`, `db setup --major`, and
+[worktree setup guide](worktrees.md). Run its `prepare --mode dev` and
 `run` commands in each worktree; creating a worktree alone is not setup. Local
 PostgreSQL 15.19 is pinned for local development and CI; the guide includes the
 shared Docker startup, version checks, and safe fresh-storage transition. The Docker quick start below is
@@ -206,10 +206,15 @@ make vet              # Run go vet
 make migrate-up       # Run database migrations
 make migrate-down     # Rollback last migration
 make migrate-create   # Create a new migration
-make docker-up        # Start PostgreSQL container
 make docker-down      # Stop PostgreSQL container
 make clean            # Clean build files and cache
 ```
+
+There is no `make docker-up` target. For single-checkout development, `make dev`
+starts PostgreSQL, applies migrations, and starts Air. For database-only startup
+or concurrent worktrees, follow [the shared PostgreSQL setup](worktrees.md#one-shared-docker-server)
+and per-worktree preparation there; do not run Make lifecycle commands inside
+the managed worktree wrapper.
 
 ### Frontend
 

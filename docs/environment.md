@@ -63,15 +63,21 @@ prefix, and `ALLOWED_ORIGINS` must allow the frontend origin.
 
 ## Production Deploy
 
-GitHub Actions currently expect these secrets:
+The production workflow, [fly-deploy.yml](../.github/workflows/fly-deploy.yml),
+currently reads these GitHub Actions secrets:
 
 - `DATABASE_URL`
 - `VITE_PROJECT_ID`
 - `VITE_PUBLISHABLE_CLIENT_KEY`
 - `FLY_API_TOKEN`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PREMIUM_PRICE_ID`
+
+Stripe settings are **runtime configuration**, not secrets consumed or synced by
+this workflow. Billing still requires `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`, and `STRIPE_PREMIUM_PRICE_ID` on the deployed API;
+configure them separately in the Fly runtime secret store. Merely adding them
+to GitHub Actions does not configure billing. Preserve existing runtime settings;
+no checked-in workflow currently supplies Stripe credentials. See
+[Stripe Billing](stripe-billing.md) for runtime setup and verification.
 
 Preview deploys use these secrets in the GitHub `review` environment, copied from
 Doppler project `fittrack`, config `stg` (storage in Doppler alone does not sync them):

@@ -9,12 +9,15 @@ server_changed=$2
 client_changed=$3
 server_non_docs_changed=$4
 
-if [ "$api_contract_changed" -eq 1 ]; then
-  echo "pre-commit: generating the API contract from staged backend inputs"
+if [ "$api_contract_changed" -eq 1 ] || [ "$client_changed" -eq 1 ]; then
   if ! command -v bun >/dev/null 2>&1; then
-    echo "pre-commit: Bun is required to generate the API contract" >&2
+    echo "pre-commit: Bun is required for API generation and client checks. Install Bun 1.4.2, ensure bun is on PATH, then retry." >&2
     exit 1
   fi
+fi
+
+if [ "$api_contract_changed" -eq 1 ]; then
+  echo "pre-commit: generating the API contract from staged backend inputs"
   bun run --cwd client api:generate
   generated_worktree_changes="$(git diff --name-only -- server/docs/swagger.json server/docs/swagger.yaml client/src/client; git ls-files --others -- server/docs/swagger.json server/docs/swagger.yaml client/src/client)"
   if [ -n "$generated_worktree_changes" ]; then
@@ -30,19 +33,11 @@ if [ "$api_contract_changed" -eq 1 ]; then
 fi
 
 if [ "$client_changed" -eq 1 ]; then
-  if command -v bun >/dev/null 2>&1; then
-    bun run --cwd client fmt:check
-    bun run --cwd client lint
-    bun run --cwd client knip
-    bun run --cwd client knip:production
-    bun run --cwd client test
-  else
-    pnpm -C client fmt:check
-    pnpm -C client lint
-    pnpm -C client knip
-    pnpm -C client knip:production
-    pnpm -C client test
-  fi
+  bun run --cwd client fmt:check
+  bun run --cwd client lint
+  bun run --cwd client knip
+  bun run --cwd client knip:production
+  bun run --cwd client test
 fi
 
 if [ "$server_changed" -eq 1 ]; then

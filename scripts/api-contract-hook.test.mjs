@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 const repository = new URL("..", import.meta.url).pathname.replace(
@@ -53,6 +53,7 @@ function fixture(t, generator = "noop") {
     ...process.env,
     CALL_LOG: "calls.log",
     GENERATOR_MODE: generator,
+    FAIL_CHECK: "",
   };
   const stage = (path, body = "fixture\n") => {
     const full = join(root, path);
@@ -61,16 +62,56 @@ function fixture(t, generator = "noop") {
     command(["git", "add", "--", path], root);
   };
   const commit = () => command(["git", "commit", "-qm", "fixture"], root);
-  const runHook = () =>
-    command(
-      [
-        shell,
-        "-c",
-        `bun() { printf '%s\\n' "$*" >> "$CALL_LOG"; case "$*" in *api:generate*) [ "$GENERATOR_MODE" != fail ] || return 23; if [ "$GENERATOR_MODE" = change ]; then mkdir -p client/src/client; printf generated > client/src/client/new.gen.ts; fi ;; esac; }; . ./.husky-pre-commit`,
-      ],
+  const bin = join(root, "bin");
+  mkdirSync(bin);
+  const locate = (name) => {
+    const result = command([shell, "-c", `command -v ${name}`], root);
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  // Real Git is also needed by the Node path inspector. Exclude the host Bun
+  // directory so a developer's installed package managers cannot mask failures.
+  const git = locate("git");
+  const shellBin = command([shell, "-c", "pwd"], bin).stdout.trim();
+  const controlledPath = [shellBin, dirname(git)].join(":");
+  for (const name of ["node", "make", "mkdir"]) {
+    const executable = locate(name);
+    writeFileSync(join(bin, name), `#!/bin/sh\nexec '${executable}' "$@"\n`, {
+      mode: 0o755,
+    });
+  }
+  writeFileSync(
+    join(bin, "pnpm"),
+    '#!/bin/sh\nprintf "pnpm fallback\\n" >> "$CALL_LOG"\nexit 71\n',
+    { mode: 0o755 },
+  );
+  const bunPath = join(bin, "bun");
+  writeFileSync(
+    bunPath,
+    `#!/bin/sh
+printf '%s\\n' "$*" >> "$CALL_LOG"
+case "$*" in
+  *api:generate*)
+    [ "$GENERATOR_MODE" != fail ] || exit 23
+    if [ "$GENERATOR_MODE" = change ]; then
+      mkdir -p client/src/client
+      printf generated > client/src/client/new.gen.ts
+    fi ;;
+esac
+[ "$*" != "run --cwd client $FAIL_CHECK" ] || exit 29
+`,
+    { mode: 0o755 },
+  );
+  const runHook = ({ bun = true } = {}) => {
+    if (!bun) rmSync(bunPath, { force: true });
+    return command(
+      [shell, "-c", `export PATH='${controlledPath}'; . ./.husky-pre-commit`],
       root,
-      { env },
+      {
+        env,
+      },
     );
+  };
   const calls = () => {
     try {
       return readFileSync(join(root, env.CALL_LOG), "utf8");
@@ -287,14 +328,72 @@ test("unrelated unstaged edits survive while a staged API change is checked", (t
   assert.match(f.calls(), /api:generate/);
 });
 
+test("client and backend contract changes require Bun without falling back to pnpm", (t) => {
+  for (const path of [
+    "client/src/app.tsx",
+    "server/internal/sample/model.go",
+  ]) {
+    const f = fixture(t);
+    f.stage("seed.txt");
+    f.commit();
+    f.stage(path);
+    const result = f.runHook({ bun: false });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /Bun is required/);
+    assert.match(result.stderr, /Install Bun.*PATH/);
+    assert.equal(f.calls(), "");
+    assert.equal(
+      command(["git", "diff", "--cached", "--name-only"], f.root).stdout.trim(),
+      path,
+    );
+  }
+});
+
+test("client changes run the complete Bun check suite and propagate each failure", (t) => {
+  const checks = ["fmt:check", "lint", "knip", "knip:production", "test"];
+  for (const failCheck of ["", ...checks]) {
+    const f = fixture(t);
+    f.stage("seed.txt");
+    f.commit();
+    f.stage("client/src/app.tsx");
+    f.env.FAIL_CHECK = failCheck;
+    const result = f.runHook();
+    assert.equal(result.status, failCheck ? 29 : 0, result.stderr);
+    const completed = failCheck
+      ? checks.slice(0, checks.indexOf(failCheck) + 1)
+      : checks;
+    assert.deepEqual(
+      f.calls().trim().split("\n"),
+      completed.map((check) => `run --cwd client ${check}`),
+    );
+  }
+});
+
+test("docs-only server changes skip Go checks while backend tests still run them", (t) => {
+  for (const [path, goCheck] of [
+    ["server/README.md", false],
+    ["server/docs/guide.md", false],
+    ["server/internal/sample/model_test.go", true],
+  ]) {
+    const f = fixture(t);
+    f.stage("seed.txt");
+    f.commit();
+    f.stage(path);
+    const result = f.runHook({ bun: false });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(f.calls().includes("make test-fast"), goCheck);
+    assert.doesNotMatch(f.calls(), /api:generate|pnpm/);
+  }
+});
+
 test("generation failures stop the hook and propagate", (t) => {
   const f = fixture(t, "fail");
   f.stage("seed.txt");
   f.commit();
   f.stage("server/internal/sample/model.go");
   const result = f.runHook();
-  assert.notEqual(result.status, 0);
-  assert.match(f.calls(), /api:generate/);
+  assert.equal(result.status, 23, result.stderr);
+  assert.equal(f.calls(), "run --cwd client api:generate\n");
   assert.equal(
     command(["git", "diff", "--cached", "--name-only"], f.root).stdout.trim(),
     "server/internal/sample/model.go",
