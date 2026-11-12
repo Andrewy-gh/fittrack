@@ -295,7 +295,7 @@ CREATE TABLE exercise (
     historical_1rm_updated_at TIMESTAMPTZ,
     historical_1rm_source_workout_id INTEGER REFERENCES workout(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     user_id VARCHAR(256) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     CONSTRAINT exercise_user_id_name_key UNIQUE (user_id, name)
 );
