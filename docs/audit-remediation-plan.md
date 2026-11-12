@@ -151,8 +151,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F07` — Batch 2
-- **Evidence / commit / PR:** Assigned next as AUDIT-W2-WORKOUT-LOOKUP; implementation not yet accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `2f3a712` integrated as `ac12780`. Existing ownership-scoped lookup now distinguishes missing/foreign IDs (404), owned empty/nonempty workouts (200), and database errors (safe 500). Worker reported intended pre-fix HTTP failures; head reran full isolated exercise/workout suites and retained restricted-role SQL checks successfully. Log: `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-20-81eb5ef6.log`. Existing owner-mode direct-RLS subtest skipped; HTTP ownership cases passed. A008 policy unchanged.
+- **Decision / blocker:** Fresh independent A007 review pending; not accepted yet.
 
 #### A008
 
