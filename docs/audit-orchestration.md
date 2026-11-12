@@ -107,7 +107,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 | AUDIT-W1-COMBINED-REVIEW | Wave 1 and cleanup through 3e52255, including corrected A010 | Pi / openai-codex/gpt-6.1-sol / high | Reconciled; accepted |
 | AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Integrated ef677d5; head repairs 2f8cd33; independently reviewed and accepted |
 | AUDIT-W2-CARD-CHARTS | Remove fabricated exercise-card history, A011 | Pi / openai-codex/gpt-6.1-terra / medium | Accepted; caf2b2b plus head test hardening 093adf4 |
-| AUDIT-W3-HTTP-OBSERVABILITY | A025 route/user observability, A026 CORS, A028 logger configuration | Pi / openai-codex/gpt-6.1-sol / medium | Prepared; interacting server middleware/startup boundaries |
+| AUDIT-W3-HTTP-OBSERVABILITY | A025 route/user observability, A026 CORS, A028 logger configuration | Pi / openai-codex/gpt-6.1-sol / medium | Integrated f0499cd; head checks passed; fresh review next |
 | AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Integrated ac12780; independently reviewed and accepted |
 
 Cache task: `node:delegated-task:command%3Amcp%3A8b6abc8e-650c-4e14-9ace-860f562852e7%3Adelegate-task%3AAUDIT-W2-CACHES`.
@@ -140,5 +140,16 @@ Workout lookup is fully specified, bounded server behavior with real HTTP/DB acc
 - Browser bridge fixture passed in worker session; actual app was not started/visually checked. Desktop/mobile layout remains unverified. Head queried the exact reported diagnostic PID35604 from worker session6 via Win32_Process; it no longer exists (session44 exit0, empty result). No process was killed and no shared state was altered.
 - AUDIT-W2-CARD-CHARTS-REVIEW report1 reconciled: requested/receipt/returned Pi / Sol / high matched, target `e62c4f8..caf2b2b`. No production blockers; independently passed seven tests/two files, inspected callers and real metrics/controls. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-3-492ef675.log`. Task suffix `delegate-task%3AAUDIT-W2-CARD-CHARTS-REVIEW` under the same 8b6abc8e prefix.
 - Head fixed P3 selector overbreadth: inspect actual CSS height percentages in the former seven-bar cluster rather than matching arbitrary style text (including line-height). Commit `093adf4`; focused seven tests and complete commit-hook gate passed515 tests/102files, format/lint/both knip modes, no bypass. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-47-1f2bf3fa.log`. Production remained unchanged from reviewed target. A011 accepted; total15. Reviewer considered missing live layout check nonblocking for this narrow deletion; it remains a caveat.
+
+### AUDIT-W3-HTTP-OBSERVABILITY / report 1 reconciled
+
+- Task suffix `delegate-task%3AAUDIT-W3-HTTP-OBSERVABILITY` under the same 8b6abc8e prefix. Requested/receipt/returned Pi / Sol / medium matched.
+- Source `14967be781614f1bffe4da61772bc3d0765dacf7`, worktree `C:/Users/lenny/.t3/worktrees/fittrack/t3-5271509d`; head inspected all nine files and integrated once as `f0499cd`.
+- A025: registered route templates resolved without dispatching before auth; verified identity propagated to completion observers even on provisioning failure; touched log boundaries no longer expose raw path/userID. Real application router tests cover concurrent request isolation, cardinality, 200/400/401/404/500, no raw IDs/tokens/prompts.
+- A026: PATCH allowed by existing origin policy, Vary: Origin appended while preserving existing values/case-insensitive Origin/wildcard semantics. No widened origins.
+- A028: app.New installs configured logger process-wide. Startup plus local AI runtime/provider fixture tests validate JSON, levels and redaction; global test state restored.
+- Worker reports intended red failures and green checks including count3 repeats. Worker unit prepare flagged absent client dependencies but native allocation/server unit commands worked; no client verification claimed. CGO disabled, race instrumentation unavailable.
+- Head reran managed uncached app/middleware/auth/response suites, Go build -p1 ./..., and vet app/auth/middleware/response/aichat: exit0. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-51-015733ba.log`. No DB/external provider/auth verification; tests use local fixtures.
+- A025/A026/A028 remain In progress pending fresh read-only Pi / Sol / high review of immutable `34e5e22..f0499cd`. Accepted count stays15. Raw path→route log consumers may need migration; global logger scope is intentional.
 
 No nested workers; head owns integration, tracker updates and final acceptance. Next reports must be reconciled once and returned through native completion, without polling.

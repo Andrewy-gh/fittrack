@@ -341,8 +341,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F12` — Batch 3
-- **Evidence / commit / PR:** Next assignment AUDIT-W3-HTTP-OBSERVABILITY; no implementation accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `14967be` integrated as `f0499cd`. Head inspected production and regression tests, then passed uncached app/middleware/auth/response suites, full Go build and scoped vet under managed unit mode (session51 exit0). Tests exercise real application routing/composition, concurrent request isolation, CORS PATCH/Vary preservation, and startup-configured JSON/level/redaction through a local AI provider fixture. No database/external auth/provider calls or race-detector proof.
+- **Decision / blocker:** Fresh independent review pending; not accepted yet. Logs now use bounded route rather than raw path; global logger configuration is process-wide.
 
 #### A026
 
@@ -351,8 +351,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F13` — Batch 3
-- **Evidence / commit / PR:** Next assignment AUDIT-W3-HTTP-OBSERVABILITY; no implementation accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `14967be` integrated as `f0499cd`. Head inspected production and regression tests, then passed uncached app/middleware/auth/response suites, full Go build and scoped vet under managed unit mode (session51 exit0). Tests exercise real application routing/composition, concurrent request isolation, CORS PATCH/Vary preservation, and startup-configured JSON/level/redaction through a local AI provider fixture. No database/external auth/provider calls or race-detector proof.
+- **Decision / blocker:** Fresh independent review pending; not accepted yet. Logs now use bounded route rather than raw path; global logger configuration is process-wide.
 
 #### A027
 
@@ -371,8 +371,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F15` — Batch 3
-- **Evidence / commit / PR:** Next assignment AUDIT-W3-HTTP-OBSERVABILITY; no implementation accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `14967be` integrated as `f0499cd`. Head inspected production and regression tests, then passed uncached app/middleware/auth/response suites, full Go build and scoped vet under managed unit mode (session51 exit0). Tests exercise real application routing/composition, concurrent request isolation, CORS PATCH/Vary preservation, and startup-configured JSON/level/redaction through a local AI provider fixture. No database/external auth/provider calls or race-detector proof.
+- **Decision / blocker:** Fresh independent review pending; not accepted yet. Logs now use bounded route rather than raw path; global logger configuration is process-wide.
 
 #### A029
 
