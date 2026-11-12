@@ -10,15 +10,15 @@ The original F/G/D identifiers are retained **only as implementation guidance**,
 
 A009 has been accepted after independent review and regression verification. Other findings are not complete unless their individual entries say Done. The audit's claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). A001–A004 remain with the workout worker; A009 is Done; A010 is under head correction following review. User approved A103/A104 removal and conditional A094 script cleanup. See individual entries for current evidence. In progress means assigned or under correction, not verified.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). A001–A004, A010 and approved cleanup are implemented on the integration branch pending combined checks and fresh independent review. A009 is Done. A094 cleanup also supersedes A029's runner repair and addresses A050's README drift. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement | H | 42 | 1 |
+| Ready to implement (including approved A094) | H | 43 | 1 |
 | User-approved cleanup | M | 2 | 0 |
-| Gated on evidence, design or approval | H | 13 | 0 |
+| Gated on evidence, design or approval | H | 12 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
 | **Total** | **55 H / 33 M / 18 L** | **106** | **1** |
@@ -83,8 +83,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F01` — Batch 1
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Integrated workout commit `9f56129` (worker `729e0cb`). Head ran full exercise/workout suites on isolated migrated PostgreSQL 15.19: omitted/null retain, independent empty-string clears, reload and unrelated updates passed. Frontend worker regressions passed; combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
+- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
 
 #### A002
 
@@ -93,8 +93,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F02` — Batch 1
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Integrated `9f56129`. Head's real HTTP/database regression passed null, zero and positive weight round trips through update/reload. Worker reproduced the original client coercion and its regression passed. Combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
+- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
 
 #### A003
 
@@ -103,8 +103,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F03` — Batch 1
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Integrated `9f56129`. Worker simulated date rollover, selected/restored dates, draft clear and save reset successfully in caller-facing tests. Combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
+- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
 
 #### A004
 
@@ -113,17 +113,17 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F04` — Batch 1
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Integrated `9f56129`. Worker verified catalog selection → storage reload → save request retains catalog_id; legacy/custom drafts remain readable. Combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
+- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
 
 #### A005
 
 > H Saving an AI workout draft from chat refreshes no caches (chat-session-workout-draft.ts:22). The workout list and analytics stay stale, and route loaders use staleTime: "static".
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F05` — Batch 2
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned next wave as AUDIT-W2-CACHES; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A006
@@ -139,9 +139,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > - The TODO at workouts.ts:77 assumes a low stale time; it is 5 minutes.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F06` — Batch 2
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned next wave as AUDIT-W2-CACHES; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A007
@@ -181,8 +181,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F09` — Batch 2
-- **Evidence / commit / PR:** Initial patch `7da9a8f` was incomplete: reviewer found updated_at has no persisted default. Head restored isolated PostgreSQL 15.19 + Goose 3.24.3; the first full exercise run also exposed missing authenticated context in the new test. Head is repairing stored timestamps and replacing the test with real HTTP/DB coverage.
-- **Decision / blocker:** Not accepted. Requires default/backfill correction, pre-fix failure for the intended reason, non-skipped database/JSON regression checks, and fresh review. Old local environment blockers were bypassed safely with an owned disposable container, not shared data.
+- **Evidence / commit / PR:** Head corrected persisted timestamps with new migrations 00034/00035 and schema default/NOT NULL. Replaced the initially mis-authenticated test with POST/list/detail JSON, distinct existing timestamps, transaction/catalog persistence and real migration-backfill coverage. Red run failed on null updated_at; green full exercise/workout suites passed. Logs: pi-unified-exec-31-e9f3ac82.log (red), pi-unified-exec-37-c8b6c187.log (green), under the user's Local/Temp directory. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
+- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
 
 #### A011
 
@@ -379,10 +379,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H server/scripts/run-complete-rls-audit.sh cannot run: it uses PowerShell Get-Content inside bash and a container name that no longer exists.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F16` — Batch 3
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker proved obsolete runner defects and removed it with superseded fixtures/probes in `b3a7ec2` (source `5adeefeb`), under user-authorized A094 cleanup. Maintained runtime-role tools retained. This supersedes repair; it does not claim the historical audit passes.
+- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
 
 #### A030
 
@@ -595,10 +595,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H server/scripts/README.md describes a workflow file and secrets that do not exist.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F21` — Batch 5
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Rewrote server/scripts/README.md in `b3a7ec2` to describe real CI/local callers, credential boundaries and limitations; removed fictitious workflow/secrets guidance. Worker verified all eight links.
+- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
 
 #### A051
 
@@ -1070,11 +1070,11 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 
 > H Six scripts in server/scripts are referenced by nothing, and two of the SQL files differ only in their title.
 
-- **Disposition:** Gated
+- **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `G08` — Gated work
-- **Evidence / commit / PR:** User authorized inventory and removal only if scripts serve no useful current purpose.
-- **Decision / blocker:** Explain each script's purpose, compare maintained replacements, retain useful/manual tools; do not execute destructive or production-facing scripts during inventory.
+- **Evidence / commit / PR:** User-authorized purpose inventory complete. Removed six obsolete/unsafe scripts in `b3a7ec2`; four useful SQL tools unchanged. Source corrections: scripts had manual/internal callers and two privilege files were not identical. Worker reproduced false success/incorrect cross-user expectation with network-free Bash mocks.
+- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
 
 #### A095
 
@@ -1165,8 +1165,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `D43` — User review
-- **Evidence / commit / PR:** User explicitly approved removal. Removed the three copied TanStack documents; no inbound non-audit references found.
-- **Decision / blocker:** Final cleanup verification/closeout pending; no user decision remains.
+- **Evidence / commit / PR:** User-approved three copied TanStack documents removed in `6269904`. No remaining inbound non-audit references. Commit checks passed format/lint, both knip modes and all 489 client tests; closeout review pending.
+- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
 
 ### No longer needed / Repository
 
@@ -1177,8 +1177,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `D44` — User review
-- **Evidence / commit / PR:** User explicitly approved removal. Removed tracked output/ artifacts only; updated docs/training-assessment-policy.md to retain historical caveats without dangling artifact links.
-- **Decision / blocker:** Final cleanup verification/closeout pending; no user decision remains.
+- **Evidence / commit / PR:** User-approved tracked output artifacts removed in `6269904`. Two evidence references corrected in docs/training-assessment-policy.md, retaining historical caveats. Non-audit reference scan clean; closeout review pending.
+- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
 
 #### A105
 
