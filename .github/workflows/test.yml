@@ -214,6 +214,10 @@ jobs:
         working-directory: client
         run: bun run lint
 
+      - name: Test audit static-analysis guardrails
+        working-directory: client
+        run: bun run test:guardrails
+
       - name: Check unused code
         working-directory: client
         run: |

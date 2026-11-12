@@ -32,6 +32,7 @@ export default defineConfig({
   ],
   jsPlugins: [
     { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },
+    { name: "training-cache", specifier: "./tools/oxlint/training-cache.ts" },
   ],
   rules: {
     "anti-slop/no-chained-type-assertions": "error",
@@ -45,6 +46,18 @@ export default defineConfig({
     "anti-slop/no-widen-then-assert": "error",
   },
   overrides: [
+    {
+      files: [
+        "src/features/workouts/api/{workouts,workout-query-options}.ts",
+        "src/features/exercises/api/{exercises,exercise-query-options}.ts",
+        "src/features/analytics/api/{training-assessment,muscle-contributions}.ts",
+        "src/features/workouts/pages/workout-route-composition.tsx",
+        "src/features/workouts/hooks/use-new-workout-form-workflow.ts",
+        "src/features/workouts/components/form/exercise-recommendation-panel.tsx",
+        "src/lib/demo-data/query-options.ts",
+      ],
+      rules: { "training-cache/no-static-training-data": "error" },
+    },
     {
       files: ["src/**/*.{ts,tsx}"],
       excludeFiles: [
