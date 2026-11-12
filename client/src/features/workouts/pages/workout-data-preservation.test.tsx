@@ -21,6 +21,7 @@ import { queryClient } from "@/lib/api/api";
 import { getExerciseCatalogQueryOptions } from "@/client/@tanstack/react-query.gen";
 import { AddExerciseScreen } from "../components/form/add-exercise-screen";
 import { EditWorkoutPage } from "./edit-workout-page";
+import { NewWorkoutPage } from "./new-workout-page";
 import { useNewWorkoutFormWorkflow } from "../hooks/use-new-workout-form-workflow";
 import { createWorkoutDraftStorage } from "@/lib/local-storage";
 import type { ApplicationUser } from "@/lib/application-user";
@@ -68,6 +69,75 @@ async function mount(
   await router.load();
   return router;
 }
+
+it.each(["new", "edit"] as const)(
+  "%s workout cards show only actual set metrics, not invented history",
+  async (page) => {
+    const workout = {
+      date: "2026-10-08T12:00:00Z",
+      exercises: [
+        {
+          name: "Pushups",
+          sets: [{ reps: 10, weight: 20, setType: "working" as const }],
+        },
+        { name: "Squats", sets: [] },
+      ],
+    };
+    const entries = new Map<string, string>();
+    const draftStorage = createWorkoutDraftStorage({
+      getItem: (key) => entries.get(key) ?? null,
+      setItem: (key, value) => {
+        entries.set(key, value);
+      },
+      removeItem: (key) => {
+        entries.delete(key);
+      },
+    });
+    draftStorage.save(workout, user.id);
+    const router = await mount(
+      page === "new" ? "/workouts/new" : "/workouts/$workoutId/edit",
+      () =>
+        page === "new" ? (
+          <NewWorkoutPage
+            user={user}
+            exercises={[]}
+            newWorkoutContext={{ focusTemplates: [] }}
+            workoutsFocus={[]}
+            search={{}}
+            draftStorage={draftStorage}
+          />
+        ) : (
+          <EditWorkoutPage
+            user={user}
+            exercises={[]}
+            workout={workout}
+            workoutId={1}
+            workoutsFocus={[]}
+            search={{}}
+          />
+        ),
+    );
+    const metrics = await screen.findByRole("button", {
+      name: /Pushups: 1 sets, .*200.* volume/,
+    });
+    // The misleading bars have no accessible label; inspect their rendered heights.
+    expect(metrics.querySelectorAll('[style*="height:"]')).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Edit order" }));
+    expect(
+      screen.getByRole("button", { name: "Reorder Pushups" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Squats" }));
+    expect(
+      screen.queryByRole("button", { name: "Edit Squats" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Pushups" }));
+    await waitFor(() =>
+      expect(router.state.location.search).toMatchObject({ exerciseIndex: 0 }),
+    );
+  },
+  60000,
+);
 
 it("submits explicit empty notes and focus from the edit form", async () => {
   await Promise.all([
