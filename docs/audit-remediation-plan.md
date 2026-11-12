@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Eleven findings are accepted after independent review and appropriate verification: A001–A004, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Twelve findings are accepted after independent review and appropriate verification: A001–A004, A007, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1 and the approved cleanup passed independent review. A005–A006 cache work is active; A007 missing-workout lookup is assigned next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A007 passed independent review. A005–A006 are integrated pending combined client checks and fresh review. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094) | H | 43 | 9 |
+| Ready to implement (including approved A094) | H | 43 | 10 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 12 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **11** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **12** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -149,10 +149,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H GET /api/workouts/{id} returns 200 with empty sets for a missing workout (workout/service.go:129); PUT and DELETE return 404.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F07` — Batch 2
 - **Evidence / commit / PR:** Worker `2f3a712` integrated as `ac12780`. Existing ownership-scoped lookup now distinguishes missing/foreign IDs (404), owned empty/nonempty workouts (200), and database errors (safe 500). Worker reported intended pre-fix HTTP failures; head reran full isolated exercise/workout suites and retained restricted-role SQL checks successfully. Log: `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-20-81eb5ef6.log`. Existing owner-mode direct-RLS subtest skipped; HTTP ownership cases passed. A008 policy unchanged.
-- **Decision / blocker:** Fresh independent A007 review pending; not accepted yet.
+- **Decision / blocker:** Accepted after AUDIT-W2-WORKOUT-LOOKUP-REVIEW, Pi / Sol / high, target `2fa1225..ac12780`: no actionable findings. Reviewer independently ran uncached handler/service checks and inspected head DB evidence. No live token-middleware/outage-injection proof; A008 remains deferred.
 
 #### A008
 

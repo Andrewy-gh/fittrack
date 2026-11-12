@@ -83,7 +83,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 - The system reboot interrupted two prior unit commands; no completion was claimed. Head verified OS boot after both run starts and absence of their supervisor PIDs, then archived only records 8944e3e2abaddd90685ae1d15db556a4 and b488815b045bac8bf708ee4c86a94f27 under ignored `.worktree/interrupted-runs/`. Runtime status was empty before reruns.
 - Reusable local harness: ignored `C:/Users/lenny/projects/fittrack/.worktree/verify-audit.mjs`. Uses fresh in-memory passwords, an owned tmpfs container at 55432, managed test setup, full exercise/workout suites and retained SQL checks, then deletes only its owned container in finally. Goose pinned at `C:/Users/lenny/.t3/worktrees/fittrack/t3-07e11d14/.worktree/tools/goose.exe`. Do not persist credentials or use generic/shared DATABASE_URL. Serialize prepare against other wrapped commands: admission correctly refused a prepare attempted while a unit command was running.
 - No disposable audit container remains. The preexisting PostgreSQL 15/16 data was never modified; after reboot no preexisting container was restarted by the head.
-- Eleven findings are accepted: A001–A004, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Fresh combined review returned clear and head confirmed application files match reviewed target. A088 remains untouched; A005/A006 are active and A007 is assigned next.
+- Twelve findings are accepted: A001–A004, A007, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. A088 remains untouched; A005/A006 are integrated pending combined verification/review.
 
 ### AUDIT-SCRIPTS-CLEANUP / report 1 reconciled
 
@@ -106,7 +106,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 | --- | --- | --- | --- |
 | AUDIT-W1-COMBINED-REVIEW | Wave 1 and cleanup through 3e52255, including corrected A010 | Pi / openai-codex/gpt-6.1-sol / high | Reconciled; accepted |
 | AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Returned; integrated ef677d5; combined checks running |
-| AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Returned; integrated ac12780; head checks passed; review pending |
+| AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Integrated ac12780; independently reviewed and accepted |
 
 Cache task: `node:delegated-task:command%3Amcp%3A8b6abc8e-650c-4e14-9ace-860f562852e7%3Adelegate-task%3AAUDIT-W2-CACHES`.
 Workout lookup is fully specified, bounded server behavior with real HTTP/DB acceptance cases, so Luna medium is appropriate. Its worker may run the head's inspected disposable harness from its own worktree; no shared database env is inherited or copied.
@@ -118,7 +118,7 @@ Workout lookup is fully specified, bounded server behavior with real HTTP/DB acc
 - Missing/foreign lookup returns404, owned empty/nonempty returns200, lookup DB errors remain safe500. No client/generated SQL changes; A008 empty-workout policy unchanged.
 - Worker reported red HTTP cases for foreign/nonexistent IDs, then green full isolated packages/restricted SQL, unit checks/build/vet.
 - Head reran full exercise/workout suites uncached plus both retained restricted-role SQL checks against disposable PostgreSQL15.19: exit0. Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-20-81eb5ef6.log`. Verified all four new real HTTP/DB cases and error-classification tests passed. Preexisting owner-mode direct-RLS case skipped; separate role checks do not imply it ran. Owned container removed.
-- Fresh read-only AUDIT-W2-WORKOUT-LOOKUP-REVIEW dispatched for immutable `2fa1225..ac12780`; requested/receipt Pi / Sol / high matched. Task suffix `delegate-task%3AAUDIT-W2-WORKOUT-LOOKUP-REVIEW` under the same 8b6abc8e prefix. Running; do not poll. A007 stays In progress until review reconciliation; accepted count remains11.
+- Fresh read-only AUDIT-W2-WORKOUT-LOOKUP-REVIEW dispatched for immutable `2fa1225..ac12780`; requested/receipt Pi / Sol / high matched. Task suffix `delegate-task%3AAUDIT-W2-WORKOUT-LOOKUP-REVIEW` under the same 8b6abc8e prefix. Report 1 returned clear and reconciled: reviewer independently ran uncached handler/service cases, checked ownership SQL/error wrapping and response construction, and inspected head DB evidence. A007 accepted; total12. No live token-middleware/outage-injection proof claimed.
 
 ### AUDIT-W2-CACHES / report 1 reconciled
 
