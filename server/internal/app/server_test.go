@@ -1,10 +1,13 @@
 package app
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -106,8 +109,60 @@ func TestValidateRLSCompatibleDatabaseConfigAllowsNonProductionOptOut(t *testing
 	}
 }
 
+func TestServerPanicDiagnosticsSurviveLogFiltering(t *testing.T) {
+	oldLogger, oldWriter, oldFlags := slog.Default(), log.Writer(), log.Flags()
+	t.Cleanup(func() {
+		slog.SetDefault(oldLogger)
+		log.SetOutput(oldWriter)
+		log.SetFlags(oldFlags)
+	})
+	for _, level := range []slog.Level{slog.LevelWarn, slog.LevelError} {
+		for _, kind := range []string{"api", "metrics"} {
+			t.Run(level.String()+"/"+kind, func(t *testing.T) {
+				var output bytes.Buffer
+				logger := slog.New(slog.NewJSONHandler(&output, &slog.HandlerOptions{Level: level}))
+				slog.SetDefault(logger)
+				panicHandler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+					panic("diagnostic-test-panic")
+				})
+				cfg := &config.Config{}
+				srv := newHTTPServer(cfg, panicHandler, logger)
+				path := "/panic"
+				if kind == "metrics" {
+					srv = newMetricsServer(cfg, panicHandler, logger)
+					path = "/metrics"
+				}
+				local := httptest.NewUnstartedServer(nil)
+				local.Config = srv
+				local.Start()
+				t.Cleanup(local.Close)
+				client := local.Client()
+				client.Timeout = 5 * time.Second
+				resp, err := client.Get(local.URL + path)
+				if resp != nil {
+					resp.Body.Close()
+				}
+				local.Close() // Join the real handler before inspecting its diagnostic.
+				if err == nil {
+					t.Fatal("expected the panicking handler to terminate the connection")
+				}
+				var entry struct {
+					Level string `json:"level"`
+					Msg   string `json:"msg"`
+				}
+				if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &entry); err != nil {
+					t.Fatalf("missing JSON panic diagnostic: %v; output=%q", err, output.String())
+				}
+				if entry.Level != "ERROR" || !strings.Contains(entry.Msg, "http: panic serving") || !strings.Contains(entry.Msg, "diagnostic-test-panic") {
+					t.Fatalf("unexpected panic diagnostic: %+v", entry)
+				}
+			})
+		}
+	}
+}
+
 func TestNewHTTPServerUsesBoundedWriteTimeout(t *testing.T) {
-	srv := newHTTPServer(&config.Config{Port: 8080}, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	srv := newHTTPServer(&config.Config{Port: 8080}, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), slog.Default())
 
 	if srv.WriteTimeout != 10*time.Second {
 		t.Fatalf("WriteTimeout = %v, want %v", srv.WriteTimeout, 10*time.Second)

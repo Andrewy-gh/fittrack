@@ -76,8 +76,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	return &App{
 		logger:        logger,
 		pool:          pool,
-		apiServer:     newHTTPServer(cfg, apiHandler),
-		metricsServer: newMetricsServer(cfg, metricsHandler),
+		apiServer:     newHTTPServer(cfg, apiHandler, logger),
+		metricsServer: newMetricsServer(cfg, metricsHandler, logger),
 	}, nil
 }
 
@@ -344,8 +344,10 @@ func newAPIHandler(cfg *config.Config, logger *slog.Logger, router *http.ServeMu
 	return handler
 }
 
-func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
+func newHTTPServer(cfg *config.Config, handler http.Handler, logger *slog.Logger) *http.Server {
 	return &http.Server{
+		// net/http diagnostics must survive warn/error application log levels.
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
@@ -354,11 +356,12 @@ func newHTTPServer(cfg *config.Config, handler http.Handler) *http.Server {
 	}
 }
 
-func newMetricsServer(cfg *config.Config, handler http.Handler) *http.Server {
+func newMetricsServer(cfg *config.Config, handler http.Handler, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", handler)
 
 	return &http.Server{
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		Addr:         fmt.Sprintf(":%d", cfg.MetricsPort),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
