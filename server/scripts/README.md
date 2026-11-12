@@ -64,6 +64,22 @@ report performs no fixture writes or role provisioning. Interpret it manually:
 - Command counts and clause-presence labels do not validate policy expressions,
   ownership, grants or cross-user behavior. Use the restricted-role checks above.
 
+## Storage-schema checks (not RLS proof)
+
+The [canonical schema verification guide](../schema-verification.md) describes
+these separate checks against an owned disposable PostgreSQL cluster:
+
+- [schema-storage-catalog.sql](schema-storage-catalog.sql) reads application
+  storage definitions for comparison between migrated and schema-built databases.
+  It deliberately does not compare runtime security configuration.
+- [test-schema-persistence.sql](test-schema-persistence.sql) verifies status,
+  foreign-key, JSON, timestamp and uniqueness behavior in both databases.
+  Fixtures roll back, but sequences can advance: never run it against production
+  or shared development data.
+
+`schema.sql` is the SQLC storage model, not a deployment bootstrap. These checks
+complement—not replace—the restricted-role verification above.
+
 ## Retired historical tooling
 
 The following files originated in the 2025 RLS investigation (`f598297`, #36).

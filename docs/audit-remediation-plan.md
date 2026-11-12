@@ -535,8 +535,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F19` — Batch 4
-- **Evidence / commit / PR:** Next assignment AUDIT-W4-SCHEMA: compare migrated disposable DB against canonical schema, repair confirmed drift and regenerate SQL bindings. No historical migration rewrite or index optimization authorized.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `0133fe7`, integrated `79af80d`; head reran PostgreSQL15.19 migrated/schema-built catalog comparison (268 entries, zero differences), behavioral SQL in both DBs, five focused integration tests without skips, both restricted-role SQL checks, Go build/vet and SQLC regeneration (no binding changes). Log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-77-1d186904.log`.
+- **Decision / blocker:** Fresh independent review pending; not accepted yet. Reconfirmed one missing index, two FKs, three stopped-status checks, JSON-array check and unique NULLS NOT DISTINCT representation. Original second index/third FK claims not reproduced; migration00024 deliberately dropped that index. Runtime migrations unchanged; schema.sql is not a security/deployment bootstrap. Go1.26.4 versus documented1.26.10; no full-suite/production proof.
 
 #### A045
 
