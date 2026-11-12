@@ -83,7 +83,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 - The system reboot interrupted two prior unit commands; no completion was claimed. Head verified OS boot after both run starts and absence of their supervisor PIDs, then archived only records 8944e3e2abaddd90685ae1d15db556a4 and b488815b045bac8bf708ee4c86a94f27 under ignored `.worktree/interrupted-runs/`. Runtime status was empty before reruns.
 - Reusable local harness: ignored `C:/Users/lenny/projects/fittrack/.worktree/verify-audit.mjs`. Uses fresh in-memory passwords, an owned tmpfs container at 55432, managed test setup, full exercise/workout suites and retained SQL checks, then deletes only its owned container in finally. Goose pinned at `C:/Users/lenny/.t3/worktrees/fittrack/t3-07e11d14/.worktree/tools/goose.exe`. Do not persist credentials or use generic/shared DATABASE_URL. Serialize prepare against other wrapped commands: admission correctly refused a prepare attempted while a unit command was running.
 - No disposable audit container remains. The preexisting PostgreSQL 15/16 data was never modified; after reboot no preexisting container was restarted by the head.
-- A009 is still the only accepted finding. A001–A004/A010 and A029/A050/A094/A103/A104 await fresh combined independent review; A088 remains untouched.
+- Eleven findings are accepted: A001–A004, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Fresh combined review returned clear and head confirmed application files match reviewed target. A088 remains untouched; A005/A006 are active and A007 is assigned next.
 
 ### AUDIT-SCRIPTS-CLEANUP / report 1 reconciled
 
@@ -91,13 +91,24 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 - Source commit `5adeefeb9d44d64ab09f8a3986b30ad2007d82be` in `C:/Users/lenny/.t3/worktrees/fittrack/t3-4f2141c1`; integrated once as `b3a7ec2`. Duplicate delivery was recognized; no duplicate cherry-pick or cleanup.
 - Head read the replacement README, inspected changed scope, confirmed the four retained SQL tools have no diff and found no remaining nonhistorical executable references. Then executed verify-runtime-role.sql and test-runtime-role.sql on the owned disposable cluster successfully.
 - Deletes six unsafe/obsolete scripts; retains audit-rls-coverage.sql plus active provision/verify/test-runtime-role SQL. Historical source claim corrected: privilege scripts were not identical and some candidates had manual/internal callers.
-- A029 is superseded by runner removal, not repaired-and-passed. A050 README drift resolved within the scoped cleanup. Final review pending.
+- A029 is superseded by runner removal, not repaired-and-passed. A050 README drift resolved within the scoped cleanup. Both accepted after combined review.
 
-## Next dispatch
+### AUDIT-W1-COMBINED-REVIEW / report 1 reconciled
+
+- Task: `node:delegated-task:command%3Amcp%3A8b6abc8e-650c-4e14-9ace-860f562852e7%3Adelegate-task%3AAUDIT-W1-COMBINED-REVIEW`.
+- Requested/returned Pi / Sol / high profile matched. Exact target `355d722..3e52255`.
+- Verdict: no blocking findings/material regressions. Reviewer independently ran 19 focused client tests in five files, all nine changed client files' lint/format, diff check, reference searches and retained-tool comparison. Inspected supplied DB/red/full-client/build evidence; did not provision DB or claim live browser/Stack/production coverage.
+- Head confirmed no application diff from reviewed target to current HEAD and accepted the ten reviewed IDs alongside previously accepted A009. Recorded skipped owner-RLS subtest and absent deployed/live-browser verification remain caveats, not fabricated passes.
+
+## Current dispatches
 
 | Assignment | Scope | Profile | State |
 | --- | --- | --- | --- |
-| AUDIT-W1-COMBINED-REVIEW | Fresh read-only review of implemented wave 1 and cleanup through 3e52255, including corrected A010 | Pi / openai-codex/gpt-6.1-sol / high | Prepared |
-| AUDIT-W2-CACHES | Implement A005/A006 only; mutation/cache/router freshness with observable navigation/read regressions | Pi / openai-codex/gpt-6.1-sol / medium | Prepared |
+| AUDIT-W1-COMBINED-REVIEW | Wave 1 and cleanup through 3e52255, including corrected A010 | Pi / openai-codex/gpt-6.1-sol / high | Reconciled; accepted |
+| AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Running; confirmed receipt; do not poll |
+| AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Prepared |
+
+Cache task: `node:delegated-task:command%3Amcp%3A8b6abc8e-650c-4e14-9ace-860f562852e7%3Adelegate-task%3AAUDIT-W2-CACHES`.
+Workout lookup is fully specified, bounded server behavior with real HTTP/DB acceptance cases, so Luna medium is appropriate. Its worker may run the head's inspected disposable harness from its own worktree; no shared database env is inherited or copied.
 
 No nested workers; head owns integration, tracker updates and final acceptance. Next reports must be reconciled once and returned through native completion, without polling.

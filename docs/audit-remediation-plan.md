@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-A009 has been accepted after independent review and regression verification. Other findings are not complete unless their individual entries say Done. The audit's claims have not all been independently reproduced.
+Eleven findings are accepted after independent review and appropriate verification: A001–A004, A009–A010, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). A001–A004, A010 and approved cleanup are implemented on the integration branch pending combined checks and fresh independent review. A009 is Done. A094 cleanup also supersedes A029's runner repair and addresses A050's README drift. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1 and the approved cleanup passed independent review. A005–A006 cache work is active; A007 missing-workout lookup is assigned next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094) | H | 43 | 1 |
-| User-approved cleanup | M | 2 | 0 |
+| Ready to implement (including approved A094) | H | 43 | 9 |
+| User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 12 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **1** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **11** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -81,40 +81,40 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Editing a workout cannot clear notes or focus. The client sends undefined (edit-workout-page.tsx:121) and the query keeps the old value via COALESCE (server/queries/workouts.sql:82).
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F01` — Batch 1
-- **Evidence / commit / PR:** Integrated workout commit `9f56129` (worker `729e0cb`). Head ran full exercise/workout suites on isolated migrated PostgreSQL 15.19: omitted/null retain, independent empty-string clears, reload and unrelated updates passed. Frontend worker regressions passed; combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
-- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
+- **Evidence / commit / PR:** Integrated workout commit `9f56129` (worker `729e0cb`). Head ran full exercise/workout suites on isolated migrated PostgreSQL 15.19: omitted/null retain, independent empty-string clears, reload and unrelated updates passed. Frontend worker regressions passed; combined client checks and fresh independent review passed. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A002
 
 > H Editing any workout turns no-weight sets into weight 0 (workouts.ts:183, weight || 0).
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F02` — Batch 1
-- **Evidence / commit / PR:** Integrated `9f56129`. Head's real HTTP/database regression passed null, zero and positive weight round trips through update/reload. Worker reproduced the original client coercion and its regression passed. Combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
-- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
+- **Evidence / commit / PR:** Integrated `9f56129`. Head's real HTTP/database regression passed null, zero and positive weight round trips through update/reload. Worker reproduced the original client coercion and its regression passed. Combined client checks and fresh independent review passed. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A003
 
 > H The default workout date is computed once at module load (form-options.ts:14). In a long-lived tab or the installed PWA, a new workout defaults to when the app was opened.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F03` — Batch 1
-- **Evidence / commit / PR:** Integrated `9f56129`. Worker simulated date rollover, selected/restored dates, draft clear and save reset successfully in caller-facing tests. Combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
-- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
+- **Evidence / commit / PR:** Integrated `9f56129`. Worker simulated date rollover, selected/restored dates, draft clear and save reset successfully in caller-facing tests. Combined client checks and fresh independent review passed. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A004
 
 > H Reloading an in-progress draft drops the catalog link of a newly added catalog exercise. add-exercise-screen.tsx:138 sets catalog_id, but the storage schema at local-storage.ts:25 strips it.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F04` — Batch 1
-- **Evidence / commit / PR:** Integrated `9f56129`. Worker verified catalog selection → storage reload → save request retains catalog_id; legacy/custom drafts remain readable. Combined client rerun/fresh review pending. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
-- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
+- **Evidence / commit / PR:** Integrated `9f56129`. Worker verified catalog selection → storage reload → save request retains catalog_id; legacy/custom drafts remain readable. Combined client checks and fresh independent review passed. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A005
 
@@ -149,9 +149,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H GET /api/workouts/{id} returns 200 with empty sets for a missing workout (workout/service.go:129); PUT and DELETE return 404.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F07` — Batch 2
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** Assigned next as AUDIT-W2-WORKOUT-LOOKUP; implementation not yet accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A008
@@ -179,10 +179,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Exercise list and create return created_at/updated_at as null although the API contract marks them required (exercise/repository.go:54).
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F09` — Batch 2
-- **Evidence / commit / PR:** Head corrected persisted timestamps with new migrations 00034/00035 and schema default/NOT NULL. Replaced the initially mis-authenticated test with POST/list/detail JSON, distinct existing timestamps, transaction/catalog persistence and real migration-backfill coverage. Red run failed on null updated_at; green full exercise/workout suites passed. Logs: pi-unified-exec-31-e9f3ac82.log (red), pi-unified-exec-37-c8b6c187.log (green), under the user's Local/Temp directory. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence.
-- **Decision / blocker:** Head's combined checks passed; fresh independent review pending. No implementation accepted for this ID yet.
+- **Evidence / commit / PR:** Head corrected persisted timestamps with new migrations 00034/00035 and schema default/NOT NULL. Replaced the initially mis-authenticated test with POST/list/detail JSON, distinct existing timestamps, transaction/catalog persistence and real migration-backfill coverage. Red run failed on null updated_at; green full exercise/workout suites passed. Logs: pi-unified-exec-31-e9f3ac82.log (red), pi-unified-exec-37-c8b6c187.log (green), under the user's Local/Temp directory. Latest checkpoint: 495 client tests, tsc/api:check and Go build/vet passed; full isolated exercise/workout suites and separate retained restricted-role SQL checks passed. A010 head repair is committed as `3e52255`; see orchestration log for exact evidence. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A011
 
@@ -379,10 +379,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H server/scripts/run-complete-rls-audit.sh cannot run: it uses PowerShell Get-Content inside bash and a container name that no longer exists.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F16` — Batch 3
-- **Evidence / commit / PR:** Worker proved obsolete runner defects and removed it with superseded fixtures/probes in `b3a7ec2` (source `5adeefeb`), under user-authorized A094 cleanup. Maintained runtime-role tools retained. This supersedes repair; it does not claim the historical audit passes.
-- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
+- **Evidence / commit / PR:** Worker proved obsolete runner defects and removed it with superseded fixtures/probes in `b3a7ec2` (source `5adeefeb`), under user-authorized A094 cleanup. Maintained runtime-role tools retained. This supersedes repair; it does not claim the historical audit passes. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. Resolution: obsolete runner removed, so repair is superseded; no claim the retired audit passes.
 
 #### A030
 
@@ -595,10 +595,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H server/scripts/README.md describes a workflow file and secrets that do not exist.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F21` — Batch 5
-- **Evidence / commit / PR:** Rewrote server/scripts/README.md in `b3a7ec2` to describe real CI/local callers, credential boundaries and limitations; removed fictitious workflow/secrets guidance. Worker verified all eight links.
-- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
+- **Evidence / commit / PR:** Rewrote server/scripts/README.md in `b3a7ec2` to describe real CI/local callers, credential boundaries and limitations; removed fictitious workflow/secrets guidance. Worker verified all eight links. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A051
 
@@ -1071,10 +1071,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Six scripts in server/scripts are referenced by nothing, and two of the SQL files differ only in their title.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `G08` — Gated work
-- **Evidence / commit / PR:** User-authorized purpose inventory complete. Removed six obsolete/unsafe scripts in `b3a7ec2`; four useful SQL tools unchanged. Source corrections: scripts had manual/internal callers and two privilege files were not identical. Worker reproduced false success/incorrect cross-user expectation with network-free Bash mocks.
-- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
+- **Evidence / commit / PR:** User-authorized purpose inventory complete. Removed six obsolete/unsafe scripts in `b3a7ec2`; four useful SQL tools unchanged. Source corrections: scripts had manual/internal callers and two privilege files were not identical. Worker reproduced false success/incorrect cross-user expectation with network-free Bash mocks. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A095
 
@@ -1163,10 +1163,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > M Three client/docs files are copies of upstream TanStack docs.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `D43` — User review
-- **Evidence / commit / PR:** User-approved three copied TanStack documents removed in `6269904`. No remaining inbound non-audit references. Commit checks passed format/lint, both knip modes and all 489 client tests; closeout review pending.
-- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
+- **Evidence / commit / PR:** User-approved three copied TanStack documents removed in `6269904`. No remaining inbound non-audit references. Commit checks passed format/lint, both knip modes and all 489 client tests; closeout review passed. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 ### No longer needed / Repository
 
@@ -1175,10 +1175,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > M output/ holds 2.3 MB of one-off verification screenshots and JSON, referenced by one doc.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `D44` — User review
-- **Evidence / commit / PR:** User-approved tracked output artifacts removed in `6269904`. Two evidence references corrected in docs/training-assessment-policy.md, retaining historical caveats. Non-audit reference scan clean; closeout review pending.
-- **Decision / blocker:** Await final combined checks and fresh independent review before acceptance.
+- **Evidence / commit / PR:** User-approved tracked output artifacts removed in `6269904`. Two evidence references corrected in docs/training-assessment-policy.md, retaining historical caveats. Non-audit reference scan clean; closeout review passed. Reviewer independently ran 19 focused client tests plus scoped lint/format and verified supplied DB/full-client evidence; no blocking issues.
+- **Decision / blocker:** Accepted after AUDIT-W1-COMBINED-REVIEW (Pi / Sol / high, target `355d722..3e52255`), reconciled by head. No blocking finding. No remaining acceptance blocker for this finding.
 
 #### A105
 
