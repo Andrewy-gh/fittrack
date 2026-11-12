@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Seventeen findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A029 (superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Eighteen findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026 are accepted; A028 logger correction awaits fresh review. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 contract work and A018 bounds investigation are next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094) | H | 43 | 15 |
+| Ready to implement (including approved A094) | H | 43 | 16 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 12 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **17** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **18** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -261,9 +261,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H There is no size limit on a chat prompt (aichat/handler_helpers.go:36), and the whole conversation history is sent to the model every turn (aichat/runtime.go:178).
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F11` — Batch 3
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** AUDIT-W3-CHAT-BOUNDS-RESEARCH planned: read-only examination of current limits, selected-model budgets and quota ordering before proposing implementation; no truncation policy authorized.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A019
@@ -369,10 +369,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The AI runtime, trace and tool code log through the global slog logger, which is never configured. Those lines ignore LOG_LEVEL and the JSON format.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F15` — Batch 3
 - **Evidence / commit / PR:** Worker `14967be` integrated as `f0499cd`. Head inspected production and regression tests, then passed uncached app/middleware/auth/response suites, full Go build and scoped vet under managed unit mode (session51 exit0). Tests exercise real application routing/composition, concurrent request isolation, CORS PATCH/Vary preservation, and startup-configured JSON/level/redaction through a local AI provider fixture. No database/external auth/provider calls or race-detector proof.
-- **Decision / blocker:** Initial review requested changes: global slog bridge filtered net/http panic/accept diagnostics at warn/error. Head reproduced four real HTTP panic failures, added explicit ERROR loggers to both servers, and passed four panic cases plus scoped suites/build/vet. Fresh review of this correction pending; not accepted yet.
+- **Decision / blocker:** Initial review requested changes: global slog bridge filtered net/http panic/accept diagnostics at warn/error. Head reproduced four real HTTP panic failures, added explicit ERROR loggers to both servers, and passed four panic cases plus scoped suites/build/vet. Correction `f033367` accepted after AUDIT-W3-LOGGING-REVIEW-2 (Pi / Sol / high): no actionable findings. Reviewer passed four real panic cases, AI level cases and shuffled app suite three times. Accept-error behavior source-inspected, not fault-injected; no race/production or whole-app redaction proof.
 
 #### A029
 
@@ -481,9 +481,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The OpenAPI spec has no billing endpoints and no DELETE /account, so the client hand-types them.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F17`, `F18` — Batch 4
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** AUDIT-W4-API-CONTRACT planned: authoritative annotations/generated types and caller compatibility; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A040
@@ -491,9 +491,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Three client modules hand-type endpoints that are in the spec: muscle contributions, training assessment and training profile.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F18` — Batch 4
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** AUDIT-W4-API-CONTRACT planned: authoritative annotations/generated types and caller compatibility; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A041
@@ -501,9 +501,9 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Doc-only response structs have drifted from the real ones (UpdateWorkoutRequestSwagger, the exercise response types).
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** In progress
 - **Plan:** `F17` — Batch 4
-- **Evidence / commit / PR:** —
+- **Evidence / commit / PR:** AUDIT-W4-API-CONTRACT planned: authoritative annotations/generated types and caller compatibility; no implementation accepted.
 - **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
 
 #### A042
