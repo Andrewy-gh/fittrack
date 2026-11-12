@@ -156,6 +156,61 @@ definitions:
       workout_draft:
         $ref: '#/definitions/workout.CreateWorkoutRequest'
     type: object
+  billing.CheckoutSessionResponse:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  billing.CustomerPortalSessionResponse:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  billing.StatusResponse:
+    properties:
+      feature_key:
+        type: string
+      has_access:
+        type: boolean
+      subscription:
+        $ref: '#/definitions/billing.SubscriptionView'
+      trial_usage:
+        $ref: '#/definitions/billing.TrialUsageView'
+    required:
+    - feature_key
+    - has_access
+    type: object
+  billing.SubscriptionView:
+    properties:
+      access_ends_at:
+        type: string
+      cancellation_scheduled:
+        type: boolean
+      status:
+        type: string
+      stripe_subscription_id:
+        type: string
+      trial_end:
+        type: string
+    required:
+    - cancellation_scheduled
+    - status
+    - stripe_subscription_id
+    type: object
+  billing.TrialUsageView:
+    properties:
+      limit:
+        type: integer
+      used:
+        type: integer
+    required:
+    - limit
+    - used
+    type: object
   exercise.CreateExerciseRequest:
     properties:
       name:
@@ -165,9 +220,21 @@ definitions:
     type: object
   exercise.CreateExerciseResponse:
     properties:
+      catalog_id:
+        type: string
+        x-nullable: true
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string
+      historical_1rm:
+        type: number
+        x-nullable: true
+      historical_1rm_source_workout_id:
+        type: integer
+        x-nullable: true
+      historical_1rm_updated_at:
+        type: string
+        x-nullable: true
       id:
         example: 1
         type: integer
@@ -181,7 +248,11 @@ definitions:
         example: user-123
         type: string
     required:
+    - catalog_id
     - created_at
+    - historical_1rm
+    - historical_1rm_source_workout_id
+    - historical_1rm_updated_at
     - id
     - name
     - updated_at
@@ -267,9 +338,21 @@ definitions:
     type: object
   exercise.ExerciseResponse:
     properties:
+      catalog_id:
+        type: string
+        x-nullable: true
       created_at:
         example: "2023-01-01T15:04:05Z"
         type: string
+      historical_1rm:
+        type: number
+        x-nullable: true
+      historical_1rm_source_workout_id:
+        type: integer
+        x-nullable: true
+      historical_1rm_updated_at:
+        type: string
+        x-nullable: true
       id:
         example: 1
         type: integer
@@ -283,7 +366,11 @@ definitions:
         example: user-123
         type: string
     required:
+    - catalog_id
     - created_at
+    - historical_1rm
+    - historical_1rm_source_workout_id
+    - historical_1rm_updated_at
     - id
     - name
     - updated_at
@@ -363,17 +450,25 @@ definitions:
       weight:
         example: 225.5
         type: number
+        x-nullable: true
       workout_date:
         example: "2023-01-01T15:04:05Z"
         type: string
+      workout_focus:
+        type: string
+        x-nullable: true
       workout_id:
         example: 1
         type: integer
     required:
     - created_at
+    - exercise_order
     - reps
     - set_id
+    - set_order
+    - weight
     - workout_date
+    - workout_focus
     - workout_id
     type: object
   exercise.UpdateCatalogRequest:
@@ -535,6 +630,7 @@ definitions:
         type: array
       experience_level:
         type: string
+        x-nullable: true
       goals:
         items:
           type: string
@@ -546,10 +642,22 @@ definitions:
         x-nullable: true
       preferred_session_duration_minutes:
         type: integer
+        x-nullable: true
       primary_goal:
         type: string
+        x-nullable: true
       usual_training_location:
         type: string
+        x-nullable: true
+    required:
+    - available_equipment
+    - avoided_exercises
+    - experience_level
+    - goals
+    - movement_limitations
+    - preferred_session_duration_minutes
+    - primary_goal
+    - usual_training_location
     type: object
   trainingprofile.UpdateProfileRequest:
     properties:
@@ -563,6 +671,7 @@ definitions:
         type: array
       experience_level:
         type: string
+        x-nullable: true
       goals:
         items:
           type: string
@@ -574,10 +683,13 @@ definitions:
         x-nullable: true
       preferred_session_duration_minutes:
         type: integer
+        x-nullable: true
       primary_goal:
         type: string
+        x-nullable: true
       usual_training_location:
         type: string
+        x-nullable: true
     type: object
   workout.AssessmentSession:
     properties:
@@ -590,11 +702,23 @@ definitions:
       reasonCode:
         type: string
       state:
+        enum:
+        - below_reference
+        - reference_met
+        - cannot_assess
         type: string
       workingSets:
         type: integer
       workoutId:
         type: integer
+    required:
+    - date
+    - invalidWorkingSets
+    - reason
+    - reasonCode
+    - state
+    - workingSets
+    - workoutId
     type: object
   workout.ContributionDataResponse:
     properties:
@@ -632,6 +756,13 @@ definitions:
         type: object
       workingSets:
         type: integer
+    required:
+    - catalogId
+    - exerciseId
+    - invalidWorkingSets
+    - name
+    - roles
+    - workingSets
     type: object
   workout.CreateWorkoutRequest:
     properties:
@@ -645,6 +776,7 @@ definitions:
       notes:
         maxLength: 256
         type: string
+        x-nullable: true
       recommendations:
         items:
           $ref: '#/definitions/recommendation.Snapshot'
@@ -653,6 +785,7 @@ definitions:
       workoutFocus:
         maxLength: 256
         type: string
+        x-nullable: true
     required:
     - date
     - exercises
@@ -673,6 +806,14 @@ definitions:
         type: string
       timezone:
         type: string
+    required:
+    - endAt
+    - endDate
+    - observedAt
+    - partial
+    - startAt
+    - startDate
+    - timezone
     type: object
   workout.ExerciseInput:
     properties:
@@ -737,6 +878,13 @@ definitions:
         type: string
       unresolvedSets:
         type: integer
+    required:
+    - directSets
+    - indirectSets
+    - invalidMappedSets
+    - invalidUnresolvedSets
+    - muscle
+    - unresolvedSets
     type: object
   workout.MuscleContributions:
     properties:
@@ -764,6 +912,17 @@ definitions:
         type: integer
       workingSets:
         type: integer
+    required:
+    - catalogVersion
+    - classificationBasis
+    - exercises
+    - invalidWorkingSets
+    - mappingVersion
+    - muscles
+    - period
+    - unclassifiedSets
+    - unreviewedSets
+    - workingSets
     type: object
   workout.NewWorkoutContextResponse:
     properties:
@@ -788,6 +947,7 @@ definitions:
         maximum: 9.999999999e+08
         minimum: 0
         type: number
+        x-nullable: true
     required:
     - reps
     - setType
@@ -820,6 +980,18 @@ definitions:
         type: integer
       workingSets:
         type: integer
+    required:
+    - applicability
+    - exerciseId
+    - limitations
+    - period
+    - policyVersion
+    - reference
+    - sessions
+    - sessionsMeetingReference
+    - sourceUrl
+    - trainingDays
+    - workingSets
     type: object
   workout.UpdateExercise:
     properties:
@@ -852,6 +1024,7 @@ definitions:
         maximum: 9.999999999e+08
         minimum: 0
         type: number
+        x-nullable: true
     required:
     - reps
     - setType
@@ -868,9 +1041,11 @@ definitions:
       notes:
         maxLength: 256
         type: string
+        x-nullable: true
       workoutFocus:
         maxLength: 256
         type: string
+        x-nullable: true
     required:
     - date
     - exercises
@@ -995,6 +1170,26 @@ info:
   title: FitTrack API
   version: "1.0"
 paths:
+  /account:
+    delete:
+      description: Cancels applicable billing subscriptions and removes FitTrack data;
+        does not delete the authentication provider identity.
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Delete the current user's application data
+      tags:
+      - account
   /ai/chat/telemetry:
     post:
       consumes:
@@ -1476,6 +1671,166 @@ paths:
         sets
       tags:
       - analytics
+  /billing/checkout-session:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/billing.CheckoutSessionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Create billing checkout session
+      tags:
+      - billing
+  /billing/customer-portal-session:
+    post:
+      parameters:
+      - description: Return destination; unrecognized values use chat
+        enum:
+        - chat
+        - settings
+        in: query
+        name: return_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/billing.CustomerPortalSessionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Create billing customer portal session
+      tags:
+      - billing
+  /billing/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/billing.StatusResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Get current billing access and trial usage
+      tags:
+      - billing
+  /billing/subscription-cancel-portal-session:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/billing.CustomerPortalSessionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - StackAuth: []
+      summary: Create subscription cancellation portal session
+      tags:
+      - billing
   /exercise-catalog:
     get:
       produces:

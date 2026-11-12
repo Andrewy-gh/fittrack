@@ -35,6 +35,10 @@ const firstExercise = {
   name: "Alphabetical first",
   created_at: "2026-01-01",
   updated_at: "2026-01-01",
+  catalog_id: null,
+  historical_1rm: null,
+  historical_1rm_source_workout_id: null,
+  historical_1rm_updated_at: null,
   user_id: "owner",
 };
 const savedExercise = { ...firstExercise, id: 9, name: "Saved press" };

@@ -21,27 +21,27 @@ type AssessmentQuerier interface {
 }
 
 type AssessmentSession struct {
-	WorkoutID          int32     `json:"workoutId"`
-	Date               time.Time `json:"date"`
-	WorkingSets        int       `json:"workingSets"`
-	InvalidWorkingSets int       `json:"invalidWorkingSets"`
-	ReasonCode         string    `json:"reasonCode"`
-	State              string    `json:"state"`
-	Reason             string    `json:"reason"`
+	WorkoutID          int32     `json:"workoutId" validate:"required"`
+	Date               time.Time `json:"date" validate:"required"`
+	WorkingSets        int       `json:"workingSets" validate:"required"`
+	InvalidWorkingSets int       `json:"invalidWorkingSets" validate:"required"`
+	ReasonCode         string    `json:"reasonCode" validate:"required"`
+	State              string    `json:"state" validate:"required" enums:"below_reference,reference_met,cannot_assess"`
+	Reason             string    `json:"reason" validate:"required"`
 }
 
 type StrengthAssessment struct {
-	ExerciseID               int32               `json:"exerciseId"`
-	Period                   EvidencePeriod      `json:"period"`
-	Sessions                 []AssessmentSession `json:"sessions"`
-	WorkingSets              int                 `json:"workingSets"`
-	TrainingDays             int                 `json:"trainingDays"`
-	SessionsMeetingReference int                 `json:"sessionsMeetingReference"`
-	PolicyVersion            string              `json:"policyVersion"`
-	Reference                string              `json:"reference"`
-	SourceURL                string              `json:"sourceUrl"`
-	Applicability            string              `json:"applicability"`
-	Limitations              []string            `json:"limitations"`
+	ExerciseID               int32               `json:"exerciseId" validate:"required"`
+	Period                   EvidencePeriod      `json:"period" validate:"required"`
+	Sessions                 []AssessmentSession `json:"sessions" validate:"required"`
+	WorkingSets              int                 `json:"workingSets" validate:"required"`
+	TrainingDays             int                 `json:"trainingDays" validate:"required"`
+	SessionsMeetingReference int                 `json:"sessionsMeetingReference" validate:"required"`
+	PolicyVersion            string              `json:"policyVersion" validate:"required"`
+	Reference                string              `json:"reference" validate:"required"`
+	SourceURL                string              `json:"sourceUrl" validate:"required"`
+	Applicability            string              `json:"applicability" validate:"required"`
+	Limitations              []string            `json:"limitations" validate:"required"`
 }
 
 type AssessmentService struct {

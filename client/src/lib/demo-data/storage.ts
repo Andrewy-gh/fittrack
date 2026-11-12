@@ -189,6 +189,10 @@ export function getAllExercises(): ExerciseExerciseResponse[] {
     user_id: ex.user_id,
     created_at: ex.created_at,
     updated_at: ex.updated_at,
+    catalog_id: null,
+    historical_1rm: null,
+    historical_1rm_source_workout_id: null,
+    historical_1rm_updated_at: null,
   }));
 }
 
@@ -329,8 +333,9 @@ export function getExerciseRecentSets(
       set_id: set.id,
       workout_id: set.workout_id,
       workout_date: workout?.date || "",
+      workout_focus: workout?.workout_focus ?? null,
       reps: set.reps,
-      weight: set.weight,
+      weight: set.weight ?? null,
       set_order: set.set_order,
       exercise_order: set.exercise_order,
       created_at: set.created_at,
@@ -420,13 +425,13 @@ export function getWorkoutById(id: number): WorkoutWorkoutWithSetsResponse[] {
 
 interface CreateWorkoutInput {
   date: string;
-  notes?: string;
-  workoutFocus?: string;
+  notes?: string | null;
+  workoutFocus?: string | null;
   exercises: Array<{
     name: string;
     sets: Array<{
       reps: number;
-      weight?: number;
+      weight?: number | null;
       setType: "warmup" | "working";
     }>;
   }>;
@@ -445,8 +450,8 @@ export function createWorkout(input: CreateWorkoutInput): DemoMutationResult {
   const newWorkout: StoredWorkout = {
     id: getNextId(workouts),
     date: input.date,
-    notes: input.notes,
-    workout_focus: input.workoutFocus,
+    notes: input.notes ?? undefined,
+    workout_focus: input.workoutFocus ?? undefined,
     user_id: DEMO_USER_ID,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -478,7 +483,7 @@ export function createWorkout(input: CreateWorkoutInput): DemoMutationResult {
         exercise_id: exercise.id,
         workout_id: newWorkout.id,
         reps: setInput.reps,
-        weight: setInput.weight,
+        weight: setInput.weight ?? undefined,
         set_type: setInput.setType,
         exercise_order: exerciseIndex,
         set_order: setIndex,
@@ -511,8 +516,8 @@ export function updateWorkout(
   workouts[workoutIndex] = {
     ...workouts[workoutIndex],
     date: input.date,
-    notes: input.notes,
-    workout_focus: input.workoutFocus,
+    notes: input.notes ?? undefined,
+    workout_focus: input.workoutFocus ?? undefined,
     updated_at: new Date().toISOString(),
   };
 
@@ -544,7 +549,7 @@ export function updateWorkout(
         exercise_id: exercise.id,
         workout_id: id,
         reps: setInput.reps,
-        weight: setInput.weight,
+        weight: setInput.weight ?? undefined,
         set_type: setInput.setType,
         exercise_order: exerciseIndex,
         set_order: setIndex,

@@ -29,15 +29,24 @@ func TestSwaggerProductContract(t *testing.T) {
 		t.Fatal("expected product path /workouts is missing")
 	}
 
+	for path, method := range map[string]string{
+		"/account":                                    "delete",
+		"/billing/status":                             "get",
+		"/billing/checkout-session":                   "post",
+		"/billing/customer-portal-session":            "post",
+		"/billing/subscription-cancel-portal-session": "post",
+	} {
+		var operations map[string]json.RawMessage
+		if err := json.Unmarshal(document.Paths[path], &operations); err != nil || operations[method] == nil {
+			t.Errorf("missing product operation %s %s", method, path)
+		}
+	}
+
 	excludedPaths := []string{
 		"/ai/chat/validate",
 		"/ai/chat/validate/stream",
 		"/health",
 		"/ready",
-		"/account",
-		"/billing/checkout-session",
-		"/billing/customer-portal-session",
-		"/billing/subscription-cancel-portal-session",
 	}
 	for _, path := range excludedPaths {
 		if _, ok := document.Paths[path]; ok {

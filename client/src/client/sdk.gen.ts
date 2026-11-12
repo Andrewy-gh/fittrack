@@ -10,6 +10,9 @@ import type {
 } from "./client";
 import { client } from "./client.gen";
 import type {
+  DeleteAccountData,
+  DeleteAccountErrors,
+  DeleteAccountResponses,
   DeleteAiConversationsByIdData,
   DeleteAiConversationsByIdErrors,
   DeleteAiConversationsByIdResponses,
@@ -35,6 +38,9 @@ import type {
   GetAnalyticsMuscleContributionsData,
   GetAnalyticsMuscleContributionsErrors,
   GetAnalyticsMuscleContributionsResponses,
+  GetBillingStatusData,
+  GetBillingStatusErrors,
+  GetBillingStatusResponses,
   GetExerciseCatalogData,
   GetExerciseCatalogErrors,
   GetExerciseCatalogResponses,
@@ -102,6 +108,15 @@ import type {
   PostAiConversationsData,
   PostAiConversationsErrors,
   PostAiConversationsResponses,
+  PostBillingCheckoutSessionData,
+  PostBillingCheckoutSessionErrors,
+  PostBillingCheckoutSessionResponses,
+  PostBillingCustomerPortalSessionData,
+  PostBillingCustomerPortalSessionErrors,
+  PostBillingCustomerPortalSessionResponses,
+  PostBillingSubscriptionCancelPortalSessionData,
+  PostBillingSubscriptionCancelPortalSessionErrors,
+  PostBillingSubscriptionCancelPortalSessionResponses,
   PostExercisesData,
   PostExercisesErrors,
   PostExercisesResponses,
@@ -136,6 +151,24 @@ export type Options<
    */
   meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * Delete the current user's application data
+ *
+ * Cancels applicable billing subscriptions and removes FitTrack data; does not delete the authentication provider identity.
+ */
+export const deleteAccount = <ThrowOnError extends boolean = false>(
+  options?: Options<DeleteAccountData, ThrowOnError>,
+): RequestResult<DeleteAccountResponses, DeleteAccountErrors, ThrowOnError> =>
+  (options?.client ?? client).delete<
+    DeleteAccountResponses,
+    DeleteAccountErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/account",
+    ...options,
+  });
 
 /**
  * Record AI chat telemetry
@@ -423,6 +456,95 @@ export const getAnalyticsMuscleContributions = <
   >({
     security: [{ name: "x-stack-access-token", type: "apiKey" }],
     url: "/analytics/muscle-contributions",
+    ...options,
+  });
+
+/**
+ * Create billing checkout session
+ */
+export const postBillingCheckoutSession = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<PostBillingCheckoutSessionData, ThrowOnError>,
+): RequestResult<
+  PostBillingCheckoutSessionResponses,
+  PostBillingCheckoutSessionErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).post<
+    PostBillingCheckoutSessionResponses,
+    PostBillingCheckoutSessionErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/billing/checkout-session",
+    ...options,
+  });
+
+/**
+ * Create billing customer portal session
+ */
+export const postBillingCustomerPortalSession = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<PostBillingCustomerPortalSessionData, ThrowOnError>,
+): RequestResult<
+  PostBillingCustomerPortalSessionResponses,
+  PostBillingCustomerPortalSessionErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).post<
+    PostBillingCustomerPortalSessionResponses,
+    PostBillingCustomerPortalSessionErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/billing/customer-portal-session",
+    ...options,
+  });
+
+/**
+ * Get current billing access and trial usage
+ */
+export const getBillingStatus = <ThrowOnError extends boolean = false>(
+  options?: Options<GetBillingStatusData, ThrowOnError>,
+): RequestResult<
+  GetBillingStatusResponses,
+  GetBillingStatusErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).get<
+    GetBillingStatusResponses,
+    GetBillingStatusErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/billing/status",
+    ...options,
+  });
+
+/**
+ * Create subscription cancellation portal session
+ */
+export const postBillingSubscriptionCancelPortalSession = <
+  ThrowOnError extends boolean = false,
+>(
+  options?: Options<
+    PostBillingSubscriptionCancelPortalSessionData,
+    ThrowOnError
+  >,
+): RequestResult<
+  PostBillingSubscriptionCancelPortalSessionResponses,
+  PostBillingSubscriptionCancelPortalSessionErrors,
+  ThrowOnError
+> =>
+  (options?.client ?? client).post<
+    PostBillingSubscriptionCancelPortalSessionResponses,
+    PostBillingSubscriptionCancelPortalSessionErrors,
+    ThrowOnError
+  >({
+    security: [{ name: "x-stack-access-token", type: "apiKey" }],
+    url: "/billing/subscription-cancel-portal-session",
     ...options,
   });
 

@@ -18,8 +18,8 @@ export function validateWorkoutText(
 
 /** Check every bounded text value before either workout mutation. */
 export function workoutTextError(value: {
-  notes?: string;
-  workoutFocus?: string;
+  notes?: string | null;
+  workoutFocus?: string | null;
   exercises: readonly { name: string }[];
 }): string | undefined {
   return (

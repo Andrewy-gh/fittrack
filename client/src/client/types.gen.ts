@@ -99,12 +99,44 @@ export type AichatStreamEvent = {
   workout_draft?: WorkoutCreateWorkoutRequest;
 };
 
+export type BillingCheckoutSessionResponse = {
+  url: string;
+};
+
+export type BillingCustomerPortalSessionResponse = {
+  url: string;
+};
+
+export type BillingStatusResponse = {
+  feature_key: string;
+  has_access: boolean;
+  subscription?: BillingSubscriptionView;
+  trial_usage?: BillingTrialUsageView;
+};
+
+export type BillingSubscriptionView = {
+  access_ends_at?: string;
+  cancellation_scheduled: boolean;
+  status: string;
+  stripe_subscription_id: string;
+  trial_end?: string;
+};
+
+export type BillingTrialUsageView = {
+  limit: number;
+  used: number;
+};
+
 export type ExerciseCreateExerciseRequest = {
   name: string;
 };
 
 export type ExerciseCreateExerciseResponse = {
+  catalog_id: string | null;
   created_at: string;
+  historical_1rm: number | null;
+  historical_1rm_source_workout_id: number | null;
+  historical_1rm_updated_at: string | null;
   id: number;
   name: string;
   updated_at: string;
@@ -146,7 +178,11 @@ export type ExerciseExerciseMetricsHistoryResponse = {
 };
 
 export type ExerciseExerciseResponse = {
+  catalog_id: string | null;
   created_at: string;
+  historical_1rm: number | null;
+  historical_1rm_source_workout_id: number | null;
+  historical_1rm_updated_at: string | null;
   id: number;
   name: string;
   updated_at: string;
@@ -180,12 +216,13 @@ export type ExerciseMetricsHistoryBucket =
 
 export type ExerciseRecentSetsResponse = {
   created_at: string;
-  exercise_order?: number;
+  exercise_order: number;
   reps: number;
   set_id: number;
-  set_order?: number;
-  weight?: number;
+  set_order: number;
+  weight: number | null;
   workout_date: string;
+  workout_focus: string | null;
   workout_id: number;
 };
 
@@ -258,35 +295,35 @@ export type ResponseSuccessResponse = {
 };
 
 export type TrainingprofileProfileResponse = {
-  available_equipment?: Array<string>;
-  avoided_exercises?: Array<string>;
-  experience_level?: string;
-  goals?: Array<string>;
-  movement_limitations?: Array<string> | null;
-  preferred_session_duration_minutes?: number;
-  primary_goal?: string;
-  usual_training_location?: string;
+  available_equipment: Array<string>;
+  avoided_exercises: Array<string>;
+  experience_level: string | null;
+  goals: Array<string>;
+  movement_limitations: Array<string> | null;
+  preferred_session_duration_minutes: number | null;
+  primary_goal: string | null;
+  usual_training_location: string | null;
 };
 
 export type TrainingprofileUpdateProfileRequest = {
   available_equipment?: Array<string>;
   avoided_exercises?: Array<string>;
-  experience_level?: string;
+  experience_level?: string | null;
   goals?: Array<string>;
   movement_limitations?: Array<string> | null;
-  preferred_session_duration_minutes?: number;
-  primary_goal?: string;
-  usual_training_location?: string;
+  preferred_session_duration_minutes?: number | null;
+  primary_goal?: string | null;
+  usual_training_location?: string | null;
 };
 
 export type WorkoutAssessmentSession = {
-  date?: string;
-  invalidWorkingSets?: number;
-  reason?: string;
-  reasonCode?: string;
-  state?: string;
-  workingSets?: number;
-  workoutId?: number;
+  date: string;
+  invalidWorkingSets: number;
+  reason: string;
+  reasonCode: string;
+  state: "below_reference" | "reference_met" | "cannot_assess";
+  workingSets: number;
+  workoutId: number;
 };
 
 export type WorkoutContributionDataResponse = {
@@ -301,32 +338,32 @@ export type WorkoutContributionDay = {
 };
 
 export type WorkoutContributionExercise = {
-  catalogId?: string;
-  exerciseId?: number;
-  invalidWorkingSets?: number;
-  name?: string;
-  roles?: {
+  catalogId: string;
+  exerciseId: number;
+  invalidWorkingSets: number;
+  name: string;
+  roles: {
     [key: string]: string;
   };
-  workingSets?: number;
+  workingSets: number;
 };
 
 export type WorkoutCreateWorkoutRequest = {
   date: string;
   exercises: Array<WorkoutExerciseInput>;
-  notes?: string;
+  notes?: string | null;
   recommendations?: Array<RecommendationSnapshot>;
-  workoutFocus?: string;
+  workoutFocus?: string | null;
 };
 
 export type WorkoutEvidencePeriod = {
-  endAt?: string;
-  endDate?: string;
-  observedAt?: string;
-  partial?: boolean;
-  startAt?: string;
-  startDate?: string;
-  timezone?: string;
+  endAt: string;
+  endDate: string;
+  observedAt: string;
+  partial: boolean;
+  startAt: string;
+  startDate: string;
+  timezone: string;
 };
 
 export type WorkoutExerciseInput = {
@@ -348,25 +385,25 @@ export type WorkoutLatestWorkoutNoteResponse = {
 };
 
 export type WorkoutMuscleContribution = {
-  directSets?: number;
-  indirectSets?: number;
-  invalidMappedSets?: number;
-  invalidUnresolvedSets?: number;
-  muscle?: string;
-  unresolvedSets?: number;
+  directSets: number;
+  indirectSets: number;
+  invalidMappedSets: number;
+  invalidUnresolvedSets: number;
+  muscle: string;
+  unresolvedSets: number;
 };
 
 export type WorkoutMuscleContributions = {
-  catalogVersion?: string;
-  classificationBasis?: string;
-  exercises?: Array<WorkoutContributionExercise>;
-  invalidWorkingSets?: number;
-  mappingVersion?: string;
-  muscles?: Array<WorkoutMuscleContribution>;
-  period?: WorkoutEvidencePeriod;
-  unclassifiedSets?: number;
-  unreviewedSets?: number;
-  workingSets?: number;
+  catalogVersion: string;
+  classificationBasis: string;
+  exercises: Array<WorkoutContributionExercise>;
+  invalidWorkingSets: number;
+  mappingVersion: string;
+  muscles: Array<WorkoutMuscleContribution>;
+  period: WorkoutEvidencePeriod;
+  unclassifiedSets: number;
+  unreviewedSets: number;
+  workingSets: number;
 };
 
 export type WorkoutNewWorkoutContextResponse = {
@@ -377,21 +414,21 @@ export type WorkoutNewWorkoutContextResponse = {
 export type WorkoutSetInput = {
   reps: number;
   setType: "warmup" | "working";
-  weight?: number;
+  weight?: number | null;
 };
 
 export type WorkoutStrengthAssessment = {
-  applicability?: string;
-  exerciseId?: number;
-  limitations?: Array<string>;
-  period?: WorkoutEvidencePeriod;
-  policyVersion?: string;
-  reference?: string;
-  sessions?: Array<WorkoutAssessmentSession>;
-  sessionsMeetingReference?: number;
-  sourceUrl?: string;
-  trainingDays?: number;
-  workingSets?: number;
+  applicability: string;
+  exerciseId: number;
+  limitations: Array<string>;
+  period: WorkoutEvidencePeriod;
+  policyVersion: string;
+  reference: string;
+  sessions: Array<WorkoutAssessmentSession>;
+  sessionsMeetingReference: number;
+  sourceUrl: string;
+  trainingDays: number;
+  workingSets: number;
 };
 
 export type WorkoutUpdateExercise = {
@@ -403,14 +440,14 @@ export type WorkoutUpdateExercise = {
 export type WorkoutUpdateSet = {
   reps: number;
   setType: "warmup" | "working";
-  weight?: number;
+  weight?: number | null;
 };
 
 export type WorkoutUpdateWorkoutRequest = {
   date: string;
   exercises: Array<WorkoutUpdateExercise>;
-  notes?: string;
-  workoutFocus?: string;
+  notes?: string | null;
+  workoutFocus?: string | null;
 };
 
 export type WorkoutWorkoutDetailResponse = {
@@ -452,6 +489,33 @@ export type WorkoutWorkoutWithSetsResponse = {
   workout_focus?: string;
   workout_id: number;
   workout_notes?: string;
+};
+
+export type DeleteAccountData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/account";
+};
+
+export type DeleteAccountErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+};
+
+export type DeleteAccountError = DeleteAccountErrors[keyof DeleteAccountErrors];
+
+export type DeleteAccountResponses = {
+  /**
+   * No Content
+   */
+  204: unknown;
 };
 
 export type PostAiChatTelemetryData = {
@@ -999,6 +1063,199 @@ export type GetAnalyticsMuscleContributionsResponses = {
 
 export type GetAnalyticsMuscleContributionsResponse =
   GetAnalyticsMuscleContributionsResponses[keyof GetAnalyticsMuscleContributionsResponses];
+
+export type PostBillingCheckoutSessionData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/billing/checkout-session";
+};
+
+export type PostBillingCheckoutSessionErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ResponseErrorResponse;
+};
+
+export type PostBillingCheckoutSessionError =
+  PostBillingCheckoutSessionErrors[keyof PostBillingCheckoutSessionErrors];
+
+export type PostBillingCheckoutSessionResponses = {
+  /**
+   * OK
+   */
+  200: BillingCheckoutSessionResponse;
+};
+
+export type PostBillingCheckoutSessionResponse =
+  PostBillingCheckoutSessionResponses[keyof PostBillingCheckoutSessionResponses];
+
+export type PostBillingCustomerPortalSessionData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Return destination; unrecognized values use chat
+     */
+    return_to?: "chat" | "settings";
+  };
+  url: "/billing/customer-portal-session";
+};
+
+export type PostBillingCustomerPortalSessionErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ResponseErrorResponse;
+};
+
+export type PostBillingCustomerPortalSessionError =
+  PostBillingCustomerPortalSessionErrors[keyof PostBillingCustomerPortalSessionErrors];
+
+export type PostBillingCustomerPortalSessionResponses = {
+  /**
+   * OK
+   */
+  200: BillingCustomerPortalSessionResponse;
+};
+
+export type PostBillingCustomerPortalSessionResponse =
+  PostBillingCustomerPortalSessionResponses[keyof PostBillingCustomerPortalSessionResponses];
+
+export type GetBillingStatusData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/billing/status";
+};
+
+export type GetBillingStatusErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ResponseErrorResponse;
+};
+
+export type GetBillingStatusError =
+  GetBillingStatusErrors[keyof GetBillingStatusErrors];
+
+export type GetBillingStatusResponses = {
+  /**
+   * OK
+   */
+  200: BillingStatusResponse;
+};
+
+export type GetBillingStatusResponse =
+  GetBillingStatusResponses[keyof GetBillingStatusResponses];
+
+export type PostBillingSubscriptionCancelPortalSessionData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/billing/subscription-cancel-portal-session";
+};
+
+export type PostBillingSubscriptionCancelPortalSessionErrors = {
+  /**
+   * Unauthorized
+   */
+  401: ResponseErrorResponse;
+  /**
+   * Forbidden
+   */
+  403: ResponseErrorResponse;
+  /**
+   * Not Found
+   */
+  404: ResponseErrorResponse;
+  /**
+   * Conflict
+   */
+  409: ResponseErrorResponse;
+  /**
+   * Internal Server Error
+   */
+  500: ResponseErrorResponse;
+  /**
+   * Service Unavailable
+   */
+  503: ResponseErrorResponse;
+};
+
+export type PostBillingSubscriptionCancelPortalSessionError =
+  PostBillingSubscriptionCancelPortalSessionErrors[keyof PostBillingSubscriptionCancelPortalSessionErrors];
+
+export type PostBillingSubscriptionCancelPortalSessionResponses = {
+  /**
+   * OK
+   */
+  200: BillingCustomerPortalSessionResponse;
+};
+
+export type PostBillingSubscriptionCancelPortalSessionResponse =
+  PostBillingSubscriptionCancelPortalSessionResponses[keyof PostBillingSubscriptionCancelPortalSessionResponses];
 
 export type GetExerciseCatalogData = {
   body?: never;

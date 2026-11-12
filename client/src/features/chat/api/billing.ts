@@ -1,58 +1,32 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/client/client.gen";
+import type {
+  BillingStatusResponse as GeneratedBillingStatus,
+  BillingSubscriptionView,
+  PostBillingCustomerPortalSessionData,
+  PostBillingCheckoutSessionResponses as BillingCheckoutSessionResponses,
+  PostBillingCustomerPortalSessionResponses as BillingCustomerPortalSessionResponses,
+  GetBillingStatusResponses as BillingStatusResponses,
+} from "@/client/types.gen";
 import type { ApiError } from "@/lib/errors";
 import "@/lib/api/client-config";
 
-export type BillingSubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "unpaid"
-  | "canceled"
-  | "incomplete"
-  | "incomplete_expired";
+/** Subscription data returned by billing. */
+export type BillingSubscription = BillingSubscriptionView;
+/** Provider status; unknown future statuses retain the UI's fallback behavior. */
+export type BillingSubscriptionStatus = BillingSubscription["status"];
+/** Current access and trial usage from the server. */
+export type BillingStatusResponse = GeneratedBillingStatus;
+/** Hosted checkout session location. */
+export type BillingCheckoutSessionResponse =
+  BillingCheckoutSessionResponses[200];
+/** Hosted billing portal location. */
+export type BillingCustomerPortalSessionResponse =
+  BillingCustomerPortalSessionResponses[200];
 
-export type BillingSubscription = {
-  stripe_subscription_id: string;
-  status: BillingSubscriptionStatus;
-  cancellation_scheduled: boolean;
-  access_ends_at?: string;
-  trial_end?: string;
-};
-
-export type BillingTrialUsage = {
-  used: number;
-  limit: number;
-};
-
-export type BillingStatusResponse = {
-  feature_key: "ai_chatbot";
-  has_access: boolean;
-  subscription?: BillingSubscription;
-  trial_usage?: BillingTrialUsage;
-};
-
-export type BillingCheckoutSessionResponse = {
-  url: string;
-};
-
-export type BillingCustomerPortalSessionResponse = {
-  url: string;
-};
-
-type BillingStatusResponses = {
-  200: BillingStatusResponse;
-};
-
-type BillingCheckoutSessionResponses = {
-  200: BillingCheckoutSessionResponse;
-};
-
-type BillingCustomerPortalSessionResponses = {
-  200: BillingCustomerPortalSessionResponse;
-};
-
-type BillingPortalReturnDestination = "chat" | "settings";
+type BillingPortalReturnDestination = NonNullable<
+  NonNullable<PostBillingCustomerPortalSessionData["query"]>["return_to"]
+>;
 
 export function billingStatusQueryOptions(userId?: string) {
   return queryOptions({

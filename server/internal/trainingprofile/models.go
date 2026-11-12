@@ -9,22 +9,22 @@ import (
 )
 
 type ProfileResponse struct {
-	Goals                           []string  `json:"goals"`
-	PrimaryGoal                     *string   `json:"primary_goal"`
-	ExperienceLevel                 *string   `json:"experience_level"`
-	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes"`
-	UsualTrainingLocation           *string   `json:"usual_training_location"`
-	AvailableEquipment              []string  `json:"available_equipment"`
-	AvoidedExercises                []string  `json:"avoided_exercises"`
-	MovementLimitations             *[]string `json:"movement_limitations" extensions:"x-nullable"`
+	Goals                           []string  `json:"goals" validate:"required"`
+	PrimaryGoal                     *string   `json:"primary_goal" extensions:"x-nullable" validate:"required"`
+	ExperienceLevel                 *string   `json:"experience_level" extensions:"x-nullable" validate:"required"`
+	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes" extensions:"x-nullable" validate:"required"`
+	UsualTrainingLocation           *string   `json:"usual_training_location" extensions:"x-nullable" validate:"required"`
+	AvailableEquipment              []string  `json:"available_equipment" validate:"required"`
+	AvoidedExercises                []string  `json:"avoided_exercises" validate:"required"`
+	MovementLimitations             *[]string `json:"movement_limitations" extensions:"x-nullable" validate:"required"`
 }
 
 type UpdateProfileRequest struct {
 	Goals                           []string  `json:"goals"`
-	PrimaryGoal                     *string   `json:"primary_goal"`
-	ExperienceLevel                 *string   `json:"experience_level"`
-	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes"`
-	UsualTrainingLocation           *string   `json:"usual_training_location"`
+	PrimaryGoal                     *string   `json:"primary_goal" extensions:"x-nullable"`
+	ExperienceLevel                 *string   `json:"experience_level" extensions:"x-nullable"`
+	PreferredSessionDurationMinutes *int32    `json:"preferred_session_duration_minutes" extensions:"x-nullable"`
+	UsualTrainingLocation           *string   `json:"usual_training_location" extensions:"x-nullable"`
 	AvailableEquipment              []string  `json:"available_equipment"`
 	AvoidedExercises                []string  `json:"avoided_exercises"`
 	MovementLimitations             *[]string `json:"movement_limitations" extensions:"x-nullable"`

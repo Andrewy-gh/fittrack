@@ -54,13 +54,13 @@ type TrainingEvidence struct {
 
 // EvidencePeriod records both the requested local dates and their timestamp bounds.
 type EvidencePeriod struct {
-	StartDate  string    `json:"startDate"`
-	EndDate    string    `json:"endDate"`
-	Timezone   string    `json:"timezone"`
-	StartAt    time.Time `json:"startAt"`
-	EndAt      time.Time `json:"endAt"`
-	ObservedAt time.Time `json:"observedAt"`
-	Partial    bool      `json:"partial"`
+	StartDate  string    `json:"startDate" validate:"required"`
+	EndDate    string    `json:"endDate" validate:"required"`
+	Timezone   string    `json:"timezone" validate:"required"`
+	StartAt    time.Time `json:"startAt" validate:"required"`
+	EndAt      time.Time `json:"endAt" validate:"required"`
+	ObservedAt time.Time `json:"observedAt" validate:"required"`
+	Partial    bool      `json:"partial" validate:"required"`
 }
 
 // EvidenceActivity keeps logging and working-set frequency separate.

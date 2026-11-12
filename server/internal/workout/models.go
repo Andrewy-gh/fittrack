@@ -11,8 +11,8 @@ import (
 type CreateWorkoutRequest struct {
 	Recommendations []recommendation.Snapshot `json:"recommendations,omitempty" validate:"max=100"`
 	Date            string                    `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes           *string                   `json:"notes,omitempty" validate:"omitempty,max=256"`
-	WorkoutFocus    *string                   `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
+	Notes           *string                   `json:"notes,omitempty" validate:"omitempty,max=256" extensions:"x-nullable"`
+	WorkoutFocus    *string                   `json:"workoutFocus,omitempty" validate:"omitempty,max=256" extensions:"x-nullable"`
 	Exercises       []ExerciseInput           `json:"exercises" validate:"required,min=1,dive"`
 }
 
@@ -23,7 +23,7 @@ type ExerciseInput struct {
 }
 
 type SetInput struct {
-	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9"`
+	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9" extensions:"x-nullable"`
 	Reps    int      `json:"reps" validate:"required,gte=1"`
 	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
 }
@@ -35,7 +35,7 @@ type UpdateExercise struct {
 }
 
 type UpdateSet struct {
-	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9"`
+	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9" extensions:"x-nullable"`
 	Reps    int      `json:"reps" validate:"required,gte=1"`
 	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
 }
@@ -117,8 +117,8 @@ type ReformattedRequest struct {
 // Returns 204 No Content on success
 type UpdateWorkoutRequest struct {
 	Date         string           `json:"date" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
-	Notes        *string          `json:"notes,omitempty" validate:"omitempty,max=256"`
-	WorkoutFocus *string          `json:"workoutFocus,omitempty" validate:"omitempty,max=256"`
+	Notes        *string          `json:"notes,omitempty" validate:"omitempty,max=256" extensions:"x-nullable"`
+	WorkoutFocus *string          `json:"workoutFocus,omitempty" validate:"omitempty,max=256" extensions:"x-nullable"`
 	Exercises    []UpdateExercise `json:"exercises" validate:"required,min=1,dive"`
 }
 

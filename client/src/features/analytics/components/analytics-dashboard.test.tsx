@@ -38,6 +38,10 @@ describe("AnalyticsDashboard", () => {
             name: "Bench press",
             created_at: "2026-08-21T00:00:00Z",
             updated_at: "2026-08-21T00:00:00Z",
+            catalog_id: null,
+            historical_1rm: null,
+            historical_1rm_source_workout_id: null,
+            historical_1rm_updated_at: null,
             user_id: "user-1",
           },
         ]}
@@ -61,6 +65,10 @@ describe("AnalyticsDashboard", () => {
         name: "Bench press",
         created_at: "2026-08-21T00:00:00Z",
         updated_at: "2026-08-21T00:00:00Z",
+        catalog_id: null,
+        historical_1rm: null,
+        historical_1rm_source_workout_id: null,
+        historical_1rm_updated_at: null,
         user_id: "user-1",
       },
       {
@@ -68,6 +76,10 @@ describe("AnalyticsDashboard", () => {
         name: "Squat",
         created_at: "2026-08-21T00:00:00Z",
         updated_at: "2026-08-21T00:00:00Z",
+        catalog_id: null,
+        historical_1rm: null,
+        historical_1rm_source_workout_id: null,
+        historical_1rm_updated_at: null,
         user_id: "user-1",
       },
     ];
