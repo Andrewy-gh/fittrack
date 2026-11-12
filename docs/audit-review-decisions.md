@@ -24,6 +24,20 @@ Record answers by A-ID below or reply in chat; the CHIEF will transfer your deci
 | 11 | A088, A094, A103–A104 | Keep parked training-evidence work, manual scripts, copied docs and old verification artifacts? | Inventory purpose/references first; archive or delete only items confirmed retired. |
 | 12 | A106 | May any binaries, environment files, old PostgreSQL data or backup directories be deleted? | No deletion by default. Require exact-path approval, ownership check and verified backups for data. |
 
+## Newly discovered A018 decision — chat resource bounds
+
+A018 was originally Ready; read-only investigation exposed a material budget/admission decision, so it is now **Gated / Blocked**, not completed. Other ready work continues.
+
+**Recommended first stage, pending approval:** a server-side **64 KiB raw JSON body cap** and **8 KiB trimmed prompt cap measured in UTF-8 bytes**, strict JSON/EOF checking, and service-boundary checks before any message/run persistence or trial charge. Server-wide validated configuration; no per-request override. These are proposed application limits, not existing policy or token counts. This stage alone does not close A018.
+
+**Full-context budget remains undecided:** the selected model, all retained history, system/training context, tool schemas, nested generations and later tool results must be covered. Choose an honestly documented conservative estimate with structural/tool-growth headroom, or a complete provider-compatible counting integration. Do not call bytes or characters exact token counts. Research candidates of 64K input allowance and 8,192 output tokens (including thinking) are proposals, not approved defaults or verified workout-generation requirements.
+
+**Why ordering matters:** head confirmed the transaction locks the conversation, loads history, inserts messages/run, consumes trial quota and commits before generation. Initial overflow must be rejected inside that protected admission boundary, not only inside StreamChat. Later generated tool results are not known at admission: rejecting a later continuation is not automatically a no-charge rejection. Preserve A019/A020 quota/failure policy unless separately approved. D11 summarization/truncation remains deferred; never silently discard history.
+
+Research reports default Gemini 2.5 Flash advertises separate 1,048,576 input / 65,536 output limits ([model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash)); they are not the app's policy. Installed Genkit metadata lacks numeric capacity; installed Google CountTokens adapter rejects system/tools/config fields, and experimental local tokenization is not an exact complete-envelope count. Unknown/custom models cannot inherit Flash's profile by name prefix. No provider/production calls or tokenization downloads were performed.
+
+**Your decision:** Pending. Approve the first-stage body/prompt limits, choose different limits, or defer. Full budgeting and unknown-model handling require a subsequent explicit decision.
+
 ## Technical gates the CHIEF can investigate, but not silently approve
 
 - **A045:** Determine whether migration gaps/history are intentional. Never renumber or rewrite applied migrations.
@@ -47,6 +61,7 @@ This is a decision worksheet, not a second implementation tracker. Main A-ID ent
 | [A015](audit-remediation-plan.md#a015) | Deferred | M Reps have no upper bound on the server. Extreme reps × weight overflow NUMERIC(10,1) and numeric(8,2) casts and return 500 on save or read. | Pending |
 | [A016](audit-remediation-plan.md#a016) | Deferred | M navigate() is called during render for an out-of-range exercise index in both workout pages. | Pending |
 | [A017](audit-remediation-plan.md#a017) | Deferred | L The first-run exercise name has no length limit or trim, unlike the 256 limit elsewhere. | Pending |
+| [A018](audit-remediation-plan.md#a018) | Newly gated | H No chat prompt size cap; complete conversation history sent every turn. | Pending: staged body/prompt limits and full-envelope budget contract above |
 | [A019](audit-remediation-plan.md#a019) | Deferred | M If generation fails to start, the run is left "streaming" with no abort (aichat/handler.go:442). The conversation stays busy until the stale timeout. | Pending |
 | [A020](audit-remediation-plan.md#a020) | Deferred | M A trial prompt is consumed before generation, so a provider failure still costs the user one. | Pending |
 | [A021](audit-remediation-plan.md#a021) | Deferred | M The client recovery poll gives up at 55 s (ai-chat.ts:211) while the server may legitimately generate for 75 s. | Pending |

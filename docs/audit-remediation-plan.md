@@ -10,15 +10,15 @@ The original F/G/D identifiers are retained **only as implementation guidance**,
 
 Eighteen findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A050, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 contract work and A018 bounds investigation are next. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 contract work is active. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094) | H | 43 | 16 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 16 |
 | User-approved cleanup | M | 2 | 2 |
-| Gated on evidence, design or approval | H | 12 | 0 |
+| Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
 | **Total** | **55 H / 33 M / 18 L** | **106** | **18** |
@@ -260,11 +260,11 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 
 > H There is no size limit on a chat prompt (aichat/handler_helpers.go:36), and the whole conversation history is sent to the model every turn (aichat/runtime.go:178).
 
-- **Disposition:** Ready
-- **Status:** In progress
+- **Disposition:** Gated
+- **Status:** Blocked
 - **Plan:** `F11` — Batch 3
-- **Evidence / commit / PR:** AUDIT-W3-CHAT-BOUNDS-RESEARCH planned: read-only examination of current limits, selected-model budgets and quota ordering before proposing implementation; no truncation policy authorized.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** AUDIT-W3-CHAT-BOUNDS-RESEARCH returned (Pi / Sol / medium), read-only, no tests/provider calls. Head confirmed uncapped JSON decoders and locked-history → inserts → quota → commit ordering. Provider invocation occurs after committed admission. Existing SDK metadata does not supply a complete usable budget contract; research reports CountTokens adapter limitations for system/tools/config. See decision worksheet for proposed staged limits and remaining gates.
+- **Decision / blocker:** Approval needed for numeric limits and full-envelope budget strategy. Recommend first approving 64 KiB raw body / 8 KiB trimmed UTF-8 prompt caps with strict decoding and pre-admission service checks; these do not complete A018. No silent history truncation or changed quota/refund policy. Later tool-growth rejection cannot guarantee no prior quota charge without additional reservations/bounds.
 
 #### A019
 
