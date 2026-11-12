@@ -483,8 +483,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F17`, `F18` — Batch 4
-- **Evidence / commit / PR:** AUDIT-W4-API-CONTRACT planned: authoritative annotations/generated types and caller compatibility; no implementation accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `2fbdfe2` integrated as `cf57c5c`. Billing/account product operations documented; clients use generated billing/account/analytics/profile types; stale unused workout Swagger struct removed; exercise/nullability contracts corrected with narrow demo projections. Worker reports 43 focused client tests, contract red/green and checks passing. Head inspected source/tests and passed 524 client tests/103 files, tsc/api:check/full format/lint/both knip modes, scoped Go tests/full build/vet. Installed Go 1.26.4 differs from documented 1.26.10; no replacement performed.
+- **Decision / blocker:** Combined verification passed; fresh independent review pending. Not accepted yet. No live provider/DB/browser evidence. A042/A043 policy and transport remain unchanged.
 
 #### A040
 
@@ -493,8 +493,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F18` — Batch 4
-- **Evidence / commit / PR:** AUDIT-W4-API-CONTRACT planned: authoritative annotations/generated types and caller compatibility; no implementation accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `2fbdfe2` integrated as `cf57c5c`. Billing/account product operations documented; clients use generated billing/account/analytics/profile types; stale unused workout Swagger struct removed; exercise/nullability contracts corrected with narrow demo projections. Worker reports 43 focused client tests, contract red/green and checks passing. Head inspected source/tests and passed 524 client tests/103 files, tsc/api:check/full format/lint/both knip modes, scoped Go tests/full build/vet. Installed Go 1.26.4 differs from documented 1.26.10; no replacement performed.
+- **Decision / blocker:** Combined verification passed; fresh independent review pending. Not accepted yet. No live provider/DB/browser evidence. A042/A043 policy and transport remain unchanged.
 
 #### A041
 
@@ -503,8 +503,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Disposition:** Ready
 - **Status:** In progress
 - **Plan:** `F17` — Batch 4
-- **Evidence / commit / PR:** AUDIT-W4-API-CONTRACT planned: authoritative annotations/generated types and caller compatibility; no implementation accepted.
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `2fbdfe2` integrated as `cf57c5c`. Billing/account product operations documented; clients use generated billing/account/analytics/profile types; stale unused workout Swagger struct removed; exercise/nullability contracts corrected with narrow demo projections. Worker reports 43 focused client tests, contract red/green and checks passing. Head inspected source/tests and passed 524 client tests/103 files, tsc/api:check/full format/lint/both knip modes, scoped Go tests/full build/vet. Installed Go 1.26.4 differs from documented 1.26.10; no replacement performed.
+- **Decision / blocker:** Combined verification passed; fresh independent review pending. Not accepted yet. No live provider/DB/browser evidence. A042/A043 policy and transport remain unchanged.
 
 #### A042
 

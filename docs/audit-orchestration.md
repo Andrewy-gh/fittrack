@@ -108,7 +108,7 @@ Review AUDIT-W1-EXERCISE-REVIEW-1 returned for exact target `355d722..7da9a8f`, 
 | AUDIT-W2-CACHES | Implement A005/A006; mutation/cache/router freshness | Pi / openai-codex/gpt-6.1-sol / medium | Integrated ef677d5; head repairs 2f8cd33; independently reviewed and accepted |
 | AUDIT-W2-CARD-CHARTS | Remove fabricated exercise-card history, A011 | Pi / openai-codex/gpt-6.1-terra / medium | Accepted; caf2b2b plus head test hardening 093adf4 |
 | AUDIT-W3-HTTP-OBSERVABILITY | A025 route/user observability, A026 CORS, A028 logger configuration | Pi / openai-codex/gpt-6.1-sol / medium | Accepted, including head correction f033367 |
-| AUDIT-W4-API-CONTRACT | A039–A041 authoritative API contract and generated client types | Pi / openai-codex/gpt-6.1-sol / medium | Running; receipt confirmed; do not poll |
+| AUDIT-W4-API-CONTRACT | A039–A041 authoritative API contract and generated client types | Pi / openai-codex/gpt-6.1-sol / medium | Integrated cf57c5c; head combined checks passed; fresh review next |
 | AUDIT-W3-CHAT-BOUNDS-RESEARCH | A018 limits/model-budget/quota ordering investigation | Pi / openai-codex/gpt-6.1-sol / medium | Returned/reconciled; A018 newly gated pending user decision |
 | AUDIT-W2-WORKOUT-LOOKUP | Implement A007 missing/foreign workout 404 while retaining valid empty workout 200 | Pi / openai-codex/gpt-6-luna / medium | Integrated ac12780; independently reviewed and accepted |
 
@@ -161,6 +161,15 @@ Workout lookup is fully specified, bounded server behavior with real HTTP/DB acc
 - Head inspected actual prompt decoders, service admission and transaction ordering. No body/prompt cap; history loads under conversation lock before inserts/quota/commit, whereas provider invocation is later. A runtime-only rejection cannot prevent the earlier charge.
 - Research identifies incomplete installed model-capacity/token accounting and unknown later tool-growth bounds. Full F11 no-charge/context guarantee cannot be silently assumed. A018 reclassified Ready→Gated, status Blocked; counts now42 ready H/13 gated H (106 entries unchanged, accepted18).
 - Proposed initial64KiB body/8KiB decoded UTF-8 prompt caps and full-budget choices recorded in decision worksheet, not implemented/approved. D11 history truncation and A019/A020 failure/quota policies unchanged. Research recommendations are not independently executed token-accounting evidence.
-- API contract worker remains running; no polling or replacement. Task suffix `delegate-task%3AAUDIT-W4-API-CONTRACT` under the same prefix; receipt confirmed Pi / Sol / medium.
+- API contract worker subsequently returned; see reconciliation below. Task suffix `delegate-task%3AAUDIT-W4-API-CONTRACT` under the same prefix; receipt confirmed Pi / Sol / medium.
+
+### AUDIT-W4-API-CONTRACT / report 1 reconciled
+
+- Receipt confirmed Pi / Sol / medium. Source `2fbdfe28404512209838645362f6f981b33934bc` from `C:/Users/lenny/.t3/worktrees/fittrack/t3-dfab550c`; integrated once as `cf57c5c`.
+- Full worker report: ignored `.worktree/AUDIT-W4-API-CONTRACT-report.md` in that worktree. Head read report and inspected production source, generated-diff scope, real handler/row schema tests, client transport tests and demo null/zero regressions.
+- Adds four authenticated billing operations and DELETE account to product contract; out-of-basePath Stripe webhook remains unchanged. Generated billing/account/analytics/profile contracts replace handwritten types, preserving existing transports/query keys/errors. Removes already-unused UpdateWorkoutRequestSwagger, corrects exercise fields and nullable request/response annotations. Necessary demo output projections and null→existing undefined storage normalization included; no broad A056 demo-policy work. A088 service/query remain retained: only shared EvidencePeriod documentation tags changed.
+- Worker reports intended contract red, green43tests/10files, tsc/api:check/lint/format/knip/Go tests/build/vet. Its requested workout-text.test.ts filter matched no file; count is10, not11. Missing .husky/_ meant no hook execution, explicitly disclosed.
+- Head combined gates all exited0: tsc/api:check and full524tests/103files (538 seconds) in session64 (`C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-64-680adfef.log`); scoped contract/handler/domain tests across six Go packages, full build and scoped vet in session66 (`pi-unified-exec-66-3e5056a0.log`); full client format/lint/both knip modes in session67 (`pi-unified-exec-67-54c9c486.log`). Fresh read-only AUDIT-W4-API-CONTRACT-REVIEW, Pi / Sol / high, is next for `75f2093..cf57c5c`.
+- Head confirmed installed Go is1.26.4 versus documented1.26.10. No toolchain replacement. No DB/live provider/Stack/Stripe/browser/production checks; all transport/handler fixtures local. A039–A041 remain In progress pending combined checks and fresh independent review. Accepted18.
 
 No nested workers; head owns integration, tracker updates and final acceptance. Next reports must be reconciled once and returned through native completion, without polling.
