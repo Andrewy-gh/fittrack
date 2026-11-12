@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Twenty-eight findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A094, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Thirty-one findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A094, A099–A100, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is next. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Implementation branch: `fix/audit-remediation`. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. Work is paused at the user's request for progress assessment; no further implementation or suite runs are scheduled. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 26 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 29 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **28** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **31** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -647,10 +647,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H vite.config.js:76 has a test block that Vitest ignores, and there are two test setup files.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F23` — Batch 5
 - **Evidence / commit / PR:** Worker `549d2dc`, integrated `33a94c4`; removed ignored config/unloaded setup/unused browser dependency and types. Active setup unchanged. Head passed frozen install, exact config/discovery/inventory comparison, 524 tests/103 files, tsc/format/lint/both knip modes; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-91-a9e0f520.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Worker baseline/final both524/103. Head run emitted Stack analytics error: possible provider contact, not claimed network-isolated or live-provider proof. No further suite run until boundary assessed.
+- **Decision / blocker:** Accepted after AUDIT-W5-TEST-CONFIG-REVIEW (Pi / Sol / high, `a6bd548..33a94c4`): no actionable introduced findings. Independent typecheck and lock/config/inventory audit passed; 2,792 dependency edges checked with no new resolution signatures. Worker baseline/final both524/103. Head run emitted Stack analytics error: possible provider contact, not claimed network-isolated or live-provider proof. Reviewer traced a pre-existing network-isolation risk, not introduced by this cleanup. Further suite runs paused until a fail-closed boundary is established; follow-up recorded in orchestration log.
 
 #### A056
 
@@ -1123,20 +1123,20 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H @vitest/browser 3.2.4 sits beside Vitest 5.0.1 and is referenced only in tsconfig.json.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F23` — Batch 5
 - **Evidence / commit / PR:** Worker `549d2dc`, integrated `33a94c4`; removed ignored config/unloaded setup/unused browser dependency and types. Active setup unchanged. Head passed frozen install, exact config/discovery/inventory comparison, 524 tests/103 files, tsc/format/lint/both knip modes; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-91-a9e0f520.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Worker baseline/final both524/103. Head run emitted Stack analytics error: possible provider contact, not claimed network-isolated or live-provider proof. No further suite run until boundary assessed.
+- **Decision / blocker:** Accepted after AUDIT-W5-TEST-CONFIG-REVIEW (Pi / Sol / high, `a6bd548..33a94c4`): no actionable introduced findings. Independent typecheck and lock/config/inventory audit passed; 2,792 dependency edges checked with no new resolution signatures. Worker baseline/final both524/103. Head run emitted Stack analytics error: possible provider contact, not claimed network-isolated or live-provider proof. Reviewer traced a pre-existing network-isolation risk, not introduced by this cleanup. Further suite runs paused until a fail-closed boundary is established; follow-up recorded in orchestration log.
 
 #### A100
 
 > H src/test/setup.ts is never loaded.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F23` — Batch 5
 - **Evidence / commit / PR:** Worker `549d2dc`, integrated `33a94c4`; removed ignored config/unloaded setup/unused browser dependency and types. Active setup unchanged. Head passed frozen install, exact config/discovery/inventory comparison, 524 tests/103 files, tsc/format/lint/both knip modes; log `C:/Users/lenny/AppData/Local/Temp/pi-unified-exec-91-a9e0f520.log`.
-- **Decision / blocker:** Fresh independent review pending; not accepted. Worker baseline/final both524/103. Head run emitted Stack analytics error: possible provider contact, not claimed network-isolated or live-provider proof. No further suite run until boundary assessed.
+- **Decision / blocker:** Accepted after AUDIT-W5-TEST-CONFIG-REVIEW (Pi / Sol / high, `a6bd548..33a94c4`): no actionable introduced findings. Independent typecheck and lock/config/inventory audit passed; 2,792 dependency edges checked with no new resolution signatures. Worker baseline/final both524/103. Head run emitted Stack analytics error: possible provider contact, not claimed network-isolated or live-provider proof. Reviewer traced a pre-existing network-isolation risk, not introduced by this cleanup. Further suite runs paused until a fail-closed boundary is established; follow-up recorded in orchestration log.
 
 #### A101
 
