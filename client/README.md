@@ -34,8 +34,11 @@ bun run test:e2e:ci   # Build then run E2E tests (CI mode)
 bun run lint          # Lint with oxlint
 bun run knip          # Check for unused files and dependency drift
 bun run knip:production # Check for code unused by the production app
-bun run tsc           # Type-check without emitting
+bun run tsc           # Type-check client and Vite-only configuration
+bun run test:guardrails # Exercise audit lint/config/Knip CLI regression fixtures
 ```
+
+See [audit static-analysis guardrails](docs/audit-static-guardrails.md) for rule scope, diagnostics and exclusions.
 
 ## Authentication
 

@@ -3,14 +3,23 @@
 ## Authority and acceptance
 
 - Head: current T3 CHIEF thread. User authorized orchestrating ready fixes on a new branch with verification for every changed behavior.
-- Integration branch: `fix/audit-remediation`, based on `633387a`.
+- Initial integration branch: `fix/audit-remediation`, based on `633387a`; shipped in PR #360. Guardrail follow-up: `chore/audit-lint-guardrails`, based on squash commit `da6ec516`.
 - Preserve unrelated `docs/media/how-it-works.gif` and `docs/design/` changes. Never stage them.
 - Source of progress: [106-item tracker](audit-remediation-plan.md). Decisions: [review worksheet](audit-review-decisions.md).
-- Original remediation scope excluded publication. The user's later checkpoint instruction authorizes draft PR preparation/publication for the accepted fixes plus test isolation only; use the existing skip-preview marker. Merge to main, deployment, destructive data cleanup and deferred product-policy changes remain unauthorized.
+- Original remediation scope excluded publication. Later explicit `ship-pr` instructions authorized the checkpoint and then the separate lint/static-analysis batch through normal review, CI, squash merge, production verification and scoped cleanup. Keep `<!-- skip-preview -->` on each PR to prevent preview/shared-storage migrations. Destructive shared-data cleanup and deferred product-policy changes remain unauthorized.
 - Workers use T3-managed separate worktrees and the repository's runtime/database isolation instructions.
 - A worker report is not acceptance. Head inspects diff and evidence, integrates scoped commits, verifies combined behavior, and requests a fresh read-only Pi / openai-codex/gpt-6.1-sol / high review. Unresolved findings or required verification gaps block completion.
 - No nested delegation. Maximum initial implementation concurrency: two.
 - Shared tracker and orchestration documents are head-owned; workers must not edit them.
+
+## Lint/static-analysis follow-up
+
+- PR #360 shipped as `da6ec516`: latest-head CI and authenticated E2E passed; Fly production release v455 mapped to that squash SHA and passed non-mutating readiness/app-delivery/auth-boundary smoke checks. Local cleanup preserved user dirtiness and managed worker artifacts.
+- Worker profile: Pi / openai-codex/gpt-6.1-sol / medium. Source commit `f340467`; integrated implementation `cb165cc`. No production source or dependency changes.
+- Scope: AST-based `training-cache/no-static-training-data` at ten existing mutable-query boundaries; independent Vite-only JS config typechecking; Knip unresolved imports/unlisted binaries with one documented external `ffmpeg` exception; real CLI regression checks wired into frontend CI.
+- Worker executed the guarded full client suite (528 tests / 104 files), unchanged sorted discovery and unchanged Vitest setup/network-guard hashes. All three CLI tests failed for the intended reasons with guards disabled, then passed with guards enabled. Head independently repeated the three CLI tests plus lint, both Knip modes, client/Vite TypeScript and formatting. Linux CI remains a release gate, not a local-test claim.
+- Static detection is bounded and syntactic, not proof of invalidation, account isolation or arbitrary config execution. Existing behavioral tests remain. A003 date lint, A061/A082/A092 and transport rules are deferred rather than expanded into this batch. A018/A088 gates and the 31/106 accepted count are unchanged.
+- Final acceptance requires fresh independent autoreview, exact-head CI and the normal release gates. Detailed coverage and exclusions: [static guardrails](../client/docs/audit-static-guardrails.md).
 
 ## Wave 1 assignments
 
