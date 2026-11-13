@@ -67,7 +67,8 @@ function isMutableKey(node: ESTree.Expression): boolean {
   return (
     first?.type === "Literal" &&
     (first.value === "training-assessment" ||
-      first.value === "muscle-contributions")
+      first.value === "muscle-contributions" ||
+      first.value === "exercise-recommendation")
   );
 }
 

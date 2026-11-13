@@ -19,7 +19,7 @@ New checks expose one existing external executable: `ffmpeg` in the media-captur
 
 ## Cache rule scope (A005/A006)
 
-The AST rule recognizes direct spreads of the established mutable workout/exercise/demo/analytics factory names, matching query-key factory calls, and the `training-assessment` / `muscle-contributions` key prefixes. It checks only a sibling literal string-valued `staleTime` property (including quoted/computed literal property names). It does not scan source text. Immutable catalog options, unrelated objects/strings/comments, nested metadata, and test files remain valid.
+The AST rule recognizes direct spreads of the established mutable workout/exercise/demo/analytics factory names, matching query-key factory calls, and the `training-assessment`, `muscle-contributions`, and `exercise-recommendation` key prefixes. The CLI tests also mutate the real recommendation component's freshness to verify its actual literal-key shape is protected. It checks only a sibling literal string-valued `staleTime` property (including quoted/computed literal property names). It does not scan source text. Immutable catalog options, unrelated objects/strings/comments, nested metadata, and test files remain valid.
 
 This is intentionally syntactic, not type/data-flow analysis: aliases, namespace/member calls, values hidden in variables/spreads, template expressions, renamed/moved boundaries, and new query families need human review or a deliberate rule update. It does not prove invalidation coverage, successful refetches, account-switch safety, or authorization. Existing behavioral cache tests remain responsible for those observable contracts. No automatic fix changes freshness policy.
 

@@ -120,6 +120,26 @@ test("normal Oxlint config rejects static mutable training queries, not immutabl
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /Mutable training data/);
   }
+  // Protect this boundary's actual literal-key shape, not just a synthetic
+  // workout factory placed at the same filename.
+  const recommendationPath =
+    "src/features/workouts/components/form/exercise-recommendation-panel.tsx";
+  const recommendation = read(recommendationPath);
+  const originalRecommendation = lint(dir, recommendationPath, recommendation);
+  assert.equal(originalRecommendation.status, 0, originalRecommendation.output);
+  const staticRecommendation = recommendation.replace(
+    "staleTime: 0,",
+    "staleTime: 'static',",
+  );
+  assert.notEqual(staticRecommendation, recommendation);
+  const rejectedRecommendation = lint(
+    dir,
+    recommendationPath,
+    staticRecommendation,
+  );
+  assert.equal(rejectedRecommendation.status, 1, rejectedRecommendation.output);
+  assert.match(rejectedRecommendation.output, /Mutable training data/);
+
   // Scope is deliberate: immutable callers elsewhere and test fixtures stay valid.
   for (const outside of [
     "src/lib/immutable.ts",
