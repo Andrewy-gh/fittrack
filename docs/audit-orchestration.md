@@ -3,7 +3,7 @@
 ## Authority and acceptance
 
 - Head: current T3 CHIEF thread. User authorized orchestrating ready fixes on a new branch with verification for every changed behavior.
-- Initial integration branch: `fix/audit-remediation`, based on `633387a`; shipped in PR #360. Guardrail follow-up: `chore/audit-lint-guardrails`, based on squash commit `da6ec516`.
+- Initial integration branch: `fix/audit-remediation`, based on `633387a`; shipped in PR #360. Guardrail follow-up `chore/audit-lint-guardrails` shipped in PR #361 as `c6cee948`. The authorized next focused batch, A027, shipped in PR #362 as `f3a83b7`.
 - Preserve unrelated `docs/media/how-it-works.gif` and `docs/design/` changes. Never stage them.
 - Source of progress: [106-item tracker](audit-remediation-plan.md). Decisions: [review worksheet](audit-review-decisions.md).
 - Original remediation scope excluded publication. Later explicit `ship-pr` instructions authorized the checkpoint and then the separate lint/static-analysis batch through normal review, CI, squash merge, production verification and scoped cleanup. Keep `<!-- skip-preview -->` on each PR to prevent preview/shared-storage migrations. Destructive shared-data cleanup and deferred product-policy changes remain unauthorized.
@@ -19,7 +19,17 @@
 - Scope: AST-based `training-cache/no-static-training-data` at ten existing mutable-query boundaries; independent Vite-only JS config typechecking; Knip unresolved imports/unlisted binaries with one documented external `ffmpeg` exception; real CLI regression checks wired into frontend CI.
 - Worker executed the guarded full client suite (528 tests / 104 files), unchanged sorted discovery and unchanged Vitest setup/network-guard hashes. All three CLI tests failed for the intended reasons with guards disabled, then passed with guards enabled. Head independently repeated the three CLI tests plus lint, both Knip modes, client/Vite TypeScript and formatting. Linux CI remains a release gate, not a local-test claim.
 - Static detection is bounded and syntactic, not proof of invalidation, account isolation or arbitrary config execution. Existing behavioral tests remain. A003 date lint, A061/A082/A092 and transport rules are deferred rather than expanded into this batch. A018/A088 gates and the 31/106 accepted count are unchanged.
-- Final acceptance requires fresh independent autoreview, exact-head CI and the normal release gates. Detailed coverage and exclusions: [static guardrails](../client/docs/audit-static-guardrails.md).
+- Final acceptance passed: independent autoreview closed_clear, exact-head Test/authenticated E2E green, PR #361 squash `c6cee948`, and mapped Fly v456 production/readiness/app-delivery verification. Local cleanup preserves unrelated work and referenced evidence. Detailed coverage and exclusions: [static guardrails](../client/docs/audit-static-guardrails.md).
+
+## A027 — HSTS behind Fly, accepted after live verification
+
+- Only A027/F14 resumed; A018/A088 and the other outstanding findings remain unchanged. Accepted total is now **32/106**, with **74 outstanding** (12 Ready, 13 Gated, 49 Deferred).
+- Worker Pi / Sol / medium: `37baabf`; head integration `01d0ebb`. Existing validated production configuration now enables the unchanged HSTS policy on Fly's HTTP backend hop, independently of untrusted forwarded headers. Direct TLS and development/staging HTTP behavior are preserved.
+- Worker red→green real config/router regression covers 144 response scenarios. Head and fresh Sol/high reviewer independently passed scoped Go tests, full build and scoped vet using Go 1.26.11. The two UNIT-mode DB skips were explicit; the separate real pre-push used a freshly prepared owned PostgreSQL 15.19 TEST target and passed. Some unchanged packages used cached results. Owned container removed; shared `fittrack-postgres15` remained stopped.
+- Autoreview `arun1_7ecb3dd1048248cc8768caedb1935ead`, attempt `aat1_93ffe171d483448fa08d54a227d33652`: closed_clear, no findings, one valid pass/zero retries, frozen head `c8bad6e`. Exact-head Test `43652981305` and authenticated E2E `43652981306` passed; preview deliberately skipped.
+- [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362) squash `f3a83b7fe3389952879c0cb590702dd5dc62d233`; production run `43653490121`, Fly **v457**, release `rel_3d092n5xdl932jxm`. Both machine labels matched the merge SHA; the stopped spare is expected under existing auto-stop configuration.
+- Live check at **2026-11-14T23:31:09Z**: readiness/database healthy; home/current JS/workouts/Swagger 200, unauthenticated workouts 401 and missing asset 404; all seven HTTPS responses send exactly `max-age=31536000; includeSubDomains`, preserve nosniff/XSS/framing (Swagger SAMEORIGIN, otherwise DENY), and HTTP redirects 301 to HTTPS. No induced production 500 or authenticated production-browser acceptance claimed.
+- The merged implementation tracker intentionally stayed In progress until that live gate passed; this documentation-only follow-up records acceptance afterward. Remote feature ref removed with expected-head lease and verified absent. Local user changes and worker review evidence retained; no forced worktree cleanup. Detailed local receipts: `.worktree/AUDIT-A027-HSTS-review.md`, `.worktree/audit-hsts-production.json`, `.worktree/audit-hsts-production-machines.json`, `.worktree/audit-hsts-ship-checkpoint.json` (ignored evidence, not checked-in artifacts).
 
 ## Wave 1 assignments
 
