@@ -339,7 +339,7 @@ func newAPIHandler(cfg *config.Config, logger *slog.Logger, router *http.ServeMu
 	handler = middleware.RequestLog(logger)(handler)
 	handler = middleware.RequestID()(handler)
 	handler = middleware.CORS(cfg.GetAllowedOrigins(), logger)(handler)
-	handler = middleware.SecurityHeaders()(handler)
+	handler = middleware.SecurityHeaders(cfg.Environment)(handler)
 
 	return handler
 }
