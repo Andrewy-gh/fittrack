@@ -63,7 +63,7 @@ func TestSecurityHeaders(t *testing.T) {
 			})
 
 			// Wrap with security headers middleware
-			handler := SecurityHeaders()(nextHandler)
+			handler := SecurityHeaders("development")(nextHandler)
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)

@@ -8,7 +8,10 @@ import (
 // SecurityHeaders adds security-related HTTP headers to all responses.
 // It sets X-Content-Type-Options, X-Frame-Options, and X-XSS-Protection headers
 // to protect against common web vulnerabilities.
-func SecurityHeaders() func(http.Handler) http.Handler {
+// Production serves public HTTPS through Fly's TLS-terminating proxy (with
+// force_https enabled). Use startup configuration, never client-supplied
+// Forwarded/X-Forwarded-Proto headers, to retain HSTS on its HTTP backend hop.
+func SecurityHeaders(environment string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Prevent MIME type sniffing
@@ -24,8 +27,8 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 			// Enable XSS protection in older browsers
 			w.Header().Set("X-XSS-Protection", "1; mode=block")
 
-			// Add HSTS header only for HTTPS requests
-			if r.TLS != nil {
+			// Direct TLS retains HSTS in every environment; development HTTP does not.
+			if environment == "production" || r.TLS != nil {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 			}
 
