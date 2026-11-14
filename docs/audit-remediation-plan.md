@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Thirty-one findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A026, A028–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A094, A099–A100, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Thirty-two findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A094, A099–A100, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). Current focused branch: `fix/audit-hsts-fly` for A027. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent continuation authorizes A027 as the next ready fix; the other 74 outstanding findings remain outside the current focused batch. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; the remaining 74 findings stay outside this focused batch. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 29 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 30 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **31** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **32** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -359,10 +359,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H HSTS is only sent when the Go server itself terminates TLS (middleware/security.go:28), which never happens behind Fly.
 
 - **Disposition:** Ready
-- **Status:** In progress
+- **Status:** Done
 - **Plan:** `F14` — Batch 3
 - **Evidence / commit / PR:** Public HTTPS reproduced without HSTS on 2026-11-14; public HTTP redirects to HTTPS. Worker `37baabf` integrated as `01d0ebb`: existing validated production environment enables the unchanged `max-age=31536000; includeSubDomains` policy across Fly's plaintext backend hop, without trusting forwarded headers. Real config/router regression failed before the fix and passed after; production/development/staging, direct TLS, hostile forwarded headers and 200/401/404/500 responses are covered. Worker and head passed scoped app/middleware/config suites, full Go build and scoped vet under Go 1.26.11. Two DB integration cases skipped in UNIT mode; they are not passing DB proof.
-- **Decision / blocker:** Independent review, CI, production deployment and live HTTPS header verification remain acceptance gates. Direct TLS behavior and development HTTP are preserved; no preload enrollment or policy strengthening. Do not mark Done until the live gate passes.
+- **Decision / blocker:** Accepted after independent Sol/high autoreview `arun1_7ecb3dd1048248cc8768caedb1935ead` closed_clear at `c8bad6e`, real managed TEST pre-push with owned PostgreSQL 15.19, and green exact-head Test/authenticated E2E runs `43652981305`/`43652981306`. [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362) merged as `f3a83b7`; production run `43653490121` succeeded and both Fly v457 machine labels matched that revision. At 2026-11-14T23:31:09Z, HTTPS readiness/home/current JS/workouts/Swagger returned 200, unauthenticated workouts 401 and missing asset 404, all with the exact HSTS policy and preserved security/framing headers; HTTP still redirected 301 to HTTPS and readiness reported database ok. Direct TLS and development HTTP are locally verified; no preload or stronger policy, induced production 500, or authenticated production-browser acceptance claimed. Shared local PostgreSQL remained stopped; the disposable test container was removed.
 
 #### A028
 
