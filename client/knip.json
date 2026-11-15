@@ -25,12 +25,5 @@
     "src/features/**/test/**": ["exports"],
     "tests/e2e/helpers/**": ["exports"]
   },
-  "ignoreFiles": [
-    "src/client/schemas.gen.ts",
-    "src/components/date-picker-base.tsx",
-    "src/components/dialog-base.tsx",
-    "src/components/error-boundary-test.tsx",
-    "src/components/mode-toggle.tsx",
-    "src/components/ui/table.tsx"
-  ]
+  "ignoreFiles": ["src/client/schemas.gen.ts"]
 }
