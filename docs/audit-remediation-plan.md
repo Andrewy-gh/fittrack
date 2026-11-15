@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Thirty-five findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A094, A097–A100, A102–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Thirty-seven findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A092–A094, A097–A100, A102–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; the next authorized related batch accepts A097/A098/A102 after verified cleanup and independent review. Its final publication/CI/production gates are pending; the remaining 71 findings stay outside this batch. Lint-rule recommendations will be surfaced only after merge. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; A097/A098/A102 subsequently shipped in [PR #364](https://github.com/Andrewy-gh/fittrack/pull/364), squash `0cc3c79`, verified on Fly v459. The current authorized server test-artifact batch accepts A092/A093 after implementation checks and independent assessment; final autoreview, CI and release remain publication gates. The remaining 69 findings stay outside this batch. No new lint rule has been implemented. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 33 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 35 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **35** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **37** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -1051,20 +1051,20 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H workout_test_helpers.go is not a _test.go file, so its mocks and test database helpers compile into the production package.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F28` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `d943aef`, integrated `8c7af65`: unchanged-content rename to `workout_helpers_test.go` (identical blob). All consumers are same-package tests; no production seam or caller rewrite. Ordinary/test GoFiles change 18/22 to 17/23; API graph no longer reaches internal/testutils or Testify, while test variants still do. Workout discovery remains 49 tests plus one benchmark; before/after managed TEST workout/auth inventories and results match. Worker full owner-role suite: 23 passing packages, four no-test packages, 1,133 passing test/subtest events, six existing skipped events, zero failures. Head and independent assessor repeated Go 1.26.11 build/vet and graph checks.
+- **Decision / blocker:** Head accepted the implementation criterion after independent Pi/Sol/high assessment at `8c7af65`, with no actionable findings and an independent recount of raw test events. This is not a final autoreview closure or release claim; final combined autoreview, real managed TEST pre-push, CI and production remain publication gates. Six skips and an omitted owner-role assertion do not prove restricted-role behavior; DirectSQL_RLSEnforcement is unconditionally skipped. Standalone testutils and the GenAI SDK's transitive testing import remain intentionally outside the API-to-first-party-test-support fix.
 
 #### A093
 
 > H server/cmd/test-jwk is a scratch program with placeholder values.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F29` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `d943aef`, integrated `8c7af65`: removed the 60-line placeholder test-jwk executable after complete source/history/entrypoint inventory. No supported caller/configuration found; the command was never executed. API/worktree-db/Gemini smoke/scenario-sweep remain; active auth/JWKS code and module dependencies unchanged. Offline signed-token and middleware tests pass before/after, and head/independent assessor repeated full build/vet and command-inventory checks using Go 1.26.11.
+- **Decision / blocker:** Head accepted the implementation criterion after independent Pi/Sol/high assessment at `8c7af65`, no actionable findings. Repository evidence cannot rule out unknown unpublished operator scripts; no live provider/JWKS-refresh or production-login proof claimed. Worker hooks were absent; explicit checks are the evidence. Final combined autoreview, managed pre-push, CI and production remain publication gates; all other finding decisions are unchanged.
 
 #### A094
 
