@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Thirty-two findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A094, A099–A100, A103–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Thirty-five findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A094, A097–A100, A102–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; the remaining 74 findings stay outside this focused batch. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; the next authorized related batch accepts A097/A098/A102 after verified cleanup and independent review. Its final publication/CI/production gates are pending; the remaining 71 findings stay outside this batch. Lint-rule recommendations will be surfaced only after merge. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 30 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 33 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **32** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **35** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -1103,20 +1103,20 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Five components have no importers and are hidden from knip by ignoreFiles: date-picker-base, dialog-base, error-boundary-test, mode-toggle, ui/table.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F29` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `f82335d`, integrated `65179f3`: removed five proven-unused components and their exact Knip masks. Whole-repository caller/tool/asset searches found no active entry points; before deletion, removing masks made both Knip modes report exactly those five files. Final modes/build pass without replacement ignores. Worker managed UNIT suite passed 528 tests/104 files; head and reviewer independently checked unchanged discovery/config/setup/network guard and repeated static checks. Head production build and API freshness passed; reviewer inspected all 10 local HTML asset references in the 76-file build.
+- **Decision / blocker:** Accepted after independent Sol/high autoreview `arun1_3a2be99720fb4bc69d717aa6a08bb873` closed_clear at `65179f3`, no findings. This completes only A097, not excluded A093/server work sharing F29. Final combined documentation review, CI and release remain publication gates; no changed UI or browser acceptance claimed.
 
 #### A098
 
 > H Starter-template leftovers: reportWebVitals.ts (called with no callback, main.tsx:69), the web-vitals dependency, src/logo.svg, .cta.json, and a commented-out block in lib/utils.ts.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F30` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `f82335d`, integrated `65179f3`: removed callback-gated no-op web-vitals startup/module, its unused leaf dependency, unused SVG/creation metadata and commented alternative formatter. Active startup/providers/auth/router/utilities/public icons unchanged. Lock diff removes exactly the root web-vitals declaration and leaf entry; frozen install accepts it without changes. Worker full managed UNIT suite passed 528/104; head lint/both Knip modes/typechecks/format/API freshness/build passed. Reviewer independently checked committed lock bytes, identical worker/integrated client trees and valid build assets.
+- **Decision / blocker:** Accepted after independent Sol/high autoreview `arun1_3a2be99720fb4bc69d717aa6a08bb873` closed_clear at `65179f3`, no findings. No active telemetry removed, dependency upgrades or new lint rules. Worker hooks were absent; explicit checks, not hook execution, provide proof. Final combined documentation review, CI and release remain publication gates.
 
 #### A099
 
@@ -1153,10 +1153,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H Two pull-to-refresh docs describe a feature that does not exist.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F24` — Batch 5
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `f82335d`, integrated `65179f3`: retired both obsolete pull-to-refresh research/proposal documents after complete content/history/reference inspection. No active feature, library or ownership found; the only inbound navigational references were within the deleted pair. Historical audit quotes remain unchanged. No feature was implemented or represented as available.
+- **Decision / blocker:** Accepted after independent Sol/high autoreview `arun1_3a2be99720fb4bc69d717aa6a08bb873` closed_clear at `65179f3`, with independent tracked base/head reference searches and no findings. Final combined documentation review, CI and release remain publication gates; other deferred product decisions are unchanged.
 
 #### A103
 
