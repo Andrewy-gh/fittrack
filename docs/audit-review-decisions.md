@@ -7,7 +7,7 @@ Originally **64 findings required review**: 13 high-confidence gated findings an
 
 ## Current continuation boundary
 
-The user requested continuing related reviewed/released batches until past 45 accepted findings. A087/A089/A090/A091 bring implementation acceptance to 41; A077 and A054/A101 are the three remaining Ready findings, potentially reaching 44. The head proposed message-only corrections for A038 and A066 to reach 46. **Approval has been requested, not received.** Those entries remain Deferred / Pending; the numeric target does not override existing gates or authorize unrelated policy changes.
+The user requested continuing related reviewed/released batches until past 45 accepted findings. A087/A089/A090/A091 shipped with 41 accepted; A077 now brings implementation acceptance to 42, pending its final review/release gates. A054/A101 are the two remaining Ready findings, potentially reaching 44. The head proposed message-only corrections for A038 and A066 to reach 46. **Approval has been requested, not received.** Those entries remain Deferred / Pending; the numeric target does not override existing gates or authorize unrelated policy changes.
 
 ## Review these decisions first
 
