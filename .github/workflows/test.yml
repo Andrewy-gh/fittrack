@@ -117,14 +117,7 @@ jobs:
         working-directory: server
         run: govulncheck ./...
 
-      - name: Run unit tests
-        working-directory: server
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
-        run: |
-          go test -short ./...
-
-      - name: Run integration tests
+      - name: Run unit and integration tests
         working-directory: server
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
