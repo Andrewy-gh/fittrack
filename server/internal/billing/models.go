@@ -26,7 +26,6 @@ var (
 	ErrTrialPromptLimitExceeded         = errors.New("ai chat trial prompt limit exceeded")
 	ErrStripeUserMissing                = errors.New("stripe payload is missing fittrack user metadata")
 	ErrStripeCustomerMissing            = errors.New("stripe payload is missing customer")
-	ErrUnsupportedStripeEvent           = errors.New("unsupported stripe webhook event")
 	ErrBillingAccountDeleted            = errors.New("billing account was deleted")
 )
 

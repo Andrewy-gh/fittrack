@@ -345,7 +345,6 @@ func (s *Service) AbortPreparedMessageStream(ctx context.Context, prepared *Prep
 
 func (s *Service) failPreparedRun(ctx context.Context, prepared *PreparedMessageStream, partialText string, failure error) error {
 	partialText = strings.TrimSpace(partialText)
-	failure = normalizeStreamFailure(failure)
 	completedAt := time.Now().UTC()
 	if err := s.repo.FailRun(ctx, prepared, partialText, failure, completedAt); err != nil {
 		return err
@@ -387,16 +386,6 @@ func normalizeStreamChunkError(ctx context.Context, err error) error {
 	}
 }
 
-func normalizeStreamFailure(err error) error {
-	if err == nil {
-		return nil
-	}
-	if errors.Is(err, ErrStreamDisconnected) || errors.Is(err, ErrStreamNotStarted) {
-		return err
-	}
-	return err
-}
-
 func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {
 	messages := make([]RuntimeChatMessage, 0, len(history))
 	for _, message := range history {
@@ -419,14 +408,6 @@ func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {
 	}
 
 	return messages
-}
-
-func isClientSafeError(err error) bool {
-	return errors.Is(err, ErrFeatureDisabled) ||
-		errors.Is(err, ErrRuntimeUnavailable) ||
-		errors.Is(err, ErrRecoveryUnavailable) ||
-		errors.Is(err, ErrConversationBusy) ||
-		errors.Is(err, ErrGenerationTimeout)
 }
 
 func shouldStopResumeAndRecover(run *ChatRun, now time.Time) bool {

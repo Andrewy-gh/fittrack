@@ -84,24 +84,6 @@ func (q *Queries) DeleteSetsByWorkout(ctx context.Context, arg DeleteSetsByWorko
 	return err
 }
 
-const deleteSetsByWorkoutAndExercise = `-- name: DeleteSetsByWorkoutAndExercise :exec
-DELETE FROM "set" 
-WHERE workout_id = $1 
-  AND exercise_id = $2
-  AND user_id = $3
-`
-
-type DeleteSetsByWorkoutAndExerciseParams struct {
-	WorkoutID  int32  `json:"workout_id"`
-	ExerciseID int32  `json:"exercise_id"`
-	UserID     string `json:"user_id"`
-}
-
-func (q *Queries) DeleteSetsByWorkoutAndExercise(ctx context.Context, arg DeleteSetsByWorkoutAndExerciseParams) error {
-	_, err := q.db.Exec(ctx, deleteSetsByWorkoutAndExercise, arg.WorkoutID, arg.ExerciseID, arg.UserID)
-	return err
-}
-
 const deleteWorkout = `-- name: DeleteWorkout :exec
 DELETE FROM workout 
 WHERE id = $1 
@@ -206,47 +188,6 @@ func (q *Queries) GetLatestWorkoutNote(ctx context.Context, userID string) (GetL
 	return i, err
 }
 
-const getSet = `-- name: GetSet :one
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
-WHERE id = $1 AND user_id = $2
-`
-
-type GetSetParams struct {
-	ID     int32  `json:"id"`
-	UserID string `json:"user_id"`
-}
-
-type GetSetRow struct {
-	ID            int32              `json:"id"`
-	ExerciseID    int32              `json:"exercise_id"`
-	WorkoutID     int32              `json:"workout_id"`
-	Weight        pgtype.Numeric     `json:"weight"`
-	Reps          int32              `json:"reps"`
-	SetType       string             `json:"set_type"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	ExerciseOrder int32              `json:"exercise_order"`
-	SetOrder      int32              `json:"set_order"`
-}
-
-func (q *Queries) GetSet(ctx context.Context, arg GetSetParams) (GetSetRow, error) {
-	row := q.db.QueryRow(ctx, getSet, arg.ID, arg.UserID)
-	var i GetSetRow
-	err := row.Scan(
-		&i.ID,
-		&i.ExerciseID,
-		&i.WorkoutID,
-		&i.Weight,
-		&i.Reps,
-		&i.SetType,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ExerciseOrder,
-		&i.SetOrder,
-	)
-	return i, err
-}
-
 const getWorkout = `-- name: GetWorkout :one
 SELECT id, date, notes, workout_focus, created_at, updated_at FROM workout WHERE id = $1 AND user_id = $2
 `
@@ -347,56 +288,6 @@ func (q *Queries) GetWorkoutWithSets(ctx context.Context, arg GetWorkoutWithSets
 			&i.ExerciseOrder,
 			&i.SetOrder,
 			&i.Volume,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSets = `-- name: ListSets :many
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
-WHERE user_id = $1
-ORDER BY exercise_order, set_order, id
-`
-
-type ListSetsRow struct {
-	ID            int32              `json:"id"`
-	ExerciseID    int32              `json:"exercise_id"`
-	WorkoutID     int32              `json:"workout_id"`
-	Weight        pgtype.Numeric     `json:"weight"`
-	Reps          int32              `json:"reps"`
-	SetType       string             `json:"set_type"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	ExerciseOrder int32              `json:"exercise_order"`
-	SetOrder      int32              `json:"set_order"`
-}
-
-func (q *Queries) ListSets(ctx context.Context, userID string) ([]ListSetsRow, error) {
-	rows, err := q.db.Query(ctx, listSets, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListSetsRow
-	for rows.Next() {
-		var i ListSetsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ExerciseID,
-			&i.WorkoutID,
-			&i.Weight,
-			&i.Reps,
-			&i.SetType,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ExerciseOrder,
-			&i.SetOrder,
 		); err != nil {
 			return nil, err
 		}
@@ -597,38 +488,6 @@ func (q *Queries) ListWorkouts(ctx context.Context, userID string) ([]ListWorkou
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateSet = `-- name: UpdateSet :one
-UPDATE "set"
-SET
-    weight = COALESCE($2, weight),
-    reps = COALESCE($3, reps),
-    set_type = COALESCE($4, set_type),
-    updated_at = NOW()
-WHERE id = $1 AND user_id = $5
-RETURNING id
-`
-
-type UpdateSetParams struct {
-	ID      int32          `json:"id"`
-	Weight  pgtype.Numeric `json:"weight"`
-	Reps    int32          `json:"reps"`
-	SetType string         `json:"set_type"`
-	UserID  string         `json:"user_id"`
-}
-
-func (q *Queries) UpdateSet(ctx context.Context, arg UpdateSetParams) (int32, error) {
-	row := q.db.QueryRow(ctx, updateSet,
-		arg.ID,
-		arg.Weight,
-		arg.Reps,
-		arg.SetType,
-		arg.UserID,
-	)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
 }
 
 const updateWorkout = `-- name: UpdateWorkout :one

@@ -22,22 +22,6 @@ func IsUniqueConstraintError(err error) bool {
 	return false
 }
 
-// IsForeignKeyConstraintError checks if an error is a foreign key constraint violation.
-// PostgreSQL error code 23503: foreign_key_violation
-func IsForeignKeyConstraintError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		// PostgreSQL foreign key constraint violation (23503)
-		return pgErr.Code == "23503"
-	}
-
-	return false
-}
-
 // IsRowLevelSecurityError checks if an error is related to row level security.
 // When RLS blocks access, PostgreSQL typically returns empty result sets
 // rather than explicit permission errors, so this function may need to be
@@ -61,17 +45,6 @@ func IsRowLevelSecurityError(err error) bool {
 	}
 
 	return false
-}
-
-// IsRLSContextError checks if an error is related to missing or invalid RLS context.
-// This primarily relies on the application-level ErrRLSContext sentinel error.
-func IsRLSContextError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// Check for application-level RLS context errors
-	return errors.Is(err, ErrRLSContext)
 }
 
 // RLSLogData contains structured data for RLS-related logging
@@ -101,8 +74,8 @@ type RLSLogData struct {
 //   // Returning directly (AVOID - loses context):
 //   return db.ErrRLSContext
 //
-// The detection functions (IsRowLevelSecurityError, IsRLSContextError) check for
-// both sentinel errors and PostgreSQL error codes to provide comprehensive coverage.
+// IsRowLevelSecurityError checks for its sentinel error and PostgreSQL error code.
+// Detect context setup failures with errors.Is(err, ErrRLSContext).
 
 // ErrRowLevelSecurity is a sentinel error for RLS policy violations.
 // Wrap this error when returning it to preserve context.

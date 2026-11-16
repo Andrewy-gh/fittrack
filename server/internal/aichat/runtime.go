@@ -109,56 +109,6 @@ func (r *GenkitRuntime) Available() bool {
 		r.workoutDraftTool != nil
 }
 
-func (r *GenkitRuntime) GenerateValidation(ctx context.Context, prompt string) (*ValidationOutput, error) {
-	if !r.Available() {
-		return nil, ErrRuntimeUnavailable
-	}
-
-	output, _, err := genkit.GenerateData[ValidationOutput](ctx, r.g,
-		ai.WithModelName(r.modelName),
-		ai.WithOutputType(ValidationOutput{}),
-		ai.WithPrompt(buildStructuredPrompt(prompt)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("generate validation output: %w", err)
-	}
-
-	return output, nil
-}
-
-func (r *GenkitRuntime) StreamValidation(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
-	if !r.Available() {
-		return nil, ErrRuntimeUnavailable
-	}
-
-	var builder strings.Builder
-	resp, err := genkit.Generate(ctx, r.g,
-		ai.WithModelName(r.modelName),
-		ai.WithPrompt(buildStreamingPrompt(prompt)),
-		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
-			delta := collectChunkText(chunk)
-			if delta == "" {
-				return nil
-			}
-			builder.WriteString(delta)
-			return onChunk(delta)
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("stream validation output: %w", err)
-	}
-
-	text := strings.TrimSpace(resp.Text())
-	if text == "" {
-		text = strings.TrimSpace(builder.String())
-	}
-
-	return &StreamDone{
-		Model: r.modelName,
-		Text:  text,
-	}, nil
-}
-
 func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error) {
 	if !r.Available() {
 		return nil, ErrRuntimeUnavailable
@@ -327,28 +277,6 @@ func resolveModelName() string {
 		return modelName
 	}
 	return defaultModelName
-}
-
-func buildStructuredPrompt(prompt string) string {
-	return fmt.Sprintf(`You are validating the phase-0 FitTrack AI chat architecture.
-
-Return JSON with:
-- "summary": one short sentence describing whether the architecture is viable for the authenticated viewer.
-- "next_step": one short sentence naming the highest-value phase-1 implementation step.
-
-Keep the response concise and grounded in this user validation prompt:
-%s`, prompt)
-}
-
-func buildStreamingPrompt(prompt string) string {
-	return fmt.Sprintf(`You are validating the FitTrack phase-0 streaming path.
-
-Respond in 2 short sentences.
-- Sentence 1 should confirm that authenticated fetch-based SSE is viable inside the existing Go API.
-- Sentence 2 should name the most important server-side concern to address next.
-
-User validation prompt:
-%s`, prompt)
 }
 
 func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, profile *TrainingProfile, dataToolsEnabled bool) []*ai.Message {
