@@ -11,39 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const consumeAIChatTrialPrompt = `-- name: ConsumeAIChatTrialPrompt :one
-INSERT INTO ai_chat_trial_prompt_usage (
-    user_id,
-    stripe_subscription_id,
-    prompt_count
-)
-VALUES ($1, $2, 1)
-ON CONFLICT (user_id, stripe_subscription_id) DO UPDATE
-SET prompt_count = ai_chat_trial_prompt_usage.prompt_count + 1,
-    updated_at = CURRENT_TIMESTAMP
-WHERE ai_chat_trial_prompt_usage.prompt_count < $3
-RETURNING user_id, stripe_subscription_id, prompt_count, created_at, updated_at
-`
-
-type ConsumeAIChatTrialPromptParams struct {
-	UserID               string `json:"user_id"`
-	StripeSubscriptionID string `json:"stripe_subscription_id"`
-	PromptCount          int32  `json:"prompt_count"`
-}
-
-func (q *Queries) ConsumeAIChatTrialPrompt(ctx context.Context, arg ConsumeAIChatTrialPromptParams) (AiChatTrialPromptUsage, error) {
-	row := q.db.QueryRow(ctx, consumeAIChatTrialPrompt, arg.UserID, arg.StripeSubscriptionID, arg.PromptCount)
-	var i AiChatTrialPromptUsage
-	err := row.Scan(
-		&i.UserID,
-		&i.StripeSubscriptionID,
-		&i.PromptCount,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const consumeAIChatTrialPromptForCurrentSubscription = `-- name: ConsumeAIChatTrialPromptForCurrentSubscription :one
 WITH current_subscription AS (
     SELECT stripe_subscription_id, status

@@ -39,16 +39,8 @@ func (l chatRunLifecycle) IsQueued() bool {
 	return l.state == chatRunLifecycleQueued
 }
 
-func (l chatRunLifecycle) IsOwnedGeneration() bool {
-	return l.state == chatRunLifecycleOwnedGeneration
-}
-
 func (l chatRunLifecycle) IsRecoverableStaleRun() bool {
 	return l.state == chatRunLifecycleRecoverableStaleRun
-}
-
-func (l chatRunLifecycle) IsTerminal() bool {
-	return l.state == chatRunLifecycleTerminal
 }
 
 func (l chatRunLifecycle) ShouldRecover() bool {

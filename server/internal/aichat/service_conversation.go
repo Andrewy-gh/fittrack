@@ -16,36 +16,8 @@ import (
 
 const conversationListLimit int32 = 50
 
-func (s *Service) Validate(ctx context.Context, prompt string) (*ValidateResponse, error) {
-	if err := s.ensureAllowed(ctx); err != nil {
-		return nil, err
-	}
-
-	output, err := s.runtime.GenerateValidation(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ValidateResponse{
-		Model:  s.runtime.ModelName(),
-		Output: output,
-	}, nil
-}
-
-func (s *Service) EnsureAllowed(ctx context.Context) error {
-	return s.ensureAllowed(ctx)
-}
-
 func (s *Service) CurrentUserHasFeatureAccess(ctx context.Context) (bool, error) {
 	return s.featureAccess.HasCurrentUserFeatureAccess(ctx, featureKeyAIChatbot)
-}
-
-func (s *Service) StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
-	if err := s.ensureAllowed(ctx); err != nil {
-		return nil, err
-	}
-
-	return s.runtime.StreamValidation(ctx, prompt, onChunk)
 }
 
 func (s *Service) CreateConversation(ctx context.Context) (*Conversation, error) {

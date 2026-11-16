@@ -8,10 +8,6 @@ import (
 	"time"
 )
 
-func ScoreResult(result *Result, mode string) {
-	ScoreResultWithJudge(context.Background(), result, mode, nil)
-}
-
 func ScoreResultWithJudge(ctx context.Context, result *Result, mode string, judge NarrowScopeJudge) {
 	if result.Status == StatusError && IsOperationalError(result.Error) {
 		setScore(result, ScoreStatusOperationalError, "provider or runtime issue; not scored as assistant behavior")

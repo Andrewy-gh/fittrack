@@ -22,7 +22,6 @@ type Repository interface {
 	HasProcessedWebhookEvent(ctx context.Context, stripeEventID string) (bool, error)
 	MarkWebhookEventProcessed(ctx context.Context, stripeEventID string, eventType string) error
 	GetTrialPromptUsage(ctx context.Context, userID string, stripeSubscriptionID string) (db.AiChatTrialPromptUsage, error)
-	ConsumeTrialPrompt(ctx context.Context, userID string, stripeSubscriptionID string, cap int32) (db.AiChatTrialPromptUsage, error)
 }
 
 type repository struct {
@@ -211,21 +210,6 @@ func (r *repository) GetTrialPromptUsage(ctx context.Context, userID string, str
 		UserID:               userID,
 		StripeSubscriptionID: stripeSubscriptionID,
 	})
-}
-
-func (r *repository) ConsumeTrialPrompt(ctx context.Context, userID string, stripeSubscriptionID string, cap int32) (db.AiChatTrialPromptUsage, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	row, err := r.queries.ConsumeAIChatTrialPrompt(ctx, db.ConsumeAIChatTrialPromptParams{
-		UserID:               userID,
-		StripeSubscriptionID: stripeSubscriptionID,
-		PromptCount:          cap,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return db.AiChatTrialPromptUsage{}, ErrTrialPromptLimitExceeded
-	}
-	return row, err
 }
 
 func setCurrentUser(ctx context.Context, tx pgx.Tx, userID string) error {

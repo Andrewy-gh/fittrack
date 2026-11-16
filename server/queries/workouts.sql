@@ -33,15 +33,6 @@ WHERE user_id = $1
 ORDER BY date DESC, id DESC
 LIMIT 1;
 
--- name: GetSet :one
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
-WHERE id = $1 AND user_id = $2;
-
--- name: ListSets :many
-SELECT id, exercise_id, workout_id, weight, reps, set_type, created_at, updated_at, exercise_order, set_order FROM "set"
-WHERE user_id = $1
-ORDER BY exercise_order, set_order, id;
-
 -- name: CreateWorkout :one
 INSERT INTO workout (date, notes, workout_focus, user_id)
 VALUES ($1, $2, $3, $4)
@@ -85,25 +76,9 @@ SET
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id)
 RETURNING id;
 
--- name: UpdateSet :one
-UPDATE "set"
-SET
-    weight = COALESCE($2, weight),
-    reps = COALESCE($3, reps),
-    set_type = COALESCE($4, set_type),
-    updated_at = NOW()
-WHERE id = $1 AND user_id = $5
-RETURNING id;
-
 -- name: DeleteSetsByWorkout :exec
 DELETE FROM "set" 
 WHERE workout_id = $1 AND user_id = $2;
-
--- name: DeleteSetsByWorkoutAndExercise :exec
-DELETE FROM "set" 
-WHERE workout_id = $1 
-  AND exercise_id = $2
-  AND user_id = $3;
 
 -- name: DeleteWorkout :exec
 DELETE FROM workout 

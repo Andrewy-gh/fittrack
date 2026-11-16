@@ -13,10 +13,7 @@ import (
 )
 
 type chatService interface {
-	Validate(ctx context.Context, prompt string) (*ValidateResponse, error)
-	EnsureAllowed(ctx context.Context) error
 	CurrentUserHasFeatureAccess(ctx context.Context) (bool, error)
-	StreamValidate(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	CreateConversation(ctx context.Context) (*Conversation, error)
 	ListConversations(ctx context.Context) ([]ConversationSummary, error)
 	GetConversation(ctx context.Context, conversationID int32) (*ConversationDetail, error)
@@ -74,72 +71,6 @@ func NewHandler(logger *slog.Logger, service chatService) *Handler {
 	return &Handler{
 		logger:  logger,
 		service: service,
-	}
-}
-
-// Validate runs the unrouted Phase-0 AI chat validation flow.
-func (h *Handler) Validate(w http.ResponseWriter, r *http.Request) {
-	req, ok := h.decodePromptRequest(w, r)
-	if !ok {
-		return
-	}
-
-	resp, err := h.service.Validate(r.Context(), req.Prompt)
-	if err != nil {
-		h.writeServiceError(w, r, err, http.StatusBadGateway, "failed to generate ai chat validation")
-		return
-	}
-
-	if err := response.JSON(w, http.StatusOK, resp); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
-	}
-}
-
-// StreamValidate runs the unrouted Phase-0 streaming validation flow.
-func (h *Handler) StreamValidate(w http.ResponseWriter, r *http.Request) {
-	req, ok := h.decodePromptRequest(w, r)
-	if !ok {
-		return
-	}
-
-	if err := h.service.EnsureAllowed(r.Context()); err != nil {
-		h.writeServiceError(w, r, err, http.StatusBadGateway, "failed to start ai chat validation stream")
-		return
-	}
-
-	sse, err := h.startSSE(w)
-	if err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to start ai chat validation stream", err)
-		return
-	}
-
-	if err := sse.write("start", StreamEvent{
-		Type:      "start",
-		RequestID: request.GetRequestID(r.Context()),
-	}); err != nil {
-		h.logStreamWriteFailure("failed to start ai chat validation stream", r, err)
-		return
-	}
-
-	done, err := h.service.StreamValidate(r.Context(), req.Prompt, func(delta string) error {
-		return sse.write("delta", StreamEvent{
-			Type:  "delta",
-			Delta: delta,
-		})
-	})
-	if err != nil {
-		if !h.writeStreamError(sse, r, 0, 0, 0, "failed to generate ai chat validation", err) {
-			h.logServiceFailure("failed to stream ai chat validation response", r, err)
-		}
-		return
-	}
-
-	if err := sse.write("done", StreamEvent{
-		Type:  "done",
-		Model: done.Model,
-		Text:  done.Text,
-	}); err != nil {
-		h.logStreamWriteFailure("failed to finish ai chat validation stream", r, err)
 	}
 }
 

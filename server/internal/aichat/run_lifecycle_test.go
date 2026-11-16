@@ -18,9 +18,7 @@ func TestChatRunLifecycleStates(t *testing.T) {
 		run               *ChatRun
 		wantState         chatRunLifecycleState
 		wantQueued        bool
-		wantOwned         bool
 		wantRecoverable   bool
-		wantTerminal      bool
 		wantCanClaim      bool
 		wantAttemptsSpent bool
 	}{
@@ -34,8 +32,7 @@ func TestChatRunLifecycleStates(t *testing.T) {
 				Status:           statusCompleted,
 				GenerationStatus: generationStatusCompleted,
 			},
-			wantState:    chatRunLifecycleTerminal,
-			wantTerminal: true,
+			wantState: chatRunLifecycleTerminal,
 		},
 		{
 			name: "fresh queued streaming run can be claimed but does not need recovery",
@@ -68,7 +65,6 @@ func TestChatRunLifecycleStates(t *testing.T) {
 				LeaseExpiresAt:   &validLease,
 			},
 			wantState: chatRunLifecycleOwnedGeneration,
-			wantOwned: true,
 		},
 		{
 			name: "expired owned generation is recoverable and claimable",
@@ -97,8 +93,7 @@ func TestChatRunLifecycleStates(t *testing.T) {
 				Status:           statusFailed,
 				GenerationStatus: generationStatusInterrupted,
 			},
-			wantState:    chatRunLifecycleTerminal,
-			wantTerminal: true,
+			wantState: chatRunLifecycleTerminal,
 		},
 		{
 			name: "exhausted stale generation still needs recovery but cannot be claimed",
@@ -125,14 +120,8 @@ func TestChatRunLifecycleStates(t *testing.T) {
 			if lifecycle.IsQueued() != tt.wantQueued {
 				t.Fatalf("IsQueued = %t, want %t", lifecycle.IsQueued(), tt.wantQueued)
 			}
-			if lifecycle.IsOwnedGeneration() != tt.wantOwned {
-				t.Fatalf("IsOwnedGeneration = %t, want %t", lifecycle.IsOwnedGeneration(), tt.wantOwned)
-			}
 			if lifecycle.IsRecoverableStaleRun() != tt.wantRecoverable {
 				t.Fatalf("IsRecoverableStaleRun = %t, want %t", lifecycle.IsRecoverableStaleRun(), tt.wantRecoverable)
-			}
-			if lifecycle.IsTerminal() != tt.wantTerminal {
-				t.Fatalf("IsTerminal = %t, want %t", lifecycle.IsTerminal(), tt.wantTerminal)
 			}
 			if lifecycle.ShouldRecover() != tt.wantRecoverable {
 				t.Fatalf("ShouldRecover = %t, want %t", lifecycle.ShouldRecover(), tt.wantRecoverable)

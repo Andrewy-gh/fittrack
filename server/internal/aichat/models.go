@@ -39,10 +39,6 @@ const (
 	interruptionReasonAttemptsExhausted = "generation_attempts_exhausted"
 )
 
-type ValidateRequest struct {
-	Prompt string `json:"prompt"`
-}
-
 type SendMessageRequest struct {
 	Prompt string `json:"prompt"`
 }
@@ -51,16 +47,6 @@ type RecoverMessageResponse struct {
 	ConversationID int32  `json:"conversation_id"`
 	RunID          int32  `json:"run_id,omitempty"`
 	Status         string `json:"status"`
-}
-
-type ValidationOutput struct {
-	Summary  string `json:"summary" jsonschema:"description=A brief production-readiness summary for this FitTrack AI chat validation run."`
-	NextStep string `json:"next_step" jsonschema:"description=One concrete follow-up step for phase 1."`
-}
-
-type ValidateResponse struct {
-	Model  string            `json:"model"`
-	Output *ValidationOutput `json:"output"`
 }
 
 type Conversation struct {

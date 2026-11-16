@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -42,18 +43,6 @@ func (m *mockRuntime) ModelName() string {
 func (m *mockRuntime) Available() bool {
 	args := m.Called()
 	return args.Bool(0)
-}
-
-func (m *mockRuntime) GenerateValidation(ctx context.Context, prompt string) (*ValidationOutput, error) {
-	args := m.Called(ctx, prompt)
-	output, _ := args.Get(0).(*ValidationOutput)
-	return output, args.Error(1)
-}
-
-func (m *mockRuntime) StreamValidation(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error) {
-	args := m.Called(ctx, prompt, onChunk)
-	done, _ := args.Get(0).(*StreamDone)
-	return done, args.Error(1)
 }
 
 func (m *mockRuntime) StreamChat(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error) {
@@ -230,15 +219,6 @@ func (m *mockRecoveryDispatcher) EnqueueRunRecovery(ctx context.Context, request
 	return args.Error(0)
 }
 
-type mockPremiumAccessService struct {
-	mock.Mock
-}
-
-func (m *mockPremiumAccessService) EnsureAIChatPromptAllowed(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 type mockWorkoutDraftSaver struct {
 	mock.Mock
 }
@@ -246,110 +226,6 @@ type mockWorkoutDraftSaver struct {
 func (m *mockWorkoutDraftSaver) SaveWorkoutTx(ctx context.Context, qtx *db.Queries, requestBody workout.CreateWorkoutRequest, userID string) (int32, error) {
 	args := m.Called(ctx, qtx, requestBody, userID)
 	return args.Get(0).(int32), args.Error(1)
-}
-
-func TestServiceValidate(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	t.Run("returns feature-disabled error when user lacks ai access", func(t *testing.T) {
-		featureAccess := new(mockFeatureAccessService)
-		runtime := new(mockRuntime)
-		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo, nil)
-
-		runtime.On("Available").Return(true).Once()
-		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(false, nil).Once()
-
-		resp, err := service.Validate(context.Background(), "test prompt")
-
-		require.Error(t, err)
-		assert.Nil(t, resp)
-		assert.ErrorIs(t, err, ErrFeatureDisabled)
-		runtime.AssertExpectations(t)
-		featureAccess.AssertExpectations(t)
-	})
-
-	t.Run("returns runtime-unavailable before checking feature access", func(t *testing.T) {
-		featureAccess := new(mockFeatureAccessService)
-		runtime := new(mockRuntime)
-		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo, nil)
-
-		runtime.On("Available").Return(false).Once()
-
-		resp, err := service.Validate(context.Background(), "test prompt")
-
-		require.Error(t, err)
-		assert.Nil(t, resp)
-		assert.ErrorIs(t, err, ErrRuntimeUnavailable)
-		runtime.AssertExpectations(t)
-		featureAccess.AssertExpectations(t)
-	})
-
-	t.Run("returns structured validation response", func(t *testing.T) {
-		featureAccess := new(mockFeatureAccessService)
-		runtime := new(mockRuntime)
-		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo, nil)
-
-		expected := &ValidationOutput{
-			Summary:  "Viable.",
-			NextStep: "Build persistence.",
-		}
-
-		runtime.On("Available").Return(true).Once()
-		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-		runtime.On("GenerateValidation", mock.Anything, "test prompt").Return(expected, nil).Once()
-		runtime.On("ModelName").Return(defaultModelName).Once()
-
-		resp, err := service.Validate(context.Background(), "test prompt")
-
-		require.NoError(t, err)
-		require.NotNil(t, resp)
-		assert.Equal(t, defaultModelName, resp.Model)
-		assert.Equal(t, expected, resp.Output)
-		runtime.AssertExpectations(t)
-		featureAccess.AssertExpectations(t)
-	})
-
-	t.Run("propagates auth errors from feature access", func(t *testing.T) {
-		featureAccess := new(mockFeatureAccessService)
-		runtime := new(mockRuntime)
-		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo, nil)
-		expectedErr := apperrors.NewUnauthorized("feature access", "")
-
-		runtime.On("Available").Return(true).Once()
-		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(false, expectedErr).Once()
-
-		resp, err := service.Validate(context.Background(), "test prompt")
-
-		require.Error(t, err)
-		assert.Nil(t, resp)
-		assert.ErrorIs(t, err, expectedErr)
-		runtime.AssertExpectations(t)
-		featureAccess.AssertExpectations(t)
-	})
-
-	t.Run("propagates runtime errors", func(t *testing.T) {
-		featureAccess := new(mockFeatureAccessService)
-		runtime := new(mockRuntime)
-		repo := new(mockRepository)
-		service := NewService(logger, featureAccess, runtime, repo, nil)
-		expectedErr := errors.New("boom")
-
-		runtime.On("Available").Return(true).Once()
-		featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(true, nil).Once()
-		runtime.On("GenerateValidation", mock.Anything, "test prompt").Return(nil, expectedErr).Once()
-
-		resp, err := service.Validate(context.Background(), "test prompt")
-
-		require.Error(t, err)
-		assert.Nil(t, resp)
-		assert.ErrorIs(t, err, expectedErr)
-		runtime.AssertExpectations(t)
-		featureAccess.AssertExpectations(t)
-	})
 }
 
 func TestServiceCreateConversation(t *testing.T) {
@@ -777,6 +653,34 @@ func TestServiceSaveLatestWorkoutDraft(t *testing.T) {
 		featureAccess.AssertExpectations(t)
 		repo.AssertExpectations(t)
 	})
+}
+
+func TestServicePrepareMessageStream_RequiresFeatureAccess(t *testing.T) {
+	unauthorized := apperrors.NewUnauthorized("feature access", "")
+	for _, tc := range []struct {
+		name      string
+		accessErr error
+		want      error
+	}{
+		{name: "feature disabled", want: ErrFeatureDisabled},
+		{name: "authentication failure", accessErr: unauthorized, want: unauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			featureAccess := new(mockFeatureAccessService)
+			runtime := new(mockRuntime)
+			repo := new(mockRepository)
+			service := NewService(logger, featureAccess, runtime, repo, nil)
+			runtime.On("Available").Return(true).Once()
+			featureAccess.On("HasCurrentUserFeatureAccess", mock.Anything, featureKeyAIChatbot).Return(false, tc.accessErr).Once()
+			prepared, err := service.PrepareMessageStream(user.WithContext(context.Background(), "user-123"), 41, "hello", "req-123")
+			require.ErrorIs(t, err, tc.want)
+			assert.Nil(t, prepared)
+			featureAccess.AssertExpectations(t)
+			runtime.AssertExpectations(t)
+			repo.AssertExpectations(t)
+		})
+	}
 }
 
 func TestServicePrepareMessageStream_RequiresRuntime(t *testing.T) {
@@ -1797,39 +1701,39 @@ func TestServiceRecoverStreamingRun_IgnoresRunsWithoutRecoveryMarker(t *testing.
 }
 
 func TestServiceAbortPreparedMessageStream_PersistsFailure(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	featureAccess := new(mockFeatureAccessService)
-	runtime := new(mockRuntime)
-	repo := new(mockRepository)
-	service := NewService(logger, featureAccess, runtime, repo, nil)
-	prepared := &PreparedMessageStream{
-		Conversation: &Conversation{ID: 41, UserID: "user-123"},
-		Run: &ChatRun{
-			ID:             51,
-			ConversationID: 41,
-			UserID:         "user-123",
-		},
-		AssistantMessage: &ChatMessage{
-			ID:             61,
-			ConversationID: 41,
-			UserID:         "user-123",
-			Status:         statusStreaming,
-		},
+	for _, sentinel := range []error{ErrStreamNotStarted, ErrStreamDisconnected, ErrGenerationTimeout, errors.New("provider failed")} {
+		t.Run(sentinel.Error(), func(t *testing.T) {
+			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			repo := new(mockRepository)
+			service := NewService(logger, nil, nil, repo, nil)
+			prepared := &PreparedMessageStream{
+				Conversation:     &Conversation{ID: 41, UserID: "user-123"},
+				Run:              &ChatRun{ID: 51, Status: statusStreaming},
+				AssistantMessage: &ChatMessage{ID: 61, Status: statusStreaming, Content: " partial "},
+			}
+			failure := fmt.Errorf("stream failure: %w", sentinel)
+			var persisted error
+			repo.On("FailRun", mock.Anything, prepared, "partial", mock.Anything, mock.AnythingOfType("time.Time")).
+				Run(func(args mock.Arguments) { persisted = args.Get(3).(error) }).
+				Return(nil).Once()
+
+			err := service.AbortPreparedMessageStream(context.Background(), prepared, failure)
+
+			require.NoError(t, err)
+			require.Same(t, failure, persisted)
+			require.ErrorIs(t, persisted, sentinel)
+			assert.Equal(t, statusFailed, prepared.Run.Status)
+			assert.Equal(t, statusFailed, prepared.AssistantMessage.Status)
+			assert.Equal(t, "partial", prepared.AssistantMessage.Content)
+			require.NotNil(t, prepared.Run.ErrorMessage)
+			require.NotNil(t, prepared.AssistantMessage.ErrorMessage)
+			assert.Equal(t, failure.Error(), *prepared.Run.ErrorMessage)
+			assert.Equal(t, failure.Error(), *prepared.AssistantMessage.ErrorMessage)
+			assert.NotNil(t, prepared.Run.CompletedAt)
+			assert.NotNil(t, prepared.AssistantMessage.CompletedAt)
+			repo.AssertExpectations(t)
+		})
 	}
-
-	repo.On(
-		"FailRun",
-		mock.MatchedBy(func(ctx context.Context) bool { return ctx.Err() == nil }),
-		prepared,
-		"",
-		ErrStreamNotStarted,
-		mock.AnythingOfType("time.Time"),
-	).Return(nil).Once()
-
-	err := service.AbortPreparedMessageStream(context.Background(), prepared, ErrStreamNotStarted)
-
-	require.NoError(t, err)
-	repo.AssertExpectations(t)
 }
 
 func TestServiceStreamMessage_PersistsCompletionWhenRequestContextCanceled(t *testing.T) {

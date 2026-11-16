@@ -59,56 +59,6 @@ func TestIsUniqueConstraintError(t *testing.T) {
 	}
 }
 
-func TestIsForeignKeyConstraintError(t *testing.T) {
-	tests := []struct {
-		name     string
-		err      error
-		expected bool
-	}{
-		{
-			name: "postgres foreign key violation",
-			err: &pgconn.PgError{
-				Code:    "23503",
-				Message: "insert or update on table violates foreign key constraint",
-			},
-			expected: true,
-		},
-		{
-			name: "wrapped postgres foreign key violation",
-			err: fmt.Errorf("failed to create workout: %w", &pgconn.PgError{
-				Code:    "23503",
-				Message: "insert or update on table \"workout\" violates foreign key constraint \"workout_user_id_fkey\"",
-			}),
-			expected: true,
-		},
-		{
-			name: "postgres unique constraint (wrong code)",
-			err: &pgconn.PgError{
-				Code:    "23505",
-				Message: "duplicate key value",
-			},
-			expected: false,
-		},
-		{
-			name:     "non-postgres error",
-			err:      errors.New("some other error"),
-			expected: false,
-		},
-		{
-			name:     "nil error",
-			err:      nil,
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsForeignKeyConstraintError(tt.err)
-			assert.Equal(t, tt.expected, result, "IsForeignKeyConstraintError() = %v, want %v", result, tt.expected)
-		})
-	}
-}
-
 func TestIsRowLevelSecurityError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -165,42 +115,6 @@ func TestIsRowLevelSecurityError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsRowLevelSecurityError(tt.err)
 			assert.Equal(t, tt.expected, result, "IsRowLevelSecurityError() = %v, want %v", result, tt.expected)
-		})
-	}
-}
-
-func TestIsRLSContextError(t *testing.T) {
-	tests := []struct {
-		name     string
-		err      error
-		expected bool
-	}{
-		{
-			name:     "application-level RLS context error",
-			err:      ErrRLSContext,
-			expected: true,
-		},
-		{
-			name:     "wrapped RLS context error",
-			err:      fmt.Errorf("failed to set context: %w", ErrRLSContext),
-			expected: true,
-		},
-		{
-			name:     "non-RLS context error",
-			err:      errors.New("some other error"),
-			expected: false,
-		},
-		{
-			name:     "nil error",
-			err:      nil,
-			expected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsRLSContextError(tt.err)
-			assert.Equal(t, tt.expected, result, "IsRLSContextError() = %v, want %v", result, tt.expected)
 		})
 	}
 }

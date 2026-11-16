@@ -190,19 +190,6 @@ FROM ai_chat_trial_prompt_usage
 WHERE user_id = $1
   AND stripe_subscription_id = $2;
 
--- name: ConsumeAIChatTrialPrompt :one
-INSERT INTO ai_chat_trial_prompt_usage (
-    user_id,
-    stripe_subscription_id,
-    prompt_count
-)
-VALUES ($1, $2, 1)
-ON CONFLICT (user_id, stripe_subscription_id) DO UPDATE
-SET prompt_count = ai_chat_trial_prompt_usage.prompt_count + 1,
-    updated_at = CURRENT_TIMESTAMP
-WHERE ai_chat_trial_prompt_usage.prompt_count < $3
-RETURNING user_id, stripe_subscription_id, prompt_count, created_at, updated_at;
-
 -- name: ConsumeAIChatTrialPromptForCurrentSubscription :one
 WITH current_subscription AS (
     SELECT stripe_subscription_id, status

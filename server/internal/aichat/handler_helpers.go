@@ -14,25 +14,6 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 )
 
-func (h *Handler) decodePromptRequest(w http.ResponseWriter, r *http.Request) (*ValidateRequest, bool) {
-	var req ValidateRequest
-
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
-		return nil, false
-	}
-
-	req.Prompt = strings.TrimSpace(req.Prompt)
-	if req.Prompt == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "prompt is required", nil)
-		return nil, false
-	}
-
-	return &req, true
-}
-
 func (h *Handler) decodeSendMessageRequest(w http.ResponseWriter, r *http.Request) (*SendMessageRequest, bool) {
 	var req SendMessageRequest
 

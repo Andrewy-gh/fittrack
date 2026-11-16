@@ -122,13 +122,6 @@ func (c *Config) AIChatRecoveryConfigured() bool {
 		strings.TrimSpace(c.InngestSigningKey) != ""
 }
 
-func (c *Config) StripeConfigured() bool {
-	return strings.TrimSpace(c.StripeSecretKey) != "" &&
-		strings.TrimSpace(c.StripeWebhookSecret) != "" &&
-		strings.TrimSpace(c.StripePremiumPriceID) != "" &&
-		strings.TrimSpace(c.AppBaseURL) != ""
-}
-
 func (c *Config) LocalE2EAuthConfigured() bool {
 	return c.Environment == "development" &&
 		c.LocalE2EAuthEnabled &&

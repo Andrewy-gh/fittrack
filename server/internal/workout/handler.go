@@ -2,7 +2,6 @@ package workout
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -343,30 +342,4 @@ func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
 	// Success: Return 204 No Content
 	w.WriteHeader(http.StatusNoContent)
 	// No body content for 204 response
-}
-
-// MARK: FormatValidationErrors
-func FormatValidationErrors(err error) string {
-	var validationErrors validator.ValidationErrors
-	if errors.As(err, &validationErrors) {
-		var messages []string
-		for _, fieldError := range validationErrors {
-			switch fieldError.Tag() {
-			case "required":
-				messages = append(messages, fmt.Sprintf("%s is required", fieldError.Field()))
-			case "min":
-				messages = append(messages, fmt.Sprintf("%s must be at least %s characters", fieldError.Field(), fieldError.Param()))
-			case "max":
-				messages = append(messages, fmt.Sprintf("%s must be at most %s characters", fieldError.Field(), fieldError.Param()))
-			case "gte":
-				messages = append(messages, fmt.Sprintf("%s must be greater than or equal to %s", fieldError.Field(), fieldError.Param()))
-			case "datetime":
-				messages = append(messages, fmt.Sprintf("%s must be a valid datetime in RFC3339 format", fieldError.Field()))
-			default:
-				messages = append(messages, fmt.Sprintf("%s failed validation (%s)", fieldError.Field(), fieldError.Tag()))
-			}
-		}
-		return fmt.Sprintf("Validation errors: %v", messages)
-	}
-	return err.Error()
 }

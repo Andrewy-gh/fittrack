@@ -16,8 +16,6 @@ type featureAccessService interface {
 type runtime interface {
 	ModelName() string
 	Available() bool
-	GenerateValidation(ctx context.Context, prompt string) (*ValidationOutput, error)
-	StreamValidation(ctx context.Context, prompt string, onChunk func(string) error) (*StreamDone, error)
 	StreamChat(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error)
 }
 

@@ -124,12 +124,8 @@ func TestWorkoutDraftToolNameIsGeminiCompatible(t *testing.T) {
 }
 
 func TestPromptsReferenceToolNames(t *testing.T) {
-	structuredPrompt := buildStructuredPrompt("test prompt")
 	chatPrompt := buildChatSystemPrompt(nil, nil, time.Date(2026, 7, 6, 12, 0, 0, 0, time.UTC), true)
 
-	if strings.Contains(structuredPrompt, "list_active_features") {
-		t.Fatalf("buildStructuredPrompt() = %q, should not reference active feature tools", structuredPrompt)
-	}
 	if strings.Contains(chatPrompt, "list_active_features") {
 		t.Fatalf("buildChatSystemPrompt() = %q, should not reference active feature tools", chatPrompt)
 	}

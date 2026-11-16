@@ -67,12 +67,6 @@ func (m *mockRepository) GetTrialPromptUsage(ctx context.Context, userID string,
 	return row, args.Error(1)
 }
 
-func (m *mockRepository) ConsumeTrialPrompt(ctx context.Context, userID string, stripeSubscriptionID string, cap int32) (db.AiChatTrialPromptUsage, error) {
-	args := m.Called(ctx, userID, stripeSubscriptionID, cap)
-	row, _ := args.Get(0).(db.AiChatTrialPromptUsage)
-	return row, args.Error(1)
-}
-
 func TestServiceHandleWebhook_SubscriptionUpdatedPersistsSnapshotAndEventID(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	repo := new(mockRepository)
@@ -514,75 +508,6 @@ func TestServiceCurrentStatus_AccessRules(t *testing.T) {
 			repo.AssertExpectations(t)
 		})
 	}
-}
-
-func TestServiceEnsureAIChatPromptAllowed_TrialCap(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	t.Run("trialing consumes a prompt", func(t *testing.T) {
-		repo := new(mockRepository)
-		service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
-		ctx := user.WithContext(context.Background(), "user-123")
-
-		repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
-			StripeSubscriptionID: "sub_123",
-			UserID:               "user-123",
-			Status:               "trialing",
-		}, nil).Once()
-		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(30)).Return(db.AiChatTrialPromptUsage{
-			PromptCount: 30,
-		}, nil).Once()
-
-		err := service.EnsureAIChatPromptAllowed(ctx)
-
-		require.NoError(t, err)
-		repo.AssertExpectations(t)
-	})
-
-	t.Run("cap reached blocks", func(t *testing.T) {
-		repo := new(mockRepository)
-		service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 30)
-		ctx := user.WithContext(context.Background(), "user-123")
-
-		repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(db.StripeSubscriptions{
-			StripeSubscriptionID: "sub_123",
-			UserID:               "user-123",
-			Status:               "trialing",
-		}, nil).Once()
-		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(30)).Return(db.AiChatTrialPromptUsage{}, ErrTrialPromptLimitExceeded).Once()
-
-		err := service.EnsureAIChatPromptAllowed(ctx)
-
-		require.ErrorIs(t, err, ErrTrialPromptLimitExceeded)
-		repo.AssertExpectations(t)
-	})
-
-	t.Run("cap two allows two prompts and blocks the third", func(t *testing.T) {
-		repo := new(mockRepository)
-		service := NewService(logger, repo, "sk_test_123", "whsec_123", "price_premium", "http://localhost:5173", 2)
-		ctx := user.WithContext(context.Background(), "user-123")
-		subscription := db.StripeSubscriptions{
-			StripeSubscriptionID: "sub_123",
-			UserID:               "user-123",
-			Status:               "trialing",
-		}
-
-		repo.On("GetCurrentSubscriptionByUserID", mock.Anything, "user-123").Return(subscription, nil).Times(3)
-		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(2)).
-			Return(db.AiChatTrialPromptUsage{PromptCount: 1}, nil).
-			Once()
-		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(2)).
-			Return(db.AiChatTrialPromptUsage{PromptCount: 2}, nil).
-			Once()
-		repo.On("ConsumeTrialPrompt", mock.Anything, "user-123", "sub_123", int32(2)).
-			Return(db.AiChatTrialPromptUsage{}, ErrTrialPromptLimitExceeded).
-			Once()
-
-		require.NoError(t, service.EnsureAIChatPromptAllowed(ctx))
-		require.NoError(t, service.EnsureAIChatPromptAllowed(ctx))
-		require.ErrorIs(t, service.EnsureAIChatPromptAllowed(ctx), ErrTrialPromptLimitExceeded)
-		repo.AssertExpectations(t)
-	})
 }
 
 func subscriptionEventPayload(t *testing.T, subscriptionID string, status string, cancelAtPeriodEnd bool, periodStart time.Time, periodEnd time.Time) []byte {

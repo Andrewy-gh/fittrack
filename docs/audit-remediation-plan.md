@@ -8,20 +8,20 @@ Source: `C:\Users\lenny\Desktop\fittrack-findings.txt` (FitTrack audit).
 
 The original F/G/D identifiers are retained **only as implementation guidance**, not as additional tracking entries. Multiple findings may share guidance; one finding may require multiple work packages. Completing one package does not automatically close every mapped finding.
 
-Thirty-seven findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A092–A094, A097–A100, A102–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
+Forty-one findings are accepted after independent review and appropriate verification: A001–A007, A009–A011, A025–A029 (A029 superseded by removal), A039–A041, A044, A047–A053, A055, A087, A089–A094, A097–A100, A102–A104. Other findings are not complete unless their individual entries say Done. The audit's remaining claims have not all been independently reproduced.
 
-Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; A097/A098/A102 subsequently shipped in [PR #364](https://github.com/Andrewy-gh/fittrack/pull/364), squash `0cc3c79`, verified on Fly v459. The current authorized server test-artifact batch accepts A092/A093 after implementation checks and independent assessment; final autoreview, CI and release remain publication gates. The remaining 69 findings stay outside this batch. No new lint rule has been implemented. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
+Initial checkpoint: [PR #360](https://github.com/Andrewy-gh/fittrack/pull/360), squash-merged as `da6ec516` and verified in production (Fly release v455). Guardrail follow-up [PR #361](https://github.com/Andrewy-gh/fittrack/pull/361) shipped as `c6cee948` (Fly v456). A027 shipped in [PR #362](https://github.com/Andrewy-gh/fittrack/pull/362), squash `f3a83b7`, verified on Fly v457. See [user decision worksheet](audit-review-decisions.md) and [orchestration log](audit-orchestration.md). Wave 1, the approved cleanup and A005–A007 passed independent review. A011 fabricated card charts is also complete. A025/A026/A028 are accepted. A039–A041 and A044 are accepted; A047–A053 documentation/Bun-hook work is accepted; A055/A099/A100 test-configuration cleanup is accepted. The user authorized a separate lint/static-analysis guardrail batch and its release workflow. This adds prevention for accepted findings, not new finding closures: scoped mutable-cache lint (A005/A006), Vite-only config typechecking (A055), and missing config-import/executable checks alongside existing Knip coverage (A055/A099/A100). See [guardrail scope and blind spots](../client/docs/audit-static-guardrails.md). The subsequent authorized continuation completed A027 after live production verification; A097/A098/A102 subsequently shipped in [PR #364](https://github.com/Andrewy-gh/fittrack/pull/364), squash `0cc3c79`, verified on Fly v459. A092/A093 subsequently shipped in [PR #365](https://github.com/Andrewy-gh/fittrack/pull/365), squash `5ddac00`, verified on Fly v460. The current authorized server dead-code batch accepts A087/A089/A090/A091 after implementation checks and independent assessment; final code+docs autoreview, CI and release remain publication gates. The remaining 65 findings stay outside this batch (3 Ready, 13 Gated, 49 Deferred). The requested continuation past 45 needs additional decisions beyond the remaining Ready work; proposed message-only A038/A066 corrections are not yet approved. No new lint rule has been implemented. A018 investigation is complete and newly gated on explicit limits/budget decisions. A088 remains unchanged pending the user's decision. See individual entries for evidence.
 
 ## Progress summary
 
 | Disposition | Source confidence | Findings | Done |
 | --- | --- | ---: | ---: |
-| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 35 |
+| Ready to implement (including approved A094; excluding newly gated A018) | H | 42 | 39 |
 | User-approved cleanup | M | 2 | 2 |
 | Gated on evidence, design or approval | H | 13 | 0 |
 | Deferred for user review | M | 31 | 0 |
 | Deferred for user review | L | 18 | 0 |
-| **Total** | **55 H / 33 M / 18 L** | **106** | **37** |
+| **Total** | **55 H / 33 M / 18 L** | **106** | **41** |
 
 A073 contains both ready logging cleanup and a gated insertion optimization. It counts once, under Gated, and cannot be closed by completing only its logging work.
 
@@ -983,10 +983,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H The "Phase-0" validation flow: two unrouted handlers plus their service methods, runtime methods, prompts and types.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F25` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `318caed`, integrated `f24746d`: removed the closed, unrouted Phase-0 handler/service/runtime/prompt/type slice after caller, route, operator and history checks. Active StreamChat, private ensureAllowed, conversation/recovery/save/stop, tool registration and scenario/eval commands remain. Retired endpoint tests removed; malformed/blank HTTP and feature/auth denial cases now exercise current admission boundaries. No generated API change.
+- **Decision / blocker:** Head accepted implementation after fresh independent Pi/Sol/high assessment of `5ddac00..f24746d`, no actionable defects. Worker full managed TEST: 27 packages, 23 pass/four no-test, 416 top-level starts, 1,111 parent/subtest pass events, six unchanged skips, zero failures; separate restricted-role SQL smoke passed. Head repeated build/vet and recounted raw events; assessor also passed six focused tests (28 pass events), SQL compilation and source/evidence checks. Go 1.26.11; worker hooks absent. Existing RLS skips/owner-role omissions and mock limitations remain; no live provider/browser proof. Frozen code+docs autoreview, real prepared TEST pre-push, CI and production are still publication gates.
 
 #### A088
 
@@ -1003,20 +1003,20 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > H EnsureAIChatPromptAllowed and CancelCurrentSubscriptionRenewal (billing/service.go:303, :243) have no callers, which also strands one repository method and one query.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F26` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `318caed`, integrated `f24746d`: removed legacy EnsureAIChatPromptAllowed and unused CancelCurrentSubscriptionRenewal, exclusive updateSubscription field, repository ConsumeTrialPrompt and SQL/SQLC ConsumeAIChatTrialPrompt. Correction to original claim: legacy admission had test callers, not production callers. Retained current-subscription atomic admission and real persisted two-start/third-denied rollback tests; immediate/portal cancellation, account deletion, webhook, quota and no-refund policy unchanged.
+- **Decision / blocker:** Head accepted implementation after fresh independent Pi/Sol/high assessment of `5ddac00..f24746d`, no actionable defects. Worker full managed TEST: 27 packages, 23 pass/four no-test, 416 top-level starts, 1,111 parent/subtest pass events, six unchanged skips, zero failures; separate restricted-role SQL smoke passed. Head repeated build/vet and recounted raw events; assessor also passed six focused tests (28 pass events), SQL compilation and source/evidence checks. Go 1.26.11; worker hooks absent. Existing RLS skips/owner-role omissions and mock limitations remain; no live provider/browser proof. Frozen code+docs autoreview, real prepared TEST pre-push, CI and production are still publication gates.
 
 #### A090
 
 > H Four queries are never called: GetSet, ListSets, UpdateSet, DeleteSetsByWorkoutAndExercise.
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F26` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `318caed`, integrated `f24746d`: removed only the four unused SQL definitions and regenerated SQLC methods/types. Complete caller/operator inventory found no consumers; emit_interface is false. Live workout.UpdateSet request type, transactional set replacement, CreateSet, ownership and historical-1RM paths remain. Worker SQLC regeneration/API freshness passed; assessor independently compiled SQL and matched all ten generated-file hashes.
+- **Decision / blocker:** Head accepted implementation after fresh independent Pi/Sol/high assessment of `5ddac00..f24746d`, no actionable defects. Worker full managed TEST: 27 packages, 23 pass/four no-test, 416 top-level starts, 1,111 parent/subtest pass events, six unchanged skips, zero failures; separate restricted-role SQL smoke passed. Head repeated build/vet and recounted raw events; assessor also passed six focused tests (28 pass events), SQL compilation and source/evidence checks. Go 1.26.11; worker hooks absent. Existing RLS skips/owner-role omissions and mock limitations remain; no live provider/browser proof. Frozen code+docs autoreview, real prepared TEST pre-push, CI and production are still publication gates.
 
 #### A091
 
@@ -1041,10 +1041,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > - ErrUnsupportedStripeEvent
 
 - **Disposition:** Ready
-- **Status:** Not started
+- **Status:** Done
 - **Plan:** `F27` — Batch 6
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Reconfirm against current code, implement and verify using the mapped completion criteria.
+- **Evidence / commit / PR:** Worker `318caed`, integrated `f24746d`: removed listed unused helpers and test-only IsOwnedGeneration/IsTerminal predicates, retaining all nine lifecycle-state scenarios and live error/config/eval boundaries. Removed normalizeStreamFailure's no-op assignment; original failure passes directly to FailRun. Current Abort service tests cover wrapped-error handoff and prepared-state transitions; worker same-text/error-rebuild negative control failed all four cases. Mock receipts are not real DB persistence proof.
+- **Decision / blocker:** Head accepted implementation after fresh independent Pi/Sol/high assessment of `5ddac00..f24746d`, no actionable defects. Worker full managed TEST: 27 packages, 23 pass/four no-test, 416 top-level starts, 1,111 parent/subtest pass events, six unchanged skips, zero failures; separate restricted-role SQL smoke passed. Head repeated build/vet and recounted raw events; assessor also passed six focused tests (28 pass events), SQL compilation and source/evidence checks. Go 1.26.11; worker hooks absent. Existing RLS skips/owner-role omissions and mock limitations remain; no live provider/browser proof. Frozen code+docs autoreview, real prepared TEST pre-push, CI and production are still publication gates.
 
 #### A092
 
