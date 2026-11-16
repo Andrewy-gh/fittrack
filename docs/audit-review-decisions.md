@@ -5,6 +5,10 @@ Working branch: `fix/audit-remediation`.
 
 Originally **64 findings required review**: 13 high-confidence gated findings and 51 medium/low-confidence deferred findings. A103/A104 removal is now approved; A094 has conditional cleanup approval; A088 is awaiting a decision after explanation. The inventory below preserves all original decision items. You do not need to review the 42 ready findings before agents begin. Every implemented behavior still requires tests/evidence and independent code review.
 
+## Current continuation boundary
+
+The user requested continuing related reviewed/released batches until past 45 accepted findings. A087/A089/A090/A091 bring implementation acceptance to 41; A077 and A054/A101 are the three remaining Ready findings, potentially reaching 44. The head proposed message-only corrections for A038 and A066 to reach 46. **Approval has been requested, not received.** Those entries remain Deferred / Pending; the numeric target does not override existing gates or authorize unrelated policy changes.
+
 ## Review these decisions first
 
 Record answers by A-ID below or reply in chat; the CHIEF will transfer your decisions into the main tracker. Recommendations are proposals, not approvals.
