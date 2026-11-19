@@ -89,9 +89,9 @@ func main() {
 
 	runtime := aichat.NewGenkitRuntime(runtimeCtx, dataReader)
 	if !runtime.Available() {
-		fail("ai chat runtime unavailable. Set GEMINI_API_KEY or GOOGLE_API_KEY in your shell, server/.env, or server/setenv.sh")
+		fail("ai chat runtime unavailable. Set the API key for the selected chat model")
 	}
-	judge := newNarrowScopeJudge(runtimeCtx, runtime.ModelName())
+	judge := newNarrowScopeJudge(runtimeCtx, aichat.GeminiModelName())
 
 	report := aichateval.Run(runtimeCtx, runtime, scenarios, aichateval.RunOptions{
 		Mode:               *mode,
