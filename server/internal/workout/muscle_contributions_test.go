@@ -2,15 +2,17 @@ package workout
 
 import (
 	"context"
-	db "github.com/Andrewy-gh/fittrack/server/internal/database"
-	"github.com/Andrewy-gh/fittrack/server/internal/user"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/stretchr/testify/require"
 	"io"
 	"log/slog"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/exercisecatalog"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/require"
 )
 
 type muscleStub struct {
@@ -25,6 +27,14 @@ func (s *muscleStub) ListMuscleContributionSets(_ context.Context, p db.ListMusc
 func muscleRow(id int32, catalog string) db.ListMuscleContributionSetsRow {
 	return db.ListMuscleContributionSetsRow{WorkoutID: 1, WorkoutDate: pgTimestamp(time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)), ExerciseID: id, ExerciseName: catalog, CatalogID: pgtype.Text{String: catalog, Valid: catalog != ""}, SetType: "working", Reps: 8}
 }
+func TestReviewedMuscleRolesReferenceCatalog(t *testing.T) {
+	for id := range reviewedMuscleRoles {
+		if exercisecatalog.Find(id) == nil {
+			t.Errorf("reviewed muscle roles reference unknown catalog ID %q", id)
+		}
+	}
+}
+
 func TestMuscleContributionsWorkedExample(t *testing.T) {
 	stub := &muscleStub{}
 	for range 6 {

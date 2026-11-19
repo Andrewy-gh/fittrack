@@ -185,6 +185,33 @@ func TestExerciseHandler_ListExercises(t *testing.T) {
 	}
 }
 
+func TestExerciseReadRoutesRejectInvalidIDs(t *testing.T) {
+	// Neither route may call its service for an invalid ID. A nil service
+	// makes accidental service dispatch fail without adding a production seam.
+	handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), validator.New(), nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/exercises/{id}", handler.GetExerciseWithSets)
+	mux.HandleFunc("GET /api/exercises/{id}/recent-sets", handler.GetRecentSetsForExercise)
+
+	for _, route := range []struct{ name, suffix string }{
+		{"detail", ""},
+		{"recent sets", "/recent-sets"},
+	} {
+		for _, id := range []string{"invalid", "0", "-1", "2147483648"} {
+			t.Run(route.name+"/"+id, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodGet, "/api/exercises/"+id+route.suffix, nil)
+				req = req.WithContext(user.WithContext(req.Context(), "test-user-id"))
+				w := httptest.NewRecorder()
+				mux.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusBadRequest, w.Code)
+				require.Equal(t, "application/json", w.Header().Get("Content-Type"))
+				require.JSONEq(t, `{"message":"Invalid exercise ID"}`, w.Body.String())
+			})
+		}
+	}
+}
+
 func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 	userID := "test-user-id"
 
@@ -233,14 +260,6 @@ func TestExerciseHandler_GetExerciseWithSets(t *testing.T) {
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,
 			expectJSON:   true,
-		},
-		{
-			name:          "invalid exercise ID",
-			exerciseID:    "invalid",
-			setupMock:     func(m *MockExerciseRepository, id int32) {},
-			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
-			expectedCode:  http.StatusBadRequest,
-			expectedError: "Invalid exercise ID",
 		},
 		{
 			name:       "exercise not found",
@@ -359,24 +378,16 @@ func TestExerciseHandler_GetRecentSetsForExercise(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:       "successful fetch",
-			exerciseID: "1",
-			setupMock: func(m *MockExerciseRepository, id int32) {
-				m.On("GetRecentSetsForExercise", mock.Anything, id, userID).Return([]db.GetRecentSetsForExerciseRow{
+			name:       "successful fetch at max int32 ID",
+			exerciseID: "2147483647",
+			setupMock: func(m *MockExerciseRepository, _ int32) {
+				m.On("GetRecentSetsForExercise", mock.Anything, int32(2147483647), userID).Return([]db.GetRecentSetsForExerciseRow{
 					{SetID: 1, Reps: 10},
 				}, nil)
 			},
 			ctx:          context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode: http.StatusOK,
 			expectJSON:   true,
-		},
-		{
-			name:          "invalid exercise ID",
-			exerciseID:    "invalid",
-			setupMock:     func(m *MockExerciseRepository, id int32) {},
-			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
-			expectedCode:  http.StatusBadRequest,
-			expectedError: "Invalid exercise ID",
 		},
 		{
 			name:       "service error",

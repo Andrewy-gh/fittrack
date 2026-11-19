@@ -77,16 +77,7 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	req := GetExerciseWithSetsRequest{
-		ExerciseID: exerciseID,
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID: must be positive", err)
-		return
-	}
-
-	exerciseWithSets, err := h.exerciseService.GetExerciseWithSets(r.Context(), req.ExerciseID)
+	exerciseWithSets, err := h.exerciseService.GetExerciseWithSets(r.Context(), exerciseID)
 	if err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
@@ -171,16 +162,7 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 		return
 	}
 
-	req := GetRecentSetsRequest{
-		ExerciseID: exerciseID,
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID: must be positive", err)
-		return
-	}
-
-	sets, err := h.exerciseService.GetRecentSetsForExercise(r.Context(), req.ExerciseID)
+	sets, err := h.exerciseService.GetRecentSetsForExercise(r.Context(), exerciseID)
 	if err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		if errors.As(err, &errUnauthorized) {
