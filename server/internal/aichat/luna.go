@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -27,25 +28,39 @@ func defineLuna(g *genkit.Genkit) {
 		if err != nil {
 			return nil, err
 		}
-
-		stream := client.Responses.NewStreaming(ctx, params)
+		var httpResponse *http.Response
+		stream := client.Responses.NewStreaming(ctx, params, option.WithResponseInto(&httpResponse))
 		defer stream.Close()
 		for stream.Next() {
 			event := stream.Current()
 			switch event.Type {
 			case "response.output_text.delta":
 				if cb != nil && event.Delta != "" {
-
+					if strings.TrimSpace(event.Delta) != "" && !commitProvider(ctx) {
+						return nil, errPrimarySlow
+					}
 					if err := cb(ctx, &ai.ModelResponseChunk{Content: []*ai.Part{ai.NewTextPart(event.Delta)}}); err != nil {
 						return nil, err
 					}
 				}
 			case "response.completed":
-				return lunaResponse(event.Response)
+				result, err := lunaResponse(event.Response)
+				if errors.Is(err, errEmptyLunaResponse) {
+					markTransientProviderFailure(ctx)
+				}
+				if err == nil && len(result.Message.Content) > 0 {
+					if !commitProvider(ctx) {
+						return nil, errPrimarySlow
+					}
+				}
+				return result, err
 			case "response.failed", "error":
 				code := string(event.Response.Error.Code)
 				if event.Type == "error" {
 					code = event.Code
+				}
+				if code == "server_error" || code == "rate_limit_exceeded" {
+					markTransientProviderFailure(ctx)
 				}
 				return nil, fmt.Errorf("OpenAI provider stream failed (%s)", code)
 			case "response.incomplete":
@@ -53,10 +68,10 @@ func defineLuna(g *genkit.Genkit) {
 			}
 		}
 		if err := stream.Err(); err != nil {
-
+			markProviderError(ctx, httpResponse, err)
 			return nil, fmt.Errorf("OpenAI provider request: %w", err)
 		}
-
+		markProviderError(ctx, httpResponse, io.ErrUnexpectedEOF)
 		return nil, errors.New("OpenAI provider stream ended before completion")
 	})
 }

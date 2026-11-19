@@ -590,6 +590,12 @@ RETURNING
     started_at,
     completed_at;
 
+-- name: SetAIChatRunModel :execrows
+UPDATE ai_chat_run
+SET model = $3, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND status = 'streaming'
+  AND (NULLIF($4::text, '') IS NULL OR generation_owner = $4);
+
 -- name: TouchAIChatRun :exec
 UPDATE ai_chat_run
 SET updated_at = CURRENT_TIMESTAMP

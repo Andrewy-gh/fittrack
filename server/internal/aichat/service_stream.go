@@ -254,6 +254,12 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 	)
 	firstChunkPersisted := false
 	runtimeCtx := contextWithTrainingProfileSource(ctx, prepared.Conversation.ID, prepared.Run.UserMessageID)
+	runtimeCtx = context.WithValue(runtimeCtx, providerSelectedKey{}, func(ctx context.Context, model string) error {
+		if prepared.Run.Model == model {
+			return nil
+		}
+		return s.repo.SetRunModel(ctx, prepared, model)
+	})
 	done, err := s.runtime.StreamChat(runtimeCtx, prepared.Prompt, history, func(delta string) error {
 		partial.WriteString(delta)
 		partialText := strings.TrimSpace(partial.String())
