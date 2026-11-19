@@ -3,6 +3,8 @@
 .husky/* text eol=lf
 server/docs/swagger.json text eol=lf
 server/docs/swagger.yaml text eol=lf
+# go mod tidy -diff compares go.sum against LF output byte-for-byte.
+server/go.sum text eol=lf
 client/*.html text eol=lf
 client/*.json text eol=lf
 client/*.md text eol=lf

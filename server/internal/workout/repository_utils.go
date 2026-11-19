@@ -37,7 +37,7 @@ func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo
 	exerciseMap := make(map[string]int32)
 
 	for _, exercise := range exercises {
-		logger.Info("attempting to get or create exercise", "exercise_name", exercise.Name, "user_id", userID)
+		logger.Debug("attempting to get or create exercise", "exercise_name", exercise.Name, "user_id", userID)
 		var dbExercise db.Exercise
 		var err error
 		if exercise.CatalogID != nil {
@@ -51,7 +51,7 @@ func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo
 			logger.Error("failed to get/create exercise", "exercise_name", exercise.Name, "error", err)
 			return nil, fmt.Errorf("failed to get/create exercise %s: %w", exercise.Name, err)
 		}
-		logger.Info("successfully got/created exercise", "exercise_name", exercise.Name, "exercise_id", dbExercise.ID)
+		logger.Debug("successfully got/created exercise", "exercise_name", exercise.Name, "exercise_id", dbExercise.ID)
 		exerciseMap[exercise.Name] = dbExercise.ID
 	}
 
@@ -68,7 +68,7 @@ func insertSets(ctx context.Context, logger *slog.Logger, qtx *db.Queries, sets 
 			return fmt.Errorf("exercise not found: %s", set.ExerciseName)
 		}
 
-		logger.Info("attempting to create set",
+		logger.Debug("attempting to create set",
 			"exercise_name", set.ExerciseName,
 			"exercise_id", exerciseID,
 			"workout_id", workoutID,

@@ -216,14 +216,14 @@ func (er *exerciseRepository) GetExerciseWithSets(ctx context.Context, id int32,
 }
 
 func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db.Queries, name, userID string) (db.Exercise, error) {
-	er.logger.Info("GetOrCreateExerciseTx called", "exercise_name", name, "user_id", userID)
+	er.logger.Debug("GetOrCreateExerciseTx called", "exercise_name", name, "user_id", userID)
 
 	params := db.GetOrCreateExerciseParams{
 		Name:   name,
 		UserID: userID,
 	}
 
-	er.logger.Info("calling GetOrCreateExercise with params", "params", params)
+	er.logger.Debug("calling GetOrCreateExercise with params", "params", params)
 	exerciseRow, err := qtx.GetOrCreateExercise(ctx, params)
 	if err != nil {
 		er.logger.Error("failed to get or create exercise",
@@ -242,7 +242,7 @@ func (er *exerciseRepository) GetOrCreateExerciseTx(ctx context.Context, qtx *db
 		UserID:    userID,
 	}
 
-	er.logger.Info("successfully got/created exercise",
+	er.logger.Debug("successfully got/created exercise",
 		"exercise_id", exercise.ID,
 		"exercise_name", exercise.Name,
 		"user_id", exercise.UserID)
