@@ -431,6 +431,18 @@ func (r *repository) InterruptRun(ctx context.Context, prepared *PreparedMessage
 	return nil
 }
 
+func (r *repository) SetRunModel(ctx context.Context, prepared *PreparedMessageStream, model string) error {
+	rows, err := r.queries.SetAIChatRunModel(ctx, db.SetAIChatRunModelParams{ID: prepared.Run.ID, UserID: prepared.Run.UserID, Model: model, Column4: textValue(prepared.Run.GenerationOwner)})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return pgx.ErrNoRows
+	}
+	prepared.Run.Model = model
+	return nil
+}
+
 func (r *repository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

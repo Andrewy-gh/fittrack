@@ -33,6 +33,7 @@ var genkitInit = func(ctx context.Context, opts ...genkit.GenkitOption) *genkit.
 }
 
 type GenkitRuntime struct {
+	fallback             *GenkitRuntime
 	available            bool
 	modelName            string
 	g                    *genkit.Genkit
@@ -45,6 +46,21 @@ type GenkitRuntime struct {
 
 func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime {
 	modelName := resolveModelName()
+	primary := newModelRuntime(ctx, reader, modelName)
+	if modelName == lunaModel && os.Getenv("AI_CHAT_FALLBACK") == "gemini" {
+		fallback := newModelRuntime(ctx, reader, GeminiModelName())
+		if fallback.Available() {
+			if !primary.Available() {
+				slog.Warn("AI chat primary unavailable at startup; using Gemini", "primary", modelName, "fallback", fallback.ModelName())
+				return fallback
+			}
+			primary.fallback = fallback
+		}
+	}
+	return primary
+}
+
+func newModelRuntime(ctx context.Context, reader ChatDataReader, modelName string) *GenkitRuntime {
 	runtime := &GenkitRuntime{
 		modelName:  modelName,
 		dataReader: reader,
@@ -116,6 +132,21 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 		return nil, ErrRuntimeUnavailable
 	}
 
+	if r.fallback != nil {
+		return r.streamWithFallback(ctx, prompt, history, onChunk)
+	}
+	return r.streamModel(ctx, prompt, history, onChunk)
+}
+
+func (r *GenkitRuntime) streamModel(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error) {
+	if selected, ok := ctx.Value(providerSelectedKey{}).(func(context.Context, string) error); ok {
+		if err := selected(ctx, r.modelName); err != nil {
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, fmt.Errorf("%w: %v", ErrGenerationTimeout, err)
+			}
+			return nil, err
+		}
+	}
 	traceStartedAt := time.Now()
 	streamCtx, cancel := context.WithTimeout(ctx, chatStreamTimeout)
 	defer cancel()
@@ -211,6 +242,9 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 		return nil, fmt.Errorf("extract workout draft from history: %w", err)
 	}
 	toolCalls := extractToolCallsFromHistory(resp.History())
+	if text == "" && workoutDraft == nil {
+		return nil, errors.New("chat provider returned no answer after tool execution")
+	}
 	text = finalizeAssistantText(text, workoutDraft)
 
 	return &StreamDone{
@@ -329,7 +363,7 @@ func buildChatSystemPrompt(snapshot *TrainingSnapshot, profile *TrainingProfile,
 	if dataToolsEnabled {
 		personalDataRule = fmt.Sprintf(`- For questions about the user's logged workouts or personal training history, call the %s tool. Never guess or invent workout history; if no data exists, say so. Do not call data tools for general fitness knowledge.
 - Default to %s for personal workout-history questions; use %s only for all-time bests, PRs, estimated 1RM, or long-range single-exercise trends.
-- The data tools and the training snapshot exist only to answer questions about past training or to supply recentPerformance for a requested workout draft. When the user asks you to build a workout, do not call data tools unless the user explicitly references past training, such as "based on last week", "like last time", or "heavier than last time". Always respond with either a follow-up question or a %s tool call, never an empty reply. The snapshot and logged history never satisfy the workout-building inputs below â€” in particular, they say nothing about current injury status, so still ask about injuries when that is missing.`, getWorkoutsToolName, getWorkoutsToolName, getExerciseStatsToolName, workoutDraftToolName)
+- The data tools and the training snapshot exist only to answer questions about past training or to supply recentPerformance for a requested workout draft. When the user asks you to build a workout, do not call data tools unless the user explicitly references past training, such as "based on last week", "like last time", or "heavier than last time". Always respond with either a follow-up question or a %s tool call, never an empty reply. The snapshot and logged history never satisfy the workout-building inputs below — in particular, they say nothing about current injury status, so still ask about injuries when that is missing.`, getWorkoutsToolName, getWorkoutsToolName, getExerciseStatsToolName, workoutDraftToolName)
 	}
 	currentDateSection := fmt.Sprintf("Current date: %s.", now.Format("2006-01-02"))
 	snapshotSection := buildTrainingSnapshotPromptSection(snapshot)
@@ -356,7 +390,7 @@ When the user wants you to build a workout:
 - Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests. Resistance bands, foam rollers, sticks, and similar tools can add challenge, support, regression, progression, or convenience, but they are not required before generating.
 - For normal strength, hypertrophy, endurance, cardio, or general fitness workouts, do not call the %s tool until the user has provided equipment, training location, or space constraints. If this is missing, ask where they will train and what equipment they have.
 - Treat the user's stated equipment, training location, or space constraints as the available context for the draft. Use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable with the stated constraints. Do not assume unmentioned accessories or equipment, such as a bench, rack, cable, or machine.
-- Treat user profile values as defaults for workout drafts. The user's current message always overrides the profile. Do not re-ask for known profile equipment, location, or movement limitations; only treat injury status as known when the profile includes a Movement limitations line. If that line says none, treat injury status as known none, use injuries="none", and do not ask about injuries before drafting; if it lists limitations, use those as injury context and do not ask about injuries before drafting. A profile section without a Movement limitations line does not answer injury status and does not override the injury-question rules below. Briefly state assumptions when using profile defaults, such as "Using your usual home dumbbell setup â€” say the word if today's different."
+- Treat user profile values as defaults for workout drafts. The user's current message always overrides the profile. Do not re-ask for known profile equipment, location, or movement limitations; only treat injury status as known when the profile includes a Movement limitations line. If that line says none, treat injury status as known none, use injuries="none", and do not ask about injuries before drafting; if it lists limitations, use those as injury context and do not ask about injuries before drafting. A profile section without a Movement limitations line does not answer injury status and does not override the injury-question rules below. Briefly state assumptions when using profile defaults, such as "Using your usual home dumbbell setup — say the word if today's different."
 - If injury status is missing and no profile movement limitation default is available, ask once before generating. Do not infer "none" from silence in the initial request, even when the rest of the workout request is clear.
 - Use injuries="none" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries.
 - When the user answers a follow-up, combine that answer with the earlier visible workout request. If your previous message only asked about injuries and the user now confirms no injuries, reuse the earlier focus, duration, equipment, and location details instead of asking them to repeat those details.

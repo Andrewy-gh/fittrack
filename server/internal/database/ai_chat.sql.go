@@ -1414,6 +1414,33 @@ func (q *Queries) SetAIChatConversationTitleIfEmpty(ctx context.Context, arg Set
 	return result.RowsAffected(), nil
 }
 
+const setAIChatRunModel = `-- name: SetAIChatRunModel :execrows
+UPDATE ai_chat_run
+SET model = $3, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND status = 'streaming'
+  AND (NULLIF($4::text, '') IS NULL OR generation_owner = $4)
+`
+
+type SetAIChatRunModelParams struct {
+	ID      int32  `json:"id"`
+	UserID  string `json:"user_id"`
+	Model   string `json:"model"`
+	Column4 string `json:"column_4"`
+}
+
+func (q *Queries) SetAIChatRunModel(ctx context.Context, arg SetAIChatRunModelParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setAIChatRunModel,
+		arg.ID,
+		arg.UserID,
+		arg.Model,
+		arg.Column4,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const touchAIChatConversation = `-- name: TouchAIChatConversation :exec
 UPDATE ai_chat_conversation
 SET updated_at = CURRENT_TIMESTAMP,

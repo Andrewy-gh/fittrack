@@ -192,6 +192,10 @@ func (m *mockRepository) InterruptRun(ctx context.Context, prepared *PreparedMes
 	return args.Error(0)
 }
 
+func (m *mockRepository) SetRunModel(ctx context.Context, prepared *PreparedMessageStream, model string) error {
+	return m.Called(ctx, prepared, model).Error(0)
+}
+
 func (m *mockRepository) CompleteRun(ctx context.Context, prepared *PreparedMessageStream, assistantText string, workoutDraft *workout.CreateWorkoutRequest, completedAt time.Time) (*ChatMessage, *ChatRun, error) {
 	args := m.Called(ctx, prepared, assistantText, workoutDraft, completedAt)
 	message, _ := args.Get(0).(*ChatMessage)

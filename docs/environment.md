@@ -20,6 +20,7 @@ Useful optional local vars:
 - `GEMINI_API_KEY` or `GOOGLE_API_KEY`: enables AI chat and `go run ./cmd/gemini-smoke`
 - `GEMINI_MODEL`: overrides the default Gemini model
 - `AI_CHAT_PRIMARY_MODEL=openai/gpt-6-luna` selects Luna for chat and workout drafts. Supply `OPENAI_API_KEY` in the server environment. Unset the model selection to return to Gemini.
+- With Luna selected, set `AI_CHAT_FALLBACK=gemini` and supply the Gemini key to enable one fallback attempt on transient failures before text or tool execution. After 20 seconds without either, FitTrack switches within the existing 75-second turn deadline.
 - `STRIPE_SECRET_KEY`: enables Stripe customer and checkout session creation
 - `STRIPE_WEBHOOK_SECRET`: verifies Stripe webhook signatures
 - `STRIPE_PREMIUM_PRICE_ID`: Stripe recurring price that grants FitTrack premium AI chat access

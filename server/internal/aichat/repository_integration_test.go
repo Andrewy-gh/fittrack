@@ -64,9 +64,11 @@ func TestRepositoryCompleteRun_PersistsWorkoutDraftJSONB(t *testing.T) {
 		},
 	}
 
+	require.NoError(t, repo.SetRunModel(ctx, prepared, lunaModel))
 	_, run, err := repo.CompleteRun(ctx, prepared, workoutDraftSummaryMessage, draft, time.Date(2026, 4, 22, 16, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.NotNil(t, run)
+	assert.Equal(t, lunaModel, run.Model)
 	require.NotNil(t, run.WorkoutDraft)
 	assert.Equal(t, draft.Date, run.WorkoutDraft.Date)
 
