@@ -134,6 +134,7 @@ type Result struct {
 }
 
 type TurnResult struct {
+	FirstTextMS  *int64                        `json:"first_text_ms,omitempty"`
 	Turn         int                           `json:"turn"`
 	Prompt       string                        `json:"prompt"`
 	Status       string                        `json:"status"`
@@ -353,7 +354,11 @@ func runTurn(ctx context.Context, runtime Runtime, scenario Scenario, prompt str
 		if strings.TrimSpace(options.UserID) != "" {
 			callCtx = user.WithContext(ctx, strings.TrimSpace(options.UserID))
 		}
-		done, err = runtime.StreamChat(callCtx, prompt, history, func(string) error {
+		done, err = runtime.StreamChat(callCtx, prompt, history, func(delta string) error {
+			if result.FirstTextMS == nil && strings.TrimSpace(delta) != "" {
+				elapsed := time.Since(started).Milliseconds()
+				result.FirstTextMS = &elapsed
+			}
 			return nil
 		})
 		if err == nil {

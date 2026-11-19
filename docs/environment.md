@@ -19,6 +19,7 @@ Useful optional local vars:
 - `ALLOWED_ORIGINS`: needed when the frontend is not using the default Vite proxy or same-origin `/api`
 - `GEMINI_API_KEY` or `GOOGLE_API_KEY`: enables AI chat and `go run ./cmd/gemini-smoke`
 - `GEMINI_MODEL`: overrides the default Gemini model
+- `AI_CHAT_PRIMARY_MODEL=openai/gpt-6-luna` selects Luna for chat and workout drafts. Supply `OPENAI_API_KEY` in the server environment. Unset the model selection to return to Gemini.
 - `STRIPE_SECRET_KEY`: enables Stripe customer and checkout session creation
 - `STRIPE_WEBHOOK_SECRET`: verifies Stripe webhook signatures
 - `STRIPE_PREMIUM_PRICE_ID`: Stripe recurring price that grants FitTrack premium AI chat access
