@@ -141,6 +141,9 @@ func (r *GenkitRuntime) StreamChat(ctx context.Context, prompt string, history [
 func (r *GenkitRuntime) streamModel(ctx context.Context, prompt string, history []RuntimeChatMessage, onChunk func(string) error) (*StreamDone, error) {
 	if selected, ok := ctx.Value(providerSelectedKey{}).(func(context.Context, string) error); ok {
 		if err := selected(ctx, r.modelName); err != nil {
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, fmt.Errorf("%w: %v", ErrGenerationTimeout, err)
+			}
 			return nil, err
 		}
 	}
