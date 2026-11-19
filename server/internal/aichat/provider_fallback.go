@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -19,6 +20,7 @@ type fallbackAttemptKey struct{}
 type fallbackAttempt struct {
 	phase     atomic.Int32
 	transient atomic.Bool
+	denied    atomic.Int32
 	stop      func() bool
 }
 
@@ -58,7 +60,11 @@ func markProviderError(ctx context.Context, response *http.Response, err error) 
 	// Use the received status even when the SDK cannot read its error body.
 	if response != nil && response.StatusCode >= 400 {
 		status := response.StatusCode
-		attempt.transient.Store(status == 408 || status == 429 || status >= 500)
+		retryable := status == 408 || status == 429 || status >= 500
+		if !retryable {
+			attempt.denied.Store(int32(status))
+		}
+		attempt.transient.Store(retryable)
 		return
 	}
 	var networkErr net.Error
@@ -85,8 +91,14 @@ func (r *GenkitRuntime) streamWithFallback(ctx context.Context, prompt string, h
 	primary = context.WithValue(primary, fallbackAttemptKey{}, attempt)
 	result, err := r.streamModel(primary, prompt, history, onChunk)
 	slow := attempt.phase.Load() == providerTimedOut
+	if errors.Is(turn.Err(), context.DeadlineExceeded) {
+		return nil, ErrGenerationTimeout
+	}
 	if turn.Err() != nil {
 		return nil, turn.Err()
+	}
+	if status := attempt.denied.Load(); status != 0 {
+		return nil, fmt.Errorf("OpenAI provider returned HTTP %d", status)
 	}
 	if attempt.phase.Load() == providerCommitted || (!slow && (err == nil || !attempt.transient.Load())) {
 		return result, err

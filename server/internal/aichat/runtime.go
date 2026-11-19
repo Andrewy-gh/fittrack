@@ -239,6 +239,9 @@ func (r *GenkitRuntime) streamModel(ctx context.Context, prompt string, history 
 		return nil, fmt.Errorf("extract workout draft from history: %w", err)
 	}
 	toolCalls := extractToolCallsFromHistory(resp.History())
+	if text == "" && workoutDraft == nil {
+		return nil, errors.New("chat provider returned no answer after tool execution")
+	}
 	text = finalizeAssistantText(text, workoutDraft)
 
 	return &StreamDone{
