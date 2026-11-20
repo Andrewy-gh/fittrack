@@ -18,5 +18,5 @@ afterEach(() => {
 
 // jsdom provides localStorage, but we want to ensure it's clean before each test
 beforeEach(() => {
-  localStorage.clear();
+  if (typeof window !== "undefined") window.localStorage.clear();
 });
