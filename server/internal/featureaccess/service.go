@@ -82,8 +82,6 @@ func convertRows(rows []db.UserFeatureAccess) ([]FeatureAccessGrant, error) {
 			FeatureKey:      row.FeatureKey,
 			Source:          row.Source,
 			SourceReference: textPtr(row.SourceReference),
-			GrantedBy:       textPtr(row.GrantedBy),
-			Note:            textPtr(row.Note),
 			StartsAt:        startsAt,
 			ExpiresAt:       expiresAt,
 			CreatedAt:       createdAt,

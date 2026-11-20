@@ -81,6 +81,37 @@ func loadContract(t *testing.T) contractDocument {
 	return document
 }
 
+func TestFeatureAccessResponseSpecsOmitInternalMetadata(t *testing.T) {
+	for _, spec := range []struct {
+		name string
+		body []byte
+	}{
+		{"first-party", []byte(docs.SwaggerInfo.ReadDoc())},
+		{"agent", docs.AgentSwaggerJSON()},
+	} {
+		t.Run(spec.name, func(t *testing.T) {
+			var document contractDocument
+			if err := json.Unmarshal(spec.body, &document); err != nil {
+				t.Fatal(err)
+			}
+			schema := document.Paths["/features/access"]["get"].Responses["200"].Schema
+			if schema.Type != "array" || schema.Items == nil {
+				t.Fatal("GET /features/access 200 must document an array of grants")
+			}
+			name, referenced := strings.CutPrefix(schema.Items.Ref, "#/definitions/")
+			properties := document.Definitions[name].Properties
+			if !referenced || len(properties) == 0 {
+				t.Fatal("GET /features/access 200 must reference a documented grant")
+			}
+			for _, key := range []string{"granted_by", "note"} {
+				if _, present := properties[key]; present {
+					t.Errorf("response schema exposes internal field %q", key)
+				}
+			}
+		})
+	}
+}
+
 // Check both directions: required documented fields must be emitted, and emitted
 // fields must have a documented type. This catches silently missing doc fields.
 func (d contractDocument) check(schema contractSchema, value interface{}) error {

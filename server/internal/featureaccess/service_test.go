@@ -60,8 +60,6 @@ func TestService_ListCurrentUserAccess(t *testing.T) {
 				FeatureKey:      "ai_chatbot",
 				Source:          "manual",
 				SourceReference: pgtype.Text{String: "demo-grant", Valid: true},
-				GrantedBy:       pgtype.Text{String: "andy", Valid: true},
-				Note:            pgtype.Text{String: "dev access", Valid: true},
 				StartsAt:        pgtype.Timestamptz{Time: now, Valid: true},
 				ExpiresAt:       pgtype.Timestamptz{Time: expiresAt, Valid: true},
 				CreatedAt:       pgtype.Timestamptz{Time: now, Valid: true},
@@ -75,8 +73,6 @@ func TestService_ListCurrentUserAccess(t *testing.T) {
 		assert.Equal(t, "ai_chatbot", grants[0].FeatureKey)
 		assert.Equal(t, "manual", grants[0].Source)
 		assert.Equal(t, "demo-grant", *grants[0].SourceReference)
-		assert.Equal(t, "andy", *grants[0].GrantedBy)
-		assert.Equal(t, "dev access", *grants[0].Note)
 		assert.Equal(t, now, grants[0].StartsAt)
 		require.NotNil(t, grants[0].ExpiresAt)
 		assert.Equal(t, expiresAt, *grants[0].ExpiresAt)
