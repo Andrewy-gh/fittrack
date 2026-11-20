@@ -3,7 +3,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createConnection } from "node:net";
 
 import { e2eAuthReadiness, resolveStackAuthBootstrapConfig } from "../client/tests/stack-auth-config.ts";
@@ -38,6 +38,14 @@ function assignedConfig() {
   }
 }
 
+function postgresTarget(root: string) {
+  const marker = join(root, ".worktree", "postgres-target");
+  if (!existsSync(marker)) return { host: "127.0.0.1", port: 55432, major: 15 };
+  if (readFileSync(marker, "utf8").trim() !== "supabase-17.12")
+    throw new Error("Invalid .worktree/postgres-target; expected supabase-17.12.");
+  return { host: "127.0.0.1", port: 26432, major: 17 };
+}
+
 /** Build the credential-free database names and service ports for an allocation. */
 export function localConfig(entry: Allocation) {
   const { root, id, basePort } = entry;
@@ -45,7 +53,7 @@ export function localConfig(entry: Allocation) {
     version: VERSION,
     root,
     id,
-    postgres: { host: "127.0.0.1", port: 55432 },
+    postgres: postgresTarget(root),
     databases: {
       dev: `ft_${id}_dev`,
       test: `ft_${id}_test`,
@@ -84,7 +92,7 @@ export function databaseURL(template: string | undefined, config: LocalConfig, m
     url.hash
   ) {
     throw new Error(
-      "Database templates must use PostgreSQL at 127.0.0.1:55432. Remote databases and alternate hosts/ports are refused.",
+      `Database templates must use PostgreSQL at ${config.postgres.host}:${config.postgres.port}. Remote databases and alternate hosts/ports are refused.`,
     );
   }
   // libpq/pgx accept query parameters that override the URL host and database.
@@ -136,6 +144,8 @@ export function commandEnvironment(
     PREVIEW_PORT: String(isE2E ? frontend : config.ports.preview),
     API_PROXY_TARGET: `http://127.0.0.1:${api}`,
     VITE_API_BASE_URL: "/api",
+    ...(config.postgres.major === 17 ? { ALLOWED_ORIGINS: `http://127.0.0.1:${frontend}` } : {}),
+    FITTRACK_WORKTREE_LOOPBACK_ONLY: String(config.postgres.major === 17),
     APP_BASE_URL: `http://127.0.0.1:${frontend}`,
     E2E_PORT: String(config.ports.e2eFrontend),
     E2E_BASE_URL: `http://127.0.0.1:${config.ports.e2eFrontend}`,
@@ -271,18 +281,18 @@ async function readiness(root: string, env: NodeJS.ProcessEnv, options: Readines
       const parsed = new URL(databaseURL(env[key], target, "dev"));
       if (!parsed.username || (key === "FITTRACK_LOCAL_RUNTIME_DATABASE_URL" ? parsed.username !== "fittrack_app" : parsed.username === "fittrack_app")) throw new Error();
       add(key, true, "");
-    } catch { add(key, false, "Use an explicit local owning role and fittrack_app role at 127.0.0.1:55432; redirected URLs are refused."); credentialsValid = false; }
+    } catch { add(key, false, `Use an explicit local owning role and fittrack_app role at ${target.postgres.host}:${target.postgres.port}; redirected URLs are refused.`); credentialsValid = false; }
   }
   const service = await new Promise<boolean>(done => {
-    const socket = createConnection({ host: "127.0.0.1", port: 55432 });
+    const socket = createConnection({ host: target.postgres.host, port: target.postgres.port });
     const finish = (ready: boolean) => { socket.destroy(); done(ready); };
     socket.setTimeout(2000, () => finish(false));
     socket.once("error", () => finish(false));
     socket.once("connect", () => finish(true));
   });
-  add("postgres_service", service, "Start the documented local PostgreSQL 15 cluster at 127.0.0.1:55432. Doctor never starts or replaces services.", "inaccessible");
+  add("postgres_service", service, `Start the selected local PostgreSQL ${target.postgres.major} cluster at ${target.postgres.host}:${target.postgres.port}. Doctor never starts or replaces services.`, "inaccessible");
   if (credentialsValid && go.ok && service) {
-    const checkEnv: NodeJS.ProcessEnv = { ...env, FITTRACK_DATABASE_CONFIG: JSON.stringify(target), FITTRACK_POSTGRES_MAJOR: "15" };
+    const checkEnv: NodeJS.ProcessEnv = { ...env, FITTRACK_DATABASE_CONFIG: JSON.stringify(target), FITTRACK_POSTGRES_MAJOR: String(target.postgres.major) };
     for (const key of Object.keys(checkEnv)) if (/^(PGHOSTADDR|PGSERVICE|PGSERVICEFILE)$/i.test(key)) delete checkEnv[key];
     const result = probe("go", ["run", "-p=1", "./cmd/worktree-db", "--check", stage === "ready" && config ? options.mode : "bootstrap"], join(root, "server"), {
       ...checkEnv,
@@ -314,7 +324,7 @@ async function readiness(root: string, env: NodeJS.ProcessEnv, options: Readines
 
 async function main(args: string[]) {
   if (!args.length || args[0] === "help" || args[0] === "--help") {
-    console.log("FitTrack adapter: [--profile <absolute-path>] init | status | check | doctor --mode <mode> [--json] | prepare --mode <mode> [--major 15] [--json] | db setup --major <verified-major> | stop <mode> | run <dev|test|rls|e2e|unit> [--log-file path] -- <command> [arguments]\nRequires the external worktree-runtime Go CLI. See docs/worktrees.md.");
+    console.log("FitTrack adapter: [--profile <absolute-path>] init | status | check | doctor --mode <mode> [--json] | prepare --mode <mode> [--major <selected-major>] [--json] | db setup --major <verified-major> | stop <mode> | run <dev|test|rls|e2e|unit> [--log-file path] -- <command> [arguments]\nRequires the external worktree-runtime Go CLI. See docs/worktrees.md.");
     return;
   }
   if (args[0] === "--exec") {
@@ -331,12 +341,12 @@ async function main(args: string[]) {
     return;
   }
   if (args[0] === "--setup") {
-    if (args.length !== 3 || args[1] !== "--major" || !/^[1-9][0-9]$/.test(args[2] ?? ""))
+    if (args.length !== 3 || args[1] !== "--major" || !(args[2] === "selected" || /^[1-9][0-9]$/.test(args[2] ?? "")))
       throw new Error("Expected db setup --major <verified-production-major>.");
     const config = assignedConfig();
     const env = commandEnvironment(config, "dev");
     env.FITTRACK_DATABASE_CONFIG = JSON.stringify(config);
-    env.FITTRACK_POSTGRES_MAJOR = args[2];
+    env.FITTRACK_POSTGRES_MAJOR = args[2] === "selected" ? String(config.postgres.major) : args[2];
     await execute("go", ["run", "-p=1", "./cmd/worktree-db"], join(config.root, "server"), env);
     return;
   }
@@ -355,7 +365,7 @@ async function main(args: string[]) {
   if (command === "doctor" || command === "prepare") {
     const major = forwarded.indexOf("--major");
     if (major >= 0) {
-      if (forwarded[major + 1] !== "15") throw new Error("FitTrack preparation requires its pinned PostgreSQL major 15.");
+      if (forwarded[major + 1] !== String(postgresTarget(execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim()).major)) throw new Error("Requested major does not match this checkout's selected PostgreSQL target.");
       forwarded.splice(major, 2);
     }
   }

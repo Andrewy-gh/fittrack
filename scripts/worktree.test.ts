@@ -158,3 +158,28 @@ test("E2E doctor rejects unusable auth and accepts local/provider configuration 
     assert.ok(!result.stdout.includes("fixture-secret-never-use") && !result.stdout.includes("fixture-password-never-use"));
   }
 });
+
+test("PG17 opt-in is confined to the marked checkout and dedicated loopback port", async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const root = await mkdtemp(resolve(tmpdir(), "fittrack-pg17-"));
+  try {
+    const entry = { root, id: "fittrack_0123456789ab", basePort: 21000 };
+    assert.equal(localConfig(entry).postgres.major, 15);
+    await mkdir(resolve(root, ".worktree"));
+    const marker = resolve(root, ".worktree", "postgres-target");
+    await writeFile(marker, "supabase-17.12");
+    const pg17 = localConfig(entry);
+    assert.deepEqual(pg17.postgres, { host: "127.0.0.1", port: 26432, major: 17 });
+    assert.equal(new URL(databaseURL(base.replace("55432", "26432"), pg17, "dev")).port, "26432");
+    const env = commandEnvironment(pg17, "dev", { FITTRACK_LOCAL_DATABASE_URL: base.replace("55432", "26432") });
+    assert.equal(env.FITTRACK_WORKTREE_LOOPBACK_ONLY, "true");
+    assert.equal(env.ALLOWED_ORIGINS, "http://127.0.0.1:21000");
+    assert.throws(() => databaseURL(base, pg17, "dev"));
+    assert.throws(() => databaseURL(base.replace("55432", "26432") + "&host=remote", pg17, "dev"));
+    await writeFile(marker, "unknown");
+    assert.throws(() => localConfig(entry));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

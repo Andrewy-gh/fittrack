@@ -344,11 +344,18 @@ func newAPIHandler(cfg *config.Config, logger *slog.Logger, router *http.ServeMu
 	return handler
 }
 
+func listenAddress(cfg *config.Config, port int) string {
+	if cfg.Environment == "development" && os.Getenv("FITTRACK_WORKTREE_ID") != "" && os.Getenv("FITTRACK_WORKTREE_LOOPBACK_ONLY") == "true" {
+		return fmt.Sprintf("127.0.0.1:%d", port)
+	}
+	return fmt.Sprintf(":%d", port)
+}
+
 func newHTTPServer(cfg *config.Config, handler http.Handler, logger *slog.Logger) *http.Server {
 	return &http.Server{
 		// net/http diagnostics must survive warn/error application log levels.
 		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
+		Addr:         listenAddress(cfg, cfg.Port),
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -362,7 +369,7 @@ func newMetricsServer(cfg *config.Config, handler http.Handler, logger *slog.Log
 
 	return &http.Server{
 		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-		Addr:         fmt.Sprintf(":%d", cfg.MetricsPort),
+		Addr:         listenAddress(cfg, cfg.MetricsPort),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
