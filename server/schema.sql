@@ -335,6 +335,7 @@ CREATE INDEX idx_set_user_exercise_id ON "set"(user_id, exercise_id);
 -- Additional indexes for performance
 CREATE INDEX idx_workout_user_id ON workout(user_id);
 CREATE INDEX idx_exercise_user_id ON exercise(user_id);
+CREATE INDEX idx_exercise_historical_1rm_source_workout_id ON exercise(historical_1rm_source_workout_id) WHERE historical_1rm_source_workout_id IS NOT NULL;
 CREATE INDEX idx_workout_user_date ON workout(user_id, date);
 CREATE INDEX idx_workout_user_focus ON workout(user_id, workout_focus);
 CREATE INDEX idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_key, starts_at DESC);
