@@ -32,10 +32,29 @@ type allocation struct {
 
 var ctx = context.Background()
 
-func localURL(value, database string) (string, error) {
+type postgresTarget struct {
+	port, version          int
+	image, label, worktree string
+}
+
+func targetFor(major int, cfg allocation) (postgresTarget, error) {
+	if cfg.Postgres.Host != "127.0.0.1" {
+		return postgresTarget{}, errors.New("invalid local PostgreSQL host")
+	}
+	switch {
+	case major == 15 && cfg.Postgres.Port == 55432:
+		return postgresTarget{55432, 150019, "postgres:15.19-bookworm@sha256:539ceaaae49b3a7c8a04467cf00cc6788d8e3f1675df41860d86eebc4c40524f", "15.19", ""}, nil
+	case major == 17 && cfg.Postgres.Port == 26432 && os.Getenv("FITTRACK_LOCAL_POSTGRES_CONTAINER") != "":
+		return postgresTarget{26432, 170012, "supabase/postgres@sha256:8630950b489ecc70563300180287a98c192a4a48f5ae00b4febdaeea1abe85de", "17.12", cfg.ID}, nil
+	default:
+		return postgresTarget{}, errors.New("selected PostgreSQL major, port, or required container does not match")
+	}
+}
+
+func localURL(value, database string, target postgresTarget) (string, error) {
 	u, err := url.Parse(value)
-	if err != nil || u == nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") || u.Host != "127.0.0.1:55432" || u.Fragment != "" || u.User == nil || u.User.Username() == "" {
-		return "", errors.New("local connection must explicitly name a role at 127.0.0.1:55432")
+	if err != nil || u == nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") || u.Host != "127.0.0.1:"+strconv.Itoa(target.port) || u.Fragment != "" || u.User == nil || u.User.Username() == "" {
+		return "", errors.New("local connection must explicitly name a role at the selected loopback endpoint")
 	}
 	for key := range u.Query() {
 		if key != "sslmode" && key != "connect_timeout" {
@@ -48,7 +67,7 @@ func localURL(value, database string) (string, error) {
 
 // Docker is opt-in and inspected only through this machine's local daemon.
 // A context, DOCKER_HOST, or TCP daemon must never redirect this ownership check.
-func dockerEndpoint() (map[string]bool, error) {
+func dockerEndpoint(target postgresTarget) (map[string]bool, error) {
 	container := os.Getenv("FITTRACK_LOCAL_POSTGRES_CONTAINER")
 	if !regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`).MatchString(container) {
 		return nil, errors.New("invalid local PostgreSQL container name")
@@ -88,8 +107,7 @@ func dockerEndpoint() (map[string]bool, error) {
 	}
 	c := entries[0]
 	bindings := c.NetworkSettings.Ports["5432/tcp"]
-	const image = "postgres:15.19-bookworm@sha256:539ceaaae49b3a7c8a04467cf00cc6788d8e3f1675df41860d86eebc4c40524f"
-	if !c.State.Running || c.Config.Image != image || c.Config.Labels["fittrack.local-postgres"] != "15.19" || len(bindings) != 1 || bindings[0].HostIp != "127.0.0.1" || bindings[0].HostPort != "55432" {
+	if !c.State.Running || c.Config.Image != target.image || c.Config.Labels["fittrack.local-postgres"] != target.label || (target.worktree != "" && c.Config.Labels["fittrack.worktree"] != target.worktree) || len(bindings) != 1 || bindings[0].HostIp != "127.0.0.1" || bindings[0].HostPort != strconv.Itoa(target.port) {
 		return nil, errors.New("refusing unowned, unpinned, or incorrectly published local PostgreSQL container")
 	}
 	addresses := map[string]bool{}
@@ -101,11 +119,11 @@ func dockerEndpoint() (map[string]bool, error) {
 	return addresses, nil
 }
 
-func connect(connection, database string, major int) (*pgx.Conn, error) {
+func connect(connection, database string, target postgresTarget) (*pgx.Conn, error) {
 	var dockerAddresses map[string]bool
 	var err error
 	if os.Getenv("FITTRACK_LOCAL_POSTGRES_CONTAINER") != "" {
-		dockerAddresses, err = dockerEndpoint()
+		dockerAddresses, err = dockerEndpoint(target)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +134,7 @@ func connect(connection, database string, major int) (*pgx.Conn, error) {
 	}
 	// Never let inherited libpq fallback settings redirect the endpoint.
 	cfg.Host = "127.0.0.1"
-	cfg.Port = 55432
+	cfg.Port = uint16(target.port)
 	cfg.Database = database
 	cfg.Fallbacks = nil
 	cfg.ConnectTimeout = 10 * time.Second
@@ -127,11 +145,11 @@ func connect(connection, database string, major int) (*pgx.Conn, error) {
 	var host, name, role string
 	var port, version int
 	err = conn.QueryRow(ctx, "SELECT host(inet_server_addr()), inet_server_port(), current_database(), current_user, current_setting('server_version_num')::int").Scan(&host, &port, &name, &role, &version)
-	endpointMatches := host == "127.0.0.1" && port == 55432
+	endpointMatches := host == "127.0.0.1" && port == target.port
 	if dockerAddresses != nil {
-		endpointMatches = dockerAddresses[host] && port == 5432 && version == 150019
+		endpointMatches = dockerAddresses[host] && port == 5432 && version == target.version
 	}
-	if err != nil || !endpointMatches || name != database || role != cfg.User || version/10000 != major {
+	if err != nil || !endpointMatches || name != database || role != cfg.User || version/10000 != target.version/10000 {
 		conn.Close(ctx)
 		return nil, errors.New("server endpoint, database, role, or explicit PostgreSQL major does not match")
 	}
@@ -151,12 +169,16 @@ func setup() error {
 	if err := json.Unmarshal([]byte(os.Getenv("FITTRACK_DATABASE_CONFIG")), &cfg); err != nil {
 		return errors.New("invoke through node scripts/worktree.ts db setup")
 	}
-	if !regexp.MustCompile(`^[a-z0-9_]+_[a-f0-9]{12}$`).MatchString(cfg.ID) || cfg.Postgres.Host != "127.0.0.1" || cfg.Postgres.Port != 55432 {
+	if !regexp.MustCompile(`^[a-z0-9_]+_[a-f0-9]{12}$`).MatchString(cfg.ID) {
 		return errors.New("invalid worktree allocation")
 	}
 	major, err := strconv.Atoi(os.Getenv("FITTRACK_POSTGRES_MAJOR"))
-	if err != nil || major < 10 || major > 99 {
+	if err != nil {
 		return errors.New("an explicit verified PostgreSQL major is required")
+	}
+	target, err := targetFor(major, cfg)
+	if err != nil {
+		return err
 	}
 	modes := []string{"dev", "test", "rls", "e2e"}
 	for _, mode := range modes {
@@ -164,7 +186,7 @@ func setup() error {
 			return errors.New("database name does not match allocation")
 		}
 	}
-	ownerURL, err := localURL(os.Getenv("FITTRACK_LOCAL_DATABASE_URL"), "postgres")
+	ownerURL, err := localURL(os.Getenv("FITTRACK_LOCAL_DATABASE_URL"), "postgres", target)
 	if err != nil {
 		return err
 	}
@@ -172,7 +194,7 @@ func setup() error {
 	if owner.User.Username() == "fittrack_app" {
 		return errors.New("database setup needs an owning role, not fittrack_app")
 	}
-	runtimeURL, err := localURL(os.Getenv("FITTRACK_LOCAL_RUNTIME_DATABASE_URL"), "postgres")
+	runtimeURL, err := localURL(os.Getenv("FITTRACK_LOCAL_RUNTIME_DATABASE_URL"), "postgres", target)
 	if err != nil {
 		return errors.New("set FITTRACK_LOCAL_RUNTIME_DATABASE_URL for the stable local fittrack_app login")
 	}
@@ -188,7 +210,7 @@ func setup() error {
 	if err != nil || strings.TrimSpace(string(version)) != "goose version: v3.24.3" {
 		return errors.New("Goose v3.24.3 is required; set FITTRACK_GOOSE to its executable")
 	}
-	admin, err := connect(ownerURL, "postgres", major)
+	admin, err := connect(ownerURL, "postgres", target)
 	if err != nil {
 		return err
 	}
@@ -239,7 +261,7 @@ func setup() error {
 			return err
 		}
 	}
-	runtimeConnection, err := connect(runtimeURL, "postgres", major)
+	runtimeConnection, err := connect(runtimeURL, "postgres", target)
 	if err != nil {
 		return errors.New("fittrack_app authentication failed; no existing password was changed")
 	}
@@ -260,8 +282,8 @@ func setup() error {
 				return err
 			}
 		}
-		connection, _ := localURL(ownerURL, name)
-		db, err := connect(connection, name, major)
+		connection, _ := localURL(ownerURL, name, target)
+		db, err := connect(connection, name, target)
 		if err != nil {
 			return err
 		}
@@ -272,7 +294,7 @@ func setup() error {
 		if err = migration.Run(); err != nil {
 			return fmt.Errorf("migrate %s failed (%v); data preserved, connection details withheld", name, err)
 		}
-		db, err = connect(connection, name, major)
+		db, err = connect(connection, name, target)
 		if err != nil {
 			return err
 		}

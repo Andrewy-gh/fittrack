@@ -21,21 +21,25 @@ func check(mode string) string {
 	ctx = deadline
 	var cfg allocation
 	if json.Unmarshal([]byte(os.Getenv("FITTRACK_DATABASE_CONFIG")), &cfg) != nil ||
-		!regexp.MustCompile(`^[a-z0-9_]+_[a-f0-9]{12}$`).MatchString(cfg.ID) || cfg.Postgres.Host != "127.0.0.1" || cfg.Postgres.Port != 55432 {
+		!regexp.MustCompile(`^[a-z0-9_]+_[a-f0-9]{12}$`).MatchString(cfg.ID) {
 		return "invalid_configuration"
 	}
 	major, err := strconv.Atoi(os.Getenv("FITTRACK_POSTGRES_MAJOR"))
-	if err != nil || major != 15 {
+	if err != nil {
+		return "invalid_configuration"
+	}
+	target, err := targetFor(major, cfg)
+	if err != nil {
 		return "invalid_configuration"
 	}
 	if mode != "bootstrap" && mode != "dev" && mode != "test" && mode != "rls" && mode != "e2e" {
 		return "invalid_configuration"
 	}
-	ownerURL, err := localURL(os.Getenv("FITTRACK_LOCAL_DATABASE_URL"), "postgres")
+	ownerURL, err := localURL(os.Getenv("FITTRACK_LOCAL_DATABASE_URL"), "postgres", target)
 	if err != nil {
 		return "invalid_configuration"
 	}
-	runtimeURL, err := localURL(os.Getenv("FITTRACK_LOCAL_RUNTIME_DATABASE_URL"), "postgres")
+	runtimeURL, err := localURL(os.Getenv("FITTRACK_LOCAL_RUNTIME_DATABASE_URL"), "postgres", target)
 	if err != nil {
 		return "invalid_configuration"
 	}
@@ -44,7 +48,7 @@ func check(mode string) string {
 	if owner.User.Username() == "fittrack_app" || runtime.User.Username() != "fittrack_app" {
 		return "invalid_configuration"
 	}
-	admin, err := connect(ownerURL, "postgres", major)
+	admin, err := connect(ownerURL, "postgres", target)
 	if err != nil {
 		return "cluster_unavailable"
 	}
@@ -67,7 +71,7 @@ func check(mode string) string {
  AND NOT EXISTS(SELECT 1 FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname='fittrack_app'))`).Scan(&safe) != nil || !safe {
 		return "unsafe_runtime_role"
 	}
-	role, err := connect(runtimeURL, "postgres", major)
+	role, err := connect(runtimeURL, "postgres", target)
 	if err != nil {
 		return "runtime_auth"
 	}
@@ -86,7 +90,7 @@ func check(mode string) string {
 	if actualOwner != owner.User.Username() || marker != "fittrack-worktree:"+cfg.ID {
 		return "database_ownership"
 	}
-	connection, err := connect(ownerURL, name, major)
+	connection, err := connect(ownerURL, name, target)
 	if err != nil {
 		return "database_unprepared"
 	}
@@ -120,7 +124,7 @@ func check(mode string) string {
 		}
 	}
 	if mode == "rls" {
-		runtimeDB, err := connect(runtimeURL, name, major)
+		runtimeDB, err := connect(runtimeURL, name, target)
 		if err != nil {
 			return "runtime_auth"
 		}

@@ -30,25 +30,25 @@
     "dev": {
       "setup": [
         "--major",
-        "15"
+        "selected"
       ]
     },
     "test": {
       "setup": [
         "--major",
-        "15"
+        "selected"
       ]
     },
     "rls": {
       "setup": [
         "--major",
-        "15"
+        "selected"
       ]
     },
     "e2e": {
       "setup": [
         "--major",
-        "15"
+        "selected"
       ]
     },
     "unit": {}

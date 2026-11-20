@@ -84,9 +84,102 @@ existing database setup under native admission/containment, then doctor again.
 It stops on failure without retries or rollback. FitTrack's existing setup owns
 role/password/data preservation and refuses adoption of unowned databases.
 
-Modes: `dev`, `test` (Go/integration), `rls`, `e2e`, `unit`. Manifest preparation
-pins PostgreSQL major 15 and provisions the existing four isolated DB targets.
-The bridge accepts `--major 15` as an optional assertion; another major is refused.
+Modes: `dev`, `test` (Go/integration), `rls`, `e2e`, `unit`. Preparation
+provisions four isolated database targets. The default remains PostgreSQL 15;
+the bridge's optional `--major` assertion must match the selected target.
+
+### Separate Supabase PostgreSQL 17.12 worktree on Windows
+
+The optional `.worktree/postgres-target` file with exact text `supabase-17.12`
+selects the pinned Supabase image on `127.0.0.1:26432`. Leave it absent for
+the standard PG15 setup. This opt-in requires the exact Supabase image digest
+`sha256:8630950b489ecc70563300180287a98c192a4a48f5ae00b4febdaeea1abe85de`,
+a running container labeled `fittrack.local-postgres=17.12` and
+`fittrack.worktree=<native worktree ID>`, and a single loopback Docker port
+mapping `127.0.0.1:26432:5432`. The Go checker verifies the running container,
+address and exact server patch version before database setup. Do not use this
+opt-in to adopt or migrate existing PG15 data. CI stays on its own pin.
+
+For a fresh, clean worktree, launch Docker Desktop's Linux engine and run
+these commands from that worktree's root in PowerShell 7:
+
+```powershell
+$env:WORKTREE_RUNTIME = "$HOME\go\bin\worktree-runtime.exe"
+$env:GOTOOLCHAIN = 'go1.26.11'
+$oldGobin = $env:GOBIN
+try {
+  $env:GOBIN = Join-Path $PWD.Path '.worktree\bin'
+  go install -p=1 -tags='no_mysql,no_sqlite3,no_mssql,no_ydb,no_vertica,no_clickhouse,no_turso' github.com/pressly/goose/v3/cmd/goose@v3.24.3
+  if ($LASTEXITCODE -ne 0) { throw 'Goose installation failed' }
+} finally {
+  $env:GOBIN = $oldGobin
+}
+docker --host npipe:////./pipe/docker_engine pull supabase/postgres@sha256:8630950b489ecc70563300180287a98c192a4a48f5ae00b4febdaeea1abe85de
+./scripts/bootstrap-local-pg17.ps1 -Runtime $env:WORKTREE_RUNTIME
+$env:WORKTREE_PROFILE = (Resolve-Path .worktree/pg17-profile.json).Path
+node scripts/worktree.ts prepare --mode test --major 17 --json
+```
+
+Bootstrap refuses existing containers, volumes, or environment files. It never
+removes data and should not be rerun for an already provisioned checkout. Do
+not export other checkouts' database or provider credentials in this shell.
+The last command creates/migrates the four owned databases. For the frontend
+and API, install locked client dependencies (`cd client; bun install --frozen-lockfile`)
+and add `PROJECT_ID` and `E2E_LOCAL_AUTH_ENABLED=true` to `server/.env.local`.
+Create `client/.env.local` with the matching `VITE_PROJECT_ID`,
+`VITE_PUBLISHABLE_CLIENT_KEY`, and `VITE_E2E_LOCAL_AUTH_ENABLED=true`. Use only
+public Stack SDK configuration from the documented authenticated E2E workflow;
+do not copy any secret keys or account credentials.
+
+For a provisioned PG17 worktree, run from its root in PowerShell:
+
+```powershell
+$env:WORKTREE_RUNTIME = "$HOME\go\bin\worktree-runtime.exe"
+$env:WORKTREE_PROFILE = (Resolve-Path .worktree/pg17-profile.json).Path
+$env:GOTOOLCHAIN = 'go1.26.11'
+# Only when the dedicated container is stopped:
+docker --host npipe:////./pipe/docker_engine start ((Get-Content $env:WORKTREE_PROFILE -Raw | ConvertFrom-Json).environment.FITTRACK_LOCAL_POSTGRES_CONTAINER)
+node scripts/worktree.ts doctor --mode dev --major 17 --json
+```
+
+The ignored profile selects the dedicated container and pinned Goose executable without invoking Doppler. The worktree's
+ignored `server/.env.local` contains freshly generated local-only login URLs;
+do not copy them to another checkout. Use two terminals with the same environment
+above, then run from the worktree root:
+
+```powershell
+# Terminal 1
+Push-Location server
+node ../scripts/worktree.ts run dev -- go run ./cmd/api
+# Terminal 2
+Push-Location client
+node ../scripts/worktree.ts run dev -- bun run dev
+```
+
+Use the frontend URL shown by Vite. With the PG17 opt-in, the managed
+development API, metrics and Vite only listen on loopback. The prepared example uses the documented
+public Stack SDK configuration and local synthetic authentication, not a
+production login. For a manual authenticated browser session, open the local
+frontend, then run the following in that tab's developer console. The two
+ports come from the worktree's allocation: use the frontend and API ports from
+`node scripts/worktree.ts status`. Replace `API_PORT` below.
+The bootstrap call is restricted to development and creates only the local
+synthetic user.
+
+```js
+const r = await fetch("http://127.0.0.1:API_PORT/dev/e2e/auth/bootstrap", { method: "POST" });
+if (!r.ok) throw new Error(`Local bootstrap failed: ${r.status}`);
+const u = await r.json();
+localStorage.setItem("fittrack-local-e2e-auth", JSON.stringify({
+  userId: u.user_id, email: u.email, displayName: u.display_name
+}));
+location.reload();
+```
+
+From the worktree root, `node scripts/worktree.ts stop dev`
+stops the app. To keep the isolated DB data without leaving it running, use
+`docker stop <dedicated-container>`; its named data volume is preserved.
+
 Unit preparation skips database setup and credential-provider retrieval:
 
 ```bash
