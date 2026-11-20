@@ -254,8 +254,6 @@ export type FeatureaccessFeatureAccessResponse = {
   created_at: string;
   expires_at?: string;
   feature_key: string;
-  granted_by?: string;
-  note?: string;
   source: string;
   source_reference?: string;
   starts_at: string;

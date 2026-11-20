@@ -755,14 +755,6 @@ export const featureaccess_FeatureAccessResponseSchema = {
       type: "string",
       example: "ai_chatbot",
     },
-    granted_by: {
-      type: "string",
-      example: "andy",
-    },
-    note: {
-      type: "string",
-      example: "dev demo access",
-    },
     source: {
       type: "string",
       example: "manual",

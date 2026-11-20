@@ -534,12 +534,6 @@ definitions:
       feature_key:
         example: ai_chatbot
         type: string
-      granted_by:
-        example: andy
-        type: string
-      note:
-        example: dev demo access
-        type: string
       source:
         example: manual
         type: string
