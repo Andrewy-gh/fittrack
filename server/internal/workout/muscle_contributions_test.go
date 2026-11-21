@@ -2,6 +2,7 @@ package workout
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -18,11 +19,12 @@ import (
 type muscleStub struct {
 	rows   []db.ListMuscleContributionSetsRow
 	params db.ListMuscleContributionSetsParams
+	err    error
 }
 
 func (s *muscleStub) ListMuscleContributionSets(_ context.Context, p db.ListMuscleContributionSetsParams) ([]db.ListMuscleContributionSetsRow, error) {
 	s.params = p
-	return s.rows, nil
+	return s.rows, s.err
 }
 func muscleRow(id int32, catalog string) db.ListMuscleContributionSetsRow {
 	return db.ListMuscleContributionSetsRow{WorkoutID: 1, WorkoutDate: pgTimestamp(time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)), ExerciseID: id, ExerciseName: catalog, CatalogID: pgtype.Text{String: catalog, Valid: catalog != ""}, SetType: "working", Reps: 8}
@@ -89,6 +91,27 @@ func TestMuscleContributionsHTTPAndDST(t *testing.T) {
 				require.Contains(t, rec.Body.String(), `"partial":true`)
 				require.Contains(t, rec.Body.String(), `"exercises":[]`)
 			}
+		})
+	}
+}
+func TestMuscleContributionsHTTPServiceFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		err     error
+		message string
+	}{
+		{"unexpected failure", errors.New("synthetic failure"), "Could not load muscle contributions"},
+		{"sensitive database failure", errors.New("database synthetic secret"), "internal error"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &muscleStub{err: tc.err}
+			handler := NewMuscleContributionHandler(NewMuscleContributionService(stub, func() time.Time { return time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC) }), slog.New(slog.NewTextHandler(io.Discard, nil)))
+			req := httptest.NewRequest("GET", "/api/analytics/muscle-contributions?startDate=2026-03-08&timezone=UTC", nil)
+			req = req.WithContext(user.WithContext(req.Context(), "owner"))
+			rec := httptest.NewRecorder()
+			handler.Get(rec, req)
+			require.Equal(t, 500, rec.Code)
+			require.JSONEq(t, `{"message":"`+tc.message+`"}`, rec.Body.String())
 		})
 	}
 }
