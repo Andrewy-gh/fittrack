@@ -570,7 +570,8 @@ describe("ai chat api wrapper", () => {
       const startedAt = Date.now();
       let completes = true;
       vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
-        const settled = completes && Date.now() - startedAt >= 74_000;
+        // A stale queued run can still complete after reclaim and generation.
+        const settled = completes && Date.now() - startedAt >= 167_000;
         return new Response(
           JSON.stringify({
             conversation: {
@@ -599,7 +600,7 @@ describe("ai chat api wrapper", () => {
         (detail) => detail.messages[0]?.content,
         () => "timed out",
       );
-      await vi.advanceTimersByTimeAsync(76_000);
+      await vi.advanceTimersByTimeAsync(169_000);
       expect(await lateResult).toBe("late answer");
 
       completes = false;

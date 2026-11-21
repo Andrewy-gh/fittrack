@@ -831,6 +831,21 @@ export class ChatOperationController {
       : { kind: "message", conversationId, assistantMessageId };
   }
 
+  /** Retain a known submitted run when recovery cannot establish its outcome. */
+  retainUnresolvedSubmittedRun(
+    operation: ChatOperation,
+    conversationId: number,
+  ): void {
+    const current = this.operationState;
+    if (
+      current.phase !== "idle" &&
+      current.target.kind === "run" &&
+      current.target.conversationId === conversationId
+    ) {
+      this.keepOperationUnresolved(operation);
+    }
+  }
+
   private keepOperationUnresolved(
     operation: ChatOperation,
     target?: ChatOperationTarget,
