@@ -1,5 +1,5 @@
 import { workoutTextError } from "@/lib/workout-text";
-import { useNavigate } from "@tanstack/react-router";
+import { Navigate, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   useUpdateWorkoutForUserMutation,
@@ -179,9 +179,13 @@ export function EditWorkoutPage({
 
     // Validate exercise index
     if (exerciseIndex < 0 || exerciseIndex >= exercises.length) {
-      // Silently redirect to main
-      navigate({ search: {} });
-      return null;
+      return (
+        <Navigate
+          to="/workouts/$workoutId/edit"
+          params={{ workoutId }}
+          search={{}}
+        />
+      );
     }
 
     const handleExerciseBack = () => {

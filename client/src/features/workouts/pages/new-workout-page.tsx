@@ -1,4 +1,5 @@
 import { Suspense, type ReactNode } from "react";
+import { Navigate } from "@tanstack/react-router";
 import { type WorkoutFocus } from "@/features/workouts/api/workouts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -186,9 +187,12 @@ export function NewWorkoutPage({
 
     // Validate exercise index
     if (exerciseIndex < 0 || exerciseIndex >= exercises.length) {
-      // Silently redirect to main
-      workoutForm.clearSearch();
-      return null;
+      return (
+        <Navigate
+          to="/workouts/new"
+          search={{}}
+        />
+      );
     }
 
     const exerciseName = exercises[exerciseIndex]?.name;
