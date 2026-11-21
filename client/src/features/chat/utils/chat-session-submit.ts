@@ -256,8 +256,10 @@ async function handleStreamFailureRecovery({
   if (!recoveredDetail) {
     // A disconnected stream and failed recovery reveal no persisted outcome.
     // Only a pre-start optimistic placeholder can be locally marked failed.
-    if (streamStarted) state.setLoadError(getErrorMessage(submitFailure));
-    else markAssistantMessageFailed(state, tempAssistantId, submitFailure);
+    if (streamStarted) {
+      state.setLoadError(getErrorMessage(submitFailure));
+      controller.retainUnresolvedSubmittedRun(operation, activeConversationId);
+    } else markAssistantMessageFailed(state, tempAssistantId, submitFailure);
   }
 
   if (recoveryOutcome !== "recovered_completed") {

@@ -269,9 +269,65 @@ describe("useAIChatSession", () => {
       );
       expect(result.current.messages.at(-1)?.error_message).toBeUndefined();
       expect(result.current.loadError).toBe("Recovery unavailable");
-      expect(result.current.isSubmitting).toBe(false);
+      expect(result.current.isSubmitting).toBe(failure === "disconnect");
+      expect(result.current.canStop).toBe(failure === "disconnect");
     },
   );
+
+  it("retains the submitted run for Stop after recovery times out, then releases it on settlement", async () => {
+    mockPollConversation.mockRejectedValue(
+      new Error(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      ),
+    );
+    mockStreamMessage.mockImplementation(
+      async (_id, _prompt, handlers: ResumeStreamHandlers) => {
+        handlers.onStart?.({
+          type: "start",
+          run_id: 91,
+          message_id: 61,
+          sequence: 1,
+        });
+        handlers.onDelta?.({
+          type: "delta",
+          message_id: 61,
+          delta: "partial",
+          sequence: 2,
+        });
+        throw new Error("Disconnected");
+      },
+    );
+    mockStopRun.mockResolvedValue({
+      status: "stopped",
+      message: { id: 61, status: "stopped" },
+    });
+    const { result } = renderSession();
+    await waitFor(() =>
+      expect(result.current.isLoadingConversation).toBe(false),
+    );
+    await act(async () => {
+      await result.current.submitPromptValue("hello");
+    });
+    expect(result.current.canStop).toBe(true);
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.messages.at(-1)).toEqual(
+      expect.objectContaining({
+        id: 61,
+        content: "partial",
+        status: "streaming",
+      }),
+    );
+    await act(async () => {
+      await result.current.submitPromptValue("duplicate");
+    });
+    expect(mockStreamMessage).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await result.current.stopRun();
+    });
+    expect(mockStopRun).toHaveBeenCalledWith(41, 91);
+    expect(result.current.canStop).toBe(false);
+    expect(result.current.isSubmitting).toBe(false);
+  });
 
   it("preserves the first prompt while navigating to its newly created conversation", async () => {
     mockCreateConversation.mockResolvedValue({
