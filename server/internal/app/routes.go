@@ -186,7 +186,25 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 
 		file, err := http.Dir("./dist").Open(r.URL.Path)
 		if err == nil {
+			info, statErr := file.Stat()
 			_ = file.Close()
+			if statErr != nil {
+				http.NotFound(w, r)
+				return
+			}
+			if info.IsDir() {
+				index, indexErr := http.Dir("./dist").Open(path.Join(r.URL.Path, "index.html"))
+				if indexErr != nil {
+					http.NotFound(w, r)
+					return
+				}
+				indexInfo, indexStatErr := index.Stat()
+				_ = index.Close()
+				if indexStatErr != nil || indexInfo.IsDir() {
+					http.NotFound(w, r)
+					return
+				}
+			}
 			setStaticCacheHeader(w, r.URL.Path)
 			fs.ServeHTTP(w, r)
 			return
