@@ -259,6 +259,7 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 	writeStaticTestFile(t, "sitemap.xml", "<urlset></urlset>")
 	writeStaticTestFile(t, "llms.txt", "# FitTrack\n")
 	writeStaticTestFile(t, filepath.Join("assets", "index-abc123.js"), "console.log('ok')")
+	writeStaticTestFile(t, filepath.Join("guide", "index.html"), "guide index")
 
 	api := &api{}
 	handler := api.handleStaticFiles()
@@ -318,6 +319,24 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 			wantCache:  "public, max-age=31536000, immutable",
 		},
 		{
+			name:       "directories do not expose listings",
+			path:       "/assets/",
+			accept:     "text/html",
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "directory without trailing slash does not redirect to a listing",
+			path:       "/assets",
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "directory index remains available",
+			path:       "/guide/",
+			wantStatus: http.StatusOK,
+			wantCache:  "public, max-age=3600",
+			wantBody:   "guide index",
+		},
+		{
 			name:       "missing old assets are still not rewritten to html",
 			path:       "/assets/missing-old-build.js",
 			wantStatus: http.StatusNotFound,
@@ -345,6 +364,17 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 				t.Fatalf("expected body %q, got %q", tt.wantBody, rr.Body.String())
 			}
 		})
+	}
+}
+
+func TestStaticFiles_RootWithoutIndexDoesNotList(t *testing.T) {
+	withStaticTestDirectory(t)
+	writeStaticTestFile(t, "asset.js", "asset")
+
+	rr := httptest.NewRecorder()
+	(&api{}).handleStaticFiles().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rr.Code != http.StatusNotFound || strings.Contains(rr.Body.String(), "asset.js") {
+		t.Fatalf("root without index: status %d, body %q", rr.Code, rr.Body.String())
 	}
 }
 
