@@ -77,7 +77,7 @@ After deploy, verify Fly is configured to scrape the internal listener:
 flyctl config show -a fittrack --toml
 ```
 
-Confirm the public metrics endpoint still requires credentials when metrics auth is configured:
+Before enforcing this behavior, inventory public scrapers and migrate any anonymous jobs with their owner. The public endpoint requires both `METRICS_USERNAME` and `METRICS_PASSWORD`; if either is empty it returns 404 instead of metrics. With both configured, confirm an unauthenticated request is challenged:
 
 ```sh
 curl -i https://fittrack.fly.dev/metrics

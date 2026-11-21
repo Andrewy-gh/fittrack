@@ -42,9 +42,12 @@ func (api *api) routes(wh *workout.WorkoutHandler, eh *exercise.ExerciseHandler,
 		mux.HandleFunc("POST /stripe/webhook", bh.Webhook)
 	}
 
-	// Wrap with basic auth if credentials are configured
-	protectedMetrics := middleware.BasicAuth(api.cfg.MetricsUsername, api.cfg.MetricsPassword, api.logger)(api.metricsHandler())
-	mux.Handle("GET /metrics", protectedMetrics)
+	// Keep this route explicit so incomplete credentials cannot expose metrics or the SPA.
+	if api.cfg.MetricsUsername == "" || api.cfg.MetricsPassword == "" {
+		mux.Handle("GET /metrics", http.NotFoundHandler())
+	} else {
+		mux.Handle("GET /metrics", middleware.BasicAuth(api.cfg.MetricsUsername, api.cfg.MetricsPassword, api.logger)(api.metricsHandler()))
+	}
 
 	// API endpoints (authentication required)
 	mux.HandleFunc("GET /api/workouts", wh.ListWorkouts)

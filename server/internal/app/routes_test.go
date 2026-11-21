@@ -113,31 +113,73 @@ func TestRoutes_DoesNotExposeAIChatValidationEndpoints(t *testing.T) {
 	}
 }
 
-func TestRoutes_ProtectsPublicMetricsWhenCredentialsConfigured(t *testing.T) {
+func TestRoutes_PublicMetricsAuthentication(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	api := &api{
-		logger: logger,
-		cfg: &config.Config{
-			MetricsUsername: "metrics-user",
-			MetricsPassword: "metrics-password",
-		},
-		pool: nil,
+	cases := []struct {
+		name, username, password, requestUser, requestPassword string
+		auth                                                   bool
+		status                                                 int
+	}{
+		{"complete missing auth", "user", "password", "", "", false, http.StatusUnauthorized},
+		{"complete wrong user", "user", "password", "wrong", "password", true, http.StatusUnauthorized},
+		{"complete wrong password", "user", "password", "user", "wrong", true, http.StatusUnauthorized},
+		{"complete correct auth", "user", "password", "user", "password", true, http.StatusOK},
+		{"missing both anonymous", "", "", "", "", false, http.StatusNotFound},
+		{"missing username anonymous", "", "password", "", "", false, http.StatusNotFound},
+		{"missing password anonymous", "user", "", "", "", false, http.StatusNotFound},
+		{"missing both", "", "", "user", "password", true, http.StatusNotFound},
+		{"missing username", "", "password", "user", "password", true, http.StatusNotFound},
+		{"missing password", "user", "", "user", "password", true, http.StatusNotFound},
 	}
+	for _, tc := range cases {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			t.Run(tc.name+"/"+method, func(t *testing.T) {
+				cfg := &config.Config{MetricsUsername: tc.username, MetricsPassword: tc.password}
+				api := &api{logger: logger, cfg: cfg}
+				mux := api.routes(&workout.WorkoutHandler{}, &exercise.ExerciseHandler{}, &featureaccess.Handler{}, health.NewHandler(logger, nil), aichat.NewHandler(logger, nil), nil, nil, nil, nil)
+				req := httptest.NewRequest(method, "/metrics", nil)
+				req.Header.Set("Accept", "text/html")
+				if tc.auth {
+					req.SetBasicAuth(tc.requestUser, tc.requestPassword)
+				}
+				rr := httptest.NewRecorder()
+				mux.ServeHTTP(rr, req)
+				if rr.Code != tc.status {
+					t.Fatalf("status = %d, want %d", rr.Code, tc.status)
+				}
+				if tc.status == http.StatusUnauthorized && rr.Header().Get("WWW-Authenticate") != `Basic realm="Metrics"` {
+					t.Fatalf("missing Basic challenge: %v", rr.Header())
+				}
+				if tc.status == http.StatusOK {
+					if !strings.Contains(rr.Header().Get("Content-Type"), "text/plain") {
+						t.Fatalf("unexpected content type: %v", rr.Header())
+					}
+					if method == http.MethodGet && !strings.Contains(rr.Body.String(), "go_goroutines") {
+						t.Fatal("missing Prometheus exposition")
+					}
+				} else if strings.Contains(rr.Body.String(), "go_goroutines") || strings.Contains(rr.Header().Get("Content-Type"), "text/html") || strings.Contains(strings.ToLower(rr.Body.String()), "<html") {
+					t.Fatalf("denial exposed metrics or HTML: %q", rr.Body.String())
+				}
+			})
+		}
+	}
+}
 
-	wh := &workout.WorkoutHandler{}
-	eh := &exercise.ExerciseHandler{}
-	fh := &featureaccess.Handler{}
-	hh := health.NewHandler(logger, nil)
-	ah := aichat.NewHandler(logger, nil)
-
-	mux := api.routes(wh, eh, fh, hh, ah, nil, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	rr := httptest.NewRecorder()
-
-	mux.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+func TestMetricsServer_InternalScrapeIgnoresPublicCredentials(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	for _, cfg := range []*config.Config{
+		{MetricsUsername: "user", MetricsPassword: "password"},
+		{MetricsUsername: "user"},
+		{MetricsPassword: "password"},
+		{},
+	} {
+		api := &api{logger: logger, cfg: cfg}
+		server := newMetricsServer(cfg, api.metricsHandler(), logger)
+		rr := httptest.NewRecorder()
+		server.Handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+		if rr.Code != http.StatusOK || !strings.Contains(rr.Header().Get("Content-Type"), "text/plain") || !strings.Contains(rr.Body.String(), "go_goroutines") {
+			t.Fatalf("internal scrape: status %d, content type %q, expected Prometheus exposition", rr.Code, rr.Header().Get("Content-Type"))
+		}
 	}
 }
 
