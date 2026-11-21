@@ -564,6 +564,59 @@ describe("ai chat api wrapper", () => {
     },
   );
 
+  it("delivers a late persisted response and still times out a run that never settles", async () => {
+    vi.useFakeTimers();
+    try {
+      const startedAt = Date.now();
+      let completes = true;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        const settled = completes && Date.now() - startedAt >= 74_000;
+        return new Response(
+          JSON.stringify({
+            conversation: {
+              id: 41,
+              created_at: "2026-03-26T17:00:00Z",
+              updated_at: "2026-03-26T17:00:00Z",
+            },
+            messages: [
+              {
+                id: 61,
+                conversation_id: 41,
+                role: "assistant",
+                content: settled ? "late answer" : "partial",
+                status: settled ? "completed" : "streaming",
+                created_at: "2026-03-26T17:00:00Z",
+                updated_at: "2026-03-26T17:00:00Z",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      });
+
+      const late = pollAIChatConversationUntilSettled(41);
+      const lateResult = late.then(
+        (detail) => detail.messages[0]?.content,
+        () => "timed out",
+      );
+      await vi.advanceTimersByTimeAsync(76_000);
+      expect(await lateResult).toBe("late answer");
+
+      completes = false;
+      const timeout = pollAIChatConversationUntilSettled(41);
+      const timeoutResult = timeout.then(
+        () => "settled",
+        (error: Error) => error.message,
+      );
+      await vi.advanceTimersByTimeAsync(181_000);
+      expect(await timeoutResult).toBe(
+        "AI chat recovery timed out while waiting for persisted conversation state",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("requests chat recovery for an active conversation", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

@@ -208,7 +208,9 @@ type ConversationRecoveryOptions = {
 };
 
 const defaultConversationPollIntervalMs = 1000;
-const defaultConversationPollTimeoutMs = 55000;
+// Allow a stale queued run (90s) to be recovered and generated (75s),
+// with a little headroom for polling and persistence. Queue delays can exceed it.
+const defaultConversationPollTimeoutMs = 180000;
 
 async function getAuthHeaders(contentType = false): Promise<Headers> {
   const headers = new Headers();
