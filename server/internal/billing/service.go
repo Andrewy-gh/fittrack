@@ -45,18 +45,26 @@ const (
 )
 
 func NewService(logger *slog.Logger, repo Repository, stripeSecretKey string, webhookSecret string, premiumPriceID string, appBaseURL string, trialPromptCap int) *Service {
+	key := strings.TrimSpace(stripeSecretKey)
+	backend := stripe.GetBackend(stripe.APIBackend)
+	// Use the same resource clients as the package functions, with a service-local key.
+	// This preserves the SDK's existing parameters and wire behavior.
+	customers := customer.Client{B: backend, Key: key}
+	checkoutSessions := session.Client{B: backend, Key: key}
+	portalSessions := portalsession.Client{B: backend, Key: key}
+	subscriptions := stripesubscription.Client{B: backend, Key: key}
 	return &Service{
 		logger:                logger,
 		repo:                  repo,
-		stripeSecretKey:       strings.TrimSpace(stripeSecretKey),
+		stripeSecretKey:       key,
 		webhookSecret:         strings.TrimSpace(webhookSecret),
 		premiumPriceID:        strings.TrimSpace(premiumPriceID),
 		appBaseURL:            strings.TrimRight(strings.TrimSpace(appBaseURL), "/"),
 		trialPromptCap:        int32(trialPromptCap),
-		createCustomer:        customer.New,
-		createCheckoutSession: session.New,
-		createPortalSession:   portalsession.New,
-		cancelSubscription:    stripesubscription.Cancel,
+		createCustomer:        customers.New,
+		createCheckoutSession: checkoutSessions.New,
+		createPortalSession:   portalSessions.New,
+		cancelSubscription:    subscriptions.Cancel,
 		constructEvent: func(payload []byte, header string, secret string) (stripe.Event, error) {
 			return webhook.ConstructEventWithOptions(payload, header, secret, webhook.ConstructEventOptions{
 				IgnoreAPIVersionMismatch: true,
@@ -75,7 +83,6 @@ func (s *Service) CreateCheckoutSession(ctx context.Context) (*CheckoutSessionRe
 		return nil, err
 	}
 
-	stripe.Key = s.stripeSecretKey
 	customerID, err := s.ensureStripeCustomer(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -127,8 +134,6 @@ func (s *Service) CreateCustomerPortalSession(ctx context.Context, destination P
 	if err != nil {
 		return nil, err
 	}
-
-	stripe.Key = s.stripeSecretKey
 	customerID, err := s.existingStripeCustomer(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -169,8 +174,6 @@ func (s *Service) CreateSubscriptionCancelPortalSession(ctx context.Context) (*C
 	if err != nil {
 		return nil, err
 	}
-
-	stripe.Key = s.stripeSecretKey
 	customerID, err := s.existingStripeCustomer(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -259,7 +262,6 @@ func (s *Service) CancelCurrentSubscriptionImmediately(ctx context.Context) erro
 		return ErrBillingNotConfigured
 	}
 
-	stripe.Key = s.stripeSecretKey
 	_, err = s.cancelSubscription(subscription.StripeSubscriptionID, &stripe.SubscriptionCancelParams{})
 	if err != nil {
 		return fmt.Errorf("cancel stripe subscription: %w", err)
