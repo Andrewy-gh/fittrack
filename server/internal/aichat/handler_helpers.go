@@ -1,9 +1,11 @@
 package aichat
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,16 +20,30 @@ import (
 func (h *Handler) decodeSendMessageRequest(w http.ResponseWriter, r *http.Request) (*SendMessageRequest, bool) {
 	var req SendMessageRequest
 
-	decoder := json.NewDecoder(r.Body)
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxChatBodyBytes))
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			response.ErrorJSON(w, r, h.logger, http.StatusRequestEntityTooLarge, "chat request body exceeds 64 KiB", nil)
+		} else {
+			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to read request body", err)
+		}
+		return nil, false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
 		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return nil, false
 	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "request body must contain one JSON value", nil)
+		return nil, false
+	}
 
 	req.Prompt = strings.TrimSpace(req.Prompt)
-	if req.Prompt == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "prompt is required", nil)
+	if err := validateChatPrompt(req.Prompt); err != nil {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
 		return nil, false
 	}
 
@@ -105,6 +121,8 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 	case errors.As(err, &errNotFound):
 		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
+	case errors.Is(err, errPromptRequired), errors.Is(err, errPromptTooLarge):
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
 	case errors.Is(err, ErrFeatureDisabled):
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat feature is not enabled for this user", nil)
 	case errors.Is(err, billing.ErrTrialPromptLimitExceeded):
