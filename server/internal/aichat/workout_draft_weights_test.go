@@ -263,7 +263,7 @@ func TestWorkoutDraftToolKeepsReportedLoadWhenLoggedHistoryIsSkipped(t *testing.
 	date := time.Now().Format(time.RFC3339)
 	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
 		return `{"date":"` + date + `","exercises":[
-			{"name":"Dumbbell Bench Press","sets":[{"reps":8,"setType":"working"}]},
+			{"name":"Dumbbell Floor Press","sets":[{"reps":8,"setType":"working"}]},
 			{"name":"Dumbbell Row","sets":[{"reps":8,"setType":"working"}]}
 		]}`
 	})
@@ -275,7 +275,7 @@ func TestWorkoutDraftToolKeepsReportedLoadWhenLoggedHistoryIsSkipped(t *testing.
 		"skipHistoryWeights": true,
 		"equipment":          "no equipment except adjustable dumbbells", "sessionDuration": 10, "workoutFocus": "upper body", "injuries": "none",
 		"loadChoices": []map[string]any{
-			{"exercise": "Dumbbell Bench Press", "kind": "reported", "weight": 30.0, "reps": 8, "setType": "working"},
+			{"exercise": "Dumbbell Floor Press", "kind": "reported", "weight": 30.0, "reps": 8, "setType": "working"},
 		},
 	})
 	require.NoError(t, err)
