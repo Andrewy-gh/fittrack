@@ -42,12 +42,13 @@ type workoutDraftLoadChoice struct {
 }
 
 type workoutDraftWeightLimit struct {
-	Exercise string  `json:"exercise" jsonschema:"description=Exact name of the exercise subject to this equipment limit."`
-	Weight   float64 `json:"weight" jsonschema:"description=Maximum available load in pounds for this exercise."`
+	Equipment string  `json:"equipment,omitempty" jsonschema:"description=Equipment class affected by this ceiling such as dumbbell or kettlebell. Include it for a limit that applies to every exercise with that equipment."`
+	Exercise  string  `json:"exercise,omitempty" jsonschema:"description=Exact exercise name when the limit is specific to that exercise. May be empty for an equipment-class limit."`
+	Weight    float64 `json:"weight" jsonschema:"description=Maximum available load in pounds for this exercise."`
 }
 
 type WorkoutGenerationToolInput struct {
-	ExerciseWeightLimits []workoutDraftWeightLimit `json:"exerciseWeightLimits,omitempty" jsonschema:"description=Copy explicitly stated equipment limits to every affected exercise when they do not apply to the whole workout. Use exact exercise names. If affected exercises cannot be determined set skipHistoryWeights."`
+	ExerciseWeightLimits []workoutDraftWeightLimit `json:"exerciseWeightLimits,omitempty" jsonschema:"description=Copy explicitly stated limits for each affected equipment class or specific exercise. If the affected equipment cannot be determined set skipHistoryWeights."`
 
 	BodyweightOnly     bool                     `json:"bodyweightOnly,omitempty" jsonschema:"description=Set true when the user wants an entirely bodyweight-only workout. Do not invent zero-valued entries for each exercise."`
 	SkipHistoryWeights bool                     `json:"skipHistoryWeights,omitempty" jsonschema:"description=Set true for the whole workout when the user wants blank weights, bodyweight only, rehab, deload, easier loads, or describes limited equipment with uncertain compatible loads. Specific explicit requested numbers or no added weight still apply."`
@@ -350,14 +351,23 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 			continue
 		}
 		builder.WriteString(fmt.Sprintf("- Include %q using that exact name if feasible and compatible with the request.\n", choice.Exercise))
-		if choice.Kind == "requested" && choice.Reps > 0 {
-			builder.WriteString(fmt.Sprintf("  Prescribe %d reps for %s of %q.\n", choice.Reps, draftLoadScope(choice), choice.Exercise))
+		if choice.Kind == "requested" {
+			if choice.Reps > 0 {
+				builder.WriteString(fmt.Sprintf("  Prescribe %d reps for %s of %q.\n", choice.Reps, draftLoadScope(choice), choice.Exercise))
+			} else {
+				builder.WriteString(fmt.Sprintf("  Include %s for %q. Choose appropriate reps.\n", draftLoadScope(choice), choice.Exercise))
+			}
 		} else if choice.Kind == "reported" && choice.Reps > 0 {
 			builder.WriteString(fmt.Sprintf("  Use %d working-set reps for this exercise unless the user requests a different target.\n", choice.Reps))
 		}
 	}
 	for _, limit := range input.ExerciseWeightLimits {
-		builder.WriteString(fmt.Sprintf("- Use the exact name %q if including that equipment-limited exercise.\n", limit.Exercise))
+		if limit.Exercise != "" {
+			builder.WriteString(fmt.Sprintf("- Use the exact name %q if including that equipment-limited exercise.\n", limit.Exercise))
+		}
+		if limit.Equipment != "" {
+			builder.WriteString(fmt.Sprintf("- Include equipment type %q in the name of each exercise that uses it.\n", limit.Equipment))
+		}
 	}
 	return builder.String()
 }

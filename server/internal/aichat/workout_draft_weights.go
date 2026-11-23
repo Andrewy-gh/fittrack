@@ -193,14 +193,34 @@ func draftLoadScopeMatches(choice workoutDraftLoadChoice, sets []workout.SetInpu
 
 func draftExerciseWeightLimit(input WorkoutGenerationToolInput, name string) *float64 {
 	limit := input.MaxWeight
+	exerciseEquipment := draftEquipmentClass(name)
 	for _, item := range input.ExerciseWeightLimits {
-		if strings.EqualFold(strings.TrimSpace(item.Exercise), name) &&
-			(limit == nil || item.Weight < *limit) {
+		exactExercise := strings.EqualFold(strings.TrimSpace(item.Exercise), name)
+		equipment := draftEquipmentClass(item.Equipment)
+		classScoped := strings.TrimSpace(item.Equipment) != ""
+		mayUseLimitedEquipment := classScoped && (exerciseEquipment == "" || equipment == "" || exerciseEquipment == equipment)
+		if (exactExercise || mayUseLimitedEquipment) && (limit == nil || item.Weight < *limit) {
 			value := item.Weight
 			limit = &value
 		}
 	}
 	return limit
+}
+
+func draftEquipmentClass(value string) string {
+	for _, word := range strings.Fields(normalizeQualityText(value)) {
+		switch strings.TrimSuffix(word, "s") {
+		case "db", "dumbbell":
+			return "dumbbell"
+		case "bb", "barbell":
+			return "barbell"
+		case "kb", "kettlebell":
+			return "kettlebell"
+		case "cable", "smith", "machine", "band", "bodyweight":
+			return strings.TrimSuffix(word, "s")
+		}
+	}
+	return ""
 }
 
 func matchingDraftWeight(sets []workout.SetInput, target workout.SetInput) *float64 {

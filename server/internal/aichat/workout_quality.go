@@ -42,22 +42,30 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 func validateRequestedDraftReps(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
 	var issues []workoutDraftQualityIssue
 	for _, choice := range input.LoadChoices {
-		if choice.Kind != "requested" || choice.Reps <= 0 {
+		if choice.Kind != "requested" {
 			continue
 		}
-		found := false
+		found, wrongReps := false, false
 		for _, exercise := range draft.Exercises {
-			if strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise.Name) {
-				for i, set := range exercise.Sets {
-					if set.Reps == choice.Reps && draftLoadScopeMatches(choice, exercise.Sets, i) {
-						found = true
-						break
-					}
+			if !strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise.Name) {
+				continue
+			}
+			for i, set := range exercise.Sets {
+				if !draftLoadScopeMatches(choice, exercise.Sets, i) {
+					continue
+				}
+				found = true
+				if choice.Reps > 0 && set.Reps != choice.Reps &&
+					draftLoadChoice(input.LoadChoices, exercise, i) == choice {
+					wrongReps = true
 				}
 			}
 		}
-		if !found {
-			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("%q needs %d reps for %s", choice.Exercise, choice.Reps, draftLoadScope(choice))})
+		switch {
+		case !found:
+			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("include %s for %q", draftLoadScope(choice), choice.Exercise)})
+		case wrongReps:
+			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("%q needs %d reps for every set covered by %s", choice.Exercise, choice.Reps, draftLoadScope(choice))})
 		}
 	}
 	return issues
