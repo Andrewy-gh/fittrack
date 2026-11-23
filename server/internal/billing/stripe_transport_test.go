@@ -45,6 +45,52 @@ func (r *stripeTransportRepo) GetCurrentSubscriptionByUserID(context.Context, st
 	return db.StripeSubscriptions{StripeSubscriptionID: "sub_" + r.id, StripePriceID: textToPg("price_premium"), Status: subscriptionStatusActive}, nil
 }
 
+// This test is serial because stripe.Key is process-global. Check each entry point
+// independently so a future write cannot hide behind the SDK transport test.
+func TestBillingDoesNotMutateGlobalStripeKey(t *testing.T) {
+	const sentinel = "synthetic_global_sentinel"
+	previous := stripe.Key
+	stripe.Key = sentinel
+	t.Cleanup(func() { stripe.Key = previous })
+
+	repo := &stripeTransportRepo{id: "a"}
+	repo.created.Store(true)
+	s := NewService(slog.New(slog.NewTextHandler(io.Discard, nil)), repo, "synthetic_service", "", "price_premium", "https://example.invalid", 30)
+	if stripe.Key != sentinel {
+		t.Fatal("constructing a service changed the global Stripe key")
+	}
+	s.createCheckoutSession = func(*stripe.CheckoutSessionParams) (*stripe.CheckoutSession, error) {
+		return &stripe.CheckoutSession{URL: "https://example.invalid"}, nil
+	}
+	s.createPortalSession = func(*stripe.BillingPortalSessionParams) (*stripe.BillingPortalSession, error) {
+		return &stripe.BillingPortalSession{URL: "https://example.invalid"}, nil
+	}
+	s.cancelSubscription = func(string, *stripe.SubscriptionCancelParams) (*stripe.Subscription, error) {
+		return &stripe.Subscription{}, nil
+	}
+	ctx := user.WithContext(context.Background(), "a")
+	operations := []struct {
+		name string
+		run  func() error
+	}{
+		{"checkout", func() error { _, err := s.CreateCheckoutSession(ctx); return err }},
+		{"portal", func() error { _, err := s.CreateCustomerPortalSession(ctx, PortalReturnChat); return err }},
+		{"cancel portal", func() error { _, err := s.CreateSubscriptionCancelPortalSession(ctx); return err }},
+		{"immediate cancellation", func() error { return s.CancelCurrentSubscriptionImmediately(ctx) }},
+	}
+	for _, op := range operations {
+		t.Run(op.name, func(t *testing.T) {
+			stripe.Key = sentinel
+			if err := op.run(); err != nil {
+				t.Fatalf("operation failed: %v", err)
+			}
+			if stripe.Key != sentinel {
+				t.Error("operation changed the global Stripe key")
+			}
+		})
+	}
+}
+
 // Exercises the actual SDK serialization and authentication, without network access.
 func TestStripeRequestsAreScopedToEachService(t *testing.T) {
 	var mu sync.Mutex
