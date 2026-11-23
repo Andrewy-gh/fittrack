@@ -17,6 +17,7 @@ import (
 	"time"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
 	"github.com/Andrewy-gh/fittrack/server/internal/testutils"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
@@ -197,16 +198,17 @@ func TestExerciseReadRoutesRejectInvalidIDs(t *testing.T) {
 		{"detail", ""},
 		{"recent sets", "/recent-sets"},
 	} {
-		for _, id := range []string{"invalid", "0", "-1", "2147483648"} {
+		for _, id := range []string{"invalid", "adjustable-dumbbell-press", "0", "-1", "2147483648"} {
 			t.Run(route.name+"/"+id, func(t *testing.T) {
 				req := httptest.NewRequest(http.MethodGet, "/api/exercises/"+id+route.suffix, nil)
-				req = req.WithContext(user.WithContext(req.Context(), "test-user-id"))
+				ctx := user.WithContext(req.Context(), "test-user-id")
+				req = req.WithContext(request.WithRequestID(ctx, "exercise-id-test"))
 				w := httptest.NewRecorder()
 				mux.ServeHTTP(w, req)
 
 				require.Equal(t, http.StatusBadRequest, w.Code)
 				require.Equal(t, "application/json", w.Header().Get("Content-Type"))
-				require.JSONEq(t, `{"message":"Invalid exercise ID"}`, w.Body.String())
+				require.JSONEq(t, `{"message":"Invalid exercise ID","request_id":"exercise-id-test"}`, w.Body.String())
 			})
 		}
 	}
