@@ -42,9 +42,10 @@ type workoutDraftLoadChoice struct {
 }
 
 type workoutDraftWeightLimit struct {
-	Equipment string  `json:"equipment,omitempty" jsonschema:"description=Equipment class affected by this ceiling such as dumbbell or kettlebell. Include it for a limit that applies to every exercise with that equipment."`
-	Exercise  string  `json:"exercise,omitempty" jsonschema:"description=Exact exercise name when the limit is specific to that exercise. May be empty for an equipment-class limit."`
-	Weight    float64 `json:"weight" jsonschema:"description=Maximum available load in pounds for this exercise."`
+	Fixed     bool     `json:"fixed,omitempty" jsonschema:"description=True for fixed-weight equipment. Suppress inferred loads and progression."`
+	Equipment string   `json:"equipment,omitempty" jsonschema:"description=Equipment class affected by this ceiling such as dumbbell or kettlebell. Include it for a limit that applies to every exercise with that equipment."`
+	Exercise  string   `json:"exercise,omitempty" jsonschema:"description=Exact exercise name when the limit is specific to that exercise. May be empty for an equipment-class limit."`
+	Weight    *float64 `json:"weight,omitempty" jsonschema:"description=Maximum available load in pounds when explicitly stated. Omit when only a fixed equipment constraint is known."`
 }
 
 type WorkoutGenerationToolInput struct {
@@ -357,6 +358,8 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 			} else {
 				builder.WriteString(fmt.Sprintf("  Include %s for %q. Choose appropriate reps.\n", draftLoadScope(choice), choice.Exercise))
 			}
+		} else if choice.Kind == "blank" && choice.hasSetScope() {
+			builder.WriteString(fmt.Sprintf("  Include %s for %q with weight left blank.\n", draftLoadScope(choice), choice.Exercise))
 		} else if choice.Kind == "reported" && choice.Reps > 0 {
 			builder.WriteString(fmt.Sprintf("  Use %d working-set reps for this exercise unless the user requests a different target.\n", choice.Reps))
 		}

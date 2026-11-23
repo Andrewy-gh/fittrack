@@ -26,7 +26,7 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 	issues = append(issues, validateDraftDurationQuality(input, draft)...)
 	issues = append(issues, validateDraftEquipmentQuality(input, draft)...)
 	issues = append(issues, validateDraftInjuryQuality(input, draft)...)
-	issues = append(issues, validateRequestedDraftReps(input, draft)...)
+	issues = append(issues, validateDraftLoadScopes(input, draft)...)
 
 	if len(issues) == 0 {
 		return nil
@@ -39,10 +39,10 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 	return errors.New(strings.Join(messages, "; "))
 }
 
-func validateRequestedDraftReps(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
+func validateDraftLoadScopes(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
 	var issues []workoutDraftQualityIssue
 	for _, choice := range input.LoadChoices {
-		if choice.Kind != "requested" {
+		if choice.Kind != "requested" && !(choice.Kind == "blank" && choice.hasSetScope()) {
 			continue
 		}
 		found, wrongReps := false, false
@@ -55,7 +55,7 @@ func validateRequestedDraftReps(input WorkoutGenerationToolInput, draft *workout
 					continue
 				}
 				found = true
-				if choice.Reps > 0 && set.Reps != choice.Reps &&
+				if choice.Kind == "requested" && choice.Reps > 0 && set.Reps != choice.Reps &&
 					draftLoadChoice(input.LoadChoices, exercise, i) == choice {
 					wrongReps = true
 				}

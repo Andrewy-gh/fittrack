@@ -82,6 +82,12 @@ func TestWorkoutDraftToolAppliesScopedLoadsAndOffersProgression(t *testing.T) {
 	require.Nil(t, draft.Exercises[2].Sets[0].WeightSourceDate)
 	require.Nil(t, draft.Exercises[3].Sets[0].Weight)
 	require.Nil(t, draft.Exercises[4].Sets[0].Weight)
+	require.Len(t, draft.Exercises[5].Sets, 2)
+	require.Equal(t, "warmup", draft.Exercises[5].Sets[0].SetType)
+	require.Nil(t, draft.Exercises[5].Sets[0].Weight)
+	require.Equal(t, new(65.0), draft.Exercises[5].Sets[1].Weight)
+	require.Nil(t, draft.Exercises[6].Sets[0].Weight)
+	require.Nil(t, draft.Exercises[7].Sets[0].Weight)
 	require.Equal(t, new(35.0), draft.Exercises[5].Sets[0].Weight)
 }
 
@@ -152,9 +158,11 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		}}}
 	}
 	history := fixedDraftWeightHistory{
-		"Dumbbell Bench Press": reported(50),
-		"Dumbbell Row":         reported(50),
-		"Barbell Row":          reported(95),
+		"Dumbbell Bench Press":          reported(50),
+		"Dumbbell Row":                  reported(50),
+		"Barbell Row":                   reported(95),
+		"Resistance Band Dumbbell Curl": reported(50),
+		"Kettlebell Swing":              reported(25),
 	}
 	history["Barbell Row"] = append(history["Barbell Row"], DraftWeightSession{
 		Date: now.AddDate(0, 0, -8), Sets: history["Barbell Row"][0].Sets,
@@ -165,7 +173,10 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		{"name":"Dumbbell Bench Press","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
 		{"name":"Barbell Row","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
 		{"name":"Pull-Ups","sets":[{"reps":4,"setType":"warmup"},{"reps":8,"setType":"working"}]},
-		{"name":"Dumbbell Row","sets":[{"reps":8,"setType":"working"}]}
+		{"name":"Dumbbell Row","sets":[{"reps":8,"setType":"working"}]},
+		{"name":"Overhead Press","sets":[{"reps":4,"setType":"warmup"},{"reps":8,"setType":"working"}]},
+		{"name":"Resistance Band Dumbbell Curl","sets":[{"reps":8,"setType":"working"}]},
+		{"name":"Kettlebell Swing","sets":[{"reps":8,"setType":"working"}]}
 	]}`
 	rejectedDrafts := []struct {
 		name    string
@@ -173,6 +184,8 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 	}{
 		{name: "missing warmup with unspecified reps", payload: strings.Replace(payload,
 			`{"reps":5,"setType":"warmup"},`, "", 1)},
+		{name: "missing explicitly blank warmup", payload: strings.Replace(payload,
+			`"Overhead Press","sets":[{"reps":4,"setType":"warmup"},`, `"Overhead Press","sets":[`, 1)},
 		{name: "wrong reps on one governed working set", payload: strings.Replace(payload,
 			`{"reps":8,"setType":"working"}`, `{"reps":7,"setType":"working"}`, 1)},
 	}
@@ -193,12 +206,15 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 				"exerciseWeightLimits": []map[string]any{
 					{"exercise": "Dumbbell Bench Press", "equipment": "dumbbell", "weight": 35.0},
 					{"exercise": "Barbell Row", "weight": 95.0},
+					{"equipment": "kettlebell", "weight": 35.0, "fixed": true},
 				},
 				"loadChoices": []map[string]any{
 					{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 65.0, "setType": "warmup"},
 					{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 115.0, "setType": "working", "reps": 8},
 					{"exercise": "Barbell Bench Press", "kind": "blank", "setType": "working", "last": true},
 					{"exercise": "Pull-Ups", "kind": "requested", "weight": 0.0},
+					{"exercise": "Overhead Press", "kind": "blank", "setType": "warmup"},
+					{"exercise": "Overhead Press", "kind": "requested", "setType": "working", "weight": 65.0},
 				},
 			})
 			require.NoError(t, err)
@@ -206,7 +222,7 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 			require.NoError(t, err)
 			var draft workout.CreateWorkoutRequest
 			require.NoError(t, json.Unmarshal(raw, &draft))
-			require.Len(t, draft.Exercises, 5)
+			require.Len(t, draft.Exercises, 8)
 			bench, dumbbells, rows, pullups := draft.Exercises[0], draft.Exercises[1], draft.Exercises[2], draft.Exercises[3]
 			require.Len(t, bench.Sets, 4)
 			require.Equal(t, 5, bench.Sets[0].Reps)
@@ -215,6 +231,12 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 			require.Equal(t, new(115.0), bench.Sets[2].Weight)
 			require.Nil(t, bench.Sets[3].Weight)
 			require.Nil(t, draft.Exercises[4].Sets[0].Weight)
+			require.Len(t, draft.Exercises[5].Sets, 2)
+			require.Equal(t, "warmup", draft.Exercises[5].Sets[0].SetType)
+			require.Nil(t, draft.Exercises[5].Sets[0].Weight)
+			require.Equal(t, new(65.0), draft.Exercises[5].Sets[1].Weight)
+			require.Nil(t, draft.Exercises[6].Sets[0].Weight)
+			require.Nil(t, draft.Exercises[7].Sets[0].Weight)
 			for _, set := range dumbbells.Sets {
 				require.Nil(t, set.Weight)
 			}
