@@ -233,9 +233,11 @@ func lowerDraftCap(cap, weight *float64) *float64 {
 }
 
 func hasExternalDraftEquipment(equipment string) bool {
-	for _, class := range draftEquipmentClasses(equipment) {
-		if class != "bodyweight" {
-			return true
+	for _, word := range strings.Fields(equipment) {
+		for _, class := range draftEquipmentClasses(word) {
+			if class != "bodyweight" && hasAvailableEquipmentTerm(equipment, word) {
+				return true
+			}
 		}
 	}
 	return false

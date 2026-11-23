@@ -491,7 +491,7 @@ func hasNegatedEquipmentClauseTerm(text string, term string) bool {
 
 func negatedEquipmentClauseEnd(text string, start int) int {
 	end := len(text)
-	for _, marker := range []string{".", ";"} {
+	for _, marker := range []string{".", ";", " except "} {
 		if index := strings.Index(text[start:], marker); index >= 0 && start+index < end {
 			end = start + index
 		}
