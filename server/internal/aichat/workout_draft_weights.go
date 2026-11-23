@@ -84,7 +84,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 				variants = append(variants, variant{exercise: workout.ExerciseInput{Name: name}})
 			}
 			current := &variants[index]
-			limits := draftExerciseWeightLimits(input, original.Name, assignment)
+			limits := draftExerciseWeightLimits(input, original.Name, name, assignment)
 			policy := setPolicy{limits: limits}
 			switch {
 			case !unambiguous:
@@ -391,7 +391,7 @@ func draftVariantName(name string) string {
 	return name
 }
 
-func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmedEquipment string) draftWeightLimits {
+func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, savedName, confirmedEquipment string) draftWeightLimits {
 	limits := draftWeightLimits{explicitCap: input.MaxWeight, inferredCap: input.MaxWeight}
 	hasAssignment := strings.TrimSpace(confirmedEquipment) != ""
 	if !hasAssignment {
@@ -401,8 +401,10 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 	for _, item := range input.ExerciseWeightLimits {
 		classes := draftEquipmentClasses(item.Equipment)
 		label := draftEquipmentIdentity(item.Equipment)
-		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name) ||
-			(label != "" && (label == draftEquipmentIdentity(confirmedEquipment) || draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment)))
+		target := strings.TrimSpace(item.Exercise)
+		confirmed := strings.EqualFold(target, name) || strings.EqualFold(target, savedName) ||
+			(label != "" && (label == draftEquipmentIdentity(confirmedEquipment) || draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment) ||
+				draftNameIdentifiesEquipment(savedName, item.Equipment)))
 		if len(classes) == 1 && label == classes[0] {
 			confirmed = confirmed || slices.Contains(exerciseEquipment, classes[0])
 		}
@@ -411,7 +413,7 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 		// named by the exercise. Keep caps from that name unless an
 		// assignment identifies incompatible equipment.
 		if !confirmed && label != "" && draftNameIdentifiesEquipment(name, item.Equipment) &&
-			(!hasAssignment || genericDraftMachine(confirmedEquipment)) {
+			(!hasAssignment || slices.Contains(exerciseEquipment, "machine")) {
 			confirmed = true
 		}
 		if confirmed {
@@ -423,14 +425,6 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 		}
 	}
 	return limits
-}
-
-func genericDraftMachine(value string) bool {
-	switch draftEquipmentIdentity(value) {
-	case "machine", "selectorized machine", "plate loaded machine":
-		return true
-	}
-	return false
 }
 
 func lowerDraftCap(cap, weight *float64) *float64 {

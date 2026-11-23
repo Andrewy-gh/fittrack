@@ -109,6 +109,10 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 			draft, err := generateWorkoutDraftWithSchedule(ctx, g, modelName, input, schedule, generateWorkoutDraftData)
 			if err == nil {
 				applyDraftWeights(ctx, history, input, draft, now, schedule.historyThrough)
+				issues := append(validateDraftInjuryQuality(input, draft), validateDraftEquipmentQuality(input, draft)...)
+				if len(issues) > 0 {
+					return workoutDraftInputCorrection{InputCorrection: "The final equipment variants must respect the user's limitations and equipment. Revise the draft: " + issues[0].message}, nil
+				}
 			}
 			logAIChatTraceContext(ctx, "workout_draft_tool_finished",
 				"elapsed_ms", time.Since(startedAt).Milliseconds(),

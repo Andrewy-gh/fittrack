@@ -41,7 +41,7 @@ type workoutDraftSchedule struct {
 	historyThrough time.Time
 }
 
-var workoutRelativeDay = regexp.MustCompile(`\b(today|tomorrow|yesterday)\b`)
+var workoutRelativeDay = regexp.MustCompile(`\b(?:for|on|schedule|reschedule|move|workout|work out|train|training|session) (?:it (?:to|for) )?(today|tomorrow|yesterday)\b|\b(today|tomorrow|yesterday)['’]s (?:workout|training|session)\b`)
 
 // With a relative tool argument, anchor it to the most recent user turn that
 // supplied that wording rather than a follow-up answer about another detail.
@@ -51,8 +51,13 @@ func relativeWorkoutDraftAnchor(requested string, source draftInjuryContext, now
 		return now
 	}
 	mentionsRequestedDay := func(text string) bool {
-		for _, word := range workoutRelativeDay.FindAllString(normalizeQualityText(text), -1) {
-			if word == requested {
+		text = normalizeQualityText(text)
+		if strings.Trim(text, " ,.?!") == requested {
+			return true
+		}
+		// Merely mentioning "today" in a status answer doesn't reschedule.
+		for _, match := range workoutRelativeDay.FindAllStringSubmatch(text, -1) {
+			if match[1] == requested || match[2] == requested {
 				return true
 			}
 		}
