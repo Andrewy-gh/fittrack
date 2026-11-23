@@ -121,6 +121,21 @@ func generateWorkoutDraft(
 	return generateWorkoutDraftWith(ctx, g, modelName, input, now, generateWorkoutDraftData)
 }
 
+// Generated drafts cannot supply catalog links or recommendation snapshots: those
+// references come from the exercise catalog and user-specific application state.
+// Stored drafts and workout requests retain their existing, broader shape.
+type generatedWorkoutDraft struct {
+	Date         string                     `json:"date"`
+	Notes        *string                    `json:"notes,omitempty"`
+	WorkoutFocus *string                    `json:"workoutFocus,omitempty"`
+	Exercises    []generatedWorkoutExercise `json:"exercises"`
+}
+
+type generatedWorkoutExercise struct {
+	Name string             `json:"name"`
+	Sets []workout.SetInput `json:"sets"`
+}
+
 func generateWorkoutDraftData(
 	ctx context.Context,
 	g *genkit.Genkit,
@@ -128,7 +143,7 @@ func generateWorkoutDraftData(
 	systemPrompt string,
 	userPrompt string,
 ) (*workout.CreateWorkoutRequest, error) {
-	output, _, err := genkit.GenerateData[workout.CreateWorkoutRequest](ctx, g,
+	output, _, err := genkit.GenerateData[generatedWorkoutDraft](ctx, g,
 		ai.WithModelName(modelName),
 		ai.WithSystem(systemPrompt),
 		ai.WithPrompt(userPrompt),
@@ -137,7 +152,17 @@ func generateWorkoutDraftData(
 		return nil, err
 	}
 
-	return output, nil
+	if output == nil {
+		return nil, nil
+	}
+	draft := &workout.CreateWorkoutRequest{
+		Date: output.Date, Notes: output.Notes, WorkoutFocus: output.WorkoutFocus,
+		Exercises: make([]workout.ExerciseInput, len(output.Exercises)),
+	}
+	for i, exercise := range output.Exercises {
+		draft.Exercises[i] = workout.ExerciseInput{Name: exercise.Name, Sets: exercise.Sets}
+	}
+	return draft, nil
 }
 
 func generateWorkoutDraftWith(
