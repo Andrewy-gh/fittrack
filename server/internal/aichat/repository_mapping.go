@@ -230,17 +230,18 @@ func parseStoredWorkoutDraft(payload []byte) (*workout.CreateWorkoutRequest, err
 		return nil, nil
 	}
 
-	var draft workout.CreateWorkoutRequest
+	var draft *workout.CreateWorkoutRequest
 	if err := json.Unmarshal(payload, &draft); err != nil {
 		return nil, fmt.Errorf("decode stored workout draft: %w", err)
 	}
-
-	normalizeWorkoutDraft(&draft)
-	if err := validateWorkoutDraft(&draft); err != nil {
-		return nil, fmt.Errorf("validate stored workout draft: %w", err)
+	if draft == nil {
+		return nil, fmt.Errorf("decode stored workout draft: expected object")
 	}
 
-	return &draft, nil
+	// Stored drafts must remain readable as create validation evolves. Validate
+	// against the current rules only when an unsaved draft is saved.
+	normalizeWorkoutDraft(draft)
+	return draft, nil
 }
 
 func timeFromPg(ts pgtype.Timestamptz) (time.Time, error) {
