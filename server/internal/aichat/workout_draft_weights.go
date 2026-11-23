@@ -126,7 +126,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 				progressionCap = lowerDraftCap(progressionCap, limits.inferredCap)
 				fixedWorkingEquipment = fixedWorkingEquipment || limits.fixed
 			}
-			if limits.fixed || set.Weight != nil || choice.Kind != "" {
+			if limits.fixed || set.Weight != nil || choice.Kind != "" || !draftHistoryEquipmentMatches(exercise.Name, equipment) {
 				continue
 			}
 			weight := matchingDraftWeight(latest.Sets, *set)
@@ -194,15 +194,23 @@ func draftLoadSetType(choice workoutDraftLoadChoice) string {
 }
 
 func draftLoadScopeMatches(choice workoutDraftLoadChoice, sets []workout.SetInput, index int) bool {
-	if choice.Set != 0 && choice.Set != index+1 {
-		return false
-	}
 	setType := draftLoadSetType(choice)
 	typeMatches := func(set workout.SetInput) bool {
 		return setType == "" || setType == "all" || setType == set.SetType
 	}
 	if !typeMatches(sets[index]) {
 		return false
+	}
+	if choice.Set != 0 {
+		position := 0
+		for _, prior := range sets[:index+1] {
+			if typeMatches(prior) {
+				position++
+			}
+		}
+		if position != choice.Set {
+			return false
+		}
 	}
 	if choice.Last {
 		for _, later := range sets[index+1:] {
@@ -228,7 +236,7 @@ type draftWeightLimits struct {
 // Resolve equipment separately from the weight choice. A warm-up-only
 // assignment cannot establish the equipment for a working set.
 func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.ExerciseInput, index int) string {
-	var confirmed []string
+	var confirmed string
 	specificity := -1
 	ambiguous := false
 	for _, choice := range choices {
@@ -238,19 +246,31 @@ func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.Exerci
 			continue
 		}
 		score := draftLoadScopeSpecificity(choice)
-		classes := draftEquipmentClasses(choice.Equipment)
-		slices.Sort(classes)
-		classes = slices.Compact(classes)
+		equipment := normalizeQualityText(choice.Equipment)
 		if score > specificity {
-			confirmed, specificity, ambiguous = classes, score, false
-		} else if score == specificity && !slices.Equal(confirmed, classes) {
+			confirmed, specificity, ambiguous = equipment, score, false
+		} else if score == specificity && draftEquipmentIdentity(confirmed) != draftEquipmentIdentity(equipment) {
 			ambiguous = true
 		}
 	}
 	if ambiguous {
 		return ""
 	}
-	return strings.Join(confirmed, " ")
+	return confirmed
+}
+
+func draftEquipmentIdentity(value string) string {
+	classes := draftEquipmentClasses(value)
+	if len(classes) == 0 {
+		return normalizeQualityText(value)
+	}
+	slices.Sort(classes)
+	return strings.Join(slices.Compact(classes), " ")
+}
+
+func draftHistoryEquipmentMatches(exerciseName, assignment string) bool {
+	return assignment == "" || len(draftEquipmentClasses(exerciseName)) == 0 ||
+		draftEquipmentIdentity(exerciseName) == draftEquipmentIdentity(assignment)
 }
 
 func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmedEquipment string) draftWeightLimits {
@@ -261,7 +281,8 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 	exerciseEquipment := draftEquipmentClasses(confirmedEquipment)
 	for _, item := range input.ExerciseWeightLimits {
 		classes := draftEquipmentClasses(item.Equipment)
-		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name)
+		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name) ||
+			(strings.TrimSpace(item.Equipment) != "" && normalizeQualityText(item.Equipment) == normalizeQualityText(confirmedEquipment))
 		for _, class := range classes {
 			confirmed = confirmed || slices.Contains(exerciseEquipment, class)
 		}
@@ -300,6 +321,9 @@ func draftEquipmentClasses(value string) []string {
 	words := strings.Fields(normalizeQualityText(value))
 	for i, word := range words {
 		class := strings.TrimSuffix(word, "s")
+		if (class == "trap" || class == "hex") && i+1 < len(words) && strings.TrimSuffix(words[i+1], "s") == "bar" {
+			classes = append(classes, "trap bar")
+		}
 		if class == "machine" && i > 0 && (words[i-1] == "smith" || words[i-1] == "cable") {
 			continue
 		}

@@ -405,7 +405,7 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 					if calls == 2 {
 						input["injuries"] = "none"
 					} else if !known {
-						input["injuries"] = "unknown"
+						input["injuries"] = "none"
 					}
 					call := ai.NewToolRequestPart(&ai.ToolRequest{Name: workoutDraftToolName, Ref: fmt.Sprint(calls), Input: input})
 					return &ai.ModelResponse{Message: ai.NewModelMessage(call), FinishReason: ai.FinishReasonStop}, nil
@@ -415,7 +415,12 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 			if known {
 				prompt += " No injuries."
 			}
-			done, err := r.StreamChat(ctx, prompt, nil, func(string) error { return nil })
+			var chatHistory []RuntimeChatMessage
+			if !known {
+				chatHistory = []RuntimeChatMessage{{Role: "user", Text: prompt}, {Role: "assistant", Text: "Any current injuries?"}}
+				prompt = "Go ahead."
+			}
+			done, err := r.StreamChat(ctx, prompt, chatHistory, func(string) error { return nil })
 			require.NoError(t, err)
 			if known {
 				require.NotNil(t, done.WorkoutDraft)
@@ -473,4 +478,50 @@ func TestWorkoutDraftToolHonorsLoadAcrossIndependentRepAndEquipmentScopes(t *tes
 	require.Equal(t, 6, sets[3].Reps)
 	require.Equal(t, 2, attempt)
 	require.Equal(t, new(55.0), draft.Exercises[1].Sets[1].Weight)
+}
+
+func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T) {
+	ctx := user.WithContext(context.Background(), "draft-owner")
+	now := time.Now()
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		return fmt.Sprintf(`{"date":%q,"exercises":[
+			{"name":"Barbell Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"}]},
+			{"name":"Deadlift","sets":[{"reps":8,"setType":"working"}]},
+			{"name":"Hack Squat","sets":[{"reps":8,"setType":"working"}]},
+			{"name":"Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"},{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]}
+		]}`, now.Format(time.RFC3339))
+	})
+	history := fixedDraftWeightHistory{"Barbell Bench Press": {{Date: now.AddDate(0, 0, -1), Sets: []workout.SetInput{
+		{Weight: new(45.0), Reps: 5, SetType: "warmup"},
+		{Weight: new(45.0), Reps: 8, SetType: "working"},
+	}}}}
+	tool := defineWorkoutDraftTool(g, "synthetic", history)
+	out, err := tool.RunRaw(ctx, map[string]any{
+		"equipment": "full gym", "sessionDuration": 20, "workoutFocus": "full body", "injuries": "none",
+		"exerciseWeightLimits": []map[string]any{
+			{"equipment": "trap bar", "weight": 135.0},
+			{"equipment": "lever arm", "weight": 100.0},
+			{"equipment": "dumbbell", "weight": 60.0},
+		},
+		"loadChoices": []map[string]any{
+			{"exercise": "Barbell Bench Press", "kind": "structure", "equipment": "dumbbell", "setType": "working"},
+			{"exercise": "Deadlift", "kind": "requested", "equipment": "trap bar", "setType": "working", "weight": 155.0},
+			{"exercise": "Hack Squat", "kind": "requested", "equipment": "lever arm", "setType": "working", "weight": 125.0},
+			{"exercise": "Bench Press", "kind": "requested", "setType": "working", "weight": 115.0},
+			{"exercise": "Bench Press", "kind": "blank", "setType": "working", "set": 2},
+		},
+	})
+	require.NoError(t, err)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	var draft workout.CreateWorkoutRequest
+	require.NoError(t, json.Unmarshal(raw, &draft))
+	assert.Equal(t, new(45.0), draft.Exercises[0].Sets[0].Weight)
+	assert.Nil(t, draft.Exercises[0].Sets[1].Weight, "barbell history does not apply to dumbbells")
+	assert.Nil(t, draft.Exercises[1].Sets[0].Weight, "trap bar cap blocks the requested load")
+	assert.Nil(t, draft.Exercises[2].Sets[0].Weight, "unclassified equipment cap blocks the requested load")
+	bench := draft.Exercises[3].Sets
+	assert.Equal(t, new(115.0), bench[1].Weight)
+	assert.Nil(t, bench[2].Weight)
+	assert.Equal(t, new(115.0), bench[3].Weight)
 }

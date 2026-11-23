@@ -40,7 +40,7 @@ type workoutDraftLoadChoice struct {
 	Reps      int      `json:"reps,omitempty" jsonschema:"description=Reps completed at a reported load. For requested, blank, and structure use the target reps only if specified."`
 	SetType   string   `json:"setType,omitempty" jsonschema:"description=Use working by default. Use warmup for explicit warm-up instructions or all for instructions applying to all sets."`
 	Last      bool     `json:"last,omitempty" jsonschema:"description=Use for an instruction scoped to the last matching set."`
-	Set       int      `json:"set,omitempty" jsonschema:"description=One-based absolute position in this exercise including warm-ups. Use only if the user requests a particular absolute position. Omit for a prescription that applies to all sets of a type."`
+	Set       int      `json:"set,omitempty" jsonschema:"description=One-based position within the stated set type, or absolute position if no type or all. Omit unless the user requests a specific set position."`
 }
 
 type workoutDraftWeightLimit struct {
@@ -51,6 +51,7 @@ type workoutDraftWeightLimit struct {
 }
 
 type WorkoutGenerationToolInput struct {
+	InjuryEvidence       string                    `json:"injuryEvidence,omitempty" jsonschema:"description=For current injuries or movement limitations in chat, copy the exact user-authored words reporting the limitation. Do not quote the assistant. Omit when using the saved profile or when the user confirms none."`
 	ExerciseWeightLimits []workoutDraftWeightLimit `json:"exerciseWeightLimits,omitempty" jsonschema:"description=Copy explicitly stated limits for each affected equipment class or specific exercise. If the affected equipment cannot be determined set suppressSuggestedWeights."`
 
 	BodyweightOnly           bool                     `json:"bodyweightOnly,omitempty" jsonschema:"description=Set true when the user wants an entirely bodyweight-only workout. Do not invent zero-valued entries for each exercise."`
@@ -86,9 +87,17 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 				"workout_focus", strings.TrimSpace(input.WorkoutFocus),
 				"request_id", request.GetRequestID(ctx),
 			)
+			if source, ok := ctx.Value(draftInjuryContextKey{}).(draftInjuryContext); ok {
+				reported := source.confirmedStatus(input.InjuryEvidence)
+				if reported == "none" && !hasUsableDraftInjuryStatus(input.Injuries) {
+					// Let a correction resume the original chat model turn.
+					reported = ""
+				}
+				input.Injuries = reported
+			}
 			if !hasUsableDraftInjuryStatus(input.Injuries) {
 				return workoutDraftInputCorrection{
-					InputCorrection: "The injuries field was omitted or does not contain confirmed information. If the conversation or profile establishes injury status, retry the draft tool with that status and the other original inputs. Otherwise follow the injury confirmation rules. Never infer none from a missing field.",
+					InputCorrection: "The injuries field was omitted or does not contain confirmed information. If the conversation or profile establishes injury status, retry the draft tool with that status and the other original inputs. Copy exact user words about any reported limitation into injuryEvidence. Otherwise ask the user to confirm injury status. Never infer none from a missing field.",
 				}, nil
 			}
 			if err := validateWorkoutGenerationToolInput(input); err != nil {
@@ -116,7 +125,7 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 
 func hasUsableDraftInjuryStatus(value string) bool {
 	switch normalizeQualityText(value) {
-	case "", "unknown", "not provided", "not specified", "unspecified", "unconfirmed":
+	case "", "unknown", "not provided", "not specified", "unspecified", "unconfirmed", "not confirmed":
 		return false
 	default:
 		return true
@@ -408,7 +417,7 @@ func draftLoadScope(choice workoutDraftLoadChoice) string {
 		setType = "workout"
 	}
 	if choice.Set > 0 {
-		return fmt.Sprintf("set %d in the exercise's ordered sets (type: %s)", choice.Set, setType)
+		return fmt.Sprintf("set %d within the ordered %s sets", choice.Set, setType)
 	}
 	if choice.Last {
 		return "the last " + setType + " set"
