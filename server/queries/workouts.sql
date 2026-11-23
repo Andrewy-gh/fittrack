@@ -59,7 +59,7 @@ SELECT
     e.name as exercise_name,
     s.exercise_order,
     s.set_order,
-    (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume
+    (COALESCE(s.weight, 0) * s.reps)::NUMERIC as volume
 FROM workout w
 JOIN "set" s ON w.id = s.workout_id
 JOIN exercise e ON s.exercise_id = e.id

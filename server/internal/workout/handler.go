@@ -218,7 +218,7 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.workoutService.CreateWorkout(r.Context(), req); err != nil {
-		if errors.Is(err, ErrInvalidCatalog) {
+		if errors.Is(err, ErrInvalidCatalog) || errors.Is(err, ErrInvalidSetNumeric) {
 			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
 			return
 		}
@@ -255,6 +255,7 @@ func (h *WorkoutHandler) CreateWorkout(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid input or validation error"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
 // @Failure 404 {object} response.ErrorResponse "Not Found - Workout not found or doesn't belong to user"
+// @Failure 409 {object} response.ErrorResponse "Conflict - Historical 1RM cannot represent the best existing set"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /workouts/{id} [put]
 func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
@@ -277,19 +278,22 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 
 	// Delegate to service layer for business logic
 	if err := h.workoutService.UpdateWorkout(r.Context(), workoutID, req); err != nil {
-		if errors.Is(err, ErrInvalidCatalog) {
+		if errors.Is(err, ErrInvalidCatalog) || errors.Is(err, ErrInvalidSetNumeric) {
 			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
 			return
 		}
 		// Handle different error types with appropriate HTTP status codes
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
+		var errConflict *apperrors.Historical1RMConflict
 
 		switch {
 		case errors.As(err, &errUnauthorized):
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
+		case errors.As(err, &errConflict):
+			response.ErrorJSON(w, r, h.logger, http.StatusConflict, errConflict.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to update workout", err)
 		}
@@ -314,6 +318,7 @@ func (h *WorkoutHandler) UpdateWorkout(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid workout ID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
 // @Failure 404 {object} response.ErrorResponse "Not Found - Workout not found or doesn't belong to user"
+// @Failure 409 {object} response.ErrorResponse "Conflict - Historical 1RM cannot represent the best existing set"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /workouts/{id} [delete]
 func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
@@ -327,12 +332,15 @@ func (h *WorkoutHandler) DeleteWorkout(w http.ResponseWriter, r *http.Request) {
 		// Handle different error types with appropriate HTTP status codes
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
+		var errConflict *apperrors.Historical1RMConflict
 
 		switch {
 		case errors.As(err, &errUnauthorized):
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
+		case errors.As(err, &errConflict):
+			response.ErrorJSON(w, r, h.logger, http.StatusConflict, errConflict.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to delete workout", err)
 		}

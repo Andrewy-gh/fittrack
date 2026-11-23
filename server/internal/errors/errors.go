@@ -40,6 +40,14 @@ func (e *NotFound) Error() string {
 	return "resource not found"
 }
 
+// Historical1RMConflict means the winning legacy result cannot fit historical_1rm.
+// The caller must leave the workout and existing PR attribution unchanged.
+type Historical1RMConflict struct{}
+
+func (*Historical1RMConflict) Error() string {
+	return "historical 1RM cannot represent the best existing set"
+}
+
 // NewUnauthorized creates a new Unauthorized error.
 func NewUnauthorized(resource, userID string) *Unauthorized {
 	return &Unauthorized{

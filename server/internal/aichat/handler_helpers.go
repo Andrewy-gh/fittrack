@@ -12,6 +12,7 @@ import (
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
+	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
 func (h *Handler) decodeSendMessageRequest(w http.ResponseWriter, r *http.Request) (*SendMessageRequest, bool) {
@@ -114,6 +115,8 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusServiceUnavailable, "ai chat recovery is not configured", nil)
 	case errors.Is(err, ErrConversationBusy):
 		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat conversation already has an active run", nil)
+	case errors.Is(err, workout.ErrInvalidSetNumeric):
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "workout draft contains a numeric value outside storage limits", nil)
 	case errors.Is(err, ErrLatestWorkoutDraftUnavailable):
 		response.ErrorJSON(w, r, h.logger, http.StatusConflict, "ai chat conversation does not have a latest workout draft to save", nil)
 	case errors.Is(err, ErrLatestWorkoutDraftSuperseded):

@@ -13,7 +13,7 @@ SELECT
     e.historical_1rm_updated_at,
     e.historical_1rm_source_workout_id,
     (
-        SELECT MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30)))::numeric(8,2)
+        SELECT ROUND(MAX((COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))), 2)::numeric
         FROM "set" s
         WHERE s.exercise_id = e.id
           AND s.user_id = e.user_id
@@ -39,7 +39,7 @@ SELECT
     e.name as exercise_name,
     s.exercise_order,
     s.set_order,
-    (COALESCE(s.weight, 0) * s.reps)::NUMERIC(10,1) as volume
+    (COALESCE(s.weight, 0) * s.reps)::NUMERIC as volume
 FROM "set" s
 JOIN exercise e ON e.id = s.exercise_id
 JOIN workout w ON w.id = s.workout_id
@@ -259,14 +259,15 @@ WITH working AS (
     SELECT
         s.workout_id,
         w.date AS workout_date,
-        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))::numeric(8,2) AS e1rm
+        ROUND(COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30), 2) AS e1rm
     FROM "set" s
     JOIN workout w ON w.id = s.workout_id
     WHERE s.user_id = $1
       AND s.exercise_id = $2
       AND s.set_type = 'working'
 )
-SELECT workout_id, e1rm
+SELECT workout_id, e1rm,
+       (e1rm <> 'NaN'::numeric AND (e1rm < -999999.99 OR e1rm > 999999.99))::boolean AS e1rm_out_of_range
 FROM working
 ORDER BY e1rm DESC, workout_date DESC, workout_id DESC
 LIMIT 1;
@@ -276,7 +277,7 @@ WITH working AS (
     SELECT
         s.workout_id,
         w.date AS workout_date,
-        (COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30))::numeric(8,2) AS e1rm
+        ROUND(COALESCE(s.weight, 0)::numeric * (1 + s.reps::numeric / 30), 2) AS e1rm
     FROM "set" s
     JOIN workout w ON w.id = s.workout_id
     WHERE s.user_id = $1
@@ -284,7 +285,8 @@ WITH working AS (
       AND s.workout_id <> $3
       AND s.set_type = 'working'
 )
-SELECT workout_id, e1rm
+SELECT workout_id, e1rm,
+       (e1rm <> 'NaN'::numeric AND (e1rm < -999999.99 OR e1rm > 999999.99))::boolean AS e1rm_out_of_range
 FROM working
 ORDER BY e1rm DESC, workout_date DESC, workout_id DESC
 LIMIT 1;
