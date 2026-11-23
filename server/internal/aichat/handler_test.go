@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -379,6 +380,17 @@ func TestHandlerSaveLatestWorkoutDraft(t *testing.T) {
 		assert.Contains(t, rr.Body.String(), `"workout_id":88`)
 		assert.Contains(t, rr.Body.String(), `"latest_workout_draft_status":{"is_saved":true`)
 		service.AssertExpectations(t)
+	})
+
+	t.Run("maps unrepresentable draft to 400", func(t *testing.T) {
+		service := new(mockChatService)
+		handler := NewHandler(logger, service)
+		service.On("SaveLatestWorkoutDraft", mock.Anything, int32(41)).Return((*SaveLatestWorkoutDraftResponse)(nil), fmt.Errorf("save: %w", workout.ErrInvalidSetNumeric)).Once()
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/conversations/41/latest-workout-draft/save", nil)
+		req.SetPathValue("id", "41")
+		rr := httptest.NewRecorder()
+		handler.SaveLatestWorkoutDraft(rr, req)
+		require.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
 	t.Run("maps missing draft to 409", func(t *testing.T) {

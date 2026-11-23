@@ -2,8 +2,12 @@ package workout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math"
+	"strconv"
+	"strings"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercise"
@@ -87,6 +91,9 @@ func insertSets(ctx context.Context, logger *slog.Logger, qtx *db.Queries, sets 
 	return nil
 }
 
+// ErrInvalidSetNumeric indicates a set cannot be represented by the workout storage schema.
+var ErrInvalidSetNumeric = errors.New("set numeric value is outside storage limits")
+
 // MARK: convertToPGTypes
 func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, error) {
 	// Convert workout
@@ -138,6 +145,27 @@ func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, e
 	setOrderCounters := make(map[string]int32)
 
 	for _, set := range reformatted.Sets {
+		if set.Reps < 0 || int64(set.Reps) > math.MaxInt32 {
+			return nil, ErrInvalidSetNumeric
+		}
+		var roundedWeight string
+		if set.Weight != nil {
+			if math.IsNaN(*set.Weight) || math.IsInf(*set.Weight, 0) || *set.Weight < 0 {
+				return nil, ErrInvalidSetNumeric
+			}
+			// Match the existing float-to-numeric conversion before applying SQL bounds.
+			roundedWeight = fmt.Sprintf("%.1f", *set.Weight)
+			tenths, err := strconv.ParseInt(strings.ReplaceAll(roundedWeight, ".", ""), 10, 64)
+			if err != nil || tenths > 9999999999 {
+				return nil, ErrInvalidSetNumeric
+			}
+			// NUMERIC(8,2) rounds to 1000000.00 at 999999.995. With a
+			// weight in tenths, Epley is tenths*(30+reps)/300. Compare
+			// using integer division to avoid overflow and floating-point ties.
+			if set.SetType == "working" && tenths > 299999998/(30+int64(set.Reps)) {
+				return nil, ErrInvalidSetNumeric
+			}
+		}
 		// Increment set counter for this exercise
 		setOrderCounters[set.ExerciseName]++
 
@@ -154,7 +182,7 @@ func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, e
 
 		if set.Weight != nil {
 			// Convert float64 to pgtype.Numeric with proper precision
-			if err := pgSet.Weight.Scan(fmt.Sprintf("%.1f", *set.Weight)); err != nil {
+			if err := pgSet.Weight.Scan(roundedWeight); err != nil {
 				return nil, fmt.Errorf("failed to convert weight to numeric: %w", err)
 			}
 		}

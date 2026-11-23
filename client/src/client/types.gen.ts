@@ -1611,6 +1611,10 @@ export type PatchExercisesByIdHistorical1RmErrors = {
    */
   404: ResponseErrorResponse;
   /**
+   * Conflict - Historical 1RM cannot represent the best existing set
+   */
+  409: ResponseErrorResponse;
+  /**
    * Internal Server Error
    */
   500: ResponseErrorResponse;
@@ -2041,6 +2045,10 @@ export type DeleteWorkoutsByIdErrors = {
    */
   404: ResponseErrorResponse;
   /**
+   * Conflict - Historical 1RM cannot represent the best existing set
+   */
+  409: ResponseErrorResponse;
+  /**
    * Internal Server Error
    */
   500: ResponseErrorResponse;
@@ -2124,6 +2132,10 @@ export type PutWorkoutsByIdErrors = {
    * Not Found - Workout not found or doesn't belong to user
    */
   404: ResponseErrorResponse;
+  /**
+   * Conflict - Historical 1RM cannot represent the best existing set
+   */
+  409: ResponseErrorResponse;
   /**
    * Internal Server Error
    */

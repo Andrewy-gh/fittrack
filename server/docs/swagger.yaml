@@ -2162,6 +2162,11 @@ paths:
           description: Not Found - Exercise not found or doesn't belong to user
           schema:
             $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict - Historical 1RM cannot represent the best existing
+            set
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -2463,6 +2468,11 @@ paths:
           description: Not Found - Workout not found or doesn't belong to user
           schema:
             $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict - Historical 1RM cannot represent the best existing
+            set
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -2541,6 +2551,11 @@ paths:
             $ref: '#/definitions/response.ErrorResponse'
         "404":
           description: Not Found - Workout not found or doesn't belong to user
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict - Historical 1RM cannot represent the best existing
+            set
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":

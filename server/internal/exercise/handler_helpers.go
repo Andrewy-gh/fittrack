@@ -1,6 +1,7 @@
 package exercise
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,7 +21,9 @@ func (h *ExerciseHandler) decodeExerciseID(w http.ResponseWriter, r *http.Reques
 
 	parsed, err := strconv.ParseInt(raw, 10, 32)
 	if err != nil || parsed <= 0 {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", err)
+		// ParseInt's *strconv.NumError includes the raw path segment. Keep
+		// only its syntax/range cause so the public message is input-independent.
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", errors.Unwrap(err))
 		return 0, false
 	}
 

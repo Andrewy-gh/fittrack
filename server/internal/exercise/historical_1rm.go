@@ -46,6 +46,8 @@ func (es *ExerciseService) UpdateExerciseHistorical1RM(ctx context.Context, id i
 	case "recompute":
 		best, err := es.repo.GetExerciseBestE1rmWithWorkout(ctx, id, userID)
 		switch {
+		case err == nil && best.E1rmOutOfRange:
+			return &apperrors.Historical1RMConflict{}
 		case err == nil:
 			bestVal, err := floatPtrFromNumeric(best.E1rm)
 			if err != nil {
