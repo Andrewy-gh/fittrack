@@ -192,6 +192,9 @@ func (s *Service) SaveLatestWorkoutDraft(ctx context.Context, conversationID int
 }
 
 func (s *Service) saveWorkoutDraftTx(ctx context.Context, qtx *db.Queries, draft workout.CreateWorkoutRequest, userID string) (int32, error) {
+	if err := validateWorkoutDraft(&draft); err != nil {
+		return 0, fmt.Errorf("validate workout draft before saving: %w", err)
+	}
 	if s.workoutDraftSaver == nil {
 		return 0, errors.New("ai chat workout draft saver is unavailable")
 	}
