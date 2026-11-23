@@ -2,10 +2,22 @@
 
 This runbook makes the AI chat client-outcome alerts loadable into Grafana Cloud Metrics, which uses Mimir for Prometheus-compatible rule evaluation.
 
-The repo-owned rule file is `ops/grafana-cloud/ai-chat-alerts.mimir.yml`. It keeps the same paging semantics as `ops/prometheus/ai-chat-alerts.yml`:
+The canonical rule file is `ops/prometheus/ai-chat-alerts.yml`. The repo-owned Mimir file, `ops/grafana-cloud/ai-chat-alerts.mimir.yml`, is generated from it with the `ai_chat_rollout` namespace. Both keep the same paging semantics:
 
 - page on true server stream failures, recovery timeouts, conversation load failures, and recovery success regression
 - do not page on user-driven stream aborts, stale load aborts, recovery aborts, or successful-recovery toast suppression
+
+## Edit And Check Rules Locally
+
+Edit `ops/prometheus/ai-chat-alerts.yml`, not the generated Mimir file. From the repository root, regenerate and check it with Node.js:
+
+```sh
+node scripts/generate-ai-chat-mimir.mjs
+node scripts/generate-ai-chat-mimir.mjs --check
+node --test scripts/generate-ai-chat-mimir.test.mjs
+```
+
+Commit the source and generated file together. The check exits nonzero if the generated file is missing or differs; it does not rewrite it. These commands are local and do not load or change remote rules. Continue with the validation and loading steps below only when authorized.
 
 ## Required Access
 
