@@ -16,7 +16,7 @@ import (
 
 const (
 	workoutDraftToolName               = "generate_workout_draft"
-	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. After one follow-up answer, if workout focus, duration, equipment or location context, and usable injury details are present, optional details like fitness level, preferred exercises, or other movements to avoid should not block tool use. Treat stated equipment, location, and space constraints as sufficient and closed by default: use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable from those constraints. Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine. Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests because they can default to no-equipment bodyweight work. Use injuries=none only when the user explicitly reports no injuries or continues without answering after one injury-status question."
+	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. After one follow-up answer, if workout focus, duration, equipment or location context, and usable injury details are present, optional details like fitness level, preferred exercises, or other movements to avoid should not block tool use. Treat stated equipment, location, and space constraints as sufficient and closed by default: use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable from those constraints. Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine. Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests because they can default to no-equipment bodyweight work. Use injuries=none only with confirmed user or profile information. If the injury question goes unanswered, ask again and wait before drafting."
 	workoutDraftSummaryMessage         = "I put together a structured workout draft for you."
 	workoutChatFollowUpQuestionCeiling = 3
 )
@@ -85,9 +85,9 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 				"workout_focus", strings.TrimSpace(input.WorkoutFocus),
 				"request_id", request.GetRequestID(ctx),
 			)
-			if strings.TrimSpace(input.Injuries) == "" {
+			if !hasUsableDraftInjuryStatus(input.Injuries) {
 				return workoutDraftInputCorrection{
-					InputCorrection: "The injuries field was omitted or empty. If the conversation or profile establishes injury status, retry the draft tool with that status and the other original inputs. Otherwise follow the injury confirmation rules. Never infer none from a missing field.",
+					InputCorrection: "The injuries field was omitted or does not contain confirmed information. If the conversation or profile establishes injury status, retry the draft tool with that status and the other original inputs. Otherwise follow the injury confirmation rules. Never infer none from a missing field.",
 				}, nil
 			}
 			if err := validateWorkoutGenerationToolInput(input); err != nil {
@@ -113,6 +113,15 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 	)
 }
 
+func hasUsableDraftInjuryStatus(value string) bool {
+	switch normalizeQualityText(value) {
+	case "", "unknown", "not provided", "not specified", "unspecified", "unconfirmed":
+		return false
+	default:
+		return true
+	}
+}
+
 func validateWorkoutGenerationToolInput(input WorkoutGenerationToolInput) error {
 	missing := make([]string, 0, 4)
 
@@ -125,7 +134,7 @@ func validateWorkoutGenerationToolInput(input WorkoutGenerationToolInput) error 
 	if !hasWorkoutContext(input) {
 		missing = append(missing, "equipment or spaceConstraints")
 	}
-	if strings.TrimSpace(input.Injuries) == "" {
+	if !hasUsableDraftInjuryStatus(input.Injuries) {
 		missing = append(missing, "injuries")
 	}
 

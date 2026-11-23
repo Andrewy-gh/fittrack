@@ -27,9 +27,8 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Use only that context unless the user explicitly mentions more",
 		"Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable",
 		"Do not assume unmentioned accessories or equipment",
-		"If injury status is missing and no profile movement limitation default is available, ask once before generating",
-		"Do not infer \"none\" from silence in the initial request",
-		"Use injuries=\"none\" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries",
+		"If injury status is missing and no profile movement limitation default is available, ask before generating",
+		"Silence or permission to proceed never confirms injury status",
 		"When the user answers a follow-up, combine that answer with the earlier visible workout request",
 		"previous message only asked about injuries and the user now confirms no injuries",
 		"After one follow-up answer, if workout focus, session duration, equipment or location context",
@@ -80,8 +79,8 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 		"use only that context unless the user explicitly mentions more",
 		"Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable",
 		"Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine",
-		"Use injuries=none only when the user explicitly reports no injuries",
-		"continues without answering after one injury-status question",
+		"Use injuries=none only with confirmed user or profile information",
+		"If the injury question goes unanswered, ask again and wait before drafting",
 	}
 
 	for _, snippet := range requiredSnippets {
@@ -168,12 +167,12 @@ func TestValidateWorkoutGenerationToolInputStillRequiresInjuryStatus(t *testing.
 		WorkoutFocus:    "upper body",
 	}
 
-	err := validateWorkoutGenerationToolInput(input)
-	if err == nil {
-		t.Fatal("validateWorkoutGenerationToolInput() error = nil, want missing injuries error")
-	}
-	if !strings.Contains(err.Error(), "injuries") {
-		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want injuries field", err)
+	for _, status := range []string{"", "unknown", "not specified"} {
+		input.Injuries = status
+		err := validateWorkoutGenerationToolInput(input)
+		if err == nil || !strings.Contains(err.Error(), "injuries") {
+			t.Fatalf("validateWorkoutGenerationToolInput() with injuries %q = %v, want missing injuries error", status, err)
+		}
 	}
 }
 

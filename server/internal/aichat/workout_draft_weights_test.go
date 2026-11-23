@@ -393,7 +393,7 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 					if calls == 2 {
 						require.Zero(t, generations)
 						last := req.Messages[len(req.Messages)-1]
-						require.Contains(t, fmt.Sprint(last.Content[0].ToolResponse.Output), "injuries field was omitted")
+						require.Contains(t, fmt.Sprint(last.Content[0].ToolResponse.Output), "injuries field was omitted or does not contain confirmed information")
 						if !known {
 							return &ai.ModelResponse{Message: ai.NewModelMessage(ai.NewTextPart("Any current injuries?")), FinishReason: ai.FinishReasonStop}, nil
 						}
@@ -404,6 +404,8 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 					input := map[string]any{"sessionDuration": 10, "workoutFocus": "upper body", "equipment": "bodyweight"}
 					if calls == 2 {
 						input["injuries"] = "none"
+					} else if !known {
+						input["injuries"] = "unknown"
 					}
 					call := ai.NewToolRequestPart(&ai.ToolRequest{Name: workoutDraftToolName, Ref: fmt.Sprint(calls), Input: input})
 					return &ai.ModelResponse{Message: ai.NewModelMessage(call), FinishReason: ai.FinishReasonStop}, nil

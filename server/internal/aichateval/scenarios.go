@@ -190,6 +190,27 @@ func DefaultScenarios() []Scenario {
 			FollowUpAnswer:  "No injuries. Full gym. Intermediate, hypertrophy.",
 			BaseOnly:        true,
 		},
+		{
+			ID: "injury-unanswered", Title: "Permission to proceed without injury confirmation",
+			History: []aichat.RuntimeChatMessage{
+				{Role: "user", Text: "Make me a 35-minute upper-body workout at a full gym."},
+				{Role: "assistant", Text: "Any current injuries, pain, or movements you need to avoid?"},
+			},
+			Prompt:            "Go ahead.",
+			ExpectedOutcome:   ExpectedDoNotGenerate,
+			RequiredTextTerms: []string{"injur"},
+		},
+		{
+			ID: "injury-confirmed", Title: "Short answer confirms no injuries",
+			History: []aichat.RuntimeChatMessage{
+				{Role: "user", Text: "Make me a 35-minute upper-body workout at a full gym."},
+				{Role: "assistant", Text: "Any current injuries, pain, or movements you need to avoid?"},
+				{Role: "user", Text: "Go ahead."},
+				{Role: "assistant", Text: "Before I build it, do you have any injuries or movements to avoid? None is enough."},
+			},
+			Prompt:          "None.",
+			ExpectedOutcome: ExpectedGenerateFirstTurn,
+		},
 	}
 }
 
