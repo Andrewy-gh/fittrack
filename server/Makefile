@@ -23,6 +23,41 @@ DB_DATA_DIR ?= _db-data-pg15
 ENV_FILE ?= setenv.sh
 TEST_DB_ENV_FILE ?= $(CURDIR)/tmp/fittrack-test-db.env
 
+# Shared checks; each target owns its prerequisite and readiness flow.
+define check-docker
+	if ! command -v docker >/dev/null 2>&1; then \
+		echo "ERROR: docker is not installed or not on PATH."; \
+		exit 1; \
+	fi
+endef
+
+DB_HEALTH = $$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$$container_id" 2>/dev/null || true)
+
+# Shared credential probe; each target owns its readiness and migration flow.
+define verify-db-credentials
+	verify_output=""; \
+	start_ts=$$(date +%s); \
+	while true; do \
+		if verify_output="$$($(DOCKER_COMPOSE) exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
+			break; \
+		fi; \
+		now=$$(date +%s); \
+		elapsed=$$(( now - start_ts )); \
+		if [ "$$elapsed" -ge 15 ]; then \
+			echo "ERROR: PostgreSQL came up, but verification failed."; \
+			echo "$$verify_output"; \
+			case "$$verify_output" in \
+				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
+					echo "This can happen when the cluster was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
+					echo "Do not remove $(DB_DATA_DIR) unless you have verified it contains only disposable local data."; \
+					;; \
+			esac; \
+			exit 1; \
+		fi; \
+		sleep 1; \
+	done
+endef
+
 help:
 	@echo "Available commands:"
 	@echo "  build        - Compile the project"
@@ -97,10 +132,7 @@ test-fast: ## Run fast test suite without DB integration package
 
 test-db-ready: ## Prepare local test DB for server tests
 	@echo "==> Starting database container: $(DB_SERVICE)"
-	@if ! command -v docker >/dev/null 2>&1; then \
-		echo "ERROR: docker is not installed or not on PATH."; \
-		exit 1; \
-	fi
+	@$(check-docker)
 	@if [ ! -f "$(ENV_FILE)" ]; then \
 		echo "ERROR: expected env file at $$(pwd)/$(ENV_FILE)"; \
 		echo "Create setenv.sh with DB_USER, DB_PASSWORD, DB_NAME, and DATABASE_URL before running DB-backed test targets."; \
@@ -132,7 +164,7 @@ test-db-ready: ## Prepare local test DB for server tests
 	fi; \
 	start_ts=$$(date +%s); \
 	while true; do \
-		health_status="$$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$$container_id" 2>/dev/null || true)"; \
+		health_status="$(DB_HEALTH)"; \
 		if [ "$$health_status" = "healthy" ] || [ "$$health_status" = "no-healthcheck" ]; then \
 			break; \
 		fi; \
@@ -146,27 +178,7 @@ test-db-ready: ## Prepare local test DB for server tests
 		sleep 1; \
 	done; \
 	echo "==> Verifying PostgreSQL credentials"; \
-	verify_output=""; \
-	start_ts=$$(date +%s); \
-	while true; do \
-		if verify_output="$$($(DOCKER_COMPOSE) exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
-			break; \
-		fi; \
-		now=$$(date +%s); \
-		elapsed=$$(( now - start_ts )); \
-		if [ "$$elapsed" -ge 15 ]; then \
-			echo "ERROR: PostgreSQL came up, but verification failed."; \
-			echo "$$verify_output"; \
-			case "$$verify_output" in \
-				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
-					echo "This can happen when the cluster was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
-					echo "Do not remove $(DB_DATA_DIR) unless you have verified it contains only disposable local data."; \
-					;; \
-			esac; \
-			exit 1; \
-		fi; \
-		sleep 1; \
-	done; \
+	$(verify-db-credentials)
 	echo "==> PostgreSQL credentials verified"; \
 	echo "==> Applying migrations"; \
 	goose -dir migrations postgres "$$db_url" up; \
@@ -197,10 +209,7 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	. ./$(ENV_FILE)
 
 	@echo "==> Checking prerequisites: docker, $(DOCKER_COMPOSE), goose, and $(AIR_CMD)"
-	@if ! command -v docker >/dev/null 2>&1; then \
-		echo "ERROR: docker is not installed or not on PATH."; \
-		exit 1; \
-	fi
+	@$(check-docker)
 	@if ! $(DOCKER_COMPOSE) version >/dev/null 2>&1; then \
 		echo "ERROR: $(DOCKER_COMPOSE) plugin not available. Install Docker Desktop or the compose plugin."; \
 		exit 1; \
@@ -227,7 +236,7 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	fi; \
 	start_ts=$$(date +%s); \
 	while true; do \
-		health_status="$$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$$container_id" 2>/dev/null || true)"; \
+		health_status="$(DB_HEALTH)"; \
 		if [ "$$health_status" = "healthy" ] || [ "$$health_status" = "no-healthcheck" ]; then \
 			echo "==> PostgreSQL is ready!"; \
 			break; \
@@ -244,27 +253,7 @@ dev: ## Complete development setup: load env, start database, wait for ready, ap
 	done
 
 	@echo "==> Verifying PostgreSQL credentials"
-	verify_output=""; \
-	start_ts=$$(date +%s); \
-	while true; do \
-		if verify_output="$$($(DOCKER_COMPOSE) exec -T $(DB_SERVICE) sh -lc 'PGPASSWORD="$$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "select 1"' 2>&1)"; then \
-			break; \
-		fi; \
-		now=$$(date +%s); \
-		elapsed=$$(( now - start_ts )); \
-		if [ "$$elapsed" -ge 15 ]; then \
-			echo "ERROR: PostgreSQL came up, but verification failed."; \
-			echo "$$verify_output"; \
-			case "$$verify_output" in \
-				*"password authentication failed"*|*"role \""*' does not exist'*|*"database \""*' does not exist'*) \
-					echo "This can happen when the cluster was initialized earlier with different DB_USER, DB_PASSWORD, or DB_NAME values."; \
-					echo "Do not remove $(DB_DATA_DIR) unless you have verified it contains only disposable local data."; \
-					;; \
-			esac; \
-			exit 1; \
-		fi; \
-		sleep 1; \
-	done
+	$(verify-db-credentials)
 	@echo "==> PostgreSQL credentials verified"
 
 	@echo "==> Applying database migrations"
