@@ -442,6 +442,12 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Client IANA timezone for workout dates (defaults to UTC)",
+                        "name": "timezone",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -515,6 +521,12 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Client IANA timezone for workout dates (defaults to UTC)",
+                        "name": "timezone",
+                        "in": "query"
                     },
                     {
                         "description": "Send message request",

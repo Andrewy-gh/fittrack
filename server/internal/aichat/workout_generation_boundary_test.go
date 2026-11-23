@@ -49,7 +49,7 @@ func TestGeneratedDraftModelBoundary(t *testing.T) {
 			})
 			draft, err := generateWorkoutDraft(ctx, g, "synthetic", WorkoutGenerationToolInput{
 				Equipment: "bodyweight", SessionDuration: 10, WorkoutFocus: "push", Injuries: "none",
-			}, time.Now())
+			}, time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
 			require.Len(t, requests, 1, "schema errors do not trigger quality repair")
 			require.NotNil(t, requests[0].Output)
 			schema, marshalErr := json.Marshal(requests[0].Output.Schema)
@@ -82,13 +82,17 @@ func TestGeneratedAndLegacyDraftSaveBoundary(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	queries := db.New(pool)
 	repo := NewRepository(logger, queries, pool)
+	historyReader, ok := repo.(draftWeightHistoryReader)
+	require.True(t, ok)
 	saver := workout.NewTxSaver(logger, exercise.NewRepository(logger, queries, pool))
 
 	for i, tc := range []struct {
 		name, payload, wantLoggedError string
 		wantCatalog                    *string
+		mixedEquipment                 bool
 	}{
 		{name: "ordinary generated"},
+		{name: "mixed equipment saves separate history", mixedEquipment: true},
 		{name: "legacy valid catalog link", payload: `{"date":"2026-01-01T12:00:00Z","exercises":[{"name":"Pushups","catalog_id":"Pushups","sets":[{"reps":8,"setType":"working"}]}]}`, wantCatalog: new("Pushups")},
 		{name: "legacy fabricated recommendation", payload: `{"date":"2026-01-01T12:00:00Z","exercises":[{"name":"Pushups","sets":[{"reps":8,"setType":"working"}]}],"recommendations":[{"exerciseName":"Pushups","recommendation":{"exerciseId":2147483647,"readiness":"normal","explanation":"synthetic","policyVersion":"exercise-plan-v2"}}]}`, wantLoggedError: "recommendation does not match logged exercise"},
 		{name: "legacy fabricated catalog ID", payload: `{"date":"2026-01-01T12:00:00Z","exercises":[{"name":"Pushups","catalog_id":"invented-id","sets":[{"reps":8,"setType":"working"}]}]}`, wantLoggedError: "invalid or conflicting exercise catalog selection"},
@@ -105,12 +109,30 @@ func TestGeneratedAndLegacyDraftSaveBoundary(t *testing.T) {
 			var draft *workout.CreateWorkoutRequest
 			var err error
 			payload := tc.payload
-			if payload == "" {
+			if tc.mixedEquipment {
+				g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+					return `{"exercises":[{"name":"Barbell Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"}]}]}`
+				})
+				var out any
+				out, err = defineWorkoutDraftTool(g, "synthetic", historyReader).RunRaw(ctx, map[string]any{
+					"equipment": "bench, barbell, dumbbells", "sessionDuration": 10, "workoutFocus": "push", "injuries": "none",
+					"loadChoices": []map[string]any{
+						{"exercise": "Barbell Bench Press", "kind": "requested", "equipment": "barbell", "setType": "warmup", "weight": 45.0},
+						{"exercise": "Barbell Bench Press", "kind": "requested", "equipment": "dumbbell", "setType": "working", "weight": 55.0},
+					},
+				})
+				require.NoError(t, err)
+				raw, marshalErr := json.Marshal(out)
+				require.NoError(t, marshalErr)
+				payload = string(raw)
+				draft = new(workout.CreateWorkoutRequest)
+				err = json.Unmarshal(raw, draft)
+			} else if payload == "" {
 				payload = ordinaryDraftJSON
 				g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string { return ordinaryDraftJSON })
 				draft, err = generateWorkoutDraft(ctx, g, "synthetic", WorkoutGenerationToolInput{
 					Equipment: "bodyweight", SessionDuration: 10, WorkoutFocus: "push", Injuries: "none",
-				}, time.Now())
+				}, time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
 			} else {
 				// Simulate a draft written before the model schema was narrowed.
 				draft = new(workout.CreateWorkoutRequest)
@@ -158,6 +180,26 @@ func TestGeneratedAndLegacyDraftSaveBoundary(t *testing.T) {
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &saved))
 			require.Positive(t, saved.WorkoutID)
 			require.True(t, saved.Conversation.LatestWorkoutDraftStatus.IsSaved)
+			if tc.mixedEquipment {
+				now := time.Now()
+				history, err := historyReader.LatestDraftExerciseSets(ctx, userID, []string{"Barbell Bench Press", "Dumbbell Bench Press"}, now.AddDate(0, 0, -1), now)
+				require.NoError(t, err)
+				require.Len(t, history, 2)
+				for _, expected := range []struct {
+					name, setType string
+					weight        float64
+				}{
+					{"Barbell Bench Press", "warmup", 45},
+					{"Dumbbell Bench Press", "working", 55},
+				} {
+					sessions := history[expected.name]
+					require.Len(t, sessions, 1)
+					require.Len(t, sessions[0].Sets, 1)
+					require.Equal(t, expected.setType, sessions[0].Sets[0].SetType)
+					require.Equal(t, &expected.weight, sessions[0].Sets[0].Weight)
+				}
+				return
+			}
 			var catalogID *string
 			var reps int
 			require.NoError(t, pool.QueryRow(ctx, `SELECT e.catalog_id, s.reps FROM workout w JOIN "set" s ON s.workout_id = w.id JOIN exercise e ON e.id = s.exercise_id WHERE w.id = $1 AND w.user_id = $2 AND s.set_type = 'working'`, saved.WorkoutID, userID).Scan(&catalogID, &reps))

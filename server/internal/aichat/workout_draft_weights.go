@@ -52,7 +52,7 @@ func (r *repository) LatestDraftExerciseSets(ctx context.Context, userID string,
 	return history, nil
 }
 
-func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest, now time.Time) {
+func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest, now, before time.Time) {
 	equipment := normalizeQualityText(input.Equipment)
 	bodyweight := input.BodyweightOnly || ((equipment == "bodyweight" ||
 		hasAnyQualityTerm(equipment, "bodyweight only", "no equipment")) &&
@@ -60,21 +60,40 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 	suppress := bodyweight || input.SuppressSuggestedWeights || isEquipmentOptionalWorkout(input) || activeInjuryText(input.Injuries) != "" ||
 		hasAnyQualityTerm(normalizeQualityText(input.FitnessGoal+" "+input.WorkoutFocus), "deload", "recovery", "reduced load")
 
+	type setPolicy struct {
+		eligible bool
+		limits   draftWeightLimits
+	}
+	type variant struct {
+		exercise workout.ExerciseInput
+		policies []setPolicy
+	}
+	var variants []variant
 	eligible := make(map[string]struct{})
-	for i := range draft.Exercises {
-		exercise := &draft.Exercises[i]
-		for j := range exercise.Sets {
-			set := &exercise.Sets[j]
-			choice, _ := draftLoadAndRepChoices(input.LoadChoices, *exercise, j)
-			equipment := draftSetEquipment(input.LoadChoices, *exercise, j)
-			limits := draftExerciseWeightLimits(input, exercise.Name, equipment)
+	for _, original := range draft.Exercises {
+		variantIndex := make(map[string]int)
+		for j, set := range original.Sets {
+			choice, _ := draftLoadAndRepChoices(input.LoadChoices, original, j)
+			assignment, unambiguous := draftSetEquipment(input.LoadChoices, original, j)
+			name := draftExerciseVariant(original.Name, assignment, unambiguous)
+			key := strings.ToLower(name)
+			index, exists := variantIndex[key]
+			if !exists {
+				index = len(variants)
+				variantIndex[key] = index
+				variants = append(variants, variant{exercise: workout.ExerciseInput{Name: name}})
+			}
+			current := &variants[index]
+			limits := draftExerciseWeightLimits(input, original.Name, assignment)
+			policy := setPolicy{limits: limits}
 			switch {
+			case !unambiguous:
+				// Never attach a load to a conflicting equipment assignment.
 			case choice.Kind == "requested":
 				if allowedDraftWeight(choice.Weight, limits.explicitCap) {
 					set.Weight = choice.Weight
 				}
 			case choice.Kind == "blank":
-				continue
 			case suppress || limits.fixed:
 				set.DraftBodyweight = bodyweight
 			case choice.Kind == "reported":
@@ -82,64 +101,55 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 					set.Weight = choice.Weight
 				}
 			case reader != nil && !input.SkipHistoryWeights:
-				eligible[exercise.Name] = struct{}{}
+				// If the name had to change, do not borrow history from the old
+				// name, or from a name we inferred from a free-text assignment.
+				// A subsequent draft naming this variant can use its own history.
+				policy.eligible = current.exercise.Name == original.Name
+				if policy.eligible {
+					eligible[current.exercise.Name] = struct{}{}
+				}
 			}
+			current.exercise.Sets = append(current.exercise.Sets, set)
+			current.policies = append(current.policies, policy)
 		}
 	}
 
-	userID, ok := user.Current(ctx)
-	if !ok || len(eligible) == 0 {
-		return
-	}
-	before := now
-	if strings.TrimSpace(input.WorkoutDate) != "" {
-		if plannedDate, err := time.Parse(time.RFC3339, draft.Date); err == nil && plannedDate.Before(now) {
-			before = plannedDate
+	var history map[string][]DraftWeightSession
+	after := now.UTC().AddDate(0, 0, -90)
+	if userID, ok := user.Current(ctx); ok && len(eligible) > 0 && !before.Before(after) {
+		lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		var err error
+		history, err = reader.LatestDraftExerciseSets(lookupCtx, userID, slices.Sorted(maps.Keys(eligible)), after, before)
+		if err != nil {
+			slog.Warn("could not look up weights for workout draft", "error", err)
+			history = nil
 		}
 	}
-	after := now.AddDate(0, 0, -90)
-	if before.Before(after) {
-		return
-	}
-	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	history, err := reader.LatestDraftExerciseSets(lookupCtx, userID, slices.Sorted(maps.Keys(eligible)), after, before)
-	if err != nil {
-		slog.Warn("could not look up weights for workout draft", "error", err)
-		return
-	}
 
-	for i := range draft.Exercises {
-		exercise := &draft.Exercises[i]
+	draft.Exercises = make([]workout.ExerciseInput, 0, len(variants))
+	for _, pair := range variants {
+		exercise := pair.exercise
 		sessions := history[exercise.Name]
-		if len(sessions) == 0 {
-			continue
-		}
-		latest := sessions[0]
-		sourceDate := latest.Date.Format(time.RFC3339)
-		var progressionCap *float64
-		var fixedWorkingEquipment bool
-		for j := range exercise.Sets {
-			set := &exercise.Sets[j]
-			choice, _ := draftLoadAndRepChoices(input.LoadChoices, *exercise, j)
-			equipment := draftSetEquipment(input.LoadChoices, *exercise, j)
-			limits := draftExerciseWeightLimits(input, exercise.Name, equipment)
-			if set.SetType == "working" {
-				progressionCap = lowerDraftCap(progressionCap, limits.inferredCap)
-				fixedWorkingEquipment = fixedWorkingEquipment || limits.fixed
+		if len(sessions) > 0 {
+			latest := sessions[0]
+			sourceDate := latest.Date.Format(time.RFC3339)
+			var progressionCap *float64
+			for j := range exercise.Sets {
+				set, policy := &exercise.Sets[j], pair.policies[j]
+				if set.SetType == "working" {
+					progressionCap = lowerDraftCap(progressionCap, policy.limits.inferredCap)
+				}
+				if policy.eligible {
+					if weight := matchingDraftWeight(latest.Sets, *set); allowedDraftWeight(weight, policy.limits.inferredCap) {
+						set.Weight = weight
+						set.WeightSourceDate = &sourceDate
+					}
+				}
 			}
-			if limits.fixed || set.Weight != nil || choice.Kind != "" || !draftHistoryEquipmentMatches(exercise.Name, equipment) {
-				continue
-			}
-			weight := matchingDraftWeight(latest.Sets, *set)
-			if allowedDraftWeight(weight, limits.inferredCap) {
-				set.Weight = weight
-				set.WeightSourceDate = &sourceDate
-			}
-		}
-		if !fixedWorkingEquipment {
 			exercise.DraftProgression = draftProgression(input, progressionCap, exercise.Sets, sessions, before)
 		}
+		draft.Exercises = append(draft.Exercises, exercise)
 	}
 }
 
@@ -152,8 +162,9 @@ func draftLoadAndRepChoices(choices []workoutDraftLoadChoice, exercise workout.E
 			continue
 		}
 		if choice.Kind == "reported" {
-			if exercise.Sets[index].Reps == choice.Reps &&
-				draftReportedEquipmentMatches(exercise.Name, choice.Equipment, draftSetEquipment(choices, exercise, index)) {
+			assignment, unambiguous := draftSetEquipment(choices, exercise, index)
+			if unambiguous && exercise.Sets[index].Reps == choice.Reps &&
+				draftReportedEquipmentMatches(exercise.Name, choice.Equipment, assignment) {
 				reported = choice
 			}
 			continue
@@ -238,7 +249,7 @@ type draftWeightLimits struct {
 
 // Resolve equipment separately from the weight choice. A warm-up-only
 // assignment cannot establish the equipment for a working set.
-func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.ExerciseInput, index int) string {
+func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.ExerciseInput, index int) (string, bool) {
 	var confirmed string
 	specificity := -1
 	ambiguous := false
@@ -256,19 +267,28 @@ func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.Exerci
 			ambiguous = true
 		}
 	}
-	if ambiguous {
-		return ""
-	}
-	return confirmed
+	return confirmed, !ambiguous
 }
 
+// A class is not an identity: a selectorized machine and a plate-loaded
+// machine must not compare equal just because both are machines.
 func draftEquipmentIdentity(value string) string {
-	classes := draftEquipmentClasses(value)
-	if len(classes) == 0 {
-		return draftEquipmentLabel(value)
+	switch label := draftEquipmentLabel(value); label {
+	case "db":
+		return "dumbbell"
+	case "bb":
+		return "barbell"
+	case "kb":
+		return "kettlebell"
+	case "hex bar":
+		return "trap bar"
+	case "smith machine":
+		return "smith"
+	case "cable machine":
+		return "cable"
+	default:
+		return label
 	}
-	slices.Sort(classes)
-	return strings.Join(slices.Compact(classes), " ")
 }
 
 // Keep free-text labels comparable without losing distinctions between equipment.
@@ -293,16 +313,79 @@ func draftReportedEquipmentMatches(name, reported, assignment string) bool {
 		if len(draftEquipmentClasses(name)) == 0 {
 			return true
 		}
-		assignment = name
+		return draftNameIdentifiesEquipment(name, reported)
 	}
 	return draftEquipmentIdentity(reported) == draftEquipmentIdentity(assignment)
 }
 
 func draftHistoryEquipmentMatches(exerciseName, assignment string) bool {
-	return assignment == "" ||
-		draftEquipmentIdentity(exerciseName) == draftEquipmentIdentity(assignment) ||
-		(len(draftEquipmentClasses(exerciseName)) == 0 &&
-			strings.Contains(" "+draftEquipmentLabel(exerciseName)+" ", " "+draftEquipmentLabel(assignment)+" "))
+	return assignment == "" || draftNameIdentifiesEquipment(exerciseName, assignment)
+}
+
+func draftNameIdentifiesEquipment(name, equipment string) bool {
+	label := draftEquipmentIdentity(equipment)
+	if label == "" || label == "machine" {
+		return false
+	}
+	// Keep plural normalization at the word boundary and allow common
+	// abbreviations only for supported, single-class labels.
+	words := strings.Fields(draftEquipmentLabel(name))
+	for i := range words {
+		for j := i + 1; j <= len(words); j++ {
+			if draftEquipmentIdentity(strings.Join(words[i:j], " ")) == label {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// The display name also owns saved set history. Keep a customary name for
+// familiar variants and use a qualified name for other explicit assignments.
+func draftExerciseVariant(name, equipment string, unambiguous bool) string {
+	if unambiguous && draftHistoryEquipmentMatches(name, equipment) {
+		return name
+	}
+	base := name
+	for _, prefix := range []string{"plate-loaded ", "plate loaded ", "selectorized ", "lever arm ", "trap bar ", "hex bar ", "barbell ", "dumbbell ", "kettlebell ", "smith machine ", "smith ", "cable ", "bodyweight ", "bb ", "db ", "kb "} {
+		if strings.HasPrefix(strings.ToLower(base), prefix) {
+			base = base[len(prefix):]
+			break
+		}
+	}
+	label := draftEquipmentIdentity(equipment)
+	switch {
+	case !unambiguous || label == "":
+		label = "equipment unspecified"
+	case label == "barbell" || label == "dumbbell" || label == "kettlebell" || label == "cable" || label == "bodyweight":
+		return draftVariantName(titleDraftEquipment(label) + " " + base)
+	}
+	if strings.HasSuffix(strings.ToLower(base), " machine") && strings.HasSuffix(label, " machine") {
+		base = strings.TrimSpace(base[:len(base)-len(" machine")])
+		if strings.Contains(" "+label+" ", " "+draftEquipmentLabel(base)+" ") {
+			return draftVariantName(titleDraftEquipment(label))
+		}
+	}
+	return draftVariantName(base + " (" + titleDraftEquipment(label) + ")")
+}
+
+func titleDraftEquipment(label string) string {
+	words := strings.Fields(label)
+	for i, word := range words {
+		runes := []rune(word)
+		runes[0] = unicode.ToUpper(runes[0])
+		words[i] = string(runes)
+	}
+	return strings.Join(words, " ")
+}
+
+func draftVariantName(name string) string {
+	// The create request limits the complete persisted name to 256 characters.
+	if runes := []rune(name); len(runes) > 256 {
+		// Keep the distinguishing suffix when a model supplied a very long name.
+		return string(runes[:120]) + "…" + string(runes[len(runes)-135:])
+	}
+	return name
 }
 
 func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmedEquipment string) draftWeightLimits {
@@ -314,10 +397,11 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 	exerciseEquipment := draftEquipmentClasses(confirmedEquipment)
 	for _, item := range input.ExerciseWeightLimits {
 		classes := draftEquipmentClasses(item.Equipment)
+		label := draftEquipmentIdentity(item.Equipment)
 		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name) ||
-			(strings.TrimSpace(item.Equipment) != "" && draftEquipmentLabel(item.Equipment) == draftEquipmentLabel(confirmedEquipment))
-		for _, class := range classes {
-			confirmed = confirmed || slices.Contains(exerciseEquipment, class)
+			(label != "" && (label == draftEquipmentIdentity(confirmedEquipment) || draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment)))
+		if len(classes) == 1 && label == classes[0] {
+			confirmed = confirmed || slices.Contains(exerciseEquipment, classes[0])
 		}
 		uncertain := strings.TrimSpace(item.Equipment) != "" && (!hasAssignment && len(exerciseEquipment) == 0)
 		if confirmed {

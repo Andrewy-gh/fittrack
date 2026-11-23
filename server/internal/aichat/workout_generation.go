@@ -67,7 +67,7 @@ type WorkoutGenerationToolInput struct {
 	WorkoutFocus      string `json:"workoutFocus" jsonschema:"description=Workout focus such as push, pull, legs, upper body, lower body, or full body."`
 	SpaceConstraints  string `json:"spaceConstraints,omitempty" jsonschema:"description=Training location or space constraints such as home, gym, hotel, or outdoors when known."`
 	Injuries          string `json:"injuries,omitempty" jsonschema:"description=Current injuries, pain, or movement limitations. Use none when the user reports no injuries."`
-	WorkoutDate       string `json:"workoutDate,omitempty" jsonschema:"description=Optional requested workout date when the user specified one. May be an ISO value or a relative phrase like tomorrow."`
+	WorkoutDate       string `json:"workoutDate,omitempty" jsonschema:"description=Only if the user requested a date: today, tomorrow, yesterday, YYYY-MM-DD in the user's local day, or an RFC3339 timestamp for an explicitly timed workout."`
 	RecentPerformance string `json:"recentPerformance,omitempty" jsonschema:"description=Optional summary of results from FitTrack history tools. Put any weights or sets reported directly by the user into loadChoices instead."`
 }
 
@@ -88,12 +88,7 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 				"request_id", request.GetRequestID(ctx),
 			)
 			if source, ok := ctx.Value(draftInjuryContextKey{}).(draftInjuryContext); ok {
-				reported := source.confirmedStatus(input.InjuryEvidence)
-				if reported == "none" && !hasUsableDraftInjuryStatus(input.Injuries) {
-					// Let a correction resume the original chat model turn.
-					reported = ""
-				}
-				input.Injuries = reported
+				input.Injuries = source.confirmedStatus(input.InjuryEvidence)
 			}
 			if !hasUsableDraftInjuryStatus(input.Injuries) {
 				return workoutDraftInputCorrection{
@@ -104,10 +99,14 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 				return nil, err
 			}
 
-			now := time.Now()
+			now := draftClock(ctx)
+			schedule, ok := resolveWorkoutDraftSchedule(input.WorkoutDate, now)
+			if !ok {
+				return workoutDraftInputCorrection{InputCorrection: "Use today, tomorrow, yesterday, YYYY-MM-DD, or RFC3339 for workoutDate. Ask the user only if the requested date is ambiguous."}, nil
+			}
 			draft, err := generateWorkoutDraft(ctx, g, modelName, input, now)
 			if err == nil {
-				applyDraftWeights(ctx, history, input, draft, now)
+				applyDraftWeights(ctx, history, input, draft, now, schedule.historyThrough)
 			}
 			logAIChatTraceContext(ctx, "workout_draft_tool_finished",
 				"elapsed_ms", time.Since(startedAt).Milliseconds(),
@@ -183,7 +182,7 @@ func generateWorkoutDraft(
 // references come from the exercise catalog and user-specific application state.
 // Stored drafts and workout requests retain their existing, broader shape.
 type generatedWorkoutDraft struct {
-	Date         string                     `json:"date"`
+	Date         string                     `json:"date,omitempty"` // Ignored; the server sets the actual date.
 	Notes        *string                    `json:"notes,omitempty"`
 	WorkoutFocus *string                    `json:"workoutFocus,omitempty"`
 	Exercises    []generatedWorkoutExercise `json:"exercises"`
@@ -219,7 +218,7 @@ func generateWorkoutDraftData(
 		return nil, nil
 	}
 	draft := &workout.CreateWorkoutRequest{
-		Date: output.Date, Notes: output.Notes, WorkoutFocus: output.WorkoutFocus,
+		Notes: output.Notes, WorkoutFocus: output.WorkoutFocus,
 		Exercises: make([]workout.ExerciseInput, len(output.Exercises)),
 	}
 	for i, exercise := range output.Exercises {
@@ -240,7 +239,11 @@ func generateWorkoutDraftWith(
 	now time.Time,
 	generator workoutDraftGenerator,
 ) (*workout.CreateWorkoutRequest, error) {
-	systemPrompt := buildWorkoutGenerationPrompt(input, now)
+	schedule, ok := resolveWorkoutDraftSchedule(input.WorkoutDate, now)
+	if !ok {
+		return nil, fmt.Errorf("invalid requested workout date")
+	}
+	systemPrompt := buildWorkoutGenerationPrompt()
 	userPrompt := buildWorkoutGenerationUserPrompt(input)
 
 	for attempt := 1; attempt <= 2; attempt++ {
@@ -272,6 +275,9 @@ func generateWorkoutDraftWith(
 			"request_id", request.GetRequestID(ctx),
 		)
 
+		if output != nil {
+			output.Date = schedule.date.Format(time.RFC3339)
+		}
 		normalizeWorkoutDraft(output)
 		if err := validateWorkoutDraft(output); err != nil {
 			return nil, fmt.Errorf("validate workout draft: %w", err)
@@ -312,21 +318,11 @@ func traceError(err error) string {
 	return err.Error()
 }
 
-func buildWorkoutGenerationPrompt(input WorkoutGenerationToolInput, now time.Time) string {
-	currentTimestamp := now.Format(time.RFC3339)
-	dateInstruction := fmt.Sprintf("If the user did not specify a workout date, use %s for the date field.", currentTimestamp)
-	if requested := strings.TrimSpace(input.WorkoutDate); requested != "" {
-		dateInstruction = fmt.Sprintf(
-			`Use the user's requested workout date "%s" for the "date" field. If the request is relative, interpret it from the user's local day rather than UTC, and do not shift it because of a UTC date boundary. Return the final value as an RFC3339 timestamp in the "date" field.`,
-			requested,
-		)
-	}
+func buildWorkoutGenerationPrompt() string {
+	return `You are generating a FitTrack workout draft.
 
-	return fmt.Sprintf(`You are generating a FitTrack workout draft.
-
-Return structured data only. The output must match FitTrack's current workout create request exactly:
+Return structured data only, with the following fields:
 {
-  "date": "RFC3339 timestamp",
   "notes": "optional string",
   "workoutFocus": "optional string",
   "exercises": [
@@ -343,7 +339,7 @@ Return structured data only. The output must match FitTrack's current workout cr
 }
 
 Rules:
-- Include every required field. "date" is always required and must be RFC3339.
+- Include every required field. FitTrack attaches the actual workout date independently of the model.
 - The exercise list must contain at least one real exercise, and every exercise must contain at least one set.
 - Use only "warmup" or "working" for setType.
 - Match the workout focus, available equipment, session length, training location, and injury constraints.
@@ -356,7 +352,7 @@ Rules:
 - Do not assign any weights. FitTrack applies user-specified loads and history after selecting the exercises and sets.
 - Keep notes brief and practical. Use notes for rest, effort, or injury reminders when helpful. Do not prescribe numeric weights in notes.
 - Place compound lifts before accessories when that fits the request.
-- %s`, dateInstruction)
+`
 }
 
 func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {

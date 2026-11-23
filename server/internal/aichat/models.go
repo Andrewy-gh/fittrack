@@ -146,6 +146,7 @@ type RunRecoveryRequest struct {
 	RunID          int32
 	UserID         string
 	Reason         string
+	Timezone       string
 }
 
 type RuntimeChatMessage struct {

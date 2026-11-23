@@ -326,6 +326,7 @@ export async function requestAIChatMessageRecovery(
 ): Promise<AIChatRecoveryResponse> {
   const response = await postAiConversationsByIdMessagesRecover({
     path: { id: conversationId },
+    query: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     signal: options.signal,
     throwOnError: true,
   });
@@ -351,8 +352,11 @@ export async function streamAIChatMessage(
   prompt: string,
   handlers: StreamHandlers = {},
 ): Promise<AIChatStreamResult> {
+  const query = new URLSearchParams({
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+  });
   const response = await fetch(
-    `${BASE_URL}/ai/conversations/${conversationId}/messages/stream`,
+    `${BASE_URL}/ai/conversations/${conversationId}/messages/stream?${query.toString()}`,
     {
       method: "POST",
       headers: await getAuthHeaders(true),

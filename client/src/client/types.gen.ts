@@ -813,7 +813,12 @@ export type PostAiConversationsByIdMessagesRecoverData = {
      */
     id: number;
   };
-  query?: never;
+  query?: {
+    /**
+     * Client IANA timezone for workout dates (defaults to UTC)
+     */
+    timezone?: string;
+  };
   url: "/ai/conversations/{id}/messages/recover";
 };
 
@@ -868,7 +873,12 @@ export type PostAiConversationsByIdMessagesStreamData = {
      */
     id: number;
   };
-  query?: never;
+  query?: {
+    /**
+     * Client IANA timezone for workout dates (defaults to UTC)
+     */
+    timezone?: string;
+  };
   url: "/ai/conversations/{id}/messages/stream";
 };
 

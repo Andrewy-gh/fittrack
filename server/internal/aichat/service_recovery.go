@@ -55,6 +55,9 @@ func (s *Service) RequestMessageRecovery(ctx context.Context, conversationID int
 		UserID:         userID,
 		Reason:         strings.TrimSpace(reason),
 	}
+	if location, ok := ctx.Value(draftTimezoneKey{}).(*time.Location); ok {
+		request.Timezone = location.String()
+	}
 	if request.Reason == "" {
 		request.Reason = recoverReasonStreamReconnect
 	}
@@ -123,7 +126,7 @@ func (s *Service) RecoverStreamingRun(ctx context.Context, request RunRecoveryRe
 		claimCancel()
 	}
 
-	_, err = s.executeOwnedRun(generationCtx, prepared, owner, cancel)
+	_, err = s.executeOwnedRun(withDraftTimezone(generationCtx, request.Timezone), prepared, owner, cancel)
 	return err
 }
 

@@ -156,12 +156,14 @@ func (r *GenkitRuntime) streamModel(ctx context.Context, prompt string, history 
 	var builder strings.Builder
 	firstModelDelta := false
 	snapshot, profile := r.trainingContextForChat(ctx)
+	now := draftClock(ctx)
+	streamCtx = context.WithValue(streamCtx, draftClockKey{}, now)
 	streamCtx = context.WithValue(streamCtx, draftInjuryContextKey{}, draftInjuryContext{prompt: prompt, history: history, profile: profile})
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
 		ai.WithTools(r.chatTools()...),
 		ai.WithMaxTurns(chatMaxTurns),
-		ai.WithMessages(buildChatMessages(history, snapshot, profile, r.dataReader != nil)...),
+		ai.WithMessages(buildChatMessages(history, snapshot, profile, r.dataReader != nil, now)...),
 		ai.WithPrompt(prompt),
 		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
 			delta := collectChunkText(chunk)
@@ -339,9 +341,9 @@ func GeminiModelName() string {
 	return defaultModelName
 }
 
-func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, profile *TrainingProfile, dataToolsEnabled bool) []*ai.Message {
+func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, profile *TrainingProfile, dataToolsEnabled bool, now time.Time) []*ai.Message {
 	messages := []*ai.Message{
-		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt(snapshot, profile, time.Now(), dataToolsEnabled))),
+		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt(snapshot, profile, now, dataToolsEnabled))),
 	}
 
 	for _, message := range history {
@@ -404,7 +406,7 @@ When the user wants you to build a workout:
 - After one follow-up answer, if workout focus, session duration, equipment or location context, and usable injury details are present, call the %s tool with conservative assumptions. Do not ask optional questions about fitness level, preferred exercises, or other movements to avoid unless the pain description is unclear, severe, includes red flags, or the stated constraints cannot support a safe, reasonable draft.
 - FitTrack creates one structured workout draft at a time, not full weekly splits, multi-day programs, or bundled plans. For a multi-day request, ask the user to choose one day, workout, or session to build first and ask only for missing MVP-ready inputs for that single session.
 - If the user follows up after a multi-day request with one day or session, such as "day one" or "start with upper body", treat that as a valid single-session scope. Once that follow-up also includes MVP-ready inputs, call the %s tool immediately instead of asking them to confirm the scope again.
-- Do not ask scheduling, frequency, or future-date questions in the normal MVP flow. If the user does not specify a date, the draft tool will default the workout date to today.
+- Do not ask scheduling, frequency, or future-date questions in the normal MVP flow. If the user does not specify a date, omit workoutDate; the draft tool defaults to today. Pass today, tomorrow, or yesterday verbatim when requested. For other requested dates, resolve them against the current local date above and use YYYY-MM-DD or an explicit RFC3339 timestamp. Never use the date of a past workout as the requested date for a new draft.
 - Do not list specific exercises, sets, or reps in plain text before the %s tool runs.
 - As soon as you have the MVP-ready inputs, call the %s tool immediately.
 - The %s tool is the only way to produce a structured workout draft that matches FitTrack's workout contract.

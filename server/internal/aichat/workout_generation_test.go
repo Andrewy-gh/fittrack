@@ -193,13 +193,12 @@ func TestValidateWorkoutGenerationToolInputRequiresFeasibleWorkoutContext(t *tes
 }
 
 func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
-	prompt := buildWorkoutGenerationPrompt(WorkoutGenerationToolInput{}, time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC))
+	prompt := buildWorkoutGenerationPrompt()
 
 	requiredSnippets := []string{
-		`"date": "RFC3339 timestamp"`,
 		`"workoutFocus": "optional string"`,
 		`"setType": "warmup" | "working"`,
-		`"date" is always required and must be RFC3339.`,
+		`FitTrack attaches the actual workout date independently of the model.`,
 		`Do not assign any weights.`,
 		`When recent performance is supplied, use it to choose suitable exercises and reps.`,
 		`Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.`,
@@ -232,21 +231,6 @@ func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *t
 	}
 	if !strings.Contains(prompt, "- Recent performance to respect: Bench Press last session: 195x3 working") {
 		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want recent performance", prompt)
-	}
-}
-
-func TestBuildWorkoutGenerationPromptUsesUserLocalLanguageForRelativeDates(t *testing.T) {
-	loc := time.FixedZone("EDT", -4*60*60)
-	prompt := buildWorkoutGenerationPrompt(
-		WorkoutGenerationToolInput{WorkoutDate: "tomorrow"},
-		time.Date(2026, 4, 20, 23, 30, 0, 0, loc),
-	)
-
-	if !strings.Contains(prompt, `interpret it from the user's local day rather than UTC`) {
-		t.Fatalf("buildWorkoutGenerationPrompt() = %q, want user-local relative date guidance", prompt)
-	}
-	if strings.Contains(prompt, `relative to`) {
-		t.Fatalf("buildWorkoutGenerationPrompt() = %q, should not anchor relative dates to a server timestamp", prompt)
 	}
 }
 

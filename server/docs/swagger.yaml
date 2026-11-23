@@ -1445,6 +1445,10 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Client IANA timezone for workout dates (defaults to UTC)
+        in: query
+        name: timezone
+        type: string
       produces:
       - application/json
       responses:
@@ -1493,6 +1497,10 @@ paths:
         name: id
         required: true
         type: integer
+      - description: Client IANA timezone for workout dates (defaults to UTC)
+        in: query
+        name: timezone
+        type: string
       - description: Send message request
         in: body
         name: request

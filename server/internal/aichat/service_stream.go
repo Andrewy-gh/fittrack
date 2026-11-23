@@ -254,6 +254,9 @@ func (s *Service) executePreparedRun(ctx context.Context, prepared *PreparedMess
 	)
 	firstChunkPersisted := false
 	runtimeCtx := contextWithTrainingProfileSource(ctx, prepared.Conversation.ID, prepared.Run.UserMessageID)
+	if prepared.UserMessage != nil {
+		runtimeCtx = context.WithValue(runtimeCtx, draftClockKey{}, prepared.UserMessage.CreatedAt)
+	}
 	runtimeCtx = context.WithValue(runtimeCtx, providerSelectedKey{}, func(ctx context.Context, model string) error {
 		if prepared.Run.Model == model {
 			return nil
