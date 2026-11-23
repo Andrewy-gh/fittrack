@@ -76,4 +76,30 @@ func TestWorkoutService_CreateWorkoutPersistence(t *testing.T) {
 	require.Equal(t, id, workouts[0].ID)
 	_, err = queries.GetExerciseByName(ctx, db.GetExerciseByNameParams{Name: rejected, UserID: owner})
 	require.ErrorIs(t, err, pgx.ErrNoRows, "new exercise must roll back with the workout")
+
+	// Force the 1RM write to fail after the workout and its sets were inserted.
+	// The constraint is scoped to this fixture, and removed even if an assertion fails.
+	_, err = pool.Exec(ctx, `ALTER TABLE exercise ADD CONSTRAINT test_create_1rm_failure CHECK (name <> 'Persistence 1RM failure' OR historical_1rm IS NULL)`)
+	require.NoError(t, err)
+	defer func() {
+		_, dropErr := pool.Exec(context.Background(), `ALTER TABLE exercise DROP CONSTRAINT IF EXISTS test_create_1rm_failure`)
+		require.NoError(t, dropErr)
+	}()
+	weight := 100.0
+	failedID, err = service.CreateWorkoutWithID(ctx, CreateWorkoutRequest{
+		Date: date,
+		Exercises: []ExerciseInput{{Name: "Persistence 1RM failure", Sets: []SetInput{
+			{Reps: 5, SetType: "warmup"}, {Weight: &weight, Reps: 8, SetType: "working"},
+		}}},
+	})
+	require.ErrorContains(t, err, "failed to update historical 1RM")
+	require.Zero(t, failedID)
+	workouts, err = service.ListWorkouts(ctx)
+	require.NoError(t, err)
+	require.Len(t, workouts, 1)
+	_, err = queries.GetExerciseByName(ctx, db.GetExerciseByNameParams{Name: "Persistence 1RM failure", UserID: owner})
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+	var count int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM "set" WHERE user_id = $1`, owner).Scan(&count))
+	require.Equal(t, 3, count, "failed 1RM update must roll back the inserted sets")
 }
