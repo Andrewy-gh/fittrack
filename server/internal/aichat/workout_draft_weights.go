@@ -78,7 +78,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 			case suppress || limits.fixed:
 				set.DraftBodyweight = bodyweight
 			case choice.Kind == "reported":
-				if draftReportedEquipmentMatches(exercise.Name, choice.Equipment, equipment) && allowedDraftWeight(choice.Weight, limits.inferredCap) {
+				if allowedDraftWeight(choice.Weight, limits.inferredCap) {
 					set.Weight = choice.Weight
 				}
 			case reader != nil && !input.SkipHistoryWeights:
@@ -91,14 +91,15 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 	if !ok || len(eligible) == 0 {
 		return
 	}
-	plannedDate, _ := time.Parse(time.RFC3339, draft.Date)
 	before := now
-	if !plannedDate.IsZero() && plannedDate.Before(before) {
-		before = plannedDate
+	if strings.TrimSpace(input.WorkoutDate) != "" {
+		if plannedDate, err := time.Parse(time.RFC3339, draft.Date); err == nil && plannedDate.Before(now) {
+			before = plannedDate
+		}
 	}
-	after := plannedDate.AddDate(0, 0, -90)
-	if plannedDate.IsZero() {
-		after = before.AddDate(0, 0, -90)
+	after := now.AddDate(0, 0, -90)
+	if before.Before(after) {
+		return
 	}
 	lookupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -151,7 +152,8 @@ func draftLoadAndRepChoices(choices []workoutDraftLoadChoice, exercise workout.E
 			continue
 		}
 		if choice.Kind == "reported" {
-			if exercise.Sets[index].Reps == choice.Reps {
+			if exercise.Sets[index].Reps == choice.Reps &&
+				draftReportedEquipmentMatches(exercise.Name, choice.Equipment, draftSetEquipment(choices, exercise, index)) {
 				reported = choice
 			}
 			continue
@@ -297,13 +299,16 @@ func draftReportedEquipmentMatches(name, reported, assignment string) bool {
 }
 
 func draftHistoryEquipmentMatches(exerciseName, assignment string) bool {
-	return assignment == "" || len(draftEquipmentClasses(exerciseName)) == 0 ||
-		draftEquipmentIdentity(exerciseName) == draftEquipmentIdentity(assignment)
+	return assignment == "" ||
+		draftEquipmentIdentity(exerciseName) == draftEquipmentIdentity(assignment) ||
+		(len(draftEquipmentClasses(exerciseName)) == 0 &&
+			strings.Contains(" "+draftEquipmentLabel(exerciseName)+" ", " "+draftEquipmentLabel(assignment)+" "))
 }
 
 func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmedEquipment string) draftWeightLimits {
 	limits := draftWeightLimits{explicitCap: input.MaxWeight, inferredCap: input.MaxWeight}
-	if confirmedEquipment == "" {
+	hasAssignment := strings.TrimSpace(confirmedEquipment) != ""
+	if !hasAssignment {
 		confirmedEquipment = name
 	}
 	exerciseEquipment := draftEquipmentClasses(confirmedEquipment)
@@ -314,7 +319,7 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 		for _, class := range classes {
 			confirmed = confirmed || slices.Contains(exerciseEquipment, class)
 		}
-		uncertain := strings.TrimSpace(item.Equipment) != "" && (len(exerciseEquipment) == 0 || len(classes) == 0)
+		uncertain := strings.TrimSpace(item.Equipment) != "" && (!hasAssignment && len(exerciseEquipment) == 0)
 		if confirmed {
 			limits.explicitCap = lowerDraftCap(limits.explicitCap, item.Weight)
 		}

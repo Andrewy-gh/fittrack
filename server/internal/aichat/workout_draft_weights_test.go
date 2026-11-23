@@ -101,19 +101,28 @@ func TestWorkoutDraftToolMatchesLatestWorkingSets(t *testing.T) {
 	warmup := workout.SetInput{Weight: new(115.0), Reps: 8, SetType: "warmup"}
 
 	for _, tc := range []struct {
-		name     string
-		focus    string
-		sessions []DraftWeightSession
-		expected *float64
+		name          string
+		focus         string
+		sessions      []DraftWeightSession
+		expected      *float64
+		date          time.Time
+		requestedDate string
 	}{
 		{name: "one session repeats weight without progression", sessions: []DraftWeightSession{latest}, expected: new(115.0)},
 		{name: "latest session wins over lighter earlier session", sessions: []DraftWeightSession{latest, previous}, expected: new(115.0)},
 		{name: "more reps in latest session do not carry over", sessions: []DraftWeightSession{{Date: recent, Sets: []workout.SetInput{working(115, 10)}}, previous}},
+		{name: "old generated date cannot shift the rolling window", date: now.AddDate(0, 0, -100), sessions: []DraftWeightSession{latest, {Date: now.AddDate(0, 0, -110), Sets: []workout.SetInput{working(65, 8)}}}, expected: new(115.0)},
+		{name: "future date cannot age out current history", date: now.AddDate(0, 0, 100), requestedDate: now.AddDate(0, 0, 100).Format(time.DateOnly), sessions: []DraftWeightSession{latest}, expected: new(115.0)},
+		{name: "explicitly backdated draft excludes later logged sets", date: now.AddDate(0, 0, -6), requestedDate: now.AddDate(0, 0, -6).Format(time.DateOnly), sessions: []DraftWeightSession{latest}},
 		{name: "warmup does not fill working weight", sessions: []DraftWeightSession{{Date: recent, Sets: []workout.SetInput{warmup}}, previous}},
 		{name: "deload leaves weights blank despite matching history", focus: "upper body deload", sessions: []DraftWeightSession{latest, previous}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			payload := `{"date":"` + now.Format(time.RFC3339) + `","exercises":[{"name":"Bench Press","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]}]}`
+			date := tc.date
+			if date.IsZero() {
+				date = now
+			}
+			payload := `{"date":"` + date.Format(time.RFC3339) + `","exercises":[{"name":"Bench Press","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]}]}`
 			g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string { return payload })
 			tool := defineWorkoutDraftTool(g, "synthetic", fixedDraftWeightHistory{"Bench Press": tc.sessions})
 			focus := tc.focus
@@ -122,7 +131,7 @@ func TestWorkoutDraftToolMatchesLatestWorkingSets(t *testing.T) {
 			}
 			out, err := tool.RunRaw(ctx, map[string]any{
 				"fitnessLevel": "intermediate", "fitnessGoal": "strength",
-				"equipment": "full gym", "sessionDuration": 10, "workoutFocus": focus, "injuries": "none",
+				"equipment": "full gym", "sessionDuration": 10, "workoutFocus": focus, "injuries": "none", "workoutDate": tc.requestedDate,
 			})
 			require.NoError(t, err)
 			raw, err := json.Marshal(out)
@@ -160,7 +169,7 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		"Barbell Row":                   reported(95),
 		"Resistance Band Dumbbell Curl": reported(50),
 		"Kettlebell Swing":              reported(25),
-		"Overhead Press":                reported(65),
+		"Barbell Overhead Press":        reported(65),
 	}
 	history["Barbell Row"] = append(history["Barbell Row"], DraftWeightSession{
 		Date: now.AddDate(0, 0, -8), Sets: history["Barbell Row"][0].Sets,
@@ -172,7 +181,7 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		{"name":"Barbell Row","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
 		{"name":"Pull-Ups","sets":[{"reps":4,"setType":"warmup"},{"reps":8,"setType":"working"}]},
 		{"name":"Dumbbell Row","sets":[{"reps":8,"setType":"working"}]},
-		{"name":"Overhead Press","sets":[{"reps":4,"setType":"warmup"},{"reps":8,"setType":"working"}]},
+		{"name":"Barbell Overhead Press","sets":[{"reps":4,"setType":"warmup"},{"reps":8,"setType":"working"}]},
 		{"name":"Resistance Band Dumbbell Curl","sets":[{"reps":8,"setType":"working"}]},
 		{"name":"Kettlebell Swing","sets":[{"reps":8,"setType":"working"}]},
 		{"name":"Shoulder Press","sets":[{"reps":8,"setType":"working"}]},
@@ -187,9 +196,9 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		{name: "missing warmup with unspecified reps", payload: strings.Replace(payload,
 			`{"reps":5,"setType":"warmup"},`, "", 1)},
 		{name: "missing explicitly blank warmup", fixedWithoutCeiling: true, payload: strings.Replace(payload,
-			`"Overhead Press","sets":[{"reps":4,"setType":"warmup"},`, `"Overhead Press","sets":[`, 1)},
+			`"Barbell Overhead Press","sets":[{"reps":4,"setType":"warmup"},`, `"Barbell Overhead Press","sets":[`, 1)},
 		{name: "wrong reps on blank warmup", payload: strings.Replace(payload,
-			`"Overhead Press","sets":[{"reps":4,"setType":"warmup"}`, `"Overhead Press","sets":[{"reps":5,"setType":"warmup"}`, 1)},
+			`"Barbell Overhead Press","sets":[{"reps":4,"setType":"warmup"}`, `"Barbell Overhead Press","sets":[{"reps":5,"setType":"warmup"}`, 1)},
 		{name: "wrong reps on one governed working set", payload: strings.Replace(payload,
 			`{"reps":8,"setType":"working"}`, `{"reps":7,"setType":"working"}`, 1)},
 		{name: "wrong reps on last set with only weight overridden", payload: strings.Replace(payload,
@@ -227,8 +236,8 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 					{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 115.0, "setType": "working", "reps": 8},
 					{"exercise": "Barbell Bench Press", "kind": "blank", "setType": "working", "last": true},
 					{"exercise": "Pull-Ups", "kind": "requested", "weight": 0.0},
-					{"exercise": "Overhead Press", "kind": "blank", "setType": "warmup", "reps": 4},
-					{"exercise": "Overhead Press", "kind": "structure", "setType": "all", "equipment": "barbell"},
+					{"exercise": "Barbell Overhead Press", "kind": "blank", "setType": "warmup", "reps": 4},
+					{"exercise": "Barbell Overhead Press", "kind": "structure", "setType": "all", "equipment": "barbell"},
 					{"exercise": "Shoulder Press", "kind": "requested", "setType": "working", "equipment": "smith", "weight": 65.0},
 					{"exercise": "Leg Press Machine", "kind": "requested", "weight": 125.0},
 					{"exercise": "Incline Press", "kind": "requested", "weight": 65.0},
@@ -387,8 +396,12 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 		{answer: "No injuries.", wantDraft: true},
 		{answer: "Go ahead."},
 		{answer: "Go ahead, but I can't confirm I have no injuries yet."},
+		{answer: "Go ahead. I haven't confirmed that I have no injuries."},
+		{answer: "I don't know my fitness level, but I have no injuries.", wantDraft: true},
 		{answer: "I don't have any injuries.", wantDraft: true},
 		{answer: "No injuries, but I can't raise my right arm overhead.", wantDraft: true, limitation: "i can't raise my right arm overhead"},
+		{answer: "No injuries, but I can't fully raise my right arm overhead.", wantDraft: true, limitation: "i can't fully raise my right arm overhead"},
+		{answer: "I have knee pain. I have shoulder pain and overhead pressing hurts.", wantDraft: true, limitation: "i have knee pain; i have shoulder pain and overhead pressing hurts"},
 		{answer: "It's mild front-of-knee discomfort, no sharp pain.", wantDraft: true, limitation: "mild front-of-knee discomfort"},
 	} {
 		t.Run(tc.answer, func(t *testing.T) {
@@ -508,6 +521,8 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"name":"Hack Squat","sets":[{"reps":8,"setType":"working"}]},
 			{"name":"Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"},{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
 			{"name":"Lever Arm Hack Squat","sets":[{"reps":8,"setType":"working"}]},
+			{"name":"Pec Deck Fly","sets":[{"reps":8,"setType":"working"}]},
+			{"name":"Row","sets":[{"reps":8,"setType":"working"}]},
 			{"name":"Barbell Row","sets":[{"reps":8,"setType":"working"}]}%s
 		]}`, now.Format(time.RFC3339), row)
 	})
@@ -516,12 +531,14 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 		{Weight: new(45.0), Reps: 8, SetType: "working"},
 	}}}}
 	history["Lever Arm Hack Squat"] = history["Barbell Bench Press"]
+	history["Pec Deck Fly"] = history["Barbell Bench Press"]
 	tool := defineWorkoutDraftTool(g, "synthetic", history)
 	out, err := tool.RunRaw(ctx, map[string]any{
 		"equipment": "full gym", "sessionDuration": 20, "workoutFocus": "full body", "injuries": "none",
 		"exerciseWeightLimits": []map[string]any{
 			{"equipment": "trap bar", "weight": 135.0},
 			{"equipment": "pivot arms", "weight": 100.0},
+			{"equipment": "iso cradle", "weight": 30.0},
 			{"equipment": "dumbbell", "weight": 60.0},
 		},
 		"loadChoices": []map[string]any{
@@ -531,6 +548,10 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"exercise": "Bench Press", "kind": "requested", "setType": "working", "weight": 115.0},
 			{"exercise": "Bench Press", "kind": "blank", "setType": "working", "set": 2},
 			{"exercise": "Lever Arm Hack Squat", "kind": "structure", "equipment": "Smith machine", "setType": "working"},
+			{"exercise": "Pec Deck Fly", "kind": "structure", "equipment": "dumbbell", "setType": "working"},
+			{"exercise": "Row", "kind": "structure", "equipment": "dumbbell", "setType": "working"},
+			{"exercise": "Row", "kind": "reported", "equipment": "dumbbell", "reps": 8, "weight": 45.0},
+			{"exercise": "Row", "kind": "reported", "equipment": "barbell", "reps": 8, "weight": 55.0},
 			{"exercise": "Barbell Row", "kind": "structure", "equipment": "dumbbell", "setType": "working"},
 			{"exercise": "Barbell Row", "kind": "reported", "equipment": "barbell", "reps": 8, "weight": 45.0},
 			{"exercise": "Dumbbell Row", "kind": "blank", "setType": "all"},
@@ -550,9 +571,11 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 	assert.Nil(t, bench[2].Weight)
 	assert.Equal(t, new(115.0), bench[3].Weight)
 	require.Equal(t, 2, attempts)
-	require.Len(t, draft.Exercises, 7)
+	require.Len(t, draft.Exercises, 9)
 	assert.Nil(t, draft.Exercises[4].Sets[0].Weight, "lever-arm history does not apply to Smith machine sets")
-	assert.Nil(t, draft.Exercises[5].Sets[0].Weight, "reported barbell load does not apply to dumbbell sets")
-	assert.Equal(t, "Dumbbell Row", draft.Exercises[6].Name)
-	assert.Nil(t, draft.Exercises[6].Sets[0].Weight)
+	assert.Nil(t, draft.Exercises[5].Sets[0].Weight, "unclassified logged equipment does not establish a dumbbell match")
+	assert.Equal(t, new(45.0), draft.Exercises[6].Sets[0].Weight, "choose the comparable report and ignore unrelated unclassified caps")
+	assert.Nil(t, draft.Exercises[7].Sets[0].Weight, "reported barbell load does not apply to dumbbell sets")
+	assert.Equal(t, "Dumbbell Row", draft.Exercises[8].Name)
+	assert.Nil(t, draft.Exercises[8].Sets[0].Weight)
 }
