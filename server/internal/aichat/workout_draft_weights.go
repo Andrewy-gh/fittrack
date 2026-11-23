@@ -69,7 +69,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 			limits := draftExerciseWeightLimits(input, exercise.Name, equipment)
 			switch {
 			case choice.Kind == "requested":
-				if (choice.Reps <= 0 || choice.Reps == set.Reps) && allowedDraftWeight(choice.Weight, limits.explicitCap) {
+				if allowedDraftWeight(choice.Weight, limits.explicitCap) {
 					set.Weight = choice.Weight
 				}
 			case choice.Kind == "blank":
@@ -255,7 +255,10 @@ func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.Exerci
 
 func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmedEquipment string) draftWeightLimits {
 	limits := draftWeightLimits{explicitCap: input.MaxWeight, inferredCap: input.MaxWeight}
-	exerciseEquipment := draftEquipmentClasses(name + " " + confirmedEquipment)
+	if confirmedEquipment == "" {
+		confirmedEquipment = name
+	}
+	exerciseEquipment := draftEquipmentClasses(confirmedEquipment)
 	for _, item := range input.ExerciseWeightLimits {
 		classes := draftEquipmentClasses(item.Equipment)
 		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name)
@@ -297,7 +300,7 @@ func draftEquipmentClasses(value string) []string {
 	words := strings.Fields(normalizeQualityText(value))
 	for i, word := range words {
 		class := strings.TrimSuffix(word, "s")
-		if class == "machine" && i > 0 && words[i-1] == "smith" {
+		if class == "machine" && i > 0 && (words[i-1] == "smith" || words[i-1] == "cable") {
 			continue
 		}
 		switch class {
@@ -307,7 +310,7 @@ func draftEquipmentClasses(value string) []string {
 			classes = append(classes, "barbell")
 		case "kb", "kettlebell":
 			classes = append(classes, "kettlebell")
-		case "cable", "smith", "machine", "band", "vest", "bodyweight":
+		case "cable", "smith", "machine", "band", "vest", "sandbag", "bodyweight":
 			classes = append(classes, class)
 		}
 	}

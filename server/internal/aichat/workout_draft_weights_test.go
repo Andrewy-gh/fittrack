@@ -217,6 +217,7 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 					{"exercise": "Dumbbell Bench Press", "equipment": "dumbbell", "weight": 35.0},
 					{"exercise": "Barbell Row", "weight": 95.0},
 					{"equipment": "Smith machine", "weight": 55.0},
+					{"equipment": "cable machine", "weight": 50.0},
 					{"equipment": "dumbbell", "weight": 35.0},
 					{"equipment": "barbell", "weight": 120.0},
 					fixedLimit,
@@ -283,6 +284,7 @@ func TestWorkoutDraftToolKeepsReportedLoadWhenLoggedHistoryIsSkipped(t *testing.
 		weight                             float64
 	}{
 		{name: "dumbbell exception", equipment: "adjustable dumbbells", exercise: "Dumbbell Floor Press", setType: "working", reps: 8, weight: 30},
+		{name: "sandbag exception", equipment: "an adjustable sandbag", exercise: "Sandbag Squat", setType: "working", reps: 8, weight: 40},
 		{name: "weighted vest exception", equipment: "a weighted vest", exercise: "Weighted Push-Up", setType: "working", reps: 8, weight: 15},
 		{name: "comparable warmup", equipment: "adjustable dumbbells", exercise: "Dumbbell Floor Press", setType: "warmup", reps: 5, weight: 20},
 	} {
@@ -423,4 +425,40 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 			}
 		})
 	}
+}
+
+func TestWorkoutDraftToolHonorsLoadAcrossIndependentRepAndEquipmentScopes(t *testing.T) {
+	ctx := context.Background()
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		return `{"date":"2026-11-23T00:00:00Z","exercises":[{
+			"name":"Barbell Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"},{"reps":6,"setType":"working"}]
+		},{"name":"Dumbbell Floor Press","sets":[{"reps":8,"setType":"working"},{"reps":6,"setType":"working"}]}]}`
+	})
+	tool := defineWorkoutDraftTool(g, "synthetic", nil)
+	out, err := tool.RunRaw(ctx, map[string]any{
+		"equipment": "bench, barbells up to 45 lb and dumbbells up to 60 lb", "sessionDuration": 10, "workoutFocus": "upper body", "injuries": "none",
+		"exerciseWeightLimits": []map[string]any{
+			{"equipment": "barbell", "weight": 45.0},
+			{"equipment": "dumbbell", "weight": 60.0},
+		},
+		"loadChoices": []map[string]any{
+			{"exercise": "Barbell Bench Press", "kind": "requested", "setType": "warmup", "equipment": "barbell", "weight": 45.0},
+			{"exercise": "Barbell Bench Press", "kind": "requested", "setType": "working", "equipment": "dumbbell", "weight": 55.0, "reps": 8},
+			{"exercise": "Barbell Bench Press", "kind": "structure", "setType": "working", "last": true, "reps": 6},
+			{"exercise": "Dumbbell Floor Press", "kind": "requested", "setType": "working", "reps": 8, "weight": 55.0},
+			{"exercise": "Dumbbell Floor Press", "kind": "structure", "setType": "working", "last": true, "reps": 6},
+		},
+	})
+	require.NoError(t, err)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	var draft workout.CreateWorkoutRequest
+	require.NoError(t, json.Unmarshal(raw, &draft))
+	sets := draft.Exercises[0].Sets
+	require.Len(t, sets, 3)
+	for i, want := range []float64{45, 55, 55} {
+		assert.Equal(t, &want, sets[i].Weight)
+	}
+	require.Equal(t, 6, sets[2].Reps)
+	require.Equal(t, new(55.0), draft.Exercises[1].Sets[1].Weight)
 }
