@@ -103,7 +103,8 @@ func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDat
 	} else {
 		g = genkitInit(ctx, genkit.WithPlugins(&googlegenai.GoogleAI{}), genkit.WithDefaultModel(modelName))
 	}
-	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
+	history, _ := reader.(draftWeightHistoryReader)
+	workoutDraftTool := defineWorkoutDraftTool(g, modelName, history)
 	var getWorkoutsTool ai.Tool
 	var getExerciseStatsTool ai.Tool
 	var updateProfileTool ai.Tool
@@ -386,7 +387,11 @@ When the user wants you to build a workout:
 - Review the visible conversation first and reason about which workout inputs are already confirmed versus still missing.
 - First separate confirmed inputs from missing inputs. MVP-ready inputs are workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status.
 - Ask at most %d short, focused follow-up questions at a time for the missing MVP-ready inputs.
-- Ask for fitness level when it is missing because it improves the baseline and weight assumptions, but do not treat it as a hard blocker once the MVP-ready inputs are present.
+- For the draft tool, always fill loadChoices when the user mentions an exercise load or asks to leave an exercise blank. Copy the exact exercise name and any explicit set scope.
+- "I usually bench 115 lb for 8" reports past performance: pass exercise "Bench Press", kind "reported", weight 115, reps 8, setType "working". A request to include the exercise at the same reps still counts as reported if the user did not ask for a specific weight in this draft. Always use loadChoices for user-reported loads. recentPerformance is only for facts returned by FitTrack history tools.
+- "Bench at 115 lb for the working sets" requests a load: pass exercise "Bench Press", kind "requested", weight 115, setType "working". "No added weight for pull-ups" requests weight 0. "Leave row weights blank" uses kind "blank" with no weight.
+- Set bodyweightOnly when the user asks for an entirely bodyweight-only session. Set skipHistoryWeights for a whole-workout opt-out, rehab or deload, or uncertain equipment availability. Pass an explicitly stated equipment maximum as maxWeight, never as a set weight. If asked to pick weights without a baseline, create the draft and explain how to choose a starting weight.
+- Ask for fitness level when it is missing because it improves the baseline, but do not treat it as a hard blocker once the MVP-ready inputs are present.
 - Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests. Resistance bands, foam rollers, sticks, and similar tools can add challenge, support, regression, progression, or convenience, but they are not required before generating.
 - For normal strength, hypertrophy, endurance, cardio, or general fitness workouts, do not call the %s tool until the user has provided equipment, training location, or space constraints. If this is missing, ask where they will train and what equipment they have.
 - Treat the user's stated equipment, training location, or space constraints as the available context for the draft. Use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable with the stated constraints. Do not assume unmentioned accessories or equipment, such as a bench, rack, cable, or machine.

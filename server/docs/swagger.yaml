@@ -813,6 +813,8 @@ definitions:
     properties:
       catalog_id:
         type: string
+      draftProgression:
+        $ref: '#/definitions/recommendation.Plan'
       name:
         maxLength: 256
         minLength: 1
@@ -929,6 +931,8 @@ definitions:
     type: object
   workout.SetInput:
     properties:
+      draftBodyweight:
+        type: boolean
       reps:
         minimum: 1
         type: integer
@@ -942,6 +946,8 @@ definitions:
         minimum: 0
         type: number
         x-nullable: true
+      weightSourceDate:
+        type: string
     required:
     - reps
     - setType

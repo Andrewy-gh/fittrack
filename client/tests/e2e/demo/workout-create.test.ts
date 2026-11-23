@@ -71,6 +71,49 @@ test.describe("Demo Mode - Workout Create", () => {
     await expect(exerciseCards(page)).toHaveCount(0);
   });
 
+  test("preserves a cleared draft weight separately from explicit zero", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "workout-entry-form-data",
+        JSON.stringify({
+          date: new Date().toISOString(),
+          workoutFocus: "Draft weight persistence",
+          exercises: [
+            {
+              name: "Bench Press",
+              sets: [
+                { weight: 115, reps: 8, setType: "working" },
+                { weight: 0, reps: 10, setType: "working" },
+              ],
+            },
+          ],
+        }),
+      );
+    });
+
+    await page.goto("/workouts/new?exerciseIndex=0");
+    await page.getByRole("button", { name: "Edit set 1" }).click();
+    await page.getByRole("spinbutton", { name: "Weight" }).fill("");
+    await page.getByRole("button", { name: "Save Set" }).click();
+    await expect(page.getByText("— × 8", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("— × 8", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Edit set 2" }).click();
+    await expect(page.getByRole("spinbutton", { name: "Weight" })).toHaveValue(
+      "0",
+    );
+    await page.getByRole("button", { name: "Save Set" }).click();
+    await page.getByRole("button", { name: /back/i }).click();
+    await saveWorkout(page).click();
+    await expect(exerciseCards(page)).toHaveCount(0);
+    await page.goto("/workouts");
+    await page.getByRole("link", { name: /draft weight persistence/i }).click();
+    await expect(page.getByText("—", { exact: true })).toBeVisible();
+    await expect(page.getByText("0 lbs", { exact: true })).toBeVisible();
+  });
+
   test("should discard a new exercise when its empty set dialog is closed", async ({
     page,
   }) => {

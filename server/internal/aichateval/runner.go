@@ -50,6 +50,7 @@ type Runtime interface {
 }
 
 type Scenario struct {
+	DraftWorkingWeights    map[string]*float64         `json:"draft_working_weights,omitempty"`
 	ID                     string                      `json:"id"`
 	Title                  string                      `json:"title"`
 	Prompt                 string                      `json:"prompt"`
@@ -104,6 +105,7 @@ type Summary struct {
 }
 
 type Result struct {
+	DraftWorkingWeights    map[string]*float64           `json:"draft_working_weights,omitempty"`
 	ID                     string                        `json:"id"`
 	Title                  string                        `json:"title"`
 	Prompt                 string                        `json:"prompt"`
@@ -263,6 +265,7 @@ func normalizeMode(mode string) string {
 
 func runScenario(ctx context.Context, runtime Runtime, scenario Scenario, mode string, options RunOptions) Result {
 	result := Result{
+		DraftWorkingWeights:    scenario.DraftWorkingWeights,
 		ID:                     scenario.ID,
 		Title:                  scenario.Title,
 		Prompt:                 scenario.Prompt,

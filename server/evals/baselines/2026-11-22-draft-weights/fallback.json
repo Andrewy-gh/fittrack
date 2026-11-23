@@ -1,0 +1,235 @@
+{
+  "generated_at": "2026-11-23T04:29:41Z",
+  "mode": "single_turn",
+  "model": "openai/gpt-6-luna",
+  "scenario_count": 1,
+  "summary": {
+    "total_scenarios": 1,
+    "structured_draft_count": 1,
+    "follow_up_question_count": 0,
+    "text_only_count": 0,
+    "error_count": 0,
+    "passed_count": 1,
+    "failed_count": 0,
+    "operational_error_count": 0,
+    "unscored_count": 0,
+    "pass_rate": 1,
+    "structured_output_conversion_rate": 1,
+    "two_turn_follow_up_count": 0,
+    "two_turn_attempt_count": 0,
+    "two_turn_structured_draft_count": 0,
+    "two_turn_conversion_rate": null
+  },
+  "results": [
+    {
+      "draft_working_weights": {
+        "Barbell Bench Press": 115,
+        "Dumbbell Row": null,
+        "Pull-Ups": 0
+      },
+      "id": "weight-explicit",
+      "title": "Explicit load, blank, and zero",
+      "prompt": "Include Barbell Bench Press at 115 lb for the working sets. Leave Dumbbell Row weights blank and use no added weight for Pull-Ups. Include all three. I have 35 minutes for an upper-body workout at a full gym, no injuries, and no FitTrack history.",
+      "expectation": "",
+      "expected_outcome": "generate_first_turn",
+      "status": "structured_draft",
+      "passed": true,
+      "score_status": "pass",
+      "score_reason": "structured draft generated on the first turn",
+      "text": "I put together a structured workout draft for you.",
+      "model": "googleai/gemini-2.5-flash",
+      "duration_ms": 10213,
+      "draft": {
+        "date": "2026-11-22T23:29:34-05:00",
+        "notes": "Focus on controlled movements. Aim for 60-90s rest for compounds, 45-60s for accessories.",
+        "workoutFocus": "Upper-body",
+        "exercises": [
+          {
+            "name": "Barbell Bench Press",
+            "sets": [
+              {
+                "reps": 8,
+                "setType": "warmup"
+              },
+              {
+                "weight": 115,
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "weight": 115,
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Pull-Ups",
+            "sets": [
+              {
+                "reps": 5,
+                "setType": "warmup"
+              },
+              {
+                "weight": 0,
+                "reps": 8,
+                "setType": "working"
+              },
+              {
+                "weight": 0,
+                "reps": 8,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Row",
+            "sets": [
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              },
+              {
+                "reps": 10,
+                "setType": "working"
+              }
+            ]
+          },
+          {
+            "name": "Dumbbell Overhead Press",
+            "sets": [
+              {
+                "reps": 12,
+                "setType": "working"
+              },
+              {
+                "reps": 12,
+                "setType": "working"
+              }
+            ]
+          }
+        ]
+      },
+      "draft_summary": {
+        "exercise_count": 4,
+        "total_sets": 11,
+        "working_sets": 9,
+        "exercise_names": [
+          "Barbell Bench Press",
+          "Pull-Ups",
+          "Dumbbell Row",
+          "Dumbbell Overhead Press"
+        ]
+      },
+      "tool_calls": [
+        "generate_workout_draft"
+      ],
+      "attempts": 1,
+      "turns": [
+        {
+          "first_text_ms": 10206,
+          "turn": 1,
+          "prompt": "Include Barbell Bench Press at 115 lb for the working sets. Leave Dumbbell Row weights blank and use no added weight for Pull-Ups. Include all three. I have 35 minutes for an upper-body workout at a full gym, no injuries, and no FitTrack history.",
+          "status": "structured_draft",
+          "text": "I put together a structured workout draft for you.",
+          "model": "googleai/gemini-2.5-flash",
+          "duration_ms": 10213,
+          "draft": {
+            "date": "2026-11-22T23:29:34-05:00",
+            "notes": "Focus on controlled movements. Aim for 60-90s rest for compounds, 45-60s for accessories.",
+            "workoutFocus": "Upper-body",
+            "exercises": [
+              {
+                "name": "Barbell Bench Press",
+                "sets": [
+                  {
+                    "reps": 8,
+                    "setType": "warmup"
+                  },
+                  {
+                    "weight": 115,
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 115,
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Pull-Ups",
+                "sets": [
+                  {
+                    "reps": 5,
+                    "setType": "warmup"
+                  },
+                  {
+                    "weight": 0,
+                    "reps": 8,
+                    "setType": "working"
+                  },
+                  {
+                    "weight": 0,
+                    "reps": 8,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Row",
+                "sets": [
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 10,
+                    "setType": "working"
+                  }
+                ]
+              },
+              {
+                "name": "Dumbbell Overhead Press",
+                "sets": [
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  },
+                  {
+                    "reps": 12,
+                    "setType": "working"
+                  }
+                ]
+              }
+            ]
+          },
+          "draft_summary": {
+            "exercise_count": 4,
+            "total_sets": 11,
+            "working_sets": 9,
+            "exercise_names": [
+              "Barbell Bench Press",
+              "Pull-Ups",
+              "Dumbbell Row",
+              "Dumbbell Overhead Press"
+            ]
+          },
+          "tool_calls": [
+            "generate_workout_draft"
+          ],
+          "attempts": 1
+        }
+      ]
+    }
+  ]
+}

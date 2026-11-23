@@ -16,7 +16,7 @@ import (
 
 const (
 	workoutDraftToolName               = "generate_workout_draft"
-	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. After one follow-up answer, if workout focus, duration, equipment or location context, and usable injury details are present, optional details like fitness level, preferred exercises, or other movements to avoid should not block tool use. Treat stated equipment, location, and space constraints as sufficient and closed by default: use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable from those constraints. Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine. Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests because they can default to no-equipment bodyweight work. Use injuries=none only when the user explicitly reports no injuries or continues without answering after one injury-status question. Fitness level improves weight assumptions but is not required."
+	workoutDraftToolDescription        = "Creates a FitTrack workout draft. Call this immediately once you know the user's workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status. After one follow-up answer, if workout focus, duration, equipment or location context, and usable injury details are present, optional details like fitness level, preferred exercises, or other movements to avoid should not block tool use. Treat stated equipment, location, and space constraints as sufficient and closed by default: use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable from those constraints. Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine. Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests because they can default to no-equipment bodyweight work. Use injuries=none only when the user explicitly reports no injuries or continues without answering after one injury-status question."
 	workoutDraftSummaryMessage         = "I put together a structured workout draft for you."
 	workoutChatFollowUpQuestionCeiling = 3
 )
@@ -31,7 +31,21 @@ type workoutDraftGenerator func(
 	userPrompt string,
 ) (*workout.CreateWorkoutRequest, error)
 
+type workoutDraftLoadChoice struct {
+	Exercise string   `json:"exercise" jsonschema:"description=Exact exercise name to use in the draft."`
+	Kind     string   `json:"kind" jsonschema:"description=Use requested for a load explicitly requested for this draft. Use reported for performance in an earlier workout. Use blank for a deliberate blank."`
+	Weight   *float64 `json:"weight,omitempty" jsonschema:"description=Use the user-supplied load in pounds. Use zero for explicitly no added weight. Convert kilograms to pounds. Never infer a number from fitness level or an equipment limit."`
+	Reps     int      `json:"reps,omitempty" jsonschema:"description=Reps completed at a reported load. For a requested load use the target reps only if specified."`
+	SetType  string   `json:"setType,omitempty" jsonschema:"description=Use working by default. Use warmup for explicit warm-up instructions or all for instructions applying to all sets."`
+	Set      int      `json:"set,omitempty" jsonschema:"description=Optional one-based position in this exercise's ordered sets. Omit if the choice applies to every matching set."`
+}
+
 type WorkoutGenerationToolInput struct {
+	BodyweightOnly     bool                     `json:"bodyweightOnly,omitempty" jsonschema:"description=Set true when the user wants an entirely bodyweight-only workout. Do not invent zero-valued entries for each exercise."`
+	SkipHistoryWeights bool                     `json:"skipHistoryWeights,omitempty" jsonschema:"description=Set true for the whole workout when the user wants blank weights, bodyweight only, rehab, deload, easier loads, or describes limited equipment with uncertain compatible loads. Specific explicit requested numbers or no added weight still apply."`
+	LoadChoices        []workoutDraftLoadChoice `json:"loadChoices,omitempty" jsonschema:"description=Required when the user states an exercise load or wants an exercise left blank. Include one entry per scoped choice. Exclude weights from workout-history tool calls and any guesses."`
+	MaxWeight          *float64                 `json:"maxWeight,omitempty" jsonschema:"description=Only when the user stated a numeric equipment limit that applies across the workout, in pounds. Convert kilograms to pounds. This is a ceiling, never a suggested load."`
+
 	FitnessLevel      string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
 	FitnessGoal       string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`
 	Equipment         string `json:"equipment,omitempty" jsonschema:"description=Available equipment such as bodyweight, dumbbells, barbells, machines, cables, or bands when known."`
@@ -40,10 +54,10 @@ type WorkoutGenerationToolInput struct {
 	SpaceConstraints  string `json:"spaceConstraints,omitempty" jsonschema:"description=Training location or space constraints such as home, gym, hotel, or outdoors when known."`
 	Injuries          string `json:"injuries" jsonschema:"description=Current injuries, pain, or movement limitations. Use none when the user reports no injuries."`
 	WorkoutDate       string `json:"workoutDate,omitempty" jsonschema:"description=Optional requested workout date when the user specified one. May be an ISO value or a relative phrase like tomorrow."`
-	RecentPerformance string `json:"recentPerformance,omitempty" jsonschema:"description=Optional concise summary from workout-history tools when the user asked for the draft to be based on past training, such as last-session sets, best e1RM, or recent trend."`
+	RecentPerformance string `json:"recentPerformance,omitempty" jsonschema:"description=Optional summary of results from FitTrack history tools. Put any weights or sets reported directly by the user into loadChoices instead."`
 }
 
-func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
+func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWeightHistoryReader) ai.Tool {
 	return genkit.DefineTool(g, workoutDraftToolName,
 		workoutDraftToolDescription,
 		func(ctx *ai.ToolContext, input WorkoutGenerationToolInput) (*workout.CreateWorkoutRequest, error) {
@@ -59,7 +73,11 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
 				return nil, err
 			}
 
-			draft, err := generateWorkoutDraft(ctx, g, modelName, input, time.Now())
+			now := time.Now()
+			draft, err := generateWorkoutDraft(ctx, g, modelName, input, now)
+			if err == nil {
+				applyDraftWeights(ctx, history, input, draft, now)
+			}
 			logAIChatTraceContext(ctx, "workout_draft_tool_finished",
 				"elapsed_ms", time.Since(startedAt).Milliseconds(),
 				"model", modelName,
@@ -132,8 +150,13 @@ type generatedWorkoutDraft struct {
 }
 
 type generatedWorkoutExercise struct {
-	Name string             `json:"name"`
-	Sets []workout.SetInput `json:"sets"`
+	Name string                `json:"name"`
+	Sets []generatedWorkoutSet `json:"sets"`
+}
+
+type generatedWorkoutSet struct {
+	Reps    int    `json:"reps"`
+	SetType string `json:"setType"`
 }
 
 func generateWorkoutDraftData(
@@ -160,7 +183,11 @@ func generateWorkoutDraftData(
 		Exercises: make([]workout.ExerciseInput, len(output.Exercises)),
 	}
 	for i, exercise := range output.Exercises {
-		draft.Exercises[i] = workout.ExerciseInput{Name: exercise.Name, Sets: exercise.Sets}
+		sets := make([]workout.SetInput, len(exercise.Sets))
+		for j, set := range exercise.Sets {
+			sets[j] = workout.SetInput{Reps: set.Reps, SetType: set.SetType}
+		}
+		draft.Exercises[i] = workout.ExerciseInput{Name: exercise.Name, Sets: sets}
 	}
 	return draft, nil
 }
@@ -267,7 +294,6 @@ Return structured data only. The output must match FitTrack's current workout cr
       "name": "exercise name",
       "sets": [
         {
-          "weight": 135,
           "reps": 8,
           "setType": "warmup" | "working"
         }
@@ -286,9 +312,9 @@ Rules:
 - Adjust density by goal: strength can use fewer exercises with longer rests and enough sets; hypertrophy should use moderate rests and enough total working sets; endurance or circuit work should use shorter rests and higher density; rehab, mobility, and beginner sessions can use lower volume when appropriate.
 - Do not invent equipment the user does not have.
 - Use real, established exercise names only.
-- When recent performance is supplied, use it to choose conservative weights and progressions; do not exceed past bests aggressively unless the user explicitly asks for testing.
-- Add weights only when they are reasonably known from the user's context. If fitness level is unknown, prefer omitting weights instead of guessing aggressively.
-- Keep notes brief and practical. Use notes for rest, effort, or injury reminders when helpful.
+- When recent performance is supplied, use it to choose suitable exercises and reps.
+- Do not assign any weights. FitTrack applies user-specified loads and history after selecting the exercises and sets.
+- Keep notes brief and practical. Use notes for rest, effort, or injury reminders when helpful. Do not prescribe numeric weights in notes.
 - Place compound lifts before accessories when that fits the request.
 - %s`, dateInstruction)
 }
@@ -311,6 +337,14 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 		builder.WriteString(fmt.Sprintf("- Recent performance to respect: %s\n", recentPerformance))
 	}
 
+	for _, choice := range input.LoadChoices {
+		if strings.TrimSpace(choice.Exercise) != "" {
+			builder.WriteString(fmt.Sprintf("- Include %q using that exact name if feasible and compatible with the request. Respect scoped user load choices when planning reps and set order.\n", choice.Exercise))
+			if choice.Reps > 0 && (choice.Kind == "reported" || choice.Kind == "requested") {
+				builder.WriteString(fmt.Sprintf("  Use %d working-set reps for this exercise unless the user requests a different target.\n", choice.Reps))
+			}
+		}
+	}
 	return builder.String()
 }
 

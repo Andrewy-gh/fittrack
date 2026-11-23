@@ -1048,6 +1048,80 @@ func (q *Queries) ListExerciseNameMatches(ctx context.Context, arg ListExerciseN
 	return items, nil
 }
 
+const listLatestDraftExerciseSets = `-- name: ListLatestDraftExerciseSets :many
+SELECT requested.name::text AS exercise_name, latest.workout_id, latest.date AS workout_date,
+       s.weight, s.reps, s.set_type
+FROM (SELECT DISTINCT unnest($1::text[]) AS name) requested
+CROSS JOIN LATERAL (
+    SELECT w.id AS workout_id, w.date, e.id AS exercise_id
+    FROM exercise e
+    JOIN "set" prior ON prior.exercise_id = e.id AND prior.user_id = e.user_id
+    JOIN workout w ON w.id = prior.workout_id AND w.user_id = prior.user_id
+    WHERE e.user_id = $2
+      AND e.id = (
+          SELECT min(matched.id)
+          FROM exercise matched
+          WHERE matched.user_id = e.user_id AND lower(btrim(matched.name)) = lower(requested.name)
+          HAVING count(*) = 1
+      )
+      AND w.date BETWEEN $3 AND $4
+    GROUP BY w.id, w.date, e.id
+    ORDER BY w.date DESC, w.id DESC, e.id DESC
+    LIMIT 2
+) latest
+JOIN "set" s ON s.workout_id = latest.workout_id AND s.exercise_id = latest.exercise_id
+WHERE s.user_id = $2
+ORDER BY requested.name, latest.date DESC, latest.workout_id DESC, latest.exercise_id DESC, s.set_order, s.id
+`
+
+type ListLatestDraftExerciseSetsParams struct {
+	ExerciseNames []string           `json:"exercise_names"`
+	UserID        string             `json:"user_id"`
+	AfterDate     pgtype.Timestamptz `json:"after_date"`
+	BeforeDate    pgtype.Timestamptz `json:"before_date"`
+}
+
+type ListLatestDraftExerciseSetsRow struct {
+	ExerciseName string             `json:"exercise_name"`
+	WorkoutID    int32              `json:"workout_id"`
+	WorkoutDate  pgtype.Timestamptz `json:"workout_date"`
+	Weight       pgtype.Numeric     `json:"weight"`
+	Reps         int32              `json:"reps"`
+	SetType      string             `json:"set_type"`
+}
+
+func (q *Queries) ListLatestDraftExerciseSets(ctx context.Context, arg ListLatestDraftExerciseSetsParams) ([]ListLatestDraftExerciseSetsRow, error) {
+	rows, err := q.db.Query(ctx, listLatestDraftExerciseSets,
+		arg.ExerciseNames,
+		arg.UserID,
+		arg.AfterDate,
+		arg.BeforeDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLatestDraftExerciseSetsRow
+	for rows.Next() {
+		var i ListLatestDraftExerciseSetsRow
+		if err := rows.Scan(
+			&i.ExerciseName,
+			&i.WorkoutID,
+			&i.WorkoutDate,
+			&i.Weight,
+			&i.Reps,
+			&i.SetType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTopExercisesByFrequency = `-- name: ListTopExercisesByFrequency :many
 SELECT
     e.name,

@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const ordinaryDraftJSON = `{"date":"2026-01-01T12:00:00Z","notes":"Rest briefly","workoutFocus":"push","exercises":[{"name":"Pushups","sets":[{"weight":5,"reps":6,"setType":"warmup"},{"reps":8,"setType":"working"}]}]}`
+const ordinaryDraftJSON = `{"date":"2026-01-01T12:00:00Z","notes":"Rest briefly","workoutFocus":"push","exercises":[{"name":"Pushups","sets":[{"reps":6,"setType":"warmup"},{"reps":8,"setType":"working"}]}]}`
 
 func syntheticDraftModel(ctx context.Context, reply func(*ai.ModelRequest) string) *genkit.Genkit {
 	g := genkit.Init(ctx)
@@ -37,6 +37,7 @@ func TestGeneratedDraftModelBoundary(t *testing.T) {
 		name, payload, forbidden string
 	}{
 		{"ordinary", ordinaryDraftJSON, ""},
+		{"fabricated weight", `{"date":"2026-01-01T12:00:00Z","exercises":[{"name":"Pushups","sets":[{"weight":50,"reps":8,"setType":"working"}]}]}`, "weight"},
 		{"fabricated recommendation", `{"date":"2026-01-01T12:00:00Z","exercises":[{"name":"Pushups","sets":[{"reps":8,"setType":"working"}]}],"recommendations":[{"exerciseName":"Pushups","recommendation":{"exerciseId":2147483647,"readiness":"normal","explanation":"synthetic","policyVersion":"exercise-plan-v2"}}]}`, "recommendations"},
 		{"fabricated catalog ID", `{"date":"2026-01-01T12:00:00Z","exercises":[{"name":"Pushups","catalog_id":"invented-id","sets":[{"reps":8,"setType":"working"}]}]}`, "catalog_id"},
 	} {
@@ -53,11 +54,12 @@ func TestGeneratedDraftModelBoundary(t *testing.T) {
 			require.NotNil(t, requests[0].Output)
 			schema, marshalErr := json.Marshal(requests[0].Output.Schema)
 			require.NoError(t, marshalErr)
-			for _, property := range []string{"date", "notes", "workoutFocus", "exercises", "name", "sets", "weight", "reps", "setType"} {
+			for _, property := range []string{"date", "notes", "workoutFocus", "exercises", "name", "sets", "reps", "setType"} {
 				require.Contains(t, string(schema), strconv.Quote(property))
 			}
 			require.NotContains(t, string(schema), `"recommendations"`)
 			require.NotContains(t, string(schema), `"catalog_id"`)
+			require.NotContains(t, string(schema), `"weight"`)
 			if tc.forbidden != "" {
 				require.ErrorContains(t, err, tc.forbidden)
 				require.Nil(t, draft)

@@ -82,7 +82,6 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 		"Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine",
 		"Use injuries=none only when the user explicitly reports no injuries",
 		"continues without answering after one injury-status question",
-		"Fitness level improves weight assumptions but is not required",
 	}
 
 	for _, snippet := range requiredSnippets {
@@ -209,8 +208,8 @@ func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
 		`"workoutFocus": "optional string"`,
 		`"setType": "warmup" | "working"`,
 		`"date" is always required and must be RFC3339.`,
-		`If fitness level is unknown, prefer omitting weights instead of guessing aggressively.`,
-		`When recent performance is supplied, use it to choose conservative weights and progressions`,
+		`Do not assign any weights.`,
+		`When recent performance is supplied, use it to choose suitable exercises and reps.`,
 		`Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.`,
 		`Do not satisfy a normal 40+ minute strength or hypertrophy request with a very small workout unless the user asked for minimal, beginner, rehab, warm-up, or low-volume work.`,
 		`strength can use fewer exercises with longer rests and enough sets`,

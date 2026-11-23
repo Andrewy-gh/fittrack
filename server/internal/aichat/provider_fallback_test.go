@@ -92,7 +92,7 @@ func TestLunaProviderSwitch(t *testing.T) {
 				}
 				return &ai.ModelResponse{Message: ai.NewModelMessage(ai.NewTextPart("Recovered")), FinishReason: ai.FinishReasonStop}, nil
 			})
-			primary.fallback = &GenkitRuntime{available: true, modelName: "standby", g: g, workoutDraftTool: defineWorkoutDraftTool(g, "standby")}
+			primary.fallback = &GenkitRuntime{available: true, modelName: "standby", g: g, workoutDraftTool: defineWorkoutDraftTool(g, "standby", nil)}
 			var visible strings.Builder
 			done, err := primary.StreamChat(ctx, "hello", nil, func(s string) error { visible.WriteString(s); return nil })
 			if (err == nil) != (tc.wantModel != "") || (done != nil && done.Model != tc.wantModel) {

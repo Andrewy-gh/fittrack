@@ -10,6 +10,7 @@ type FormInputProps = {
   className?: string;
   step?: string;
   min?: string;
+  allowEmpty?: boolean;
 };
 
 export default function InputField({
@@ -19,11 +20,16 @@ export default function InputField({
   className,
   step,
   min,
+  allowEmpty = false,
 }: FormInputProps) {
-  const field = useFieldContext<string | number>();
+  const field = useFieldContext<string | number | undefined>();
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (type === "number") {
+      if (allowEmpty && e.target.value === "") {
+        field.handleChange(undefined);
+        return;
+      }
       const numValue = Number(e.target.value);
       field.handleChange(isNaN(numValue) ? 0 : numValue);
     } else {
@@ -31,7 +37,8 @@ export default function InputField({
     }
   };
 
-  const getValue = () => field.state.value || "";
+  const getValue = () =>
+    allowEmpty ? (field.state.value ?? "") : field.state.value || "";
 
   const getDefaultPlaceholder = () => {
     if (placeholder) return placeholder;

@@ -21,7 +21,7 @@ type ChatWorkoutDraftCardProps = {
   readonly draft: AIWorkoutDraft;
   readonly saveState: ChatWorkoutDraftSaveState;
   readonly onSave: () => void;
-  readonly onEdit: () => void;
+  readonly onEdit: (draft: AIWorkoutDraft) => void;
   readonly className?: string;
 };
 
@@ -84,7 +84,7 @@ export function ChatWorkoutDraftCard({
           <Button
             type="button"
             variant="outline"
-            onClick={onEdit}
+            onClick={() => onEdit(draft)}
             disabled={isSaving}
           >
             Edit in workout form
@@ -131,6 +131,23 @@ export function ChatWorkoutDraftCard({
                 </span>
               ))}
             </div>
+            {exercise.draftProgression && !isSaved ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                You reached the rep target in two workouts.
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto px-2 py-1 text-xs"
+                  disabled={isSaving}
+                  onClick={() =>
+                    onEdit(withDraftProgression(draft, exerciseIndex))
+                  }
+                >
+                  Try {formatWeight(exercise.draftProgression.weight)} ×{" "}
+                  {exercise.draftProgression.reps} in workout form
+                </Button>
+              </p>
+            ) : null}
           </div>
         ))}
       </div>
@@ -180,9 +197,39 @@ function labelizeWorkoutFocus(value: string): string {
 
 function formatWorkoutSet(set: AIWorkoutSetInput): string {
   const label = set.setType === "warmup" ? "Warm-up" : "Working";
-  const weight =
-    set.weight === undefined ? "" : ` @ ${formatWeight(set.weight)}`;
-  return `${label}: ${set.reps} reps${weight}`;
+  const load =
+    set.weight === undefined
+      ? set.draftBodyweight
+        ? "Bodyweight"
+        : "Choose weight"
+      : set.weight === 0
+        ? "No added weight"
+        : formatWeight(set.weight);
+  const source = set.weightSourceDate
+    ? ` · Suggested from ${formatWorkoutDate(set.weightSourceDate)}`
+    : "";
+  return `${label}: ${set.reps} reps · ${load}${source}`;
+}
+
+function withDraftProgression(
+  draft: AIWorkoutDraft,
+  exerciseIndex: number,
+): AIWorkoutDraft {
+  return {
+    ...draft,
+    exercises: draft.exercises.map((exercise, index) => {
+      const plan = exercise.draftProgression;
+      if (index !== exerciseIndex || !plan) return exercise;
+      return {
+        ...exercise,
+        sets: exercise.sets.map((set) =>
+          set.setType === "working"
+            ? { setType: set.setType, reps: plan.reps, weight: plan.weight }
+            : set,
+        ),
+      };
+    }),
+  };
 }
 
 function formatWeight(value: number): string {

@@ -76,6 +76,8 @@ export const AddSetDialog = withForm({
               children={(field) => (
                 <field.InputField
                   label="Weight"
+                  allowEmpty
+                  placeholder="Choose weight"
                   type="number"
                   step="0.1"
                   min="0"

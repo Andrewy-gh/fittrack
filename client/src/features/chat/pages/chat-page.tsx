@@ -491,13 +491,7 @@ export function ChatPage({
                           ? conversation?.latest_workout_draft
                           : undefined
                       }
-                      onEditWorkoutDraft={() => {
-                        if (conversation?.latest_workout_draft) {
-                          handleEditInWorkoutForm(
-                            conversation.latest_workout_draft,
-                          );
-                        }
-                      }}
+                      onEditWorkoutDraft={handleEditInWorkoutForm}
                       onSaveWorkoutDraft={() => {
                         if (latestWorkoutDraft) {
                           void handleSaveWorkoutDraft();
@@ -514,7 +508,7 @@ export function ChatPage({
                   draft={latestWorkoutDraft}
                   saveState={workoutDraftSaveState}
                   onSave={() => void handleSaveWorkoutDraft()}
-                  onEdit={() => handleEditInWorkoutForm(latestWorkoutDraft)}
+                  onEdit={handleEditInWorkoutForm}
                 />
               ) : null}
 
@@ -592,7 +586,7 @@ function MessageBubble({
   workoutDraft?: AIWorkoutDraft;
   workoutDraftSaveState: ChatWorkoutDraftSaveState;
   onSaveWorkoutDraft?: () => void;
-  onEditWorkoutDraft?: () => void;
+  onEditWorkoutDraft?: (draft: AIWorkoutDraft) => void;
 }) {
   const isUser = message.role === "user";
 

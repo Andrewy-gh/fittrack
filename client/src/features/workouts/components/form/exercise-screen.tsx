@@ -190,7 +190,10 @@ export const ExerciseSets = withForm({
                             </div>
                             <div className="text-right">
                               <div className="text-card-foreground font-bold text-lg">
-                                {formatWeight(set.weight)}lb &#215; {set.reps}
+                                {set.weight == null
+                                  ? "—"
+                                  : `${formatWeight(set.weight)}lb`}{" "}
+                                &#215; {set.reps}
                               </div>
                               <div className="font-semibold text-sm tracking-tight uppercase text-muted-foreground">
                                 {set.weight &&
@@ -212,7 +215,6 @@ export const ExerciseSets = withForm({
                   className="hover:bg-primary/90 flex-1 py-4 text-base font-semibold"
                   onClick={() => {
                     setsField.pushValue({
-                      weight: 0,
                       reps: 0,
                       setType: "working",
                     });

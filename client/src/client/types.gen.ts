@@ -366,6 +366,7 @@ export type WorkoutEvidencePeriod = {
 
 export type WorkoutExerciseInput = {
   catalog_id?: string;
+  draftProgression?: RecommendationPlan;
   name: string;
   sets: Array<WorkoutSetInput>;
 };
@@ -410,9 +411,11 @@ export type WorkoutNewWorkoutContextResponse = {
 };
 
 export type WorkoutSetInput = {
+  draftBodyweight?: boolean;
   reps: number;
   setType: "warmup" | "working";
   weight?: number | null;
+  weightSourceDate?: string;
 };
 
 export type WorkoutStrengthAssessment = {

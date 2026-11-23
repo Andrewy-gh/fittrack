@@ -65,6 +65,9 @@ func scoreGenerateFirstTurn(result *Result) {
 	if !passesTermChecks(result) {
 		return
 	}
+	if !passesDraftWorkingWeights(result) {
+		return
+	}
 	setScore(result, ScoreStatusPass, "structured draft generated on the first turn")
 }
 

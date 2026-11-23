@@ -1144,6 +1144,9 @@ export const workout_ExerciseInputSchema = {
     catalog_id: {
       type: "string",
     },
+    draftProgression: {
+      $ref: "#/definitions/recommendation.Plan",
+    },
     name: {
       type: "string",
       maxLength: 256,
@@ -1302,6 +1305,9 @@ export const workout_SetInputSchema = {
   type: "object",
   required: ["reps", "setType"],
   properties: {
+    draftBodyweight: {
+      type: "boolean",
+    },
     reps: {
       type: "integer",
       minimum: 1,
@@ -1315,6 +1321,9 @@ export const workout_SetInputSchema = {
       maximum: 999999999.9,
       minimum: 0,
       "x-nullable": true,
+    },
+    weightSourceDate: {
+      type: "string",
     },
   },
 } as const;
