@@ -87,8 +87,11 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 				"workout_focus", strings.TrimSpace(input.WorkoutFocus),
 				"request_id", request.GetRequestID(ctx),
 			)
+			now := draftClock(ctx)
+			anchor := now
 			if source, ok := ctx.Value(draftInjuryContextKey{}).(draftInjuryContext); ok {
 				input.Injuries = source.confirmedStatus(input.InjuryEvidence)
+				anchor = relativeWorkoutDraftAnchor(input.WorkoutDate, source, now)
 			}
 			if !hasUsableDraftInjuryStatus(input.Injuries) {
 				return workoutDraftInputCorrection{
@@ -99,12 +102,11 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 				return nil, err
 			}
 
-			now := draftClock(ctx)
-			schedule, ok := resolveWorkoutDraftSchedule(input.WorkoutDate, now)
+			schedule, ok := resolveWorkoutDraftSchedule(input.WorkoutDate, now, anchor)
 			if !ok {
 				return workoutDraftInputCorrection{InputCorrection: "Use today, tomorrow, yesterday, YYYY-MM-DD, or RFC3339 for workoutDate. Ask the user only if the requested date is ambiguous."}, nil
 			}
-			draft, err := generateWorkoutDraft(ctx, g, modelName, input, now)
+			draft, err := generateWorkoutDraftWithSchedule(ctx, g, modelName, input, schedule, generateWorkoutDraftData)
 			if err == nil {
 				applyDraftWeights(ctx, history, input, draft, now, schedule.historyThrough)
 			}
@@ -239,10 +241,14 @@ func generateWorkoutDraftWith(
 	now time.Time,
 	generator workoutDraftGenerator,
 ) (*workout.CreateWorkoutRequest, error) {
-	schedule, ok := resolveWorkoutDraftSchedule(input.WorkoutDate, now)
+	schedule, ok := resolveWorkoutDraftSchedule(input.WorkoutDate, now, now)
 	if !ok {
 		return nil, fmt.Errorf("invalid requested workout date")
 	}
+	return generateWorkoutDraftWithSchedule(ctx, g, modelName, input, schedule, generator)
+}
+
+func generateWorkoutDraftWithSchedule(ctx context.Context, g *genkit.Genkit, modelName string, input WorkoutGenerationToolInput, schedule workoutDraftSchedule, generator workoutDraftGenerator) (*workout.CreateWorkoutRequest, error) {
 	systemPrompt := buildWorkoutGenerationPrompt()
 	userPrompt := buildWorkoutGenerationUserPrompt(input)
 

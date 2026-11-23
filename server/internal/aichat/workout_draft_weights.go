@@ -324,8 +324,11 @@ func draftHistoryEquipmentMatches(exerciseName, assignment string) bool {
 
 func draftNameIdentifiesEquipment(name, equipment string) bool {
 	label := draftEquipmentIdentity(equipment)
-	if label == "" || label == "machine" {
+	if label == "" {
 		return false
+	}
+	if label == "machine" {
+		return slices.Contains(draftEquipmentClasses(name), "machine")
 	}
 	// Keep plural normalization at the word boundary and allow common
 	// abbreviations only for supported, single-class labels.
@@ -404,6 +407,13 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 			confirmed = confirmed || slices.Contains(exerciseEquipment, classes[0])
 		}
 		uncertain := strings.TrimSpace(item.Equipment) != "" && (!hasAssignment && len(exerciseEquipment) == 0)
+		// A generic assignment can describe the more specific machine
+		// named by the exercise. Keep caps from that name unless an
+		// assignment identifies incompatible equipment.
+		if !confirmed && label != "" && draftNameIdentifiesEquipment(name, item.Equipment) &&
+			(!hasAssignment || genericDraftMachine(confirmedEquipment)) {
+			confirmed = true
+		}
 		if confirmed {
 			limits.explicitCap = lowerDraftCap(limits.explicitCap, item.Weight)
 		}
@@ -413,6 +423,14 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 		}
 	}
 	return limits
+}
+
+func genericDraftMachine(value string) bool {
+	switch draftEquipmentIdentity(value) {
+	case "machine", "selectorized machine", "plate loaded machine":
+		return true
+	}
+	return false
 }
 
 func lowerDraftCap(cap, weight *float64) *float64 {

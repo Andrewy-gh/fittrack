@@ -411,8 +411,9 @@ func toRuntimeHistory(history []ChatMessage) []RuntimeChatMessage {
 			continue
 		}
 		messages = append(messages, RuntimeChatMessage{
-			Role: message.Role,
-			Text: text,
+			Role:      message.Role,
+			Text:      text,
+			CreatedAt: message.CreatedAt,
 		})
 	}
 

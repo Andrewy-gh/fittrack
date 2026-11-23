@@ -2,6 +2,7 @@ package aichat
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"time"
 	_ "time/tzdata" // The production image does not ship the system timezone database.
@@ -40,20 +41,54 @@ type workoutDraftSchedule struct {
 	historyThrough time.Time
 }
 
-func resolveWorkoutDraftSchedule(requested string, now time.Time) (workoutDraftSchedule, bool) {
+var workoutRelativeDay = regexp.MustCompile(`\b(today|tomorrow|yesterday)\b`)
+
+// With a relative tool argument, anchor it to the most recent user turn that
+// supplied that wording rather than a follow-up answer about another detail.
+func relativeWorkoutDraftAnchor(requested string, source draftInjuryContext, now time.Time) time.Time {
+	requested = normalizeQualityText(requested)
+	if requested != "today" && requested != "tomorrow" && requested != "yesterday" {
+		return now
+	}
+	mentionsRequestedDay := func(text string) bool {
+		for _, word := range workoutRelativeDay.FindAllString(normalizeQualityText(text), -1) {
+			if word == requested {
+				return true
+			}
+		}
+		return false
+	}
+	if mentionsRequestedDay(source.prompt) {
+		return now
+	}
+	for i := len(source.history) - 1; i >= 0; i-- {
+		message := source.history[i]
+		if message.Role == roleUser && !message.CreatedAt.IsZero() && mentionsRequestedDay(message.Text) {
+			return message.CreatedAt.In(now.Location())
+		}
+	}
+	return now
+}
+
+func resolveWorkoutDraftSchedule(requested string, now, anchor time.Time) (workoutDraftSchedule, bool) {
 	requested = strings.ToLower(strings.TrimSpace(requested))
-	if requested == "" || requested == "today" {
+	if requested == "" {
 		return workoutDraftSchedule{date: now, historyThrough: now}, true
 	}
 	if exact, err := time.Parse(time.RFC3339, strings.ToUpper(requested)); err == nil {
 		return workoutDraftSchedule{date: exact, historyThrough: earlierWorkoutDraftTime(exact, now)}, true
 	}
 	var day time.Time
+	if anchor.IsZero() {
+		anchor = now
+	}
 	switch requested {
+	case "today":
+		day = anchor
 	case "tomorrow":
-		day = now.AddDate(0, 0, 1)
+		day = anchor.AddDate(0, 0, 1)
 	case "yesterday":
-		day = now.AddDate(0, 0, -1)
+		day = anchor.AddDate(0, 0, -1)
 	default:
 		var err error
 		day, err = time.ParseInLocation(time.DateOnly, requested, now.Location())

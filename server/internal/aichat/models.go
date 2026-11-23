@@ -150,8 +150,9 @@ type RunRecoveryRequest struct {
 }
 
 type RuntimeChatMessage struct {
-	Role string
-	Text string
+	Role      string
+	Text      string
+	CreatedAt time.Time
 }
 
 type WorkoutHistoryFilter struct {
