@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
+	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -66,6 +67,8 @@ func (wr *workoutRepository) recomputeHistorical1rmForExercise(ctx context.Conte
 		ExerciseID: exerciseID,
 	})
 	switch {
+	case err == nil && best.E1rmOutOfRange:
+		return &apperrors.Historical1RMConflict{}
 	case err == nil:
 		return qtx.SetExerciseHistorical1RM(ctx, db.SetExerciseHistorical1RMParams{
 			ID:            exerciseID,
@@ -95,6 +98,8 @@ func (wr *workoutRepository) recomputeHistorical1rmForExerciseExcludingWorkout(c
 		WorkoutID:  excludedWorkoutID,
 	})
 	switch {
+	case err == nil && best.E1rmOutOfRange:
+		return &apperrors.Historical1RMConflict{}
 	case err == nil:
 		return qtx.SetExerciseHistorical1RM(ctx, db.SetExerciseHistorical1RMParams{
 			ID:            exerciseID,

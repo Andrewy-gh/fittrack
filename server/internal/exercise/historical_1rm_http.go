@@ -22,6 +22,7 @@ import (
 // @Failure 400 {object} response.ErrorResponse "Bad Request - Invalid exercise ID or validation error"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized - Invalid token"
 // @Failure 404 {object} response.ErrorResponse "Not Found - Exercise not found or doesn't belong to user"
+// @Failure 409 {object} response.ErrorResponse "Conflict - Historical 1RM cannot represent the best existing set"
 // @Failure 500 {object} response.ErrorResponse "Internal Server Error"
 // @Router /exercises/{id}/historical-1rm [patch]
 func (h *ExerciseHandler) UpdateExerciseHistorical1RM(w http.ResponseWriter, r *http.Request) {
@@ -44,12 +45,15 @@ func (h *ExerciseHandler) UpdateExerciseHistorical1RM(w http.ResponseWriter, r *
 	if err := h.exerciseService.UpdateExerciseHistorical1RM(r.Context(), exerciseID, req); err != nil {
 		var errUnauthorized *apperrors.Unauthorized
 		var errNotFound *apperrors.NotFound
+		var errConflict *apperrors.Historical1RMConflict
 
 		switch {
 		case errors.As(err, &errUnauthorized):
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
+		case errors.As(err, &errConflict):
+			response.ErrorJSON(w, r, h.logger, http.StatusConflict, errConflict.Error(), nil)
 		default:
 			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to update exercise historical 1RM", err)
 		}

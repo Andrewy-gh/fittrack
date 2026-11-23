@@ -96,6 +96,31 @@ func TestExerciseHandler_UpdateExerciseHistorical1RM(t *testing.T) {
 		repo.AssertExpectations(t)
 	})
 
+	t.Run("recompute distinguishes out of range from database errors", func(t *testing.T) {
+		for _, tc := range []struct {
+			name   string
+			row    db.GetExerciseBestE1rmWithWorkoutRow
+			err    error
+			status int
+		}{
+			{name: "unrepresentable result", row: db.GetExerciseBestE1rmWithWorkoutRow{E1rmOutOfRange: true}, status: http.StatusConflict},
+			{name: "query failure", err: errors.New("database failure"), status: http.StatusInternalServerError},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				repo := new(MockExerciseRepository)
+				repo.On("GetExercise", mock.Anything, int32(7), "user-123").Return(db.Exercise{ID: 7}, nil)
+				repo.On("GetExerciseBestE1rmWithWorkout", mock.Anything, int32(7), "user-123").Return(tc.row, tc.err)
+				handler := NewHandler(logger, validator, NewService(logger, repo))
+				ctx := user.WithContext(context.Background(), "user-123")
+				req := httptest.NewRequest(http.MethodPatch, "/api/exercises/7/historical-1rm", bytes.NewBufferString(`{"mode":"recompute"}`)).WithContext(ctx)
+				req.SetPathValue("id", "7")
+				w := httptest.NewRecorder()
+				handler.UpdateExerciseHistorical1RM(w, req)
+				assert.Equal(t, tc.status, w.Code)
+			})
+		}
+	})
+
 	t.Run("missing exercise is not found", func(t *testing.T) {
 		repo := new(MockExerciseRepository)
 		service := NewService(logger, repo)

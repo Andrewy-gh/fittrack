@@ -186,6 +186,37 @@ func TestRepositoryChatDataReader_ExerciseStatsAreUserScoped(t *testing.T) {
 	assert.Len(t, stats.Trend, 2)
 }
 
+func TestRepositoryChatDataReader_LegacyBestAndRoundedTie(t *testing.T) {
+	if testing.Short() {
+		t.Skip("database integration")
+	}
+	pool, cleanup := setupAIChatRepositoryTestDatabase(t)
+	if pool == nil {
+		t.Fatal("database unavailable")
+	}
+	defer cleanup()
+	const owner = "aichat-legacy-numeric-user"
+	ctx := context.Background()
+	seedAIChatRepositoryTestUser(t, pool, owner)
+	seedAIChatDataWorkout(t, pool, owner, "2026-06-01", "", []chatDataExerciseSeed{
+		{name: "Legacy load", sets: []chatDataSetSeed{{weight: ptrFloat64(999999999.9), reps: 2, setType: "working"}}},
+		{name: "Rounded tie", sets: []chatDataSetSeed{{weight: ptrFloat64(0.2), reps: 2, setType: "working"}}},
+	})
+	seedAIChatDataWorkout(t, pool, owner, "2026-06-02", "", []chatDataExerciseSeed{
+		{name: "Rounded tie", sets: []chatDataSetSeed{{weight: ptrFloat64(0.2), reps: 1, setType: "working"}}},
+	})
+	repo := NewRepository(slog.New(slog.NewTextHandler(io.Discard, nil)), db.New(pool), pool)
+	legacy, err := repo.ExerciseStats(ctx, owner, "Legacy load", "all")
+	require.NoError(t, err)
+	require.NotNil(t, legacy.BestE1RM)
+	assert.InDelta(t, 1066666666.56, legacy.BestE1RM.Weight, 0.01)
+	tie, err := repo.ExerciseStats(ctx, owner, "Rounded tie", "all")
+	require.NoError(t, err)
+	require.NotNil(t, tie.BestE1RM)
+	assert.InDelta(t, 0.21, tie.BestE1RM.Weight, 0.001)
+	assert.Equal(t, "2026-06-02", tie.BestE1RM.Date, "rounded ties select the later workout, not the larger raw value")
+}
+
 func TestRepositoryChatDataReader_TrainingProfileDecodesArrays(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping database-backed AI chat repository test in short mode")
