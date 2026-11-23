@@ -28,6 +28,8 @@ func TestStreamInputAdmission(t *testing.T) {
 		{"trimmed prompt", `{"prompt":"  ` + strings.Repeat("a", 8192) + `  "}`, http.StatusConflict},
 		{"body exact", prefix + strings.Repeat(" ", 65536-len(prefix)), http.StatusConflict},
 		{"body over", prefix + strings.Repeat(" ", 65537-len(prefix)), http.StatusRequestEntityTooLarge},
+		{"invalid wire encoding", "{\"prompt\":\"\xff\"}", http.StatusBadRequest},
+		{"valid replacement character", `{"prompt":"�"}`, http.StatusConflict},
 		{"second value", prefix + ` {}`, http.StatusBadRequest},
 		{"trailing garbage", prefix + ` x`, http.StatusBadRequest},
 		{"unknown field", `{"prompt":"x","other":1}`, http.StatusBadRequest},

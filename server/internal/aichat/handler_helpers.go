@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/billing"
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
@@ -28,6 +29,10 @@ func (h *Handler) decodeSendMessageRequest(w http.ResponseWriter, r *http.Reques
 		} else {
 			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to read request body", err)
 		}
+		return nil, false
+	}
+	if !utf8.Valid(body) {
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "request body must be valid UTF-8", nil)
 		return nil, false
 	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
