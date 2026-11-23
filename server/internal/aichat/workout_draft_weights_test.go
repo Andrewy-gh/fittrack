@@ -431,10 +431,16 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 
 func TestWorkoutDraftToolHonorsLoadAcrossIndependentRepAndEquipmentScopes(t *testing.T) {
 	ctx := context.Background()
+	attempt := 0
 	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
-		return `{"date":"2026-11-23T00:00:00Z","exercises":[{
-			"name":"Barbell Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"},{"reps":6,"setType":"working"}]
-		},{"name":"Dumbbell Floor Press","sets":[{"reps":8,"setType":"working"},{"reps":6,"setType":"working"}]}]}`
+		attempt++
+		extraSet := ""
+		if attempt > 1 {
+			extraSet = `{"reps":8,"setType":"working"},`
+		}
+		return fmt.Sprintf(`{"date":"2026-11-23T00:00:00Z","exercises":[{
+			"name":"Barbell Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"},%s{"reps":6,"setType":"working"}]
+		},{"name":"Dumbbell Floor Press","sets":[{"reps":8,"setType":"working"},{"reps":6,"setType":"working"}]}]}`, extraSet)
 	})
 	tool := defineWorkoutDraftTool(g, "synthetic", nil)
 	out, err := tool.RunRaw(ctx, map[string]any{
@@ -446,6 +452,7 @@ func TestWorkoutDraftToolHonorsLoadAcrossIndependentRepAndEquipmentScopes(t *tes
 		"loadChoices": []map[string]any{
 			{"exercise": "Barbell Bench Press", "kind": "requested", "setType": "warmup", "equipment": "barbell", "weight": 45.0},
 			{"exercise": "Barbell Bench Press", "kind": "requested", "setType": "working", "equipment": "dumbbell", "weight": 55.0, "reps": 8},
+			{"exercise": "Barbell Bench Press", "kind": "structure", "setType": "working", "count": 3},
 			{"exercise": "Barbell Bench Press", "kind": "structure", "setType": "working", "last": true, "reps": 6},
 			{"exercise": "Dumbbell Floor Press", "kind": "requested", "setType": "working", "reps": 8, "weight": 55.0},
 			{"exercise": "Dumbbell Floor Press", "kind": "structure", "setType": "working", "last": true, "reps": 6},
@@ -457,10 +464,13 @@ func TestWorkoutDraftToolHonorsLoadAcrossIndependentRepAndEquipmentScopes(t *tes
 	var draft workout.CreateWorkoutRequest
 	require.NoError(t, json.Unmarshal(raw, &draft))
 	sets := draft.Exercises[0].Sets
-	require.Len(t, sets, 3)
-	for i, want := range []float64{45, 55, 55} {
+	require.Len(t, sets, 4)
+	for i, want := range []float64{45, 55, 55, 55} {
 		assert.Equal(t, &want, sets[i].Weight)
 	}
-	require.Equal(t, 6, sets[2].Reps)
+	require.Equal(t, 8, sets[1].Reps)
+	require.Equal(t, 8, sets[2].Reps)
+	require.Equal(t, 6, sets[3].Reps)
+	require.Equal(t, 2, attempt)
 	require.Equal(t, new(55.0), draft.Exercises[1].Sets[1].Weight)
 }

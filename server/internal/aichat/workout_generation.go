@@ -32,6 +32,7 @@ type workoutDraftGenerator func(
 ) (*workout.CreateWorkoutRequest, error)
 
 type workoutDraftLoadChoice struct {
+	Count     int      `json:"count,omitempty" jsonschema:"description=Exact number of sets explicitly requested for this scope. Use a separate structure choice with setType working for a working-set count. Omit on positional choices or historical reports."`
 	Equipment string   `json:"equipment,omitempty" jsonschema:"description=Equipment confirmed for this set scope. Use an independent structure entry with setType all only when confirmed across the entire exercise."`
 	Exercise  string   `json:"exercise" jsonschema:"description=Exact exercise name to use in the draft."`
 	Kind      string   `json:"kind" jsonschema:"description=Use requested for a load explicitly requested for this draft. Use reported for performance in an earlier workout. Use blank for a deliberate blank. Use structure for explicitly requested sets, reps, or equipment without a weight instruction."`
@@ -39,7 +40,7 @@ type workoutDraftLoadChoice struct {
 	Reps      int      `json:"reps,omitempty" jsonschema:"description=Reps completed at a reported load. For requested, blank, and structure use the target reps only if specified."`
 	SetType   string   `json:"setType,omitempty" jsonschema:"description=Use working by default. Use warmup for explicit warm-up instructions or all for instructions applying to all sets."`
 	Last      bool     `json:"last,omitempty" jsonschema:"description=Use for an instruction scoped to the last matching set."`
-	Set       int      `json:"set,omitempty" jsonschema:"description=Optional one-based position in this exercise's ordered sets. Omit if the choice applies to every matching set."`
+	Set       int      `json:"set,omitempty" jsonschema:"description=One-based absolute position in this exercise including warm-ups. Use only if the user requests a particular absolute position. Omit for a prescription that applies to all sets of a type."`
 }
 
 type workoutDraftWeightLimit struct {
@@ -372,6 +373,9 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 			continue
 		}
 		builder.WriteString(fmt.Sprintf("- Include %q using that exact name if feasible and compatible with the request.\n", choice.Exercise))
+		if choice.Kind == "structure" && choice.Count > 0 && choice.Set == 0 && !choice.Last {
+			builder.WriteString(fmt.Sprintf("  Include exactly %d sets within %s for %q.\n", choice.Count, draftLoadScope(choice), choice.Exercise))
+		}
 		if choice.Kind == "requested" || choice.Kind == "structure" {
 			if choice.Reps > 0 {
 				builder.WriteString(fmt.Sprintf("  Prescribe %d reps for %s of %q.\n", choice.Reps, draftLoadScope(choice), choice.Exercise))
