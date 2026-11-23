@@ -179,12 +179,13 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		{"name":"Kettlebell Swing","sets":[{"reps":8,"setType":"working"}]}
 	]}`
 	rejectedDrafts := []struct {
-		name    string
-		payload string
+		name                string
+		payload             string
+		fixedWithoutCeiling bool
 	}{
 		{name: "missing warmup with unspecified reps", payload: strings.Replace(payload,
 			`{"reps":5,"setType":"warmup"},`, "", 1)},
-		{name: "missing explicitly blank warmup", payload: strings.Replace(payload,
+		{name: "missing explicitly blank warmup", fixedWithoutCeiling: true, payload: strings.Replace(payload,
 			`"Overhead Press","sets":[{"reps":4,"setType":"warmup"},`, `"Overhead Press","sets":[`, 1)},
 		{name: "wrong reps on one governed working set", payload: strings.Replace(payload,
 			`{"reps":8,"setType":"working"}`, `{"reps":7,"setType":"working"}`, 1)},
@@ -200,13 +201,17 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 				return payload
 			})
 			tool := defineWorkoutDraftTool(g, "synthetic", history)
+			fixedLimit := map[string]any{"equipment": "kettlebell", "fixed": true}
+			if !rejected.fixedWithoutCeiling {
+				fixedLimit["weight"] = 35.0
+			}
 			out, err := tool.RunRaw(ctx, map[string]any{
 				"fitnessLevel": "intermediate", "fitnessGoal": "strength",
 				"equipment": "full gym", "sessionDuration": 25, "workoutFocus": "upper body", "injuries": "none",
 				"exerciseWeightLimits": []map[string]any{
 					{"exercise": "Dumbbell Bench Press", "equipment": "dumbbell", "weight": 35.0},
 					{"exercise": "Barbell Row", "weight": 95.0},
-					{"equipment": "kettlebell", "weight": 35.0, "fixed": true},
+					fixedLimit,
 				},
 				"loadChoices": []map[string]any{
 					{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 65.0, "setType": "warmup"},
