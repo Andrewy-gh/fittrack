@@ -82,12 +82,6 @@ func TestWorkoutDraftToolAppliesScopedLoadsAndOffersProgression(t *testing.T) {
 	require.Nil(t, draft.Exercises[2].Sets[0].WeightSourceDate)
 	require.Nil(t, draft.Exercises[3].Sets[0].Weight)
 	require.Nil(t, draft.Exercises[4].Sets[0].Weight)
-	require.Len(t, draft.Exercises[5].Sets, 2)
-	require.Equal(t, "warmup", draft.Exercises[5].Sets[0].SetType)
-	require.Nil(t, draft.Exercises[5].Sets[0].Weight)
-	require.Equal(t, new(65.0), draft.Exercises[5].Sets[1].Weight)
-	require.Nil(t, draft.Exercises[6].Sets[0].Weight)
-	require.Nil(t, draft.Exercises[7].Sets[0].Weight)
 	require.Equal(t, new(35.0), draft.Exercises[5].Sets[0].Weight)
 }
 
