@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/recommendation"
@@ -77,7 +78,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 			case suppress || limits.fixed:
 				set.DraftBodyweight = bodyweight
 			case choice.Kind == "reported":
-				if allowedDraftWeight(choice.Weight, limits.inferredCap) {
+				if draftReportedEquipmentMatches(exercise.Name, choice.Equipment, equipment) && allowedDraftWeight(choice.Weight, limits.inferredCap) {
 					set.Weight = choice.Weight
 				}
 			case reader != nil && !input.SkipHistoryWeights:
@@ -262,10 +263,37 @@ func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.Exerci
 func draftEquipmentIdentity(value string) string {
 	classes := draftEquipmentClasses(value)
 	if len(classes) == 0 {
-		return normalizeQualityText(value)
+		return draftEquipmentLabel(value)
 	}
 	slices.Sort(classes)
 	return strings.Join(slices.Compact(classes), " ")
+}
+
+// Keep free-text labels comparable without losing distinctions between equipment.
+func draftEquipmentLabel(value string) string {
+	words := strings.FieldsFunc(normalizeQualityText(value), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	})
+	if len(words) > 0 {
+		i := len(words) - 1
+		if !strings.HasSuffix(words[i], "ss") {
+			words[i] = strings.TrimSuffix(words[i], "s")
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func draftReportedEquipmentMatches(name, reported, assignment string) bool {
+	if reported == "" {
+		return draftHistoryEquipmentMatches(name, assignment)
+	}
+	if assignment == "" {
+		if len(draftEquipmentClasses(name)) == 0 {
+			return true
+		}
+		assignment = name
+	}
+	return draftEquipmentIdentity(reported) == draftEquipmentIdentity(assignment)
 }
 
 func draftHistoryEquipmentMatches(exerciseName, assignment string) bool {
@@ -282,7 +310,7 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmed
 	for _, item := range input.ExerciseWeightLimits {
 		classes := draftEquipmentClasses(item.Equipment)
 		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name) ||
-			(strings.TrimSpace(item.Equipment) != "" && normalizeQualityText(item.Equipment) == normalizeQualityText(confirmedEquipment))
+			(strings.TrimSpace(item.Equipment) != "" && draftEquipmentLabel(item.Equipment) == draftEquipmentLabel(confirmedEquipment))
 		for _, class := range classes {
 			confirmed = confirmed || slices.Contains(exerciseEquipment, class)
 		}
@@ -306,9 +334,17 @@ func lowerDraftCap(cap, weight *float64) *float64 {
 }
 
 func hasExternalDraftEquipment(equipment string) bool {
-	for _, word := range strings.Fields(equipment) {
+	words := strings.Fields(equipment)
+	for i, word := range words {
 		for _, class := range draftEquipmentClasses(word) {
 			if class != "bodyweight" && hasAvailableEquipmentTerm(equipment, word) {
+				return true
+			}
+		}
+		if i+1 < len(words) {
+			phrase := word + " " + words[i+1]
+			if len(draftEquipmentClasses(phrase)) > len(draftEquipmentClasses(word))+len(draftEquipmentClasses(words[i+1])) &&
+				hasAvailableEquipmentTerm(equipment, phrase) {
 				return true
 			}
 		}
@@ -323,6 +359,9 @@ func draftEquipmentClasses(value string) []string {
 		class := strings.TrimSuffix(word, "s")
 		if (class == "trap" || class == "hex") && i+1 < len(words) && strings.TrimSuffix(words[i+1], "s") == "bar" {
 			classes = append(classes, "trap bar")
+		}
+		if class == "lever" && i+1 < len(words) && strings.TrimSuffix(words[i+1], "s") == "arm" {
+			classes = append(classes, "lever arm")
 		}
 		if class == "machine" && i > 0 && (words[i-1] == "smith" || words[i-1] == "cable") {
 			continue

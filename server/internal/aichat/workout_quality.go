@@ -42,7 +42,7 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 func validateDraftLoadScopes(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
 	var issues []workoutDraftQualityIssue
 	for _, choice := range input.LoadChoices {
-		if choice.Kind != "requested" && choice.Kind != "structure" && !(choice.Kind == "blank" && choice.hasSetScope()) {
+		if choice.Kind != "requested" && choice.Kind != "structure" && choice.Kind != "blank" {
 			continue
 		}
 		matchedCount, wrongReps := 0, false
@@ -317,7 +317,7 @@ func disallowedInjuryTerms(injuries string) []string {
 	if hasAnyQualityTerm(injuries, "knee", "acl", "meniscus") {
 		terms = append(terms, "squat", "lunge", "leg press", "jump", "step-up", "step up", "running")
 	}
-	if hasAnyQualityTerm(injuries, "shoulder", "rotator cuff") {
+	if hasAnyQualityTerm(injuries, "shoulder", "rotator cuff") || (draftRestriction.MatchString(injuries) && hasAnyQualityTerm(injuries, "overhead")) {
 		terms = append(terms, "overhead press", "shoulder press", "upright row", "dip", "snatch")
 	}
 	if hasAnyQualityTerm(injuries, "back", "low back", "lower back", "spine") {

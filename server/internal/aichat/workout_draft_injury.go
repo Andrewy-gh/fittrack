@@ -13,8 +13,16 @@ type draftInjuryContext struct {
 	profile *TrainingProfile
 }
 
-var draftNoInjury = regexp.MustCompile(`\b(?:no (?:current |active )?(?:injur(?:y|ies)|pain|(?:movement )?limitations)(?:(?:, | and | or )(?:injur(?:y|ies)|pain|(?:movement )?limitations))*|(?:injury|pain)[ -]free)\b`)
+var draftNoInjury = regexp.MustCompile(`\b(?:no (?:current |active |known )?(?:injur(?:y|ies)|pain|(?:movement )?limitations)(?:(?:, | and | or )(?:injur(?:y|ies)|pain|(?:movement )?limitations))*|(?:i |we )?(?:don't|do not) have (?:any )?(?:current |active )?(?:injur(?:y|ies)|pain|(?:movement )?limitations)|(?:injury|pain)[ -]free)\b`)
 var draftInjuryTerms = regexp.MustCompile(`\b(?:injur\w*|pain\w*|hurt\w*|sore\w*|stiff\w*|strain\w*|sprain\w*|discomfort|limitations?)\b`)
+var draftRestriction = regexp.MustCompile(`\b(?:can't|cannot|unable to|need to avoid|must avoid) (?:raise|lift|bend|move|press|reach|grip|squat|kneel|run|jump|overhead|heavy)\b`)
+var draftClearanceWithheld = regexp.MustCompile(`\b(?:not sure|not confirmed|unconfirmed|unsure|uncertain|(?:can't|cannot|won't|don't|do not) (?:confirm|know|say|assume|claim)|(?:if|whether) (?:i|we) (?:have|had))\b`)
+var draftLimitedNegation = regexp.MustCompile(`\bno (?:sharp |severe |shooting |acute |new )+(?:pain|injur(?:y|ies))\b`)
+
+func draftReportedLimitation(text string) bool {
+	return draftRestriction.MatchString(text) ||
+		draftInjuryTerms.MatchString(draftLimitedNegation.ReplaceAllString(draftNoInjury.ReplaceAllString(text, ""), ""))
+}
 
 // Injury clearance comes from user messages or a recorded profile. The model
 // can identify a reported limitation, but its quote must occur in a user message.
@@ -24,12 +32,19 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 		text := normalizeQualityText(message)
 		answering := preceding != nil && preceding.Role == "assistant" &&
 			strings.Contains(preceding.Text, "?") && draftInjuryTerms.MatchString(normalizeQualityText(preceding.Text))
-		residual := draftNoInjury.ReplaceAllString(text, "")
-		if draftInjuryTerms.MatchString(residual) && quote != "" &&
-			strings.Contains(text, quote) && draftInjuryTerms.MatchString(draftNoInjury.ReplaceAllString(quote, "")) {
+		if draftClearanceWithheld.MatchString(text) {
+			return "", true
+		}
+		if quote != "" && strings.Contains(text, quote) && draftReportedLimitation(quote) {
 			return quote, true
 		}
-		if draftInjuryTerms.MatchString(residual) {
+		for _, sentence := range strings.FieldsFunc(text, func(r rune) bool { return strings.ContainsRune(".!?;\n", r) }) {
+			if draftReportedLimitation(sentence) &&
+				(answering || hasAnyQualityTerm(sentence, "i have", "my", "it's", "it is", "recent", "mild", "moderate", "from my") || draftRestriction.MatchString(sentence)) {
+				return strings.TrimSpace(sentence), true
+			}
+		}
+		if draftReportedLimitation(text) {
 			return "", true
 		}
 		if draftNoInjury.MatchString(text) {
