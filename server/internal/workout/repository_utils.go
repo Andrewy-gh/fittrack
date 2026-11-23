@@ -60,6 +60,12 @@ func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo
 
 // MARK: insertSets
 func insertSets(ctx context.Context, logger *slog.Logger, qtx *db.Queries, sets []PGSetData, workoutID int32, exerciseMap map[string]int32, userID string) error {
+	if len(sets) == 0 {
+		return nil
+	}
+	var ids, reps, exerciseOrder, setOrder []int32
+	var weights []pgtype.Numeric
+	var types []string
 	for _, set := range sets {
 		exerciseID, exists := exerciseMap[set.ExerciseName]
 		if !exists {
@@ -67,35 +73,17 @@ func insertSets(ctx context.Context, logger *slog.Logger, qtx *db.Queries, sets 
 			logger.Error(errMsg, "exercise_name", set.ExerciseName, "available_exercises", exerciseMap)
 			return fmt.Errorf("exercise not found: %s", set.ExerciseName)
 		}
-
-		logger.Debug("attempting to create set",
-			"exercise_name", set.ExerciseName,
-			"exercise_id", exerciseID,
-			"workout_id", workoutID,
-			"reps", set.Reps,
-			"weight", set.Weight,
-			"set_type", set.SetType,
-			"exercise_order", set.ExerciseOrder,
-			"set_order", set.SetOrder,
-			"user_id", userID)
-
-		_, err := qtx.CreateSet(ctx, db.CreateSetParams{
-			ExerciseID:    exerciseID,
-			WorkoutID:     workoutID,
-			Weight:        set.Weight,
-			Reps:          set.Reps,
-			SetType:       set.SetType,
-			UserID:        userID,
-			ExerciseOrder: set.ExerciseOrder,
-			SetOrder:      set.SetOrder,
-		})
-		if err != nil {
-			errMsg := fmt.Sprintf("failed to create set for exercise %s (ID: %d)", set.ExerciseName, exerciseID)
-			logger.Error(errMsg, "error", err, "set_details", set, "user_id", userID)
-			return fmt.Errorf("failed to create set for exercise %s: %w", set.ExerciseName, err)
-		}
+		ids = append(ids, exerciseID)
+		weights = append(weights, set.Weight)
+		reps = append(reps, set.Reps)
+		types = append(types, set.SetType)
+		exerciseOrder = append(exerciseOrder, set.ExerciseOrder)
+		setOrder = append(setOrder, set.SetOrder)
 	}
-
+	if err := qtx.BulkCreateSets(ctx, workoutID, userID, ids, weights, reps, types, exerciseOrder, setOrder); err != nil {
+		logger.Error("failed to create workout sets", "error", err, "workout_id", workoutID, "set_count", len(sets))
+		return fmt.Errorf("failed to create workout sets: %w", err)
+	}
 	return nil
 }
 
