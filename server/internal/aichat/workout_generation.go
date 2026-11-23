@@ -32,13 +32,14 @@ type workoutDraftGenerator func(
 ) (*workout.CreateWorkoutRequest, error)
 
 type workoutDraftLoadChoice struct {
-	Exercise string   `json:"exercise" jsonschema:"description=Exact exercise name to use in the draft."`
-	Kind     string   `json:"kind" jsonschema:"description=Use requested for a load explicitly requested for this draft. Use reported for performance in an earlier workout. Use blank for a deliberate blank."`
-	Weight   *float64 `json:"weight,omitempty" jsonschema:"description=Use the user-supplied load in pounds. Use zero for explicitly no added weight. Convert kilograms to pounds. Never infer a number from fitness level or an equipment limit."`
-	Reps     int      `json:"reps,omitempty" jsonschema:"description=Reps completed at a reported load. For a requested load use the target reps only if specified."`
-	SetType  string   `json:"setType,omitempty" jsonschema:"description=Use working by default. Use warmup for explicit warm-up instructions or all for instructions applying to all sets."`
-	Last     bool     `json:"last,omitempty" jsonschema:"description=Use for an instruction scoped to the last matching set."`
-	Set      int      `json:"set,omitempty" jsonschema:"description=Optional one-based position in this exercise's ordered sets. Omit if the choice applies to every matching set."`
+	Equipment string   `json:"equipment,omitempty" jsonschema:"description=Equipment confirmed by the user for this exercise. Preserve it even when the exercise name does not say which equipment it uses."`
+	Exercise  string   `json:"exercise" jsonschema:"description=Exact exercise name to use in the draft."`
+	Kind      string   `json:"kind" jsonschema:"description=Use requested for a load explicitly requested for this draft. Use reported for performance in an earlier workout. Use blank for a deliberate blank."`
+	Weight    *float64 `json:"weight,omitempty" jsonschema:"description=Use the user-supplied load in pounds. Use zero for explicitly no added weight. Convert kilograms to pounds. Never infer a number from fitness level or an equipment limit."`
+	Reps      int      `json:"reps,omitempty" jsonschema:"description=Reps completed at a reported load. For a requested load use the target reps only if specified."`
+	SetType   string   `json:"setType,omitempty" jsonschema:"description=Use working by default. Use warmup for explicit warm-up instructions or all for instructions applying to all sets."`
+	Last      bool     `json:"last,omitempty" jsonschema:"description=Use for an instruction scoped to the last matching set."`
+	Set       int      `json:"set,omitempty" jsonschema:"description=Optional one-based position in this exercise's ordered sets. Omit if the choice applies to every matching set."`
 }
 
 type workoutDraftWeightLimit struct {
@@ -361,6 +362,9 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 			}
 		} else if choice.Kind == "blank" && choice.hasSetScope() {
 			builder.WriteString(fmt.Sprintf("  Include %s for %q with weight left blank.\n", draftLoadScope(choice), choice.Exercise))
+			if choice.Reps > 0 {
+				builder.WriteString(fmt.Sprintf("  Prescribe %d reps for those sets.\n", choice.Reps))
+			}
 		} else if choice.Kind == "reported" && choice.Reps > 0 {
 			builder.WriteString(fmt.Sprintf("  Use %d working-set reps for this exercise unless the user requests a different target.\n", choice.Reps))
 		}

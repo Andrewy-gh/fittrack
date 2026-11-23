@@ -55,7 +55,7 @@ func validateDraftLoadScopes(input WorkoutGenerationToolInput, draft *workout.Cr
 					continue
 				}
 				found = true
-				if choice.Kind == "requested" && choice.Reps > 0 && set.Reps != choice.Reps &&
+				if choice.Reps > 0 && set.Reps != choice.Reps &&
 					draftLoadChoice(input.LoadChoices, exercise, i) == choice {
 					wrongReps = true
 				}

@@ -52,18 +52,20 @@ func (r *repository) LatestDraftExerciseSets(ctx context.Context, userID string,
 }
 
 func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest, now time.Time) {
-	bodyweight := input.BodyweightOnly || hasAnyQualityTerm(normalizeQualityText(input.Equipment), "bodyweight only", "no equipment") ||
-		strings.EqualFold(strings.TrimSpace(input.Equipment), "bodyweight")
+	equipment := normalizeQualityText(input.Equipment)
+	bodyweight := input.BodyweightOnly || ((equipment == "bodyweight" ||
+		hasAnyQualityTerm(equipment, "bodyweight only", "no equipment")) &&
+		!hasExternalDraftEquipment(equipment))
 	suppress := bodyweight || input.SuppressSuggestedWeights || isEquipmentOptionalWorkout(input) || activeInjuryText(input.Injuries) != "" ||
 		hasAnyQualityTerm(normalizeQualityText(input.FitnessGoal+" "+input.WorkoutFocus), "deload", "recovery", "reduced load")
 
 	eligible := make(map[string]struct{})
 	for i := range draft.Exercises {
 		exercise := &draft.Exercises[i]
-		limits := draftExerciseWeightLimits(input, exercise.Name)
 		for j := range exercise.Sets {
 			set := &exercise.Sets[j]
 			choice := draftLoadChoice(input.LoadChoices, *exercise, j)
+			limits := draftExerciseWeightLimits(input, exercise.Name, choice.Equipment)
 			switch {
 			case choice.Kind == "requested":
 				if (choice.Reps <= 0 || choice.Reps == set.Reps) && allowedDraftWeight(choice.Weight, limits.explicitCap) {
@@ -106,7 +108,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 
 	for i := range draft.Exercises {
 		exercise := &draft.Exercises[i]
-		limits := draftExerciseWeightLimits(input, exercise.Name)
+		limits := draftExerciseWeightLimits(input, exercise.Name, "")
 		sessions := history[exercise.Name]
 		if limits.fixed || len(sessions) == 0 {
 			continue
@@ -193,7 +195,7 @@ func draftLoadScopeMatches(choice workoutDraftLoadChoice, sets []workout.SetInpu
 
 func (choice workoutDraftLoadChoice) hasSetScope() bool {
 	kind := draftLoadSetType(choice)
-	return choice.Set > 0 || choice.Last || kind == "warmup" || kind == "working"
+	return choice.Reps > 0 || choice.Set > 0 || choice.Last || kind == "warmup" || kind == "working"
 }
 
 type draftWeightLimits struct {
@@ -202,9 +204,9 @@ type draftWeightLimits struct {
 	fixed       bool
 }
 
-func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name string) draftWeightLimits {
+func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, confirmedEquipment string) draftWeightLimits {
 	limits := draftWeightLimits{explicitCap: input.MaxWeight, inferredCap: input.MaxWeight}
-	exerciseEquipment := draftEquipmentClasses(name)
+	exerciseEquipment := draftEquipmentClasses(name + " " + confirmedEquipment)
 	for _, item := range input.ExerciseWeightLimits {
 		classes := draftEquipmentClasses(item.Equipment)
 		confirmed := strings.EqualFold(strings.TrimSpace(item.Exercise), name)
@@ -228,6 +230,15 @@ func lowerDraftCap(cap, weight *float64) *float64 {
 		return weight
 	}
 	return cap
+}
+
+func hasExternalDraftEquipment(equipment string) bool {
+	for _, class := range draftEquipmentClasses(equipment) {
+		if class != "bodyweight" {
+			return true
+		}
+	}
+	return false
 }
 
 func draftEquipmentClasses(value string) []string {
