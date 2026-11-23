@@ -26,6 +26,7 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 	issues = append(issues, validateDraftDurationQuality(input, draft)...)
 	issues = append(issues, validateDraftEquipmentQuality(input, draft)...)
 	issues = append(issues, validateDraftInjuryQuality(input, draft)...)
+	issues = append(issues, validateRequestedDraftReps(input, draft)...)
 
 	if len(issues) == 0 {
 		return nil
@@ -36,6 +37,30 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 		messages = append(messages, issue.message)
 	}
 	return errors.New(strings.Join(messages, "; "))
+}
+
+func validateRequestedDraftReps(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
+	var issues []workoutDraftQualityIssue
+	for _, choice := range input.LoadChoices {
+		if choice.Kind != "requested" || choice.Reps <= 0 {
+			continue
+		}
+		found := false
+		for _, exercise := range draft.Exercises {
+			if strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise.Name) {
+				for i, set := range exercise.Sets {
+					if set.Reps == choice.Reps && draftLoadScopeMatches(choice, exercise.Sets, i) {
+						found = true
+						break
+					}
+				}
+			}
+		}
+		if !found {
+			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("%q needs %d reps for %s", choice.Exercise, choice.Reps, draftLoadScope(choice))})
+		}
+	}
+	return issues
 }
 
 func validateDraftDurationQuality(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {

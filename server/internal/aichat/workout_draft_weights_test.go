@@ -3,6 +3,7 @@ package aichat
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -138,5 +139,75 @@ func TestWorkoutDraftToolMatchesLatestWorkingSets(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
+	ctx := user.WithContext(context.Background(), "draft-owner")
+	now := time.Now()
+	reported := func(weight float64) []DraftWeightSession {
+		return []DraftWeightSession{{Date: now.AddDate(0, 0, -5), Sets: []workout.SetInput{
+			{Weight: &weight, Reps: 8, SetType: "working"},
+			{Weight: &weight, Reps: 8, SetType: "working"},
+		}}}
+	}
+	history := fixedDraftWeightHistory{
+		"Dumbbell Bench Press": reported(50),
+		"Barbell Row":          reported(95),
+	}
+	history["Barbell Row"] = append(history["Barbell Row"], DraftWeightSession{
+		Date: now.AddDate(0, 0, -8), Sets: history["Barbell Row"][0].Sets,
+	})
+
+	payload := `{"date":"` + now.Format(time.RFC3339) + `","exercises":[
+		{"name":"Barbell Bench Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
+		{"name":"Dumbbell Bench Press","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
+		{"name":"Barbell Row","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]},
+		{"name":"Pull-Ups","sets":[{"reps":4,"setType":"warmup"},{"reps":8,"setType":"working"}]}
+	]}`
+	attempts := 0
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		attempts++
+		if attempts == 1 {
+			return strings.Replace(payload, `"reps":5,"setType":"warmup"`, `"reps":10,"setType":"warmup"`, 1)
+		}
+		return payload
+	})
+	tool := defineWorkoutDraftTool(g, "synthetic", history)
+	out, err := tool.RunRaw(ctx, map[string]any{
+		"fitnessLevel": "intermediate", "fitnessGoal": "strength",
+		"equipment": "full gym", "sessionDuration": 25, "workoutFocus": "upper body", "injuries": "none",
+		"exerciseWeightLimits": []map[string]any{
+			{"exercise": "Dumbbell Bench Press", "weight": 35.0},
+			{"exercise": "Barbell Row", "weight": 95.0},
+		},
+		"loadChoices": []map[string]any{
+			{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 65.0, "reps": 5, "setType": "warmup", "set": 1},
+			{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 115.0, "setType": "working"},
+			{"exercise": "Barbell Bench Press", "kind": "blank", "setType": "working", "last": true},
+			{"exercise": "Pull-Ups", "kind": "requested", "weight": 0.0},
+		},
+	})
+	require.NoError(t, err)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	var draft workout.CreateWorkoutRequest
+	require.NoError(t, json.Unmarshal(raw, &draft))
+	require.Len(t, draft.Exercises, 4)
+	bench, dumbbells, rows, pullups := draft.Exercises[0], draft.Exercises[1], draft.Exercises[2], draft.Exercises[3]
+	require.Len(t, bench.Sets, 3)
+	require.Equal(t, 5, bench.Sets[0].Reps)
+	require.Equal(t, new(65.0), bench.Sets[0].Weight)
+	require.Equal(t, new(115.0), bench.Sets[1].Weight)
+	require.Nil(t, bench.Sets[2].Weight)
+	for _, set := range dumbbells.Sets {
+		require.Nil(t, set.Weight)
+	}
+	for _, set := range rows.Sets {
+		require.Equal(t, new(95.0), set.Weight)
+	}
+	require.Nil(t, rows.DraftProgression)
+	for _, set := range pullups.Sets {
+		require.Equal(t, new(0.0), set.Weight)
 	}
 }

@@ -43,8 +43,8 @@ func passesDraftWorkingWeights(result *Result) bool {
 			if set.SetType == "working" {
 				seen[key] = true
 			}
-			if set.SetType != "working" || want == nil {
-				if set.Weight == nil || (set.SetType != "working" && want != nil && *want == 0 && *set.Weight == 0) {
+			if want == nil || (set.SetType == "warmup" && *want != 0) {
+				if set.Weight == nil {
 					continue
 				}
 				setScore(result, ScoreStatusFail, fmt.Sprintf("unexpected weight on %s %s set", exercise.Name, set.SetType))

@@ -37,10 +37,18 @@ type workoutDraftLoadChoice struct {
 	Weight   *float64 `json:"weight,omitempty" jsonschema:"description=Use the user-supplied load in pounds. Use zero for explicitly no added weight. Convert kilograms to pounds. Never infer a number from fitness level or an equipment limit."`
 	Reps     int      `json:"reps,omitempty" jsonschema:"description=Reps completed at a reported load. For a requested load use the target reps only if specified."`
 	SetType  string   `json:"setType,omitempty" jsonschema:"description=Use working by default. Use warmup for explicit warm-up instructions or all for instructions applying to all sets."`
+	Last     bool     `json:"last,omitempty" jsonschema:"description=Use for an instruction scoped to the last matching set."`
 	Set      int      `json:"set,omitempty" jsonschema:"description=Optional one-based position in this exercise's ordered sets. Omit if the choice applies to every matching set."`
 }
 
+type workoutDraftWeightLimit struct {
+	Exercise string  `json:"exercise" jsonschema:"description=Exact name of the exercise subject to this equipment limit."`
+	Weight   float64 `json:"weight" jsonschema:"description=Maximum available load in pounds for this exercise."`
+}
+
 type WorkoutGenerationToolInput struct {
+	ExerciseWeightLimits []workoutDraftWeightLimit `json:"exerciseWeightLimits,omitempty" jsonschema:"description=Copy explicitly stated equipment limits to every affected exercise when they do not apply to the whole workout. Use exact exercise names. If affected exercises cannot be determined set skipHistoryWeights."`
+
 	BodyweightOnly     bool                     `json:"bodyweightOnly,omitempty" jsonschema:"description=Set true when the user wants an entirely bodyweight-only workout. Do not invent zero-valued entries for each exercise."`
 	SkipHistoryWeights bool                     `json:"skipHistoryWeights,omitempty" jsonschema:"description=Set true for the whole workout when the user wants blank weights, bodyweight only, rehab, deload, easier loads, or describes limited equipment with uncertain compatible loads. Specific explicit requested numbers or no added weight still apply."`
 	LoadChoices        []workoutDraftLoadChoice `json:"loadChoices,omitempty" jsonschema:"description=Required when the user states an exercise load or wants an exercise left blank. Include one entry per scoped choice. Exclude weights from workout-history tool calls and any guesses."`
@@ -338,14 +346,34 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 	}
 
 	for _, choice := range input.LoadChoices {
-		if strings.TrimSpace(choice.Exercise) != "" {
-			builder.WriteString(fmt.Sprintf("- Include %q using that exact name if feasible and compatible with the request. Respect scoped user load choices when planning reps and set order.\n", choice.Exercise))
-			if choice.Reps > 0 && (choice.Kind == "reported" || choice.Kind == "requested") {
-				builder.WriteString(fmt.Sprintf("  Use %d working-set reps for this exercise unless the user requests a different target.\n", choice.Reps))
-			}
+		if strings.TrimSpace(choice.Exercise) == "" {
+			continue
+		}
+		builder.WriteString(fmt.Sprintf("- Include %q using that exact name if feasible and compatible with the request.\n", choice.Exercise))
+		if choice.Kind == "requested" && choice.Reps > 0 {
+			builder.WriteString(fmt.Sprintf("  Prescribe %d reps for %s of %q.\n", choice.Reps, draftLoadScope(choice), choice.Exercise))
+		} else if choice.Kind == "reported" && choice.Reps > 0 {
+			builder.WriteString(fmt.Sprintf("  Use %d working-set reps for this exercise unless the user requests a different target.\n", choice.Reps))
 		}
 	}
+	for _, limit := range input.ExerciseWeightLimits {
+		builder.WriteString(fmt.Sprintf("- Use the exact name %q if including that equipment-limited exercise.\n", limit.Exercise))
+	}
 	return builder.String()
+}
+
+func draftLoadScope(choice workoutDraftLoadChoice) string {
+	setType := draftLoadSetType(choice)
+	if setType == "" || setType == "all" {
+		setType = "workout"
+	}
+	if choice.Set > 0 {
+		return fmt.Sprintf("set %d in the exercise's ordered sets (type: %s)", choice.Set, setType)
+	}
+	if choice.Last {
+		return "the last " + setType + " set"
+	}
+	return "the requested " + setType + " sets"
 }
 
 func buildWorkoutGenerationRepairPrompt(input WorkoutGenerationToolInput, qualityErr error) string {

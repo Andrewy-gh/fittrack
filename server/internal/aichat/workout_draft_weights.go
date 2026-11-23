@@ -60,12 +60,13 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 	eligible := make(map[string]struct{})
 	for i := range draft.Exercises {
 		exercise := &draft.Exercises[i]
+		cap := draftExerciseWeightLimit(input, exercise.Name)
 		for j := range exercise.Sets {
 			set := &exercise.Sets[j]
-			choice := draftLoadChoice(input.LoadChoices, exercise.Name, *set, j+1)
+			choice := draftLoadChoice(input.LoadChoices, *exercise, j)
 			switch {
 			case choice.Kind == "requested":
-				if allowedDraftWeight(choice.Weight, input.MaxWeight) {
+				if (choice.Reps <= 0 || choice.Reps == set.Reps) && allowedDraftWeight(choice.Weight, cap) {
 					set.Weight = choice.Weight
 				}
 			case choice.Kind == "blank":
@@ -73,7 +74,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 			case suppress:
 				set.DraftBodyweight = bodyweight
 			case choice.Kind == "reported":
-				if allowedDraftWeight(choice.Weight, input.MaxWeight) {
+				if allowedDraftWeight(choice.Weight, cap) {
 					set.Weight = choice.Weight
 				}
 			case reader != nil:
@@ -105,6 +106,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 
 	for i := range draft.Exercises {
 		exercise := &draft.Exercises[i]
+		cap := draftExerciseWeightLimit(input, exercise.Name)
 		sessions := history[exercise.Name]
 		if len(sessions) == 0 {
 			continue
@@ -113,53 +115,92 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 		sourceDate := latest.Date.Format(time.RFC3339)
 		for j := range exercise.Sets {
 			set := &exercise.Sets[j]
-			if set.Weight != nil || draftLoadChoice(input.LoadChoices, exercise.Name, *set, j+1).Kind != "" {
+			if set.Weight != nil || draftLoadChoice(input.LoadChoices, *exercise, j).Kind != "" {
 				continue
 			}
 			weight := matchingDraftWeight(latest.Sets, *set)
-			if allowedDraftWeight(weight, input.MaxWeight) {
+			if allowedDraftWeight(weight, cap) {
 				set.Weight = weight
 				set.WeightSourceDate = &sourceDate
 			}
 		}
-		exercise.DraftProgression = draftProgression(input, exercise.Sets, sessions, before)
+		exercise.DraftProgression = draftProgression(input, cap, exercise.Sets, sessions, before)
 	}
 }
 
-func draftLoadChoice(choices []workoutDraftLoadChoice, name string, set workout.SetInput, position int) workoutDraftLoadChoice {
-	var blank, reported, requested workoutDraftLoadChoice
+func draftLoadChoice(choices []workoutDraftLoadChoice, exercise workout.ExerciseInput, index int) workoutDraftLoadChoice {
+	var selected, reported workoutDraftLoadChoice
+	specificity := -1
 	for _, choice := range choices {
-		if !strings.EqualFold(strings.TrimSpace(choice.Exercise), name) ||
-			(choice.Set != 0 && choice.Set != position) {
-			continue
-		}
-		setType := strings.ToLower(strings.TrimSpace(choice.SetType))
-		if setType == "" && choice.Kind != "blank" && choice.Set == 0 {
-			setType = "working"
-		}
-		if setType != "" && setType != "all" && setType != set.SetType {
+		if !strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise.Name) ||
+			!draftLoadScopeMatches(choice, exercise.Sets, index) {
 			continue
 		}
 		switch choice.Kind {
-		case "requested":
-			if requested.Kind == "" || choice.Set != 0 || (requested.Set == 0 && choice.SetType != "") {
-				requested = choice
-			}
-		case "blank":
-			blank = choice
 		case "reported":
-			if set.SetType == "working" && set.Reps == choice.Reps {
+			if exercise.Sets[index].SetType == "working" && exercise.Sets[index].Reps == choice.Reps {
 				reported = choice
+			}
+		case "requested", "blank":
+			score := 0
+			if kind := draftLoadSetType(choice); kind != "" && kind != "all" {
+				score = 1
+			}
+			if choice.Set > 0 || choice.Last {
+				score = 2
+			}
+			if score > specificity || (score == specificity && choice.Kind == "blank") {
+				selected = choice
+				specificity = score
 			}
 		}
 	}
-	if requested.Kind != "" {
-		return requested
-	}
-	if blank.Kind != "" {
-		return blank
+	if selected.Kind != "" {
+		return selected
 	}
 	return reported
+}
+
+func draftLoadSetType(choice workoutDraftLoadChoice) string {
+	setType := strings.ToLower(strings.TrimSpace(choice.SetType))
+	if setType == "" && choice.Kind != "blank" && choice.Set == 0 &&
+		(choice.Weight == nil || *choice.Weight != 0) {
+		return "working"
+	}
+	return setType
+}
+
+func draftLoadScopeMatches(choice workoutDraftLoadChoice, sets []workout.SetInput, index int) bool {
+	if choice.Set != 0 && choice.Set != index+1 {
+		return false
+	}
+	setType := draftLoadSetType(choice)
+	typeMatches := func(set workout.SetInput) bool {
+		return setType == "" || setType == "all" || setType == set.SetType
+	}
+	if !typeMatches(sets[index]) {
+		return false
+	}
+	if choice.Last {
+		for _, later := range sets[index+1:] {
+			if typeMatches(later) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func draftExerciseWeightLimit(input WorkoutGenerationToolInput, name string) *float64 {
+	limit := input.MaxWeight
+	for _, item := range input.ExerciseWeightLimits {
+		if strings.EqualFold(strings.TrimSpace(item.Exercise), name) &&
+			(limit == nil || item.Weight < *limit) {
+			value := item.Weight
+			limit = &value
+		}
+	}
+	return limit
 }
 
 func matchingDraftWeight(sets []workout.SetInput, target workout.SetInput) *float64 {
@@ -184,7 +225,7 @@ func allowedDraftWeight(weight, cap *float64) bool {
 	return weight != nil && validDraftWeight(*weight) && (cap == nil || *weight <= *cap)
 }
 
-func draftProgression(input WorkoutGenerationToolInput, draftSets []workout.SetInput, history []DraftWeightSession, now time.Time) *recommendation.Plan {
+func draftProgression(input WorkoutGenerationToolInput, cap *float64, draftSets []workout.SetInput, history []DraftWeightSession, now time.Time) *recommendation.Plan {
 	context := recommendation.TrainingContext{Goal: strings.ToLower(strings.TrimSpace(input.FitnessGoal)), Experience: strings.ToLower(strings.TrimSpace(input.FitnessLevel))}
 	for _, session := range history {
 		working := recommendation.Session{Date: session.Date}
@@ -197,7 +238,7 @@ func draftProgression(input WorkoutGenerationToolInput, draftSets []workout.SetI
 	}
 	result := recommendation.RecommendTraining(now, context, "normal")
 	plan := result.Plan
-	if plan == nil || !allowedDraftWeight(plan.Weight, input.MaxWeight) {
+	if plan == nil || !allowedDraftWeight(plan.Weight, cap) {
 		return nil
 	}
 	workingCount := 0

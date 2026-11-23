@@ -20,6 +20,31 @@ function createMemoryStorage(
 }
 
 describe("workoutDraftStorage", () => {
+  it("round-trips an API null load as blank alongside explicit zero", () => {
+    const storage = createMemoryStorage();
+    createWorkoutDraftStorage(storage).save(
+      {
+        date: "2026-10-08T12:00:00Z",
+        exercises: [
+          {
+            name: "Pull-Ups",
+            sets: [
+              { reps: 6, weight: null, setType: "working" },
+              { reps: 8, weight: 0, setType: "working" },
+            ],
+          },
+        ],
+      },
+      "owner",
+    );
+    expect(
+      createWorkoutDraftStorage(storage).load("owner")?.exercises[0]?.sets,
+    ).toEqual([
+      { reps: 6, setType: "working" },
+      { reps: 8, weight: 0, setType: "working" },
+    ]);
+  });
+
   it("retains catalog identity on reload alongside custom and legacy exercises", () => {
     const storage = createMemoryStorage();
     const draft = {
