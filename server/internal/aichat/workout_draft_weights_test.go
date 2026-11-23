@@ -11,6 +11,7 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -225,7 +226,8 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 					{"exercise": "Barbell Bench Press", "kind": "requested", "weight": 115.0, "setType": "working", "reps": 8},
 					{"exercise": "Barbell Bench Press", "kind": "blank", "setType": "working", "last": true},
 					{"exercise": "Pull-Ups", "kind": "requested", "weight": 0.0},
-					{"exercise": "Overhead Press", "kind": "blank", "setType": "warmup", "reps": 4, "equipment": "barbell"},
+					{"exercise": "Overhead Press", "kind": "blank", "setType": "warmup", "reps": 4},
+					{"exercise": "Overhead Press", "kind": "structure", "setType": "all", "equipment": "barbell"},
 					{"exercise": "Shoulder Press", "kind": "requested", "setType": "working", "equipment": "smith", "weight": 65.0},
 					{"exercise": "Leg Press Machine", "kind": "requested", "weight": 125.0},
 					{"exercise": "Incline Press", "kind": "requested", "weight": 65.0},
@@ -312,6 +314,113 @@ func TestWorkoutDraftToolKeepsReportedLoadWhenLoggedHistoryIsSkipped(t *testing.
 			require.Nil(t, draft.Exercises[0].Sets[1].Weight)
 			require.Nil(t, draft.Exercises[1].Sets[0].Weight)
 			require.False(t, draft.Exercises[1].Sets[0].DraftBodyweight)
+		})
+	}
+}
+
+func TestWorkoutDraftToolKeepsWorkingSetEquipmentSeparate(t *testing.T) {
+	ctx := user.WithContext(context.Background(), "draft-owner")
+	now := time.Now()
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		return fmt.Sprintf(`{"date":%q,"exercises":[{"name":"Overhead Press","sets":[{"reps":5,"setType":"warmup"},{"reps":8,"setType":"working"}]}]}`, now.Format(time.RFC3339))
+	})
+	history := fixedDraftWeightHistory{"Overhead Press": {{Date: now.AddDate(0, 0, -1), Sets: []workout.SetInput{
+		{Weight: new(65.0), Reps: 8, SetType: "working"},
+	}}}}
+	tool := defineWorkoutDraftTool(g, "synthetic", history)
+	out, err := tool.RunRaw(ctx, map[string]any{
+		"equipment":       "barbell warm-up, then dumbbells up to 35 lb for working sets",
+		"sessionDuration": 10, "workoutFocus": "upper body", "injuries": "none",
+		"exerciseWeightLimits": []map[string]any{{"equipment": "dumbbell", "weight": 35.0}},
+		"loadChoices":          []map[string]any{{"exercise": "Overhead Press", "kind": "blank", "equipment": "barbell", "setType": "warmup", "reps": 5}},
+	})
+	require.NoError(t, err)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	var draft workout.CreateWorkoutRequest
+	require.NoError(t, json.Unmarshal(raw, &draft))
+	weight := draft.Exercises[0].Sets[1].Weight
+	if weight != nil {
+		t.Errorf("dumbbell work above the 35 lb cap received %.0f lb", *weight)
+	}
+}
+
+func TestWorkoutDraftToolRequiresRequestedWarmupWithReportedLoad(t *testing.T) {
+	ctx := user.WithContext(context.Background(), "draft-owner")
+	date := time.Now().Format(time.RFC3339)
+	attempt := 0
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		attempt++
+		warmup := ""
+		if attempt > 1 {
+			warmup = `{"reps":5,"setType":"warmup"},`
+		}
+		return fmt.Sprintf(`{"date":%q,"exercises":[{"name":"Bench Press","sets":[%s{"reps":8,"setType":"working"}]}]}`, date, warmup)
+	})
+	tool := defineWorkoutDraftTool(g, "synthetic", nil)
+	out, err := tool.RunRaw(ctx, map[string]any{
+		"equipment": "full gym", "sessionDuration": 10, "workoutFocus": "upper body", "injuries": "none",
+		"skipHistoryWeights": true,
+		"loadChoices": []map[string]any{
+			{"exercise": "Bench Press", "kind": "reported", "setType": "warmup", "reps": 5, "weight": 65.0},
+			{"exercise": "Bench Press", "kind": "structure", "setType": "warmup", "reps": 5},
+		},
+	})
+	require.NoError(t, err)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	var draft workout.CreateWorkoutRequest
+	require.NoError(t, json.Unmarshal(raw, &draft))
+	require.Equal(t, "warmup", draft.Exercises[0].Sets[0].SetType, "the requested warm-up was dropped")
+	require.Equal(t, new(65.0), draft.Exercises[0].Sets[0].Weight)
+	require.Equal(t, 2, attempt)
+}
+func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T) {
+	for _, known := range []bool{true, false} {
+		t.Run(fmt.Sprintf("known injuries=%t", known), func(t *testing.T) {
+			ctx := context.Background()
+			generations := 0
+			g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+				generations++
+				return ordinaryDraftJSON
+			})
+			calls := 0
+			genkit.DefineModel(g, "chat", &ai.ModelOptions{Supports: &ai.ModelSupports{Tools: true, Multiturn: true, SystemRole: true}},
+				func(_ context.Context, req *ai.ModelRequest, _ ai.ModelStreamCallback) (*ai.ModelResponse, error) {
+					calls++
+					if calls == 2 {
+						require.Zero(t, generations)
+						last := req.Messages[len(req.Messages)-1]
+						require.Contains(t, fmt.Sprint(last.Content[0].ToolResponse.Output), "injuries field was omitted")
+						if !known {
+							return &ai.ModelResponse{Message: ai.NewModelMessage(ai.NewTextPart("Any current injuries?")), FinishReason: ai.FinishReasonStop}, nil
+						}
+					}
+					if calls == 3 {
+						return &ai.ModelResponse{Message: ai.NewModelMessage(ai.NewTextPart("Here is your draft.")), FinishReason: ai.FinishReasonStop}, nil
+					}
+					input := map[string]any{"sessionDuration": 10, "workoutFocus": "upper body", "equipment": "bodyweight"}
+					if calls == 2 {
+						input["injuries"] = "none"
+					}
+					call := ai.NewToolRequestPart(&ai.ToolRequest{Name: workoutDraftToolName, Ref: fmt.Sprint(calls), Input: input})
+					return &ai.ModelResponse{Message: ai.NewModelMessage(call), FinishReason: ai.FinishReasonStop}, nil
+				})
+			r := &GenkitRuntime{available: true, modelName: "chat", g: g, workoutDraftTool: defineWorkoutDraftTool(g, "synthetic", nil)}
+			prompt := "Make a 10-minute bodyweight upper body workout."
+			if known {
+				prompt += " No injuries."
+			}
+			done, err := r.StreamChat(ctx, prompt, nil, func(string) error { return nil })
+			require.NoError(t, err)
+			if known {
+				require.NotNil(t, done.WorkoutDraft)
+				require.Equal(t, 1, generations)
+			} else {
+				require.Nil(t, done.WorkoutDraft)
+				require.Equal(t, "Any current injuries?", done.Text)
+				require.Zero(t, generations)
+			}
 		})
 	}
 }

@@ -42,7 +42,7 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 func validateDraftLoadScopes(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
 	var issues []workoutDraftQualityIssue
 	for _, choice := range input.LoadChoices {
-		if choice.Kind != "requested" && !(choice.Kind == "blank" && choice.hasSetScope()) {
+		if choice.Kind != "requested" && choice.Kind != "structure" && !(choice.Kind == "blank" && choice.hasSetScope()) {
 			continue
 		}
 		found, wrongReps := false, false

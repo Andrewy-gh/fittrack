@@ -91,9 +91,9 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 	}
 }
 
-func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(t *testing.T) {
+func TestWorkoutGenerationToolInputSchemaAllowsRecoverableOmissions(t *testing.T) {
 	inputType := reflect.TypeOf(WorkoutGenerationToolInput{})
-	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints", "RecentPerformance"}
+	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints", "RecentPerformance", "Injuries"}
 
 	for _, fieldName := range optionalFields {
 		field, ok := inputType.FieldByName(fieldName)
@@ -105,13 +105,6 @@ func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(
 		}
 	}
 
-	injuriesField, ok := inputType.FieldByName("Injuries")
-	if !ok {
-		t.Fatal("WorkoutGenerationToolInput missing field Injuries")
-	}
-	if strings.Contains(injuriesField.Tag.Get("json"), "omitempty") {
-		t.Fatalf("Injuries json tag = %q, should remain required", injuriesField.Tag.Get("json"))
-	}
 }
 
 func TestValidateWorkoutGenerationToolInputAllowsMVPReadyRequestWithoutFitnessLevel(t *testing.T) {

@@ -62,15 +62,11 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 	eligible := make(map[string]struct{})
 	for i := range draft.Exercises {
 		exercise := &draft.Exercises[i]
-		equipment := draftExerciseEquipment(input.LoadChoices, exercise.Name)
 		for j := range exercise.Sets {
 			set := &exercise.Sets[j]
 			choice, _ := draftLoadAndRepChoices(input.LoadChoices, *exercise, j)
-			confirmedEquipment := choice.Equipment
-			if confirmedEquipment == "" {
-				confirmedEquipment = equipment
-			}
-			limits := draftExerciseWeightLimits(input, exercise.Name, confirmedEquipment)
+			equipment := draftSetEquipment(input.LoadChoices, *exercise, j)
+			limits := draftExerciseWeightLimits(input, exercise.Name, equipment)
 			switch {
 			case choice.Kind == "requested":
 				if (choice.Reps <= 0 || choice.Reps == set.Reps) && allowedDraftWeight(choice.Weight, limits.explicitCap) {
@@ -113,18 +109,24 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 
 	for i := range draft.Exercises {
 		exercise := &draft.Exercises[i]
-		equipment := draftExerciseEquipment(input.LoadChoices, exercise.Name)
-		limits := draftExerciseWeightLimits(input, exercise.Name, equipment)
 		sessions := history[exercise.Name]
-		if limits.fixed || len(sessions) == 0 {
+		if len(sessions) == 0 {
 			continue
 		}
 		latest := sessions[0]
 		sourceDate := latest.Date.Format(time.RFC3339)
+		var progressionCap *float64
+		var fixedWorkingEquipment bool
 		for j := range exercise.Sets {
 			set := &exercise.Sets[j]
 			choice, _ := draftLoadAndRepChoices(input.LoadChoices, *exercise, j)
-			if set.Weight != nil || choice.Kind != "" {
+			equipment := draftSetEquipment(input.LoadChoices, *exercise, j)
+			limits := draftExerciseWeightLimits(input, exercise.Name, equipment)
+			if set.SetType == "working" {
+				progressionCap = lowerDraftCap(progressionCap, limits.inferredCap)
+				fixedWorkingEquipment = fixedWorkingEquipment || limits.fixed
+			}
+			if limits.fixed || set.Weight != nil || choice.Kind != "" {
 				continue
 			}
 			weight := matchingDraftWeight(latest.Sets, *set)
@@ -133,7 +135,9 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 				set.WeightSourceDate = &sourceDate
 			}
 		}
-		exercise.DraftProgression = draftProgression(input, limits.inferredCap, exercise.Sets, sessions, before)
+		if !fixedWorkingEquipment {
+			exercise.DraftProgression = draftProgression(input, progressionCap, exercise.Sets, sessions, before)
+		}
 	}
 }
 
@@ -145,31 +149,36 @@ func draftLoadAndRepChoices(choices []workoutDraftLoadChoice, exercise workout.E
 			!draftLoadScopeMatches(choice, exercise.Sets, index) {
 			continue
 		}
-		switch choice.Kind {
-		case "reported":
+		if choice.Kind == "reported" {
 			if exercise.Sets[index].Reps == choice.Reps {
 				reported = choice
 			}
-		case "requested", "blank":
-			score := 0
-			if kind := draftLoadSetType(choice); kind != "" && kind != "all" {
-				score = 1
-			}
-			if choice.Set > 0 || choice.Last {
-				score = 2
-			}
-			if score > loadSpecificity || (score == loadSpecificity && choice.Kind == "blank") {
-				load, loadSpecificity = choice, score
-			}
-			if choice.Reps > 0 && (score > repSpecificity || (score == repSpecificity && choice.Kind == "blank")) {
-				reps, repSpecificity = choice, score
-			}
+			continue
+		}
+		score := draftLoadScopeSpecificity(choice)
+		if (choice.Kind == "requested" || choice.Kind == "blank") &&
+			(score > loadSpecificity || (score == loadSpecificity && choice.Kind == "blank")) {
+			load, loadSpecificity = choice, score
+		}
+		if choice.Reps > 0 && (choice.Kind == "requested" || choice.Kind == "blank" || choice.Kind == "structure") &&
+			(score > repSpecificity || (score == repSpecificity && choice.Kind == "blank")) {
+			reps, repSpecificity = choice, score
 		}
 	}
 	if load.Kind == "" {
 		load = reported
 	}
 	return load, reps
+}
+
+func draftLoadScopeSpecificity(choice workoutDraftLoadChoice) int {
+	if choice.Set > 0 || choice.Last {
+		return 2
+	}
+	if kind := draftLoadSetType(choice); kind != "" && kind != "all" {
+		return 1
+	}
+	return 0
 }
 
 func draftLoadSetType(choice workoutDraftLoadChoice) string {
@@ -216,24 +225,30 @@ type draftWeightLimits struct {
 	fixed       bool
 }
 
-// A set-specific choice can identify the equipment used by a generically named
-// exercise. Reuse that assignment on other sets only when the choices agree.
-func draftExerciseEquipment(choices []workoutDraftLoadChoice, exercise string) string {
+// Resolve equipment separately from the weight choice. A warm-up-only
+// assignment cannot establish the equipment for a working set.
+func draftSetEquipment(choices []workoutDraftLoadChoice, exercise workout.ExerciseInput, index int) string {
 	var confirmed []string
+	specificity := -1
+	ambiguous := false
 	for _, choice := range choices {
-		if !strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise) || choice.Equipment == "" {
+		if choice.Kind == "reported" || choice.Equipment == "" ||
+			!strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise.Name) ||
+			!draftLoadScopeMatches(choice, exercise.Sets, index) {
 			continue
 		}
+		score := draftLoadScopeSpecificity(choice)
 		classes := draftEquipmentClasses(choice.Equipment)
-		if len(classes) == 0 {
-			return ""
-		}
 		slices.Sort(classes)
 		classes = slices.Compact(classes)
-		if len(confirmed) != 0 && !slices.Equal(confirmed, classes) {
-			return ""
+		if score > specificity {
+			confirmed, specificity, ambiguous = classes, score, false
+		} else if score == specificity && !slices.Equal(confirmed, classes) {
+			ambiguous = true
 		}
-		confirmed = classes
+	}
+	if ambiguous {
+		return ""
 	}
 	return strings.Join(confirmed, " ")
 }
