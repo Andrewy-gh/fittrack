@@ -49,12 +49,13 @@ type workoutDraftWeightLimit struct {
 }
 
 type WorkoutGenerationToolInput struct {
-	ExerciseWeightLimits []workoutDraftWeightLimit `json:"exerciseWeightLimits,omitempty" jsonschema:"description=Copy explicitly stated limits for each affected equipment class or specific exercise. If the affected equipment cannot be determined set skipHistoryWeights."`
+	ExerciseWeightLimits []workoutDraftWeightLimit `json:"exerciseWeightLimits,omitempty" jsonschema:"description=Copy explicitly stated limits for each affected equipment class or specific exercise. If the affected equipment cannot be determined set suppressSuggestedWeights."`
 
-	BodyweightOnly     bool                     `json:"bodyweightOnly,omitempty" jsonschema:"description=Set true when the user wants an entirely bodyweight-only workout. Do not invent zero-valued entries for each exercise."`
-	SkipHistoryWeights bool                     `json:"skipHistoryWeights,omitempty" jsonschema:"description=Set true for the whole workout when the user wants blank weights, bodyweight only, rehab, deload, easier loads, or describes limited equipment with uncertain compatible loads. Specific explicit requested numbers or no added weight still apply."`
-	LoadChoices        []workoutDraftLoadChoice `json:"loadChoices,omitempty" jsonschema:"description=Required when the user states an exercise load or wants an exercise left blank. Include one entry per scoped choice. Exclude weights from workout-history tool calls and any guesses."`
-	MaxWeight          *float64                 `json:"maxWeight,omitempty" jsonschema:"description=Only when the user stated a numeric equipment limit that applies across the workout, in pounds. Convert kilograms to pounds. This is a ceiling, never a suggested load."`
+	BodyweightOnly           bool                     `json:"bodyweightOnly,omitempty" jsonschema:"description=Set true when the user wants an entirely bodyweight-only workout. Do not invent zero-valued entries for each exercise."`
+	SuppressSuggestedWeights bool                     `json:"suppressSuggestedWeights,omitempty" jsonschema:"description=True when the user wants blank weights across the draft or equipment uncertainty makes suggested loads unsuitable. Explicit requested weights still apply."`
+	SkipHistoryWeights       bool                     `json:"skipHistoryWeights,omitempty" jsonschema:"description=Set true only to skip FitTrack logged-history lookup. This does not suppress comparable loads reported directly by the user."`
+	LoadChoices              []workoutDraftLoadChoice `json:"loadChoices,omitempty" jsonschema:"description=Required when the user states an exercise load or wants an exercise left blank. Include one entry per scoped choice. Exclude weights from workout-history tool calls and any guesses."`
+	MaxWeight                *float64                 `json:"maxWeight,omitempty" jsonschema:"description=Only when the user stated a numeric equipment limit that applies across the workout, in pounds. Convert kilograms to pounds. This is a ceiling, never a suggested load."`
 
 	FitnessLevel      string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
 	FitnessGoal       string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`

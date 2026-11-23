@@ -54,7 +54,7 @@ func (r *repository) LatestDraftExerciseSets(ctx context.Context, userID string,
 func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest, now time.Time) {
 	bodyweight := input.BodyweightOnly || hasAnyQualityTerm(normalizeQualityText(input.Equipment), "bodyweight only", "no equipment") ||
 		strings.EqualFold(strings.TrimSpace(input.Equipment), "bodyweight")
-	suppress := bodyweight || input.SkipHistoryWeights || isEquipmentOptionalWorkout(input) || activeInjuryText(input.Injuries) != "" ||
+	suppress := bodyweight || input.SuppressSuggestedWeights || isEquipmentOptionalWorkout(input) || activeInjuryText(input.Injuries) != "" ||
 		hasAnyQualityTerm(normalizeQualityText(input.FitnessGoal+" "+input.WorkoutFocus), "deload", "recovery", "reduced load")
 
 	eligible := make(map[string]struct{})
@@ -77,7 +77,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 				if allowedDraftWeight(choice.Weight, limits.inferredCap) {
 					set.Weight = choice.Weight
 				}
-			case reader != nil:
+			case reader != nil && !input.SkipHistoryWeights:
 				eligible[exercise.Name] = struct{}{}
 			}
 		}

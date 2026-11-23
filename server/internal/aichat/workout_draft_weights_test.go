@@ -250,3 +250,33 @@ func TestWorkoutDraftToolPreservesSetOverridesAndEquipmentLimits(t *testing.T) {
 		})
 	}
 }
+
+func TestWorkoutDraftToolKeepsReportedLoadWhenLoggedHistoryIsSkipped(t *testing.T) {
+	ctx := user.WithContext(context.Background(), "draft-owner")
+	date := time.Now().Format(time.RFC3339)
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		return `{"date":"` + date + `","exercises":[
+			{"name":"Barbell Bench Press","sets":[{"reps":8,"setType":"working"}]},
+			{"name":"Dumbbell Row","sets":[{"reps":8,"setType":"working"}]}
+		]}`
+	})
+	history := fixedDraftWeightHistory{"Dumbbell Row": {{Date: time.Now().AddDate(0, 0, -1), Sets: []workout.SetInput{
+		{Weight: new(35.0), Reps: 8, SetType: "working"},
+	}}}}
+	tool := defineWorkoutDraftTool(g, "synthetic", history)
+	out, err := tool.RunRaw(ctx, map[string]any{
+		"skipHistoryWeights": true,
+		"equipment":          "full gym", "sessionDuration": 10, "workoutFocus": "upper body", "injuries": "none",
+		"loadChoices": []map[string]any{
+			{"exercise": "Barbell Bench Press", "kind": "reported", "weight": 115.0, "reps": 8, "setType": "working"},
+		},
+	})
+	require.NoError(t, err)
+	raw, err := json.Marshal(out)
+	require.NoError(t, err)
+	var draft workout.CreateWorkoutRequest
+	require.NoError(t, json.Unmarshal(raw, &draft))
+	require.Len(t, draft.Exercises, 2)
+	require.Equal(t, new(115.0), draft.Exercises[0].Sets[0].Weight)
+	require.Nil(t, draft.Exercises[1].Sets[0].Weight)
+}
