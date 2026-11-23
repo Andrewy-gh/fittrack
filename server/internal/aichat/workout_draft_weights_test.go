@@ -83,3 +83,60 @@ func TestWorkoutDraftToolAppliesScopedLoadsAndOffersProgression(t *testing.T) {
 	require.Nil(t, draft.Exercises[4].Sets[0].Weight)
 	require.Equal(t, new(35.0), draft.Exercises[5].Sets[0].Weight)
 }
+
+func TestWorkoutDraftToolMatchesLatestWorkingSets(t *testing.T) {
+	ctx := user.WithContext(context.Background(), "draft-owner")
+	now := time.Now()
+	recent := now.AddDate(0, 0, -4)
+	older := now.AddDate(0, 0, -10)
+	working := func(weight float64, reps int) workout.SetInput {
+		return workout.SetInput{Weight: &weight, Reps: reps, SetType: "working"}
+	}
+	latest := DraftWeightSession{Date: recent, Sets: []workout.SetInput{working(115, 8), working(115, 8)}}
+	previous := DraftWeightSession{Date: older, Sets: []workout.SetInput{working(95, 8), working(95, 8)}}
+	warmup := workout.SetInput{Weight: new(115.0), Reps: 8, SetType: "warmup"}
+
+	for _, tc := range []struct {
+		name     string
+		focus    string
+		sessions []DraftWeightSession
+		expected *float64
+	}{
+		{name: "one session repeats weight without progression", sessions: []DraftWeightSession{latest}, expected: new(115.0)},
+		{name: "latest session wins over lighter earlier session", sessions: []DraftWeightSession{latest, previous}, expected: new(115.0)},
+		{name: "more reps in latest session do not carry over", sessions: []DraftWeightSession{{Date: recent, Sets: []workout.SetInput{working(115, 10)}}, previous}},
+		{name: "warmup does not fill working weight", sessions: []DraftWeightSession{{Date: recent, Sets: []workout.SetInput{warmup}}, previous}},
+		{name: "deload leaves weights blank despite matching history", focus: "upper body deload", sessions: []DraftWeightSession{latest, previous}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := `{"date":"` + now.Format(time.RFC3339) + `","exercises":[{"name":"Bench Press","sets":[{"reps":8,"setType":"working"},{"reps":8,"setType":"working"}]}]}`
+			g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string { return payload })
+			tool := defineWorkoutDraftTool(g, "synthetic", fixedDraftWeightHistory{"Bench Press": tc.sessions})
+			focus := tc.focus
+			if focus == "" {
+				focus = "upper body"
+			}
+			out, err := tool.RunRaw(ctx, map[string]any{
+				"fitnessLevel": "intermediate", "fitnessGoal": "strength",
+				"equipment": "full gym", "sessionDuration": 10, "workoutFocus": focus, "injuries": "none",
+			})
+			require.NoError(t, err)
+			raw, err := json.Marshal(out)
+			require.NoError(t, err)
+			var draft workout.CreateWorkoutRequest
+			require.NoError(t, json.Unmarshal(raw, &draft))
+			require.Len(t, draft.Exercises, 1)
+			exercise := draft.Exercises[0]
+			require.Len(t, exercise.Sets, 2)
+			require.Nil(t, exercise.DraftProgression)
+			for _, set := range exercise.Sets {
+				require.Equal(t, tc.expected, set.Weight)
+				if tc.expected == nil {
+					require.Nil(t, set.WeightSourceDate)
+				} else {
+					require.Equal(t, new(recent.Format(time.RFC3339)), set.WeightSourceDate)
+				}
+			}
+		})
+	}
+}
