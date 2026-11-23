@@ -4,7 +4,6 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
 BINARY_NAME=api
 
 # Use bash for all shell operations and run entire recipes in one shell.
