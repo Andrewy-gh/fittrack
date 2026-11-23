@@ -187,11 +187,20 @@ func (api *api) handleStaticFiles() http.HandlerFunc {
 		file, err := http.Dir("./dist").Open(r.URL.Path)
 		if err == nil {
 			info, statErr := file.Stat()
-			_ = file.Close()
 			if statErr != nil {
+				_ = file.Close()
 				http.NotFound(w, r)
 				return
 			}
+			// FileServer redirects index.html and non-directory paths ending in a
+			// slash. Leave those cases and directories to its canonical handling.
+			if info.Mode().IsRegular() && !strings.HasSuffix(r.URL.Path, "/") && !strings.HasSuffix(r.URL.Path, "/index.html") {
+				defer file.Close()
+				setStaticCacheHeader(w, r.URL.Path)
+				http.ServeContent(w, r, info.Name(), info.ModTime(), file)
+				return
+			}
+			_ = file.Close()
 			if info.IsDir() {
 				index, indexErr := http.Dir("./dist").Open(path.Join(r.URL.Path, "index.html"))
 				if indexErr != nil {

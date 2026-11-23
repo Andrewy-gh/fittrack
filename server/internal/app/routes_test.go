@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/account"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
@@ -265,12 +266,13 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 	handler := api.handleStaticFiles()
 
 	tests := []struct {
-		name       string
-		path       string
-		accept     string
-		wantStatus int
-		wantCache  string
-		wantBody   string
+		name         string
+		path         string
+		accept       string
+		wantStatus   int
+		wantCache    string
+		wantBody     string
+		wantLocation string
 	}{
 		{
 			name:       "app shell fallback is revalidated",
@@ -337,6 +339,20 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 			wantBody:   "guide index",
 		},
 		{
+			name:         "directory index path redirects",
+			path:         "/guide/index.html?source=test",
+			wantStatus:   http.StatusMovedPermanently,
+			wantCache:    "public, max-age=3600",
+			wantLocation: "./?source=test",
+		},
+		{
+			name:         "indexed directory redirects to trailing slash",
+			path:         "/guide",
+			wantStatus:   http.StatusMovedPermanently,
+			wantCache:    "public, max-age=3600",
+			wantLocation: "guide/",
+		},
+		{
 			name:       "missing old assets are still not rewritten to html",
 			path:       "/assets/missing-old-build.js",
 			wantStatus: http.StatusNotFound,
@@ -362,6 +378,53 @@ func TestStaticFiles_SetCacheHeadersForPWAUpdates(t *testing.T) {
 			}
 			if tt.wantBody != "" && rr.Body.String() != tt.wantBody {
 				t.Fatalf("expected body %q, got %q", tt.wantBody, rr.Body.String())
+			}
+			if tt.wantLocation != "" && rr.Header().Get("Location") != tt.wantLocation {
+				t.Fatalf("expected Location %q, got %q", tt.wantLocation, rr.Header().Get("Location"))
+			}
+		})
+	}
+}
+
+func TestStaticFiles_RegularAssetHTTPBehavior(t *testing.T) {
+	withStaticTestDirectory(t)
+	writeStaticTestFile(t, filepath.Join("assets", "probe.js"), "0123456789")
+	modified := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	if err := os.Chtimes(filepath.Join("dist", "assets", "probe.js"), modified, modified); err != nil {
+		t.Fatal(err)
+	}
+	handler := (&api{}).handleStaticFiles()
+	cases := []struct {
+		name, method, header, value, body string
+		status                            int
+	}{
+		{"get", http.MethodGet, "", "", "0123456789", http.StatusOK},
+		{"head", http.MethodHead, "", "", "", http.StatusOK},
+		{"range", http.MethodGet, "Range", "bytes=2-4", "234", http.StatusPartialContent},
+		{"not modified", http.MethodGet, "If-Modified-Since", modified.Format(http.TimeFormat), "", http.StatusNotModified},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest(tc.method, "/assets/probe.js", nil)
+			if tc.header != "" {
+				r.Header.Set(tc.header, tc.value)
+			}
+			got := httptest.NewRecorder()
+			handler.ServeHTTP(got, r)
+			if got.Code != tc.status || got.Body.String() != tc.body {
+				t.Fatalf("status %d, body %q", got.Code, got.Body.String())
+			}
+			if got.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+				t.Fatalf("cache: %q", got.Header().Get("Cache-Control"))
+			}
+			if got.Header().Get("Last-Modified") != modified.Format(http.TimeFormat) {
+				t.Fatalf("last modified: %q", got.Header().Get("Last-Modified"))
+			}
+			if tc.name == "range" && got.Header().Get("Content-Range") != "bytes 2-4/10" {
+				t.Fatalf("content range: %q", got.Header().Get("Content-Range"))
+			}
+			if tc.name == "get" && !strings.Contains(got.Header().Get("Content-Type"), "javascript") {
+				t.Fatalf("content type: %q", got.Header().Get("Content-Type"))
 			}
 		})
 	}
