@@ -17,7 +17,6 @@ type workoutRepository struct {
 	queries      *db.Queries
 	conn         *pgxpool.Pool
 	exerciseRepo exercise.ExerciseRepository
-	txSaver      TxSaver
 }
 
 func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool, exerciseRepo exercise.ExerciseRepository) WorkoutRepository {
@@ -26,7 +25,6 @@ func NewRepository(logger *slog.Logger, queries *db.Queries, conn *pgxpool.Pool,
 		queries:      queries,
 		conn:         conn,
 		exerciseRepo: exerciseRepo,
-		txSaver:      NewTxSaver(logger, exerciseRepo),
 	}
 }
 
@@ -234,11 +232,12 @@ func (wr *workoutRepository) SaveWorkoutWithID(ctx context.Context, reformatted 
 	defer tx.Rollback(ctx)
 
 	qtx := wr.queries.WithTx(tx)
-	requestBody, err := toCreateWorkoutRequest(reformatted)
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert reformatted workout to request: %w", err)
+	// The old UTC RFC3339 round trip rejected a year outside four digits
+	// after offset normalization. Keep that boundary without reparsing the date.
+	if year := reformatted.Workout.Date.UTC().Year(); year < 0 || year > 9999 {
+		return 0, fmt.Errorf("failed to transform request: invalid date format: UTC year %d is out of range", year)
 	}
-	workoutID, err := wr.txSaver.SaveWorkoutTx(ctx, qtx, requestBody, userID)
+	workoutID, err := saveReformattedWorkoutTx(ctx, qtx, wr.logger, wr.exerciseRepo, reformatted, userID)
 	if err != nil {
 		return 0, err
 	}

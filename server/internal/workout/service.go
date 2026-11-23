@@ -493,6 +493,16 @@ func (ws *WorkoutService) transformRequest(request CreateWorkoutRequest) (*Refor
 		return nil, err
 	}
 	reformatted.Recommendations = request.Recommendations
+
+	// Manual create has always inserted all sets for an exercise together,
+	// in first-exercise order, even when the payload repeats an exercise later.
+	exerciseOrder := make(map[string]int, len(reformatted.Exercises))
+	for i, exercise := range reformatted.Exercises {
+		exerciseOrder[exercise.Name] = i
+	}
+	sort.SliceStable(reformatted.Sets, func(i, j int) bool {
+		return exerciseOrder[reformatted.Sets[i].ExerciseName] < exerciseOrder[reformatted.Sets[j].ExerciseName]
+	})
 	return reformatted, nil
 }
 

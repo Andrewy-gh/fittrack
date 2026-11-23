@@ -32,34 +32,40 @@ func (s *txSaver) SaveWorkoutTx(ctx context.Context, qtx *db.Queries, requestBod
 		return 0, fmt.Errorf("failed to transform request: %w", err)
 	}
 
+	reformatted.Recommendations = requestBody.Recommendations
+	return saveReformattedWorkoutTx(ctx, qtx, s.logger, s.exerciseRepo, reformatted, userID)
+}
+
+// saveReformattedWorkoutTx writes a normalized workout in the caller's transaction.
+func saveReformattedWorkoutTx(ctx context.Context, qtx *db.Queries, logger *slog.Logger, exerciseRepo exercise.ExerciseRepository, reformatted *ReformattedRequest, userID string) (int32, error) {
 	pgData, err := convertToPGTypes(reformatted)
 	if err != nil {
-		s.logger.Error("failed to convert to PG types", "error", err)
+		logger.Error("failed to convert to PG types", "error", err)
 		return 0, fmt.Errorf("failed to convert to PG types: %w", err)
 	}
 
 	workoutRow, err := insertWorkout(ctx, qtx, pgData.Workout, userID)
 	if err != nil {
-		s.logger.Error("failed to insert workout", "error", err)
+		logger.Error("failed to insert workout", "error", err)
 		return 0, fmt.Errorf("failed to insert workout: %w", err)
 	}
 
-	exerciseMap, err := getOrCreateExercises(ctx, s.logger, s.exerciseRepo, qtx, pgData.Exercises, userID)
+	exerciseMap, err := getOrCreateExercises(ctx, logger, exerciseRepo, qtx, pgData.Exercises, userID)
 	if err != nil {
-		s.logger.Error("failed to get/create exercises", "error", err)
+		logger.Error("failed to get/create exercises", "error", err)
 		return 0, fmt.Errorf("failed to get/create exercises: %w", err)
 	}
 
-	if err := insertSets(ctx, s.logger, qtx, pgData.Sets, workoutRow.ID, exerciseMap, userID); err != nil {
-		s.logger.Error("failed to insert sets", "error", err)
+	if err := insertSets(ctx, logger, qtx, pgData.Sets, workoutRow.ID, exerciseMap, userID); err != nil {
+		logger.Error("failed to insert sets", "error", err)
 		return 0, fmt.Errorf("failed to insert sets: %w", err)
 	}
 
-	if err := recommendation.SaveContext(ctx, qtx, userID, workoutRow.ID, exerciseMap, requestBody.Recommendations); err != nil {
+	if err := recommendation.SaveContext(ctx, qtx, userID, workoutRow.ID, exerciseMap, reformatted.Recommendations); err != nil {
 		return 0, fmt.Errorf("save recommendation context: %w", err)
 	}
 	if err := updateHistorical1rmFromWorkout(ctx, qtx, workoutRow.ID, userID); err != nil {
-		s.logger.Error("failed to update historical 1RM from workout", "error", err, "workout_id", workoutRow.ID)
+		logger.Error("failed to update historical 1RM from workout", "error", err, "workout_id", workoutRow.ID)
 		return 0, fmt.Errorf("failed to update historical 1RM from workout: %w", err)
 	}
 
