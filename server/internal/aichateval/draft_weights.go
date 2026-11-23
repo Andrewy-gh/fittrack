@@ -31,10 +31,10 @@ func passesDraftWorkingWeights(result *Result) bool {
 
 	seen := make(map[string]bool)
 	for _, exercise := range result.Draft.Exercises {
-		key := strings.TrimSpace(strings.ToLower(exercise.Name))
+		key := draftWeightExerciseKey(exercise.Name)
 		var want *float64
 		for name, weight := range expected {
-			if strings.ToLower(name) == key {
+			if draftWeightExerciseKey(name) == key {
 				want = weight
 				break
 			}
@@ -57,10 +57,22 @@ func passesDraftWorkingWeights(result *Result) bool {
 		}
 	}
 	for name := range expected {
-		if !seen[strings.ToLower(name)] {
+		if !seen[draftWeightExerciseKey(name)] {
 			setScore(result, ScoreStatusFail, fmt.Sprintf("missing %s working sets", name))
 			return false
 		}
 	}
 	return true
+}
+
+// Accept singular and plural forms of the same exercise name in the provider
+// eval. Production history lookups still require the user's exact logged name.
+func draftWeightExerciseKey(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	switch name {
+	case "pull-up", "pull-ups":
+		return "pull-up"
+	default:
+		return name
+	}
 }
