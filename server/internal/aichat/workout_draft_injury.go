@@ -20,10 +20,21 @@ var draftRestriction = regexp.MustCompile(`\b(?:can't|cannot|unable to|need to a
 var draftClearanceWithheld = regexp.MustCompile(`\b(?:not sure|not confirmed|unconfirmed|unsure|uncertain|(?:can't|cannot|won't|don't|do not) (?:confirm|know|say|assume|claim)|(?:haven't|have not|hasn't|has not) (?:confirmed|established|verified)|(?:if|whether) (?:i|we) (?:have|had))\b`)
 var draftInjuryClauseBreak = regexp.MustCompile(`[, ]+(?:but|and) +(?:, *)?(i\b|we\b|not sure\b|unsure\b)|,\s+(no (?:current |active |known )?(?:injur(?:y|ies)|(?:movement )?limitations)\b|i\b|my\b|we\b|not sure\b|unsure\b)`)
 var draftSelfClearance = regexp.MustCompile(`^(?:i (?:also |currently )?have no |i (?:don't|do not) have |i am (?:injury|pain)[ -]free\b|i'm (?:injury|pain)[ -]free\b|no |(?:injury|pain)[ -]free\b)`)
-var draftSelfReport = regexp.MustCompile(`^(?:i(?: |'m |'ve )|my (?:right |left )?(?:ankle|arm|back|elbow|foot|hand|hip|knee|leg|neck|shoulder|wrist)\b)`)
-var draftOtherInjurySubject = regexp.MustCompile(`\b(?:my (?:training |workout )?(?:partner|friend|coach|client|sibling|parent|mom|dad|wife|husband)|(?:he|she|they) (?:has|have|had|is|are|hurt)|for (?:him|her|them))\b`)
-var draftSelfInjuryQuestion = regexp.MustCompile(`(?:^|[,;.!?]\s*)(?:any (?:other |additional |current |active )?(?:injur|pain|movement limitation)|(?:do|did|are|have) you\b|(?:what|which) (?:movements?|exercises?|positions?) (?:hurt|cause you))`)
-var draftOtherInjuryQuestion = regexp.MustCompile(`\b(?:do|does|did|are|is|were|was|have|has) (?:your|their|his|her|the|he|she|they)\b`)
+var draftSelfReport = regexp.MustCompile(`^(?:i (?:also |still |currently |recently )?(?:have|feel|hurt|strained|sprained|can't|cannot|need to avoid|must avoid)\b|i'm (?:having|dealing with|unable to)\b|i've (?:had|hurt|strained|sprained)\b|my (?:right |left )?(?:ankles?|arms?|back|elbows?|feet|foot|hands?|hips?|knees?|legs?|neck|shoulders?|wrists?)\b)`)
+var draftOtherInjurySubject = regexp.MustCompile(`\b(?:my (?:training |workout )?(?:partner|friend|coach|client|sibling|parents?|mom|dad|wife|husband|daughter|son|child|kids?)\b|(?:he|she|they) (?:has|have|had|is|are|hurt)|for (?:him|her|them))\b`)
+
+const draftInjuryQuestion = "Do you have any current injuries or movement limitations?"
+
+// Bare answers must follow a standalone question directed to the user.
+// Don't infer who "No" refers to in arbitrary assistant prose.
+func isDraftInjuryQuestion(text string) bool {
+	switch text {
+	case "do you have any current injuries or movement limitations?", "do you have any current injuries?", "do you have any injuries?", "any current injuries?", "any injuries?":
+		return true
+	}
+	return false
+}
+
 var draftMoreInjuries = regexp.MustCompile(`\b(?:any (?:other|additional)|anything else|what else)\b`)
 var draftLimitedNegation = regexp.MustCompile(`\bno (?:sharp |severe |shooting |acute |new )+(?:pain|injur(?:y|ies))\b`)
 
@@ -50,25 +61,23 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 		if preceding != nil && preceding.Role == roleAssistant {
 			question = normalizeQualityText(preceding.Text)
 		}
-		otherQuestion := draftOtherInjuryQuestion.MatchString(question)
-		answering := strings.Contains(question, "?") && draftInjuryTerms.MatchString(question) &&
-			draftSelfInjuryQuestion.MatchString(question) && !otherQuestion
+		answering := isDraftInjuryQuestion(question)
 		moreInjuries := draftMoreInjuries.MatchString(question)
-		if answering && !moreInjuries && len(restrictions) == 0 {
-			switch strings.Trim(text, " .!?") {
-			case "no", "none", "nope", "nothing":
-				cleared = true
-				return
-			}
-		}
 
 		// Split separate statements without severing uncertainty from its
 		// object (e.g. "I'm not sure whether I have any injuries").
 		text = draftInjuryClauseBreak.ReplaceAllString(text, "; $1$2")
 		var reported []string
 		var fullClearance, uncertain bool
-		for _, clause := range strings.FieldsFunc(text, func(r rune) bool { return strings.ContainsRune(".!?;", r) }) {
+		for i, clause := range strings.FieldsFunc(text, func(r rune) bool { return strings.ContainsRune(".!?;", r) }) {
 			clause = strings.Trim(clause, " ,")
+			if i == 0 && answering && len(restrictions) == 0 {
+				switch clause {
+				case "no", "none", "nope", "nothing":
+					fullClearance = true
+					continue
+				}
+			}
 			if draftOtherInjurySubject.MatchString(clause) {
 				continue
 			}
@@ -84,8 +93,11 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 				reported = append(reported, clause)
 				continue
 			}
-			if !moreInjuries && (!otherQuestion || draftSelfReport.MatchString(clause)) &&
-				draftSelfClearance.MatchString(clause) && draftNoInjury.MatchString(clause) {
+			// A terse “no injuries” after a noncanonical assistant injury
+			// question has an uncertain subject. Ask for a first-person answer.
+			ambiguousSubject := !answering && strings.Contains(question, "?") && draftInjuryTerms.MatchString(question) &&
+				!strings.HasPrefix(clause, "i ")
+			if !moreInjuries && !ambiguousSubject && draftSelfClearance.MatchString(clause) && draftNoInjury.MatchString(clause) {
 				fullClearance = true
 			}
 		}

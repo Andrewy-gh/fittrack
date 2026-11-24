@@ -91,11 +91,15 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftWei
 			anchor := now
 			if source, ok := ctx.Value(draftInjuryContextKey{}).(draftInjuryContext); ok {
 				input.Injuries = source.confirmedStatus(input.InjuryEvidence)
-				anchor = relativeWorkoutDraftAnchor(input.WorkoutDate, source, now)
+				var grounded bool
+				anchor, grounded = relativeWorkoutDraftAnchor(input.WorkoutDate, source, now)
+				if !grounded {
+					return workoutDraftInputCorrection{InputCorrection: "Ask the user which calendar date to use. Do not guess or omit their requested workout date."}, nil
+				}
 			}
 			if !hasUsableDraftInjuryStatus(input.Injuries) {
 				return workoutDraftInputCorrection{
-					InputCorrection: "The injuries field was omitted or does not contain confirmed information. If the conversation or profile establishes injury status, retry the draft tool with that status and the other original inputs. Copy exact user words about any reported limitation into injuryEvidence. Otherwise ask the user to confirm injury status. Never infer none from a missing field.",
+					InputCorrection: "The injuries field was omitted or does not contain confirmed information. If the conversation or profile establishes injury status, retry the draft tool with that status and the other original inputs. Copy exact user words about any reported limitation into injuryEvidence. Otherwise ask this exact question on its own: " + draftInjuryQuestion + " Never infer none from a missing field.",
 				}, nil
 			}
 			if err := validateWorkoutGenerationToolInput(input); err != nil {

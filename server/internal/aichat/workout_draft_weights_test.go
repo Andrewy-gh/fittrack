@@ -140,7 +140,7 @@ func TestWorkoutDraftToolMatchesLatestWorkingSets(t *testing.T) {
 				toolCtx = context.WithValue(toolCtx, draftInjuryContextKey{}, draftInjuryContext{
 					prompt: "No injuries today.",
 					history: []RuntimeChatMessage{
-						{Role: roleUser, Text: "Make a bench workout for today.", CreatedAt: now},
+						{Role: roleUser, Text: "Can you build today's upper-body workout?", CreatedAt: now},
 						{Role: roleAssistant, Text: "Do you have any current injuries?"},
 					},
 				})
@@ -378,6 +378,21 @@ func TestWorkoutDraftToolKeepsWorkingSetEquipmentSeparate(t *testing.T) {
 	assert.Nil(t, draft.Exercises[1].Sets[0].Weight, "a warm-up assignment must not establish working-set equipment or bypass its cap")
 }
 
+func TestWorkoutDraftToolClarifiesUngroundedRelativeDate(t *testing.T) {
+	ctx := context.WithValue(context.Background(), draftInjuryContextKey{}, draftInjuryContext{
+		prompt: "No injuries today. Make a 10-minute bodyweight workout.",
+	})
+	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
+		t.Error("must not generate before the user confirms the requested date")
+		return ordinaryDraftJSON
+	})
+	out, err := defineWorkoutDraftTool(g, "synthetic", nil).RunRaw(ctx, map[string]any{
+		"equipment": "bodyweight", "sessionDuration": 10, "workoutFocus": "push", "injuries": "none", "workoutDate": "today",
+	})
+	require.NoError(t, err)
+	require.Contains(t, fmt.Sprint(out), "Ask the user which calendar date")
+}
+
 func TestWorkoutDraftToolRejectsUnsafeFinalVariant(t *testing.T) {
 	ctx := context.Background()
 	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
@@ -433,6 +448,7 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 		answer     string
 		earlier    string
 		question   string
+		followup   string
 		wantDraft  bool
 		limitation string
 	}{
@@ -443,12 +459,16 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 		{answer: "I have a friend with no injuries. Go ahead."},
 		{answer: "No", question: "Does your daughter have any current injuries?"},
 		{answer: "No", question: "Do your parents have any current injuries?"},
+		{answer: "No", question: "Any current injuries for your daughter?"},
+		{answer: "No injuries", question: "Any current injuries for your daughter?"},
+		{answer: "No, I don't know my fitness level.", wantDraft: true},
 		{answer: "No injuries, not sure about my fitness level.", wantDraft: true},
 		{answer: "No injuries, I don't know my fitness level.", wantDraft: true},
 		{answer: "I have no injuries, and I'm not sure about my fitness level.", wantDraft: true},
 		{answer: "I also have shoulder pain.", earlier: "I have knee pain.", wantDraft: true, limitation: "i have knee pain; i also have shoulder pain"},
 		{answer: "I also have shoulder pain.", earlier: "Knee pain when squatting.", wantDraft: true, limitation: "knee pain when squatting; i also have shoulder pain"},
 		{answer: "I also have shoulder pain.", earlier: "Both knees hurt when I squat.", wantDraft: true, limitation: "both knees hurt when i squat; i also have shoulder pain"},
+		{answer: "30 minutes. My knees hurt when I squat.", earlier: "I have shoulder pain.", followup: "How much time do you have?", wantDraft: true, limitation: "i have shoulder pain; my knees hurt when i squat"},
 		{answer: "Go ahead, but I can't confirm I have no injuries yet."},
 		{answer: "Go ahead. I haven't confirmed that I have no injuries."},
 		{answer: "I don't know my fitness level, but I have no injuries.", wantDraft: true},
@@ -502,6 +522,9 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 			}
 			if tc.earlier != "" {
 				history = append(history, RuntimeChatMessage{Role: "user", Text: tc.earlier})
+			}
+			if tc.followup != "" {
+				history = append(history, RuntimeChatMessage{Role: "assistant", Text: tc.followup})
 			}
 			done, err := r.StreamChat(ctx, tc.answer, history, func(string) error { return nil })
 			require.NoError(t, err)
@@ -607,6 +630,7 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"equipment": "iso cradle", "weight": 30.0},
 			{"equipment": "pec deck", "weight": 60.0},
 			{"exercise": "Dumbbell Bench Press", "weight": 50.0},
+			{"exercise": "Plate-Loaded Leg Press Machine", "equipment": "plate-loaded leg press machine", "weight": 60.0},
 			{"equipment": "dumbbell", "weight": 60.0},
 		},
 		"loadChoices": []map[string]any{
@@ -622,9 +646,10 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"exercise": "Row", "kind": "reported", "equipment": "barbell", "reps": 8, "weight": 55.0},
 			{"exercise": "Barbell Row", "kind": "structure", "equipment": "dumbbell", "setType": "working"},
 			{"exercise": "Barbell Row", "kind": "reported", "equipment": "barbell", "reps": 8, "weight": 45.0},
-			{"exercise": "Plate-Loaded Leg Press Machine", "kind": "structure", "equipment": "selectorized leg press machine", "setType": "working"},
+			{"exercise": "Plate-Loaded Leg Press Machine", "kind": "requested", "equipment": "selectorized leg press machine", "setType": "working", "weight": 70.0},
 			{"exercise": "Pec Deck Reverse Fly", "kind": "requested", "equipment": "fly machine", "weight": 90.0},
 			{"exercise": "Leg Press Machine", "kind": "structure", "equipment": "machine"},
+			{"exercise": "Leg Press Machine", "kind": "reported", "equipment": "leg press machine", "reps": 8, "weight": 55.0},
 			{"exercise": "Dumbbell Row", "kind": "blank", "setType": "all"},
 		},
 	})
@@ -650,10 +675,12 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 	assert.Equal(t, new(45.0), draft.Exercises[7].Sets[0].Weight, "choose the comparable report and ignore unrelated unclassified caps")
 	assert.Nil(t, draft.Exercises[8].Sets[0].Weight, "reported barbell load does not apply to dumbbell sets")
 	assert.Equal(t, "Selectorized Leg Press Machine", draft.Exercises[9].Name)
-	assert.Nil(t, draft.Exercises[9].Sets[0].Weight, "machines with different loading mechanisms do not share history")
+	assert.Equal(t, new(70.0), draft.Exercises[9].Sets[0].Weight, "the old plate-loaded cap does not govern the selectorized machine")
+	assert.Nil(t, draft.Exercises[9].Sets[0].WeightSourceDate)
 	assert.Nil(t, draft.Exercises[10].Sets[0].Weight, "a specific equipment phrase in the name establishes an explicit cap")
 	assert.Equal(t, "Leg Press Machine", draft.Exercises[11].Name)
-	assert.Equal(t, new(45.0), draft.Exercises[11].Sets[0].Weight, "generic machine confirms the exact logged exercise")
+	assert.Equal(t, new(55.0), draft.Exercises[11].Sets[0].Weight, "a report naming the same machine outranks logged history")
+	assert.Nil(t, draft.Exercises[11].Sets[0].WeightSourceDate)
 	assert.Equal(t, "Dumbbell Row", draft.Exercises[12].Name)
 	assert.Nil(t, draft.Exercises[12].Sets[0].Weight)
 }

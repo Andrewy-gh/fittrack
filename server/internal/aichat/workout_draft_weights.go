@@ -94,7 +94,7 @@ func applyDraftWeights(ctx context.Context, reader draftWeightHistoryReader, inp
 					set.Weight = choice.Weight
 				}
 			case choice.Kind == "blank":
-			case suppress || limits.fixed:
+			case suppress || limits.fixed || draftEquipmentIdentity(assignment) == "bodyweight":
 				set.DraftBodyweight = bodyweight
 			case choice.Kind == "reported":
 				if allowedDraftWeight(choice.Weight, limits.inferredCap) {
@@ -309,10 +309,7 @@ func draftReportedEquipmentMatches(name, reported, assignment string) bool {
 	if reported == "" {
 		return draftHistoryEquipmentMatches(name, assignment)
 	}
-	if assignment == "" {
-		if len(draftEquipmentClasses(name)) == 0 {
-			return true
-		}
+	if assignment == "" || draftEquipmentIdentity(assignment) == "machine" {
 		return draftNameIdentifiesEquipment(name, reported)
 	}
 	return draftEquipmentIdentity(reported) == draftEquipmentIdentity(assignment)
@@ -346,7 +343,10 @@ func draftNameIdentifiesEquipment(name, equipment string) bool {
 // The display name also owns saved set history. Keep a customary name for
 // familiar variants and use a qualified name for other explicit assignments.
 func draftExerciseVariant(name, equipment string, unambiguous bool) string {
-	if unambiguous && draftHistoryEquipmentMatches(name, equipment) {
+	if unambiguous && (draftHistoryEquipmentMatches(name, equipment) ||
+		(draftEquipmentIdentity(equipment) == "bodyweight" && draftEquipmentLabel(name) == "pull up")) {
+		// Unqualified Pull-Ups already denotes the bodyweight movement;
+		// explicit bodyweight still disables history even under this name.
 		return name
 	}
 	base := name
@@ -402,20 +402,25 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, savedName
 		classes := draftEquipmentClasses(item.Equipment)
 		label := draftEquipmentIdentity(item.Equipment)
 		target := strings.TrimSpace(item.Exercise)
-		confirmed := strings.EqualFold(target, name) || strings.EqualFold(target, savedName) ||
-			(label != "" && (label == draftEquipmentIdentity(confirmedEquipment) || draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment) ||
-				draftNameIdentifiesEquipment(savedName, item.Equipment)))
-		if len(classes) == 1 && label == classes[0] {
+		confirmed := strings.EqualFold(target, savedName)
+		if target == "" {
+			confirmed = label != "" && (label == draftEquipmentIdentity(confirmedEquipment) ||
+				draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment) ||
+				draftNameIdentifiesEquipment(savedName, item.Equipment))
+		}
+		if target == "" && len(classes) == 1 && label == classes[0] {
 			confirmed = confirmed || slices.Contains(exerciseEquipment, classes[0])
 		}
-		uncertain := strings.TrimSpace(item.Equipment) != "" && (!hasAssignment && len(exerciseEquipment) == 0)
-		// A generic assignment can describe the more specific machine
-		// named by the exercise. Keep caps from that name unless an
-		// assignment identifies incompatible equipment.
-		if !confirmed && label != "" && draftNameIdentifiesEquipment(name, item.Equipment) &&
-			(!hasAssignment || slices.Contains(exerciseEquipment, "machine")) {
+		// A descriptive machine assignment can still refer to the machine
+		// explicitly identified in the exercise. A cap on a different
+		// loading mechanism, however, does not follow a switched set.
+		machineSwitch := draftMachineLoading(name) != "" && draftMachineLoading(confirmedEquipment) != "" &&
+			draftMachineLoading(name) != draftMachineLoading(confirmedEquipment)
+		if !confirmed && target == "" && !machineSwitch && label != "" &&
+			draftNameIdentifiesEquipment(name, item.Equipment) && slices.Contains(exerciseEquipment, "machine") {
 			confirmed = true
 		}
+		uncertain := target == "" && label != "" && !hasAssignment && len(exerciseEquipment) == 0
 		if confirmed {
 			limits.explicitCap = lowerDraftCap(limits.explicitCap, item.Weight)
 		}
@@ -425,6 +430,16 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, savedName
 		}
 	}
 	return limits
+}
+
+func draftMachineLoading(label string) string {
+	switch value := draftEquipmentLabel(label); {
+	case strings.Contains(" "+value+" ", " plate loaded "):
+		return "plate loaded"
+	case strings.Contains(" "+value+" ", " selectorized "):
+		return "selectorized"
+	}
+	return ""
 }
 
 func lowerDraftCap(cap, weight *float64) *float64 {

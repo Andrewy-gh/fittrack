@@ -41,14 +41,14 @@ type workoutDraftSchedule struct {
 	historyThrough time.Time
 }
 
-var workoutRelativeDay = regexp.MustCompile(`\b(?:for|on|schedule|reschedule|move|workout|work out|train|training|session) (?:it (?:to|for) )?(today|tomorrow|yesterday)\b|\b(today|tomorrow|yesterday)['’]s (?:workout|training|session)\b`)
+var workoutRelativeDay = regexp.MustCompile(`\b(?:for|on|schedule|reschedule|move|workout|work out|train|training|session) (?:it (?:to|for) )?(today|tomorrow|yesterday)\b|\b(today|tomorrow|yesterday)['’]s (?:[\p{L}-]+ ){0,4}(?:workout|training|session)\b`)
 
 // With a relative tool argument, anchor it to the most recent user turn that
 // supplied that wording rather than a follow-up answer about another detail.
-func relativeWorkoutDraftAnchor(requested string, source draftInjuryContext, now time.Time) time.Time {
+func relativeWorkoutDraftAnchor(requested string, source draftInjuryContext, now time.Time) (time.Time, bool) {
 	requested = normalizeQualityText(requested)
 	if requested != "today" && requested != "tomorrow" && requested != "yesterday" {
-		return now
+		return now, true
 	}
 	mentionsRequestedDay := func(text string) bool {
 		text = normalizeQualityText(text)
@@ -64,15 +64,20 @@ func relativeWorkoutDraftAnchor(requested string, source draftInjuryContext, now
 		return false
 	}
 	if mentionsRequestedDay(source.prompt) {
-		return now
+		return now, true
 	}
 	for i := len(source.history) - 1; i >= 0; i-- {
 		message := source.history[i]
-		if message.Role == roleUser && !message.CreatedAt.IsZero() && mentionsRequestedDay(message.Text) {
-			return message.CreatedAt.In(now.Location())
+		if message.Role == roleUser && mentionsRequestedDay(message.Text) {
+			if message.CreatedAt.IsZero() {
+				break
+			}
+			return message.CreatedAt.In(now.Location()), true
 		}
 	}
-	return now
+	// An ungrounded relative date must be clarified, not interpreted using
+	// the timestamp of an unrelated follow-up.
+	return time.Time{}, false
 }
 
 func resolveWorkoutDraftSchedule(requested string, now, anchor time.Time) (workoutDraftSchedule, bool) {
