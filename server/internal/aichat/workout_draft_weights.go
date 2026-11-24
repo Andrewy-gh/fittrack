@@ -402,14 +402,15 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, savedName
 		classes := draftEquipmentClasses(item.Equipment)
 		label := draftEquipmentIdentity(item.Equipment)
 		target := strings.TrimSpace(item.Exercise)
-		confirmed := strings.EqualFold(target, savedName)
 		matchesEquipment := label != "" && (label == draftEquipmentIdentity(confirmedEquipment) ||
 			draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment) ||
 			draftNameIdentifiesEquipment(savedName, item.Equipment))
 		if len(classes) == 1 && label == classes[0] {
 			matchesEquipment = matchesEquipment || slices.Contains(exerciseEquipment, classes[0])
 		}
-		confirmed = confirmed || (matchesEquipment && (target == "" || strings.EqualFold(target, name)))
+		savedTarget := strings.EqualFold(target, savedName)
+		confirmed := (savedTarget && label == "") ||
+			(matchesEquipment && (target == "" || savedTarget || strings.EqualFold(target, name)))
 		// A descriptive machine assignment can still refer to the machine
 		// explicitly identified in the exercise. A cap on a different
 		// loading mechanism, however, does not follow a switched set.

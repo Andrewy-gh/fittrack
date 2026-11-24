@@ -20,7 +20,7 @@ var draftRestriction = regexp.MustCompile(`\b(?:can't|cannot|unable to|need to a
 var draftClearanceWithheld = regexp.MustCompile(`\b(?:not sure|not confirmed|unconfirmed|unsure|uncertain|(?:can't|cannot|won't|don't|do not) (?:confirm|know|say|assume|claim)|(?:haven't|have not|hasn't|has not) (?:confirmed|established|verified)|(?:if|whether) (?:i|we) (?:have|had))\b`)
 var draftInjuryClauseBreak = regexp.MustCompile(`[, ]+(?:but|and) +(?:, *)?(i\b|we\b|not sure\b|unsure\b)|,\s+(no (?:current |active |known )?(?:injur(?:y|ies)|(?:movement )?limitations)\b|i\b|my\b|we\b|not sure\b|unsure\b)`)
 var draftSelfClearance = regexp.MustCompile(`^(?:i (?:also |currently )?have no |i (?:don't|do not) have |i am (?:injury|pain)[ -]free\b|i'm (?:injury|pain)[ -]free\b|no |(?:injury|pain)[ -]free\b)`)
-var draftSelfReport = regexp.MustCompile(`^(?:i (?:also |still |currently |recently )?(?:have|feel|hurt|strained|sprained|can't|cannot|need to avoid|must avoid)\b|i'm (?:having|dealing with|unable to)\b|i've (?:had|hurt|strained|sprained)\b)`)
+var draftSelfReport = regexp.MustCompile(`^(?:i (?:also |still |currently |recently )?(?:have|get|experience|develop|feel|hurt|strained|sprained|can't|cannot|need to avoid|must avoid)\b|i'm (?:having|dealing with|unable to)\b|i've (?:had|hurt|strained|sprained)\b)`)
 var draftOwnBody = regexp.MustCompile(`^my (?:right |left )?(?:ankles?|arms?|back|elbows?|feet|foot|hands?|hips?|knees?|legs?|neck|shoulders?|wrists?)\b`)
 var draftOtherInjurySubject = regexp.MustCompile(`\b(?:my (?:training |workout )?(?:partner|friend|coach|client|sibling|parents?|mom|dad|wife|husband|daughter|son|child|kids?)\b|(?:he|she|they) (?:has|have|had|is|are|hurt)|for (?:him|her|them))\b`)
 
@@ -90,7 +90,16 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 				}
 			}
 			ownBody := draftOwnBody.MatchString(clause)
-			if !ownBody && draftOtherInjurySubject.MatchString(clause) {
+			selfReport := draftSelfReport.MatchString(clause)
+			subject := clause
+			if selfReport {
+				// A person mentioned after the injury is not necessarily the
+				// injured person (e.g. "I get knee pain when I squat with my son").
+				if injury := draftInjuryTerms.FindStringIndex(clause); injury != nil {
+					subject = clause[:injury[0]]
+				}
+			}
+			if !ownBody && draftOtherInjurySubject.MatchString(subject) {
 				continue
 			}
 			if draftClearanceWithheld.MatchString(clause) &&
@@ -100,7 +109,7 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 				continue
 			}
 			if draftReportedLimitation(clause) &&
-				(ownBody || draftSelfReport.MatchString(clause) || answering ||
+				(ownBody || selfReport || answering ||
 					(quote != "" && strings.Contains(clause, quote) && draftRestriction.MatchString(clause))) {
 				reported = append(reported, clause)
 				continue

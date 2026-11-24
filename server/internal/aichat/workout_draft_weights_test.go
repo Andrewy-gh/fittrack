@@ -380,7 +380,7 @@ func TestWorkoutDraftToolKeepsWorkingSetEquipmentSeparate(t *testing.T) {
 
 func TestWorkoutDraftToolClarifiesUngroundedRelativeDate(t *testing.T) {
 	ctx := context.WithValue(context.Background(), draftInjuryContextKey{}, draftInjuryContext{
-		prompt: "Tomorrow’s newsletter covers marathon training. Make a 10-minute bodyweight workout. I have no injuries.",
+		prompt: "Tomorrow’s newsletter covers marathon training. My dentist is scheduled for tomorrow. Make a 10-minute bodyweight workout. I have no injuries.",
 	})
 	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
 		t.Error("must not generate before the user confirms the requested date")
@@ -470,6 +470,7 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 		{answer: "I also have shoulder pain.", earlier: "Knee pain when squatting.", wantDraft: true, limitation: "knee pain when squatting; i also have shoulder pain"},
 		{answer: "I also have shoulder pain.", earlier: "Both knees hurt when I squat.", wantDraft: true, limitation: "both knees hurt when i squat; i also have shoulder pain"},
 		{answer: "30 minutes. My knees hurt when I squat with my daughter.", earlier: "I have shoulder pain.", followup: "How much time do you have?", wantDraft: true, limitation: "i have shoulder pain; my knees hurt when i squat with my daughter"},
+		{answer: "30 minutes. I get knee pain when I squat with my daughter.", earlier: "I have shoulder pain.", followup: "How much time do you have?", wantDraft: true, limitation: "i have shoulder pain; i get knee pain when i squat with my daughter"},
 		{answer: "Go ahead, but I can't confirm I have no injuries yet."},
 		{answer: "Go ahead. I haven't confirmed that I have no injuries."},
 		{answer: "I don't know my fitness level, but I have no injuries.", wantDraft: true},
@@ -632,6 +633,7 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"equipment": "pec deck", "weight": 60.0},
 			{"exercise": "Dumbbell Bench Press", "weight": 50.0},
 			{"equipment": "plate-loaded leg press machine", "weight": 60.0},
+			{"exercise": "Pneumatic Leg Press Machine", "equipment": "plate-loaded leg press machine", "weight": 60.0},
 			{"exercise": "Row", "equipment": "dumbbell", "weight": 44.0},
 			{"equipment": "dumbbell", "weight": 60.0},
 		},
