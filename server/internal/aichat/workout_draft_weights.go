@@ -403,21 +403,24 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, savedName
 		label := draftEquipmentIdentity(item.Equipment)
 		target := strings.TrimSpace(item.Exercise)
 		confirmed := strings.EqualFold(target, savedName)
-		if target == "" {
-			confirmed = label != "" && (label == draftEquipmentIdentity(confirmedEquipment) ||
-				draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment) ||
-				draftNameIdentifiesEquipment(savedName, item.Equipment))
+		matchesEquipment := label != "" && (label == draftEquipmentIdentity(confirmedEquipment) ||
+			draftNameIdentifiesEquipment(confirmedEquipment, item.Equipment) ||
+			draftNameIdentifiesEquipment(savedName, item.Equipment))
+		if len(classes) == 1 && label == classes[0] {
+			matchesEquipment = matchesEquipment || slices.Contains(exerciseEquipment, classes[0])
 		}
-		if target == "" && len(classes) == 1 && label == classes[0] {
-			confirmed = confirmed || slices.Contains(exerciseEquipment, classes[0])
-		}
+		confirmed = confirmed || (matchesEquipment && (target == "" || strings.EqualFold(target, name)))
 		// A descriptive machine assignment can still refer to the machine
 		// explicitly identified in the exercise. A cap on a different
 		// loading mechanism, however, does not follow a switched set.
-		machineSwitch := draftMachineLoading(name) != "" && draftMachineLoading(confirmedEquipment) != "" &&
-			draftMachineLoading(name) != draftMachineLoading(confirmedEquipment)
-		if !confirmed && target == "" && !machineSwitch && label != "" &&
-			draftNameIdentifiesEquipment(name, item.Equipment) && slices.Contains(exerciseEquipment, "machine") {
+		// A machine with a different full name must not inherit the cap of
+		// an explicitly identified machine. For an exercise named for its
+		// apparatus without the word "machine" (e.g. Pec Deck Fly), keep
+		// that apparatus cap when the assignment also describes a machine.
+		if !confirmed && target == "" && label != "" &&
+			draftNameIdentifiesEquipment(name, item.Equipment) &&
+			!slices.Contains(draftEquipmentClasses(name), "machine") &&
+			slices.Contains(exerciseEquipment, "machine") {
 			confirmed = true
 		}
 		uncertain := target == "" && label != "" && !hasAssignment && len(exerciseEquipment) == 0
@@ -430,16 +433,6 @@ func draftExerciseWeightLimits(input WorkoutGenerationToolInput, name, savedName
 		}
 	}
 	return limits
-}
-
-func draftMachineLoading(label string) string {
-	switch value := draftEquipmentLabel(label); {
-	case strings.Contains(" "+value+" ", " plate loaded "):
-		return "plate loaded"
-	case strings.Contains(" "+value+" ", " selectorized "):
-		return "selectorized"
-	}
-	return ""
 }
 
 func lowerDraftCap(cap, weight *float64) *float64 {

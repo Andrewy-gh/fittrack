@@ -380,14 +380,14 @@ func TestWorkoutDraftToolKeepsWorkingSetEquipmentSeparate(t *testing.T) {
 
 func TestWorkoutDraftToolClarifiesUngroundedRelativeDate(t *testing.T) {
 	ctx := context.WithValue(context.Background(), draftInjuryContextKey{}, draftInjuryContext{
-		prompt: "No injuries today. Make a 10-minute bodyweight workout.",
+		prompt: "Tomorrow’s newsletter covers marathon training. Make a 10-minute bodyweight workout. I have no injuries.",
 	})
 	g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
 		t.Error("must not generate before the user confirms the requested date")
 		return ordinaryDraftJSON
 	})
 	out, err := defineWorkoutDraftTool(g, "synthetic", nil).RunRaw(ctx, map[string]any{
-		"equipment": "bodyweight", "sessionDuration": 10, "workoutFocus": "push", "injuries": "none", "workoutDate": "today",
+		"equipment": "bodyweight", "sessionDuration": 10, "workoutFocus": "push", "injuries": "none", "workoutDate": "tomorrow",
 	})
 	require.NoError(t, err)
 	require.Contains(t, fmt.Sprint(out), "Ask the user which calendar date")
@@ -462,13 +462,14 @@ func TestChatRecoversMissingInjuryFieldWithoutAssumingInjuryStatus(t *testing.T)
 		{answer: "No", question: "Any current injuries for your daughter?"},
 		{answer: "No injuries", question: "Any current injuries for your daughter?"},
 		{answer: "No, I don't know my fitness level.", wantDraft: true},
+		{answer: "No, fitness level is still up in the air.", wantDraft: true},
 		{answer: "No injuries, not sure about my fitness level.", wantDraft: true},
 		{answer: "No injuries, I don't know my fitness level.", wantDraft: true},
 		{answer: "I have no injuries, and I'm not sure about my fitness level.", wantDraft: true},
 		{answer: "I also have shoulder pain.", earlier: "I have knee pain.", wantDraft: true, limitation: "i have knee pain; i also have shoulder pain"},
 		{answer: "I also have shoulder pain.", earlier: "Knee pain when squatting.", wantDraft: true, limitation: "knee pain when squatting; i also have shoulder pain"},
 		{answer: "I also have shoulder pain.", earlier: "Both knees hurt when I squat.", wantDraft: true, limitation: "both knees hurt when i squat; i also have shoulder pain"},
-		{answer: "30 minutes. My knees hurt when I squat.", earlier: "I have shoulder pain.", followup: "How much time do you have?", wantDraft: true, limitation: "i have shoulder pain; my knees hurt when i squat"},
+		{answer: "30 minutes. My knees hurt when I squat with my daughter.", earlier: "I have shoulder pain.", followup: "How much time do you have?", wantDraft: true, limitation: "i have shoulder pain; my knees hurt when i squat with my daughter"},
 		{answer: "Go ahead, but I can't confirm I have no injuries yet."},
 		{answer: "Go ahead. I haven't confirmed that I have no injuries."},
 		{answer: "I don't know my fitness level, but I have no injuries.", wantDraft: true},
@@ -630,7 +631,8 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"equipment": "iso cradle", "weight": 30.0},
 			{"equipment": "pec deck", "weight": 60.0},
 			{"exercise": "Dumbbell Bench Press", "weight": 50.0},
-			{"exercise": "Plate-Loaded Leg Press Machine", "equipment": "plate-loaded leg press machine", "weight": 60.0},
+			{"equipment": "plate-loaded leg press machine", "weight": 60.0},
+			{"exercise": "Row", "equipment": "dumbbell", "weight": 44.0},
 			{"equipment": "dumbbell", "weight": 60.0},
 		},
 		"loadChoices": []map[string]any{
@@ -646,7 +648,7 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 			{"exercise": "Row", "kind": "reported", "equipment": "barbell", "reps": 8, "weight": 55.0},
 			{"exercise": "Barbell Row", "kind": "structure", "equipment": "dumbbell", "setType": "working"},
 			{"exercise": "Barbell Row", "kind": "reported", "equipment": "barbell", "reps": 8, "weight": 45.0},
-			{"exercise": "Plate-Loaded Leg Press Machine", "kind": "requested", "equipment": "selectorized leg press machine", "setType": "working", "weight": 70.0},
+			{"exercise": "Plate-Loaded Leg Press Machine", "kind": "requested", "equipment": "pneumatic leg press machine", "setType": "working", "weight": 70.0},
 			{"exercise": "Pec Deck Reverse Fly", "kind": "requested", "equipment": "fly machine", "weight": 90.0},
 			{"exercise": "Leg Press Machine", "kind": "structure", "equipment": "machine"},
 			{"exercise": "Leg Press Machine", "kind": "reported", "equipment": "leg press machine", "reps": 8, "weight": 55.0},
@@ -672,10 +674,10 @@ func TestWorkoutDraftToolKeepsEquipmentAndWorkingSetPositionsScoped(t *testing.T
 	require.Len(t, draft.Exercises, 13)
 	assert.Nil(t, draft.Exercises[5].Sets[0].Weight, "lever-arm history does not apply to Smith machine sets")
 	assert.Nil(t, draft.Exercises[6].Sets[0].Weight, "unclassified logged equipment does not establish a dumbbell match")
-	assert.Equal(t, new(45.0), draft.Exercises[7].Sets[0].Weight, "choose the comparable report and ignore unrelated unclassified caps")
+	assert.Nil(t, draft.Exercises[7].Sets[0].Weight, "an equipment-specific cap follows its original draft entry into the matching saved variant")
 	assert.Nil(t, draft.Exercises[8].Sets[0].Weight, "reported barbell load does not apply to dumbbell sets")
-	assert.Equal(t, "Selectorized Leg Press Machine", draft.Exercises[9].Name)
-	assert.Equal(t, new(70.0), draft.Exercises[9].Sets[0].Weight, "the old plate-loaded cap does not govern the selectorized machine")
+	assert.Equal(t, "Pneumatic Leg Press Machine", draft.Exercises[9].Name)
+	assert.Equal(t, new(70.0), draft.Exercises[9].Sets[0].Weight, "the old plate-loaded cap does not govern the pneumatic machine")
 	assert.Nil(t, draft.Exercises[9].Sets[0].WeightSourceDate)
 	assert.Nil(t, draft.Exercises[10].Sets[0].Weight, "a specific equipment phrase in the name establishes an explicit cap")
 	assert.Equal(t, "Leg Press Machine", draft.Exercises[11].Name)

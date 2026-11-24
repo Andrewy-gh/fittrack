@@ -41,7 +41,7 @@ type workoutDraftSchedule struct {
 	historyThrough time.Time
 }
 
-var workoutRelativeDay = regexp.MustCompile(`\b(?:for|on|schedule|reschedule|move|workout|work out|train|training|session) (?:it (?:to|for) )?(today|tomorrow|yesterday)\b|\b(today|tomorrow|yesterday)['’]s (?:[\p{L}-]+ ){0,4}(?:workout|training|session)\b`)
+var workoutRelativeDay = regexp.MustCompile(`\b(?:for|on|schedule|reschedule|move|workout|work out|train|training|session) (?:it (?:to|for) )?(today|tomorrow|yesterday)\b|\b(today|tomorrow|yesterday)['’]s (?:(?:upper[- ]body|lower[- ]body|full[- ]body|push|pull|leg|legs|chest|back|strength|cardio|mobility|\d+[- ]minute) ){0,3}(?:workout|training|session)\b`)
 
 // With a relative tool argument, anchor it to the most recent user turn that
 // supplied that wording rather than a follow-up answer about another detail.

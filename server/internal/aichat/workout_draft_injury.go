@@ -20,7 +20,8 @@ var draftRestriction = regexp.MustCompile(`\b(?:can't|cannot|unable to|need to a
 var draftClearanceWithheld = regexp.MustCompile(`\b(?:not sure|not confirmed|unconfirmed|unsure|uncertain|(?:can't|cannot|won't|don't|do not) (?:confirm|know|say|assume|claim)|(?:haven't|have not|hasn't|has not) (?:confirmed|established|verified)|(?:if|whether) (?:i|we) (?:have|had))\b`)
 var draftInjuryClauseBreak = regexp.MustCompile(`[, ]+(?:but|and) +(?:, *)?(i\b|we\b|not sure\b|unsure\b)|,\s+(no (?:current |active |known )?(?:injur(?:y|ies)|(?:movement )?limitations)\b|i\b|my\b|we\b|not sure\b|unsure\b)`)
 var draftSelfClearance = regexp.MustCompile(`^(?:i (?:also |currently )?have no |i (?:don't|do not) have |i am (?:injury|pain)[ -]free\b|i'm (?:injury|pain)[ -]free\b|no |(?:injury|pain)[ -]free\b)`)
-var draftSelfReport = regexp.MustCompile(`^(?:i (?:also |still |currently |recently )?(?:have|feel|hurt|strained|sprained|can't|cannot|need to avoid|must avoid)\b|i'm (?:having|dealing with|unable to)\b|i've (?:had|hurt|strained|sprained)\b|my (?:right |left )?(?:ankles?|arms?|back|elbows?|feet|foot|hands?|hips?|knees?|legs?|neck|shoulders?|wrists?)\b)`)
+var draftSelfReport = regexp.MustCompile(`^(?:i (?:also |still |currently |recently )?(?:have|feel|hurt|strained|sprained|can't|cannot|need to avoid|must avoid)\b|i'm (?:having|dealing with|unable to)\b|i've (?:had|hurt|strained|sprained)\b)`)
+var draftOwnBody = regexp.MustCompile(`^my (?:right |left )?(?:ankles?|arms?|back|elbows?|feet|foot|hands?|hips?|knees?|legs?|neck|shoulders?|wrists?)\b`)
 var draftOtherInjurySubject = regexp.MustCompile(`\b(?:my (?:training |workout )?(?:partner|friend|coach|client|sibling|parents?|mom|dad|wife|husband|daughter|son|child|kids?)\b|(?:he|she|they) (?:has|have|had|is|are|hurt)|for (?:him|her|them))\b`)
 
 const draftInjuryQuestion = "Do you have any current injuries or movement limitations?"
@@ -37,6 +38,14 @@ func isDraftInjuryQuestion(text string) bool {
 
 var draftMoreInjuries = regexp.MustCompile(`\b(?:any (?:other|additional)|anything else|what else)\b`)
 var draftLimitedNegation = regexp.MustCompile(`\bno (?:sharp |severe |shooting |acute |new )+(?:pain|injur(?:y|ies))\b`)
+
+func isShortInjuryNegative(text string) bool {
+	switch strings.TrimSpace(text) {
+	case "no", "none", "nope", "nothing":
+		return true
+	}
+	return false
+}
 
 func draftReportedLimitation(text string) bool {
 	return draftRestriction.MatchString(text) ||
@@ -69,16 +78,19 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 		text = draftInjuryClauseBreak.ReplaceAllString(text, "; $1$2")
 		var reported []string
 		var fullClearance, uncertain bool
+		if prefix, _, hasComma := strings.Cut(text, ","); answering && len(restrictions) == 0 && hasComma && isShortInjuryNegative(prefix) {
+			fullClearance = true
+		}
 		for i, clause := range strings.FieldsFunc(text, func(r rune) bool { return strings.ContainsRune(".!?;", r) }) {
 			clause = strings.Trim(clause, " ,")
 			if i == 0 && answering && len(restrictions) == 0 {
-				switch clause {
-				case "no", "none", "nope", "nothing":
+				if isShortInjuryNegative(clause) {
 					fullClearance = true
 					continue
 				}
 			}
-			if draftOtherInjurySubject.MatchString(clause) {
+			ownBody := draftOwnBody.MatchString(clause)
+			if !ownBody && draftOtherInjurySubject.MatchString(clause) {
 				continue
 			}
 			if draftClearanceWithheld.MatchString(clause) &&
@@ -88,7 +100,7 @@ func (c draftInjuryContext) confirmedStatus(evidence string) string {
 				continue
 			}
 			if draftReportedLimitation(clause) &&
-				(draftSelfReport.MatchString(clause) || answering ||
+				(ownBody || draftSelfReport.MatchString(clause) || answering ||
 					(quote != "" && strings.Contains(clause, quote) && draftRestriction.MatchString(clause))) {
 				reported = append(reported, clause)
 				continue
