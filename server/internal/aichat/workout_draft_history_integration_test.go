@@ -41,7 +41,7 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 			{reps: 5, setType: "working"},
 		}},
 		{name: "Bench Press", sets: []chatDataSetSeed{working(60, 8)}},
-		{name: "Barbell or Dumbbell Press", sets: []chatDataSetSeed{working(90, 8)}},
+		{name: "Barbell Press - Smith-Machine", sets: []chatDataSetSeed{working(90, 8)}},
 	})
 	seedAIChatDataWorkout(t, pool, owner, day(7), "push", []chatDataExerciseSeed{
 		{name: "Barbell Bench Press", sets: []chatDataSetSeed{working(190, 8)}},
@@ -62,18 +62,20 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 			{"reps":8,"setType":"working","weight":0},{"reps":8,"setType":"working","weight":75}]},
 		{"name":"Dumbbell Bench Press","sets":[{"reps":8,"setType":"working"}]},
 		{"name":"Bench Press","sets":[{"reps":8,"setType":"working"}]},
-		{"name":"Barbell or Dumbbell Press","sets":[{"reps":8,"setType":"working"}]},
+		{"name":"Barbell Press - Smith-Machine","sets":[{"reps":8,"setType":"working"}]},
 		{"name":"Kettlebell Press","sets":[{"reps":8,"setType":"working"}]}]}`
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := user.WithContext(context.Background(), owner)
 	for _, tc := range []struct {
 		name, injuries        string
+		equipment             string
 		enabled               bool
 		wantBench, wantWarmup *float64
 	}{
 		{name: "known equipment", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
 		{name: "uncertain or changed equipment, or weight opt-out", injuries: "none"},
 		{name: "active limitation", injuries: "knee pain", enabled: true},
+		{name: "load limit suppresses history even if flag is set", injuries: "none", enabled: true, equipment: "full gym, barbell up to 90 lb"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			requested := now.Add(time.Hour).Format(time.RFC3339)
@@ -81,8 +83,12 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 				return strings.Replace(payload, "DATE", requested, 1)
 			})
 			reader := NewRepository(logger, db.New(pool), pool).(draftHistoryReader)
+			equipment := tc.equipment
+			if equipment == "" {
+				equipment = "full gym"
+			}
 			result, err := defineWorkoutDraftTool(g, "synthetic", reader).RunRaw(ctx, map[string]any{
-				"sessionDuration": 25, "workoutFocus": "push", "equipment": "full gym", "injuries": tc.injuries, "useLoggedWeights": tc.enabled,
+				"sessionDuration": 25, "workoutFocus": "push", "equipment": equipment, "injuries": tc.injuries, "useLoggedWeights": tc.enabled,
 			})
 			require.NoError(t, err)
 			raw, err := json.Marshal(result)

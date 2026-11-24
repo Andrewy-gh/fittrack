@@ -313,7 +313,7 @@ func buildWorkoutGenerationUserPrompt(input WorkoutGenerationToolInput) string {
 		builder.WriteString(fmt.Sprintf("- Requested workout date: %s\n", requestedDate))
 	}
 	if input.UseLoggedWeights {
-		builder.WriteString("- FitTrack will fill matching loads from logs. Do not guess weights. Use names that explicitly identify the equipment used, such as Barbell Bench Press or Dumbbell Row.\n")
+		builder.WriteString("- Leave weights blank for FitTrack to fill from matching logs. Do not change exercise names to look for matches.\n")
 	}
 	if recentPerformance := strings.TrimSpace(input.RecentPerformance); recentPerformance != "" {
 		builder.WriteString(fmt.Sprintf("- Recent performance to respect: %s\n", recentPerformance))

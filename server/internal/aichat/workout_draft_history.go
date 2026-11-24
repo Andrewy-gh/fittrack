@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
@@ -42,8 +43,8 @@ func (r *repository) draftLoggedWeights(ctx context.Context, userID string, name
 
 // Only explicitly named, conventional free-weight variants qualify. A generic
 // lift or machine name does not establish which equipment produced the load.
-func loggedWeightExercise(name string) bool {
-	words := strings.Fields(strings.ToLower(name))
+func loggedWeightExercise(name, equipment string) bool {
+	words := strings.FieldsFunc(strings.ToLower(name), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsNumber(r) })
 	if len(words) < 2 {
 		return false
 	}
@@ -52,9 +53,18 @@ func loggedWeightExercise(name string) bool {
 	default:
 		return false
 	}
+	// A free-form equipment description is not an assurance that loads
+	// are unrestricted (e.g. "dumbbells up to 25 lb"). Admit only plain
+	// known contexts and match a named equipment type to the exercise.
+	switch normalizeQualityText(equipment) {
+	case "gym", "full gym":
+	case words[0], words[0] + "s":
+	default:
+		return false
+	}
 	for _, word := range words[1:] {
 		switch word {
-		case "or", "and", "barbell", "dumbbell", "dumbbells", "kettlebell", "kettlebells", "smith", "machine", "cable", "band", "resistance", "bodyweight":
+		case "or", "and", "barbell", "barbells", "dumbbell", "dumbbells", "kettlebell", "kettlebells", "smith", "machine", "machines", "cable", "cables", "band", "bands", "resistance", "bodyweight":
 			return false
 		}
 	}
@@ -69,7 +79,7 @@ func attachLoggedDraftWeights(ctx context.Context, reader draftHistoryReader, in
 
 	names := make(map[string]struct{})
 	for _, e := range draft.Exercises {
-		if loggedWeightExercise(e.Name) && slices.ContainsFunc(e.Sets, func(s workout.SetInput) bool { return s.Weight == nil }) {
+		if loggedWeightExercise(e.Name, input.Equipment) && slices.ContainsFunc(e.Sets, func(s workout.SetInput) bool { return s.Weight == nil }) {
 			names[e.Name] = struct{}{}
 		}
 	}
