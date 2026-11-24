@@ -19,6 +19,11 @@ func (s *Service) PrepareMessageStream(ctx context.Context, conversationID int32
 		return nil, err
 	}
 
+	prompt = strings.TrimSpace(prompt)
+	if err := validateChatPrompt(prompt); err != nil {
+		return nil, err
+	}
+
 	prepared, err := s.repo.PrepareMessageStream(ctx, conversationID, userID, prompt, s.runtime.ModelName(), requestID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

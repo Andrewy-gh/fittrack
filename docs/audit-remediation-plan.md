@@ -264,7 +264,8 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 - **Status:** Blocked
 - **Plan:** `F11` — Batch 3
 - **Evidence / commit / PR:** AUDIT-W3-CHAT-BOUNDS-RESEARCH returned (Pi / Sol / medium), read-only, no tests/provider calls. Head confirmed uncapped JSON decoders and locked-history → inserts → quota → commit ordering. Provider invocation occurs after committed admission. Existing SDK metadata does not supply a complete usable budget contract; research reports CountTokens adapter limitations for system/tools/config. See decision worksheet for proposed staged limits and remaining gates.
-- **Decision / blocker:** Approval needed for numeric limits and full-envelope budget strategy. Recommend first approving 64 KiB raw body / 8 KiB trimmed UTF-8 prompt caps with strict decoding and pre-admission service checks; these do not complete A018. No silent history truncation or changed quota/refund policy. Later tool-growth rejection cannot guarantee no prior quota charge without additional reservations/bounds.
+- **First stage:** This candidate implements a 64 KiB request-body cap, strict single-value decoding, and an 8 KiB trimmed UTF-8 prompt cap before admission. The original observation above describes the baseline, not the candidate.
+- **Remaining blocker:** The full model-input budget, including history and tool context, is unresolved. The request limits alone do not complete A018. No silent history truncation or changed quota/refund policy. Later tool-growth rejection cannot guarantee no prior quota charge without additional reservations/bounds.
 
 #### A019
 
