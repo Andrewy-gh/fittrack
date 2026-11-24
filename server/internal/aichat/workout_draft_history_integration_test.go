@@ -69,16 +69,19 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 	for _, tc := range []struct {
 		name, injuries        string
 		equipment, location   string
+		focus                 string
 		enabled               bool
 		wantBench, wantWarmup *float64
 	}{
 		{name: "known equipment", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
 		{name: "commercial gym", equipment: "commercial gym", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
-		{name: "ordinary home inventory", equipment: "barbells, dumbbells and a bench", location: "home", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
+		{name: "ordinary home inventory", equipment: "barbells, dumbbells, cables, and a bench", location: "home", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
 		{name: "uncertain or changed equipment, or weight opt-out", injuries: "none"},
 		{name: "active limitation", injuries: "knee pain", enabled: true},
 		{name: "load limit suppresses history even if flag is set", injuries: "none", enabled: true, equipment: "full gym, barbell up to 90 lb"},
 		{name: "limitation in space constraints also suppresses", injuries: "none", enabled: true, location: "barbells up to 90 lb"},
+		{name: "load limit in the focus", injuries: "none", enabled: true, focus: "push, use at most 90 lb"},
+		{name: "explicit blank in the focus", injuries: "none", enabled: true, focus: "push, leave weights blank"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			requested := now.Add(time.Hour).Format(time.RFC3339)
@@ -98,8 +101,12 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 			if equipment == "" {
 				equipment = "full gym"
 			}
+			focus := tc.focus
+			if focus == "" {
+				focus = "push"
+			}
 			result, err := defineWorkoutDraftTool(g, "synthetic", reader).RunRaw(ctx, map[string]any{
-				"sessionDuration": 25, "workoutFocus": "push", "equipment": equipment, "spaceConstraints": tc.location, "injuries": tc.injuries, "useLoggedWeights": tc.enabled,
+				"sessionDuration": 25, "workoutFocus": focus, "equipment": equipment, "spaceConstraints": tc.location, "injuries": tc.injuries, "useLoggedWeights": tc.enabled,
 			})
 			require.NoError(t, err)
 			raw, err := json.Marshal(result)

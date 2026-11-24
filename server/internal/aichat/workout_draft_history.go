@@ -77,7 +77,7 @@ func loggedWeightInventoryIncludes(equipment, kind string) bool {
 		switch word {
 		case "barbell", "barbells", "dumbbell", "dumbbells", "kettlebell", "kettlebells":
 			available = available || word == kind || word == kind+"s"
-		case "and", "a", "an", "bench", "rack", "plates":
+		case "and", "a", "an", "bench", "benches", "rack", "racks", "plates", "cable", "cables", "machine", "machines", "band", "bands":
 		default:
 			return false
 		}
@@ -93,11 +93,25 @@ func loggedWeightLocationOnly(location string) bool {
 	return false
 }
 
+// Don't interpret free-text constraints embedded in the focus or goal.
+func plainLoggedWeightTraining(input WorkoutGenerationToolInput) bool {
+	switch normalizeQualityText(input.WorkoutFocus) {
+	case "push", "pull", "legs", "upper body", "upper-body", "lower body", "lower-body", "full body", "full-body",
+		"chest", "back", "shoulders", "arms", "leg day", "push day", "pull day":
+	default:
+		return false
+	}
+	switch normalizeQualityText(input.FitnessGoal) {
+	case "", "strength", "hypertrophy", "muscle growth", "muscle gain", "build muscle", "general fitness":
+		return true
+	}
+	return false
+}
+
 func attachLoggedDraftWeights(ctx context.Context, reader draftHistoryReader, input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest, now time.Time) {
 	userID, ok := user.Current(ctx)
 	if !ok || reader == nil || !input.UseLoggedWeights || !loggedWeightLocationOnly(input.SpaceConstraints) ||
-		activeInjuryText(input.Injuries) != "" || isEquipmentOptionalWorkout(input) ||
-		hasAnyQualityTerm(normalizeQualityText(input.FitnessGoal+" "+input.WorkoutFocus), "deload", "recovery", "reduced load") {
+		activeInjuryText(input.Injuries) != "" || !plainLoggedWeightTraining(input) {
 		return
 	}
 
