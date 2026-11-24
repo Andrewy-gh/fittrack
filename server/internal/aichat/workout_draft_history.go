@@ -53,13 +53,7 @@ func loggedWeightExercise(name, equipment string) bool {
 	default:
 		return false
 	}
-	// A free-form equipment description is not an assurance that loads
-	// are unrestricted (e.g. "dumbbells up to 25 lb"). Admit only plain
-	// known contexts and match a named equipment type to the exercise.
-	switch normalizeQualityText(equipment) {
-	case "gym", "full gym":
-	case words[0], words[0] + "s":
-	default:
+	if !loggedWeightInventoryIncludes(equipment, words[0]) {
 		return false
 	}
 	for _, word := range words[1:] {
@@ -71,9 +65,39 @@ func loggedWeightExercise(name, equipment string) bool {
 	return !strings.ContainsAny(name, "/&+()")
 }
 
+// Only accept plain inventory words. Unknown tokens (including a number,
+// a qualifier, or a change of gear) aren't evidence that the load is safe.
+func loggedWeightInventoryIncludes(equipment, kind string) bool {
+	switch normalizeQualityText(equipment) {
+	case "gym", "full gym", "commercial gym":
+		return true
+	}
+	available := false
+	for _, word := range strings.Fields(strings.ReplaceAll(normalizeQualityText(equipment), ",", " ")) {
+		switch word {
+		case "barbell", "barbells", "dumbbell", "dumbbells", "kettlebell", "kettlebells":
+			available = available || word == kind || word == kind+"s"
+		case "and", "a", "an", "bench", "rack", "plates":
+		default:
+			return false
+		}
+	}
+	return available
+}
+
+func loggedWeightLocationOnly(location string) bool {
+	switch normalizeQualityText(location) {
+	case "", "gym", "full gym", "commercial gym", "at the gym", "home", "at home", "home gym":
+		return true
+	}
+	return false
+}
+
 func attachLoggedDraftWeights(ctx context.Context, reader draftHistoryReader, input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest, now time.Time) {
 	userID, ok := user.Current(ctx)
-	if !ok || reader == nil || !input.UseLoggedWeights || activeInjuryText(input.Injuries) != "" || isEquipmentOptionalWorkout(input) {
+	if !ok || reader == nil || !input.UseLoggedWeights || !loggedWeightLocationOnly(input.SpaceConstraints) ||
+		activeInjuryText(input.Injuries) != "" || isEquipmentOptionalWorkout(input) ||
+		hasAnyQualityTerm(normalizeQualityText(input.FitnessGoal+" "+input.WorkoutFocus), "deload", "recovery", "reduced load") {
 		return
 	}
 

@@ -68,27 +68,38 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 	ctx := user.WithContext(context.Background(), owner)
 	for _, tc := range []struct {
 		name, injuries        string
-		equipment             string
+		equipment, location   string
 		enabled               bool
 		wantBench, wantWarmup *float64
 	}{
 		{name: "known equipment", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
+		{name: "commercial gym", equipment: "commercial gym", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
+		{name: "ordinary home inventory", equipment: "barbells, dumbbells and a bench", location: "home", injuries: "none", enabled: true, wantBench: new(115.0), wantWarmup: new(65.0)},
 		{name: "uncertain or changed equipment, or weight opt-out", injuries: "none"},
 		{name: "active limitation", injuries: "knee pain", enabled: true},
 		{name: "load limit suppresses history even if flag is set", injuries: "none", enabled: true, equipment: "full gym, barbell up to 90 lb"},
+		{name: "limitation in space constraints also suppresses", injuries: "none", enabled: true, location: "barbells up to 90 lb"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			requested := now.Add(time.Hour).Format(time.RFC3339)
-			g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string {
-				return strings.Replace(payload, "DATE", requested, 1)
-			})
+			modelDraft := strings.Replace(payload, "DATE", requested, 1)
+			wantExercises := 5
+			if tc.location == "home" {
+				// The existing generator would not choose a machine or
+				// kettlebell when neither is available.
+				draftEnd := strings.Index(modelDraft, ",\n\t\t{\"name\":\"Barbell Press - Smith-Machine\"")
+				require.Positive(t, draftEnd)
+				modelDraft = modelDraft[:draftEnd] + "]}"
+				wantExercises = 3
+			}
+			g := syntheticDraftModel(ctx, func(*ai.ModelRequest) string { return modelDraft })
 			reader := NewRepository(logger, db.New(pool), pool).(draftHistoryReader)
 			equipment := tc.equipment
 			if equipment == "" {
 				equipment = "full gym"
 			}
 			result, err := defineWorkoutDraftTool(g, "synthetic", reader).RunRaw(ctx, map[string]any{
-				"sessionDuration": 25, "workoutFocus": "push", "equipment": equipment, "injuries": tc.injuries, "useLoggedWeights": tc.enabled,
+				"sessionDuration": 25, "workoutFocus": "push", "equipment": equipment, "spaceConstraints": tc.location, "injuries": tc.injuries, "useLoggedWeights": tc.enabled,
 			})
 			require.NoError(t, err)
 			raw, err := json.Marshal(result)
@@ -96,7 +107,7 @@ func TestDraftToolLoggedWeights(t *testing.T) {
 			var draft workout.CreateWorkoutRequest
 			require.NoError(t, json.Unmarshal(raw, &draft))
 			require.Equal(t, requested, draft.Date)
-			require.Len(t, draft.Exercises, 5)
+			require.Len(t, draft.Exercises, wantExercises)
 			for i, want := range []*float64{tc.wantBench, tc.wantWarmup, nil, nil, nil, nil, new(0.0), new(75.0)} {
 				require.Equal(t, want, draft.Exercises[0].Sets[i].Weight, "set %d", i+1)
 			}
