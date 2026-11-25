@@ -63,6 +63,27 @@ these depend on creation order/history, not the intended storage contract.
 - This local cluster does not model Supabase extensions/services or pooler
   behavior, and the comparison makes no claim about deployed production state.
 
+## Exercise catalog membership maintenance (A046 / D23)
+
+`internal/exercisecatalog/catalog.json`, embedded by the server, is the current
+membership authority. Historical migration 00033 is a snapshot, not a list to
+edit. When membership changes, add a forward migration for the effective check
+constraint and update `schema.sql` for SQLC. The full backend Go suite runs
+`TestCatalogStorageMembership` against the migrated test database and loads
+`schema.sql` in a rolled-back schema; PostgreSQL normalizes each check and
+compares it with a check built from the embedded IDs. It also rejects a missing
+or unvalidated check and a non-nullable column. The test intentionally expects
+one `IN` check in catalog order: semantically equivalent alternate SQL or
+reordered IDs require an explicit test/maintenance decision. This is not a
+proof of arbitrary constraints, triggers, deployed data, or production state.
+
+The check provides a supported parity gate, not automatic regeneration: the
+forward migration and SQLC list still require coordinated edits. Do not rewrite
+old migrations. `reviewedMuscleRoles` is an intentionally partial, independently
+reviewed mapping; the existing #373 test checks that its keys belong to the
+catalog, not that every catalog entry has a role. Unlisted roles stay unresolved.
+Run the membership test via the isolated worktree test profile, not `-short`.
+
 ## A044 reconciliation evidence (2026-11-12)
 
 A fresh PostgreSQL `server_version_num = 150019` comparison found nine catalog
