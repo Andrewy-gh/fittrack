@@ -73,6 +73,11 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .node-version
+
       - name: Cache Go build and tools
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
@@ -109,6 +114,11 @@ jobs:
           fi
           goose -dir migrations postgres "$DATABASE_URL" up
 
+      - name: Verify catalog SQL generation
+        run: |
+          node scripts/catalog-sql.mjs --check
+          node --test scripts/catalog-sql.test.mjs scripts/catalog-integration-target.test.mjs
+
       - name: Verify Go modules
         working-directory: server
         run: go mod verify
@@ -121,11 +131,12 @@ jobs:
         working-directory: server
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
+          FITTRACK_CATALOG_CI_ISOLATED: "1"
         run: |
           # Database-backed packages share one schema, and RLS tests acquire
           # table-level locks while toggling enforcement. Run packages serially
           # to prevent unrelated cleanup transactions from deadlocking with DDL.
-          go test -p 1 -v ./...
+          go test -p 1 -count=1 -v ./...
 
       - name: Verify restricted runtime role
         working-directory: server

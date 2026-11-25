@@ -325,7 +325,7 @@ make sqlc              # Generate SQL code from query.sql
 make test              # Run all tests
 make test-fast         # Run the quick short suite without the DB package
 make test-short        # Start the local DB and run the short suite
-make test-integration  # Start the local DB and run the full suite with integration tests
+make test-integration  # Run the full suite on the prepared isolated worktree TEST database
 make vet               # Run go vet
 make migrate-up        # Apply all pending migrations
 make migrate-down      # Rollback last migration
@@ -334,5 +334,5 @@ make docker-down       # Stop PostgreSQL container
 make clean             # Clean build files and cache
 ```
 
-Use `make test` for the full Go suite without local DB setup, and `make test-fast` for the quick no-DB-package short-mode check used by pre-commit. Use `make test-short` when you need the local DB boot and migrations but still want short-mode tests, and use `make test-integration` when you need DB-backed integration tests because it runs the full suite without `-short`.
+Use `make test-fast` for the quick short-mode check used by pre-commit. For the full DB-backed suite, first follow [worktree setup](../docs/worktrees.md) and run `node scripts/worktree.ts prepare --mode test --json` from the repository root; then run `make test-integration` from `server/`. The target checks readiness and runs through the native TEST owner; it does not start services or prepare databases. `make test` and `make test-short` are legacy/unmanaged entry points and do not provide that isolation; the catalog storage test refuses an unowned target.
 

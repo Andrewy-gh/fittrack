@@ -554,10 +554,10 @@ Keep batches in focused changes, not one giant refactor. Fix behavior before res
 > M Catalog IDs live in four places: the JSON catalog, a migration check, schema.sql and the muscle-role map.
 
 - **Disposition:** Deferred
-- **Status:** Not started
-- **Plan:** `D23` — User review
-- **Evidence / commit / PR:** —
-- **Decision / blocker:** Awaiting user review; see the mapped decision guidance.
+- **Status:** In progress
+- **Plan:** `D23` — Embedded JSON is authoritative for current membership; preserve historical migrations and partial, reviewed role assignments.
+- **Evidence / commit / PR:** See `server/schema-verification.md` and `TestCatalogStorageMembership`; #373 added the one-way role-map membership check.
+- **Decision / blocker:** The JSON-driven generator updates the SQLC list and emits a frozen forward SQL snippet; migration rollout and rollback still require review. The integration gate does not prove deployed production state.
 
 ### Inconsistent / Docs versus reality
 

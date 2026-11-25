@@ -84,7 +84,7 @@ This is a decision worksheet, not a second implementation tracker. Main A-ID ent
 | [A042](audit-remediation-plan.md#a042) | Deferred | M Chat streaming and stop use their own fetch, auth headers and base URL, bypassing the shared 401 handling. | Pending |
 | [A043](audit-remediation-plan.md#a043) | Deferred | M About 400 lines of chat parsers duplicate generated types. | Pending |
 | [A045](audit-remediation-plan.md#a045) | Gated | H Migration 00029 is missing, 00031 creates a table that 00032 drops, and the down step of 00004 is empty. | Pending |
-| [A046](audit-remediation-plan.md#a046) | Deferred | M Catalog IDs live in four places: the JSON catalog, a migration check, schema.sql and the muscle-role map. | Pending |
+| [A046](audit-remediation-plan.md#a046) | Deferred | M Catalog IDs live in four places: the JSON catalog, a migration check, schema.sql and the muscle-role map. | Embedded JSON is authoritative; SQLC membership is generated and forward migrations use generated frozen snippets. Runtime drift is checked; reviewed muscle roles remain partial. Migration rollout and rollback still require review. |
 | [A056](audit-remediation-plan.md#a056) | Deferred | M Demo mode differs from the API: | Pending |
 | [A057](audit-remediation-plan.md#a057) | Deferred | M Exercise goals are stored in one global localStorage key, not per user, and hard-code "lb". | Pending |
 | [A058](audit-remediation-plan.md#a058) | Deferred | L The edit page uses window.confirm where the new page uses a dialog. | Pending |

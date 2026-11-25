@@ -63,6 +63,42 @@ these depend on creation order/history, not the intended storage contract.
 - This local cluster does not model Supabase extensions/services or pooler
   behavior, and the comparison makes no claim about deployed production state.
 
+## Exercise catalog membership maintenance (A046 / D23)
+
+`internal/exercisecatalog/catalog.json`, embedded by the server, is the current
+membership authority. Historical migration 00033 is a snapshot, not a list to
+edit. When membership changes, add a forward migration for the effective check
+constraint and update `schema.sql` for SQLC. The full backend Go suite runs
+`TestCatalogStorageMembership` against the migrated test database and loads
+`schema.sql` in a rolled-back schema; PostgreSQL normalizes each check and
+compares its literal membership set with the embedded IDs, independent of list
+order. It also rejects a missing or unvalidated check and a non-nullable
+column. The test accepts PostgreSQL's deparsed literal-array `ANY` shape and
+its singleton equality form; other equivalent expression forms fail closed and require an explicit
+maintenance decision. This is not a proof of arbitrary constraints, triggers,
+deployed data, or production state.
+
+From the repository root, run `node scripts/catalog-sql.mjs --write` to update
+only the marked SQLC schema block, and `node scripts/catalog-sql.mjs --check`
+to verify it without writing. CI runs the check and generator tests. For a new
+forward migration, save `node scripts/catalog-sql.mjs --snippet` output as a
+reviewed, frozen SQL snapshot in a **new** migration; it does not read JSON at
+migration runtime. Never rewrite historical migrations. The snippet drops and
+recreates the check; assess table locking and existing data before deployment.
+Removing IDs can reject existing rows. A Down migration restoring an older list
+can likewise fail after new IDs have been stored: plan data handling and an
+explicit rollback policy rather than automatically deleting or reclassifying
+records. The generated snippet intentionally contains no Down step.
+
+This eliminates retyping the current SQLC and forward membership lists, but
+migration creation, rollout and rollback still require human review. The
+`reviewedMuscleRoles` map is intentionally partial and independently reviewed;
+#373 checks its keys against the catalog, not completeness. Unlisted roles stay
+unresolved. Run the membership test through the isolated worktree test profile,
+not `-short`: it requires this checkout's managed test database name, native
+ownership marker and owner. The explicitly marked GitHub Actions job uses its
+own disposable CI service; there is no local 5432 fallback.
+
 ## A044 reconciliation evidence (2026-11-12)
 
 A fresh PostgreSQL `server_version_num = 150019` comparison found nine catalog

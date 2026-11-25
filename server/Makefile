@@ -65,8 +65,8 @@ help:
 	@echo "  docker-down  - Stop Docker containers"
 	@echo "  run          - Run the application"
 	@echo "  test-fast    - Quick local check for server code changes (no DB package)"
-	@echo "  test-short   - Use before push for DB-impacting server changes (integration tests are skipped; see test-integration)"
-	@echo "  test-integration - Start local DB and run full server suite with integration tests"
+	@echo "  test-short   - Legacy local DB setup and short suite (not worktree-isolated)"
+	@echo "  test-integration - Run full suite on the prepared isolated worktree TEST database"
 	@echo "  test         - Full verbose suite (deep local check / CI parity)"
 	@echo "  vet          - Run go vet"
 	@echo "  migrate-up   - Run database migrations up"
@@ -191,10 +191,9 @@ test-short: test-db-ready ## Start local DB and run short test suite (integratio
 	echo "==> Running go test -short ./..."; \
 	DATABASE_URL="$$DATABASE_URL" $(GOTEST) -short ./...
 
-test-integration: test-db-ready ## Start local DB and run full server suite with integration tests
-	@. "$(TEST_DB_ENV_FILE)"; \
-	echo "==> Running go test -p 1 ./..."; \
-	DATABASE_URL="$$DATABASE_URL" $(GOTEST) -p 1 ./...
+test-integration: ## Run full suite against the prepared isolated worktree TEST database
+	@node ../scripts/worktree.ts doctor --mode test --json
+	node ../scripts/worktree.ts run test -- $(GOTEST) -p 1 -count=1 ./...
 
 vet:
 	$(GOCMD) vet -v ./...
