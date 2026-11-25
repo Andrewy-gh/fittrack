@@ -129,29 +129,48 @@ func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 }
 
 func TestNewGenkitRuntimePanicDiagnosticIsProviderNeutralAndSecretFree(t *testing.T) {
+	const (
+		geminiModel  = "googleai/gemini-test"
+		openAIKey    = "synthetic-openai-secret"
+		geminiKey    = "synthetic-gemini-secret"
+		panicMarker  = "synthetic-panic-secret"
+		panicWarn    = "ai chat runtime initialization skipped after genkit panic"
+		fallbackWarn = "ai chat primary unavailable at startup; using configured fallback"
+	)
 	for _, tc := range []struct {
-		model, openAIKey, geminiKey string
+		name, model    string
+		fallback       string
+		standbyHealthy bool
+		wantModel      string
+		wantWarnings   []string
 	}{
-		{lunaModel, "synthetic-openai-secret", ""},
-		{"googleai/gemini-test", "", "synthetic-gemini-secret"},
+		{name: "Luna without fallback", model: lunaModel, wantWarnings: []string{panicWarn}},
+		{name: "Gemini primary", model: geminiModel, wantWarnings: []string{panicWarn}},
+		{name: "healthy configured fallback", model: lunaModel, fallback: "gemini", standbyHealthy: true, wantModel: geminiModel, wantWarnings: []string{panicWarn, fallbackWarn}},
+		{name: "configured fallback also panics", model: lunaModel, fallback: "gemini", wantWarnings: []string{panicWarn, panicWarn}},
 	} {
-		t.Run(tc.model, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("AI_CHAT_PRIMARY_MODEL", tc.model)
-			t.Setenv("GEMINI_MODEL", "googleai/gemini-test")
-			t.Setenv("AI_CHAT_FALLBACK", "")
-			t.Setenv("OPENAI_API_KEY", tc.openAIKey)
-			t.Setenv(geminiAPIKeyEnvVar, tc.geminiKey)
+			t.Setenv("GEMINI_MODEL", geminiModel)
+			t.Setenv("AI_CHAT_FALLBACK", tc.fallback)
+			t.Setenv("OPENAI_API_KEY", openAIKey)
+			t.Setenv(geminiAPIKeyEnvVar, geminiKey)
 			t.Setenv(googleAPIKeyEnvVar, "")
 
 			originalInit := genkitInit
-			genkitInit = func(context.Context, ...genkit.GenkitOption) *genkit.Genkit {
-				panic("synthetic-panic-secret: " + tc.model + " " + tc.openAIKey + tc.geminiKey)
+			primaryAttempt := true
+			genkitInit = func(ctx context.Context, _ ...genkit.GenkitOption) *genkit.Genkit {
+				if !primaryAttempt && tc.standbyHealthy {
+					return genkit.Init(ctx) // Standby initializes with no provider plugins.
+				}
+				primaryAttempt = false
+				panic(panicMarker + ": " + tc.model + " " + openAIKey + " " + geminiKey)
 			}
 			t.Cleanup(func() { genkitInit = originalInit })
 			var logs bytes.Buffer
 			originalLogger := slog.Default()
 			originalWriter, originalFlags := log.Writer(), log.Flags()
-			slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+			slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn})))
 			t.Cleanup(func() {
 				slog.SetDefault(originalLogger)
 				log.SetOutput(originalWriter)
@@ -159,23 +178,32 @@ func TestNewGenkitRuntimePanicDiagnosticIsProviderNeutralAndSecretFree(t *testin
 			})
 
 			runtime := NewGenkitRuntime(context.Background(), nil, config.LoadAIChat())
-			if runtime.Available() {
-				t.Fatal("runtime should be unavailable after initialization panic")
+			if runtime.Available() != (tc.wantModel != "") {
+				t.Fatalf("runtime availability = %v, want %v", runtime.Available(), tc.wantModel != "")
 			}
-			got := logs.String()
-			var record struct {
-				Level   string `json:"level"`
-				Message string `json:"msg"`
+			if tc.wantModel != "" && runtime.ModelName() != tc.wantModel {
+				t.Fatalf("available runtime model = %q, want %q", runtime.ModelName(), tc.wantModel)
 			}
-			if err := json.Unmarshal(logs.Bytes(), &record); err != nil {
-				t.Fatalf("invalid diagnostic: %v: %s", err, got)
-			}
-			if record.Level != "WARN" || record.Message != "ai chat runtime initialization skipped after genkit panic" {
-				t.Fatalf("missing initialization warning: %s", got)
-			}
-			for _, forbidden := range []string{"openai", "gemini", "google", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "synthetic-openai-secret", "synthetic-gemini-secret", "synthetic-panic-secret"} {
+			got := strings.TrimSpace(logs.String())
+			for _, forbidden := range []string{"openai", "gemini", "google", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", openAIKey, geminiKey, panicMarker} {
 				if strings.Contains(strings.ToLower(got), strings.ToLower(forbidden)) {
 					t.Errorf("diagnostic contains a provider name, key name or secret %q: %s", forbidden, got)
+				}
+			}
+			lines := strings.Split(got, "\n")
+			if len(lines) != len(tc.wantWarnings) {
+				t.Fatalf("expected %d startup warnings, got %d: %s", len(tc.wantWarnings), len(lines), got)
+			}
+			for i, line := range lines {
+				var record struct {
+					Level   string `json:"level"`
+					Message string `json:"msg"`
+				}
+				if err := json.Unmarshal([]byte(line), &record); err != nil {
+					t.Fatalf("invalid diagnostic: %v: %s", err, line)
+				}
+				if record.Level != "WARN" || record.Message != tc.wantWarnings[i] {
+					t.Errorf("want WARN %q, got: %s", tc.wantWarnings[i], line)
 				}
 			}
 		})

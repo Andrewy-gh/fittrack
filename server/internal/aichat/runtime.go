@@ -52,7 +52,7 @@ func NewGenkitRuntime(ctx context.Context, reader ChatDataReader, settings confi
 		fallback := newModelRuntime(ctx, reader, settings.GeminiModel())
 		if fallback.Available() {
 			if !primary.Available() {
-				slog.Warn("AI chat primary unavailable at startup; using Gemini", "primary", modelName, "fallback", fallback.ModelName())
+				slog.Warn("ai chat primary unavailable at startup; using configured fallback")
 				return fallback
 			}
 			primary.fallback = fallback
