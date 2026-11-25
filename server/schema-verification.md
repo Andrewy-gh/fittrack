@@ -71,18 +71,24 @@ edit. When membership changes, add a forward migration for the effective check
 constraint and update `schema.sql` for SQLC. The full backend Go suite runs
 `TestCatalogStorageMembership` against the migrated test database and loads
 `schema.sql` in a rolled-back schema; PostgreSQL normalizes each check and
-compares it with a check built from the embedded IDs. It also rejects a missing
-or unvalidated check and a non-nullable column. The test intentionally expects
-one `IN` check in catalog order: semantically equivalent alternate SQL or
-reordered IDs require an explicit test/maintenance decision. This is not a
-proof of arbitrary constraints, triggers, deployed data, or production state.
+compares its literal membership set with the embedded IDs, independent of list
+order. It also rejects a missing or unvalidated check and a non-nullable
+column. The test accepts PostgreSQL's deparsed `IN`/`ANY` literal-array shape;
+other equivalent expression forms fail closed and require an explicit
+maintenance decision. This is not a proof of arbitrary constraints, triggers,
+deployed data, or production state.
 
-The check provides a supported parity gate, not automatic regeneration: the
-forward migration and SQLC list still require coordinated edits. Do not rewrite
-old migrations. `reviewedMuscleRoles` is an intentionally partial, independently
+The check provides a parity gate, not duplicate-maintenance elimination: the
+forward migration and SQLC list still require coordinated edits. A small
+JSON-to-SQL emitter could safely quote and output the current ID list for both
+uses; it would still need a reviewed forward migration with an appropriate
+rollback snapshot, and a maintained insertion/update mechanism for `schema.sql`.
+No such regeneration path is implemented here. Do not rewrite old migrations. `reviewedMuscleRoles` is an intentionally partial, independently
 reviewed mapping; the existing #373 test checks that its keys belong to the
 catalog, not that every catalog entry has a role. Unlisted roles stay unresolved.
-Run the membership test via the isolated worktree test profile, not `-short`.
+Run the membership test via the isolated worktree test profile, not `-short`;
+it requires an explicit local `DATABASE_URL` on port 55432 or 26432 and refuses
+the shared/default 5432 target. CI uses its own disposable service on 55432.
 
 ## A044 reconciliation evidence (2026-11-12)
 
