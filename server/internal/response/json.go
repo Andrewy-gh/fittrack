@@ -18,11 +18,6 @@ const (
 	errorCategoryInternal   = "internal"
 )
 
-type Error struct {
-	Message   string `json:"message"`
-	RequestID string `json:"request_id,omitempty"`
-}
-
 // JSON writes a JSON response to the HTTP response writer.
 //
 // Note on error handling: JSON encoding errors are extremely rare in practice and
@@ -185,7 +180,7 @@ func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, stat
 	logger.Error("error response", logAttrs...)
 
 	// Create a sanitized error response - never include raw error details in HTTP responses
-	resp := Error{
+	resp := ErrorResponse{
 		Message:   safeMessage,
 		RequestID: requestID,
 	}
