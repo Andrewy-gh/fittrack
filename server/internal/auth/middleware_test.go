@@ -16,6 +16,7 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
@@ -223,6 +224,7 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 		name         string
 		setup        func(*MockJWKSCache, *MockUserService)
 		wantStatus   int
+		wantBody     string
 		wantCategory string
 		forbidden    []string
 	}{
@@ -232,6 +234,7 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 				jwkCache.On("GetUserIDFromToken", "invalid-token").Return("", fmt.Errorf("failed to parse token for project secret-project-id: SQLSTATE 42501"))
 			},
 			wantStatus:   http.StatusUnauthorized,
+			wantBody:     `{"message":"unauthorized"}`,
 			wantCategory: `"error_category":"jwt"`,
 			forbidden: []string{
 				"secret-project-id",
@@ -244,9 +247,10 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 			name: "ensure user database error",
 			setup: func(jwkCache *MockJWKSCache, userService *MockUserService) {
 				jwkCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
-				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{}, fmt.Errorf("pq: duplicate key value violates unique constraint \"users_email_key\" DETAIL: Key (email)=(andy@example.com) already exists. SQLSTATE 23505"))
+				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{}, &pgconn.PgError{Code: "23505", Message: "duplicate key", ConstraintName: "users_email_key", Detail: "andy@example.com"})
 			},
 			wantStatus:   http.StatusInternalServerError,
+			wantBody:     `{"message":"internal error"}`,
 			wantCategory: `"error_category":"database"`,
 			forbidden: []string{
 				"pq:",
@@ -285,6 +289,7 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 			auth.Middleware(nextHandler).ServeHTTP(w, req)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
+			assert.JSONEq(t, tt.wantBody, w.Body.String())
 			logOutput := logs.String()
 			assert.Contains(t, logOutput, tt.wantCategory)
 			assert.Contains(t, logOutput, `"error_present":true`)

@@ -741,14 +741,24 @@ func TestHandlerResumeMessageStream(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?afterSequence=2", nil)
-		req.SetPathValue("id", "41")
-		rr := httptest.NewRecorder()
-
-		handler.ResumeMessageStream(rr, req)
-
-		require.Equal(t, http.StatusBadRequest, rr.Code)
-		assert.Contains(t, rr.Body.String(), "runId is required")
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /api/ai/conversations/{id}/messages/stream/resume", handler.ResumeMessageStream)
+		for _, tc := range []struct{ path, message string }{
+			{"41/messages/stream/resume?afterSequence=2", "runId is required"},
+			{"41/messages/stream/resume?runId=invalid", "runId must be a positive integer"},
+			{"41/messages/stream/resume?runId=token-probe", "runId must be a positive integer"},
+			{"41/messages/stream/resume?runId=51&afterSequence=connection-probe", "afterSequence must be a non-negative integer"},
+			{"adjustable-probe/messages/stream/resume?runId=51", "conversation id must be a positive integer"},
+		} {
+			t.Run(tc.path, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/"+tc.path, nil)
+				rr := httptest.NewRecorder()
+				mux.ServeHTTP(rr, req)
+				require.Equal(t, http.StatusBadRequest, rr.Code)
+				require.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+				require.JSONEq(t, `{"message":"`+tc.message+`"}`, rr.Body.String())
+			})
+		}
 		service.AssertNotCalled(t, "PrepareResumeMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }

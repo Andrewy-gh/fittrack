@@ -62,11 +62,11 @@ func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
 	status, message := http.StatusInternalServerError, "recommendation request failed"
 	switch {
 	case errors.Is(err, ErrUnauthorized):
-		status, message = http.StatusUnauthorized, err.Error()
+		status, message = http.StatusUnauthorized, ErrUnauthorized.Error()
 	case errors.Is(err, ErrNotFound):
-		status, message = http.StatusNotFound, err.Error()
+		status, message = http.StatusNotFound, ErrNotFound.Error()
 	case errors.Is(err, ErrInvalid):
-		status, message = http.StatusBadRequest, err.Error()
+		status, message = http.StatusBadRequest, ErrInvalid.Error()
 	}
 	response.ErrorJSON(w, r, h.logger, status, message, err)
 }

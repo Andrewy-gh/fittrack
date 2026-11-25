@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-go/v83/webhook"
 )
 
 type stubBillingService struct {
@@ -53,6 +56,33 @@ func (s stubBillingService) HandleWebhook(ctx context.Context, payload []byte, s
 		return s.handleWebhook(ctx, payload, signatureHeader)
 	}
 	return nil
+}
+
+func TestHandlerWebhook_UsesSignatureFailureTypeNotErrorText(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		err     error
+		message string
+	}{
+		{"missing signature", webhook.ErrNotSigned, "unauthorized"},
+		{"invalid header", webhook.ErrInvalidHeader, "unauthorized"},
+		{"invalid signature", webhook.ErrNoValidSignature, "unauthorized"},
+		{"stale timestamp", webhook.ErrTooOld, "failed to process stripe webhook"},
+		{"other error mentioning signature", errors.New("invalid signature field in event body"), "failed to process stripe webhook"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
+				handleWebhook: func(context.Context, []byte, string) error {
+					return fmt.Errorf("webhook processing: %w", tc.err)
+				},
+			})
+			req := httptest.NewRequest(http.MethodPost, "/stripe/webhook", nil)
+			rec := httptest.NewRecorder()
+			handler.Webhook(rec, req)
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.JSONEq(t, `{"message":"`+tc.message+`"}`, rec.Body.String())
+		})
+	}
 }
 
 func TestHandlerCreateCustomerPortalSession_NotConfiguredReturns503(t *testing.T) {

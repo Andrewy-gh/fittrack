@@ -126,8 +126,10 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err 
 		response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 	case errors.As(err, &errNotFound):
 		response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
-	case errors.Is(err, errPromptRequired), errors.Is(err, errPromptTooLarge):
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
+	case errors.Is(err, errPromptRequired):
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, errPromptRequired.Error(), nil)
+	case errors.Is(err, errPromptTooLarge):
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, errPromptTooLarge.Error(), nil)
 	case errors.Is(err, ErrFeatureDisabled):
 		response.ErrorJSON(w, r, h.logger, http.StatusForbidden, "ai chat feature is not enabled for this user", nil)
 	case errors.Is(err, billing.ErrTrialPromptLimitExceeded):
