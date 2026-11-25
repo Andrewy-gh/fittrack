@@ -33,7 +33,7 @@ func (h *ExerciseHandler) UpdateExerciseHistorical1RM(w http.ResponseWriter, r *
 
 	var req UpdateExerciseHistorical1RMRequest
 	if err := decodeStrictJSON(w, r, &req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
+		response.InvalidRequestJSON(w, r, h.logger, "failed to decode request body", err)
 		return
 	}
 

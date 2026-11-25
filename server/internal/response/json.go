@@ -51,6 +51,12 @@ func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, stat
 	writeErrorJSON(w, r, logger, status, message, err, category)
 }
 
+// InvalidRequestJSON writes a public 400 for a request body that did not decode.
+// Decoding provider or stored data is not client validation.
+func InvalidRequestJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, message string, err error) {
+	writeErrorJSON(w, r, logger, http.StatusBadRequest, message, err, errorCategoryValidation)
+}
+
 // InvalidAccessTokenJSON is used only after the access-token verifier rejects
 // a token. Its response must not depend on the verifier's diagnostic text.
 func InvalidAccessTokenJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
@@ -63,15 +69,12 @@ func classifyError(err error) string {
 	}
 	var pgErr *pgconn.PgError
 	var connectErr *pgconn.ConnectError
-	var syntaxErr *json.SyntaxError
-	var typeErr *json.UnmarshalTypeError
 	var numberErr *strconv.NumError
 	var validationErr validator.ValidationErrors
 	switch {
 	case errors.As(err, &pgErr), errors.As(err, &connectErr):
 		return errorCategoryDatabase
-	case errors.As(err, &syntaxErr), errors.As(err, &typeErr),
-		errors.As(err, &numberErr), errors.Is(err, strconv.ErrSyntax), errors.Is(err, strconv.ErrRange),
+	case errors.As(err, &numberErr), errors.Is(err, strconv.ErrSyntax), errors.Is(err, strconv.ErrRange),
 		errors.As(err, &validationErr):
 		return errorCategoryValidation
 	default:

@@ -1,7 +1,9 @@
 package billing
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -59,6 +61,10 @@ func (s stubBillingService) HandleWebhook(ctx context.Context, payload []byte, s
 }
 
 func TestHandlerWebhook_UsesSignatureFailureTypeNotErrorText(t *testing.T) {
+	var event struct{}
+	decodeErr := json.Unmarshal([]byte("[]"), &event)
+	require.Error(t, decodeErr)
+
 	for _, tc := range []struct {
 		name    string
 		err     error
@@ -69,9 +75,11 @@ func TestHandlerWebhook_UsesSignatureFailureTypeNotErrorText(t *testing.T) {
 		{"invalid signature", webhook.ErrNoValidSignature, "unauthorized"},
 		{"stale timestamp", webhook.ErrTooOld, "failed to process stripe webhook"},
 		{"other error mentioning signature", errors.New("invalid signature field in event body"), "failed to process stripe webhook"},
+		{"provider event decode failure", decodeErr, "failed to process stripe webhook"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			handler := NewHandler(slog.New(slog.NewTextHandler(io.Discard, nil)), stubBillingService{
+			var logs bytes.Buffer
+			handler := NewHandler(slog.New(slog.NewJSONHandler(&logs, nil)), stubBillingService{
 				handleWebhook: func(context.Context, []byte, string) error {
 					return fmt.Errorf("webhook processing: %w", tc.err)
 				},
@@ -81,6 +89,14 @@ func TestHandlerWebhook_UsesSignatureFailureTypeNotErrorText(t *testing.T) {
 			handler.Webhook(rec, req)
 			require.Equal(t, http.StatusBadRequest, rec.Code)
 			require.JSONEq(t, `{"message":"`+tc.message+`"}`, rec.Body.String())
+
+			var entry map[string]any
+			require.NoError(t, json.Unmarshal(logs.Bytes(), &entry))
+			require.Equal(t, "error response", entry["msg"])
+			require.Equal(t, float64(http.StatusBadRequest), entry["status"])
+			require.Equal(t, "internal", entry["error_category"])
+			require.Equal(t, tc.message, entry["response_message"])
+			require.NotContains(t, logs.String(), tc.err.Error())
 		})
 	}
 }

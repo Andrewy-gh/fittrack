@@ -461,6 +461,32 @@ func TestHandlerRecordTelemetry(t *testing.T) {
 		service.AssertExpectations(t)
 	})
 
+	t.Run("logs malformed request bodies as validation", func(t *testing.T) {
+		for _, tc := range []struct{ name, body string }{
+			{"empty", ""},
+			{"truncated", `{"category":`},
+			{"unknown field", `{"extra":true}`},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				var logs bytes.Buffer
+				handler := NewHandler(slog.New(slog.NewJSONHandler(&logs, nil)), nil)
+				req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(tc.body))
+				req = req.WithContext(request.WithRequestID(req.Context(), "telemetry-decode"))
+				rr := httptest.NewRecorder()
+				handler.RecordTelemetry(rr, req)
+				require.Equal(t, http.StatusBadRequest, rr.Code)
+				require.JSONEq(t, `{"message":"failed to decode request body","request_id":"telemetry-decode"}`, rr.Body.String())
+
+				var entry map[string]any
+				require.NoError(t, json.Unmarshal(logs.Bytes(), &entry))
+				require.Equal(t, "error response", entry["msg"])
+				require.Equal(t, "validation", entry["error_category"])
+				require.Equal(t, "failed to decode request body", entry["response_message"])
+				require.Equal(t, "telemetry-decode", entry["request_id"])
+			})
+		}
+	})
+
 	t.Run("rejects invalid telemetry outcomes", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)

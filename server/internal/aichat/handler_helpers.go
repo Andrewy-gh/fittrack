@@ -38,7 +38,7 @@ func (h *Handler) decodeSendMessageRequest(w http.ResponseWriter, r *http.Reques
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
+		response.InvalidRequestJSON(w, r, h.logger, "failed to decode request body", err)
 		return nil, false
 	}
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {

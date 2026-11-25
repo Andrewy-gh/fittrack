@@ -2,11 +2,13 @@ package response
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/require"
 )
 
 func TestErrorJSON_WritesSanitizedHTTPResponse(t *testing.T) {
@@ -40,6 +43,36 @@ func TestErrorJSON_WritesSanitizedHTTPResponse(t *testing.T) {
 	if got, want := w.Body.String(), `{"message":"internal error","request_id":"req-http-response"}`; got != want {
 		t.Errorf("serialized response = %s, want %s", got, want)
 	}
+}
+
+func TestErrorJSON_RedactsWrappedPostgresConnectError(t *testing.T) {
+	cfg, err := pgconn.ParseConfig("host=127.0.0.1 port=1 user=offline-owner dbname=offline-db sslmode=disable")
+	require.NoError(t, err)
+	// Exercise pgconn's error construction without opening a socket.
+	cfg.DialFunc = func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New("synthetic private dial detail")
+	}
+	_, err = pgconn.ConnectConfig(context.Background(), cfg)
+	var connectErr *pgconn.ConnectError
+	require.ErrorAs(t, err, &connectErr)
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req = req.WithContext(request.WithRequestID(req.Context(), "connect-failure"))
+	w := httptest.NewRecorder()
+	ErrorJSON(w, req, logger, http.StatusInternalServerError, "read failed", fmt.Errorf("acquire connection: %w", err))
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+	require.JSONEq(t, `{"message":"internal error","request_id":"connect-failure"}`, w.Body.String())
+	var entry map[string]any
+	require.NoError(t, json.Unmarshal(logs.Bytes(), &entry))
+	require.Equal(t, "error response", entry["msg"])
+	require.Equal(t, "database", entry["error_category"])
+	require.Equal(t, "internal error", entry["response_message"])
+	require.Equal(t, "connect-failure", entry["request_id"])
+	require.NotContains(t, logs.String(), "offline-owner")
+	require.NotContains(t, logs.String(), "offline-db")
+	require.NotContains(t, logs.String(), "synthetic private dial detail")
 }
 
 func TestErrorJSON_DoesNotLeakSensitiveData(t *testing.T) {

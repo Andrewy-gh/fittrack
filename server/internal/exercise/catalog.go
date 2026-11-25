@@ -79,7 +79,7 @@ func (h *ExerciseHandler) UpdateCatalog(w http.ResponseWriter, r *http.Request) 
 	}
 	var req UpdateCatalogRequest
 	if err := decodeStrictJSON(w, r, &req); err != nil || req.CatalogID == nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "catalog_id is required; use an empty string to clear", err)
+		response.InvalidRequestJSON(w, r, h.logger, "catalog_id is required; use an empty string to clear", err)
 		return
 	}
 	if err := h.exerciseService.UpdateCatalog(r.Context(), id, *req.CatalogID); err != nil {
