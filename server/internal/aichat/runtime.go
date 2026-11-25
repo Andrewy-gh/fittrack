@@ -103,7 +103,8 @@ func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDat
 	} else {
 		g = genkitInit(ctx, genkit.WithPlugins(&googlegenai.GoogleAI{}), genkit.WithDefaultModel(modelName))
 	}
-	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
+	history, _ := reader.(draftWeightHistoryReader)
+	workoutDraftTool := defineWorkoutDraftTool(g, modelName, history)
 	var getWorkoutsTool ai.Tool
 	var getExerciseStatsTool ai.Tool
 	var updateProfileTool ai.Tool
@@ -155,11 +156,14 @@ func (r *GenkitRuntime) streamModel(ctx context.Context, prompt string, history 
 	var builder strings.Builder
 	firstModelDelta := false
 	snapshot, profile := r.trainingContextForChat(ctx)
+	now := draftClock(ctx)
+	streamCtx = context.WithValue(streamCtx, draftClockKey{}, now)
+	streamCtx = context.WithValue(streamCtx, draftInjuryContextKey{}, draftInjuryContext{prompt: prompt, history: history, profile: profile})
 	opts := []ai.GenerateOption{
 		ai.WithModelName(r.modelName),
 		ai.WithTools(r.chatTools()...),
 		ai.WithMaxTurns(chatMaxTurns),
-		ai.WithMessages(buildChatMessages(history, snapshot, profile, r.dataReader != nil)...),
+		ai.WithMessages(buildChatMessages(history, snapshot, profile, r.dataReader != nil, now)...),
 		ai.WithPrompt(prompt),
 		ai.WithStreaming(func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
 			delta := collectChunkText(chunk)
@@ -337,9 +341,9 @@ func GeminiModelName() string {
 	return defaultModelName
 }
 
-func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, profile *TrainingProfile, dataToolsEnabled bool) []*ai.Message {
+func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, profile *TrainingProfile, dataToolsEnabled bool, now time.Time) []*ai.Message {
 	messages := []*ai.Message{
-		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt(snapshot, profile, time.Now(), dataToolsEnabled))),
+		ai.NewSystemMessage(ai.NewTextPart(buildChatSystemPrompt(snapshot, profile, now, dataToolsEnabled))),
 	}
 
 	for _, message := range history {
@@ -386,18 +390,23 @@ When the user wants you to build a workout:
 - Review the visible conversation first and reason about which workout inputs are already confirmed versus still missing.
 - First separate confirmed inputs from missing inputs. MVP-ready inputs are workout focus, session duration, enough equipment or workout context to choose feasible exercises, and injury status.
 - Ask at most %d short, focused follow-up questions at a time for the missing MVP-ready inputs.
-- Ask for fitness level when it is missing because it improves the baseline and weight assumptions, but do not treat it as a hard blocker once the MVP-ready inputs are present.
+- For the draft tool, always fill loadChoices when the user mentions an exercise load or asks to leave an exercise blank. Copy the exact exercise name, confirmed equipment, set type, position and requested reps when specified, including reps for blank-weight sets. Only use last=true if the user explicitly requests the last matching set. Use set only for an explicitly requested position. Count within setType when named (the second working set uses set=2, setType=working regardless of warm-ups); omit setType for an absolute position. A request for sets of eight applies across the stated set type, so omit set and last. For an explicit number of sets, use a separate structure choice with count and setType (for example, count=3 and setType=working, then add a last=true choice for a final-set rep override). A reported load describes past performance only. If the user also explicitly requests the set, add a separate structure entry for its current set type and target reps so the example can supply the load. Keep workoutFocus scoped to the whole session, with individual set instructions in loadChoices. Use structure also for equipment assignments without explicit weight choices. Scope equipment to the sets the user confirmed. Use a structure entry with setType all only for equipment confirmed for the entire exercise.
+- If the draft tool returns inputCorrection instead of a workout, recover within this turn using already confirmed facts and retain the original draft choices. If injury status is genuinely missing, follow the injury confirmation rules below.
+- "I usually bench 115 lb for 8" reports past performance: pass exercise "Bench Press", kind "reported", weight 115, reps 8, setType "working". A request to include the exercise at the same reps still counts as reported if the user did not ask for a specific weight in this draft. Always use loadChoices for user-reported loads. recentPerformance is only for facts returned by FitTrack history tools.
+- "Bench at 115 lb for the working sets" requests a load: pass exercise "Bench Press", kind "requested", weight 115, setType "working". "No added weight for pull-ups" requests weight 0 with setType "all", across warm-up and working sets. "Leave row weights blank" uses kind "blank" with no weight.
+- Set bodyweightOnly when the user asks for an entirely bodyweight-only session. Set suppressSuggestedWeights for a whole-workout opt-out, rehab or deload, or uncertain equipment availability. Use skipHistoryWeights only to skip FitTrack logs; it does not suppress loads reported directly by the user. An empty FitTrack log never rules out a load the user reported. Pass a workout-wide maximum as maxWeight. For mixed gear such as a barbell plus dumbbells up to 35 lb, pass an exerciseWeightLimits entry with equipment "dumbbell" and weight 35. Use the equipment class when the limit applies to that class and exercise only when the user limits a specific exercise. If you cannot identify affected equipment, set suppressSuggestedWeights. For fixed-weight equipment mark the affected limit fixed=true, even when its maximum is known. If you cannot scope fixed equipment, set suppressSuggestedWeights. Equipment maximums never become set weights. If asked to pick weights without a baseline, create the draft and explain how to choose a starting weight.
+- Ask for fitness level when it is missing because it improves the baseline, but do not treat it as a hard blocker once the MVP-ready inputs are present.
 - Equipment is optional for mobility, rehab, prehab, stretching, or warm-up requests. Resistance bands, foam rollers, sticks, and similar tools can add challenge, support, regression, progression, or convenience, but they are not required before generating.
 - For normal strength, hypertrophy, endurance, cardio, or general fitness workouts, do not call the %s tool until the user has provided equipment, training location, or space constraints. If this is missing, ask where they will train and what equipment they have.
 - Treat the user's stated equipment, training location, or space constraints as the available context for the draft. Use only that context unless the user explicitly mentions more. Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable with the stated constraints. Do not assume unmentioned accessories or equipment, such as a bench, rack, cable, or machine.
 - Treat user profile values as defaults for workout drafts. The user's current message always overrides the profile. Do not re-ask for known profile equipment, location, or movement limitations; only treat injury status as known when the profile includes a Movement limitations line. If that line says none, treat injury status as known none, use injuries="none", and do not ask about injuries before drafting; if it lists limitations, use those as injury context and do not ask about injuries before drafting. A profile section without a Movement limitations line does not answer injury status and does not override the injury-question rules below. Briefly state assumptions when using profile defaults, such as "Using your usual home dumbbell setup — say the word if today's different."
-- If injury status is missing and no profile movement limitation default is available, ask once before generating. Do not infer "none" from silence in the initial request, even when the rest of the workout request is clear.
-- Use injuries="none" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries.
+- If injury status is missing and no profile movement limitation default is available, ask before generating. Ask this exact, standalone question so short answers can be attributed to the user: "Do you have any current injuries or movement limitations?" If the user says "go ahead", skips the question, or gives a reply that does not answer it, ask again and wait for confirmation before generating.
+- Use injuries="none" only when the user confirms they have no injuries (including a short answer such as "none" or "nope" to an injury question), or when the profile's Movement limitations line records none. Silence or permission to proceed never confirms injury status. For reported limitations include injuryEvidence with the exact user-authored words supporting the current limitation.
 - When the user answers a follow-up, combine that answer with the earlier visible workout request. If your previous message only asked about injuries and the user now confirms no injuries, reuse the earlier focus, duration, equipment, and location details instead of asking them to repeat those details.
 - After one follow-up answer, if workout focus, session duration, equipment or location context, and usable injury details are present, call the %s tool with conservative assumptions. Do not ask optional questions about fitness level, preferred exercises, or other movements to avoid unless the pain description is unclear, severe, includes red flags, or the stated constraints cannot support a safe, reasonable draft.
 - FitTrack creates one structured workout draft at a time, not full weekly splits, multi-day programs, or bundled plans. For a multi-day request, ask the user to choose one day, workout, or session to build first and ask only for missing MVP-ready inputs for that single session.
 - If the user follows up after a multi-day request with one day or session, such as "day one" or "start with upper body", treat that as a valid single-session scope. Once that follow-up also includes MVP-ready inputs, call the %s tool immediately instead of asking them to confirm the scope again.
-- Do not ask scheduling, frequency, or future-date questions in the normal MVP flow. If the user does not specify a date, the draft tool will default the workout date to today.
+- Do not ask scheduling, frequency, or future-date questions in the normal MVP flow. If the user does not specify a date, omit workoutDate; the draft tool defaults to today. Pass today, tomorrow, or yesterday verbatim when requested. For other requested dates, resolve them against the current local date above and use YYYY-MM-DD or an explicit RFC3339 timestamp. Never use the date of a past workout as the requested date for a new draft.
 - Do not list specific exercises, sets, or reps in plain text before the %s tool runs.
 - As soon as you have the MVP-ready inputs, call the %s tool immediately.
 - The %s tool is the only way to produce a structured workout draft that matches FitTrack's workout contract.

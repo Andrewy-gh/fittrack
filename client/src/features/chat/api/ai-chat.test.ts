@@ -170,7 +170,7 @@ describe("ai chat api wrapper", () => {
               'data: {"type":"start","conversation_id":41,"run_id":51,"message_id":61}',
               "",
               "event: done",
-              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"text":"I put together a structured workout draft for you.","workout_draft":{"date":"2026-04-20T12:00:00Z","workoutFocus":"pull","exercises":[{"name":"Chest Supported Row","sets":[{"reps":10,"setType":"working"}]}]}}',
+              'data: {"type":"done","conversation_id":41,"run_id":51,"message_id":61,"text":"I put together a structured workout draft for you.","workout_draft":{"date":"2026-04-20T12:00:00Z","workoutFocus":"pull","exercises":[{"name":"Chest Supported Row","draftProgression":{"weight":62.5,"reps":8,"sets":1},"sets":[{"reps":10,"setType":"working","weight":60,"weightSourceDate":"2026-04-19T12:00:00Z"}]},{"name":"Pull-Ups","sets":[{"reps":8,"setType":"working","draftBodyweight":true}]}]}}',
               "",
               "",
             ].join("\n"),
@@ -198,7 +198,19 @@ describe("ai chat api wrapper", () => {
       exercises: [
         {
           name: "Chest Supported Row",
-          sets: [{ reps: 10, setType: "working" }],
+          draftProgression: { weight: 62.5, reps: 8, sets: 1 },
+          sets: [
+            {
+              reps: 10,
+              setType: "working",
+              weight: 60,
+              weightSourceDate: "2026-04-19T12:00:00Z",
+            },
+          ],
+        },
+        {
+          name: "Pull-Ups",
+          sets: [{ reps: 8, setType: "working", draftBodyweight: true }],
         },
       ],
     });

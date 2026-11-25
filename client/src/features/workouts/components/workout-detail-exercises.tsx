@@ -83,7 +83,9 @@ export function WorkoutDetailExercises({
                       </span>
                       <div className="flex items-center space-x-4 text-sm">
                         <span className="font-medium">
-                          {formatWeight(set.weight || 0)} lbs
+                          {set.weight == null
+                            ? "—"
+                            : `${formatWeight(set.weight)} lbs`}
                         </span>
                         <span>&times;</span>
                         <span className="font-medium">

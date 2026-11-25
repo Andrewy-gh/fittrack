@@ -27,9 +27,8 @@ func TestBuildChatSystemPromptIncludesWorkoutGuardrails(t *testing.T) {
 		"Use only that context unless the user explicitly mentions more",
 		"Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable",
 		"Do not assume unmentioned accessories or equipment",
-		"If injury status is missing and no profile movement limitation default is available, ask once before generating",
-		"Do not infer \"none\" from silence in the initial request",
-		"Use injuries=\"none\" only when the user explicitly says they have no injuries, when you already asked about injuries and the user continues without answering, or when the profile's Movement limitations line records none; in the profile-none case, do not ask about injuries",
+		"If injury status is missing and no profile movement limitation default is available, ask before generating",
+		"Silence or permission to proceed never confirms injury status",
 		"When the user answers a follow-up, combine that answer with the earlier visible workout request",
 		"previous message only asked about injuries and the user now confirms no injuries",
 		"After one follow-up answer, if workout focus, session duration, equipment or location context",
@@ -80,9 +79,8 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 		"use only that context unless the user explicitly mentions more",
 		"Do not ask what other equipment they have unless the requested workout is unsafe, contradictory, or not reasonably buildable",
 		"Do not assume unmentioned accessories or equipment such as a bench, rack, cable, or machine",
-		"Use injuries=none only when the user explicitly reports no injuries",
-		"continues without answering after one injury-status question",
-		"Fitness level improves weight assumptions but is not required",
+		"Use injuries=none only with confirmed user or profile information",
+		"If the injury question goes unanswered, ask again and wait before drafting",
 	}
 
 	for _, snippet := range requiredSnippets {
@@ -92,9 +90,9 @@ func TestWorkoutDraftToolDescriptionMatchesMVPReadiness(t *testing.T) {
 	}
 }
 
-func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(t *testing.T) {
+func TestWorkoutGenerationToolInputSchemaAllowsRecoverableOmissions(t *testing.T) {
 	inputType := reflect.TypeOf(WorkoutGenerationToolInput{})
-	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints", "RecentPerformance"}
+	optionalFields := []string{"FitnessLevel", "FitnessGoal", "Equipment", "SpaceConstraints", "RecentPerformance", "Injuries"}
 
 	for _, fieldName := range optionalFields {
 		field, ok := inputType.FieldByName(fieldName)
@@ -106,13 +104,6 @@ func TestWorkoutGenerationToolInputSchemaDoesNotRequireHelpfulButOptionalFields(
 		}
 	}
 
-	injuriesField, ok := inputType.FieldByName("Injuries")
-	if !ok {
-		t.Fatal("WorkoutGenerationToolInput missing field Injuries")
-	}
-	if strings.Contains(injuriesField.Tag.Get("json"), "omitempty") {
-		t.Fatalf("Injuries json tag = %q, should remain required", injuriesField.Tag.Get("json"))
-	}
 }
 
 func TestValidateWorkoutGenerationToolInputAllowsMVPReadyRequestWithoutFitnessLevel(t *testing.T) {
@@ -176,12 +167,12 @@ func TestValidateWorkoutGenerationToolInputStillRequiresInjuryStatus(t *testing.
 		WorkoutFocus:    "upper body",
 	}
 
-	err := validateWorkoutGenerationToolInput(input)
-	if err == nil {
-		t.Fatal("validateWorkoutGenerationToolInput() error = nil, want missing injuries error")
-	}
-	if !strings.Contains(err.Error(), "injuries") {
-		t.Fatalf("validateWorkoutGenerationToolInput() error = %v, want injuries field", err)
+	for _, status := range []string{"", "unknown", "not specified"} {
+		input.Injuries = status
+		err := validateWorkoutGenerationToolInput(input)
+		if err == nil || !strings.Contains(err.Error(), "injuries") {
+			t.Fatalf("validateWorkoutGenerationToolInput() with injuries %q = %v, want missing injuries error", status, err)
+		}
 	}
 }
 
@@ -202,15 +193,14 @@ func TestValidateWorkoutGenerationToolInputRequiresFeasibleWorkoutContext(t *tes
 }
 
 func TestBuildWorkoutGenerationPromptIncludesFitTrackContract(t *testing.T) {
-	prompt := buildWorkoutGenerationPrompt(WorkoutGenerationToolInput{}, time.Date(2026, 4, 20, 12, 0, 0, 0, time.UTC))
+	prompt := buildWorkoutGenerationPrompt()
 
 	requiredSnippets := []string{
-		`"date": "RFC3339 timestamp"`,
 		`"workoutFocus": "optional string"`,
 		`"setType": "warmup" | "working"`,
-		`"date" is always required and must be RFC3339.`,
-		`If fitness level is unknown, prefer omitting weights instead of guessing aggressively.`,
-		`When recent performance is supplied, use it to choose conservative weights and progressions`,
+		`FitTrack attaches the actual workout date independently of the model.`,
+		`Do not assign any weights.`,
+		`When recent performance is supplied, use it to choose suitable exercises and reps.`,
 		`Scale the draft to the requested session duration by estimating setup and transitions, set execution time, rest between sets, and warm-up or ramp-up needs when appropriate.`,
 		`Do not satisfy a normal 40+ minute strength or hypertrophy request with a very small workout unless the user asked for minimal, beginner, rehab, warm-up, or low-volume work.`,
 		`strength can use fewer exercises with longer rests and enough sets`,
@@ -241,21 +231,6 @@ func TestBuildWorkoutGenerationUserPromptLabelsMissingFitnessLevelAsUnknown(t *t
 	}
 	if !strings.Contains(prompt, "- Recent performance to respect: Bench Press last session: 195x3 working") {
 		t.Fatalf("buildWorkoutGenerationUserPrompt() = %q, want recent performance", prompt)
-	}
-}
-
-func TestBuildWorkoutGenerationPromptUsesUserLocalLanguageForRelativeDates(t *testing.T) {
-	loc := time.FixedZone("EDT", -4*60*60)
-	prompt := buildWorkoutGenerationPrompt(
-		WorkoutGenerationToolInput{WorkoutDate: "tomorrow"},
-		time.Date(2026, 4, 20, 23, 30, 0, 0, loc),
-	)
-
-	if !strings.Contains(prompt, `interpret it from the user's local day rather than UTC`) {
-		t.Fatalf("buildWorkoutGenerationPrompt() = %q, want user-local relative date guidance", prompt)
-	}
-	if strings.Contains(prompt, `relative to`) {
-		t.Fatalf("buildWorkoutGenerationPrompt() = %q, should not anchor relative dates to a server timestamp", prompt)
 	}
 }
 

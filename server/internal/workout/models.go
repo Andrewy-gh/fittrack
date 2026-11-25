@@ -17,15 +17,18 @@ type CreateWorkoutRequest struct {
 }
 
 type ExerciseInput struct {
-	CatalogID *string    `json:"catalog_id,omitempty"`
-	Name      string     `json:"name" validate:"required,min=1,max=256"`
-	Sets      []SetInput `json:"sets" validate:"required,min=1,dive"`
+	DraftProgression *recommendation.Plan `json:"draftProgression,omitempty"`
+	CatalogID        *string              `json:"catalog_id,omitempty"`
+	Name             string               `json:"name" validate:"required,min=1,max=256"`
+	Sets             []SetInput           `json:"sets" validate:"required,min=1,dive"`
 }
 
 type SetInput struct {
-	Weight  *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9" extensions:"x-nullable"`
-	Reps    int      `json:"reps" validate:"required,gte=1"`
-	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
+	DraftBodyweight  bool     `json:"draftBodyweight,omitempty"`
+	WeightSourceDate *string  `json:"weightSourceDate,omitempty"`
+	Weight           *float64 `json:"weight,omitempty" validate:"omitempty,gte=0,lte=999999999.9" extensions:"x-nullable"`
+	Reps             int      `json:"reps" validate:"required,gte=1"`
+	SetType          string   `json:"setType" validate:"required,oneof=warmup working"`
 }
 
 type UpdateExercise struct {

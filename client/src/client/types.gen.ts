@@ -366,6 +366,7 @@ export type WorkoutEvidencePeriod = {
 
 export type WorkoutExerciseInput = {
   catalog_id?: string;
+  draftProgression?: RecommendationPlan;
   name: string;
   sets: Array<WorkoutSetInput>;
 };
@@ -410,9 +411,11 @@ export type WorkoutNewWorkoutContextResponse = {
 };
 
 export type WorkoutSetInput = {
+  draftBodyweight?: boolean;
   reps: number;
   setType: "warmup" | "working";
   weight?: number | null;
+  weightSourceDate?: string;
 };
 
 export type WorkoutStrengthAssessment = {
@@ -810,7 +813,12 @@ export type PostAiConversationsByIdMessagesRecoverData = {
      */
     id: number;
   };
-  query?: never;
+  query?: {
+    /**
+     * Client IANA timezone for workout dates (defaults to UTC)
+     */
+    timezone?: string;
+  };
   url: "/ai/conversations/{id}/messages/recover";
 };
 
@@ -865,7 +873,12 @@ export type PostAiConversationsByIdMessagesStreamData = {
      */
     id: number;
   };
-  query?: never;
+  query?: {
+    /**
+     * Client IANA timezone for workout dates (defaults to UTC)
+     */
+    timezone?: string;
+  };
   url: "/ai/conversations/{id}/messages/stream";
 };
 

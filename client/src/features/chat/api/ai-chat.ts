@@ -96,12 +96,15 @@ export type AISaveLatestWorkoutDraftResponse = {
 };
 
 export type AIWorkoutSetInput = {
+  draftBodyweight?: boolean;
+  weightSourceDate?: string;
   weight?: number;
   reps: number;
   setType: "warmup" | "working";
 };
 
 export type AIWorkoutExerciseInput = {
+  draftProgression?: { weight: number; reps: number; sets: number };
   name: string;
   sets: AIWorkoutSetInput[];
 };
@@ -323,6 +326,7 @@ export async function requestAIChatMessageRecovery(
 ): Promise<AIChatRecoveryResponse> {
   const response = await postAiConversationsByIdMessagesRecover({
     path: { id: conversationId },
+    query: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     signal: options.signal,
     throwOnError: true,
   });
@@ -348,8 +352,11 @@ export async function streamAIChatMessage(
   prompt: string,
   handlers: StreamHandlers = {},
 ): Promise<AIChatStreamResult> {
+  const query = new URLSearchParams({
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+  });
   const response = await fetch(
-    `${BASE_URL}/ai/conversations/${conversationId}/messages/stream`,
+    `${BASE_URL}/ai/conversations/${conversationId}/messages/stream?${query.toString()}`,
     {
       method: "POST",
       headers: await getAuthHeaders(true),
@@ -830,11 +837,26 @@ function parseWorkoutExercises(
       rawExercise,
       `workout_draft.exercises[${exerciseIndex}]`,
     );
-    return {
+    const parsed: AIWorkoutExerciseInput = {
       name: parseRequiredString(exercise, "name"),
       sets: parseWorkoutSets(exercise.sets, exerciseIndex),
     };
+    if (exercise.draftProgression != null) {
+      parsed.draftProgression = parseDraftProgression(
+        exercise.draftProgression,
+      );
+    }
+    return parsed;
   });
+}
+
+function parseDraftProgression(value: unknown) {
+  const plan = parseRecord(value, "draftProgression");
+  return {
+    weight: parseRequiredNumber(plan, "weight"),
+    reps: parseRequiredNumber(plan, "reps"),
+    sets: parseRequiredNumber(plan, "sets"),
+  };
 }
 
 function parseWorkoutSets(
@@ -857,11 +879,16 @@ function parseWorkoutSets(
       throw new Error("AI chat workout draft setType is invalid");
     }
 
-    return {
+    const parsed: AIWorkoutSetInput = {
       ...parseOptionalNumberProperty(set, "weight"),
+      ...parseOptionalStringProperty(set, "weightSourceDate"),
       reps: parseRequiredNumber(set, "reps"),
       setType,
     };
+    if (set.draftBodyweight === true) {
+      parsed.draftBodyweight = true;
+    }
+    return parsed;
   });
 }
 

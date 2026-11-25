@@ -275,6 +275,7 @@ func (h *Handler) RecordTelemetry(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Security StackAuth
 // @Param id path int true "Conversation ID"
+// @Param timezone query string false "Client IANA timezone for workout dates (defaults to UTC)"
 // @Success 202 {object} aichat.RecoverMessageResponse
 // @Failure 400 {object} response.Error
 // @Failure 401 {object} response.Error
@@ -289,7 +290,7 @@ func (h *Handler) RecoverMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.RequestMessageRecovery(r.Context(), conversationID, recoverReasonStreamReconnect)
+	resp, err := h.service.RequestMessageRecovery(withDraftTimezone(r.Context(), r.URL.Query().Get("timezone")), conversationID, recoverReasonStreamReconnect)
 	if err != nil {
 		h.writeServiceError(w, r, err, http.StatusInternalServerError, "failed to queue ai chat recovery")
 		return
@@ -308,6 +309,7 @@ func (h *Handler) RecoverMessage(w http.ResponseWriter, r *http.Request) {
 // @Produce text/event-stream
 // @Security StackAuth
 // @Param id path int true "Conversation ID"
+// @Param timezone query string false "Client IANA timezone for workout dates (defaults to UTC)"
 // @Param request body aichat.SendMessageRequest true "Send message request"
 // @Success 200 {object} aichat.StreamEvent
 // @Failure 400 {object} response.Error
@@ -370,7 +372,7 @@ func (h *Handler) StreamMessage(w http.ResponseWriter, r *http.Request) {
 		"request_id", request.GetRequestID(r.Context()),
 	)
 
-	if err := h.service.StartMessageGeneration(r.Context(), prepared); err != nil {
+	if err := h.service.StartMessageGeneration(withDraftTimezone(r.Context(), r.URL.Query().Get("timezone")), prepared); err != nil {
 		if !h.writeStreamError(sse, r, prepared.Conversation.ID, prepared.Run.ID, prepared.AssistantMessage.ID, "failed to start ai chat generation", err) {
 			h.logServiceFailure("failed to start ai chat generation", r, err)
 		}

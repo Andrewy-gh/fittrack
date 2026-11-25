@@ -18,7 +18,7 @@ export type WorkoutDraftStorage = {
 
 const WorkoutSetSchema = v.object({
   reps: v.number(),
-  weight: v.optional(v.number()),
+  weight: v.nullish(v.number()),
   setType: v.picklist(["warmup", "working"]),
 });
 
@@ -55,7 +55,13 @@ function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
     date: result.output.date,
     notes: result.output.notes,
     workoutFocus: result.output.workoutFocus,
-    exercises: result.output.exercises,
+    exercises: result.output.exercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) => {
+        if (set.weight !== null) return set;
+        return { reps: set.reps, setType: set.setType };
+      }),
+    })),
   };
 }
 

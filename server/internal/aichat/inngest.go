@@ -21,6 +21,7 @@ type inngestRecoveryEventData struct {
 	RunID          int32  `json:"run_id"`
 	UserID         string `json:"user_id"`
 	Reason         string `json:"reason,omitempty"`
+	Timezone       string `json:"timezone,omitempty"`
 }
 
 type recoveryRunner interface {
@@ -55,6 +56,7 @@ func NewInngestRecovery(logger *slog.Logger, runner recoveryRunner) (*InngestRec
 				RunID:          input.Event.Data.RunID,
 				UserID:         input.Event.Data.UserID,
 				Reason:         input.Event.Data.Reason,
+				Timezone:       input.Event.Data.Timezone,
 			}
 
 			if err := runner.RecoverStreamingRun(user.WithContext(ctx, req.UserID), req); err != nil {
@@ -85,6 +87,7 @@ func (r *InngestRecovery) EnqueueRunRecovery(ctx context.Context, request RunRec
 			RunID:          request.RunID,
 			UserID:         request.UserID,
 			Reason:         request.Reason,
+			Timezone:       request.Timezone,
 		},
 	})
 	if err != nil {

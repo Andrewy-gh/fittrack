@@ -74,6 +74,7 @@ type WorkoutFormFieldComponents = {
     className?: string;
     step?: string;
     min?: string;
+    allowEmpty?: boolean;
   }>;
   AddExerciseField: LazyFieldComponent<{
     exercises: DbExercise[];

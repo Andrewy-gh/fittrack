@@ -146,11 +146,13 @@ type RunRecoveryRequest struct {
 	RunID          int32
 	UserID         string
 	Reason         string
+	Timezone       string
 }
 
 type RuntimeChatMessage struct {
-	Role string
-	Text string
+	Role      string
+	Text      string
+	CreatedAt time.Time
 }
 
 type WorkoutHistoryFilter struct {

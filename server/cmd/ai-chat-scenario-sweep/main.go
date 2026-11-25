@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/firebase/genkit/go/ai"
@@ -41,7 +44,19 @@ func main() {
 	fromID := flag.String("from", "", "run an inclusive scenario id range starting at this id")
 	toID := flag.String("to", "", "run an inclusive scenario id range ending at this id")
 	withDataFixtures := flag.Bool("with-data-fixtures", false, "include AI chat data Q&A scenarios backed by in-memory workout fixtures")
+	weightScenarios := flag.Bool("draft-weights", false, "run the no-history workout draft weight scenarios")
+	explicitModel := flag.String("model", "", "select luna or gemini independently, with fallback disabled")
+	forcedFallback := flag.Bool("force-luna-fallback", false, "inject a local Luna 503 and verify the weight draft comes from Gemini")
 	flag.Parse()
+	if *forcedFallback && (!*weightScenarios || *explicitModel != "") {
+		fail("force-luna-fallback requires draft-weights and no model override")
+	}
+	if *explicitModel != "" && *explicitModel != "luna" && *explicitModel != "gemini" {
+		fail("model must be luna or gemini")
+	}
+	if *weightScenarios && *withDataFixtures {
+		fail("draft-weights scenarios require empty workout history")
+	}
 	timeoutExplicit := flagWasSet("timeout")
 	if err := aichateval.ValidateMode(*mode); err != nil {
 		fail("%v", err)
@@ -53,6 +68,9 @@ func main() {
 		fail("scenario-delay must be zero or greater")
 	}
 	scenarios := aichateval.DefaultScenarios()
+	if *weightScenarios {
+		scenarios = aichateval.DraftWeightScenarios()
+	}
 	var dataReader aichat.ChatDataReader
 	evalUserID := ""
 	if *withDataFixtures {
@@ -87,6 +105,28 @@ func main() {
 	runtimeCtx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	defer cancel()
 
+	if *explicitModel != "" {
+		model := ""
+		if *explicitModel == "luna" {
+			model = "openai/gpt-6-luna"
+		}
+		if err := os.Setenv("AI_CHAT_PRIMARY_MODEL", model); err != nil {
+			fail("select eval model: %v", err)
+		}
+		if err := os.Unsetenv("AI_CHAT_FALLBACK"); err != nil {
+			fail("disable fallback for independent eval: %v", err)
+		}
+	}
+	lunaFailures := &lunaUnavailableTransport{base: http.DefaultTransport}
+	if *forcedFallback {
+		if err := os.Setenv("AI_CHAT_PRIMARY_MODEL", "openai/gpt-6-luna"); err != nil {
+			fail("select Luna for fallback eval: %v", err)
+		}
+		if err := os.Setenv("AI_CHAT_FALLBACK", "gemini"); err != nil {
+			fail("enable Gemini fallback: %v", err)
+		}
+		http.DefaultClient.Transport = lunaFailures
+	}
 	runtime := aichat.NewGenkitRuntime(runtimeCtx, dataReader)
 	if !runtime.Available() {
 		fail("ai chat runtime unavailable. Set the API key for the selected chat model")
@@ -124,6 +164,37 @@ func main() {
 
 	fmt.Printf("Wrote scenario report to %s\n", outPath)
 	fmt.Printf("Appended sweep log to %s\n", logPath)
+	if *forcedFallback {
+		if lunaFailures.calls.Load() == 0 {
+			fail("fallback eval did not attempt Luna")
+		}
+		for _, result := range report.Results {
+			if result.Model != aichat.GeminiModelName() || !result.Passed {
+				fail("fallback eval %s did not produce a passing Gemini draft", result.ID)
+			}
+		}
+	}
+	if *weightScenarios && report.Summary.PassedCount != len(scenarios) {
+		fail("draft weight eval failed: %d/%d passing", report.Summary.PassedCount, len(scenarios))
+	}
+}
+
+type lunaUnavailableTransport struct {
+	base  http.RoundTripper
+	calls atomic.Int64
+}
+
+func (transport *lunaUnavailableTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Host == "api.openai.com" && req.URL.Path == "/v1/responses" {
+		transport.calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusServiceUnavailable,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"simulated Luna outage"}}`)),
+			Request:    req,
+		}, nil
+	}
+	return transport.base.RoundTrip(req)
 }
 
 func loadLocalEnv() error {

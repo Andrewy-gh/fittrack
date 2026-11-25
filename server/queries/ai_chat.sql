@@ -751,3 +751,28 @@ RETURNING
     updated_at,
     started_at,
     completed_at;
+
+-- name: ListLatestDraftExerciseSets :many
+SELECT requested.name::text AS exercise_name, latest.workout_id, latest.date AS workout_date,
+       s.weight, s.reps, s.set_type
+FROM (SELECT DISTINCT unnest(sqlc.arg(exercise_names)::text[]) AS name) requested
+CROSS JOIN LATERAL (
+    SELECT w.id AS workout_id, w.date, e.id AS exercise_id
+    FROM exercise e
+    JOIN "set" prior ON prior.exercise_id = e.id AND prior.user_id = e.user_id
+    JOIN workout w ON w.id = prior.workout_id AND w.user_id = prior.user_id
+    WHERE e.user_id = sqlc.arg(user_id)
+      AND e.id = (
+          SELECT min(matched.id)
+          FROM exercise matched
+          WHERE matched.user_id = e.user_id AND lower(btrim(matched.name)) = lower(requested.name)
+          HAVING count(*) = 1
+      )
+      AND w.date BETWEEN sqlc.arg(after_date) AND sqlc.arg(before_date)
+    GROUP BY w.id, w.date, e.id
+    ORDER BY w.date DESC, w.id DESC, e.id DESC
+    LIMIT 2
+) latest
+JOIN "set" s ON s.workout_id = latest.workout_id AND s.exercise_id = latest.exercise_id
+WHERE s.user_id = sqlc.arg(user_id)
+ORDER BY requested.name, latest.date DESC, latest.workout_id DESC, latest.exercise_id DESC, s.set_order, s.id;

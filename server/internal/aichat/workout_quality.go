@@ -26,6 +26,7 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 	issues = append(issues, validateDraftDurationQuality(input, draft)...)
 	issues = append(issues, validateDraftEquipmentQuality(input, draft)...)
 	issues = append(issues, validateDraftInjuryQuality(input, draft)...)
+	issues = append(issues, validateDraftLoadScopes(input, draft)...)
 
 	if len(issues) == 0 {
 		return nil
@@ -36,6 +37,40 @@ func validateWorkoutDraftQuality(input WorkoutGenerationToolInput, draft *workou
 		messages = append(messages, issue.message)
 	}
 	return errors.New(strings.Join(messages, "; "))
+}
+
+func validateDraftLoadScopes(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
+	var issues []workoutDraftQualityIssue
+	for _, choice := range input.LoadChoices {
+		if choice.Kind != "requested" && choice.Kind != "structure" && choice.Kind != "blank" {
+			continue
+		}
+		matchedCount, wrongReps := 0, false
+		for _, exercise := range draft.Exercises {
+			if !strings.EqualFold(strings.TrimSpace(choice.Exercise), exercise.Name) {
+				continue
+			}
+			for i, set := range exercise.Sets {
+				if !draftLoadScopeMatches(choice, exercise.Sets, i) {
+					continue
+				}
+				matchedCount++
+				if choice.Reps > 0 && set.Reps != choice.Reps {
+					_, repChoice := draftLoadAndRepChoices(input.LoadChoices, exercise, i)
+					wrongReps = wrongReps || repChoice == choice
+				}
+			}
+		}
+		switch {
+		case choice.Kind == "structure" && choice.Count > 0 && choice.Set == 0 && !choice.Last && matchedCount != choice.Count:
+			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("include exactly %d sets within %s for %q", choice.Count, draftLoadScope(choice), choice.Exercise)})
+		case matchedCount == 0:
+			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("include %s for %q", draftLoadScope(choice), choice.Exercise)})
+		case wrongReps:
+			issues = append(issues, workoutDraftQualityIssue{message: fmt.Sprintf("%q needs %d reps for every set covered by %s", choice.Exercise, choice.Reps, draftLoadScope(choice))})
+		}
+	}
+	return issues
 }
 
 func validateDraftDurationQuality(input WorkoutGenerationToolInput, draft *workout.CreateWorkoutRequest) []workoutDraftQualityIssue {
@@ -282,7 +317,7 @@ func disallowedInjuryTerms(injuries string) []string {
 	if hasAnyQualityTerm(injuries, "knee", "acl", "meniscus") {
 		terms = append(terms, "squat", "lunge", "leg press", "jump", "step-up", "step up", "running")
 	}
-	if hasAnyQualityTerm(injuries, "shoulder", "rotator cuff") {
+	if hasAnyQualityTerm(injuries, "shoulder", "rotator cuff") || (draftRestriction.MatchString(injuries) && hasAnyQualityTerm(injuries, "overhead")) {
 		terms = append(terms, "overhead press", "shoulder press", "upright row", "dip", "snatch")
 	}
 	if hasAnyQualityTerm(injuries, "back", "low back", "lower back", "spine") {
@@ -458,7 +493,7 @@ func hasNegatedEquipmentClauseTerm(text string, term string) bool {
 
 func negatedEquipmentClauseEnd(text string, start int) int {
 	end := len(text)
-	for _, marker := range []string{".", ";"} {
+	for _, marker := range []string{".", ";", " except "} {
 		if index := strings.Index(text[start:], marker); index >= 0 && start+index < end {
 			end = start + index
 		}
