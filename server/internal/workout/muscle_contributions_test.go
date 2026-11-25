@@ -12,6 +12,7 @@ import (
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/exercisecatalog"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
@@ -101,7 +102,7 @@ func TestMuscleContributionsHTTPServiceFailure(t *testing.T) {
 		message string
 	}{
 		{"unexpected failure", errors.New("synthetic failure"), "could not load muscle contributions"},
-		{"sensitive database failure", errors.New("database synthetic secret"), "internal error"},
+		{"sensitive database failure", &pgconn.PgError{Code: "42501", Message: "query rejected", Detail: "synthetic secret"}, "internal error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stub := &muscleStub{err: tc.err}

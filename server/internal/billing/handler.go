@@ -9,6 +9,7 @@ import (
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
 	"github.com/Andrewy-gh/fittrack/server/internal/response"
+	"github.com/stripe/stripe-go/v83/webhook"
 )
 
 const maxWebhookPayloadBytes = 1 << 20
@@ -149,7 +150,13 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.HandleWebhook(r.Context(), payload, r.Header.Get("Stripe-Signature")); err != nil {
-		h.writeServiceError(w, r, err, http.StatusBadRequest, "failed to process stripe webhook")
+		switch {
+		case errors.Is(err, webhook.ErrNotSigned), errors.Is(err, webhook.ErrInvalidHeader), errors.Is(err, webhook.ErrNoValidSignature):
+			// Preserve the existing redacted 400 for these signature failures.
+			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "unauthorized", err)
+		default:
+			h.writeServiceError(w, r, err, http.StatusBadRequest, "failed to process stripe webhook")
+		}
 		return
 	}
 

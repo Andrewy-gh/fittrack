@@ -461,6 +461,32 @@ func TestHandlerRecordTelemetry(t *testing.T) {
 		service.AssertExpectations(t)
 	})
 
+	t.Run("logs malformed request bodies as validation", func(t *testing.T) {
+		for _, tc := range []struct{ name, body string }{
+			{"empty", ""},
+			{"truncated", `{"category":`},
+			{"unknown field", `{"extra":true}`},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				var logs bytes.Buffer
+				handler := NewHandler(slog.New(slog.NewJSONHandler(&logs, nil)), nil)
+				req := httptest.NewRequest(http.MethodPost, "/api/ai/chat/telemetry", strings.NewReader(tc.body))
+				req = req.WithContext(request.WithRequestID(req.Context(), "telemetry-decode"))
+				rr := httptest.NewRecorder()
+				handler.RecordTelemetry(rr, req)
+				require.Equal(t, http.StatusBadRequest, rr.Code)
+				require.JSONEq(t, `{"message":"failed to decode request body","request_id":"telemetry-decode"}`, rr.Body.String())
+
+				var entry map[string]any
+				require.NoError(t, json.Unmarshal(logs.Bytes(), &entry))
+				require.Equal(t, "error response", entry["msg"])
+				require.Equal(t, "validation", entry["error_category"])
+				require.Equal(t, "failed to decode request body", entry["response_message"])
+				require.Equal(t, "telemetry-decode", entry["request_id"])
+			})
+		}
+	})
+
 	t.Run("rejects invalid telemetry outcomes", func(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
@@ -741,14 +767,24 @@ func TestHandlerResumeMessageStream(t *testing.T) {
 		service := new(mockChatService)
 		handler := NewHandler(logger, service)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/41/messages/stream/resume?afterSequence=2", nil)
-		req.SetPathValue("id", "41")
-		rr := httptest.NewRecorder()
-
-		handler.ResumeMessageStream(rr, req)
-
-		require.Equal(t, http.StatusBadRequest, rr.Code)
-		assert.Contains(t, rr.Body.String(), "runId is required")
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /api/ai/conversations/{id}/messages/stream/resume", handler.ResumeMessageStream)
+		for _, tc := range []struct{ path, message string }{
+			{"41/messages/stream/resume?afterSequence=2", "runId is required"},
+			{"41/messages/stream/resume?runId=invalid", "runId must be a positive integer"},
+			{"41/messages/stream/resume?runId=token-probe", "runId must be a positive integer"},
+			{"41/messages/stream/resume?runId=51&afterSequence=connection-probe", "afterSequence must be a non-negative integer"},
+			{"adjustable-probe/messages/stream/resume?runId=51", "conversation id must be a positive integer"},
+		} {
+			t.Run(tc.path, func(t *testing.T) {
+				req := httptest.NewRequest(http.MethodGet, "/api/ai/conversations/"+tc.path, nil)
+				rr := httptest.NewRecorder()
+				mux.ServeHTTP(rr, req)
+				require.Equal(t, http.StatusBadRequest, rr.Code)
+				require.Equal(t, "application/json", rr.Header().Get("Content-Type"))
+				require.JSONEq(t, `{"message":"`+tc.message+`"}`, rr.Body.String())
+			})
+		}
 		service.AssertNotCalled(t, "PrepareResumeMessageStream", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }

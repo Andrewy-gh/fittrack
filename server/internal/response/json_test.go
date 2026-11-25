@@ -2,10 +2,13 @@ package response
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,193 +16,8 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/require"
 )
-
-func TestSanitizeErrorMessage(t *testing.T) {
-	tests := []struct {
-		name        string
-		message     string
-		err         error
-		expectedMsg string
-		description string
-	}{
-		{
-			name:        "PostgreSQL error code 23505",
-			message:     "failed to create user",
-			err:         errors.New("pq: duplicate key value violates unique constraint \"users_pkey\" DETAIL: Key (user_id)=(test) already exists. SQLSTATE 23505"),
-			expectedMsg: "internal error",
-			description: "PostgreSQL unique constraint error should be sanitized",
-		},
-		{
-			name:        "PostgreSQL error code 23503",
-			message:     "failed to create workout",
-			err:         errors.New("pq: insert or update on table \"workouts\" violates foreign key constraint SQLSTATE 23503"),
-			expectedMsg: "internal error",
-			description: "PostgreSQL foreign key error should be sanitized",
-		},
-		{
-			name:        "pgx connection error",
-			message:     "database operation failed",
-			err:         errors.New("pgx: connection lost, failed to read from database pool"),
-			expectedMsg: "internal error",
-			description: "pgx connection errors should be sanitized",
-		},
-		{
-			name:        "JWT parse error",
-			message:     "invalid access token",
-			err:         errors.New("failed to parse/validate token: invalid signature algorithm"),
-			expectedMsg: "unauthorized",
-			description: "JWT parsing errors should be sanitized to unauthorized",
-		},
-		{
-			name:        "JWT claims error",
-			message:     "token validation failed",
-			err:         errors.New("token missing required 'sub' claim"),
-			expectedMsg: "unauthorized",
-			description: "JWT claim errors should be sanitized to unauthorized",
-		},
-		{
-			name:        "authorization context error",
-			message:     "failed to ensure user",
-			err:         errors.New("pq: permission denied for relation users SQLSTATE 42501"),
-			expectedMsg: "internal error",
-			description: "Database permission errors should be sanitized",
-		},
-		{
-			name:        "clean validation error",
-			message:     "validation failed",
-			err:         errors.New("field 'name' is required"),
-			expectedMsg: "validation failed",
-			description: "Clean validation errors should pass through",
-		},
-		{
-			name:        "validation error occurred message",
-			message:     "validation error occurred",
-			err:         errors.New("Key: 'CreateWorkoutRequest.Date' Error:Field validation for 'Date' failed on the 'required' tag"),
-			expectedMsg: "validation error occurred",
-			description: "go-playground validator errors should pass through",
-		},
-		{
-			name:        "failed to decode request body",
-			message:     "failed to decode request body",
-			err:         errors.New("invalid character '}' looking for beginning of object key string"),
-			expectedMsg: "failed to decode request body",
-			description: "JSON decode errors should pass through",
-		},
-		{
-			name:        "nil error",
-			message:     "operation failed",
-			err:         nil,
-			expectedMsg: "operation failed",
-			description: "Messages with nil errors should pass through unchanged",
-		},
-		{
-			name:        "unauthorized database error",
-			message:     "unauthorized access",
-			err:         errors.New("pq: relation \"sensitive_table\" does not exist SQLSTATE 42P01"),
-			expectedMsg: "unauthorized",
-			description: "Unauthorized messages with database errors should remain unauthorized",
-		},
-		{
-			name:        "auth database error",
-			message:     "auth failed",
-			err:         errors.New("database connection failed: pq pool exhausted"),
-			expectedMsg: "unauthorized",
-			description: "Auth messages with database errors should remain unauthorized",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := sanitizeErrorMessage(tt.message, tt.err)
-			if result != tt.expectedMsg {
-				t.Errorf("sanitizeErrorMessage() = %v, want %v\nDescription: %s\nOriginal error: %v",
-					result, tt.expectedMsg, tt.description, tt.err)
-			}
-		})
-	}
-}
-
-func TestContainsDatabaseError(t *testing.T) {
-	tests := []struct {
-		name     string
-		errMsg   string
-		expected bool
-	}{
-		{"PostgreSQL error code", "pq: error SQLSTATE 23505", true},
-		{"pgx error", "pgx: connection failed", true},
-		{"Constraint error", "duplicate key violates constraint", true},
-		{"Table reference", "relation \"users\" does not exist", true},
-		{"Database connection", "database connection pool exhausted", true},
-		{"Clean error", "user input validation failed", false},
-		{"Go-playground validator", "Key: 'Request.Name' Error:Field validation for 'Name' failed on the 'required' tag", false},
-		{"HTTP error", "404 not found", false},
-		{"Empty string", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := containsDatabaseError(tt.errMsg)
-			if result != tt.expected {
-				t.Errorf("containsDatabaseError(%q) = %v, want %v", tt.errMsg, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestIsValidationError(t *testing.T) {
-	tests := []struct {
-		name     string
-		message  string
-		errMsg   string
-		expected bool
-	}{
-		{"Validation error message", "validation error occurred", "field 'name' is required", true},
-		{"Missing field", "missing required field", "field cannot be empty", true},
-		{"Decode error", "failed to decode request body", "invalid character '}'", true},
-		{"Go-playground validator", "validation failed", "Key: 'Request.Name' Error:Field validation for 'Name' failed on the 'required' tag", true},
-		{"Validation with database error", "validation failed", "pq: duplicate key SQLSTATE 23505", false},
-		{"Validation with JWT error", "validation failed", "failed to parse token: invalid signature", false},
-		{"Database error", "operation failed", "pq: connection failed", false},
-		{"JWT error", "authentication failed", "token expired", false},
-		{"Generic error", "something went wrong", "unknown error", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isValidationError(tt.message, tt.errMsg)
-			if result != tt.expected {
-				t.Errorf("isValidationError(%q, %q) = %v, want %v", tt.message, tt.errMsg, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestContainsJWTError(t *testing.T) {
-	tests := []struct {
-		name     string
-		errMsg   string
-		expected bool
-	}{
-		{"JWT parse error", "failed to parse JWT token", true},
-		{"Token validation", "failed to validate token signature", true},
-		{"JWKS error", "jwks key set not found", true},
-		{"Claims error", "token missing required claim", true},
-		{"Algorithm error", "unsupported signature algorithm", true},
-		{"Clean error", "user not found", false},
-		{"HTTP error", "network timeout", false},
-		{"Empty string", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := containsJWTError(tt.errMsg)
-			if result != tt.expected {
-				t.Errorf("containsJWTError(%q) = %v, want %v", tt.errMsg, result, tt.expected)
-			}
-		})
-	}
-}
 
 func TestErrorJSON_WritesSanitizedHTTPResponse(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -213,7 +31,7 @@ func TestErrorJSON_WritesSanitizedHTTPResponse(t *testing.T) {
 		logger,
 		http.StatusInternalServerError,
 		"failed to create user",
-		errors.New("pq: duplicate key value violates unique constraint \"users_pkey\" SQLSTATE 23505"),
+		fmt.Errorf("insert user: %w", &pgconn.PgError{Code: "23505", Message: "duplicate key", Detail: "synthetic private value"}),
 	)
 
 	if got, want := w.Code, http.StatusInternalServerError; got != want {
@@ -225,6 +43,36 @@ func TestErrorJSON_WritesSanitizedHTTPResponse(t *testing.T) {
 	if got, want := w.Body.String(), `{"message":"internal error","request_id":"req-http-response"}`; got != want {
 		t.Errorf("serialized response = %s, want %s", got, want)
 	}
+}
+
+func TestErrorJSON_RedactsWrappedPostgresConnectError(t *testing.T) {
+	cfg, err := pgconn.ParseConfig("host=127.0.0.1 port=1 user=offline-owner dbname=offline-db sslmode=disable")
+	require.NoError(t, err)
+	// Exercise pgconn's error construction without opening a socket.
+	cfg.DialFunc = func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New("synthetic private dial detail")
+	}
+	_, err = pgconn.ConnectConfig(context.Background(), cfg)
+	var connectErr *pgconn.ConnectError
+	require.ErrorAs(t, err, &connectErr)
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	req = req.WithContext(request.WithRequestID(req.Context(), "connect-failure"))
+	w := httptest.NewRecorder()
+	ErrorJSON(w, req, logger, http.StatusInternalServerError, "read failed", fmt.Errorf("acquire connection: %w", err))
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+	require.JSONEq(t, `{"message":"internal error","request_id":"connect-failure"}`, w.Body.String())
+	var entry map[string]any
+	require.NoError(t, json.Unmarshal(logs.Bytes(), &entry))
+	require.Equal(t, "error response", entry["msg"])
+	require.Equal(t, "database", entry["error_category"])
+	require.Equal(t, "internal error", entry["response_message"])
+	require.Equal(t, "connect-failure", entry["request_id"])
+	require.NotContains(t, logs.String(), "offline-owner")
+	require.NotContains(t, logs.String(), "offline-db")
+	require.NotContains(t, logs.String(), "synthetic private dial detail")
 }
 
 func TestErrorJSON_DoesNotLeakSensitiveData(t *testing.T) {
@@ -247,25 +95,18 @@ func TestErrorJSON_DoesNotLeakSensitiveData(t *testing.T) {
 			forbidden:        []string{"duplicate key", "users_pkey", "SQLSTATE", "23505"},
 		},
 		{
-			name:             "pgx connection details",
-			message:          "database unavailable",
-			err:              errors.New("pgx: failed to connect to database pool"),
-			expectedResponse: "internal error",
-			forbidden:        []string{"pgx:", "connect", "database pool"},
-		},
-		{
-			name:             "relation and table details",
+			name:             "unclassified operation failure is not an authentication error",
 			message:          "operation failed",
-			err:              errors.New("pq: relation \"users\" does not exist"),
-			expectedResponse: "internal error",
-			forbidden:        []string{"pq:", "relation", "users"},
+			err:              errors.New("could not format token count: synthetic private detail"),
+			expectedResponse: "operation failed",
+			forbidden:        []string{"token count", "synthetic private detail"},
 		},
 		{
-			name:             "JWT token details",
-			message:          "authentication failed",
-			err:              errors.New("failed to parse token: invalid signature algorithm RS256 token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"),
-			expectedResponse: "unauthorized",
-			forbidden:        []string{"token:", "signature", "RS256", "eyJhbGci"},
+			name:             "unclassified operation failure is not a database error",
+			message:          "operation failed",
+			err:              errors.New("adjustable connection option: synthetic private detail"),
+			expectedResponse: "operation failed",
+			forbidden:        []string{"adjustable", "synthetic private detail"},
 		},
 	}
 
@@ -331,7 +172,7 @@ func TestErrorJSON_LogsSafeErrorSummary(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/users", nil)
 	req = req.WithContext(request.WithRequestID(req.Context(), "req-safe-logs"))
 	w := httptest.NewRecorder()
-	sensitiveErr := errors.New("pq: duplicate key value violates unique constraint \"users_email_key\" DETAIL: Key (email)=(andy@example.com) already exists. SQLSTATE 23505")
+	sensitiveErr := fmt.Errorf("insert user: %w", &pgconn.PgError{Code: "23505", Message: "duplicate key", ConstraintName: "users_email_key", Detail: "andy@example.com"})
 
 	ErrorJSON(w, req, logger, http.StatusInternalServerError, "failed to create user", sensitiveErr)
 
@@ -369,7 +210,7 @@ func TestErrorJSON_LogsSafeErrorSummary(t *testing.T) {
 	if got := logEntry["error_category"]; got != errorCategoryDatabase {
 		t.Fatalf("expected database error_category field, got %v", got)
 	}
-	if got := logEntry["error_type"]; got != "*errors.errorString" {
+	if got := logEntry["error_type"]; got != "*fmt.wrapError" {
 		t.Fatalf("expected stable error_type field, got %v", got)
 	}
 }

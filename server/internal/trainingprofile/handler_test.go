@@ -2,7 +2,6 @@ package trainingprofile
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	apperrors "github.com/Andrewy-gh/fittrack/server/internal/errors"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,7 +156,7 @@ func TestHandlerUpsert(t *testing.T) {
 
 	t.Run("maps service failures", func(t *testing.T) {
 		handler := NewHandler(logger, &stubProfileService{
-			upsertErr: errors.New("database unavailable"),
+			upsertErr: &pgconn.PgError{Code: "08006", Message: "synthetic private detail"},
 		})
 		req := httptest.NewRequest(http.MethodPut, "/api/training-profile", strings.NewReader(`{
 			"primary_goal": null,

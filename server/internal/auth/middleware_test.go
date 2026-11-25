@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,12 +17,14 @@ import (
 
 	db "github.com/Andrewy-gh/fittrack/server/internal/database"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/lestrrat-go/jwx/v3/jws"
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type MockJWKSCache struct {
@@ -223,6 +226,7 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 		name         string
 		setup        func(*MockJWKSCache, *MockUserService)
 		wantStatus   int
+		wantBody     string
 		wantCategory string
 		forbidden    []string
 	}{
@@ -232,7 +236,8 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 				jwkCache.On("GetUserIDFromToken", "invalid-token").Return("", fmt.Errorf("failed to parse token for project secret-project-id: SQLSTATE 42501"))
 			},
 			wantStatus:   http.StatusUnauthorized,
-			wantCategory: `"error_category":"jwt"`,
+			wantBody:     `{"message":"unauthorized"}`,
+			wantCategory: "jwt",
 			forbidden: []string{
 				"secret-project-id",
 				"SQLSTATE",
@@ -244,10 +249,11 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 			name: "ensure user database error",
 			setup: func(jwkCache *MockJWKSCache, userService *MockUserService) {
 				jwkCache.On("GetUserIDFromToken", "valid-token").Return("user-123", nil)
-				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{}, fmt.Errorf("pq: duplicate key value violates unique constraint \"users_email_key\" DETAIL: Key (email)=(andy@example.com) already exists. SQLSTATE 23505"))
+				userService.On("EnsureUser", mock.Anything, "user-123").Return(db.Users{}, &pgconn.PgError{Code: "23505", Message: "duplicate key", ConstraintName: "users_email_key", Detail: "andy@example.com"})
 			},
 			wantStatus:   http.StatusInternalServerError,
-			wantCategory: `"error_category":"database"`,
+			wantBody:     `{"message":"internal error"}`,
+			wantCategory: "database",
 			forbidden: []string{
 				"pq:",
 				"users_email_key",
@@ -285,10 +291,22 @@ func TestAuthenticator_Middleware_LogsSafeErrorSummaries(t *testing.T) {
 			auth.Middleware(nextHandler).ServeHTTP(w, req)
 
 			assert.Equal(t, tt.wantStatus, w.Code)
+			assert.JSONEq(t, tt.wantBody, w.Body.String())
 			logOutput := logs.String()
-			assert.Contains(t, logOutput, tt.wantCategory)
-			assert.Contains(t, logOutput, `"error_present":true`)
-			assert.Contains(t, logOutput, `"error_type":`)
+			var responseLogs int
+			for _, line := range strings.Split(strings.TrimSpace(logOutput), "\n") {
+				var entry map[string]any
+				require.NoError(t, json.Unmarshal([]byte(line), &entry))
+				if entry["msg"] != "error response" {
+					continue
+				}
+				responseLogs++
+				assert.Equal(t, tt.wantCategory, entry["error_category"])
+				assert.Equal(t, float64(tt.wantStatus), entry["status"])
+				assert.Equal(t, true, entry["error_present"])
+				assert.NotEmpty(t, entry["error_type"])
+			}
+			require.Equal(t, 1, responseLogs)
 			for _, forbidden := range tt.forbidden {
 				if strings.Contains(logOutput, forbidden) {
 					t.Fatalf("auth log contains sensitive raw error detail %q: %s", forbidden, logOutput)

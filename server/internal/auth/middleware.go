@@ -94,7 +94,7 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 				"error_category", "jwt",
 				"error_present", true,
 				"error_type", fmt.Sprintf("%T", err))
-			response.ErrorJSON(w, r, a.logger, http.StatusUnauthorized, "invalid access token", err)
+			response.InvalidAccessTokenJSON(w, r, a.logger, err)
 			return
 		}
 

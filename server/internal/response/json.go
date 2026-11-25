@@ -2,12 +2,15 @@ package response
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
+	"strconv"
 
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
+	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -37,140 +40,57 @@ func JSON(w http.ResponseWriter, status int, data any) error {
 	return err
 }
 
-// sanitizeErrorMessage removes sensitive database and JWT error details from public messages
-func sanitizeErrorMessage(message string, err error) string {
-	if err == nil {
-		return message
+// ErrorJSON writes a caller-selected public message, never the error's text.
+// Recognized database failures use a generic response. Unclassified failures
+// keep the caller's safe message; do not pass an arbitrary err.Error() as message.
+func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, message string, err error) {
+	category := classifyError(err)
+	if category == errorCategoryDatabase {
+		message = "internal error"
 	}
-
-	errMsg := err.Error()
-
-	// Allow validation errors to pass through - they are safe for users
-	if isValidationError(message, errMsg) {
-		return message
-	}
-
-	// Check for database error codes that should be hidden
-	if containsDatabaseError(errMsg) {
-		// For database errors, return generic messages based on context
-		if strings.Contains(strings.ToLower(message), "unauthorized") ||
-			strings.Contains(strings.ToLower(message), "auth") {
-			return "unauthorized"
-		}
-		return "internal error"
-	}
-
-	// Check for JWT errors that should be hidden
-	if containsJWTError(errMsg) {
-		return "unauthorized"
-	}
-
-	// Return the original message if no sensitive content detected
-	return message
+	writeErrorJSON(w, r, logger, status, message, err, category)
 }
 
-// containsDatabaseError checks if an error message contains sensitive database information
-func containsDatabaseError(errMsg string) bool {
-	lowerMsg := strings.ToLower(errMsg)
-
-	// Check for go-playground/validator patterns first (these are safe)
-	if strings.Contains(errMsg, "Key: '") && strings.Contains(errMsg, "Error:Field validation") {
-		return false
-	}
-
-	sensitivePatterns := []string{
-		"pq:", "pgx", "SQLSTATE", "ERROR:",
-		"23505", "23503", "42501", // PostgreSQL error codes
-		"duplicate key", "foreign key", "constraint",
-		"relation", "column", "table",
-		"database", "connection", "pool",
-	}
-
-	for _, pattern := range sensitivePatterns {
-		if strings.Contains(lowerMsg, strings.ToLower(pattern)) {
-			return true
-		}
-	}
-	return false
+// InvalidRequestJSON writes a public 400 for a request body that did not decode.
+// Decoding provider or stored data is not client validation.
+func InvalidRequestJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, message string, err error) {
+	writeErrorJSON(w, r, logger, http.StatusBadRequest, message, err, errorCategoryValidation)
 }
 
-// containsJWTError checks if an error message contains sensitive JWT information
-func containsJWTError(errMsg string) bool {
-	jwtPatterns := []string{
-		"jwt", "token", "jwks", "claim", "signature",
-		"failed to parse", "failed to validate",
-		"key set", "algorithm",
-	}
-
-	lowerMsg := strings.ToLower(errMsg)
-	for _, pattern := range jwtPatterns {
-		if strings.Contains(lowerMsg, pattern) {
-			return true
-		}
-	}
-	return false
+// InvalidAccessTokenJSON is used only after the access-token verifier rejects
+// a token. Its response must not depend on the verifier's diagnostic text.
+func InvalidAccessTokenJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
+	writeErrorJSON(w, r, logger, http.StatusUnauthorized, "unauthorized", err, errorCategoryJWT)
 }
 
-// isValidationError checks if this is a user input validation error that is safe to show
-func isValidationError(message, errMsg string) bool {
-	lowerMsg := strings.ToLower(message)
-	lowerErr := strings.ToLower(errMsg)
-
-	// Common validation message patterns that are safe to show users
-	validationPatterns := []string{
-		"validation", "required", "invalid format", "missing", "empty",
-		"too short", "too long", "out of range", "invalid date",
-		"field", "parameter", "input", "decode",
-	}
-
-	// Check if the message indicates a validation error
-	for _, pattern := range validationPatterns {
-		if strings.Contains(lowerMsg, pattern) {
-			// Make sure it doesn't also contain database error patterns
-			if !containsDatabaseError(errMsg) && !containsJWTError(errMsg) {
-				return true
-			}
-		}
-	}
-
-	// Check for go-playground/validator specific errors
-	if strings.Contains(lowerErr, "validation failed") ||
-		strings.Contains(lowerErr, "field validation") ||
-		strings.Contains(lowerErr, "key:") || strings.Contains(lowerErr, "tag:") {
-		return !containsDatabaseError(errMsg) && !containsJWTError(errMsg)
-	}
-
-	return false
-}
-
-func safeErrorCategory(message string, err error) string {
+func classifyError(err error) string {
 	if err == nil {
 		return errorCategoryNone
 	}
-
-	errMsg := err.Error()
+	var pgErr *pgconn.PgError
+	var connectErr *pgconn.ConnectError
+	var numberErr *strconv.NumError
+	var validationErr validator.ValidationErrors
 	switch {
-	case isValidationError(message, errMsg):
-		return errorCategoryValidation
-	case containsDatabaseError(errMsg):
+	case errors.As(err, &pgErr), errors.As(err, &connectErr):
 		return errorCategoryDatabase
-	case containsJWTError(errMsg):
-		return errorCategoryJWT
+	case errors.As(err, &numberErr), errors.Is(err, strconv.ErrSyntax), errors.Is(err, strconv.ErrRange),
+		errors.As(err, &validationErr):
+		return errorCategoryValidation
 	default:
 		return errorCategoryInternal
 	}
 }
 
-func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, message string, err error) {
+func writeErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, message string, err error, category string) {
 	requestID := request.GetRequestID(r.Context())
-	safeMessage := sanitizeErrorMessage(message, err)
 	logAttrs := []any{
 		"route", r.Pattern,
 		"method", r.Method,
 		"status", status,
 		"request_id", requestID,
-		"response_message", safeMessage,
-		"error_category", safeErrorCategory(message, err),
+		"response_message", message,
+		"error_category", category,
 		"error_present", err != nil,
 	}
 	if err != nil {
@@ -179,9 +99,8 @@ func ErrorJSON(w http.ResponseWriter, r *http.Request, logger *slog.Logger, stat
 
 	logger.Error("error response", logAttrs...)
 
-	// Create a sanitized error response - never include raw error details in HTTP responses
 	resp := ErrorResponse{
-		Message:   safeMessage,
+		Message:   message,
 		RequestID: requestID,
 	}
 

@@ -248,7 +248,7 @@ func (h *Handler) RecordTelemetry(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&event); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
+		response.InvalidRequestJSON(w, r, h.logger, "failed to decode request body", err)
 		return
 	}
 

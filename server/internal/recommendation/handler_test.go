@@ -2,6 +2,7 @@ package recommendation_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,7 +19,7 @@ type ownedRepository struct{}
 
 func (*ownedRepository) Load(_ context.Context, owner string, id int32, now time.Time) (recommendation.TrainingContext, error) {
 	if owner != "owner" || id != 1 {
-		return recommendation.TrainingContext{}, recommendation.ErrNotFound
+		return recommendation.TrainingContext{}, fmt.Errorf("synthetic private repository context: %w", recommendation.ErrNotFound)
 	}
 	return recommendation.TrainingContext{Sessions: []recommendation.Session{{
 		Date: now.Add(-time.Hour),
@@ -41,7 +42,9 @@ func TestHTTPRecommendation(t *testing.T) {
 	}
 
 	require.Equal(t, http.StatusUnauthorized, request("/exercises/1/recommendation", "").Code)
-	require.Equal(t, http.StatusNotFound, request("/exercises/1/recommendation", "other").Code)
+	notFound := request("/exercises/1/recommendation", "other")
+	require.Equal(t, http.StatusNotFound, notFound.Code)
+	require.JSONEq(t, `{"message":"exercise not found"}`, notFound.Body.String())
 	require.Equal(t, http.StatusBadRequest, request("/exercises/1/recommendation?readiness=excellent", "owner").Code)
 	response := request("/exercises/1/recommendation?readiness=normal", "owner")
 	require.Equal(t, http.StatusOK, response.Code)

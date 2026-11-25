@@ -65,7 +65,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Upsert(w http.ResponseWriter, r *http.Request) {
 	var req UpdateProfileRequest
 	if err := decodeStrictJSON(w, r, &req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
+		response.InvalidRequestJSON(w, r, h.logger, "failed to decode request body", err)
 		return
 	}
 
