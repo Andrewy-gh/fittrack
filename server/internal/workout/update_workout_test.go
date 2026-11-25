@@ -119,7 +119,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Invalid workout ID",
+			expectedError: "invalid workout ID",
 		},
 		{
 			name:      "missing workout ID",
@@ -136,7 +136,7 @@ func TestWorkoutHandler_UpdateWorkout(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Missing workout ID",
+			expectedError: "missing workout ID",
 		},
 		{
 			name:          "invalid JSON body",

@@ -30,25 +30,25 @@ func TestWorkoutHandler_decodeWorkoutIDRejectsInvalidBoundaryValues(t *testing.T
 	}{
 		{
 			name:          "missing",
-			expectedError: "Missing workout ID",
+			expectedError: "missing workout ID",
 		},
 		{
 			name:          "negative",
 			pathID:        "-1",
 			setPathValue:  true,
-			expectedError: "Invalid workout ID",
+			expectedError: "invalid workout ID",
 		},
 		{
 			name:          "zero",
 			pathID:        "0",
 			setPathValue:  true,
-			expectedError: "Invalid workout ID",
+			expectedError: "invalid workout ID",
 		},
 		{
 			name:          "overflow",
 			pathID:        "2147483648",
 			setPathValue:  true,
-			expectedError: "Invalid workout ID",
+			expectedError: "invalid workout ID",
 		},
 	}
 

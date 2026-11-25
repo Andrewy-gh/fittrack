@@ -49,11 +49,11 @@ func (es *ExerciseService) UpdateCatalog(ctx context.Context, id int32, catalogI
 // @Router /exercise-catalog [get]
 func (h *ExerciseHandler) ListCatalog(w http.ResponseWriter, r *http.Request) {
 	if _, ok := user.Current(r.Context()); !ok {
-		response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, "Unauthorized", nil)
+		response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, "unauthorized", nil)
 		return
 	}
 	if err := response.JSON(w, http.StatusOK, exercisecatalog.All()); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write catalog", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write catalog", err)
 	}
 }
 
@@ -87,13 +87,13 @@ func (h *ExerciseHandler) UpdateCatalog(w http.ResponseWriter, r *http.Request) 
 		var notFound *apperrors.NotFound
 		switch {
 		case errors.As(err, &unauthorized):
-			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, "Unauthorized", nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, "unauthorized", nil)
 		case errors.As(err, &notFound):
-			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, "Exercise not found", nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, "exercise not found", nil)
 		case errors.Is(err, errInvalidCatalog):
 			response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, err.Error(), nil)
 		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to update classification", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to update classification", err)
 		}
 		return
 	}

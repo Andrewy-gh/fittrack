@@ -189,6 +189,6 @@ func TestExerciseHandler_UpdateExerciseHistorical1RM(t *testing.T) {
 
 		handler.UpdateExerciseHistorical1RM(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assertJSONError(t, w, "Failed to decode request body")
+		assertJSONError(t, w, "failed to decode request body")
 	})
 }
