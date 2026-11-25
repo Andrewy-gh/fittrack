@@ -52,7 +52,7 @@ func NewGenkitRuntime(ctx context.Context, reader ChatDataReader, settings confi
 		fallback := newModelRuntime(ctx, reader, settings.GeminiModel())
 		if fallback.Available() {
 			if !primary.Available() {
-				slog.Warn("AI chat primary unavailable at startup; using Gemini", "primary", modelName, "fallback", fallback.ModelName())
+				slog.Warn("ai chat primary unavailable at startup; using configured fallback")
 				return fallback
 			}
 			primary.fallback = fallback
@@ -89,10 +89,8 @@ func newModelRuntime(ctx context.Context, reader ChatDataReader, modelName strin
 func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, _ ai.Tool, _ ai.Tool, ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			slog.Warn("ai chat runtime initialization skipped after genkit panic",
-				"configured_api_key_env", googleAPIKeyEnvVar,
-				"panic", recovered,
-			)
+			// Panic values may include credentials supplied to provider initialization.
+			slog.Warn("ai chat runtime initialization skipped after genkit panic")
 			ok = false
 		}
 	}()
