@@ -10,7 +10,7 @@ export function toWorkoutFormDraft(
   draft: AIWorkoutDraft,
 ): StoredWorkoutDraft | null {
   if (draft.unsupportedRecommendations) return null;
-  const baseline: WorkoutCreateWorkoutRequest = {
+  const editable: WorkoutCreateWorkoutRequest = {
     date: draft.date,
     notes: draft.notes ?? "",
     workoutFocus: draft.workoutFocus ?? "",
@@ -20,13 +20,11 @@ export function toWorkoutFormDraft(
     })),
   };
   return {
-    ...baseline,
-    ...(draft.recommendations !== undefined && {
-      importedRecommendationContext: {
-        baseline,
-        recommendations: draft.recommendations,
-      },
-    }),
+    ...editable,
+    importedRecommendationContext: {
+      baseline: structuredClone(editable),
+      recommendations: draft.recommendations,
+    },
   };
 }
 

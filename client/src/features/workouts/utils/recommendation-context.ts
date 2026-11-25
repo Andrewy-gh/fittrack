@@ -4,6 +4,7 @@ import type {
   WorkoutExerciseInput,
   WorkoutSetInput,
 } from "@/client";
+import type { ImportedRecommendationContext } from "@/lib/local-storage";
 
 // New protocol fields require an explicit eligibility decision rather than
 // silently treating an edited future field as unchanged.
@@ -23,25 +24,55 @@ const unhandledSetFields: Record<
   never
 > = {};
 
-/** Compare the editable inputs, not recommendation results. Undo restores eligibility. */
-export function sameWorkoutInputs(
+/** Build the request the form will actually save, including eligible historical context. */
+export function buildNewWorkoutRequest(
+  value: WorkoutCreateWorkoutRequest,
+  importedContext?: ImportedRecommendationContext,
+): WorkoutCreateWorkoutRequest {
+  const baseline = importedContext?.baseline;
+  const payload = {
+    ...value,
+    notes: workoutTextForSave(value.notes, baseline?.notes),
+    workoutFocus: workoutTextForSave(
+      value.workoutFocus,
+      baseline?.workoutFocus,
+    ),
+  };
+  return {
+    ...payload,
+    recommendations:
+      importedContext?.recommendations !== undefined
+        ? sameWorkoutInputs(payload, importedContext.baseline)
+          ? importedContext.recommendations
+          : undefined
+        : payload.recommendations?.filter((snapshot) =>
+            payload.exercises.some(
+              (exercise) => exercise.name === snapshot.exerciseName,
+            ),
+          ),
+  };
+}
+
+function workoutTextForSave(
+  current: string | null | undefined,
+  original: string | null | undefined,
+): string | undefined {
+  // Reuse untouched chat text verbatim. JS trim removes some characters that
+  // Go's chat normalization retains (e.g. U+FEFF). Trim only newly entered text.
+  return (current === original ? current : current?.trim()) || undefined;
+}
+
+function sameWorkoutInputs(
   left: WorkoutCreateWorkoutRequest,
   right: WorkoutCreateWorkoutRequest,
 ): boolean {
   void unhandledWorkoutFields;
   void unhandledExerciseFields;
   void unhandledSetFields;
-  const inputs = (
-    workout: WorkoutCreateWorkoutRequest,
-    submitting: boolean,
-  ) => ({
+  const inputs = (workout: WorkoutCreateWorkoutRequest) => ({
     date: workout.date,
-    // The form trims text on POST. Compare the actual outgoing values to the
-    // original, so that trimming itself cannot silently retain old context.
-    notes: submitting ? (workout.notes?.trim() ?? "") : (workout.notes ?? ""),
-    workoutFocus: submitting
-      ? (workout.workoutFocus?.trim() ?? "")
-      : (workout.workoutFocus ?? ""),
+    notes: workout.notes ?? "",
+    workoutFocus: workout.workoutFocus ?? "",
     exercises: workout.exercises.map((exercise) => ({
       name: exercise.name,
       catalog_id: exercise.catalog_id ?? null,
@@ -52,9 +83,7 @@ export function sameWorkoutInputs(
       })),
     })),
   });
-  return (
-    JSON.stringify(inputs(left, true)) === JSON.stringify(inputs(right, false))
-  );
+  return JSON.stringify(inputs(left)) === JSON.stringify(inputs(right));
 }
 
 /** How the user feels for this exercise today. */

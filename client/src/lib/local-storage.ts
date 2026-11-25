@@ -12,7 +12,7 @@ const getStorageKey = (userId?: string): string => {
 
 export type ImportedRecommendationContext = {
   baseline: WorkoutCreateWorkoutRequest;
-  recommendations: NonNullable<WorkoutCreateWorkoutRequest["recommendations"]>;
+  recommendations?: WorkoutCreateWorkoutRequest["recommendations"];
 };
 
 export type StoredWorkoutDraft = WorkoutCreateWorkoutRequest & {
@@ -48,7 +48,7 @@ const WorkoutDraftSchema = v.object({
   importedRecommendationContext: v.optional(
     v.object({
       baseline: WorkoutValuesSchema,
-      recommendations: v.array(recommendationSnapshotSchema),
+      recommendations: v.optional(v.array(recommendationSnapshotSchema)),
     }),
   ),
   recommendations: v.optional(

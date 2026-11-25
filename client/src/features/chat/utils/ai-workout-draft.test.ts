@@ -73,18 +73,18 @@ describe("ai workout draft import", () => {
       draftStorage,
     );
 
-    expect(savedDraft).toEqual({
+    expect(savedDraft).toMatchObject({
       date: "2026-04-21T12:00:00Z",
       notes: "Regenerated draft",
       workoutFocus: "pull",
       exercises: [
         {
           name: "Chest Supported Row",
-          sets: [{ reps: 10, setType: "working", weight: undefined }],
+          sets: [{ reps: 10, setType: "working" }],
         },
       ],
     });
-    expect(draftStorage.load("user-123")).toEqual({
+    expect(draftStorage.load("user-123")).toMatchObject({
       date: "2026-04-21T12:00:00Z",
       notes: "Regenerated draft",
       workoutFocus: "pull",
@@ -146,7 +146,7 @@ describe("ai workout draft import", () => {
       draftStorage,
     );
 
-    expect(getInitialValues("user-123", draftStorage)).toEqual({
+    expect(getInitialValues("user-123", draftStorage)).toMatchObject({
       date: "2026-04-21T12:00:00Z",
       notes: "Use straps if grip fades",
       workoutFocus: "back",

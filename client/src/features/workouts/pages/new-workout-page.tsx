@@ -61,7 +61,7 @@ import {
 } from "@/features/workouts/components/form/workout-form-sections";
 import { useExerciseReorder } from "@/features/workouts/components/form/use-exercise-reorder";
 import { useNewWorkoutFormWorkflow } from "@/features/workouts/hooks/use-new-workout-form-workflow";
-import { sameWorkoutInputs } from "@/features/workouts/utils/recommendation-context";
+import { buildNewWorkoutRequest } from "@/features/workouts/utils/recommendation-context";
 
 function WorkoutExerciseSection({
   field,
@@ -134,7 +134,8 @@ export function NewWorkoutPage({
     newWorkoutContext,
     draftStorage,
   });
-  const { form, focusAreaTemplates, latestWorkoutNote } = workoutForm;
+  const { form, focusAreaTemplates, latestWorkoutNote, originalContext } =
+    workoutForm;
 
   const renderExerciseGoalSummary = (exercise: { name: string }) => {
     const exerciseGoalSummary = workoutForm.getExerciseGoalSummary(
@@ -323,17 +324,15 @@ export function NewWorkoutPage({
               form.handleSubmit();
             }}
           >
-            {workoutForm.originalContext && (
+            {originalContext?.recommendations !== undefined && (
               <form.Subscribe selector={(state) => state.values}>
                 {(values) => (
                   <p
                     className="mb-4 text-sm text-muted-foreground"
                     role="status"
                   >
-                    {sameWorkoutInputs(
-                      values,
-                      workoutForm.originalContext!.baseline,
-                    )
+                    {buildNewWorkoutRequest(values, originalContext)
+                      .recommendations !== undefined
                       ? "Original recommendation context will be saved with this unchanged workout."
                       : "The workout has changed, so its original recommendation context will not be saved. Undo all changes to restore it. The chat draft remains unchanged."}
                   </p>

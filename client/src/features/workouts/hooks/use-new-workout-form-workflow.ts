@@ -25,7 +25,7 @@ import {
 } from "@/features/workouts/components/form/form-options";
 import { hasWorkoutDraftContent } from "@/features/workouts/components/form/workout-form-helpers";
 import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
-import { sameWorkoutInputs } from "@/features/workouts/utils/recommendation-context";
+import { buildNewWorkoutRequest } from "@/features/workouts/utils/recommendation-context";
 import { useAppForm } from "@/hooks/form";
 import { queryClient } from "@/lib/api/api";
 import { getWorkoutByIdQueryOptions } from "@/features/workouts/api/workout-query-options";
@@ -78,36 +78,23 @@ export function useNewWorkoutFormWorkflow({
       },
     },
     onSubmit: async ({ value }) => {
-      const textError = workoutTextError(value);
+      const body = buildNewWorkoutRequest(value, originalContext);
+      const textError = workoutTextError(body, { trim: false });
       if (textError) {
         toast.error(textError);
         return;
       }
-      const trimmedValue = {
-        ...value,
-        recommendations: originalContext
-          ? sameWorkoutInputs(value, originalContext.baseline)
-            ? originalContext.recommendations
-            : undefined
-          : value.recommendations?.filter((snapshot) =>
-              value.exercises.some(
-                (exercise) => exercise.name === snapshot.exerciseName,
-              ),
-            ),
-        notes: value.notes?.trim() || undefined,
-        workoutFocus: value.workoutFocus?.trim() || undefined,
-      };
 
       // Snapshot saved context before resetting the draft. Newly created exercise IDs
       // are resolved from the refreshed owned list when the action is clicked.
-      const savedExerciseName = trimmedValue.exercises[0]?.name;
+      const savedExerciseName = body.exercises[0]?.name;
       const assessmentWeek = format(
-        startOfWeek(new Date(trimmedValue.date), { weekStartsOn: 1 }),
+        startOfWeek(new Date(body.date), { weekStartsOn: 1 }),
         "yyyy-MM-dd",
       );
 
       await saveWorkout.mutateAsync(
-        { body: trimmedValue },
+        { body },
         {
           onSuccess: () => {
             if (featureFlags.trainingGuidance && user && savedExerciseName) {
