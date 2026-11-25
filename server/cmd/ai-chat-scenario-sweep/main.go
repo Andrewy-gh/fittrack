@@ -18,6 +18,7 @@ import (
 
 	"github.com/Andrewy-gh/fittrack/server/internal/aichat"
 	"github.com/Andrewy-gh/fittrack/server/internal/aichateval"
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 )
 
 const (
@@ -87,11 +88,12 @@ func main() {
 	runtimeCtx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	defer cancel()
 
-	runtime := aichat.NewGenkitRuntime(runtimeCtx, dataReader)
+	settings := config.LoadAIChat()
+	runtime := aichat.NewGenkitRuntime(runtimeCtx, dataReader, settings)
 	if !runtime.Available() {
 		fail("ai chat runtime unavailable. Set the API key for the selected chat model")
 	}
-	judge := newNarrowScopeJudge(runtimeCtx, aichat.GeminiModelName())
+	judge := newNarrowScopeJudge(runtimeCtx, settings.GeminiModel())
 
 	report := aichateval.Run(runtimeCtx, runtime, scenarios, aichateval.RunOptions{
 		Mode:               *mode,

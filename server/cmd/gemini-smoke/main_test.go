@@ -6,6 +6,23 @@ import (
 	"testing"
 )
 
+func TestSmokeSettingsAndCredentialSelection(t *testing.T) {
+	for _, tc := range []struct{ name, gemini, google, model, key, wantModel string }{
+		{"defaults", "", "", " ", "", defaultGeminiModel},
+		{"gemini precedence", "synthetic-a", "synthetic-b", " model/x ", geminiAPIKeyEnvVar, "model/x"},
+		{"google fallback", " ", "synthetic-b", "", googleAPIKeyEnvVar, defaultGeminiModel},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(geminiAPIKeyEnvVar, tc.gemini)
+			t.Setenv(googleAPIKeyEnvVar, tc.google)
+			t.Setenv("GEMINI_MODEL", tc.model)
+			if configuredAPIKeyEnvVar() != tc.key || getModelName() != tc.wantModel {
+				t.Fatal("unexpected smoke configuration")
+			}
+		})
+	}
+}
+
 func TestLoadLocalEnvRespectsPriorityAndSetenv(t *testing.T) {
 	dir := t.TempDir()
 	writeTestFile(t, filepath.Join(dir, ".env"), "GOOGLE_API_KEY=from-dotenv\nGEMINI_MODEL=env-model\n")

@@ -12,12 +12,14 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/joho/godotenv"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 )
 
 const (
 	geminiAPIKeyEnvVar = "GEMINI_API_KEY"
 	googleAPIKeyEnvVar = "GOOGLE_API_KEY"
-	defaultGeminiModel = "googleai/gemini-2.5-flash"
+	defaultGeminiModel = config.DefaultGeminiModel
 	smokePrompt        = "Reply with one short sentence confirming the FitTrack Genkit smoke test is working."
 	smokeTimeout       = 20 * time.Second
 )
@@ -109,10 +111,7 @@ func configuredAPIKeyEnvVar() string {
 }
 
 func getModelName() string {
-	if model := strings.TrimSpace(os.Getenv("GEMINI_MODEL")); model != "" {
-		return model
-	}
-	return defaultGeminiModel
+	return config.LoadAIChat().GeminiModel()
 }
 
 func formatRunError(err error, modelName string) string {

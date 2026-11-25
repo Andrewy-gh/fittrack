@@ -3,12 +3,13 @@ package aichat
 import (
 	"context"
 	"errors"
-	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
+	"github.com/Andrewy-gh/fittrack/server/internal/user"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core/api"
 	"github.com/firebase/genkit/go/genkit"
@@ -33,6 +34,14 @@ func TestConfiguredAPIKeyEnvVar(t *testing.T) {
 			want:      googleAPIKeyEnvVar,
 		},
 		{
+			name:      "whitespace gemini falls back to google",
+			geminiKey: "  ", googleKey: "synthetic", want: googleAPIKeyEnvVar,
+		},
+		{
+			name:      "whitespace keys are absent",
+			geminiKey: "  ", googleKey: "\t", want: "",
+		},
+		{
 			name: "reports no configured key",
 			want: "",
 		},
@@ -50,28 +59,33 @@ func TestConfiguredAPIKeyEnvVar(t *testing.T) {
 	}
 }
 
-func TestResolveModelNameDefaultsToGemini25Flash(t *testing.T) {
-	t.Setenv("GEMINI_MODEL", "")
-
-	if got := resolveModelName(); got != defaultModelName {
-		t.Fatalf("resolveModelName() = %q, want %q", got, defaultModelName)
-	}
-}
-
-func TestResolveModelNameUsesOverride(t *testing.T) {
-	const override = "googleai/gemini-2.0-flash"
-	t.Setenv("GEMINI_MODEL", override)
-
-	if got := resolveModelName(); got != override {
-		t.Fatalf("resolveModelName() = %q, want %q", got, override)
+func TestRuntimeModelSelectionWithoutCredentials(t *testing.T) {
+	for _, tc := range []struct{ name, primary, fallback, gemini, want string }{
+		{"default", "", "", "", defaultModelName},
+		{"override", "unknown", "gemini", " custom/model ", "custom/model"},
+		{"luna", " openai/gpt-6-luna ", "gemini", "custom/model", lunaModel},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("GEMINI_API_KEY", "")
+			t.Setenv("GOOGLE_API_KEY", "")
+			t.Setenv("OPENAI_API_KEY", "")
+			t.Setenv("GEMINI_MODEL", tc.gemini)
+			t.Setenv("AI_CHAT_PRIMARY_MODEL", tc.primary)
+			t.Setenv("AI_CHAT_FALLBACK", tc.fallback)
+			runtime := NewGenkitRuntime(context.Background(), nil, config.LoadAIChat())
+			if runtime.ModelName() != tc.want || runtime.Available() {
+				t.Fatalf("unexpected model or availability: %q %v", runtime.ModelName(), runtime.Available())
+			}
+		})
 	}
 }
 
 func TestNewGenkitRuntimeReturnsUnavailableWithoutGoogleAPIKey(t *testing.T) {
 	t.Setenv(googleAPIKeyEnvVar, "")
 	t.Setenv(geminiAPIKeyEnvVar, "")
+	t.Setenv("AI_CHAT_PRIMARY_MODEL", "")
 
-	runtime := NewGenkitRuntime(context.Background(), nil)
+	runtime := NewGenkitRuntime(context.Background(), nil, config.LoadAIChat())
 
 	if runtime == nil {
 		t.Fatal("NewGenkitRuntime() returned nil")
@@ -84,6 +98,7 @@ func TestNewGenkitRuntimeReturnsUnavailableWithoutGoogleAPIKey(t *testing.T) {
 func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 	t.Setenv(geminiAPIKeyEnvVar, "configured")
 	t.Setenv(googleAPIKeyEnvVar, "")
+	t.Setenv("AI_CHAT_PRIMARY_MODEL", "")
 
 	original := genkitInit
 	genkitInit = func(context.Context, ...genkit.GenkitOption) *genkit.Genkit {
@@ -93,7 +108,7 @@ func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 		genkitInit = original
 	})
 
-	runtime := NewGenkitRuntime(context.Background(), nil)
+	runtime := NewGenkitRuntime(context.Background(), nil, config.LoadAIChat())
 
 	if runtime == nil {
 		t.Fatal("NewGenkitRuntime() returned nil")

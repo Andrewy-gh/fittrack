@@ -14,6 +14,7 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/Andrewy-gh/fittrack/server/internal/request"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
@@ -44,11 +45,11 @@ type GenkitRuntime struct {
 	dataReader           ChatDataReader
 }
 
-func NewGenkitRuntime(ctx context.Context, reader ChatDataReader) *GenkitRuntime {
-	modelName := resolveModelName()
+func NewGenkitRuntime(ctx context.Context, reader ChatDataReader, settings config.AIChat) *GenkitRuntime {
+	modelName := settings.PrimaryModel()
 	primary := newModelRuntime(ctx, reader, modelName)
-	if modelName == lunaModel && os.Getenv("AI_CHAT_FALLBACK") == "gemini" {
-		fallback := newModelRuntime(ctx, reader, GeminiModelName())
+	if modelName == lunaModel && settings.GeminiFallback() {
+		fallback := newModelRuntime(ctx, reader, settings.GeminiModel())
 		if fallback.Available() {
 			if !primary.Available() {
 				slog.Warn("AI chat primary unavailable at startup; using Gemini", "primary", modelName, "fallback", fallback.ModelName())
@@ -321,20 +322,6 @@ func configuredAPIKeyEnvVar() string {
 		return googleAPIKeyEnvVar
 	}
 	return ""
-}
-
-func resolveModelName() string {
-	if strings.TrimSpace(os.Getenv("AI_CHAT_PRIMARY_MODEL")) == lunaModel {
-		return lunaModel
-	}
-	return GeminiModelName()
-}
-
-func GeminiModelName() string {
-	if modelName := strings.TrimSpace(os.Getenv("GEMINI_MODEL")); modelName != "" {
-		return modelName
-	}
-	return defaultModelName
 }
 
 func buildChatMessages(history []RuntimeChatMessage, snapshot *TrainingSnapshot, profile *TrainingProfile, dataToolsEnabled bool) []*ai.Message {

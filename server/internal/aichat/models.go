@@ -4,12 +4,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/Andrewy-gh/fittrack/server/internal/workout"
 )
 
 const (
 	featureKeyAIChatbot = "ai_chatbot"
-	defaultModelName    = "googleai/gemini-2.5-flash"
+	defaultModelName    = config.DefaultGeminiModel
 
 	roleUser      = "user"
 	roleAssistant = "assistant"

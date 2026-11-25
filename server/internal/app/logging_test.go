@@ -58,7 +58,7 @@ func TestStartupConfiguresAIRuntimeLogging(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			runtime := aichat.NewGenkitRuntime(ctx, nil)
+			runtime := aichat.NewGenkitRuntime(ctx, nil, config.LoadAIChat())
 			if !runtime.Available() {
 				t.Fatal("local provider runtime unavailable")
 			}

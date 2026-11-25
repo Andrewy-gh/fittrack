@@ -11,6 +11,23 @@ import (
 	"github.com/Andrewy-gh/fittrack/server/internal/aichateval"
 )
 
+func TestJudgeCredentialSelection(t *testing.T) {
+	for _, tc := range []struct{ name, gemini, google, want string }{
+		{"absent", "", "", ""},
+		{"gemini precedence", "synthetic-a", "synthetic-b", geminiAPIKeyEnvVar},
+		{"google fallback", "  ", "synthetic-b", googleAPIKeyEnvVar},
+		{"blank", " ", "\t", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(geminiAPIKeyEnvVar, tc.gemini)
+			t.Setenv(googleAPIKeyEnvVar, tc.google)
+			if configuredJudgeAPIKeyEnvVar() != tc.want {
+				t.Fatal("unexpected judge credential selection")
+			}
+		})
+	}
+}
+
 func TestBuildSweepLogEntryIncludesRunContextAndCompactResults(t *testing.T) {
 	report := aichateval.Report{
 		GeneratedAt:   "2026-04-29T12:00:00Z",

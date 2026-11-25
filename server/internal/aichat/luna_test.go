@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 )
@@ -67,7 +68,7 @@ func TestLunaContinuesStatelessToolCall(t *testing.T) {
 	defer func() { http.DefaultClient.Transport = old }()
 	t.Setenv("AI_CHAT_PRIMARY_MODEL", lunaModel)
 	t.Setenv("AI_CHAT_FALLBACK", "")
-	r := NewGenkitRuntime(context.Background(), nil)
+	r := NewGenkitRuntime(context.Background(), nil, config.LoadAIChat())
 	r.workoutDraftTool = genkit.DefineTool(r.g, "lookup", "lookup", func(ctx *ai.ToolContext, input struct{}) (string, error) { return "found", nil })
 	var streamed strings.Builder
 	done, err := r.StreamChat(context.Background(), "Look it up.", nil, func(delta string) error {
