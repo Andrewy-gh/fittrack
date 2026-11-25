@@ -35,10 +35,20 @@ func LoadAIChat() AIChat {
 }
 
 // GeminiModel returns the configured Gemini model independently of the primary.
-func (c AIChat) GeminiModel() string { return c.geminiModel }
+func (c AIChat) GeminiModel() string {
+	if c.geminiModel == "" {
+		return DefaultGeminiModel
+	}
+	return c.geminiModel
+}
 
 // PrimaryModel returns the selected runtime model.
-func (c AIChat) PrimaryModel() string { return c.primaryModel }
+func (c AIChat) PrimaryModel() string {
+	if c.primaryModel == "" {
+		return c.GeminiModel()
+	}
+	return c.primaryModel
+}
 
 // GeminiFallback reports whether the exact fallback selector is enabled.
 func (c AIChat) GeminiFallback() bool { return c.geminiFallback }

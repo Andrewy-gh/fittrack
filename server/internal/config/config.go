@@ -36,6 +36,9 @@ type Config struct {
 	MetricsUsername string `validate:"omitempty"`
 	MetricsPassword string `validate:"omitempty"`
 
+	// AI model selection is captured with the rest of startup configuration.
+	AIChat AIChat
+
 	// Optional AI chat recovery wiring
 	InngestEventKey   string `validate:"omitempty"`
 	InngestSigningKey string `validate:"omitempty"`
@@ -65,6 +68,7 @@ func Load() (*Config, error) {
 		Environment:         getEnvString("ENVIRONMENT", "development"),
 		RateLimitRPM:        getEnvInt("RATE_LIMIT_RPM", 100),
 		AllowedOrigins:      os.Getenv("ALLOWED_ORIGINS"),
+		AIChat:              LoadAIChat(),
 		DBMaxConns:          int32(getEnvInt("DB_MAX_CONNS", 15)),
 		DBMinConns:          int32(getEnvInt("DB_MIN_CONNS", 2)),
 		DBMaxConnIdle:       getEnvString("DB_MAX_CONN_IDLE", "30s"),
