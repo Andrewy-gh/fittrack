@@ -14,7 +14,7 @@ import {
   deleteWorkoutsByIdMutation,
 } from "@/client/@tanstack/react-query.gen";
 import type {
-  WorkoutUpdateExercise,
+  WorkoutExerciseInput,
   WorkoutUpdateWorkoutRequest,
   WorkoutWorkoutWithSetsResponse,
 } from "@/client";
@@ -115,10 +115,10 @@ export function useDeleteWorkoutForUserMutation(user: WorkoutMutationUser) {
 // MARK: Utils
 function groupSetsByExercise(
   sortedWorkouts: WorkoutWorkoutWithSetsResponse[],
-): Map<number, { exercise: WorkoutUpdateExercise; order: number }> {
+): Map<number, { exercise: WorkoutExerciseInput; order: number }> {
   const exercisesMap = new Map<
     number,
-    { exercise: WorkoutUpdateExercise; order: number }
+    { exercise: WorkoutExerciseInput; order: number }
   >();
 
   for (const workout of sortedWorkouts) {
@@ -153,8 +153,8 @@ function groupSetsByExercise(
 }
 
 function extractOrderedExercises(
-  exercisesMap: Map<number, { exercise: WorkoutUpdateExercise; order: number }>,
-): WorkoutUpdateExercise[] {
+  exercisesMap: Map<number, { exercise: WorkoutExerciseInput; order: number }>,
+): WorkoutExerciseInput[] {
   return Array.from(exercisesMap.values())
     .sort((a, b) => a.order - b.order)
     .map((entry) => entry.exercise);

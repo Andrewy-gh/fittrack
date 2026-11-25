@@ -97,6 +97,34 @@ describe("ai workout draft import", () => {
     });
   });
 
+  it("preserves catalog, absent weight and zero weight without aliasing the chat draft", () => {
+    const draft: AIWorkoutDraft = {
+      date: "2026-04-21T12:00:00-04:00",
+      exercises: [
+        {
+          name: "Pushups",
+          catalog_id: "Pushups",
+          sets: [
+            { reps: 5, setType: "warmup" },
+            { reps: 8, setType: "working", weight: 0 },
+          ],
+        },
+      ],
+    };
+    const storage = createWorkoutDraftStorage(createMemoryStorage());
+    const imported = saveAIWorkoutDraftToWorkoutForm(draft, "owner", storage);
+    expect(imported?.date).toBe(draft.date);
+    expect(imported?.exercises).toStrictEqual(draft.exercises);
+    expect(storage.load("owner")?.exercises).toEqual(draft.exercises);
+    const editable = imported?.exercises[0];
+    const editableSet = editable?.sets[1];
+    if (!editable || !editableSet) throw new Error("expected imported set");
+    editable.name = "Edited pushups";
+    editableSet.reps = 12;
+    expect(draft.exercises[0]?.name).toBe("Pushups");
+    expect(draft.exercises[0]?.sets[1]?.reps).toBe(8);
+  });
+
   it("feeds the imported ai draft into the /workouts/new initialization path", () => {
     const storage = createMemoryStorage();
     const draftStorage = createWorkoutDraftStorage(storage);

@@ -41,7 +41,7 @@ func TestWorkoutCatalogSelection(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, row, same)
 	// Adding a catalog exercise through the edit flow keeps the original exercise link.
-	update := UpdateWorkoutRequest{Date: req.Date, Exercises: []UpdateExercise{{Name: "My pushups", Sets: []UpdateSet{{Reps: 10, SetType: "working"}}}, {Name: "New dumbbell press", CatalogID: &changed, Sets: []UpdateSet{{Reps: 8, SetType: "working"}}}}}
+	update := UpdateWorkoutRequest{Date: req.Date, Exercises: []ExerciseInput{{Name: "My pushups", Sets: []SetInput{{Reps: 10, SetType: "working"}}}, {Name: "New dumbbell press", CatalogID: &changed, Sets: []SetInput{{Reps: 8, SetType: "working"}}}}}
 	require.NoError(t, service.UpdateWorkout(ctx, id, update))
 	added, err := queries.GetExerciseByName(ctx, db.GetExerciseByNameParams{Name: "New dumbbell press", UserID: "test-user-a"})
 	require.NoError(t, err)

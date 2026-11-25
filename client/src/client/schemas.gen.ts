@@ -1379,49 +1379,6 @@ export const workout_StrengthAssessmentSchema = {
   },
 } as const;
 
-export const workout_UpdateExerciseSchema = {
-  type: "object",
-  required: ["name", "sets"],
-  properties: {
-    catalog_id: {
-      type: "string",
-    },
-    name: {
-      type: "string",
-      maxLength: 256,
-      minLength: 1,
-    },
-    sets: {
-      type: "array",
-      minItems: 1,
-      items: {
-        $ref: "#/definitions/workout.UpdateSet",
-      },
-    },
-  },
-} as const;
-
-export const workout_UpdateSetSchema = {
-  type: "object",
-  required: ["reps", "setType"],
-  properties: {
-    reps: {
-      type: "integer",
-      minimum: 1,
-    },
-    setType: {
-      type: "string",
-      enum: ["warmup", "working"],
-    },
-    weight: {
-      type: "number",
-      maximum: 999999999.9,
-      minimum: 0,
-      "x-nullable": true,
-    },
-  },
-} as const;
-
 export const workout_UpdateWorkoutRequestSchema = {
   type: "object",
   required: ["date", "exercises"],
@@ -1433,7 +1390,7 @@ export const workout_UpdateWorkoutRequestSchema = {
       type: "array",
       minItems: 1,
       items: {
-        $ref: "#/definitions/workout.UpdateExercise",
+        $ref: "#/definitions/workout.ExerciseInput",
       },
     },
     notes: {

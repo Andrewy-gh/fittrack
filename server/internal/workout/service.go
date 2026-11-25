@@ -386,25 +386,8 @@ func newUpdateWorkoutDraft(request UpdateWorkoutRequest) workoutRequestDraft {
 		Date:         request.Date,
 		Notes:        request.Notes,
 		WorkoutFocus: request.WorkoutFocus,
-		Exercises:    updateExercisesToDraft(request.Exercises),
+		Exercises:    request.Exercises,
 	}
-}
-
-func updateExercisesToDraft(exercises []UpdateExercise) []ExerciseInput {
-	draftExercises := make([]ExerciseInput, 0, len(exercises))
-	for _, exercise := range exercises {
-		draftSets := make([]SetInput, 0, len(exercise.Sets))
-		for _, set := range exercise.Sets {
-			// A structural conversion fails to compile if either set shape diverges.
-			draftSets = append(draftSets, SetInput(set))
-		}
-		draftExercises = append(draftExercises, ExerciseInput{
-			Name:      exercise.Name,
-			CatalogID: exercise.CatalogID,
-			Sets:      draftSets,
-		})
-	}
-	return draftExercises
 }
 
 func transformWorkoutRequest(logger *slog.Logger, request workoutRequestDraft) (*ReformattedRequest, error) {

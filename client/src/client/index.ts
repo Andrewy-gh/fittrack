@@ -289,8 +289,6 @@ export {
   type WorkoutNewWorkoutContextResponse,
   type WorkoutSetInput,
   type WorkoutStrengthAssessment,
-  type WorkoutUpdateExercise,
-  type WorkoutUpdateSet,
   type WorkoutUpdateWorkoutRequest,
   type WorkoutWorkoutDetailResponse,
   type WorkoutWorkoutResponse,

@@ -10,7 +10,11 @@ import {
   postAiConversationsByIdMessagesRecover,
 } from "@/client";
 import type { ApiError } from "@/lib/errors";
-import type { RecommendationSnapshot } from "@/client";
+import type {
+  RecommendationSnapshot,
+  WorkoutExerciseInput,
+  WorkoutSetInput,
+} from "@/client";
 import * as v from "valibot";
 import { recommendationSnapshotSchema } from "@/features/workouts/utils/recommendation-context";
 import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
@@ -98,15 +102,14 @@ export type AISaveLatestWorkoutDraftResponse = {
   workout_id: number;
 };
 
-export type AIWorkoutSetInput = {
-  weight?: number;
-  reps: number;
+// Parsed chat drafts share the workout request shape. The chat parser narrows
+// the generated nullable weight and open string set type at the wire boundary.
+export type AIWorkoutSetInput = Omit<WorkoutSetInput, "setType" | "weight"> & {
   setType: "warmup" | "working";
+  weight?: NonNullable<WorkoutSetInput["weight"]>;
 };
 
-export type AIWorkoutExerciseInput = {
-  catalog_id?: string;
-  name: string;
+type AIWorkoutExerciseInput = Omit<WorkoutExerciseInput, "sets"> & {
   sets: AIWorkoutSetInput[];
 };
 

@@ -85,8 +85,8 @@ func TestStoredDraftAndWorkoutCreatePreserveContext(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT catalog_id FROM exercise WHERE id=$1 AND user_id=$2`, exerciseID, owner).Scan(&storedCatalog))
 	require.Equal(t, "Pushups", storedCatalog, "an existing owned link remains authoritative")
 	err = workouts.UpdateWorkout(ctx, importedID, workout.UpdateWorkoutRequest{
-		Date: draft.Date,
-		Exercises: []workout.UpdateExercise{{Name: "Parity pushups", Sets: []workout.UpdateSet{{Reps: 12, SetType: "working"}}}},
+		Date:      draft.Date,
+		Exercises: []workout.ExerciseInput{{Name: "Parity pushups", Sets: []workout.SetInput{{Reps: 12, SetType: "working"}}}},
 	})
 	require.NoError(t, err)
 	editedDetail, err := workouts.GetWorkoutWithSets(ctx, importedID)

@@ -1,29 +1,10 @@
-import type {
-  WorkoutCreateWorkoutRequest,
-  WorkoutExerciseInput,
-} from "@/client";
+import type { WorkoutCreateWorkoutRequest } from "@/client";
 import type { AIWorkoutDraft } from "@/features/chat/api/ai-chat";
 import {
   type WorkoutDraftStorage,
   type StoredWorkoutDraft,
   workoutDraftStorage,
 } from "@/lib/local-storage";
-
-function cloneExercises(
-  exercises: AIWorkoutDraft["exercises"],
-): WorkoutExerciseInput[] {
-  return exercises.map((exercise) => ({
-    ...(exercise.catalog_id !== undefined && {
-      catalog_id: exercise.catalog_id,
-    }),
-    name: exercise.name,
-    sets: exercise.sets.map((set) => ({
-      reps: set.reps,
-      setType: set.setType,
-      weight: set.weight,
-    })),
-  }));
-}
 
 export function toWorkoutFormDraft(
   draft: AIWorkoutDraft,
@@ -33,7 +14,10 @@ export function toWorkoutFormDraft(
     date: draft.date,
     notes: draft.notes ?? "",
     workoutFocus: draft.workoutFocus ?? "",
-    exercises: cloneExercises(draft.exercises),
+    exercises: draft.exercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) => ({ ...set })),
+    })),
   };
   return {
     ...baseline,
