@@ -89,10 +89,8 @@ func newModelRuntime(ctx context.Context, reader ChatDataReader, modelName strin
 func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDataReader) (_ *genkit.Genkit, _ ai.Tool, _ ai.Tool, _ ai.Tool, _ ai.Tool, ok bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			slog.Warn("ai chat runtime initialization skipped after genkit panic",
-				"configured_api_key_env", googleAPIKeyEnvVar,
-				"panic", recovered,
-			)
+			// Panic values may include credentials supplied to provider initialization.
+			slog.Warn("ai chat runtime initialization skipped after genkit panic")
 			ok = false
 		}
 	}()

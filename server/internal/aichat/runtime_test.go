@@ -1,8 +1,12 @@
 package aichat
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
+	"log/slog"
 	"regexp"
 	"strings"
 	"testing"
@@ -121,6 +125,60 @@ func TestNewGenkitRuntimeSkipsAvailabilityWhenGenkitPanics(t *testing.T) {
 	}
 	if runtime.workoutDraftTool != nil {
 		t.Fatal("NewGenkitRuntime() should not retain a workout draft tool after init panic")
+	}
+}
+
+func TestNewGenkitRuntimePanicDiagnosticIsProviderNeutralAndSecretFree(t *testing.T) {
+	for _, tc := range []struct {
+		model, openAIKey, geminiKey string
+	}{
+		{lunaModel, "synthetic-openai-secret", ""},
+		{"googleai/gemini-test", "", "synthetic-gemini-secret"},
+	} {
+		t.Run(tc.model, func(t *testing.T) {
+			t.Setenv("AI_CHAT_PRIMARY_MODEL", tc.model)
+			t.Setenv("GEMINI_MODEL", "googleai/gemini-test")
+			t.Setenv("AI_CHAT_FALLBACK", "")
+			t.Setenv("OPENAI_API_KEY", tc.openAIKey)
+			t.Setenv(geminiAPIKeyEnvVar, tc.geminiKey)
+			t.Setenv(googleAPIKeyEnvVar, "")
+
+			originalInit := genkitInit
+			genkitInit = func(context.Context, ...genkit.GenkitOption) *genkit.Genkit {
+				panic("synthetic-panic-secret: " + tc.model + " " + tc.openAIKey + tc.geminiKey)
+			}
+			t.Cleanup(func() { genkitInit = originalInit })
+			var logs bytes.Buffer
+			originalLogger := slog.Default()
+			originalWriter, originalFlags := log.Writer(), log.Flags()
+			slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+			t.Cleanup(func() {
+				slog.SetDefault(originalLogger)
+				log.SetOutput(originalWriter)
+				log.SetFlags(originalFlags)
+			})
+
+			runtime := NewGenkitRuntime(context.Background(), nil, config.LoadAIChat())
+			if runtime.Available() {
+				t.Fatal("runtime should be unavailable after initialization panic")
+			}
+			got := logs.String()
+			var record struct {
+				Level   string `json:"level"`
+				Message string `json:"msg"`
+			}
+			if err := json.Unmarshal(logs.Bytes(), &record); err != nil {
+				t.Fatalf("invalid diagnostic: %v: %s", err, got)
+			}
+			if record.Level != "WARN" || record.Message != "ai chat runtime initialization skipped after genkit panic" {
+				t.Fatalf("missing initialization warning: %s", got)
+			}
+			for _, forbidden := range []string{"openai", "gemini", "google", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "synthetic-openai-secret", "synthetic-gemini-secret", "synthetic-panic-secret"} {
+				if strings.Contains(strings.ToLower(got), strings.ToLower(forbidden)) {
+					t.Errorf("diagnostic contains a provider name, key name or secret %q: %s", forbidden, got)
+				}
+			}
+		})
 	}
 }
 
