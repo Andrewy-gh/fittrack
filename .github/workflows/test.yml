@@ -60,7 +60,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 55432:5432
+          - 5432:5432
 
     steps:
       - name: Checkout code
@@ -98,7 +98,7 @@ jobs:
       - name: Set up test database
         working-directory: server
         env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:55432/fittrack_test?sslmode=disable
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
         run: |
           echo "Testing database connection..."
           psql "$DATABASE_URL" -c "SELECT version();"
@@ -108,6 +108,11 @@ jobs:
             exit 1
           fi
           goose -dir migrations postgres "$DATABASE_URL" up
+
+      - name: Verify catalog SQL generation
+        run: |
+          node scripts/catalog-sql.mjs --check
+          node --test scripts/catalog-sql.test.mjs
 
       - name: Verify Go modules
         working-directory: server
@@ -120,7 +125,8 @@ jobs:
       - name: Run unit and integration tests
         working-directory: server
         env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:55432/fittrack_test?sslmode=disable
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_test?sslmode=disable
+          FITTRACK_CATALOG_CI_ISOLATED: "1"
         run: |
           # Database-backed packages share one schema, and RLS tests acquire
           # table-level locks while toggling enforcement. Run packages serially
@@ -131,12 +137,12 @@ jobs:
         working-directory: server
         env:
           # Disposable CI credentials, never production secrets.
-          ADMIN_DATABASE_URL: postgresql://test_user:test_password@localhost:55432/fittrack_rls_test?sslmode=disable
-          DATABASE_URL: postgresql://fittrack_app:runtime_test_password@localhost:55432/fittrack_rls_test?sslmode=disable
+          ADMIN_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fittrack_rls_test?sslmode=disable
+          DATABASE_URL: postgresql://fittrack_app:runtime_test_password@localhost:5432/fittrack_rls_test?sslmode=disable
           PGPASSWORD: test_password
         run: |
           # Keep provisioning's deny-by-default grants separate from the shared suite.
-          createdb -h localhost -p 55432 -U test_user fittrack_rls_test
+          createdb -h localhost -U test_user fittrack_rls_test
           goose -dir migrations postgres "$ADMIN_DATABASE_URL" up
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/provision-runtime-role.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "ALTER ROLE fittrack_app LOGIN PASSWORD 'runtime_test_password'"

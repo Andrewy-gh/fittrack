@@ -78,17 +78,26 @@ other equivalent expression forms fail closed and require an explicit
 maintenance decision. This is not a proof of arbitrary constraints, triggers,
 deployed data, or production state.
 
-The check provides a parity gate, not duplicate-maintenance elimination: the
-forward migration and SQLC list still require coordinated edits. A small
-JSON-to-SQL emitter could safely quote and output the current ID list for both
-uses; it would still need a reviewed forward migration with an appropriate
-rollback snapshot, and a maintained insertion/update mechanism for `schema.sql`.
-No such regeneration path is implemented here. Do not rewrite old migrations. `reviewedMuscleRoles` is an intentionally partial, independently
-reviewed mapping; the existing #373 test checks that its keys belong to the
-catalog, not that every catalog entry has a role. Unlisted roles stay unresolved.
-Run the membership test via the isolated worktree test profile, not `-short`;
-it requires an explicit local `DATABASE_URL` on port 55432 or 26432 and refuses
-the shared/default 5432 target. CI uses its own disposable service on 55432.
+From the repository root, run `node scripts/catalog-sql.mjs --write` to update
+only the marked SQLC schema block, and `node scripts/catalog-sql.mjs --check`
+to verify it without writing. CI runs the check and generator tests. For a new
+forward migration, save `node scripts/catalog-sql.mjs --snippet` output as a
+reviewed, frozen SQL snapshot in a **new** migration; it does not read JSON at
+migration runtime. Never rewrite historical migrations. The snippet drops and
+recreates the check; assess table locking and existing data before deployment.
+Removing IDs can reject existing rows. A Down migration restoring an older list
+can likewise fail after new IDs have been stored: plan data handling and an
+explicit rollback policy rather than automatically deleting or reclassifying
+records. The generated snippet intentionally contains no Down step.
+
+This eliminates retyping the current SQLC and forward membership lists, but
+migration creation, rollout and rollback still require human review. The
+`reviewedMuscleRoles` map is intentionally partial and independently reviewed;
+#373 checks its keys against the catalog, not completeness. Unlisted roles stay
+unresolved. Run the membership test through the isolated worktree test profile,
+not `-short`: it requires this checkout's managed test database name, native
+ownership marker and owner. The explicitly marked GitHub Actions job uses its
+own disposable CI service; there is no local 5432 fallback.
 
 ## A044 reconciliation evidence (2026-11-12)
 

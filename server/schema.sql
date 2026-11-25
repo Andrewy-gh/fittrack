@@ -266,6 +266,7 @@ CREATE TABLE workout (
 
 -- Exercises table  
 CREATE TABLE exercise (
+    -- BEGIN GENERATED CATALOG MEMBERSHIP
     catalog_id TEXT CHECK (catalog_id IN (
     'Barbell_Bench_Press_-_Medium_Grip',
     'Barbell_Curl',
@@ -293,6 +294,7 @@ CREATE TABLE exercise (
     'Triceps_Pushdown',
     'Wide-Grip_Lat_Pulldown'
 )),
+    -- END GENERATED CATALOG MEMBERSHIP
     id SERIAL PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
     historical_1rm NUMERIC(8,2),

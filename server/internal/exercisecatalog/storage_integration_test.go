@@ -2,9 +2,12 @@ package exercisecatalog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -18,12 +21,17 @@ import (
 var membershipCheck = regexp.MustCompile(`^CHECK \(\(catalog_id = ANY \(ARRAY\[(.*)\]\)\)\)$`)
 var membershipLiteral = regexp.MustCompile(`^'((?:[^']|'')*)'::text(?:, |$)`)
 
-func integrationURL(raw string) error {
+func integrationURL(raw, worktreeID string, isolatedCI bool) error {
 	u, err := url.Parse(raw)
 	if err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") ||
-		(u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost") ||
-		(u.Port() != "55432" && u.Port() != "26432") || u.Path == "" || u.Path == "/" || u.Fragment != "" {
-		return fmt.Errorf("DATABASE_URL must explicitly select an isolated local test database on port 55432 or 26432")
+		(u.Hostname() != "127.0.0.1" && u.Hostname() != "localhost") || u.Fragment != "" {
+		return fmt.Errorf("DATABASE_URL must explicitly select an isolated local test database")
+	}
+	local := regexp.MustCompile(`^[a-z0-9_]+_[a-f0-9]{12}$`).MatchString(worktreeID) &&
+		(u.Port() == "55432" || u.Port() == "26432") && u.Path == "/ft_"+worktreeID+"_test"
+	ci := isolatedCI && u.Port() == "5432" && u.Path == "/fittrack_test" && u.User != nil && u.User.Username() == "test_user"
+	if !local && !ci {
+		return fmt.Errorf("DATABASE_URL must select this checkout's managed test database or the explicit isolated CI service")
 	}
 	params, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
@@ -90,10 +98,13 @@ func checkMembership(ctx context.Context, tx pgx.Tx, table string, expected map[
 }
 
 func TestCatalogIntegrationURLSafety(t *testing.T) {
-	for _, raw := range []string{"", "postgres://postgres:password@localhost:5432/fittrack_test", "postgres://example.com:55432/test", "postgres://localhost:55432/test?host=example.com"} {
-		require.Error(t, integrationURL(raw))
+	id := "example_0123456789ab"
+	for _, raw := range []string{"", "postgres://test_user:password@localhost:5432/fittrack_test", "postgres://localhost:55432/other", "postgres://example.com:55432/ft_" + id + "_test", "postgres://localhost:55432/ft_" + id + "_test?host=example.com"} {
+		require.Error(t, integrationURL(raw, id, false))
 	}
-	require.NoError(t, integrationURL("postgres://localhost:55432/isolated_test?sslmode=disable"))
+	require.NoError(t, integrationURL("postgres://localhost:55432/ft_"+id+"_test?sslmode=disable", id, false))
+	require.NoError(t, integrationURL("postgres://test_user@localhost:5432/fittrack_test", "", true))
+	require.Error(t, integrationURL("postgres://test_user@localhost:5432/other", "", true))
 }
 
 func TestCatalogStorageMembership(t *testing.T) {
@@ -102,10 +113,18 @@ func TestCatalogStorageMembership(t *testing.T) {
 	}
 	ctx := context.Background()
 	url := os.Getenv("DATABASE_URL")
-	require.NoError(t, integrationURL(url))
+	worktreeID := os.Getenv("FITTRACK_WORKTREE_ID")
+	isolatedCI := os.Getenv("GITHUB_ACTIONS") == "true" && os.Getenv("FITTRACK_CATALOG_CI_ISOLATED") == "1"
+	require.NoError(t, integrationURL(url, worktreeID, isolatedCI))
 	conn, err := pgx.Connect(ctx, url)
 	require.NoError(t, err)
 	defer conn.Close(ctx)
+	if worktreeID != "" {
+		var marker, owner, current string
+		require.NoError(t, conn.QueryRow(ctx, `SELECT coalesce(shobj_description(oid, 'pg_database'), ''), pg_get_userbyid(datdba), current_user FROM pg_database WHERE datname=current_database()`).Scan(&marker, &owner, &current))
+		require.Equal(t, "fittrack-worktree:"+worktreeID, marker, "refusing database without this checkout's ownership marker")
+		require.Equal(t, current, owner, "refusing database not owned by the connected role")
+	}
 	tx, err := conn.Begin(ctx)
 	require.NoError(t, err)
 	defer tx.Rollback(ctx)
@@ -128,6 +147,58 @@ func TestCatalogStorageMembership(t *testing.T) {
 	for _, table := range []string{"public.exercise", "catalog_parity_test.exercise"} {
 		require.NoError(t, checkMembership(ctx, tx, table, expected), table)
 	}
+
+	// Exercise the real generator with an expanded catalog in an isolated copy.
+	dir := t.TempDir()
+	for _, name := range []string{"scripts", "server/internal/exercisecatalog"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, name), 0o755))
+	}
+	script, err := os.ReadFile("../../../scripts/catalog-sql.mjs")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "scripts/catalog-sql.mjs"), script, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "server/schema.sql"), schema, 0o600))
+	syntheticID := "Synthetic_'Expansion"
+	expanded := append(append([]Entry(nil), All()...), Entry{ID: syntheticID})
+	contents, err := json.Marshal(expanded)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "server/internal/exercisecatalog/catalog.json"), contents, 0o600))
+	runGenerator := func(arg string) ([]byte, error) {
+		return exec.Command("node", filepath.Join(dir, "scripts/catalog-sql.mjs"), arg).CombinedOutput()
+	}
+	_, err = runGenerator("--check")
+	require.Error(t, err, "unregenerated schema must fail")
+	output, err := runGenerator("--write")
+	require.NoError(t, err, string(output))
+	output, err = runGenerator("--check")
+	require.NoError(t, err, string(output))
+	snippet, err := runGenerator("--snippet")
+	require.NoError(t, err, string(snippet))
+	expandedSchema, err := os.ReadFile(filepath.Join(dir, "server/schema.sql"))
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `CREATE SCHEMA catalog_expanded_test; SET LOCAL search_path TO catalog_expanded_test`)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, string(expandedSchema))
+	require.NoError(t, err)
+	expandedExpected := make(map[string]bool, len(expected)+1)
+	for id := range expected {
+		expandedExpected[id] = true
+	}
+	expandedExpected[syntheticID] = true
+	require.NoError(t, checkMembership(ctx, tx, "catalog_expanded_test.exercise", expandedExpected))
+	// The emitted forward snapshot applies to a temporary current-constraint table.
+	_, err = tx.Exec(ctx, "CREATE TEMP TABLE exercise (catalog_id text CHECK (catalog_id IN ("+strings.Join(quoted, ",")+")))")
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, string(snippet))
+	require.NoError(t, err)
+	require.NoError(t, checkMembership(ctx, tx, "pg_temp.exercise", expandedExpected))
+	_, err = tx.Exec(ctx, `INSERT INTO pg_temp.exercise (catalog_id) VALUES ($1), (NULL)`, syntheticID)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `SAVEPOINT invalid_catalog`)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `INSERT INTO pg_temp.exercise (catalog_id) VALUES ('not_in_catalog')`)
+	require.ErrorContains(t, err, "exercise_catalog_id_check")
+	_, err = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT invalid_catalog`)
+	require.NoError(t, err)
 
 	// Equivalent membership in another order must not be classified as drift.
 	reversed := append([]string(nil), quoted...)
