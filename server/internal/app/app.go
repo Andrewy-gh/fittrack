@@ -247,7 +247,7 @@ func buildHandlers(ctx context.Context, cfg *config.Config, logger *slog.Logger,
 	accountService := account.NewService(logger, accountRepo, billingService)
 	userService := user.NewService(logger, userRepo)
 	aiChatRepo := aichat.NewRepository(logger, queries, pool, cfg.AIChatTrialPromptCap)
-	aiChatRuntime := aichat.NewGenkitRuntime(ctx, aiChatRepo)
+	aiChatRuntime := aichat.NewGenkitRuntime(ctx, aiChatRepo, cfg.AIChat)
 	aiChatService := aichat.NewService(logger, featureAccessService, aiChatRuntime, aiChatRepo, workoutTxSaver)
 
 	var inngestRecovery *aichat.InngestRecovery

@@ -1,37 +1,25 @@
 package aichat
 
-import "testing"
+import (
+	"bytes"
+	"log/slog"
+	"strings"
+	"testing"
+)
 
-func TestAIChatTraceEnabled(t *testing.T) {
-	t.Run("disabled by default", func(t *testing.T) {
-		t.Setenv(aiChatTraceLogsEnvVar, "")
-
-		if aiChatTraceEnabled() {
-			t.Fatal("expected AI chat trace logs to be disabled by default")
+func TestTraceToggleChangesWithoutRestart(t *testing.T) {
+	var output bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&output, nil))
+	for _, step := range []struct {
+		value, stage string
+		enabled      bool
+	}{
+		{"", "disabled", false}, {" YES ", "enabled", true}, {"invalid", "invalid", false}, {"on", "enabled-again", true},
+	} {
+		t.Setenv("AI_CHAT_TRACE_LOGS", step.value)
+		logAIChatTrace(logger, step.stage)
+		if got := strings.Contains(output.String(), "stage="+step.stage); got != step.enabled {
+			t.Fatalf("stage %s logged = %v, want %v", step.stage, got, step.enabled)
 		}
-	})
-
-	t.Run("accepts common truthy values", func(t *testing.T) {
-		for _, value := range []string{"1", "true", "TRUE", "yes", "on"} {
-			t.Run(value, func(t *testing.T) {
-				t.Setenv(aiChatTraceLogsEnvVar, value)
-
-				if !aiChatTraceEnabled() {
-					t.Fatalf("expected %s=%q to enable AI chat trace logs", aiChatTraceLogsEnvVar, value)
-				}
-			})
-		}
-	})
-
-	t.Run("rejects non-truthy values", func(t *testing.T) {
-		for _, value := range []string{"0", "false", "off", "no"} {
-			t.Run(value, func(t *testing.T) {
-				t.Setenv(aiChatTraceLogsEnvVar, value)
-
-				if aiChatTraceEnabled() {
-					t.Fatalf("expected %s=%q to disable AI chat trace logs", aiChatTraceLogsEnvVar, value)
-				}
-			})
-		}
-	})
+	}
 }

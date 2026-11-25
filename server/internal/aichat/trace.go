@@ -3,19 +3,12 @@ package aichat
 import (
 	"context"
 	"log/slog"
-	"os"
-	"strings"
+
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 )
 
-const aiChatTraceLogsEnvVar = "AI_CHAT_TRACE_LOGS"
-
-func aiChatTraceEnabled() bool {
-	value := strings.TrimSpace(strings.ToLower(os.Getenv(aiChatTraceLogsEnvVar)))
-	return value == "1" || value == "true" || value == "yes" || value == "on"
-}
-
 func logAIChatTrace(logger *slog.Logger, stage string, attrs ...any) {
-	if !aiChatTraceEnabled() {
+	if !config.AIChatTraceEnabled() {
 		return
 	}
 	if logger == nil {
@@ -29,7 +22,7 @@ func logAIChatTrace(logger *slog.Logger, stage string, attrs ...any) {
 }
 
 func logAIChatTraceContext(ctx context.Context, stage string, attrs ...any) {
-	if !aiChatTraceEnabled() {
+	if !config.AIChatTraceEnabled() {
 		return
 	}
 

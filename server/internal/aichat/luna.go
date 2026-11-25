@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/openai/openai-go/v3"
@@ -19,7 +20,7 @@ import (
 	"github.com/openai/openai-go/v3/shared"
 )
 
-const lunaModel = "openai/gpt-6-luna"
+const lunaModel = config.LunaModel
 
 func defineLuna(g *genkit.Genkit) {
 	client := openai.NewClient(option.WithAPIKey(strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))), option.WithHTTPClient(http.DefaultClient), option.WithMaxRetries(0), option.WithBaseURL("https://api.openai.com/v1"))

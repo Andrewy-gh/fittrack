@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Andrewy-gh/fittrack/server/internal/config"
 	"github.com/Andrewy-gh/fittrack/server/internal/user"
 )
 
@@ -41,7 +42,7 @@ func TestGenkitRuntime_ProviderStreamTransport(t *testing.T) {
 			t.Setenv("GEMINI_MODEL", "googleai/gemini-2.5-flash")
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			runtime := NewGenkitRuntime(ctx, nil)
+			runtime := NewGenkitRuntime(ctx, nil, config.LoadAIChat())
 			if !runtime.Available() {
 				t.Fatal("real plugin failed to initialize")
 			}
