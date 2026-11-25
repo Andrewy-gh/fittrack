@@ -74,8 +74,25 @@ test("write preserves bytes outside its block, is a no-op when current, and reje
   assert.deepEqual(readFileSync(schema), result);
   for (const id of ["\ud800", "\udc00"]) {
     writeFileSync(source, JSON.stringify([{ id }]));
-    assert.notEqual(run("--write").status, 0);
+    for (const mode of ["--write", "--check", "--snippet"]) {
+      const failure = run(mode);
+      assert.notEqual(failure.status, 0);
+      assert.equal(failure.stdout, "");
+    }
     assert.deepEqual(readFileSync(schema), result);
     assert.equal(statSync(schema).mtimeMs, mtime);
   }
+  // Raw invalid UTF-8 must not be confused with a legitimate U+FFFD ID.
+  writeFileSync(source, Buffer.concat([Buffer.from('[{"id":"'), Buffer.from([0xff]), Buffer.from('"}]')]));
+  for (const mode of ["--write", "--check", "--snippet"]) {
+    const failure = run(mode);
+    assert.notEqual(failure.status, 0);
+    assert.equal(failure.stdout, "");
+    assert.deepEqual(readFileSync(schema), result);
+    assert.equal(statSync(schema).mtimeMs, mtime);
+  }
+  writeFileSync(source, '[{"id":"\ufffd"}]');
+  const valid = run("--snippet");
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.match(valid.stdout, /\ufffd/);
 });

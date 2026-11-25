@@ -16,7 +16,7 @@ if (rest.length || !["--check", "--write", "--snippet"].includes(mode)) {
 }
 
 try {
-  const entries = JSON.parse(readFileSync(catalogPath, "utf8"));
+  const entries = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(readFileSync(catalogPath)));
   if (!Array.isArray(entries) || entries.length === 0) throw new Error("catalog must be a nonempty array");
   const ids = entries.map((entry) => entry?.id);
   if (ids.some((id) => typeof id !== "string" || !id || !id.isWellFormed() || /[\x00-\x1f\x7f]/.test(id)) || new Set(ids).size !== ids.length) {

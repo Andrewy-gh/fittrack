@@ -247,14 +247,25 @@ func TestCatalogStorageMembership(t *testing.T) {
 	require.NoError(t, checkMembership(ctx, tx, "pg_temp.reordered", expected))
 
 	// Mutate only temporary tables, never the migrated or schema tables.
-	for _, tc := range []struct{ name, check string }{
-		{"missing ID", strings.Join(quoted[1:], ",")},
-		{"extra ID", strings.Join(append(append([]string{}, quoted...), "'unknown_catalog_id'"), ",")},
+	// A singleton still needs valid SQL with a genuinely missing catalog member.
+	unknown := "unknown_catalog_id"
+	for expected[unknown] {
+		unknown += "_"
+	}
+	missing := strings.Join(quoted[1:], ",")
+	missingError := "catalog membership differs"
+	if len(quoted) == 1 {
+		missing = "'" + unknown + "'"
+		missingError = "catalog membership missing"
+	}
+	for _, tc := range []struct{ name, check, diagnostic string }{
+		{"missing ID", missing, missingError},
+		{"extra ID", strings.Join(append(append([]string{}, quoted...), "'"+unknown+"'"), ","), "catalog membership differs"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tx.Exec(ctx, "CREATE TEMP TABLE drift (catalog_id text CHECK (catalog_id IN ("+tc.check+")))")
 			require.NoError(t, err)
-			require.ErrorContains(t, checkMembership(ctx, tx, "pg_temp.drift", expected), "catalog membership differs")
+			require.ErrorContains(t, checkMembership(ctx, tx, "pg_temp.drift", expected), tc.diagnostic)
 			_, err = tx.Exec(ctx, "DROP TABLE pg_temp.drift")
 			require.NoError(t, err)
 		})

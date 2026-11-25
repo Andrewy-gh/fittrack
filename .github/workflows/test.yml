@@ -136,7 +136,7 @@ jobs:
           # Database-backed packages share one schema, and RLS tests acquire
           # table-level locks while toggling enforcement. Run packages serially
           # to prevent unrelated cleanup transactions from deadlocking with DDL.
-          go test -p 1 -v ./...
+          go test -p 1 -count=1 -v ./...
 
       - name: Verify restricted runtime role
         working-directory: server
