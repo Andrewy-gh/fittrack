@@ -83,13 +83,18 @@ test("write preserves bytes outside its block, is a no-op when current, and reje
     assert.equal(statSync(schema).mtimeMs, mtime);
   }
   // Raw invalid UTF-8 must not be confused with a legitimate U+FFFD ID.
-  writeFileSync(source, Buffer.concat([Buffer.from('[{"id":"'), Buffer.from([0xff]), Buffer.from('"}]')]));
-  for (const mode of ["--write", "--check", "--snippet"]) {
-    const failure = run(mode);
-    assert.notEqual(failure.status, 0);
-    assert.equal(failure.stdout, "");
-    assert.deepEqual(readFileSync(schema), result);
-    assert.equal(statSync(schema).mtimeMs, mtime);
+  for (const invalidSource of [
+    Buffer.concat([Buffer.from('[{"id":"'), Buffer.from([0xff]), Buffer.from('"}]')]),
+    Buffer.from("\uFEFF" + JSON.stringify(entries)), // Go's embedded JSON loader rejects a leading BOM.
+  ]) {
+    writeFileSync(source, invalidSource);
+    for (const mode of ["--write", "--check", "--snippet"]) {
+      const failure = run(mode);
+      assert.notEqual(failure.status, 0);
+      assert.equal(failure.stdout, "");
+      assert.deepEqual(readFileSync(schema), result);
+      assert.equal(statSync(schema).mtimeMs, mtime);
+    }
   }
   writeFileSync(source, '[{"id":"\ufffd"}]');
   const valid = run("--snippet");
