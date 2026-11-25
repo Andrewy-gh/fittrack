@@ -16,9 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// PostgreSQL deparses the supported IN check as an ANY array. Accept only
-// literal text elements, so arbitrary or weakened expressions fail closed.
+// PostgreSQL deparses IN as equality for one ID and ANY for multiple IDs.
+// Accept only literal text elements, so weakened expressions fail closed.
 var membershipCheck = regexp.MustCompile(`^CHECK \(\(catalog_id = ANY \(ARRAY\[(.*)\]\)\)\)$`)
+var singletonCheck = regexp.MustCompile(`^CHECK \(\(catalog_id = ('(?:[^']|'')*'::text)\)\)$`)
 var membershipLiteral = regexp.MustCompile(`^'((?:[^']|'')*)'::text(?:, |$)`)
 
 func integrationURL(raw, worktreeID string, isolatedCI bool) error {
@@ -67,6 +68,9 @@ func checkMembership(ctx context.Context, tx pgx.Tx, table string, expected map[
 		}
 		count++
 		match := membershipCheck.FindStringSubmatch(definition)
+		if match == nil {
+			match = singletonCheck.FindStringSubmatch(definition)
+		}
 		if !validated || match == nil {
 			return fmt.Errorf("%s catalog check has unsupported or unvalidated definition: %s", table, definition)
 		}
@@ -198,6 +202,39 @@ func TestCatalogStorageMembership(t *testing.T) {
 	_, err = tx.Exec(ctx, `INSERT INTO pg_temp.exercise (catalog_id) VALUES ('not_in_catalog')`)
 	require.ErrorContains(t, err, "exercise_catalog_id_check")
 	_, err = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT invalid_catalog`)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `DROP TABLE pg_temp.exercise`)
+	require.NoError(t, err)
+
+	// PostgreSQL rewrites a single-element IN to equality, not ANY(array).
+	contents, err = json.Marshal([]Entry{{ID: syntheticID}})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "server/internal/exercisecatalog/catalog.json"), contents, 0o600))
+	output, err = runGenerator("--write")
+	require.NoError(t, err, string(output))
+	output, err = runGenerator("--check")
+	require.NoError(t, err, string(output))
+	singleSchema, err := os.ReadFile(filepath.Join(dir, "server/schema.sql"))
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `CREATE SCHEMA catalog_single_test; SET LOCAL search_path TO catalog_single_test`)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, string(singleSchema))
+	require.NoError(t, err)
+	require.NoError(t, checkMembership(ctx, tx, "catalog_single_test.exercise", map[string]bool{syntheticID: true}))
+	snippet, err = runGenerator("--snippet")
+	require.NoError(t, err, string(snippet))
+	_, err = tx.Exec(ctx, "CREATE TEMP TABLE exercise (catalog_id text CHECK (catalog_id IN ("+strings.Join(quoted, ",")+")))")
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, string(snippet))
+	require.NoError(t, err)
+	require.NoError(t, checkMembership(ctx, tx, "pg_temp.exercise", map[string]bool{syntheticID: true}))
+	_, err = tx.Exec(ctx, `INSERT INTO pg_temp.exercise (catalog_id) VALUES ($1), (NULL)`, syntheticID)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `SAVEPOINT singleton_invalid`)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `INSERT INTO pg_temp.exercise (catalog_id) VALUES ('not_in_catalog')`)
+	require.ErrorContains(t, err, "exercise_catalog_id_check")
+	_, err = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT singleton_invalid`)
 	require.NoError(t, err)
 
 	// Equivalent membership in another order must not be classified as drift.

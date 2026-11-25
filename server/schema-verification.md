@@ -73,8 +73,8 @@ constraint and update `schema.sql` for SQLC. The full backend Go suite runs
 `schema.sql` in a rolled-back schema; PostgreSQL normalizes each check and
 compares its literal membership set with the embedded IDs, independent of list
 order. It also rejects a missing or unvalidated check and a non-nullable
-column. The test accepts PostgreSQL's deparsed `IN`/`ANY` literal-array shape;
-other equivalent expression forms fail closed and require an explicit
+column. The test accepts PostgreSQL's deparsed literal-array `ANY` shape and
+its singleton equality form; other equivalent expression forms fail closed and require an explicit
 maintenance decision. This is not a proof of arbitrary constraints, triggers,
 deployed data, or production state.
 

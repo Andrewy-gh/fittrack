@@ -73,6 +73,11 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .node-version
+
       - name: Cache Go build and tools
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
@@ -112,7 +117,7 @@ jobs:
       - name: Verify catalog SQL generation
         run: |
           node scripts/catalog-sql.mjs --check
-          node --test scripts/catalog-sql.test.mjs
+          node --test scripts/catalog-sql.test.mjs scripts/catalog-integration-target.test.mjs
 
       - name: Verify Go modules
         working-directory: server

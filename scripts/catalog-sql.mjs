@@ -19,8 +19,8 @@ try {
   const entries = JSON.parse(readFileSync(catalogPath, "utf8"));
   if (!Array.isArray(entries) || entries.length === 0) throw new Error("catalog must be a nonempty array");
   const ids = entries.map((entry) => entry?.id);
-  if (ids.some((id) => typeof id !== "string" || !id || /[\x00-\x1f\x7f]/.test(id)) || new Set(ids).size !== ids.length) {
-    throw new Error("catalog IDs must be unique nonempty strings without control characters");
+  if (ids.some((id) => typeof id !== "string" || !id || !id.isWellFormed() || /[\x00-\x1f\x7f]/.test(id)) || new Set(ids).size !== ids.length) {
+    throw new Error("catalog IDs must be unique nonempty Unicode strings without control characters");
   }
   ids.sort();
   const literal = (id) => id.includes("\\")
@@ -30,19 +30,21 @@ try {
   if (mode === "--snippet") {
     console.log(`-- Frozen catalog membership snapshot; review locking, existing data and rollback before use.\nALTER TABLE exercise DROP CONSTRAINT exercise_catalog_id_check;\nALTER TABLE exercise ADD CONSTRAINT exercise_catalog_id_check ${check};`);
   } else {
-    const original = readFileSync(schemaPath, "utf8");
-    const newline = original.includes("\r\n") ? "\r\n" : "\n";
-    const normalized = original.replaceAll("\r\n", "\n");
-    const first = normalized.indexOf(begin);
-    const last = normalized.indexOf(end);
-    if (first < 0 || last < first || normalized.indexOf(begin, first + 1) !== -1 || normalized.indexOf(end, last + 1) !== -1) {
+    const original = readFileSync(schemaPath);
+    const first = original.indexOf(begin);
+    const last = original.indexOf(end);
+    if (first < 0 || last < first || original.indexOf(begin, first + 1) !== -1 || original.indexOf(end, last + 1) !== -1) {
       throw new Error("schema must contain exactly one ordered pair of catalog generation markers");
     }
-    const generated = `${begin}\n    catalog_id TEXT ${check},\n${end}`;
-    const updated = (normalized.slice(0, first) + generated + normalized.slice(last + end.length)).replaceAll("\n", newline);
+    // Choose the block's own newline; preserve all bytes outside it verbatim.
+    const newline = original.subarray(first + begin.length, first + begin.length + 2).equals(Buffer.from("\r\n")) ? "\r\n" : "\n";
+    const generated = Buffer.from(`${begin}\n    catalog_id TEXT ${check},\n${end}`.replaceAll("\n", newline));
+    const updated = Buffer.concat([original.subarray(0, first), generated, original.subarray(last + end.length)]);
     if (mode === "--check") {
-      if (original !== updated) throw new Error("schema catalog membership is stale; run node scripts/catalog-sql.mjs --write");
+      if (!original.equals(updated)) throw new Error("schema catalog membership is stale; run node scripts/catalog-sql.mjs --write");
       console.log("Schema catalog membership matches embedded JSON.");
+    } else if (original.equals(updated)) {
+      console.log("Schema catalog membership is already current.");
     } else {
       writeFileSync(schemaPath, updated);
       console.log("Updated schema catalog membership from JSON.");
