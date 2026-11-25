@@ -21,6 +21,25 @@ function createMemoryStorage() {
 }
 
 describe("ai workout draft import", () => {
+  it("does not replace an existing form draft when imported context is unsupported", () => {
+    const storage = createWorkoutDraftStorage(createMemoryStorage());
+    const original = { date: "2026-04-20T12:00:00Z", exercises: [] };
+    storage.save(original, "user-123");
+    expect(
+      saveAIWorkoutDraftToWorkoutForm(
+        {
+          date: "2026-04-21T12:00:00Z",
+          exercises: [
+            { name: "Pushups", sets: [{ reps: 8, setType: "working" }] },
+          ],
+          unsupportedRecommendations: true,
+        },
+        "user-123",
+        storage,
+      ),
+    ).toBeNull();
+    expect(storage.load("user-123")).toEqual(original);
+  });
   it("overwrites the saved workout-form draft with the imported ai draft", () => {
     const storage = createMemoryStorage();
     const draftStorage = createWorkoutDraftStorage(storage);
@@ -89,7 +108,8 @@ describe("ai workout draft import", () => {
         workoutFocus: "back",
         exercises: [
           {
-            name: "Lat Pulldown",
+            name: "Pushups",
+            catalog_id: "Pushups",
             sets: [{ reps: 12, setType: "working", weight: 120 }],
           },
         ],
@@ -104,7 +124,8 @@ describe("ai workout draft import", () => {
       workoutFocus: "back",
       exercises: [
         {
-          name: "Lat Pulldown",
+          name: "Pushups",
+          catalog_id: "Pushups",
           sets: [{ reps: 12, setType: "working", weight: 120 }],
         },
       ],

@@ -1,7 +1,11 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkoutNewWorkoutContextResponse } from "@/client";
-import type { WorkoutDraftStorage } from "@/lib/local-storage";
+import {
+  createWorkoutDraftStorage,
+  type WorkoutDraftStorage,
+} from "@/lib/local-storage";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
 import { featureFlags } from "@/lib/feature-flags";
 
 vi.mock("@/lib/feature-flags", () => ({
@@ -74,6 +78,139 @@ const newWorkoutContext: WorkoutNewWorkoutContextResponse = {
 };
 
 describe("useNewWorkoutFormWorkflow", () => {
+  it("keeps imported context only for unchanged inputs, including after reload and undo", async () => {
+    const entries = new Map<string, string>();
+    const storage = createWorkoutDraftStorage({
+      getItem: (key) => entries.get(key) ?? null,
+      setItem: (key, value) => {
+        entries.set(key, value);
+      },
+      removeItem: (key) => {
+        entries.delete(key);
+      },
+    });
+    const snapshot = {
+      exerciseName: "Pushups",
+      recommendation: {
+        exerciseId: 77,
+        readiness: "normal" as const,
+        explanation: "Original context",
+        policyVersion: "exercise-plan-v2",
+        plan: { sets: 3, reps: 8, weight: null },
+      },
+    };
+    const draft = {
+      date: "2026-09-11T12:00:00-04:00",
+      notes: "Original note",
+      workoutFocus: "Push",
+      exercises: [
+        {
+          name: "Pushups",
+          catalog_id: "Pushups",
+          sets: [{ reps: 8, setType: "working" as const }],
+        },
+      ],
+      recommendations: [snapshot],
+    };
+    const original = structuredClone(draft);
+    expect(
+      saveAIWorkoutDraftToWorkoutForm(draft, "user-1", storage),
+    ).not.toBeNull();
+    expect(storage.load("user-2")).toBeNull();
+    const { result, unmount } = renderHook(() =>
+      useNewWorkoutFormWorkflow({
+        user: { id: "user-1" } as any,
+        // A different owned ID must not be silently substituted for snapshot 77.
+        exercises: [{ id: 88, name: "Pushups" }],
+        newWorkoutContext,
+        draftStorage: storage,
+      }),
+    );
+    await act(async () => {
+      result.current.recordRecommendation("Pushups", null);
+      result.current.recordRecommendation("Pushups", {
+        ...snapshot.recommendation,
+        exerciseId: 88,
+        explanation: "Late response",
+      });
+    });
+    await act(async () => {
+      await result.current.form.handleSubmit();
+    });
+    expect(mockApiMutateAsync.mock.calls.at(-1)?.[0].body).toMatchObject({
+      date: draft.date,
+      exercises: draft.exercises,
+      recommendations: [snapshot],
+    });
+    await act(async () => {
+      result.current.form.setFieldValue("notes", "Changed");
+    });
+    await act(async () => {
+      await result.current.form.handleSubmit();
+    });
+    expect(
+      mockApiMutateAsync.mock.calls.at(-1)?.[0].body.recommendations,
+    ).toBeUndefined();
+    unmount();
+    const reloaded = renderHook(() =>
+      useNewWorkoutFormWorkflow({
+        user: { id: "user-1" } as any,
+        exercises: [{ id: 88, name: "Pushups" }],
+        newWorkoutContext,
+        draftStorage: storage,
+      }),
+    );
+    await act(async () => {
+      reloaded.result.current.form.setFieldValue("notes", "Original note");
+    });
+    await act(async () => {
+      await reloaded.result.current.form.handleSubmit();
+    });
+    expect(
+      mockApiMutateAsync.mock.calls.at(-1)?.[0].body.recommendations,
+    ).toEqual([snapshot]);
+    for (const changedExercises of [
+      [{ ...draft.exercises[0], catalog_id: "Dumbbell_Bench_Press" }],
+      [
+        {
+          ...draft.exercises[0],
+          sets: [{ reps: 9, setType: "working" as const }],
+        },
+      ],
+      [
+        {
+          ...draft.exercises[0],
+          sets: [{ reps: 8, setType: "working" as const, weight: 0 }],
+        },
+      ],
+    ]) {
+      await act(async () => {
+        reloaded.result.current.form.setFieldValue(
+          "exercises",
+          changedExercises,
+        );
+      });
+      await act(async () => {
+        await reloaded.result.current.form.handleSubmit();
+      });
+      expect(
+        mockApiMutateAsync.mock.calls.at(-1)?.[0].body.recommendations,
+      ).toBeUndefined();
+      await act(async () => {
+        reloaded.result.current.form.setFieldValue(
+          "exercises",
+          draft.exercises,
+        );
+      });
+      await act(async () => {
+        await reloaded.result.current.form.handleSubmit();
+      });
+      expect(
+        mockApiMutateAsync.mock.calls.at(-1)?.[0].body.recommendations,
+      ).toEqual([snapshot]);
+    }
+    expect(draft).toEqual(original);
+  });
   it("records guidance without creating or overwriting actual sets and discards it on repeat", async () => {
     const draftStorage = createDraftStorage({
       date: "2026-09-11T12:00:00Z",

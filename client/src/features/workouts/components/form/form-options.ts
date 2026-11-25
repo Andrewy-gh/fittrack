@@ -3,8 +3,8 @@ import type {
   WorkoutUpdateWorkoutRequest,
 } from "@/client";
 import {
-  loadFromLocalStorage,
   type WorkoutDraftStorage,
+  type StoredWorkoutDraft,
   workoutDraftStorage,
 } from "@/lib/local-storage";
 
@@ -29,7 +29,7 @@ export const createNewWorkoutValues = (): WorkoutCreateWorkoutRequest => ({
 export const getInitialValues = (
   userId?: string,
   draftStorage: WorkoutDraftStorage = workoutDraftStorage,
-): WorkoutCreateWorkoutRequest => {
-  const saved = loadFromLocalStorage(userId, draftStorage);
+): StoredWorkoutDraft => {
+  const saved = draftStorage.load(userId);
   return saved ?? createNewWorkoutValues();
 };

@@ -292,7 +292,17 @@ export function ChatPage({
       return;
     }
 
-    saveAIWorkoutDraftToWorkoutForm(draft, currentUserId, workoutDraftStorage);
+    const imported = saveAIWorkoutDraftToWorkoutForm(
+      draft,
+      currentUserId,
+      workoutDraftStorage,
+    );
+    if (!imported) {
+      toast.error(
+        "This draft has unsupported recommendation context and cannot be imported without losing it. The original chat draft is unchanged.",
+      );
+      return;
+    }
     toast.success("Workout draft loaded into the form");
     void navigate({ to: "/workouts/new" });
   }

@@ -377,7 +377,7 @@ func newCreateWorkoutDraft(request CreateWorkoutRequest) workoutRequestDraft {
 		Date:         request.Date,
 		Notes:        request.Notes,
 		WorkoutFocus: request.WorkoutFocus,
-		Exercises:    exerciseInputsToDraft(request.Exercises),
+		Exercises:    request.Exercises,
 	}
 }
 
@@ -390,38 +390,15 @@ func newUpdateWorkoutDraft(request UpdateWorkoutRequest) workoutRequestDraft {
 	}
 }
 
-func exerciseInputsToDraft(exercises []ExerciseInput) []exerciseRequestDraft {
-	draftExercises := make([]exerciseRequestDraft, 0, len(exercises))
+func updateExercisesToDraft(exercises []UpdateExercise) []ExerciseInput {
+	draftExercises := make([]ExerciseInput, 0, len(exercises))
 	for _, exercise := range exercises {
-		draftSets := make([]setRequestDraft, 0, len(exercise.Sets))
+		draftSets := make([]SetInput, 0, len(exercise.Sets))
 		for _, set := range exercise.Sets {
-			draftSets = append(draftSets, setRequestDraft{
-				Weight:  set.Weight,
-				Reps:    set.Reps,
-				SetType: set.SetType,
-			})
+			// A structural conversion fails to compile if either set shape diverges.
+			draftSets = append(draftSets, SetInput(set))
 		}
-		draftExercises = append(draftExercises, exerciseRequestDraft{
-			Name:      exercise.Name,
-			CatalogID: exercise.CatalogID,
-			Sets:      draftSets,
-		})
-	}
-	return draftExercises
-}
-
-func updateExercisesToDraft(exercises []UpdateExercise) []exerciseRequestDraft {
-	draftExercises := make([]exerciseRequestDraft, 0, len(exercises))
-	for _, exercise := range exercises {
-		draftSets := make([]setRequestDraft, 0, len(exercise.Sets))
-		for _, set := range exercise.Sets {
-			draftSets = append(draftSets, setRequestDraft{
-				Weight:  set.Weight,
-				Reps:    set.Reps,
-				SetType: set.SetType,
-			})
-		}
-		draftExercises = append(draftExercises, exerciseRequestDraft{
+		draftExercises = append(draftExercises, ExerciseInput{
 			Name:      exercise.Name,
 			CatalogID: exercise.CatalogID,
 			Sets:      draftSets,

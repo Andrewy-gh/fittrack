@@ -10,6 +10,9 @@ import {
   postAiConversationsByIdMessagesRecover,
 } from "@/client";
 import type { ApiError } from "@/lib/errors";
+import type { RecommendationSnapshot } from "@/client";
+import * as v from "valibot";
+import { recommendationSnapshotSchema } from "@/features/workouts/utils/recommendation-context";
 import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
 import { stackClientApp } from "@/stack";
 
@@ -102,11 +105,14 @@ export type AIWorkoutSetInput = {
 };
 
 export type AIWorkoutExerciseInput = {
+  catalog_id?: string;
   name: string;
   sets: AIWorkoutSetInput[];
 };
 
 export type AIWorkoutDraft = {
+  recommendations?: RecommendationSnapshot[];
+  unsupportedRecommendations?: true;
   date: string;
   notes?: string;
   workoutFocus?: string;
@@ -809,8 +815,19 @@ function parseOptionalWorkoutDraft(
   const draft = parseRecord(rawDraft, "workout_draft");
   const notes = parseOptionalStringProperty(draft, "notes");
   const workoutFocus = parseOptionalStringProperty(draft, "workoutFocus");
+  const context =
+    draft.recommendations === undefined
+      ? undefined
+      : v.safeParse(
+          v.array(recommendationSnapshotSchema),
+          draft.recommendations,
+        );
 
   return {
+    ...(context &&
+      (context.success
+        ? { recommendations: context.output }
+        : { unsupportedRecommendations: true as const })),
     date: parseRequiredString(draft, "date"),
     ...notes,
     ...workoutFocus,
@@ -831,6 +848,7 @@ function parseWorkoutExercises(
       `workout_draft.exercises[${exerciseIndex}]`,
     );
     return {
+      ...parseOptionalStringProperty(exercise, "catalog_id"),
       name: parseRequiredString(exercise, "name"),
       sets: parseWorkoutSets(exercise.sets, exerciseIndex),
     };

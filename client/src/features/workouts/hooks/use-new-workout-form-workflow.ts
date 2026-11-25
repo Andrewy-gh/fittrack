@@ -25,6 +25,7 @@ import {
 } from "@/features/workouts/components/form/form-options";
 import { hasWorkoutDraftContent } from "@/features/workouts/components/form/workout-form-helpers";
 import { buildWorkoutDraftFromHistory } from "@/features/workouts/utils/workout-insights";
+import { sameWorkoutInputs } from "@/features/workouts/utils/recommendation-context";
 import { useAppForm } from "@/hooks/form";
 import { queryClient } from "@/lib/api/api";
 import { getWorkoutByIdQueryOptions } from "@/features/workouts/api/workout-query-options";
@@ -51,14 +52,29 @@ export function useNewWorkoutFormWorkflow({
   >(null);
 
   const saveWorkout = useSaveWorkoutForUserMutation(user);
-  const [initialValues, setInitialValues] = useState(() =>
+  const [initialDraft] = useState(() =>
     getInitialValues(user?.id, draftStorage),
   );
+  const {
+    importedRecommendationContext: importedContext,
+    ...initialFormValues
+  } = initialDraft;
+  const [originalContext, setOriginalContext] = useState(importedContext);
+  const [initialValues, setInitialValues] =
+    useState<WorkoutCreateWorkoutRequest>(initialFormValues);
   const form = useAppForm({
     defaultValues: initialValues,
     listeners: {
       onChange: ({ formApi }) => {
-        draftStorage.save(formApi.state.values, user?.id);
+        draftStorage.save(
+          {
+            ...formApi.state.values,
+            ...(originalContext && {
+              importedRecommendationContext: originalContext,
+            }),
+          },
+          user?.id,
+        );
       },
     },
     onSubmit: async ({ value }) => {
@@ -69,11 +85,15 @@ export function useNewWorkoutFormWorkflow({
       }
       const trimmedValue = {
         ...value,
-        recommendations: value.recommendations?.filter((snapshot) =>
-          value.exercises.some(
-            (exercise) => exercise.name === snapshot.exerciseName,
-          ),
-        ),
+        recommendations: originalContext
+          ? sameWorkoutInputs(value, originalContext.baseline)
+            ? originalContext.recommendations
+            : undefined
+          : value.recommendations?.filter((snapshot) =>
+              value.exercises.some(
+                (exercise) => exercise.name === snapshot.exerciseName,
+              ),
+            ),
         notes: value.notes?.trim() || undefined,
         workoutFocus: value.workoutFocus?.trim() || undefined,
       };
@@ -138,6 +158,7 @@ export function useNewWorkoutFormWorkflow({
   function resetDraft(values: WorkoutCreateWorkoutRequest) {
     // TanStack updates options on rerender; keep the React defaults aligned with
     // reset so an untouched replacement draft is not reverted to the old one.
+    setOriginalContext(undefined);
     setInitialValues(values);
     form.reset(values);
   }
@@ -245,6 +266,7 @@ export function useNewWorkoutFormWorkflow({
 
   return {
     recordRecommendation,
+    originalContext,
     form,
     latestWorkoutNote,
     focusAreaTemplates,

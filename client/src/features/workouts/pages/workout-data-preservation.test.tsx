@@ -24,6 +24,7 @@ import { EditWorkoutPage } from "./edit-workout-page";
 import { NewWorkoutPage } from "./new-workout-page";
 import { useNewWorkoutFormWorkflow } from "../hooks/use-new-workout-form-workflow";
 import { createWorkoutDraftStorage } from "@/lib/local-storage";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
 import type { ApplicationUser } from "@/lib/application-user";
 
 const user: ApplicationUser = {
@@ -146,6 +147,71 @@ it.each(["new", "edit"] as const)(
   },
   60000,
 );
+
+it("explains imported context eligibility and restores it when an edit is undone", async () => {
+  const entries = new Map<string, string>();
+  const storage = createWorkoutDraftStorage({
+    getItem: (key) => entries.get(key) ?? null,
+    setItem: (key, value) => {
+      entries.set(key, value);
+    },
+    removeItem: (key) => {
+      entries.delete(key);
+    },
+  });
+  saveAIWorkoutDraftToWorkoutForm(
+    {
+      date: "2026-10-08T12:00:00Z",
+      notes: "Original",
+      exercises: [
+        { name: "Pushups", sets: [{ reps: 10, setType: "working" }] },
+      ],
+      recommendations: [
+        {
+          exerciseName: "Pushups",
+          recommendation: {
+            exerciseId: 1,
+            readiness: "normal",
+            explanation: "Context",
+            policyVersion: "exercise-plan-v2",
+          },
+        },
+      ],
+    },
+    user.id,
+    storage,
+  );
+  await mount("/workouts/new", () => (
+    <NewWorkoutPage
+      user={user}
+      exercises={[]}
+      newWorkoutContext={{ focusTemplates: [] }}
+      workoutsFocus={[]}
+      search={{}}
+      draftStorage={storage}
+    />
+  ));
+  expect(
+    await screen.findByText(/original recommendation context will be saved/i),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Notes" }, { timeout: 20000 }),
+  );
+  fireEvent.change(screen.getByRole("textbox"), {
+    target: { value: "Changed" },
+  });
+  expect(
+    await screen.findByText(
+      /original recommendation context will not be saved/i,
+    ),
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox"), {
+    target: { value: "Original" },
+  });
+  expect(
+    await screen.findByText(/original recommendation context will be saved/i),
+  ).toBeInTheDocument();
+}, 60000);
 
 it("submits explicit empty notes and focus from the edit form", async () => {
   await Promise.all([

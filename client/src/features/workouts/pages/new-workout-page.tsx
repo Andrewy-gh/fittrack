@@ -61,6 +61,7 @@ import {
 } from "@/features/workouts/components/form/workout-form-sections";
 import { useExerciseReorder } from "@/features/workouts/components/form/use-exercise-reorder";
 import { useNewWorkoutFormWorkflow } from "@/features/workouts/hooks/use-new-workout-form-workflow";
+import { sameWorkoutInputs } from "@/features/workouts/utils/recommendation-context";
 
 function WorkoutExerciseSection({
   field,
@@ -231,7 +232,14 @@ export function NewWorkoutPage({
                   exerciseId={exerciseId}
                   exerciseName={exerciseName}
                 />
-                {featureFlags.trainingGuidance &&
+                {workoutForm.originalContext ? (
+                  <p className="text-sm text-muted-foreground">
+                    This imported draft has original recommendation context. It
+                    is saved only if the workout inputs are unchanged; return to
+                    the workout to see its status.
+                  </p>
+                ) : (
+                  featureFlags.trainingGuidance &&
                   (user && exerciseId ? (
                     <ExerciseRecommendationPanel
                       key={`${user.id}:${exerciseId}`}
@@ -249,7 +257,8 @@ export function NewWorkoutPage({
                         ? "Log this exercise once to get set suggestions next time."
                         : "Sign in to get set suggestions from your past workouts."}
                     </p>
-                  ))}
+                  ))
+                )}
               </div>
             }
             recentSets={
@@ -314,6 +323,23 @@ export function NewWorkoutPage({
               form.handleSubmit();
             }}
           >
+            {workoutForm.originalContext && (
+              <form.Subscribe selector={(state) => state.values}>
+                {(values) => (
+                  <p
+                    className="mb-4 text-sm text-muted-foreground"
+                    role="status"
+                  >
+                    {sameWorkoutInputs(
+                      values,
+                      workoutForm.originalContext!.baseline,
+                    )
+                      ? "Original recommendation context will be saved with this unchanged workout."
+                      : "The workout has changed, so its original recommendation context will not be saved. Undo all changes to restore it. The chat draft remains unchanged."}
+                  </p>
+                )}
+              </form.Subscribe>
+            )}
             <form.Subscribe
               selector={(state) =>
                 shouldShowRecentFocusAreaCard({

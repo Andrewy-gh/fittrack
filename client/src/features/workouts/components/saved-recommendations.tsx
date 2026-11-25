@@ -12,9 +12,10 @@ export function SavedRecommendations({
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <h2 className="font-semibold">Suggestions for this workout</h2>
+        <h2 className="font-semibold">Recommendation context</h2>
         <p className="text-xs text-muted-foreground">
-          These are the suggestions you saw. The sets you logged are above.
+          Recommendation context saved with this workout. It may not describe
+          the sets logged above or apply now.
         </p>
         {recommendations.map(({ exerciseName, recommendation }) => (
           <section

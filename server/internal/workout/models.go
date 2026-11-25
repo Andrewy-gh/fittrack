@@ -40,23 +40,13 @@ type UpdateSet struct {
 	SetType string   `json:"setType" validate:"required,oneof=warmup working"`
 }
 
-type exerciseRequestDraft struct {
-	CatalogID *string
-	Name      string
-	Sets      []setRequestDraft
-}
-
-type setRequestDraft struct {
-	Weight  *float64
-	Reps    int
-	SetType string
-}
-
+// POST and PUT have distinct top-level presence semantics, but their exercise
+// and set values are interchangeable after request validation.
 type workoutRequestDraft struct {
 	Date         string
 	Notes        *string
 	WorkoutFocus *string
-	Exercises    []exerciseRequestDraft
+	Exercises    []ExerciseInput
 }
 
 // PostgreSQL-specific types
