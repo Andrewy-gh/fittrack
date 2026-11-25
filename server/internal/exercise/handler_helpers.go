@@ -15,7 +15,7 @@ const maxExerciseJSONBodyBytes = 32 << 10
 func (h *ExerciseHandler) decodeExerciseID(w http.ResponseWriter, r *http.Request) (int32, bool) {
 	raw := strings.TrimSpace(r.PathValue("id"))
 	if raw == "" {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Missing exercise ID", nil)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "missing exercise ID", nil)
 		return 0, false
 	}
 
@@ -23,7 +23,7 @@ func (h *ExerciseHandler) decodeExerciseID(w http.ResponseWriter, r *http.Reques
 	if err != nil || parsed <= 0 {
 		// ParseInt's *strconv.NumError includes the raw path segment. Keep
 		// only its syntax/range cause so the public message is input-independent.
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Invalid exercise ID", errors.Unwrap(err))
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "invalid exercise ID", errors.Unwrap(err))
 		return 0, false
 	}
 

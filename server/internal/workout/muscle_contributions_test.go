@@ -100,7 +100,7 @@ func TestMuscleContributionsHTTPServiceFailure(t *testing.T) {
 		err     error
 		message string
 	}{
-		{"unexpected failure", errors.New("synthetic failure"), "Could not load muscle contributions"},
+		{"unexpected failure", errors.New("synthetic failure"), "could not load muscle contributions"},
 		{"sensitive database failure", errors.New("database synthetic secret"), "internal error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

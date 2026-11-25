@@ -33,12 +33,12 @@ func (h *ExerciseHandler) UpdateExerciseHistorical1RM(w http.ResponseWriter, r *
 
 	var req UpdateExerciseHistorical1RMRequest
 	if err := decodeStrictJSON(w, r, &req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Validation failed", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "validation failed", err)
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *ExerciseHandler) UpdateExerciseHistorical1RM(w http.ResponseWriter, r *
 		case errors.As(err, &errConflict):
 			response.ErrorJSON(w, r, h.logger, http.StatusConflict, errConflict.Error(), nil)
 		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to update exercise historical 1RM", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to update exercise historical 1RM", err)
 		}
 		return
 	}

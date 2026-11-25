@@ -142,7 +142,7 @@ func TestExerciseHandler_ListExercises(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusInternalServerError,
 			expectJSON:    true,
-			expectedError: "Failed to list exercises",
+			expectedError: "failed to list exercises",
 		},
 		{
 			name:          "unauthenticated user",
@@ -208,7 +208,7 @@ func TestExerciseReadRoutesRejectInvalidIDs(t *testing.T) {
 
 				require.Equal(t, http.StatusBadRequest, w.Code)
 				require.Equal(t, "application/json", w.Header().Get("Content-Type"))
-				require.JSONEq(t, `{"message":"Invalid exercise ID","request_id":"exercise-id-test"}`, w.Body.String())
+				require.JSONEq(t, `{"message":"invalid exercise ID","request_id":"exercise-id-test"}`, w.Body.String())
 			})
 		}
 	}
@@ -480,7 +480,7 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Failed to decode request body",
+			expectedError: "failed to decode request body",
 		},
 		{
 			name:          "unknown request field",
@@ -489,7 +489,7 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Failed to decode request body",
+			expectedError: "failed to decode request body",
 		},
 		{
 			name:          "validation error",
@@ -498,7 +498,7 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Validation failed",
+			expectedError: "validation failed",
 		},
 		{
 			name:        "service error",
@@ -509,7 +509,7 @@ func TestExerciseHandler_GetOrCreateExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusInternalServerError,
 			expectJSON:    true,
-			expectedError: "Failed to get or create exercise",
+			expectedError: "failed to get or create exercise",
 		},
 		{
 			name:          "unauthenticated user",
@@ -604,7 +604,7 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Missing exercise ID",
+			expectedError: "missing exercise ID",
 		},
 		{
 			name:          "invalid exercise ID",
@@ -613,7 +613,7 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Invalid exercise ID",
+			expectedError: "invalid exercise ID",
 		},
 		{
 			name:       "exercise not found",
@@ -636,7 +636,7 @@ func TestExerciseHandler_DeleteExercise(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusInternalServerError,
 			expectJSON:    true,
-			expectedError: "Failed to delete exercise",
+			expectedError: "failed to delete exercise",
 		},
 		{
 			name:          "unauthenticated user",
@@ -722,7 +722,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Missing exercise ID",
+			expectedError: "missing exercise ID",
 		},
 		{
 			name:          "invalid exercise ID",
@@ -732,7 +732,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Invalid exercise ID",
+			expectedError: "invalid exercise ID",
 		},
 		{
 			name:          "invalid JSON",
@@ -742,7 +742,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Failed to decode request body",
+			expectedError: "failed to decode request body",
 		},
 		{
 			name:          "unknown request field",
@@ -752,7 +752,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Failed to decode request body",
+			expectedError: "failed to decode request body",
 		},
 		{
 			name:          "validation error - empty name",
@@ -762,7 +762,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
 			expectJSON:    true,
-			expectedError: "Validation failed",
+			expectedError: "validation failed",
 		},
 		{
 			name:        "exercise not found",
@@ -787,7 +787,7 @@ func TestExerciseHandler_UpdateExerciseName(t *testing.T) {
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusInternalServerError,
 			expectJSON:    true,
-			expectedError: "Failed to update exercise name",
+			expectedError: "failed to update exercise name",
 		},
 		{
 			name:          "unauthenticated user",

@@ -147,7 +147,7 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository, id int32) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Missing workout ID",
+			expectedError: "missing workout ID",
 		},
 		{
 			name:          "invalid workout ID",
@@ -155,7 +155,7 @@ func TestWorkoutHandler_GetWorkoutWithSets(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository, id int32) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Invalid workout ID",
+			expectedError: "invalid workout ID",
 		},
 		{
 			name:      "workout lookup database error",
@@ -441,7 +441,7 @@ func TestWorkoutHandler_DeleteWorkout(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository, id int32) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Missing workout ID",
+			expectedError: "missing workout ID",
 		},
 		{
 			name:          "invalid workout ID",
@@ -449,7 +449,7 @@ func TestWorkoutHandler_DeleteWorkout(t *testing.T) {
 			setupMock:     func(m *MockWorkoutRepository, id int32) {},
 			ctx:           context.WithValue(context.Background(), user.UserIDKey, userID),
 			expectedCode:  http.StatusBadRequest,
-			expectedError: "Invalid workout ID",
+			expectedError: "invalid workout ID",
 		},
 		{
 			name:      "workout not found",

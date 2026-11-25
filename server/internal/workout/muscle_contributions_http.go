@@ -33,18 +33,18 @@ func NewMuscleContributionHandler(service *MuscleContributionService, logger *sl
 func (h *MuscleContributionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.Summarize(r.Context(), TrainingEvidenceRequest{StartDate: r.URL.Query().Get("startDate"), Timezone: r.URL.Query().Get("timezone")})
 	if err != nil {
-		status, message := http.StatusInternalServerError, "Could not load muscle contributions"
+		status, message := http.StatusInternalServerError, "could not load muscle contributions"
 		var unauthorized *apperrors.Unauthorized
 		switch {
 		case errors.As(err, &unauthorized):
-			status, message = http.StatusUnauthorized, "Unauthorized"
+			status, message = http.StatusUnauthorized, "unauthorized"
 		case errors.Is(err, ErrInvalidTrainingEvidencePeriod), errors.Is(err, ErrFutureTrainingEvidencePeriod):
-			status, message = http.StatusBadRequest, "Invalid assessment period"
+			status, message = http.StatusBadRequest, "invalid assessment period"
 		}
 		response.ErrorJSON(w, r, h.logger, status, message, err)
 		return
 	}
 	if err := response.JSON(w, http.StatusOK, result); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Could not write assessment", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "could not write assessment", err)
 	}
 }

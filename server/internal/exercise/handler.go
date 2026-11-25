@@ -45,13 +45,13 @@ func (h *ExerciseHandler) ListExercises(w http.ResponseWriter, r *http.Request) 
 		if errors.As(err, &errUnauthorized) {
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to list exercises", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to list exercises", err)
 		}
 		return
 	}
 
 	if err := response.JSON(w, http.StatusOK, exercises); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 		return
 	}
 }
@@ -88,13 +88,13 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise with sets", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get exercise with sets", err)
 		}
 		return
 	}
 
 	if err := response.JSON(w, http.StatusOK, exerciseWithSets); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 		return
 	}
 }
@@ -116,12 +116,12 @@ func (h *ExerciseHandler) GetExerciseWithSets(w http.ResponseWriter, r *http.Req
 func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Request) {
 	var req CreateExerciseRequest
 	if err := decodeStrictJSON(w, r, &req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
 
 	if err := h.validator.Struct(&req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Validation failed", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "validation failed", err)
 		return
 	}
 
@@ -131,13 +131,13 @@ func (h *ExerciseHandler) GetOrCreateExercise(w http.ResponseWriter, r *http.Req
 		if errors.As(err, &errUnauthorized) {
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get or create exercise", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get or create exercise", err)
 		}
 		return
 	}
 
 	if err := response.JSON(w, http.StatusOK, exercise); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 		return
 	}
 }
@@ -168,13 +168,13 @@ func (h *ExerciseHandler) GetRecentSetsForExercise(w http.ResponseWriter, r *htt
 		if errors.As(err, &errUnauthorized) {
 			response.ErrorJSON(w, r, h.logger, http.StatusUnauthorized, errUnauthorized.Error(), nil)
 		} else {
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get recent sets for exercise", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get recent sets for exercise", err)
 		}
 		return
 	}
 
 	if err := response.JSON(w, http.StatusOK, sets); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 		return
 	}
 }
@@ -211,13 +211,13 @@ func (h *ExerciseHandler) GetExerciseMetricsHistory(w http.ResponseWriter, r *ht
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to get exercise metrics history", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to get exercise metrics history", err)
 		}
 		return
 	}
 
 	if err := response.JSON(w, http.StatusOK, history); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to write response", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to write response", err)
 		return
 	}
 }
@@ -247,12 +247,12 @@ func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Requ
 
 	var req UpdateExerciseNameRequest
 	if err := decodeStrictJSON(w, r, &req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Failed to decode request body", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "failed to decode request body", err)
 		return
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "Validation failed", err)
+		response.ErrorJSON(w, r, h.logger, http.StatusBadRequest, "validation failed", err)
 		return
 	}
 
@@ -266,9 +266,9 @@ func (h *ExerciseHandler) UpdateExerciseName(w http.ResponseWriter, r *http.Requ
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		case db.IsUniqueConstraintError(err):
-			response.ErrorJSON(w, r, h.logger, http.StatusConflict, "Exercise name already exists", nil)
+			response.ErrorJSON(w, r, h.logger, http.StatusConflict, "exercise name already exists", nil)
 		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to update exercise name", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to update exercise name", err)
 		}
 		return
 	}
@@ -307,7 +307,7 @@ func (h *ExerciseHandler) DeleteExercise(w http.ResponseWriter, r *http.Request)
 		case errors.As(err, &errNotFound):
 			response.ErrorJSON(w, r, h.logger, http.StatusNotFound, errNotFound.Error(), nil)
 		default:
-			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "Failed to delete exercise", err)
+			response.ErrorJSON(w, r, h.logger, http.StatusInternalServerError, "failed to delete exercise", err)
 		}
 		return
 	}
