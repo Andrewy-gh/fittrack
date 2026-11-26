@@ -989,49 +989,13 @@ definitions:
     - trainingDays
     - workingSets
     type: object
-  workout.UpdateExercise:
-    properties:
-      catalog_id:
-        type: string
-      name:
-        maxLength: 256
-        minLength: 1
-        type: string
-      sets:
-        items:
-          $ref: '#/definitions/workout.UpdateSet'
-        minItems: 1
-        type: array
-    required:
-    - name
-    - sets
-    type: object
-  workout.UpdateSet:
-    properties:
-      reps:
-        minimum: 1
-        type: integer
-      setType:
-        enum:
-        - warmup
-        - working
-        type: string
-      weight:
-        maximum: 9.999999999e+08
-        minimum: 0
-        type: number
-        x-nullable: true
-    required:
-    - reps
-    - setType
-    type: object
   workout.UpdateWorkoutRequest:
     properties:
       date:
         type: string
       exercises:
         items:
-          $ref: '#/definitions/workout.UpdateExercise'
+          $ref: '#/definitions/workout.ExerciseInput'
         minItems: 1
         type: array
       notes:

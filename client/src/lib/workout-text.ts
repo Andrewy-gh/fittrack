@@ -17,14 +17,22 @@ export function validateWorkoutText(
 }
 
 /** Check every bounded text value before either workout mutation. */
-export function workoutTextError(value: {
-  notes?: string | null;
-  workoutFocus?: string | null;
-  exercises: readonly { name: string }[];
-}): string | undefined {
+export function workoutTextError(
+  value: {
+    notes?: string | null;
+    workoutFocus?: string | null;
+    exercises: readonly { name: string }[];
+  },
+  { trim = true }: { trim?: boolean } = {},
+): string | undefined {
+  const notes = value.notes ?? "";
+  const workoutFocus = value.workoutFocus ?? "";
   return (
-    validateWorkoutText(value.notes?.trim() ?? "", "Notes") ??
-    validateWorkoutText(value.workoutFocus?.trim() ?? "", "Workout focus") ??
+    validateWorkoutText(trim ? notes.trim() : notes, "Notes") ??
+    validateWorkoutText(
+      trim ? workoutFocus.trim() : workoutFocus,
+      "Workout focus",
+    ) ??
     value.exercises
       .map((exercise) => validateWorkoutText(exercise.name, "Exercise name"))
       .find(Boolean)

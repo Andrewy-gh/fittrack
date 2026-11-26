@@ -12,8 +12,6 @@ export type {
   WorkoutUpdateWorkoutRequest,
   WorkoutExerciseInput,
   WorkoutSetInput,
-  WorkoutUpdateExercise,
-  WorkoutUpdateSet,
 
   // Exercise types
   ExerciseExerciseResponse,

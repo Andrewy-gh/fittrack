@@ -37,7 +37,7 @@ func insertWorkout(ctx context.Context, qtx *db.Queries, workout PGWorkoutData, 
 }
 
 // MARK: getOrCreateExercises
-func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo exercise.ExerciseRepository, qtx *db.Queries, exercises []PGExerciseData, userID string) (map[string]int32, error) {
+func getOrCreateExercises(ctx context.Context, logger *slog.Logger, exerciseRepo exercise.ExerciseRepository, qtx *db.Queries, exercises []ExerciseData, userID string) (map[string]int32, error) {
 	exerciseMap := make(map[string]int32)
 
 	for _, exercise := range exercises {
@@ -126,12 +126,6 @@ func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, e
 		}
 	}
 
-	// Convert exercises
-	var pgExercises []PGExerciseData
-	for _, exercise := range reformatted.Exercises {
-		pgExercises = append(pgExercises, PGExerciseData(exercise))
-	}
-
 	// Convert sets with ordering information
 	var pgSets []PGSetData
 
@@ -192,7 +186,7 @@ func convertToPGTypes(reformatted *ReformattedRequest) (*PGReformattedRequest, e
 
 	return &PGReformattedRequest{
 		Workout:   pgWorkout,
-		Exercises: pgExercises,
+		Exercises: reformatted.Exercises,
 		Sets:      pgSets,
 	}, nil
 }

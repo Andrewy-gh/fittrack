@@ -1,7 +1,12 @@
+import { useField } from "@tanstack/react-form";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkoutNewWorkoutContextResponse } from "@/client";
-import type { WorkoutDraftStorage } from "@/lib/local-storage";
+import {
+  createWorkoutDraftStorage,
+  type WorkoutDraftStorage,
+} from "@/lib/local-storage";
+import { saveAIWorkoutDraftToWorkoutForm } from "@/features/chat/utils/ai-workout-draft";
 import { featureFlags } from "@/lib/feature-flags";
 
 vi.mock("@/lib/feature-flags", () => ({
@@ -74,6 +79,164 @@ const newWorkoutContext: WorkoutNewWorkoutContextResponse = {
 };
 
 describe("useNewWorkoutFormWorkflow", () => {
+  it.each([true, false])(
+    "saves original chat text, edits and undo across reload (historical context: %s)",
+    async (withContext) => {
+      const entries = new Map<string, string>();
+      const storage = createWorkoutDraftStorage({
+        getItem: (key) => entries.get(key) ?? null,
+        setItem: (key, value) => {
+          entries.set(key, value);
+        },
+        removeItem: (key) => {
+          entries.delete(key);
+        },
+      });
+      const snapshot = {
+        exerciseName: "Pushups",
+        recommendation: {
+          exerciseId: 77,
+          readiness: "normal" as const,
+          explanation: "Original context",
+          policyVersion: "exercise-plan-v2",
+          plan: { sets: 3, reps: 8, weight: null },
+        },
+      };
+      const draft = {
+        date: "2026-09-11T12:00:00-04:00",
+        // Go's chat normalization preserves edge U+FEFF; ECMAScript trim does not.
+        notes: "\uFEFFOriginal note\uFEFF",
+        workoutFocus: "\uFEFFPush\uFEFF",
+        exercises: [
+          {
+            name: "Pushups",
+            catalog_id: "Pushups",
+            sets: [{ reps: 8, setType: "working" as const }],
+          },
+        ],
+        ...(withContext && { recommendations: [snapshot] }),
+      };
+      const original = structuredClone(draft);
+      expect(
+        saveAIWorkoutDraftToWorkoutForm(draft, "user-1", storage),
+      ).not.toBeNull();
+      expect(storage.load("user-2")).toBeNull();
+      const mountWorkflow = () =>
+        renderHook(() => {
+          const workflow = useNewWorkoutFormWorkflow({
+            user: {
+              id: "user-1",
+              displayName: "Owner",
+              primaryEmail: null,
+              profileImageUrl: null,
+              signOut: async () => {},
+            },
+            // A different owned ID must not be substituted for snapshot 77.
+            exercises: [{ id: 88, name: "Pushups" }],
+            newWorkoutContext,
+            draftStorage: storage,
+          });
+          const notes = useField({ form: workflow.form, name: "notes" });
+          const focus = useField({ form: workflow.form, name: "workoutFocus" });
+          return { ...workflow, notes, focus };
+        });
+      const { result, unmount } = mountWorkflow();
+      if (withContext) {
+        await act(async () => {
+          result.current.recordRecommendation("Pushups", {
+            ...snapshot.recommendation,
+            exerciseId: 88,
+            explanation: "Late response",
+          });
+        });
+      }
+      await act(async () => {
+        await result.current.form.handleSubmit();
+      });
+      expect(mockApiMutateAsync.mock.calls.at(-1)?.[0].body).toEqual(original);
+      await act(async () => {
+        // Removing the edge characters changes what is saved, even when the
+        // visible words stay the same. Leave the other text field untouched.
+        result.current.notes.handleChange("Original note");
+      });
+      await act(async () => {
+        await result.current.form.handleSubmit();
+      });
+      expect(mockApiMutateAsync.mock.calls.at(-1)?.[0].body).toEqual({
+        ...original,
+        notes: "Original note",
+        recommendations: undefined,
+      });
+      unmount();
+      const reloaded = mountWorkflow();
+      await act(async () => {
+        await reloaded.result.current.form.handleSubmit();
+      });
+      expect(mockApiMutateAsync.mock.calls.at(-1)?.[0].body).toEqual({
+        ...original,
+        notes: "Original note",
+        recommendations: undefined,
+      });
+      await act(async () => {
+        reloaded.result.current.notes.handleChange(original.notes);
+        reloaded.result.current.focus.handleChange(" Pull ");
+      });
+      await act(async () => {
+        await reloaded.result.current.form.handleSubmit();
+      });
+      expect(mockApiMutateAsync.mock.calls.at(-1)?.[0].body).toEqual({
+        ...original,
+        workoutFocus: "Pull",
+        recommendations: undefined,
+      });
+      await act(async () => {
+        reloaded.result.current.focus.handleChange(original.workoutFocus);
+        await reloaded.result.current.form.handleSubmit();
+      });
+      expect(mockApiMutateAsync.mock.calls.at(-1)?.[0].body).toEqual(original);
+      for (const changedExercises of [
+        [{ ...draft.exercises[0], catalog_id: "Dumbbell_Bench_Press" }],
+        [
+          {
+            ...draft.exercises[0],
+            sets: [{ reps: 9, setType: "working" as const }],
+          },
+        ],
+        [
+          {
+            ...draft.exercises[0],
+            sets: [{ reps: 8, setType: "working" as const, weight: 0 }],
+          },
+        ],
+      ]) {
+        await act(async () => {
+          reloaded.result.current.form.setFieldValue(
+            "exercises",
+            changedExercises,
+          );
+        });
+        await act(async () => {
+          await reloaded.result.current.form.handleSubmit();
+        });
+        expect(
+          mockApiMutateAsync.mock.calls.at(-1)?.[0].body.recommendations,
+        ).toBeUndefined();
+        await act(async () => {
+          reloaded.result.current.form.setFieldValue(
+            "exercises",
+            draft.exercises,
+          );
+        });
+        await act(async () => {
+          await reloaded.result.current.form.handleSubmit();
+        });
+        expect(
+          mockApiMutateAsync.mock.calls.at(-1)?.[0].body.recommendations,
+        ).toEqual(original.recommendations);
+      }
+      expect(draft).toEqual(original);
+    },
+  );
   it("records guidance without creating or overwriting actual sets and discards it on repeat", async () => {
     const draftStorage = createDraftStorage({
       date: "2026-09-11T12:00:00Z",

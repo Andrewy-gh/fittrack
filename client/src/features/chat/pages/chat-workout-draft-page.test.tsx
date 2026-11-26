@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AIWorkoutDraft } from "@/features/chat/api/ai-chat";
+import { workoutDraftStorage } from "@/lib/local-storage";
 import {
   ChatRouteComponent,
   conversationDetail,
@@ -49,20 +50,8 @@ describe("ChatRouteComponent", () => {
 
     expect(confirmSpy).not.toHaveBeenCalled();
     await waitFor(() => {
-      expect(
-        window.localStorage.getItem("workout-entry-form-data-user-123"),
-      ).toBe(
-        JSON.stringify({
-          date: "2026-04-21T12:00:00Z",
-          notes: "Keep rest short",
-          workoutFocus: "pull",
-          exercises: [
-            {
-              name: "Chest Supported Row",
-              sets: [{ reps: 10, setType: "working" }],
-            },
-          ],
-        }),
+      expect(workoutDraftStorage.load("user-123")).toMatchObject(
+        latestWorkoutDraft,
       );
     });
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/workouts/new" });
@@ -301,20 +290,8 @@ describe("ChatRouteComponent", () => {
     ).toHaveLength(1);
 
     await waitFor(() => {
-      expect(
-        window.localStorage.getItem("workout-entry-form-data-user-123"),
-      ).toBe(
-        JSON.stringify({
-          date: "2026-04-21T12:00:00Z",
-          notes: "Regenerated draft",
-          workoutFocus: "pull",
-          exercises: [
-            {
-              name: "Chest Supported Row",
-              sets: [{ reps: 10, setType: "working" }],
-            },
-          ],
-        }),
+      expect(workoutDraftStorage.load("user-123")).toMatchObject(
+        regeneratedDraft,
       );
     });
   });

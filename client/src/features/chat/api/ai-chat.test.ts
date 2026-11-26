@@ -645,6 +645,36 @@ describe("ai chat api wrapper", () => {
     });
   });
 
+  it("keeps a historical draft readable but marks unsupported recommendation context", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          workout_id: 901,
+          conversation: {
+            id: 41,
+            created_at: "2026-03-26T17:00:00Z",
+            updated_at: "2026-04-21T12:30:00Z",
+            latest_workout_draft: {
+              date: "2026-04-21T12:00:00Z",
+              recommendations: [{ invalid: true }],
+              exercises: [
+                { name: "Pushups", sets: [{ reps: 10, setType: "working" }] },
+              ],
+            },
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const conversation = await saveAIChatLatestWorkoutDraft(41);
+    expect(conversation.latest_workout_draft).toMatchObject({
+      unsupportedRecommendations: true,
+      exercises: [
+        { name: "Pushups", sets: [{ reps: 10, setType: "working" }] },
+      ],
+    });
+  });
+
   it("saves the latest workout draft through the ai chat endpoint", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
@@ -654,9 +684,21 @@ describe("ai chat api wrapper", () => {
             id: 41,
             latest_workout_draft: {
               date: "2026-04-21T12:00:00Z",
+              recommendations: [
+                {
+                  exerciseName: "Pushups",
+                  recommendation: {
+                    exerciseId: 77,
+                    readiness: "normal",
+                    explanation: "Original context",
+                    policyVersion: "exercise-plan-v2",
+                  },
+                },
+              ],
               exercises: [
                 {
-                  name: "Chest Supported Row",
+                  name: "Pushups",
+                  catalog_id: "Pushups",
                   sets: [{ reps: 10, setType: "working" }],
                 },
               ],
@@ -687,6 +729,20 @@ describe("ai chat api wrapper", () => {
     );
     expect(latestRequest().method).toBe("POST");
     expect(conversation.id).toBe(41);
+    expect(conversation.latest_workout_draft?.exercises[0].catalog_id).toBe(
+      "Pushups",
+    );
+    expect(conversation.latest_workout_draft?.recommendations).toEqual([
+      {
+        exerciseName: "Pushups",
+        recommendation: {
+          exerciseId: 77,
+          readiness: "normal",
+          explanation: "Original context",
+          policyVersion: "exercise-plan-v2",
+        },
+      },
+    ]);
     expect(conversation.latest_workout_draft_status?.is_saved).toBe(true);
     expect(conversation.latest_workout_draft_status?.saved_workout_id).toBe(
       901,

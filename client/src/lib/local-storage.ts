@@ -10,9 +10,18 @@ const getStorageKey = (userId?: string): string => {
   return userId ? `${STORAGE_KEY}-${userId}` : STORAGE_KEY;
 };
 
+export type ImportedRecommendationContext = {
+  baseline: WorkoutCreateWorkoutRequest;
+  recommendations?: WorkoutCreateWorkoutRequest["recommendations"];
+};
+
+export type StoredWorkoutDraft = WorkoutCreateWorkoutRequest & {
+  importedRecommendationContext?: ImportedRecommendationContext;
+};
+
 export type WorkoutDraftStorage = {
-  save: (data: WorkoutCreateWorkoutRequest, userId?: string) => void;
-  load: (userId?: string) => WorkoutCreateWorkoutRequest | null;
+  save: (data: StoredWorkoutDraft, userId?: string) => void;
+  load: (userId?: string) => StoredWorkoutDraft | null;
   clear: (userId?: string) => void;
 };
 
@@ -28,7 +37,20 @@ const WorkoutExerciseSchema = v.object({
   sets: v.array(WorkoutSetSchema),
 });
 
+const WorkoutValuesSchema = v.object({
+  date: v.string(),
+  notes: v.optional(v.string()),
+  workoutFocus: v.optional(v.string()),
+  exercises: v.array(WorkoutExerciseSchema),
+});
+
 const WorkoutDraftSchema = v.object({
+  importedRecommendationContext: v.optional(
+    v.object({
+      baseline: WorkoutValuesSchema,
+      recommendations: v.optional(v.array(recommendationSnapshotSchema)),
+    }),
+  ),
   recommendations: v.optional(
     v.fallback(v.array(recommendationSnapshotSchema), []),
   ),
@@ -38,7 +60,7 @@ const WorkoutDraftSchema = v.object({
   exercises: v.array(WorkoutExerciseSchema),
 });
 
-function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
+function parseWorkoutDraft(input: unknown): StoredWorkoutDraft | null {
   const result = v.safeParse(WorkoutDraftSchema, input);
 
   if (!result.success) {
@@ -51,6 +73,10 @@ function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
   }
 
   return {
+    ...(result.output.importedRecommendationContext && {
+      importedRecommendationContext:
+        result.output.importedRecommendationContext,
+    }),
     recommendations: result.output.recommendations,
     date: result.output.date,
     notes: result.output.notes,
@@ -59,9 +85,7 @@ function parseWorkoutDraft(input: unknown): WorkoutCreateWorkoutRequest | null {
   };
 }
 
-function deserializeDraft(
-  rawValue: string,
-): WorkoutCreateWorkoutRequest | null {
+function deserializeDraft(rawValue: string): StoredWorkoutDraft | null {
   try {
     const parsed: unknown = JSON.parse(rawValue);
     return parseWorkoutDraft(parsed);
@@ -127,13 +151,6 @@ function getBrowserStorage(): StorageLike | undefined {
 
 export const workoutDraftStorage =
   createWorkoutDraftStorage(getBrowserStorage());
-
-export const loadFromLocalStorage = (
-  userId?: string,
-  draftStorage: WorkoutDraftStorage = workoutDraftStorage,
-): WorkoutCreateWorkoutRequest | null => {
-  return draftStorage.load(userId);
-};
 
 export const clearLocalStorage = (
   userId?: string,

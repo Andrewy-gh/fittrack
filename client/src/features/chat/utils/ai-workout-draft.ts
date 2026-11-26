@@ -1,34 +1,30 @@
-import type {
-  WorkoutCreateWorkoutRequest,
-  WorkoutExerciseInput,
-} from "@/client";
+import type { WorkoutCreateWorkoutRequest } from "@/client";
 import type { AIWorkoutDraft } from "@/features/chat/api/ai-chat";
 import {
   type WorkoutDraftStorage,
+  type StoredWorkoutDraft,
   workoutDraftStorage,
 } from "@/lib/local-storage";
 
-function cloneExercises(
-  exercises: AIWorkoutDraft["exercises"],
-): WorkoutExerciseInput[] {
-  return exercises.map((exercise) => ({
-    name: exercise.name,
-    sets: exercise.sets.map((set) => ({
-      reps: set.reps,
-      setType: set.setType,
-      weight: set.weight,
-    })),
-  }));
-}
-
 export function toWorkoutFormDraft(
   draft: AIWorkoutDraft,
-): WorkoutCreateWorkoutRequest {
-  return {
+): StoredWorkoutDraft | null {
+  if (draft.unsupportedRecommendations) return null;
+  const editable: WorkoutCreateWorkoutRequest = {
     date: draft.date,
     notes: draft.notes ?? "",
     workoutFocus: draft.workoutFocus ?? "",
-    exercises: cloneExercises(draft.exercises),
+    exercises: draft.exercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) => ({ ...set })),
+    })),
+  };
+  return {
+    ...editable,
+    importedRecommendationContext: {
+      baseline: structuredClone(editable),
+      recommendations: draft.recommendations,
+    },
   };
 }
 
@@ -36,8 +32,9 @@ export function saveAIWorkoutDraftToWorkoutForm(
   draft: AIWorkoutDraft,
   userId?: string,
   draftStorage: WorkoutDraftStorage = workoutDraftStorage,
-): WorkoutCreateWorkoutRequest {
+): StoredWorkoutDraft | null {
   const nextDraft = toWorkoutFormDraft(draft);
+  if (!nextDraft) return null;
   draftStorage.save(nextDraft, userId);
   return nextDraft;
 }

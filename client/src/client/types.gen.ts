@@ -429,21 +429,9 @@ export type WorkoutStrengthAssessment = {
   workingSets: number;
 };
 
-export type WorkoutUpdateExercise = {
-  catalog_id?: string;
-  name: string;
-  sets: Array<WorkoutUpdateSet>;
-};
-
-export type WorkoutUpdateSet = {
-  reps: number;
-  setType: "warmup" | "working";
-  weight?: number | null;
-};
-
 export type WorkoutUpdateWorkoutRequest = {
   date: string;
-  exercises: Array<WorkoutUpdateExercise>;
+  exercises: Array<WorkoutExerciseInput>;
   notes?: string | null;
   workoutFocus?: string | null;
 };

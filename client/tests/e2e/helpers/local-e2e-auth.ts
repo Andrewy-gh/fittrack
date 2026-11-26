@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { WorkoutCreateWorkoutRequest } from "../../../src/client/types.gen";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,19 +16,7 @@ export type SeededConversationRequest = {
   title: string;
   user_prompt: string;
   assistant_text: string;
-  latest_workout_draft: {
-    date: string;
-    notes?: string;
-    workoutFocus?: string;
-    exercises: Array<{
-      name: string;
-      sets: Array<{
-        reps: number;
-        setType: "warmup" | "working";
-        weight?: number;
-      }>;
-    }>;
-  };
+  latest_workout_draft: WorkoutCreateWorkoutRequest;
   expire_ai_chat_access_after_seed?: boolean;
 };
 

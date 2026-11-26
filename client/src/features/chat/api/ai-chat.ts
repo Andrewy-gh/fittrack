@@ -10,6 +10,13 @@ import {
   postAiConversationsByIdMessagesRecover,
 } from "@/client";
 import type { ApiError } from "@/lib/errors";
+import type {
+  RecommendationSnapshot,
+  WorkoutExerciseInput,
+  WorkoutSetInput,
+} from "@/client";
+import * as v from "valibot";
+import { recommendationSnapshotSchema } from "@/features/workouts/utils/recommendation-context";
 import { applyLocalDevAuthHeader } from "@/lib/local-dev-auth";
 import { stackClientApp } from "@/stack";
 
@@ -95,18 +102,20 @@ export type AISaveLatestWorkoutDraftResponse = {
   workout_id: number;
 };
 
-export type AIWorkoutSetInput = {
-  weight?: number;
-  reps: number;
+// Parsed chat drafts share the workout request shape. The chat parser narrows
+// the generated nullable weight and open string set type at the wire boundary.
+export type AIWorkoutSetInput = Omit<WorkoutSetInput, "setType" | "weight"> & {
   setType: "warmup" | "working";
+  weight?: NonNullable<WorkoutSetInput["weight"]>;
 };
 
-export type AIWorkoutExerciseInput = {
-  name: string;
+type AIWorkoutExerciseInput = Omit<WorkoutExerciseInput, "sets"> & {
   sets: AIWorkoutSetInput[];
 };
 
 export type AIWorkoutDraft = {
+  recommendations?: RecommendationSnapshot[];
+  unsupportedRecommendations?: true;
   date: string;
   notes?: string;
   workoutFocus?: string;
@@ -809,8 +818,19 @@ function parseOptionalWorkoutDraft(
   const draft = parseRecord(rawDraft, "workout_draft");
   const notes = parseOptionalStringProperty(draft, "notes");
   const workoutFocus = parseOptionalStringProperty(draft, "workoutFocus");
+  const context =
+    draft.recommendations === undefined
+      ? undefined
+      : v.safeParse(
+          v.array(recommendationSnapshotSchema),
+          draft.recommendations,
+        );
 
   return {
+    ...(context &&
+      (context.success
+        ? { recommendations: context.output }
+        : { unsupportedRecommendations: true as const })),
     date: parseRequiredString(draft, "date"),
     ...notes,
     ...workoutFocus,
@@ -831,6 +851,7 @@ function parseWorkoutExercises(
       `workout_draft.exercises[${exerciseIndex}]`,
     );
     return {
+      ...parseOptionalStringProperty(exercise, "catalog_id"),
       name: parseRequiredString(exercise, "name"),
       sets: parseWorkoutSets(exercise.sets, exerciseIndex),
     };

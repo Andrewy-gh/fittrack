@@ -52,9 +52,9 @@ func TestWorkoutService_UpdateWorkout_LookupErrorClassification(t *testing.T) {
 	workoutID := int32(1)
 	request := UpdateWorkoutRequest{
 		Date: time.Now().UTC().Format(time.RFC3339),
-		Exercises: []UpdateExercise{{
+		Exercises: []ExerciseInput{{
 			Name: "Bench Press",
-			Sets: []UpdateSet{{Reps: 5, SetType: "working"}},
+			Sets: []SetInput{{Reps: 5, SetType: "working"}},
 		}},
 	}
 
