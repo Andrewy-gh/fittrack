@@ -121,7 +121,8 @@ test.describe("Authenticated - Structured workout chat import", () => {
     // Playwright text matchers normalize whitespace; read the actual value.
     expect(await notesInput.inputValue()).toBe(notes);
     await notesInput.fill("Keep rest short");
-    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await notesInput.press("Escape");
+    await expect(dialog).toBeHidden();
     await expect(edited).toBeVisible();
 
     await page.reload();
@@ -129,7 +130,8 @@ test.describe("Authenticated - Structured workout chat import", () => {
     await notesCard.click();
     expect(await notesInput.inputValue()).toBe("Keep rest short");
     await notesInput.fill(notes);
-    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await notesInput.press("Escape");
+    await expect(dialog).toBeHidden();
     await expect(eligible).toBeVisible();
 
     const importSave = page.waitForResponse(
@@ -168,7 +170,7 @@ test.describe("Authenticated - Structured workout chat import", () => {
             weight,
           }) => ({
             exercise_id,
-            workout_date,
+            workout_date: Date.parse(workout_date),
             workout_notes,
             workout_focus,
             set_type,
@@ -184,7 +186,7 @@ test.describe("Authenticated - Structured workout chat import", () => {
       sets: [
         {
           exercise_id: exerciseId,
-          workout_date: draft.date,
+          workout_date: Date.parse(draft.date),
           workout_notes: notes,
           workout_focus: focus,
           set_type: "warmup",
@@ -193,7 +195,7 @@ test.describe("Authenticated - Structured workout chat import", () => {
         },
         {
           exercise_id: exerciseId,
-          workout_date: draft.date,
+          workout_date: Date.parse(draft.date),
           workout_notes: notes,
           workout_focus: focus,
           set_type: "working",

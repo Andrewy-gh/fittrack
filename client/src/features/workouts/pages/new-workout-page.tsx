@@ -233,7 +233,7 @@ export function NewWorkoutPage({
                   exerciseId={exerciseId}
                   exerciseName={exerciseName}
                 />
-                {workoutForm.originalContext ? (
+                {originalContext?.recommendations !== undefined ? (
                   <p className="text-sm text-muted-foreground">
                     This imported draft has original recommendation context. It
                     is saved only if the workout inputs are unchanged; return to
