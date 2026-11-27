@@ -102,7 +102,8 @@ func activateGenkitRuntime(ctx context.Context, modelName string, reader ChatDat
 	} else {
 		g = genkitInit(ctx, genkit.WithPlugins(&googlegenai.GoogleAI{}), genkit.WithDefaultModel(modelName))
 	}
-	workoutDraftTool := defineWorkoutDraftTool(g, modelName)
+	history, _ := reader.(draftHistoryReader)
+	workoutDraftTool := defineWorkoutDraftTool(g, modelName, history)
 	var getWorkoutsTool ai.Tool
 	var getExerciseStatsTool ai.Tool
 	var updateProfileTool ai.Tool
@@ -385,6 +386,7 @@ When the user wants you to build a workout:
 - Do not ask scheduling, frequency, or future-date questions in the normal MVP flow. If the user does not specify a date, the draft tool will default the workout date to today.
 - Do not list specific exercises, sets, or reps in plain text before the %s tool runs.
 - As soon as you have the MVP-ready inputs, call the %s tool immediately.
+- For ordinary drafts with known, unchanged equipment and no load constraints, set useLoggedWeights=true so FitTrack can fill comparable loads from its logs. Omit it for explicit weights (including no added weight), blanks, deloads, equipment switches, uncertain equipment, or load ceilings. This is independent of whether the user explicitly asks for historical advice.
 - The %s tool is the only way to produce a structured workout draft that matches FitTrack's workout contract.
 - After the tool runs, keep any follow-up text to a short summary and do not repeat the exercise list in plain text.
 - If the user adds a new pain, injury, or movement limitation after a workout draft, treat it as new safety context before revising. When the new limitation is vague, ask one focused follow-up about the painful movements, ranges, or triggers before calling the %s tool again. If the limitation is specific enough to revise safely, call the %s tool right away.

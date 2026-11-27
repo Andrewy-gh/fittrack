@@ -32,6 +32,7 @@ type workoutDraftGenerator func(
 ) (*workout.CreateWorkoutRequest, error)
 
 type WorkoutGenerationToolInput struct {
+	UseLoggedWeights  bool   `json:"useLoggedWeights,omitempty" jsonschema:"description=Set true for an ordinary draft when training equipment is known and unchanged and no weight constraints apply. Omit or set false for any explicit weight including zero, requests to leave weights blank or skip history, equipment switches or uncertainty, limited equipment loads, deloads, or injury-related modifications. FitTrack only reuses exact comparable sets."`
 	FitnessLevel      string `json:"fitnessLevel,omitempty" jsonschema:"description=Optional training experience level. Use beginner, intermediate, or advanced when known."`
 	FitnessGoal       string `json:"fitnessGoal,omitempty" jsonschema:"description=Optional primary training goal such as strength, hypertrophy, endurance, power, or general fitness when known."`
 	Equipment         string `json:"equipment,omitempty" jsonschema:"description=Available equipment such as bodyweight, dumbbells, barbells, machines, cables, or bands when known."`
@@ -43,7 +44,7 @@ type WorkoutGenerationToolInput struct {
 	RecentPerformance string `json:"recentPerformance,omitempty" jsonschema:"description=Optional concise summary from workout-history tools when the user asked for the draft to be based on past training, such as last-session sets, best e1RM, or recent trend."`
 }
 
-func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
+func defineWorkoutDraftTool(g *genkit.Genkit, modelName string, history draftHistoryReader) ai.Tool {
 	return genkit.DefineTool(g, workoutDraftToolName,
 		workoutDraftToolDescription,
 		func(ctx *ai.ToolContext, input WorkoutGenerationToolInput) (*workout.CreateWorkoutRequest, error) {
@@ -59,7 +60,11 @@ func defineWorkoutDraftTool(g *genkit.Genkit, modelName string) ai.Tool {
 				return nil, err
 			}
 
-			draft, err := generateWorkoutDraft(ctx, g, modelName, input, time.Now())
+			now := time.Now()
+			draft, err := generateWorkoutDraft(ctx, g, modelName, input, now)
+			if err == nil {
+				attachLoggedDraftWeights(ctx, history, input, draft, now)
+			}
 			logAIChatTraceContext(ctx, "workout_draft_tool_finished",
 				"elapsed_ms", time.Since(startedAt).Milliseconds(),
 				"model", modelName,
